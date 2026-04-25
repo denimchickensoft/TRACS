@@ -1,0 +1,120 @@
+import { create } from 'zustand'
+import { generateBcn } from '../utils/bcn.js'
+import { syncStore } from '../utils/storeSync.js'
+
+let _cidCounter = 1
+
+function generateCid() {
+  return String(_cidCounter++).padStart(3, '0')
+}
+
+export function resetCidCounter() { _cidCounter = 1 }
+
+export const useFlightPlansStore = create((set, get) => ({
+  // Keyed by AID (callsign, uppercase)
+  plans: {},
+
+  // Create a new flight plan. CID and BCN are auto-generated if not provided.
+  // No-op if a plan for this AID already exists.
+  add: (plan) =>
+    set((state) => {
+      const aid = plan.aid?.toUpperCase()
+      if (!aid) return {}
+      if (state.plans[aid]) return {}
+
+      return {
+        plans: {
+          ...state.plans,
+          [aid]: {
+            aid,
+            cid:         generateCid(),
+            bcn:         generateBcn(state.plans),
+            typ:         '',
+            eq:          '',
+            dep:         '',
+            dest:        '',
+            spd:         '',
+            alt:         '',
+            rte:         '',
+            rmk:         '',
+            flightRules: 'IFR',
+            unitId:      null,
+            suspended:   false,
+            suspendIndex: null,
+            firstSeen:   Date.now(),
+            ...plan,
+            // AID always normalised; CID/BCN only overridden if explicitly provided
+            aid,
+          },
+        },
+      }
+    }),
+
+  // Amend an existing flight plan. Merges patch fields.
+  // Sets amended: true so listeners can highlight strips.
+  amend: (aid, patch) =>
+    set((state) => {
+      const key = aid?.toUpperCase()
+      if (!key || !state.plans[key]) return {}
+      return {
+        plans: {
+          ...state.plans,
+          [key]: { ...state.plans[key], ...patch, amended: true },
+        },
+      }
+    }),
+
+  // Clear the amended flag once strips have acknowledged it
+  clearAmended: (aid) =>
+    set((state) => {
+      const key = aid?.toUpperCase()
+      if (!key || !state.plans[key]) return {}
+      return {
+        plans: {
+          ...state.plans,
+          [key]: { ...state.plans[key], amended: false },
+        },
+      }
+    }),
+
+  // Recycle the BCN for a plan
+  recycleBcn: (aid) =>
+    set((state) => {
+      const key = aid?.toUpperCase()
+      if (!key || !state.plans[key]) return {}
+      return {
+        plans: {
+          ...state.plans,
+          [key]: { ...state.plans[key], bcn: generateBcn(state.plans) },
+        },
+      }
+    }),
+
+  update: (aid, patch) =>
+    set((state) => {
+      const key = aid?.toUpperCase()
+      if (!key || !state.plans[key]) return {}
+      return { plans: { ...state.plans, [key]: { ...state.plans[key], ...patch } } }
+    }),
+
+  remove: (aid) =>
+    set((state) => {
+      const next = { ...state.plans }
+      delete next[aid?.toUpperCase()]
+      return { plans: next }
+    }),
+
+  associate: (aid, unitId) =>
+    set((state) => {
+      const key = aid?.toUpperCase()
+      if (!key || !state.plans[key]) return {}
+      return { plans: { ...state.plans, [key]: { ...state.plans[key], unitId } } }
+    }),
+
+  getByUnit: (unitId) =>
+    Object.values(get().plans).find((p) => p.unitId === unitId) ?? null,
+
+  reset: () => { _cidCounter = 1; set({ plans: {} }) },
+}))
+
+syncStore(useFlightPlansStore, 'tracs-plans', (s) => ({ plans: s.plans }))

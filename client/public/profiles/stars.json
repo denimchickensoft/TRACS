@@ -1,0 +1,87 @@
+{
+  "id": "stars",
+  "name": "STARS",
+  "version": "1.0",
+
+  "visual": {
+    "colors": {
+      "background":      "#000000",
+      "rangeRing":       "#8C8C8C",
+      "rangeRingLabel":  "#8C8C8C",
+      "contact":         "#1E78FF",
+      "historyTrail": [
+        "rgba(30,120,255,0.70)",
+        "rgba(30,120,255,0.60)",
+        "rgba(30,120,255,0.50)",
+        "rgba(30,120,255,0.40)",
+        "rgba(30,120,255,0.32)",
+        "rgba(30,120,255,0.25)",
+        "rgba(30,120,255,0.18)",
+        "rgba(30,120,255,0.13)",
+        "rgba(30,120,255,0.09)",
+        "rgba(30,120,255,0.06)"
+      ],
+      "fdbText":         "#FFFFFF",
+      "pdbText":         "#00CC00",
+      "ldbText":         "#00CC00",
+      "leaderLine":      "#8C8C8C",
+      "ptlLine":         "#FFFFFF"
+    },
+    "rangeRings": {
+      "solid":     true,
+      "lineWidth": 0.3
+    },
+
+    "symbol": {
+      "shape":           "octagon",
+      "diameter":        15,
+      "filled":          true,
+      "historyDiameter": 8,
+      "rotationDeg":     22.5
+    },
+    "dataBlock": {
+      "font":            "500 10px \"Roboto Mono\", monospace",
+      "lineHeight":      12,
+      "leaderLength":    40,
+      "leaderAngleDeg":  -45
+    }
+  },
+
+  "interaction": {
+    "previewArea":  { "enabled": true, "position": "belowSSA" },
+    "contextMenu":  { "enabled": false },
+    "starsKeys": [
+      { "key": "F3", "function": "INIT_CNTL" },
+      { "key": "F4", "function": "TERM_CNTL" },
+      { "key": "F5", "function": "HND_OFF",    "requiresSlew": true },
+      { "key": "F7", "function": "MULTI_FUNC" }
+    ]
+  },
+
+  "features": {
+    "STCA":               true,
+    "PTL":                true,
+    "ATPA":               false,
+    "altitudeFilters":    true,
+    "coordinationLists":  true,
+    "topDownMode":        false
+  },
+
+  "defaults": {
+    "rangeNm":       60,
+    "ringSpacingNm": 10,
+    "historyLength": 4,
+    "ptlLength":     2
+  },
+
+  "dcb": {
+    "background":             "#061806",
+    "buttonBackground":       "#061806",
+    "buttonBorder":           "#143C14",
+    "buttonText":             "#FFFFFF",
+    "buttonActiveBackground": "#0D360D",
+    "buttonActiveBorder":     "#1E5A1E",
+    "buttonActiveText":       "#FFFFFF",
+    "valueColor":             "#FFFFFF"
+  }
+}

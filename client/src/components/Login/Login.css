@@ -1,0 +1,234 @@
+:root {
+  --bg: #0a0a0a;
+  --panel-bg: #111;
+  --border: #2a2a2a;
+  --text: #c8c8c8;
+  --text-dim: #666;
+  --accent: #00b4d8;
+  --accent-dim: #005f73;
+  --error: #e63946;
+  --input-bg: #1a1a1a;
+}
+
+.login-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: 'Roboto Mono', monospace;
+  color: var(--text);
+}
+
+.login-panel {
+  width: 360px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  padding: 32px;
+}
+
+.login-header {
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.login-header h1 {
+  margin: 0 0 4px;
+  font-size: 1.6rem;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+}
+
+.login-header p {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-form section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-form label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.login-form input,
+.login-form select {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.login-form input:focus,
+.login-form select:focus {
+  border-color: var(--accent-dim);
+}
+
+.login-form input::placeholder {
+  color: var(--text-dim);
+}
+
+.position-fields {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.position-fields .facility-input {
+  width: 68px;
+  min-width: 68px;
+  flex-shrink: 0;
+}
+
+.position-fields .suffix-select {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.callsign-preview {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+}
+
+.login-phase-label {
+  margin: 6px 0 0;
+  font-size: 0.65rem;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.login-section-label {
+  margin: 4px 0 -4px;
+  font-size: 0.6rem;
+  color: var(--accent-dim);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.login-hint {
+  margin-top: 4px;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+.login-loading {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  padding: 8px 0;
+  letter-spacing: 0.06em;
+}
+
+.login-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.login-actions .connect-btn {
+  flex: 1;
+}
+
+.disconnect-btn {
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid #444;
+  color: #555;
+  font-family: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+
+.disconnect-btn:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.module-toggles {
+  display: flex;
+  gap: 8px;
+}
+
+.module-btn {
+  flex: 1;
+  padding: 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+
+.module-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.module-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.login-error {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: var(--error);
+  border: 1px solid var(--error);
+  background: rgba(230, 57, 70, 0.08);
+}
+
+.connect-btn {
+  margin-top: 8px;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.connect-btn:hover:not(:disabled) {
+  background: rgba(0, 180, 216, 0.1);
+}
+
+.connect-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

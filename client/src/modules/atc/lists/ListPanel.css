@@ -1,0 +1,20 @@
+.list-panel {
+  position: absolute;
+  z-index: 20;
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 500;
+  white-space: pre;
+  pointer-events: none;
+  line-height: 1.4;
+  min-width: 8ch;
+}
+
+.list-title {
+  opacity: 0.6;
+  margin-bottom: 1px;
+}
+
+.list-more {
+  opacity: 0.6;
+  margin-top: 1px;
+}

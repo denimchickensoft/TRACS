@@ -1,0 +1,221 @@
+import { create } from 'zustand'
+import { syncStore } from '../utils/storeSync.js'
+
+// What caused the auto-add — drives the highlight color
+export const STRIP_HIGHLIGHT = {
+  AUTO_ADDED: 'auto-added',  // green — any auto-add trigger
+  AMENDED:    'amended',     // yellow — flight plan was amended
+  COASTING:   'coasting',    // red — contact is coasting
+}
+
+// How incoming annotations are merged when a strip already exists
+export const CONFLICT_RESOLUTION = {
+  OVERWRITE: 'overwrite',  // incoming replaces existing
+  MERGE:     'merge',      // incoming fills blank cells only
+  IGNORE:    'ignore',     // existing always kept
+}
+
+function genId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function resolveAnnotations(existing, incoming, mode) {
+  if (mode === CONFLICT_RESOLUTION.OVERWRITE) return incoming.slice()
+  if (mode === CONFLICT_RESOLUTION.IGNORE)    return existing.slice()
+  // merge: incoming fills blank cells only
+  return existing.map((cell, i) => cell || incoming[i] || '')
+}
+
+const DEFAULT_BAY = { id: 'default', name: 'Bay 1', sortBy: 'time', stripIds: [] }
+
+const DEFAULT_SETTINGS = {
+  conflictResolution:   CONFLICT_RESOLUTION.OVERWRITE,
+  autoAddOnTrack:       true,
+  autoAddOnHandoff:     true,
+  autoAddOnStripPass:   true,
+  autoAddOnDepMatch:    false,
+  depAirports:          [],   // e.g. ['UGKO', 'UGKO']
+  autoAddOnDestMatch:   false,
+  destAirports:         [],
+  deleteOnDropTrack:    false,
+}
+
+export const useStripsStore = create((set, get) => ({
+  // { [id]: Strip }
+  // Strip: { id, aid, annotations[9], highlight, createdAt }
+  strips: {},
+
+  // Array of bay objects: [{ id, name, sortBy, stripIds[] }]
+  bays: [{ ...DEFAULT_BAY }],
+
+  ...DEFAULT_SETTINGS,
+
+  // ── Add strip ─────────────────────────────────────────────────────
+  // Returns strip ID if created, null if duplicate (no annotation update requested).
+  addStrip: (aid, { annotations = null, bayId = null, highlight = null } = {}) => {
+    const state = get()
+    const normalizedAid = aid?.toUpperCase()
+    if (!normalizedAid) return null
+
+    // Find existing strip for this AID
+    const existing = Object.values(state.strips).find((s) => s.aid === normalizedAid)
+
+    if (existing) {
+      // If incoming annotations provided, apply conflict resolution
+      if (annotations) {
+        const resolved = resolveAnnotations(existing.annotations, annotations, state.conflictResolution)
+        set((s) => ({
+          strips: { ...s.strips, [existing.id]: { ...existing, annotations: resolved } },
+        }))
+      }
+      return null  // no new strip created
+    }
+
+    // New strip
+    const id  = genId()
+    const bay = state.bays.find((b) => b.id === (bayId ?? state.bays[0]?.id))
+    if (!bay) return null
+
+    set((s) => ({
+      strips: {
+        ...s.strips,
+        [id]: {
+          id,
+          aid: normalizedAid,
+          annotations: annotations ? annotations.slice() : Array(9).fill(''),
+          highlight,
+          createdAt: Date.now(),
+        },
+      },
+      bays: s.bays.map((b) =>
+        b.id === bay.id ? { ...b, stripIds: [...b.stripIds, id] } : b
+      ),
+    }))
+
+    return id
+  },
+
+  // ── Update a single annotation cell ───────────────────────────────
+  setAnnotation: (stripId, cellIndex, value) =>
+    set((state) => {
+      const strip = state.strips[stripId]
+      if (!strip) return {}
+      const annotations = [...strip.annotations]
+      annotations[cellIndex] = value.slice(0, 3)
+      return { strips: { ...state.strips, [stripId]: { ...strip, annotations } } }
+    }),
+
+  // ── Acknowledge (clear) highlight ─────────────────────────────────
+  acknowledgeStrip: (stripId) =>
+    set((state) => {
+      const strip = state.strips[stripId]
+      if (!strip) return {}
+      return { strips: { ...state.strips, [stripId]: { ...strip, highlight: null } } }
+    }),
+
+  // ── Set highlight (e.g. when plan amended) ────────────────────────
+  setHighlight: (aid, highlight) =>
+    set((state) => {
+      const strip = Object.values(state.strips).find((s) => s.aid === aid?.toUpperCase())
+      if (!strip) return {}
+      return { strips: { ...state.strips, [strip.id]: { ...strip, highlight } } }
+    }),
+
+  // ── Delete strip ──────────────────────────────────────────────────
+  deleteStrip: (stripId) =>
+    set((state) => {
+      const next = { ...state.strips }
+      delete next[stripId]
+      return {
+        strips: next,
+        bays: state.bays.map((b) => ({
+          ...b,
+          stripIds: b.stripIds.filter((id) => id !== stripId),
+        })),
+      }
+    }),
+
+  // ── Delete all strips for an AID (e.g. flight plan deleted) ──────
+  deleteByAid: (aid) =>
+    set((state) => {
+      const normalized = aid?.toUpperCase()
+      const toRemove = new Set(
+        Object.values(state.strips).filter((s) => s.aid === normalized).map((s) => s.id)
+      )
+      const next = { ...state.strips }
+      toRemove.forEach((id) => delete next[id])
+      return {
+        strips: next,
+        bays: state.bays.map((b) => ({
+          ...b,
+          stripIds: b.stripIds.filter((id) => !toRemove.has(id)),
+        })),
+      }
+    }),
+
+  // ── Bay management ─────────────────────────────────────────────────
+  addBay: (name) =>
+    set((state) => ({
+      bays: [...state.bays, { id: genId(), name, sortBy: 'time', stripIds: [] }],
+    })),
+
+  removeBay: (bayId) =>
+    set((state) => {
+      if (bayId === 'default' || state.bays.length <= 1) return {}
+      const removed = state.bays.find((b) => b.id === bayId)
+      const defaultBay = state.bays.find((b) => b.id === 'default') ?? state.bays[0]
+      return {
+        bays: state.bays
+          .filter((b) => b.id !== bayId)
+          .map((b) =>
+            b.id === defaultBay.id
+              ? { ...b, stripIds: [...b.stripIds, ...(removed?.stripIds ?? [])] }
+              : b
+          ),
+      }
+    }),
+
+  setSortBy: (bayId, sortBy) =>
+    set((state) => ({
+      bays: state.bays.map((b) => (b.id === bayId ? { ...b, sortBy } : b)),
+    })),
+
+  moveStripToBay: (stripId, targetBayId) =>
+    set((state) => ({
+      bays: state.bays.map((b) => {
+        if (b.stripIds.includes(stripId) && b.id !== targetBayId)
+          return { ...b, stripIds: b.stripIds.filter((id) => id !== stripId) }
+        if (b.id === targetBayId && !b.stripIds.includes(stripId))
+          return { ...b, stripIds: [...b.stripIds, stripId] }
+        return b
+      }),
+    })),
+
+  reorderBay: (bayId, newOrder) =>
+    set((state) => ({
+      bays: state.bays.map((b) => (b.id === bayId ? { ...b, stripIds: newOrder } : b)),
+    })),
+
+  setConflictResolution:  (mode) => set({ conflictResolution: mode }),
+  setSetting:             (key, value) => set({ [key]: value }),
+  addDepAirport:          (icao) => set((s) => ({ depAirports:  [...new Set([...s.depAirports,  icao.toUpperCase()])] })),
+  removeDepAirport:       (icao) => set((s) => ({ depAirports:  s.depAirports.filter((a) => a !== icao) })),
+  addDestAirport:         (icao) => set((s) => ({ destAirports: [...new Set([...s.destAirports, icao.toUpperCase()])] })),
+  removeDestAirport:      (icao) => set((s) => ({ destAirports: s.destAirports.filter((a) => a !== icao) })),
+
+  reset: () => set({ strips: {}, bays: [{ ...DEFAULT_BAY }] }),
+}))
+
+syncStore(useStripsStore, 'tracs-strips', (s) => ({
+  strips: s.strips,
+  bays:   s.bays,
+  conflictResolution: s.conflictResolution,
+  autoAddOnTrack:     s.autoAddOnTrack,
+  autoAddOnHandoff:   s.autoAddOnHandoff,
+  autoAddOnStripPass: s.autoAddOnStripPass,
+  autoAddOnDepMatch:  s.autoAddOnDepMatch,
+  depAirports:        s.depAirports,
+  autoAddOnDestMatch: s.autoAddOnDestMatch,
+  destAirports:       s.destAirports,
+  deleteOnDropTrack:  s.deleteOnDropTrack,
+}))

@@ -1,0 +1,1580 @@
+{
+  "theatre": "Syria",
+  "extracted_at": "2026-04-23T17:47:52.510Z",
+  "airbases": [
+    {
+      "airbase": "Abu al-Duhur",
+      "runways": [
+        {
+          "lon": 37.104127922088,
+          "name": 27,
+          "length_ft": 8729.7593554883,
+          "lat": 35.732306416745,
+          "width_ft": 196.8504,
+          "elevation_ft": 820.21080098633
+        }
+      ]
+    },
+    {
+      "airbase": "Adana Sakirpasa",
+      "runways": [
+        {
+          "lon": 35.280005956317,
+          "name": 23,
+          "length_ft": 8115.7632856641,
+          "lat": 36.981885470652,
+          "width_ft": 196.8504,
+          "elevation_ft": 55.774336319351
+        }
+      ]
+    },
+    {
+      "airbase": "Al Qusayr",
+      "runways": [
+        {
+          "lon": 36.571453704926,
+          "name": 28,
+          "length_ft": 8585.3198938965,
+          "lat": 34.569275587726,
+          "width_ft": 196.8504,
+          "elevation_ft": 1729.0044822192
+        }
+      ]
+    },
+    {
+      "airbase": "An Nasiriyah",
+      "runways": [
+        {
+          "lon": 36.865839938651,
+          "name": 22,
+          "length_ft": 8172.1519221777,
+          "lat": 33.918607143089,
+          "width_ft": 196.8504,
+          "elevation_ft": 2737.3399383936
+        }
+      ]
+    },
+    {
+      "airbase": "Tha'lah",
+      "runways": [
+        {
+          "lon": 36.41377531482,
+          "name": 5,
+          "length_ft": 8025.144498418,
+          "lat": 32.70400425981,
+          "width_ft": 196.8504,
+          "elevation_ft": 2381.0704309863
+        }
+      ]
+    },
+    {
+      "airbase": "Beirut-Rafic Hariri",
+      "runways": [
+        {
+          "lon": 35.487687350149,
+          "name": 17,
+          "length_ft": 6699.348323667,
+          "lat": 33.827267866605,
+          "width_ft": 196.8504,
+          "elevation_ft": 39.370120675087
+        },
+        {
+          "lon": 35.491167672712,
+          "name": 35,
+          "length_ft": 6699.348323667,
+          "lat": 33.811487940768,
+          "width_ft": 196.8504,
+          "elevation_ft": 39.370120675087
+        },
+        {
+          "lon": 35.483038259452,
+          "name": 3,
+          "length_ft": 6619.9749839746,
+          "lat": 33.825143681588,
+          "width_ft": 196.8504,
+          "elevation_ft": 39.370120675087
+        }
+      ]
+    },
+    {
+      "airbase": "Damascus",
+      "runways": [
+        {
+          "lon": 36.518512497633,
+          "name": 5,
+          "length_ft": 11423.793567559,
+          "lat": 33.4255083301,
+          "width_ft": 196.8504,
+          "elevation_ft": 2007.8760824658
+        },
+        {
+          "lon": 36.510359003326,
+          "name": 23,
+          "length_ft": 11423.793567559,
+          "lat": 33.395373468896,
+          "width_ft": 196.8504,
+          "elevation_ft": 2007.8760824658
+        }
+      ]
+    },
+    {
+      "airbase": "Marj as Sultan South",
+      "runways": [
+        {
+          "lon": 36.475393669883,
+          "name": 9,
+          "length_ft": 558.73146743713,
+          "lat": 33.487221926279,
+          "width_ft": 147.6378,
+          "elevation_ft": 2005.8531914941
+        }
+      ]
+    },
+    {
+      "airbase": "Al-Dumayr",
+      "runways": [
+        {
+          "lon": 36.749152424388,
+          "name": 24,
+          "length_ft": 8902.2854026758,
+          "lat": 33.609700792422,
+          "width_ft": 213.2546,
+          "elevation_ft": 2066.9314027124
+        }
+      ]
+    },
+    {
+      "airbase": "Eyn Shemer",
+      "runways": [
+        {
+          "lon": 35.006997675728,
+          "name": 27,
+          "length_ft": 4826.1604952344,
+          "lat": 32.440931755725,
+          "width_ft": 196.8504,
+          "elevation_ft": 108.62240675842
+        }
+      ]
+    },
+    {
+      "airbase": "Gaziantep",
+      "runways": [
+        {
+          "lon": 37.478344162061,
+          "name": 10,
+          "length_ft": 9495.1546571094,
+          "lat": 36.948127737776,
+          "width_ft": 196.8504,
+          "elevation_ft": 2293.964970022
+        }
+      ]
+    },
+    {
+      "airbase": "H4",
+      "runways": [
+        {
+          "lon": 38.195079477689,
+          "name": 28,
+          "length_ft": 7179.393447373,
+          "lat": 32.539282819267,
+          "width_ft": 213.2546,
+          "elevation_ft": 2257.2201227124
+        }
+      ]
+    },
+    {
+      "airbase": "Haifa",
+      "runways": [
+        {
+          "lon": 35.043540311874,
+          "name": 34,
+          "length_ft": 3253.3934024805,
+          "lat": 32.810747911099,
+          "width_ft": 147.6378,
+          "elevation_ft": 19.68506190197
+        }
+      ]
+    },
+    {
+      "airbase": "Hama",
+      "runways": [
+        {
+          "lon": 36.712379497568,
+          "name": 27,
+          "length_ft": 7957.6133410938,
+          "lat": 35.118043557496,
+          "width_ft": 196.8504,
+          "elevation_ft": 984.25300123291
+        }
+      ]
+    },
+    {
+      "airbase": "Hatay",
+      "runways": [
+        {
+          "lon": 36.28742186659,
+          "name": 22,
+          "length_ft": 9052.7779179492,
+          "lat": 36.362319563564,
+          "width_ft": 196.8504,
+          "elevation_ft": 227.93893216858
+        }
+      ]
+    },
+    {
+      "airbase": "Incirlik",
+      "runways": [
+        {
+          "lon": 35.426088727077,
+          "name": 5,
+          "length_ft": 9662.7546383789,
+          "lat": 37.002047942746,
+          "width_ft": 196.8504,
+          "elevation_ft": 156.77040832047
+        }
+      ]
+    },
+    {
+      "airbase": "Jirah",
+      "runways": [
+        {
+          "lon": 37.936536259478,
+          "name": 10,
+          "length_ft": 9413.9634789453,
+          "lat": 36.096871676469,
+          "width_ft": 213.2546,
+          "elevation_ft": 1138.169032196
+        }
+      ]
+    },
+    {
+      "airbase": "Khalkhalah",
+      "runways": [
+        {
+          "lon": 36.54109952206,
+          "name": 15,
+          "length_ft": 8247.7850562109,
+          "lat": 33.078368630745,
+          "width_ft": 147.6378,
+          "elevation_ft": 2322.8369227124
+        },
+        {
+          "lon": 36.572341273999,
+          "name": 33,
+          "length_ft": 8247.7850562109,
+          "lat": 33.06619256054,
+          "width_ft": 147.6378,
+          "elevation_ft": 2322.8369227124
+        }
+      ]
+    },
+    {
+      "airbase": "King Hussein Air College",
+      "runways": [
+        {
+          "lon": 36.259855403041,
+          "name": 31,
+          "length_ft": 8595.4267393848,
+          "lat": 32.356680164762,
+          "width_ft": 196.8504,
+          "elevation_ft": 2204.7264824658
+        }
+      ]
+    },
+    {
+      "airbase": "Kiryat Shmona",
+      "runways": [
+        {
+          "lon": 35.595834585165,
+          "name": 3,
+          "length_ft": 3258.8288957031,
+          "lat": 33.215814882423,
+          "width_ft": 196.8504,
+          "elevation_ft": 340.99166940033
+        }
+      ]
+    },
+    {
+      "airbase": "Bassel Al-Assad",
+      "runways": [
+        {
+          "lon": 35.950384471599,
+          "name": 17,
+          "length_ft": 7225.8562613086,
+          "lat": 35.401670305007,
+          "width_ft": 196.8504,
+          "elevation_ft": 93.055856984177
+        }
+      ]
+    },
+    {
+      "airbase": "Marj as Sultan North",
+      "runways": [
+        {
+          "lon": 36.467148500667,
+          "name": 8,
+          "length_ft": 475.70698175293,
+          "lat": 33.500280470215,
+          "width_ft": 147.6378,
+          "elevation_ft": 2008.1185810767
+        }
+      ]
+    },
+    {
+      "airbase": "Marj Ruhayyil",
+      "runways": [
+        {
+          "lon": 36.455438272339,
+          "name": 6,
+          "length_ft": 7576.6610394922,
+          "lat": 33.28876090057,
+          "width_ft": 213.2546,
+          "elevation_ft": 2160.7527335449
+        }
+      ]
+    },
+    {
+      "airbase": "Megiddo",
+      "runways": [
+        {
+          "lon": 35.230081612046,
+          "name": 9,
+          "length_ft": 6098.2549421094,
+          "lat": 32.597106723204,
+          "width_ft": 196.8504,
+          "elevation_ft": 180.44637521576
+        }
+      ]
+    },
+    {
+      "airbase": "Mezzeh",
+      "runways": [
+        {
+          "lon": 36.224216346068,
+          "name": 24,
+          "length_ft": 7522.4799212988,
+          "lat": 33.477795318501,
+          "width_ft": 196.8504,
+          "elevation_ft": 2355.9438903662
+        }
+      ]
+    },
+    {
+      "airbase": "Minakh",
+      "runways": [
+        {
+          "lon": 37.041337200989,
+          "name": 10,
+          "length_ft": 4648.71358854,
+          "lat": 36.521376326398,
+          "width_ft": 196.8504,
+          "elevation_ft": 1614.1749820959
+        },
+        {
+          "lon": 37.03751720057,
+          "name": 28,
+          "length_ft": 4648.71358854,
+          "lat": 36.522928356619,
+          "width_ft": 196.8504,
+          "elevation_ft": 1614.1749820959
+        }
+      ]
+    },
+    {
+      "airbase": "Aleppo",
+      "runways": [
+        {
+          "lon": 37.224366798934,
+          "name": 27,
+          "length_ft": 8332.110493877,
+          "lat": 36.180618351252,
+          "width_ft": 213.2546,
+          "elevation_ft": 1253.9075516785
+        }
+      ]
+    },
+    {
+      "airbase": "Palmyra",
+      "runways": [
+        {
+          "lon": 38.316705439984,
+          "name": 26,
+          "length_ft": 8704.6340163477,
+          "lat": 34.557289521123,
+          "width_ft": 196.8504,
+          "elevation_ft": 1267.1392450793
+        }
+      ]
+    },
+    {
+      "airbase": "Qabr as Sitt",
+      "runways": [
+        {
+          "lon": 36.357718507501,
+          "name": 5,
+          "length_ft": 497.00110316284,
+          "lat": 33.458735352234,
+          "width_ft": 147.6378,
+          "elevation_ft": 2134.4042882813
+        }
+      ]
+    },
+    {
+      "airbase": "Ramat David",
+      "runways": [
+        {
+          "lon": 35.184165747082,
+          "name": 15,
+          "length_ft": 7613.1723992871,
+          "lat": 32.666411363451,
+          "width_ft": 147.6378,
+          "elevation_ft": 132.95913731277
+        },
+        {
+          "lon": 35.174471643151,
+          "name": 33,
+          "length_ft": 7613.1723992871,
+          "lat": 32.659394642273,
+          "width_ft": 147.6378,
+          "elevation_ft": 132.95913731277
+        },
+        {
+          "lon": 35.176217411157,
+          "name": 11,
+          "length_ft": 7533.0809753516,
+          "lat": 32.666331724017,
+          "width_ft": 147.6378,
+          "elevation_ft": 132.95913731277
+        }
+      ]
+    },
+    {
+      "airbase": "Kuweires",
+      "runways": [
+        {
+          "lon": 37.581494645562,
+          "name": 10,
+          "length_ft": 6662.9098536279,
+          "lat": 36.187493620634,
+          "width_ft": 196.8504,
+          "elevation_ft": 1186.4308614246
+        }
+      ]
+    },
+    {
+      "airbase": "Rayak",
+      "runways": [
+        {
+          "lon": 35.987323621675,
+          "name": 4,
+          "length_ft": 8699.3306858691,
+          "lat": 33.851123444567,
+          "width_ft": 196.8504,
+          "elevation_ft": 2975.5164270068
+        }
+      ]
+    },
+    {
+      "airbase": "Rene Mouawad",
+      "runways": [
+        {
+          "lon": 36.011449271301,
+          "name": 6,
+          "length_ft": 8614.4902139941,
+          "lat": 34.589299660395,
+          "width_ft": 213.2546,
+          "elevation_ft": 14.471274498577
+        }
+      ]
+    },
+    {
+      "airbase": "Rosh Pina",
+      "runways": [
+        {
+          "lon": 35.570738325055,
+          "name": 33,
+          "length_ft": 2711.471484187,
+          "lat": 32.982648140867,
+          "width_ft": 147.6378,
+          "elevation_ft": 865.85500689453
+        }
+      ]
+    },
+    {
+      "airbase": "Sayqal",
+      "runways": [
+        {
+          "lon": 37.217112467269,
+          "name": 8,
+          "length_ft": 7935.0599690527,
+          "lat": 33.679841635204,
+          "width_ft": 196.8504,
+          "elevation_ft": 2273.6243227124
+        }
+      ]
+    },
+    {
+      "airbase": "Shayrat",
+      "runways": [
+        {
+          "lon": 36.907612715762,
+          "name": 11,
+          "length_ft": 8553.3845689941,
+          "lat": 34.490201632267,
+          "width_ft": 213.2546,
+          "elevation_ft": 2637.7078522437
+        }
+      ]
+    },
+    {
+      "airbase": "Tabqa",
+      "runways": [
+        {
+          "lon": 38.566447890919,
+          "name": 9,
+          "length_ft": 9036.4570205273,
+          "lat": 35.754721461351,
+          "width_ft": 213.2546,
+          "elevation_ft": 1099.0825013562
+        }
+      ]
+    },
+    {
+      "airbase": "Taftanaz",
+      "runways": [
+        {
+          "lon": 36.781442030129,
+          "name": 28,
+          "length_ft": 2705.0585873975,
+          "lat": 35.974105453585,
+          "width_ft": 196.8504,
+          "elevation_ft": 1020.3321287805
+        }
+      ]
+    },
+    {
+      "airbase": "Tiyas",
+      "runways": [
+        {
+          "lon": 37.63012265148,
+          "name": 27,
+          "length_ft": 9420.21437625,
+          "lat": 34.522629391778,
+          "width_ft": 196.8504,
+          "elevation_ft": 1797.9021222192
+        }
+      ]
+    },
+    {
+      "airbase": "Wujah Al Hajar",
+      "runways": [
+        {
+          "lon": 35.680106402781,
+          "name": 20,
+          "length_ft": 4717.2916349951,
+          "lat": 34.281337477582,
+          "width_ft": 147.6378,
+          "elevation_ft": 619.00874238892
+        }
+      ]
+    },
+    {
+      "airbase": "Gazipasa",
+      "runways": [
+        {
+          "lon": 32.297627700391,
+          "name": 8,
+          "length_ft": 6885.4659073633,
+          "lat": 36.298921652389,
+          "width_ft": 147.6378,
+          "elevation_ft": 36.068051408539
+        }
+      ]
+    },
+    {
+      "airbase": "Deir ez-Zor",
+      "runways": [
+        {
+          "lon": 40.176061298301,
+          "name": 10,
+          "length_ft": 9338.6451325391,
+          "lat": 35.285431558802,
+          "width_ft": 196.8504,
+          "elevation_ft": 713.0405824408
+        }
+      ]
+    },
+    {
+      "airbase": "Nicosia",
+      "runways": [
+        {
+          "lon": 33.275079114423,
+          "name": 32,
+          "length_ft": 7720.639132959,
+          "lat": 35.152675171966,
+          "width_ft": 213.2546,
+          "elevation_ft": 688.97710086304
+        },
+        {
+          "lon": 33.275023427361,
+          "name": 14,
+          "length_ft": 7720.639132959,
+          "lat": 35.155178005899,
+          "width_ft": 213.2546,
+          "elevation_ft": 688.97710086304
+        }
+      ]
+    },
+    {
+      "airbase": "Akrotiri",
+      "runways": [
+        {
+          "lon": 32.98777739616,
+          "name": 10,
+          "length_ft": 8276.2609211621,
+          "lat": 34.590373208038,
+          "width_ft": 213.2546,
+          "elevation_ft": 68.845219199448
+        }
+      ]
+    },
+    {
+      "airbase": "Kingsfield",
+      "runways": [
+        {
+          "lon": 33.717032739698,
+          "name": 24,
+          "length_ft": 3069.2490486035,
+          "lat": 35.014805562363,
+          "width_ft": 147.6378,
+          "elevation_ft": 275.57511598236
+        }
+      ]
+    },
+    {
+      "airbase": "Paphos",
+      "runways": [
+        {
+          "lon": 32.484788727134,
+          "name": 11,
+          "length_ft": 8425.4430228027,
+          "lat": 34.718151665125,
+          "width_ft": 196.8504,
+          "elevation_ft": 86.440692373657
+        }
+      ]
+    },
+    {
+      "airbase": "Larnaca",
+      "runways": [
+        {
+          "lon": 33.623248842557,
+          "name": 4,
+          "length_ft": 8009.2441188184,
+          "lat": 34.873173509409,
+          "width_ft": 196.8504,
+          "elevation_ft": 16.404215644264
+        }
+      ]
+    },
+    {
+      "airbase": "Lakatamia",
+      "runways": [
+        {
+          "lon": 33.321655354326,
+          "name": 17,
+          "length_ft": 1230.0352555249,
+          "lat": 35.104605562009,
+          "width_ft": 147.6378,
+          "elevation_ft": 757.87484098633
+        }
+      ]
+    },
+    {
+      "airbase": "Ercan",
+      "runways": [
+        {
+          "lon": 33.501694584141,
+          "name": 11,
+          "length_ft": 7559.5103202344,
+          "lat": 35.155148726737,
+          "width_ft": 196.8504,
+          "elevation_ft": 311.68010036987
+        }
+      ]
+    },
+    {
+      "airbase": "Gecitkale",
+      "runways": [
+        {
+          "lon": 33.720895095975,
+          "name": 9,
+          "length_ft": 8156.0480920508,
+          "lat": 35.236010642047,
+          "width_ft": 196.8504,
+          "elevation_ft": 147.63795018494
+        }
+      ]
+    },
+    {
+      "airbase": "Pinarbashi",
+      "runways": [
+        {
+          "lon": 33.268238963223,
+          "name": 16,
+          "length_ft": 3364.4974150684,
+          "lat": 35.273829486081,
+          "width_ft": 65.6168,
+          "elevation_ft": 770.99815092468
+        }
+      ]
+    },
+    {
+      "airbase": "Naqoura",
+      "runways": {}
+    },
+    {
+      "airbase": "H3",
+      "runways": [
+        {
+          "lon": 39.745812983158,
+          "name": 11,
+          "length_ft": 8832.0693391797,
+          "lat": 32.936195553491,
+          "width_ft": 196.8504,
+          "elevation_ft": 2541.1481494019
+        },
+        {
+          "lon": 39.747825406662,
+          "name": 29,
+          "length_ft": 8832.0693391797,
+          "lat": 32.92266032795,
+          "width_ft": 196.8504,
+          "elevation_ft": 2541.1481494019
+        }
+      ]
+    },
+    {
+      "airbase": "H3 Northwest",
+      "runways": [
+        {
+          "lon": 39.596579306796,
+          "name": 30,
+          "length_ft": 7376.7364539648,
+          "lat": 33.075955638886,
+          "width_ft": 213.2546,
+          "elevation_ft": 2577.7834618311
+        }
+      ]
+    },
+    {
+      "airbase": "H3 Southwest",
+      "runways": [
+        {
+          "lon": 39.602205282089,
+          "name": 30,
+          "length_ft": 7321.8056125684,
+          "lat": 32.74344839906,
+          "width_ft": 213.2546,
+          "elevation_ft": 2670.6063632056
+        }
+      ]
+    },
+    {
+      "airbase": "Ruwayshid",
+      "runways": [
+        {
+          "lon": 39.130517904403,
+          "name": 27,
+          "length_ft": 7274.488947207,
+          "lat": 32.404966693644,
+          "width_ft": 196.8504,
+          "elevation_ft": 2978.6356680151
+        }
+      ]
+    },
+    {
+      "airbase": "Sanliurfa",
+      "runways": [
+        {
+          "lon": 38.898378356286,
+          "name": 22,
+          "length_ft": 12320.656357187,
+          "lat": 37.448071463843,
+          "width_ft": 196.8504,
+          "elevation_ft": 2703.2393471997
+        }
+      ]
+    },
+    {
+      "airbase": "Kharab Ishk",
+      "runways": {}
+    },
+    {
+      "airbase": "Tal Siman",
+      "runways": [
+        {
+          "lon": 38.928312371316,
+          "name": 10,
+          "length_ft": 2616.3950077783,
+          "lat": 36.262421680073,
+          "width_ft": 147.6378,
+          "elevation_ft": 980.97216123291
+        }
+      ]
+    },
+    {
+      "airbase": "At Tanf",
+      "runways": {}
+    },
+    {
+      "airbase": "Prince Hassan",
+      "runways": [
+        {
+          "lon": 37.149402756747,
+          "name": 31,
+          "length_ft": 9314.1101203223,
+          "lat": 32.160734804282,
+          "width_ft": 196.8504,
+          "elevation_ft": 2147.7465177954
+        }
+      ]
+    },
+    {
+      "airbase": "King Abdullah II",
+      "runways": [
+        {
+          "lon": 36.223694965176,
+          "name": 31,
+          "length_ft": 7043.914619834,
+          "lat": 32.005510448097,
+          "width_ft": 147.6378,
+          "elevation_ft": 2296.5902027124
+        }
+      ]
+    },
+    {
+      "airbase": "Herzliya",
+      "runways": [
+        {
+          "lon": 34.837941031488,
+          "name": 28,
+          "length_ft": 4113.921850293,
+          "lat": 32.179373697643,
+          "width_ft": 147.6378,
+          "elevation_ft": 118.11040270035
+        }
+      ]
+    },
+    {
+      "airbase": "Marka",
+      "runways": [
+        {
+          "lon": 35.991746026208,
+          "name": 24,
+          "length_ft": 10422.326769395,
+          "lat": 31.972762948957,
+          "width_ft": 196.8504,
+          "elevation_ft": 2454.9001443018
+        }
+      ]
+    },
+    {
+      "airbase": "Muwaffaq Salti",
+      "runways": [
+        {
+          "lon": 36.77868594627,
+          "name": 26,
+          "length_ft": 7597.9728827246,
+          "lat": 31.817617211914,
+          "width_ft": 196.8504,
+          "elevation_ft": 1636.4402994287
+        },
+        {
+          "lon": 36.783828098808,
+          "name": 8,
+          "length_ft": 7597.9728827246,
+          "lat": 31.833245303396,
+          "width_ft": 196.8504,
+          "elevation_ft": 1636.4402994287
+        }
+      ]
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    },
+    {
+      "airbase": "Tel Nof",
+      "runways": [
+        {
+          "lon": 34.832633895556,
+          "name": 33,
+          "length_ft": 7107.1580973438,
+          "lat": 31.838353512089,
+          "width_ft": 213.2546,
+          "elevation_ft": 209.35408443649
+        },
+        {
+          "lon": 34.817878538246,
+          "name": 15,
+          "length_ft": 7107.1580973438,
+          "lat": 31.836215469378,
+          "width_ft": 213.2546,
+          "elevation_ft": 209.35408443649
+        },
+        {
+          "lon": 34.826983546664,
+          "name": 18,
+          "length_ft": 7337.5802373145,
+          "lat": 31.837696573236,
+          "width_ft": 213.2546,
+          "elevation_ft": 209.35408443649
+        }
+      ]
+    },
+    {
+      "airbase": "Ben Gurion",
+      "runways": [
+        {
+          "lon": 34.882422571848,
+          "name": 12,
+          "length_ft": 8490.9356699219,
+          "lat": 32.006078609443,
+          "width_ft": 196.8504,
+          "elevation_ft": 133.57182927673
+        },
+        {
+          "lon": 34.893124855668,
+          "name": 30,
+          "length_ft": 8490.9356699219,
+          "lat": 32.007121696774,
+          "width_ft": 196.8504,
+          "elevation_ft": 133.57182927673
+        },
+        {
+          "lon": 34.876838740306,
+          "name": 21,
+          "length_ft": 8846.2508021191,
+          "lat": 32.015321288089,
+          "width_ft": 196.8504,
+          "elevation_ft": 133.57182927673
+        }
+      ]
+    },
+    {
+      "airbase": "Hatzor",
+      "runways": [
+        {
+          "lon": 34.725254726278,
+          "name": 23,
+          "length_ft": 7517.7765295801,
+          "lat": 31.760397054275,
+          "width_ft": 196.8504,
+          "elevation_ft": 109.9082526387
+        },
+        {
+          "lon": 34.733271699931,
+          "name": 5,
+          "length_ft": 7517.7765295801,
+          "lat": 31.759660458672,
+          "width_ft": 196.8504,
+          "elevation_ft": 109.9082526387
+        },
+        {
+          "lon": 34.734321455083,
+          "name": 11,
+          "length_ft": 7495.0100951758,
+          "lat": 31.761143904051,
+          "width_ft": 196.8504,
+          "elevation_ft": 109.9082526387
+        }
+      ]
+    },
+    {
+      "airbase": "Palmachim",
+      "runways": [
+        {
+          "lon": 34.692149155994,
+          "name": 3,
+          "length_ft": 4524.5326731592,
+          "lat": 31.900440553071,
+          "width_ft": 213.2546,
+          "elevation_ft": 45.261165485306
+        },
+        {
+          "lon": 34.690392201012,
+          "name": 21,
+          "length_ft": 4524.5326731592,
+          "lat": 31.900438318296,
+          "width_ft": 213.2546,
+          "elevation_ft": 45.261165485306
+        }
+      ]
+    },
+    {
+      "airbase": "H",
+      "runways": {}
+    }
+  ]
+}

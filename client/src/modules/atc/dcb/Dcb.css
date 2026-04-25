@@ -1,0 +1,167 @@
+.dcb-bar {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  font-family: 'Roboto Mono', monospace;
+  user-select: none;
+}
+
+/* ── Position variants ───────────────────────────────────────────────────── */
+
+.dcb-bar[data-pos="top"],
+.dcb-bar:not([data-pos]) {
+  height: 80px;
+  width: 100%;
+  flex-direction: row;
+  border-bottom: 1px solid;
+}
+
+.dcb-bar[data-pos="bottom"] {
+  height: 80px;
+  width: 100%;
+  flex-direction: row;
+  border-top: 1px solid;
+}
+
+.dcb-bar[data-pos="left"] {
+  width: 80px;
+  height: 100%;
+  flex-direction: column;
+  border-right: 1px solid;
+}
+
+.dcb-bar[data-pos="right"] {
+  width: 80px;
+  height: 100%;
+  flex-direction: column;
+  border-left: 1px solid;
+}
+
+/* ── Vertical-bar overrides (left / right) ───────────────────────────────── */
+
+/* Full-width buttons, fixed height per slot — text stays horizontal */
+.dcb-bar[data-pos="left"] .dcb-btn,
+.dcb-bar[data-pos="right"] .dcb-btn {
+  width: 100%;
+  height: 80px;
+}
+
+/* halfV still stacks buttons top/bottom; container is now a row of the column bar */
+.dcb-bar[data-pos="left"] .dcb-halfV,
+.dcb-bar[data-pos="right"] .dcb-halfV {
+  flex: 0 0 80px;
+  height: 80px;
+  width: 100%;
+  flex-direction: column;
+}
+
+.dcb-bar[data-pos="left"] .dcb-btn--half,
+.dcb-bar[data-pos="right"] .dcb-btn--half {
+  width: 100%;
+  height: auto;
+  flex: 1;
+}
+
+.dcb-bar[data-pos="left"] .dcb-spacer,
+.dcb-bar[data-pos="right"] .dcb-spacer {
+  min-height: 4px;
+  min-width: 0;
+}
+
+/* ── Spacer ───────────────────────────────────────────────────────────────── */
+
+.dcb-spacer {
+  flex: 1;
+  min-width: 4px;
+}
+
+.dcb-spacer--half {
+  flex: 1;
+}
+
+/* ── Half-vertical slot (two buttons stacked, each half-height) ─────────── */
+
+.dcb-halfV {
+  flex: 0 0 80px;
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.dcb-btn {
+  flex: 0 0 auto;
+  width: 80px;
+  border: 1px solid;
+  border-radius: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 3px;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  gap: 1px;
+
+  /* Raised bevel: light top-left, dark bottom-right */
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.14),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.65);
+
+  transition: background 0.06s, color 0.06s, border-color 0.06s;
+}
+
+/* Amber text on hover — both label and value */
+.dcb-btn:hover,
+.dcb-btn:hover .dcb-btn-value {
+  color: #FFB300 !important;
+}
+
+/* Pressed/active bevel: inverted — dark top-left, light bottom-right */
+.dcb-btn--lit {
+  box-shadow:
+    inset 1px 1px 0 rgba(0, 0, 0, 0.65),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Half-height variant — fills its halfV container */
+.dcb-btn--half {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.dcb-btn--half .dcb-btn-label {
+  font-size: 0.8em;
+}
+
+.dcb-btn--half .dcb-btn-value {
+  font-size: 0.83em;
+}
+
+/* ── Label text ──────────────────────────────────────────────────────────── */
+
+.dcb-btn-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  font-size: 0.93em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dcb-btn-line {
+  white-space: nowrap;
+}
+
+.dcb-btn-value {
+  font-size: 1.04em;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  margin-top: 1px;
+}

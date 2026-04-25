@@ -1,0 +1,44 @@
+.atc-scope {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Flex direction driven by DCB position */
+.atc-scope[data-dcb-pos="top"],
+.atc-scope[data-dcb-pos="bottom"],
+.atc-scope:not([data-dcb-pos]) {
+  flex-direction: column;
+}
+.atc-scope[data-dcb-pos="left"],
+.atc-scope[data-dcb-pos="right"] {
+  flex-direction: row;
+}
+
+/* Canvas area fills remaining space after DCB */
+.atc-canvas-area {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.atc-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.atc-interactive {
+  cursor: crosshair;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}

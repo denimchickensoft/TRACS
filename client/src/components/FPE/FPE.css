@@ -1,0 +1,212 @@
+.fpe-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.fpe-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 560px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.75rem;
+  color: #c8c8c8;
+  pointer-events: all;
+  user-select: none;
+}
+
+/* ── Title bar ──────────────────────────────────────────────────── */
+.fpe-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: #0a0a0a;
+  border-bottom: 1px solid #2a2a2a;
+  cursor: move;
+}
+
+.fpe-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.fpe-readonly-badge {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: #666;
+  border: 1px solid #333;
+  padding: 1px 5px;
+}
+
+.fpe-close {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  font-family: inherit;
+}
+.fpe-close:hover { color: #cc3333; }
+
+/* ── Body ───────────────────────────────────────────────────────── */
+.fpe-body {
+  padding: 10px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Field row — all fixed-width fields side by side ────────────── */
+.fpe-fields-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.fpe-f {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+/* Per-field widths (label + input column) */
+.fpe-f-aid  { width: 78px;  }
+.fpe-f-cid  { width: 40px;  }
+.fpe-f-bcn  { width: 68px;  }   /* input + recycle btn */
+.fpe-f-typ  { width: 46px;  }
+.fpe-f-eq   { width: 46px;  }
+.fpe-f-dep  { width: 50px;  }
+.fpe-f-dest { width: 50px;  }
+.fpe-f-spd  { width: 40px;  }
+.fpe-f-alt  { width: 40px;  }
+
+.fpe-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #555;
+  line-height: 1;
+}
+
+/* ── Shared input height ────────────────────────────────────────── */
+.fpe-input {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #c8c8c8;
+  height: 26px;
+  padding: 0 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  text-transform: uppercase;
+}
+.fpe-input:focus       { border-color: #005f73; }
+.fpe-input[readonly]   { color: #555; background: #0f0f0f; border-color: #1a1a1a; cursor: default; }
+.fpe-input::placeholder { color: #333; }
+
+/* ── BCN: input + recycle button at same height ─────────────────── */
+.fpe-bcn-wrap {
+  display: flex;
+  height: 26px;
+}
+.fpe-bcn-wrap .fpe-input {
+  flex: 1;
+  width: auto;
+  border-right: none;
+  min-width: 0;
+}
+.fpe-recycle {
+  height: 26px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #555;
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 0 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.fpe-recycle:hover:not(:disabled) { color: #00b4d8; border-color: #005f73; }
+.fpe-recycle:disabled { opacity: 0.3; cursor: default; }
+
+/* ── Textarea fields (RTE, RMK) ─────────────────────────────────── */
+.fpe-textarea-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fpe-textarea {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #c8c8c8;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  text-transform: uppercase;
+  resize: none;
+  height: 40px;   /* ~2 lines */
+  line-height: 1.4;
+}
+.fpe-textarea:focus       { border-color: #005f73; }
+.fpe-textarea[readonly]   { color: #555; background: #0f0f0f; border-color: #1a1a1a; cursor: default; }
+.fpe-textarea::placeholder { color: #333; text-transform: none; }
+
+/* ── Divider + actions ──────────────────────────────────────────── */
+.fpe-divider {
+  border: none;
+  border-top: 1px solid #1e1e1e;
+  margin: 2px 0;
+}
+
+.fpe-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.fpe-btn-amend {
+  flex: 1;
+  height: 28px;
+  background: transparent;
+  border: 1px solid #00b4d8;
+  color: #00b4d8;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.fpe-btn-amend:hover:not(:disabled) { background: rgba(0,180,216,0.08); }
+.fpe-btn-amend:disabled { opacity: 0.3; cursor: default; }
+
+.fpe-btn-cancel {
+  height: 28px;
+  padding: 0 18px;
+  background: transparent;
+  border: 1px solid #333;
+  color: #555;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.fpe-btn-cancel:hover { border-color: #555; color: #888; }

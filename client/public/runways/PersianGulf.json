@@ -1,0 +1,452 @@
+{
+  "theatre": "PersianGulf",
+  "extracted_at": "2026-04-23T17:43:27.311Z",
+  "airbases": [
+    {
+      "airbase": "Abu Musa Island",
+      "runways": [
+        {
+          "lon": 55.032918305317,
+          "name": 8,
+          "length_ft": 7616.062357959,
+          "lat": 25.875991482195,
+          "width_ft": 196.8504,
+          "elevation_ft": 16.404215644264
+        }
+      ]
+    },
+    {
+      "airbase": "Bandar Abbas Intl",
+      "runways": [
+        {
+          "lon": 56.378961859066,
+          "name": 3,
+          "length_ft": 11640.11274125,
+          "lat": 27.217686874162,
+          "width_ft": 196.8504,
+          "elevation_ft": 18.332856181717
+        }
+      ]
+    },
+    {
+      "airbase": "Bandar Lengeh",
+      "runways": [
+        {
+          "lon": 54.824667221724,
+          "name": 8,
+          "length_ft": 7625.6301396484,
+          "lat": 26.532263750452,
+          "width_ft": 196.8504,
+          "elevation_ft": 80.883330332718
+        }
+      ]
+    },
+    {
+      "airbase": "Al Dhafra AFB",
+      "runways": [
+        {
+          "lon": 54.547699174071,
+          "name": 13,
+          "length_ft": 11403.52140458,
+          "lat": 24.248287849925,
+          "width_ft": 196.8504,
+          "elevation_ft": 52.493490061646
+        },
+        {
+          "lon": 54.551017978146,
+          "name": 31,
+          "length_ft": 11403.52140458,
+          "lat": 24.231024137451,
+          "width_ft": 196.8504,
+          "elevation_ft": 52.493490061646
+        }
+      ]
+    },
+    {
+      "airbase": "Dubai Intl",
+      "runways": [
+        {
+          "lon": 55.365261173923,
+          "name": 30,
+          "length_ft": 10989.634147139,
+          "lat": 25.256375837676,
+          "width_ft": 196.8504,
+          "elevation_ft": 16.404215644264
+        },
+        {
+          "lon": 55.379927826586,
+          "name": 12,
+          "length_ft": 10989.634147139,
+          "lat": 25.244187272925,
+          "width_ft": 196.8504,
+          "elevation_ft": 16.404215644264
+        }
+      ]
+    },
+    {
+      "airbase": "Al Maktoum Intl",
+      "runways": [
+        {
+          "lon": 55.160239016387,
+          "name": 30,
+          "length_ft": 11500.623375166,
+          "lat": 24.89705665767,
+          "width_ft": 196.8504,
+          "elevation_ft": 123.42027873901
+        }
+      ]
+    },
+    {
+      "airbase": "Fujairah Intl",
+      "runways": [
+        {
+          "lon": 56.327351192579,
+          "name": 29,
+          "length_ft": 9437.5677450488,
+          "lat": 25.110940212915,
+          "width_ft": 196.8504,
+          "elevation_ft": 60.762366039047
+        }
+      ]
+    },
+    {
+      "airbase": "Tunb Island AFB",
+      "runways": [
+        {
+          "lon": 55.315781654422,
+          "name": 3,
+          "length_ft": 6099.8136615039,
+          "lat": 26.258887592538,
+          "width_ft": 65.6168,
+          "elevation_ft": 42.650960675087
+        }
+      ]
+    },
+    {
+      "airbase": "Havadarya",
+      "runways": [
+        {
+          "lon": 56.172018584797,
+          "name": 26,
+          "length_ft": 7300.7629007422,
+          "lat": 27.158224505624,
+          "width_ft": 196.8504,
+          "elevation_ft": 50.77256154911
+        }
+      ]
+    },
+    {
+      "airbase": "Khasab",
+      "runways": [
+        {
+          "lon": 56.240170078396,
+          "name": 19,
+          "length_ft": 7513.0491082715,
+          "lat": 26.169825901478,
+          "width_ft": 65.6168,
+          "elevation_ft": 47.541761292648
+        }
+      ]
+    },
+    {
+      "airbase": "Lar",
+      "runways": [
+        {
+          "lon": 54.383144740902,
+          "name": 9,
+          "length_ft": 9600.7462817871,
+          "lat": 27.674732435743,
+          "width_ft": 196.8504,
+          "elevation_ft": 2635.5936488306
+        }
+      ]
+    },
+    {
+      "airbase": "Al Minhad AFB",
+      "runways": [
+        {
+          "lon": 55.365757762471,
+          "name": 27,
+          "length_ft": 11865.531119629,
+          "lat": 25.026881357855,
+          "width_ft": 196.8504,
+          "elevation_ft": 190.77250322678
+        }
+      ]
+    },
+    {
+      "airbase": "Qeshm Island",
+      "runways": [
+        {
+          "lon": 55.902384215825,
+          "name": 23,
+          "length_ft": 13287.963491416,
+          "lat": 26.754669193425,
+          "width_ft": 196.8504,
+          "elevation_ft": 26.341370927391
+        }
+      ]
+    },
+    {
+      "airbase": "Sharjah Intl",
+      "runways": [
+        {
+          "lon": 55.518262957768,
+          "name": 30,
+          "length_ft": 10388.564394678,
+          "lat": 25.330675229951,
+          "width_ft": 196.8504,
+          "elevation_ft": 98.425143680649
+        },
+        {
+          "lon": 55.517441025846,
+          "name": 12,
+          "length_ft": 10388.564394678,
+          "lat": 25.328452657133,
+          "width_ft": 196.8504,
+          "elevation_ft": 98.425143680649
+        }
+      ]
+    },
+    {
+      "airbase": "Sirri Island",
+      "runways": [
+        {
+          "lon": 54.539254480547,
+          "name": 30,
+          "length_ft": 7443.5114801953,
+          "lat": 25.909602934485,
+          "width_ft": 196.8504,
+          "elevation_ft": 17.853481508598
+        }
+      ]
+    },
+    {
+      "airbase": "Tunb Kochak",
+      "runways": [
+        {
+          "lon": 55.145567899594,
+          "name": 26,
+          "length_ft": 2481.6376686743,
+          "lat": 26.243322258725,
+          "width_ft": 65.6168,
+          "elevation_ft": 15.2058696982
+        }
+      ]
+    },
+    {
+      "airbase": "Sir Abu Nuayr",
+      "runways": [
+        {
+          "lon": 54.233649676882,
+          "name": 28,
+          "length_ft": 2229.6169323657,
+          "lat": 25.216870560507,
+          "width_ft": 65.6168,
+          "elevation_ft": 25.206036948757
+        }
+      ]
+    },
+    {
+      "airbase": "Kerman",
+      "runways": [
+        {
+          "lon": 56.951551333281,
+          "name": 34,
+          "length_ft": 11981.791882197,
+          "lat": 30.273110330784,
+          "width_ft": 196.8504,
+          "elevation_ft": 5746.1473596631
+        }
+      ]
+    },
+    {
+      "airbase": "Shiraz Intl",
+      "runways": [
+        {
+          "lon": 52.59107391229,
+          "name": 29,
+          "length_ft": 13271.46237207,
+          "lat": 29.540909969411,
+          "width_ft": 196.8504,
+          "elevation_ft": 4878.613885918
+        },
+        {
+          "lon": 52.589147367684,
+          "name": 11,
+          "length_ft": 13271.46237207,
+          "lat": 29.537150384586,
+          "width_ft": 196.8504,
+          "elevation_ft": 4878.613885918
+        }
+      ]
+    },
+    {
+      "airbase": "Sas Al Nakheel",
+      "runways": [
+        {
+          "lon": 54.517023139716,
+          "name": 16,
+          "length_ft": 5387.2313934277,
+          "lat": 24.441109498565,
+          "width_ft": 98.4252,
+          "elevation_ft": 9.6631937102985
+        }
+      ]
+    },
+    {
+      "airbase": "Bandar-e-Jask",
+      "runways": [
+        {
+          "lon": 57.801435614666,
+          "name": 6,
+          "length_ft": 6842.9863984375,
+          "lat": 25.654672565559,
+          "width_ft": 98.4252,
+          "elevation_ft": 26.084352874928
+        }
+      ]
+    },
+    {
+      "airbase": "Abu Dhabi Intl",
+      "runways": [
+        {
+          "lon": 54.654267837351,
+          "name": 13,
+          "length_ft": 12817.584270225,
+          "lat": 24.453707787037,
+          "width_ft": 196.8504,
+          "elevation_ft": 91.863613865585
+        },
+        {
+          "lon": 54.653936659595,
+          "name": 31,
+          "length_ft": 12817.584270225,
+          "lat": 24.431105583736,
+          "width_ft": 196.8504,
+          "elevation_ft": 91.863613865585
+        },
+        {
+          "lon": 54.639251574549,
+          "name": 31,
+          "length_ft": 9946.2100831348,
+          "lat": 24.441524174552,
+          "width_ft": 196.8504,
+          "elevation_ft": 91.863613865585
+        }
+      ]
+    },
+    {
+      "airbase": "Al-Bateen",
+      "runways": [
+        {
+          "lon": 54.458580184409,
+          "name": 13,
+          "length_ft": 6808.5063399707,
+          "lat": 24.428077262127,
+          "width_ft": 196.8504,
+          "elevation_ft": 11.977122751417
+        }
+      ]
+    },
+    {
+      "airbase": "Kish Intl",
+      "runways": [
+        {
+          "lon": 53.981048990812,
+          "name": 10,
+          "length_ft": 10617.173902588,
+          "lat": 26.528148468784,
+          "width_ft": 196.8504,
+          "elevation_ft": 114.8295126387
+        },
+        {
+          "lon": 53.980828217431,
+          "name": 28,
+          "length_ft": 10617.173902588,
+          "lat": 26.52546070596,
+          "width_ft": 196.8504,
+          "elevation_ft": 114.8295126387
+        }
+      ]
+    },
+    {
+      "airbase": "Al Ain Intl",
+      "runways": [
+        {
+          "lon": 55.609245273847,
+          "name": 19,
+          "length_ft": 11267.965682354,
+          "lat": 24.261427609087,
+          "width_ft": 196.8504,
+          "elevation_ft": 813.81082010132
+        }
+      ]
+    },
+    {
+      "airbase": "Lavan Island",
+      "runways": [
+        {
+          "lon": 53.353293356493,
+          "name": 11,
+          "length_ft": 8234.4205993262,
+          "lat": 26.811107794835,
+          "width_ft": 196.8504,
+          "elevation_ft": 75.166590785599
+        }
+      ]
+    },
+    {
+      "airbase": "Jiroft",
+      "runways": [
+        {
+          "lon": 57.675095016299,
+          "name": 13,
+          "length_ft": 9160.0900612598,
+          "lat": 28.723517014121,
+          "width_ft": 98.4252,
+          "elevation_ft": 2664.0448834521
+        }
+      ]
+    },
+    {
+      "airbase": "Ras Al Khaimah Intl",
+      "runways": [
+        {
+          "lon": 55.93879729821,
+          "name": 35,
+          "length_ft": 8406.7736334668,
+          "lat": 25.613494283968,
+          "width_ft": 196.8504,
+          "elevation_ft": 70.830125897598
+        }
+      ]
+    },
+    {
+      "airbase": "Liwa AFB",
+      "runways": [
+        {
+          "lon": 53.824429274006,
+          "name": 13,
+          "length_ft": 10768.511458438,
+          "lat": 23.650775423947,
+          "width_ft": 98.4252,
+          "elevation_ft": 400.03319766357
+        }
+      ]
+    },
+    {
+      "airbase": "Quasoura_airport",
+      "runways": [
+        {
+          "lon": 55.063299969589,
+          "name": 27,
+          "length_ft": 9323.4063676465,
+          "lat": 22.776099944512,
+          "width_ft": 98.4252,
+          "elevation_ft": 329.62962827423
+        }
+      ]
+    }
+  ]
+}

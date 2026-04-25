@@ -1,0 +1,12 @@
+{
+  "positionTypes": [
+    { "suffix": "CTR", "letter": "C", "canAssumeTrack": true,  "displayName": "Center"    },
+    { "suffix": "APP", "letter": "A", "canAssumeTrack": true,  "displayName": "Approach"  },
+    { "suffix": "DEP", "letter": "D", "canAssumeTrack": true,  "displayName": "Departure" },
+    { "suffix": "RDR", "letter": "R", "canAssumeTrack": true,  "displayName": "Radar"     },
+    { "suffix": "TWR", "letter": "T", "canAssumeTrack": true,  "displayName": "Tower"     },
+    { "suffix": "MAR", "letter": "M", "canAssumeTrack": true,  "displayName": "Marshal"   },
+    { "suffix": "GND", "letter": null, "canAssumeTrack": false, "displayName": "Ground"   },
+    { "suffix": "DEL", "letter": null, "canAssumeTrack": false, "displayName": "Delivery" }
+  ]
+}

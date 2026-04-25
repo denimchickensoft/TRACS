@@ -1,0 +1,81 @@
+{
+  "_note": "Maps DCS airbase names to ICAO codes by theatre. User-editable. Theatre keys must match the 'theater' field from the Olympus mission API (lowercase).",
+
+  "caucasus": {
+    "Anapa-Vityazevo":    "URKA",
+    "Batumi":             "UGSB",
+    "Beslan":             "URKH",
+    "Gelendzhik":         "URKG",
+    "Gudauta":            "UGKG",
+    "Kobuleti":           "UG5X",
+    "Krasnodar-Center":   "URKK",
+    "Krasnodar-Pashkovsky": "URKK",
+    "Krymsk":             "URKW",
+    "Kutaisi":            "UGKO",
+    "Maykop-Khanskaya":   "URKH",
+    "Mineralnye Vody":    "URMM",
+    "Mozdok":             "XRMF",
+    "Nalchik":            "URMN",
+    "Novorossiysk":       "XRNV",
+    "Senaki-Kolkhi":      "UGKS",
+    "Sochi-Adler":        "URSS",
+    "Sukhumi-Babushara":  "UGSS",
+    "Tbilisi-Lochini":    "UGTB",
+    "Vaziani":            "UGVV"
+  },
+
+  "persiangulf": {
+    "Abu Dhabi Intl":     "OMAA",
+    "Al Ain":             "OMAL",
+    "Al Dhafra":          "OMAM",
+    "Al Minhad AB":       "OMDM",
+    "Bandar Abbas Intl":  "OIKB",
+    "Dubai Intl":         "OMDB",
+    "Fujairah Intl":      "OMFJ",
+    "Khasab":             "OOKB",
+    "Kish Intl":          "OIBK",
+    "Lar":                "OISL",
+    "Liwa AB":            "OMLL",
+    "Qeshm Island":       "OIKQ",
+    "Sharjah Intl":       "OMSJ",
+    "Shiraz Intl":        "OISS",
+    "Sirri Island":       "OIBS"
+  },
+
+  "syria": {
+    "Aleppo Intl":        "OSAP",
+    "Bassel Al-Assad":    "OSLK",
+    "Beirut-Rafic Hariri":"OLBA",
+    "Damascus Intl":      "OSDI",
+    "Deir ez-Zor":        "OSDZ",
+    "Palmyra":            "OSPR",
+    "Qamishli":           "OSAQ",
+    "Rayak":              "OLRA",
+    "Rene Mouawad":       "OLKA"
+  },
+
+  "nevada": {
+    "Creech AFB":         "KINS",
+    "Groom Lake AFB":     "KXTA",
+    "Henderson Executive":"KHND",
+    "Jean Airport":       "0L7",
+    "Laughlin Airport":   "KIFP",
+    "McCarran Intl":      "KLAS",
+    "Mesquite":           "KQHQ",
+    "Nellis AFB":         "KLSV",
+    "North Las Vegas":    "KVGT"
+  },
+
+  "marianaislands": {
+    "Andersen AFB":       "PGUA",
+    "Antonio B. Won Pat": "PGUM",
+    "Rota Intl":          "PGRO",
+    "Saipan Intl":        "PGSN",
+    "Tinian Intl":        "PGWT"
+  },
+
+  "southatlantic": {
+    "Mount Pleasant":     "EGYP",
+    "Port Stanley":       "SFAL"
+  }
+}

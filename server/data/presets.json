@@ -1,0 +1,199 @@
+{
+  "slots": [
+    {
+      "name": "DEFAULT",
+      "settings": {
+        "rangeNm": 27,
+        "ringSpacingNm": 10,
+        "historyLength": 4,
+        "historyRate": 4.5,
+        "ptlLength": 0.5,
+        "ptlMode": "ALL",
+        "ldrLength": null,
+        "ldrAngleDeg": null,
+        "briteDcb": null,
+        "briteBkg": null,
+        "briteMapA": 35,
+        "briteMapB": 95,
+        "briteFdb": null,
+        "briteLst": null,
+        "britePos": null,
+        "briteLdb": null,
+        "briteRr": 20,
+        "briteCmp": 40,
+        "briteHst": null,
+        "csDatablocks": 2,
+        "csLists": 2,
+        "csDcb": 2,
+        "csTools": 2,
+        "csPos": 2,
+        "csMap": null,
+        "altFilterLow": null,
+        "altFilterHigh": null,
+        "qnh": "29.92",
+        "lists": {
+          "ssa": {
+            "xPct": 4.071661237785016,
+            "yPct": 3.486394557823129
+          },
+          "signOn": {
+            "visible": true,
+            "xPct": 93.10756972111554,
+            "yPct": 5.267629566694987
+          },
+          "tab": {
+            "visible": true,
+            "xPct": 93.42629482071713,
+            "yPct": 33.72982158028887,
+            "lines": 5
+          },
+          "tower1": {
+            "visible": false,
+            "xPct": 2,
+            "yPct": 50,
+            "lines": 5
+          },
+          "tower2": {
+            "visible": false,
+            "xPct": 20,
+            "yPct": 50,
+            "lines": 5
+          },
+          "tower3": {
+            "visible": false,
+            "xPct": 38,
+            "yPct": 50,
+            "lines": 5
+          },
+          "coast": {
+            "visible": false,
+            "xPct": 78,
+            "yPct": 65,
+            "lines": 5
+          },
+          "alert": {
+            "visible": true,
+            "xPct": 76.2214983713355,
+            "yPct": 92.3469387755102,
+            "lines": 5
+          },
+          "vfr": {
+            "visible": true,
+            "xPct": 94.22310756972112,
+            "yPct": 78.75955819881054,
+            "lines": 5
+          }
+        },
+        "mapsVisible": {
+          "0": false,
+          "1": false,
+          "2": false,
+          "3": false,
+          "4": false,
+          "lbl": false
+        },
+        "previewPosition": {
+          "x": 60,
+          "y": 195
+        }
+      }
+    },
+    {
+      "name": "TEST",
+      "settings": {
+        "rangeNm": 44,
+        "ringSpacingNm": 10,
+        "historyLength": 4,
+        "historyRate": 4.5,
+        "ptlLength": 0.5,
+        "ptlMode": "ALL",
+        "ldrLength": null,
+        "ldrAngleDeg": null,
+        "briteDcb": null,
+        "briteBkg": null,
+        "briteMapA": 75,
+        "briteMapB": 95,
+        "briteFdb": null,
+        "briteLst": null,
+        "britePos": null,
+        "briteLdb": null,
+        "briteRr": null,
+        "briteCmp": null,
+        "briteHst": null,
+        "csDatablocks": 2,
+        "csLists": 2,
+        "csDcb": 2,
+        "csTools": 2,
+        "csPos": 2,
+        "csMap": null,
+        "altFilterLow": null,
+        "altFilterHigh": null,
+        "qnh": "29.92",
+        "lists": {
+          "ssa": {
+            "xPct": 4.071661237785016,
+            "yPct": 3.486394557823129
+          },
+          "signOn": {
+            "visible": true,
+            "xPct": 84.69055374592834,
+            "yPct": 5.017006802721088
+          },
+          "tab": {
+            "visible": true,
+            "xPct": 86.31921824104235,
+            "yPct": 31.97278911564626,
+            "lines": 5
+          },
+          "tower1": {
+            "visible": false,
+            "xPct": 2,
+            "yPct": 50,
+            "lines": 5
+          },
+          "tower2": {
+            "visible": false,
+            "xPct": 20,
+            "yPct": 50,
+            "lines": 5
+          },
+          "tower3": {
+            "visible": false,
+            "xPct": 38,
+            "yPct": 50,
+            "lines": 5
+          },
+          "coast": {
+            "visible": false,
+            "xPct": 78,
+            "yPct": 65,
+            "lines": 5
+          },
+          "alert": {
+            "visible": true,
+            "xPct": 76.2214983713355,
+            "yPct": 92.3469387755102,
+            "lines": 5
+          },
+          "vfr": {
+            "visible": true,
+            "xPct": 87.94788273615634,
+            "yPct": 76.19047619047619,
+            "lines": 5
+          }
+        }
+      }
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "defaultSlot": 0
+}
