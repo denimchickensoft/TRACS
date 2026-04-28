@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSessionStore, MODULE } from './store/session'
 import { useOdsStore }        from './store/ods'
 import { useControllersStore } from './store/controllers'
 import { Login }         from './components/Login/Login'
 import AtcScope          from './modules/atc/AtcScope'
 import CatccScope        from './modules/catcc/CatccScope'
+import { StatusBoard }   from './modules/catcc/StatusBoard'
+import { StripBay }      from './components/StripBay/StripBay'
 
 const PROFILE_STORAGE_KEY = 'tracs.lastProfile'
 const DEFAULT_PROFILE     = 'simple'
@@ -34,10 +36,6 @@ export function App() {
   const { loadManifest, loadProfile, availableProfiles, activeProfileId, activeProfile } = useOdsStore()
   const myEntry = useControllersStore((s) => s.registry[positionName])
 
-  function openStrips() {
-    window.open('/?window=strips', 'tracs-strips', 'width=560,height=800,resizable=yes')
-  }
-
   useEffect(() => {
     loadManifest()
     loadProfile(getSavedProfile())
@@ -46,6 +44,88 @@ export function App() {
   useEffect(() => {
     if (activeProfileId) localStorage.setItem(PROFILE_STORAGE_KEY, activeProfileId)
   }, [activeProfileId])
+
+  // ── Status board dock/resize/visibility state ──────────────────────
+  const [sbDocked,  setSbDocked]  = useState(true)
+  const [sbVisible, setSbVisible] = useState(true)
+  const [sbWidth,   setSbWidth]   = useState(500)
+  const sbWidthRef = useRef(500)
+  const popupRef   = useRef(null)
+
+  // ── Strip bay dock/resize/visibility state ─────────────────────────
+  const [stripsDocked,  setStripsDocked]  = useState(true)
+  const [stripsVisible, setStripsVisible] = useState(true)
+  const [stripsWidth,   setStripsWidth]   = useState(520)
+  const stripsWidthRef  = useRef(520)
+  const stripsPopupRef  = useRef(null)
+
+  const handleStripsResize = useCallback((e) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = stripsWidthRef.current
+    const onMove = (ev) => {
+      const newW = Math.max(280, Math.min(900, startW - (ev.clientX - startX)))
+      stripsWidthRef.current = newW
+      setStripsWidth(newW)
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup',   onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup',   onUp)
+  }, [])
+
+  const handleStripsUndock = useCallback(() => {
+    const w = stripsWidthRef.current
+    const popup = window.open('/?window=strips', 'tracs-strips', `width=${w},height=800,resizable=yes`)
+    if (!popup) return
+    stripsPopupRef.current = popup
+    setStripsDocked(false)
+    const id = setInterval(() => {
+      if (popup.closed) {
+        setStripsDocked(true)
+        stripsPopupRef.current = null
+        clearInterval(id)
+      }
+    }, 500)
+  }, [])
+
+  const handleSbResize = useCallback((e) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = sbWidthRef.current
+    const onMove = (ev) => {
+      const newW = Math.max(320, Math.min(900, startW - (ev.clientX - startX)))
+      sbWidthRef.current = newW
+      setSbWidth(newW)
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup',   onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup',   onUp)
+  }, [])
+
+  const handleSbUndock = useCallback(() => {
+    const w = sbWidthRef.current
+    const popup = window.open(
+      '/?window=catcc-board',
+      'tracs-catcc-board',
+      `width=${w},height=800,resizable=yes`,
+    )
+    if (!popup) return
+    popupRef.current = popup
+    setSbDocked(false)
+    const id = setInterval(() => {
+      if (popup.closed) {
+        setSbDocked(true)
+        popupRef.current = null
+        clearInterval(id)
+      }
+    }, 500)
+  }, [])
 
   if (!positionSet) return <Login />
 
@@ -101,27 +181,6 @@ export function App() {
 
         {/* Right side: Change Position + profile switcher */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {hasAtc && (
-            <button
-              onClick={openStrips}
-              style={{
-                background:    'transparent',
-                border:        '1px solid #333',
-                borderRadius:  '2px',
-                color:         '#555',
-                fontFamily:    'inherit',
-                fontSize:      'inherit',
-                letterSpacing: 'inherit',
-                padding:       '1px 8px',
-                cursor:        'pointer',
-                textTransform: 'uppercase',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
-            >
-              Strips
-            </button>
-          )}
 
           <button
             onClick={resetPosition}
@@ -167,8 +226,74 @@ export function App() {
 
       {/* ── Scope area ──────────────────────────────────────────────── */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex' }}>
-        {hasAtc   && <AtcScope />}
-        {hasCatcc && <CatccScope />}
+        {hasAtc && (
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
+              <AtcScope />
+            </div>
+            {stripsVisible && stripsDocked && (
+              <StripBay
+                docked
+                width={stripsWidth}
+                onResize={handleStripsResize}
+                onUndock={handleStripsUndock}
+                onHide={() => setStripsVisible(false)}
+              />
+            )}
+            {stripsVisible && !stripsDocked && (
+              <div
+                title="Strip bay is undocked"
+                onClick={() => { if (stripsPopupRef.current && !stripsPopupRef.current.closed) stripsPopupRef.current.focus() }}
+                style={{ width: '18px', background: '#0d0d0d', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STRIPS</span>
+              </div>
+            )}
+            {!stripsVisible && (
+              <div
+                title="Show strip bay"
+                onClick={() => setStripsVisible(true)}
+                style={{ width: '18px', background: '#0d0d0d', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STRIPS</span>
+              </div>
+            )}
+          </div>
+        )}
+        {hasCatcc && (
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
+              <CatccScope />
+            </div>
+            {sbVisible && sbDocked && (
+              <StatusBoard
+                docked
+                width={sbWidth}
+                onResize={handleSbResize}
+                onUndock={handleSbUndock}
+                onHide={() => setSbVisible(false)}
+              />
+            )}
+            {sbVisible && !sbDocked && (
+              <div
+                title="Status board is undocked"
+                onClick={() => { if (popupRef.current && !popupRef.current.closed) popupRef.current.focus() }}
+                style={{ width: '18px', background: '#0A0A0A', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STATUS BOARD</span>
+              </div>
+            )}
+            {!sbVisible && (
+              <div
+                title="Show status board"
+                onClick={() => setSbVisible(true)}
+                style={{ width: '18px', background: '#0A0A0A', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STATUS BOARD</span>
+              </div>
+            )}
+          </div>
+        )}
         {!hasAtc && !hasCatcc && (
           <div style={{ color: '#333', fontFamily: 'Roboto Mono, monospace', padding: '40px', fontSize: '0.8rem' }}>
             No active display module.

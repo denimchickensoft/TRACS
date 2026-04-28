@@ -9,7 +9,7 @@
  * @param {number} briteCmp   0–100 brightness (0 = hidden)
  * @param {number} csTools    0–5 character size index (default 3)
  */
-export function drawCompassRose(ctx, view, briteCmp = 70, csTools = 3) {
+export function drawCompassRose(ctx, view, briteCmp = 70, csTools = 3, fontScale = 1) {
   if (briteCmp <= 0) {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
     return
@@ -30,7 +30,7 @@ export function drawCompassRose(ctx, view, briteCmp = 70, csTools = 3) {
   const TICK_LEN  = 10   // px from edge inward
   const LABEL_GAP = 14   // px from edge inward to text anchor
 
-  const fontPx = 10 + csTools * 2
+  const fontPx = Math.round((10 + csTools * 2) * fontScale)
 
   ctx.strokeStyle = color
   ctx.lineWidth   = 1

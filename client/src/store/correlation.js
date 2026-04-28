@@ -16,5 +16,7 @@ export const useCorrelationStore = create((set) => ({
       return { correlations: next }
     }),
 
+  setAll: (correlations) => set({ correlations }),
+
   reset: () => set({ correlations: {} }),
 }))

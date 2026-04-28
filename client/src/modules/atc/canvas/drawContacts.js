@@ -110,16 +110,19 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
     // --- Interior symbol: '*' unassociated, position letter if owned ---
     const entry      = symbolMap[id] ?? { sym: '*', mine: false }
     const isAsterisk = entry.sym === '*'
-    // csPos 0–5 (default 3) controls letter size: 8+cs px for a capital letter.
-    // Asterisk sits at mid-height and renders small — needs ~1.76× the letter size.
-    const letterPx   = 10 + csPos * 2
-    const fontPx     = isAsterisk ? Math.round(letterPx * 1.76) : letterPx
-    const yOffset    = isAsterisk ? radius * 0.3 : 0.5
+    // csPos 0–5 (default 3) controls letter size.
+    // Asterisk renders small relative to capitals — boost its font size so it
+    // appears similarly weighted. Centering uses actual glyph metrics so both
+    // characters land on the visual centre regardless of font-cell geometry.
+    const letterPx = 10 + csPos * 2
+    const fontPx   = isAsterisk ? Math.round(letterPx * 1.76) : letterPx
     ctx.font         = `bold ${fontPx}px "Roboto Mono", monospace`
     ctx.textAlign    = 'center'
-    ctx.textBaseline = 'middle'
+    ctx.textBaseline = 'alphabetic'
     ctx.globalAlpha  = Math.max(0, Math.min(1, britePos))
     ctx.fillStyle    = entry.mine ? colors.fdbText : colors.ldbText
+    const m      = ctx.measureText(entry.sym)
+    const yOffset = (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2
     ctx.fillText(entry.sym, x, y + yOffset)
     ctx.globalAlpha  = 1.0
   }

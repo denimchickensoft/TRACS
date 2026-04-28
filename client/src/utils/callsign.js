@@ -14,7 +14,7 @@ import { useSessionStore } from '../store/session'
  * @returns {string}
  */
 function stripCallsign(s) {
-  return s.replace(/[^A-Za-z0-9]/g, '')
+  return s.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
 }
 
 export function resolveCallsign(unit) {

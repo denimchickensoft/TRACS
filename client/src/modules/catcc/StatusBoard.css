@@ -1,0 +1,385 @@
+.sb {
+  position: relative;
+  flex-direction: column;
+  align-self: stretch;
+  background: #0A0A0A;
+  border-left: 1px solid #222;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: #FFD700;
+  overflow: hidden;
+  user-select: none;
+}
+
+.sb-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.sb-resize-handle:hover,
+.sb-resize-handle:active {
+  background: rgba(255, 215, 0, 0.15);
+}
+
+/* ── Section headers ────────────────────────────────────────────── */
+.sb-section {
+  padding: 2px 2px;
+  border-bottom: 1px solid #222;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 2px;
+  align-items: stretch;
+}
+
+.sb-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #252525;
+  padding: 1px 4px 2px;
+  min-width: 32px;
+}
+
+.sb-field--alert {
+  border-color: #CC2222;
+  box-shadow: 0 0 6px rgba(200, 40, 40, 0.6);
+}
+
+.sb-label {
+  color: #444;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.sb-value {
+  color: #FFD700;
+  font-size: 10px;
+  cursor: text;
+  padding: 0 2px;
+  border-bottom: 1px solid transparent;
+  min-width: 16px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sb-value:hover {
+  border-bottom-color: #444;
+}
+
+.sb-value.empty {
+  color: #2A2A2A;
+}
+
+.sb-value.readonly {
+  color: #5A8A5A;
+  cursor: default;
+  border-bottom-color: transparent !important;
+}
+
+.sb-value.invalid,
+.sb-cell.invalid {
+  color: #C0622A;
+}
+
+.sb-value.alert {
+  color: #CC2222;
+}
+
+.sb-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #FFD700;
+  color: #FFD700;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 0 2px;
+  outline: none;
+  width: var(--input-w, 40px);
+  text-align: center;
+}
+
+/* ── CASE L / CASE R field ──────────────────────────────────────── */
+.sb-case-value {
+  color: #FFD700;
+  font-size: 10px;
+  min-width: 8px;
+  text-align: center;
+  cursor: text;
+  padding: 0 1px;
+  border-bottom: 1px solid transparent;
+}
+
+.sb-case-value:hover {
+  border-bottom-color: #444;
+}
+
+.sb-case-value.empty {
+  color: #2A2A2A;
+}
+
+.sb-case-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #FFD700;
+  color: #FFD700;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 0 1px;
+  outline: none;
+  width: 8px;
+  text-align: center;
+}
+
+.sb-case-suffix {
+  color: #444;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* ── Aircraft table ─────────────────────────────────────────────── */
+.sb-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sb-table {
+  display: grid;
+  width: fit-content;
+  min-width: 100%;
+}
+
+.sb-th {
+  font-size: 9px;
+  color: #444;
+  letter-spacing: 0.06em;
+  padding: 2px 3px;
+  text-align: center;
+  border-bottom: 1px solid #1A1A1A;
+  border-right: 1px solid #141414;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sb-th:last-child {
+  border-right: none;
+}
+
+.sb-td {
+  padding: 0px 0px;
+  border-bottom: 1px solid #111;
+  border-right: 1px solid #141414;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.sb-td:last-child {
+  border-right: none;
+}
+
+.sb-table .sb-td:hover {
+  background: #0D150D;
+}
+
+.sb-cell {
+  display: block;
+  width: 100%;
+  cursor: text;
+  color: #FFD700;
+  padding: 1px 0;
+  min-height: 14px;
+  text-align: left;
+}
+
+.sb-cell.empty {
+  color: #2A2A2A;
+}
+
+.sb-cell.readonly {
+  color: #5A8A5A;
+  cursor: default;
+}
+
+.sb-cell-input {
+  display: block;
+  width: 100%;
+  background: #0D1A0D;
+  border: none;
+  border-bottom: 1px solid #FFD700;
+  color: #FFD700;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 1px 0;
+  outline: none;
+  text-align: left;
+}
+
+/* ── Add / footer ───────────────────────────────────────────────── */
+.sb-footer {
+  padding: 4px 6px;
+  border-top: 1px solid #1A1A1A;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.sb-add-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.sb-add-btn:hover {
+  border-color: #666;
+  color: #888;
+}
+
+.sb-sort-select {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 2px 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.sb-sort-select:hover {
+  border-color: #666;
+  color: #888;
+}
+
+.sb-sort-select option {
+  background: #0A0A0A;
+  color: #888;
+}
+
+.sb-sort-dir-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+
+.sb-sort-dir-btn:hover {
+  border-color: #666;
+  color: #888;
+}
+
+.sb-td-move {
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+}
+
+.sb-move-btn {
+  background: transparent;
+  border: none;
+  color: #2A2A2A;
+  cursor: pointer;
+  font-size: 7px;
+  padding: 0;
+  line-height: 1;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.sb-move-btn:hover {
+  color: #888;
+}
+
+.sb-del-btn {
+  background: transparent;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.sb-del-btn:hover {
+  color: #CC4444;
+}
+
+.sb-title {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #333;
+  padding: 3px 6px 2px;
+  border-bottom: 1px solid #1A1A1A;
+  text-transform: uppercase;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.sb-title-time {
+  color: #5A8A5A;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  justify-self: start;
+}
+
+.sb-title-text {
+  text-align: center;
+}
+
+.sb-title-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.sb-title-date {
+  color: #5A8A5A;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.sb-dock-btn {
+  background: transparent;
+  border: none;
+  color: #444;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.sb-dock-btn:hover {
+  color: #FFD700;
+}

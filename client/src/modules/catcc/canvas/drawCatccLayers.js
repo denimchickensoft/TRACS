@@ -9,7 +9,7 @@
  * All circles and bearing lines are drawn in canvas space from the carrier
  * at scope center, using magnetic bearing math (0° = up, CW positive).
  */
-export function drawCatccLayers(ctx, view, brc, fb, marshalBearing, rangeNm, ringSpacingNm, brite = 80) {
+export function drawCatccLayers(ctx, view, fb, marshalBearing, rangeNm, ringSpacingNm, brite = 80) {
   const { pixelsPerNm } = view
   const width  = ctx.canvas.width
   const height = ctx.canvas.height
@@ -53,11 +53,6 @@ export function drawCatccLayers(ctx, view, brc, fb, marshalBearing, rangeNm, rin
   ctx.arc(cx, cy, 50 * pixelsPerNm, 0, Math.PI * 2)
   ctx.stroke()
 
-  if (brc == null) return
-
-  // ── BRC — 7 nm forward of carrier along magnetic heading ─────────────────
-  bearingLine(brc, 7, 0, `rgba(255,200,0,${alpha})`, 1)
-
   if (fb == null) return
 
   // Helper: line from scope center along a magnetic bearing.
@@ -76,11 +71,11 @@ export function drawCatccLayers(ctx, view, brc, fb, marshalBearing, rangeNm, rin
     ctx.setLineDash([])
   }
 
-  // ── Approach corridor — solid yellow extending aft along FB ─────────────
-  bearingLine(fb, 30, 0, `rgba(255,200,0,${alpha})`, 1)
+  // ── Approach corridor — extends toward inbound aircraft (reciprocal of FB) ──
+  bearingLine(marshalBearing, 20, 0, `rgba(255,200,0,${alpha})`, 1)
 
   // ── Marshal radial — dashed yellow ──────────────────────────────────────
   if (marshalBearing != null) {
-    bearingLine(marshalBearing, 120, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [6, 8])
+    bearingLine(marshalBearing, 120, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [pixelsPerNm, pixelsPerNm])
   }
 }

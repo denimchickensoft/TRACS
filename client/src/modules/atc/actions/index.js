@@ -218,7 +218,12 @@ export function CLEAR_SP2({ slewTarget }) {
 
 export function SET_LEADER_SHORT({ captures, slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
-  getAtc().setScratchpad(slewTarget.unitId, '_leaderDir', captures.dir)
+  const dir = captures.dir
+  if (dir === '5') {
+    getAtc().clearLeaderDir(slewTarget.unitId)
+  } else {
+    getAtc().setLeaderDir(slewTarget.unitId, dir)
+  }
   ok()
 }
 
@@ -227,8 +232,12 @@ export function SET_LEADER_MF({ captures, slewTarget }) {
 }
 
 export function SET_LEADER_GLOBAL({ captures }) {
-  // Apply leader direction to all tracks — stored as a display-wide setting
-  getDisplay().updateWindow(WINDOW_ID, { globalLeaderDir: captures.dir })
+  const dir = captures.dir
+  if (dir === '5') {
+    getDisplay().updateWindow(WINDOW_ID, { globalLeaderDir: null })
+  } else {
+    getDisplay().updateWindow(WINDOW_ID, { globalLeaderDir: dir })
+  }
   ok()
 }
 

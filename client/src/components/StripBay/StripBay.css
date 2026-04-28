@@ -1,26 +1,37 @@
 .sb-panel {
-  position: fixed;
-  top: 40px;
-  right: 0;
-  width: 520px;
-  height: calc(100vh - 40px);
-  background: #0d0d0d;
-  border-left: 1px solid #222;
+  position: relative;
   display: flex;
   flex-direction: column;
+  align-self: stretch;
+  background: #0d0d0d;
+  border-left: 1px solid #222;
   font-family: 'Roboto Mono', monospace;
   font-size: 0.72rem;
   color: #b0b0b0;
-  z-index: 100;
   user-select: none;
+  overflow: hidden;
 }
 
-/* Standalone window mode — fills the entire viewport */
+/* Standalone window mode — fills the entire popup viewport */
 .sb-panel--standalone {
-  top: 0;
-  width: 100%;
+  width: 100vw;
   height: 100vh;
   border-left: none;
+}
+
+/* Resize handle — left edge drag target when docked */
+.sb-panel .sb-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 10;
+}
+.sb-panel .sb-resize-handle:hover,
+.sb-panel .sb-resize-handle:active {
+  background: rgba(0, 180, 216, 0.15);
 }
 
 /* ── Header ─────────────────────────────────────────────────────── */
@@ -89,6 +100,17 @@
   line-height: 1;
 }
 .sb-btn-close:hover { color: #cc3333; }
+
+.sb-btn-undock {
+  background: none;
+  border: none;
+  color: #444;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.sb-btn-undock:hover { color: #00b4d8; }
 
 /* ── Strip list ─────────────────────────────────────────────────── */
 .sb-list {

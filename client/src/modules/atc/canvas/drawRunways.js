@@ -1,23 +1,19 @@
 import { latLngToCanvas } from './projection.js'
 
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {object}   view    — includes magvar
- * @param {object[]} runways — [{ end1: {lat,lng}, end2: {lat,lng} }]
- * @param {number}   brite   — 0–100
- */
-export function drawRunways(ctx, view, runways, brite = 80) {
-  if (!runways.length || brite <= 0) return
+export function drawRunways(ctx, view, runwayMaps, rwyVisible, brite = 80) {
+  if (!runwayMaps.length || brite <= 0) return
 
   const { width, height } = view
   const alpha = Math.max(0, Math.min(1, brite / 100))
 
   ctx.save()
   ctx.strokeStyle = `rgba(255,255,255,${alpha})`
-  ctx.lineWidth   = 3
+  ctx.lineWidth   = 1.5
   ctx.lineCap     = 'butt'
 
-  for (const rwy of runways) {
+  for (const rwy of runwayMaps) {
+    if (!rwyVisible[rwy.id]) continue
+
     const p1 = latLngToCanvas(rwy.end1.lat, rwy.end1.lng, view)
     const p2 = latLngToCanvas(rwy.end2.lat, rwy.end2.lng, view)
 

@@ -86,7 +86,7 @@ const unitDefs = [
   {
     id: 7, unitName: 'STENNIS', name: 'CVN_74', category: 'NavyUnit',
     coalition: 2, lat: 41.50, lng: 40.50, alt: 0,
-    hdg: 0, spd: 15, contacts: [],
+    hdg: 0, spd: 30, contacts: [],
   },
   // 15nm south on approach, heading north
   {
@@ -115,17 +115,39 @@ const unitDefs = [
 ]
 
 const units = new Map(unitDefs.map((u) => [u.id, { ...u, contacts: [...u.contacts] }]))
-let serverTime = BigInt(Date.now())
+let serverTime  = BigInt(Date.now())
+let lastMovedAt = Date.now()
+
+// Carrier turn cycle: 5 min straight → 180° left turn at 1°/s → repeat
+const CARRIER_STRAIGHT_S = 300   // seconds straight
+const CARRIER_TURN_S     = 180   // 180° / 1°/s
+const CARRIER_CYCLE_S    = CARRIER_STRAIGHT_S + CARRIER_TURN_S
+const DEG_TO_RAD         = Math.PI / 180
 
 function moveUnits() {
+  const now     = Date.now()
+  const dt      = Math.min((now - lastMovedAt) / 1000, 1.0)  // seconds, capped at 1s
+  lastMovedAt   = now
+  const elapsed = (now - serverStartWallMs) / 1000
+
   for (const unit of units.values()) {
-    const distDeg = unit.spd * NM_PER_SEC * NM_DEG
+    const distDeg = unit.spd * dt * NM_PER_SEC * NM_DEG
     unit.lat += Math.cos(unit.hdg) * distDeg
     unit.lng += Math.sin(unit.hdg) * distDeg
-    // Gentle heading drift so units stay on screen
-    unit.hdg = (unit.hdg + (Math.random() - 0.5) * 0.02 + Math.PI * 2) % (Math.PI * 2)
+
+    if (unit.category === 'NavyUnit') {
+      // 5-min straight, then 180° left turn at 1°/s, repeat
+      const phase = elapsed % CARRIER_CYCLE_S
+      if (phase >= CARRIER_STRAIGHT_S) {
+        unit.hdg = ((unit.hdg - 1 * DEG_TO_RAD * dt) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)
+      }
+    } else {
+      // Gentle random heading drift for non-carrier units
+      unit.hdg = (unit.hdg + (Math.random() - 0.5) * 0.02 + Math.PI * 2) % (Math.PI * 2)
+    }
   }
-  serverTime = BigInt(Date.now())
+
+  serverTime = BigInt(now)
 }
 
 // ─── Binary encoder ───────────────────────────────────────────────────────────

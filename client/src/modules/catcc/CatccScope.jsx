@@ -7,19 +7,23 @@ import { useControllersStore }   from '../../store/controllers.js'
 import { useCorrelationStore }   from '../../store/correlation.js'
 import { getVisibleUnits }       from '../atc/visibleUnits.js'
 import { rangeToPixelsPerNm }    from '../atc/canvas/projection.js'
+import { resolveSlew }           from '../atc/input/slewResolver.js'
+import { INIT_CNTL, TERM_CNTL }  from '../atc/actions/index.js'
+import { resolveCallsign }       from '../../utils/callsign.js'
+import { useStatusBoardStore }   from '../../store/statusBoard.js'
 import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
-import { drawContacts }          from '../atc/canvas/drawContacts.js'
+import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
 import { drawCompassRose }       from '../atc/canvas/drawCompassRose.js'
 import { THEATRE_MAGVAR }        from '../../utils/magvar.js'
 import { CARRIER_TYPES }         from '../../utils/carriers.js'
-import { resolveCallsign }       from '../../utils/callsign.js'
 import './CatccScope.css'
 
 const WINDOW_ID   = 'catcc-main'
 const MAX_HISTORY = 10
 
-// Yellow contact palette — distinct from ATC green
+// Reserved for history trails and PTL re-enable — do not delete.
+// Colors and symbol dimensions for drawCatccContacts when those features are wired back in.
 const CATCC_VISUAL = {
   colors: {
     contact:      '#FFD700',
@@ -68,8 +72,8 @@ export default function CatccScope() {
   const carrierHeadingDeg = (carrierUnit?.heading ?? 0) * 180 / Math.PI
   const brc        = ((carrierHeadingDeg - magvar) % 360 + 360) % 360
   const deckOffset = CARRIER_TYPES[carrierUnit?.name]?.deckOffset ?? 9
-  const fb             = (brc + 180 - deckOffset + 360) % 360
-  const marshalBearing = fb
+  const fb             = ((brc - deckOffset) % 360 + 360) % 360
+  const marshalBearing = (fb + 180) % 360
 
   const [view, setView] = useState(null)
   const viewRef = useRef(null)
@@ -87,26 +91,15 @@ export default function CatccScope() {
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 
-  // Interior symbol: ownership letter (M/A/D/T) or '*' if uncorrelated
-  const symbolMap = useMemo(() => {
+  // Tracked contacts: unitId → position letter (M/A/D/T). Absent = untracked.
+  const trackMap = useMemo(() => {
     const map = {}
     for (const id of Object.keys(visibleUnits)) {
       const owner = ownership[String(id)]
-      const mine  = owner === positionName
-      const sym   = owner ? (getPositionSymbol(owner) ?? '*') : '*'
-      map[id] = { sym, mine }
+      if (owner) map[id] = getPositionSymbol(owner) ?? '?'
     }
     return map
-  }, [visibleUnits, ownership, positionName, getPositionSymbol])
-
-  // Pre-resolved callsign fallback for data blocks
-  const labelMap = useMemo(() => {
-    const map = {}
-    for (const [id, unit] of Object.entries(visibleUnits)) {
-      map[id] = resolveCallsign(unit)
-    }
-    return map
-  }, [visibleUnits])
+  }, [visibleUnits, ownership, getPositionSymbol])
 
   const historyRef = useRef({})
 
@@ -162,12 +155,12 @@ export default function CatccScope() {
     if (!view || !layersCanvasRef.current) return
     const ctx = layersCanvasRef.current.getContext('2d')
     drawCatccLayers(
-      ctx, view, brc, fb, marshalBearing,
-      windowSettings?.rangeNm      ?? 50,
+      ctx, view, fb, marshalBearing,
+      windowSettings?.rangeNm       ?? 50,
       windowSettings?.ringSpacingNm ?? 10,
-      windowSettings?.briteRr      ?? 80,
+      windowSettings?.briteRr       ?? 80,
     )
-  }, [view, brc, fb, marshalBearing,
+  }, [view, fb, marshalBearing,
       windowSettings?.rangeNm, windowSettings?.ringSpacingNm, windowSettings?.briteRr])
 
   // ── Render compass rose ────────────────────────────────────────────
@@ -177,6 +170,7 @@ export default function CatccScope() {
       compassCanvasRef.current.getContext('2d'), view,
       windowSettings?.briteCmp ?? 70,
       windowSettings?.csTools  ?? 3,
+      0.625,
     )
   }, [view, windowSettings?.briteCmp, windowSettings?.csTools])
 
@@ -215,22 +209,51 @@ export default function CatccScope() {
   useEffect(() => {
     if (!view || !contactsCanvasRef.current) return
     const ctx = contactsCanvasRef.current.getContext('2d')
-    drawContacts(
-      ctx, view, visibleUnits, historyRef.current, CATCC_VISUAL,
-      symbolMap,
-      (windowSettings?.britePos ?? 80) / 100,
-      windowSettings?.csPos     ?? 3,
-      null,
-      windowSettings?.historyLength ?? 5,
-      (windowSettings?.briteHst ?? 80) / 100,
+    ctx.clearRect(0, 0, view.width, view.height)
+    // History trails and PTL are captured but not drawn — see drawCatccContacts.js
+    drawCatccContacts(
+      ctx, view, visibleUnits, trackMap,
+      windowSettings?.britePos ?? 80,
+      windowSettings?.csPos    ?? 3,
     )
     drawCatccDatablocks(
-      ctx, view, visibleUnits, ownership, correlations, labelMap,
+      ctx, view, visibleUnits, correlations,
       windowSettings?.britePos ?? 80,
+      marshalBearing,
     )
-  }, [visibleUnits, view, symbolMap, ownership, correlations, labelMap,
-      windowSettings?.britePos, windowSettings?.briteHst,
-      windowSettings?.csPos, windowSettings?.historyLength])
+  }, [visibleUnits, view, trackMap, correlations,
+      windowSettings?.britePos, windowSettings?.csPos])
+
+  // ── Mouse interactions ─────────────────────────────────────────────
+  const handleMouseUp = useCallback((e) => {
+    if (e.button !== 0) return
+    const rect = interactiveRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    if (!viewRef.current) return
+    const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+
+    if (e.ctrlKey && e.shiftKey) {
+      // Ctrl+Shift+Click — initiate track (take ownership)
+      if (target) INIT_CNTL({ slewTarget: target, positionName })
+      return
+    }
+
+    if (e.shiftKey && !e.ctrlKey) {
+      // Shift+Click — drop track
+      if (target) TERM_CNTL({ slewTarget: target, positionName })
+      return
+    }
+
+    if (e.ctrlKey && !e.shiftKey) {
+      // Ctrl+Click — add contact to status board
+      if (target) {
+        const callsign = resolveCallsign(target.unit)
+        useStatusBoardStore.getState().addEntry(callsign, target.unitId)
+      }
+      return
+    }
+  }, [positionName])
 
   // ── Zoom ───────────────────────────────────────────────────────────
   const handleWheel = useCallback((e) => {
@@ -257,6 +280,7 @@ export default function CatccScope() {
         <div
           ref={interactiveRef}
           className="catcc-layer catcc-interactive"
+          onMouseUp={handleMouseUp}
           onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()}
         />

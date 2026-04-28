@@ -316,7 +316,7 @@ function SettingsPanel() {
 }
 
 // ── Strip Bay panel ───────────────────────────────────────────────────────────
-export function StripBay({ onClose, standalone = false }) {
+export function StripBay({ onClose, standalone = false, docked = false, width, onResize, onUndock, onHide }) {
   const strips      = useStripsStore((s) => s.strips)
   const bays        = useStripsStore((s) => s.bays)
   const setSortBy   = useStripsStore((s) => s.setSortBy)
@@ -376,8 +376,11 @@ export function StripBay({ onClose, standalone = false }) {
     setDragOverId(null)
   }
 
+  const style = docked && width ? { width, minWidth: width } : undefined
+
   return (
-    <div className={`sb-panel${standalone ? ' sb-panel--standalone' : ''}`}>
+    <div className={`sb-panel${standalone ? ' sb-panel--standalone' : ''}`} style={style}>
+      {docked && <div className="sb-resize-handle" onMouseDown={onResize} />}
 
       {/* Header */}
       <div className="sb-header">
@@ -399,7 +402,15 @@ export function StripBay({ onClose, standalone = false }) {
           title="Settings"
         >⚙</button>
 
-        <button className="sb-btn-close" onClick={onClose}>×</button>
+        {docked && onUndock && (
+          <button className="sb-btn-undock" onClick={onUndock} title="Undock">⬡</button>
+        )}
+        {docked && onHide && (
+          <button className="sb-btn-undock" onClick={onHide} title="Hide">›</button>
+        )}
+        {(standalone || (!docked && onClose)) && (
+          <button className="sb-btn-close" onClick={onClose}>×</button>
+        )}
       </div>
 
       {/* Settings panel (collapsible) */}

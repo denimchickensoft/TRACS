@@ -3,6 +3,7 @@ import { useDisplayStore }  from '../../../store/display.js'
 import { usePresetsStore }  from '../../../store/presets.js'
 import { usePreviewStore }  from '../../../store/preview.js'
 import { useMapsStore }     from '../../../store/maps.js'
+import { useRunwaysStore }  from '../../../store/runways.js'
 import './Dcb.css'
 
 const WINDOW_ID = 'atc-main'
@@ -380,8 +381,12 @@ export function Dcb({ profile, briteDcb, csDcb }) {
 
   // activeButton lives in the store so AtcScope can inhibit zoom while a spinner is selected
   const activeButton = windowSettings?.dcbActiveSpinner ?? null
-  const mapsVisible = useMapsStore((s) => s.visible)
-  const maps        = useMapsStore((s) => s.maps)
+  const mapsVisible   = useMapsStore((s) => s.visible)
+  const maps          = useMapsStore((s) => s.maps)
+  const centerlines   = useRunwaysStore((s) => s.centerlines)
+  const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
+  const obstructions  = useRunwaysStore((s) => s.obstructions)
+  const obstVisible   = useRunwaysStore((s) => s.obstVisible)
 
   const colors = profile?.dcb ?? DEFAULT_DCB
 
@@ -389,8 +394,30 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const slots = useMemo(() => {
     if (menuKey === 'main') return MAIN_BUTTONS
     if (menuKey === 'aux')  return AUX_BUTTONS
+    if (menuKey === 'maps') {
+      // Static geo slots (MAP_7–MAP_12, 3 halfV pairs = 6 button slots) +
+      // optional OBST slot + dynamic CLTR_* entries, cap at 24 total
+      const staticSlots = SUBMENU_DEFS.maps.buttons.filter((b) => b.id !== 'DONE')
+      const obstSlots   = obstructions.length > 0 ? [{ id: 'OBST', lines: ['OBST'], type: 'toggle' }] : []
+      const maxDynamic  = 24 - 6 - obstSlots.length
+      const cltrSlice   = centerlines.slice(0, maxDynamic)
+
+      const cltrPairs = []
+      for (let i = 0; i < cltrSlice.length; i += 2) {
+        const top = { id: `CLTR_${i}`,     lines: [cltrSlice[i].label],     type: 'toggle' }
+        const bot = cltrSlice[i + 1]
+          ? { id: `CLTR_${i + 1}`, lines: [cltrSlice[i + 1].label], type: 'toggle' }
+          : null
+        cltrPairs.push({
+          id:       `slot_cltr_${i}`,
+          slotType: 'halfV',
+          buttons:  bot ? [top, bot] : [top],
+        })
+      }
+      return [...staticSlots, ...obstSlots, ...cltrPairs, { id: 'DONE', lines: ['DONE'], type: 'done' }]
+    }
     return SUBMENU_DEFS[menuKey]?.buttons ?? MAIN_BUTTONS
-  }, [menuKey])
+  }, [menuKey, centerlines, obstructions])
 
   // ── Button click ───────────────────────────────────────────────────
   const handleButtonClick = useCallback((btn) => {
@@ -419,6 +446,12 @@ export function Dcb({ profile, briteDcb, csDcb }) {
       case 'toggle':
         if (btn.id in MAP_SLOT_KEYS) {
           useMapsStore.getState().toggleMap(MAP_SLOT_KEYS[btn.id])
+        } else if (btn.id === 'OBST') {
+          useRunwaysStore.getState().toggleObst()
+        } else if (btn.id.startsWith('CLTR_')) {
+          const idx = parseInt(btn.id.slice(5), 10)
+          const cl  = centerlines[idx]
+          if (cl) useRunwaysStore.getState().toggleCenterline(cl.id)
         } else {
           setToggles(prev => {
             const next = new Set(prev)
@@ -555,7 +588,11 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     const isActive  = activeButton === displayBtn.id
     let   isToggled = btn.id in MAP_SLOT_KEYS
       ? (mapsVisible[MAP_SLOT_KEYS[btn.id]] ?? false)
-      : toggles.has(btn.id)
+      : btn.id === 'OBST'
+        ? obstVisible
+        : btn.id.startsWith('CLTR_')
+        ? (() => { const cl = centerlines[parseInt(btn.id.slice(5), 10)]; return cl ? (cltrVisible[cl.id] ?? false) : false })()
+        : toggles.has(btn.id)
 
     if (btn.id === 'OFF_CNTR') {
       isToggled = windowSettings?.offCntr ?? false

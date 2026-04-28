@@ -11,8 +11,9 @@ import { rangeToPixelsPerNm, canvasToLatLng } from './canvas/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
 import { drawContacts }         from './canvas/drawContacts.js'
-import { drawMaps }             from './canvas/drawMaps.js'
-import { drawRunways }          from './canvas/drawRunways.js'
+import { drawMaps }                   from './canvas/drawMaps.js'
+import { drawExtendedCenterlines }    from './canvas/drawExtendedCenterlines.js'
+import { drawObstructions }           from './canvas/drawObstructions.js'
 import { useMapsStore }         from '../../store/maps.js'
 import { useRunwaysStore }      from '../../store/runways.js'
 import { DatablockOverlay }     from './DatablockOverlay.jsx'
@@ -28,7 +29,7 @@ import { AlertList }            from './lists/AlertList.jsx'
 import { VFRList }              from './lists/VFRList.jsx'
 import { resolveSlew }          from './input/slewResolver.js'
 import { parseCommand }         from './input/commandParser.js'
-import { dispatch as dispatchAction } from './actions/index.js'
+import { dispatch as dispatchAction, INIT_CNTL } from './actions/index.js'
 import { usePresetsStore } from '../../store/presets.js'
 import { useFpeStore }     from '../../store/fpe.js'
 import { resolveCallsign } from '../../utils/callsign.js'
@@ -58,7 +59,10 @@ export default function AtcScope() {
 
   const maps       = useMapsStore((s) => s.maps)
   const mapVisible = useMapsStore((s) => s.visible)
-  const runways    = useRunwaysStore((s) => s.runways)
+  const centerlines   = useRunwaysStore((s) => s.centerlines)
+  const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
+  const obstructions  = useRunwaysStore((s) => s.obstructions)
+  const obstVisible   = useRunwaysStore((s) => s.obstVisible)
   const getPositionSymbol = useControllersStore((s) => s.getPositionSymbol)
 
   const displayStore   = useDisplayStore()
@@ -187,11 +191,11 @@ export default function AtcScope() {
     // Prefer a runway center point — more precise than the Olympus airbase position.
     // Falls back to Olympus position if runway data hasn't loaded yet or has no match
     // (effect re-fires when runways arrive via the dependency array).
-    const facilityRunway = runways.find((r) => r.airbase === facilityDcsName)
+    const facilityRunway = centerlines.find((c) => c.airbase === facilityDcsName)
     let centerLat, centerLng
     if (facilityRunway) {
-      centerLat = (facilityRunway.end1.lat + facilityRunway.end2.lat) / 2
-      centerLng = (facilityRunway.end1.lng + facilityRunway.end2.lng) / 2
+      centerLat = (facilityRunway.rwyEnd1.lat + facilityRunway.rwyEnd2.lat) / 2
+      centerLng = (facilityRunway.rwyEnd1.lng + facilityRunway.rwyEnd2.lng) / 2
     } else {
       const raw   = airbases?.airbases ?? airbases ?? {}
       const match = Object.values(raw).find((ab) => (ab.callsign || '') === facilityDcsName)
@@ -208,7 +212,7 @@ export default function AtcScope() {
       offCntr:       false,
     })
     autoCenteredRef.current = facilityDcsName
-  }, [airbases, facilityDcsName, runways, windowSettings, displayStore])
+  }, [airbases, facilityDcsName, centerlines, windowSettings, displayStore])
 
   // ── Load runway data when theatre or facility changes ────────────
   useEffect(() => {
@@ -218,7 +222,7 @@ export default function AtcScope() {
     const match  = facilityDcsName ? Object.values(raw).find((ab) => (ab.callsign || '') === facilityDcsName) : null
     const facLat = match?.latitude  ?? null
     const facLng = match?.longitude ?? null
-    useRunwaysStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng)
+    useRunwaysStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, facilityDcsName)
   }, [mission?.mission?.theatre, facilityDcsName, positionSuffix, airbases])
 
   // ── Load airspace maps when theatre or facility changes ──────────
@@ -293,8 +297,9 @@ export default function AtcScope() {
     const ctx = mapCanvasRef.current.getContext('2d')
     drawMaps(ctx, view, maps, mapVisible,
       windowSettings?.briteMapA ?? 80, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2)
-    drawRunways(ctx, view, runways, windowSettings?.briteMapA ?? 80)
-  }, [view, maps, mapVisible, runways,
+    drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, windowSettings?.briteMapA ?? 80)
+    drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 80)
+  }, [view, maps, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
       windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap])
 
   // ── Render compass rose ───────────────────────────────────────────
@@ -409,6 +414,17 @@ export default function AtcScope() {
       panRef.current.dragging = false
       return
     }
+    if (e.button === 0 && e.ctrlKey && e.shiftKey) {
+      const rect = interactiveRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      if (viewRef.current) {
+        const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+        if (target) INIT_CNTL({ slewTarget: target, positionName })
+      }
+      return
+    }
+
     if (e.button === 0 && e.ctrlKey) {
       const rect = interactiveRef.current?.getBoundingClientRect()
       if (!rect) return
