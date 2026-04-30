@@ -20,6 +20,7 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../../../store/strips.js'
 import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
+import { sendWebrtcEvent } from '../../../webrtc/client.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -39,11 +40,10 @@ export function INIT_CNTL({ slewTarget, positionName }) {
   const { ownership, claimTrack } = getAtc()
   if (ownership[slewTarget.unitId]) return err('TRACK ALREADY OWNED')
   claimTrack(slewTarget.unitId, positionName)
+  sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, position: positionName })
 
-  // Auto-add strip on track initiation
   const aid = resolveCallsign(slewTarget.unit)
   useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED })
-
   ok()
 }
 
@@ -81,6 +81,7 @@ export function TERM_CNTL({ slewTarget, positionName }) {
   if (ownership[slewTarget.unitId] !== positionName) return err('NOT YOUR TRACK')
   clearHandoff(slewTarget.unitId)
   dropTrack(slewTarget.unitId)
+  sendWebrtcEvent('TRACK_DROPPED', { unitId: slewTarget.unitId })
   const { deleteOnDropTrack, deleteByAid } = useStripsStore.getState()
   if (deleteOnDropTrack) {
     const aid = resolveCallsign(slewTarget.unit)
@@ -121,8 +122,8 @@ export function HND_OFF({ captures, slewTarget, positionName }) {
   if (!tcp) return err('SPECIFY CONTROLLER')
   if (ownership[slewTarget.unitId] !== positionName) return err('NOT YOUR TRACK')
   setHandoff(slewTarget.unitId, { state: HANDOFF_STATE.INITIATED, from: positionName, to: tcp })
+  sendWebrtcEvent('HANDOFF_INITIATED', { unitId: slewTarget.unitId, fromPosition: positionName, toPosition: tcp })
   ok()
-  // TODO: broadcast via WebRTC
 }
 
 export function HND_OFF_BARE({ slewTarget, positionName }) {
@@ -133,16 +134,16 @@ export function HND_OFF_BARE({ slewTarget, positionName }) {
   if (!ho) return err('NO HANDOFF')
 
   if (ho.state === HANDOFF_STATE.INITIATED && ho.from === positionName) {
-    // Recall outgoing
     clearHandoff(slewTarget.unitId)
+    sendWebrtcEvent('HANDOFF_RECALLED', { unitId: slewTarget.unitId, fromPosition: positionName, toPosition: ho.to })
     return ok()
   }
 
   if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === positionName) {
-    // Accept incoming
-    getAtc().dropTrack(slewTarget.unitId)  // remove from previous owner
+    getAtc().dropTrack(slewTarget.unitId)
     claimTrack(slewTarget.unitId, positionName)
     clearHandoff(slewTarget.unitId)
+    sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: slewTarget.unitId, fromPosition: ho.from, toPosition: positionName })
     return ok()
   }
 
@@ -167,8 +168,8 @@ export function POINT_OUT({ captures, slewTarget, positionName }) {
   const tcp = captures?.tcp
   if (!tcp) return err('SPECIFY CONTROLLER')
   getAtc().setPointOut(slewTarget.unitId, { state: POINTOUT_STATE.SENT, from: positionName, to: tcp })
+  sendWebrtcEvent('POINT_OUT_SENT', { unitId: slewTarget.unitId, fromPosition: positionName, toPosition: tcp })
   ok()
-  // TODO: broadcast via WebRTC
 }
 
 export function REJECT_POINT_OUT({ slewTarget, positionName }) {
@@ -176,17 +177,18 @@ export function REJECT_POINT_OUT({ slewTarget, positionName }) {
   const po = getAtc().pointOuts[slewTarget.unitId]
   if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== positionName) return err('NO INCOMING POINT OUT')
   getAtc().clearPointOut(slewTarget.unitId)
+  sendWebrtcEvent('POINT_OUT_REJECTED', { unitId: slewTarget.unitId, fromPosition: po.from, toPosition: positionName })
   ok()
-  // TODO: broadcast rejection via WebRTC
 }
 
 export function CONVERT_POINT_OUT({ slewTarget, positionName }) {
   if (!slewTarget) return err('NO TARGET')
-  const { pointOuts, clearPointOut, claimTrack, setHandoff } = getAtc()
+  const { pointOuts, clearPointOut, claimTrack } = getAtc()
   const po = pointOuts[slewTarget.unitId]
   if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== positionName) return err('NO INCOMING POINT OUT')
   clearPointOut(slewTarget.unitId)
   claimTrack(slewTarget.unitId, positionName)
+  sendWebrtcEvent('POINT_OUT_CONVERTED', { unitId: slewTarget.unitId, fromPosition: po.from, toPosition: positionName })
   ok()
 }
 

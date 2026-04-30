@@ -8,6 +8,14 @@ let socket = null
 let reconnectTimer = null
 let intentionalClose = false
 
+// Handlers registered by other modules (e.g. WebRTC layer) for server state hydration.
+// Key is the state file key ('atc' | 'catcc' | 'session').
+const stateHandlers = {}
+
+export function registerStateHandler(key, handler) {
+  stateHandlers[key] = handler
+}
+
 function dispatch(message) {
   switch (message.type) {
     case 'units_delta':
@@ -24,6 +32,10 @@ function dispatch(message) {
 
     case 'status':
       useSessionStore.getState().setConnected(message.data.polling === true)
+      break
+
+    case 'state':
+      stateHandlers[message.key]?.(message.data)
       break
 
     default:

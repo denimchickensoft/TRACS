@@ -7,6 +7,7 @@ import AtcScope          from './modules/atc/AtcScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard }   from './modules/catcc/StatusBoard'
 import { StripBay }      from './components/StripBay/StripBay'
+import { disconnectWebrtc } from './webrtc/client'
 
 const PROFILE_STORAGE_KEY = 'tracs.lastProfile'
 const DEFAULT_PROFILE     = 'simple'
@@ -183,7 +184,7 @@ export function App() {
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
 
           <button
-            onClick={resetPosition}
+            onClick={() => { disconnectWebrtc(); resetPosition() }}
             style={{
               background:    'transparent',
               border:        '1px solid #333',

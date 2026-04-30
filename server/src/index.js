@@ -4,9 +4,10 @@ const http = require('http')
 const path = require('path')
 const express = require('express')
 const { WebSocketServer } = require('ws')
-const olympus = require('./olympus')
-const state   = require('./state')
-const maps    = require('./maps')
+const olympus    = require('./olympus')
+const state      = require('./state')
+const maps       = require('./maps')
+const stateFiles = require('./stateFiles')
 
 const fs = require('fs')
 
@@ -132,6 +133,51 @@ app.post('/api/presets', (req, res) => {
   }
 })
 
+// ─── State file API ──────────────────────────────────────────────────────────
+
+// POST /api/state/intentional-reset — must be declared before the :key route
+app.post('/api/state/intentional-reset', (req, res) => {
+  try {
+    stateFiles.setIntentionalReset(true)
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/state/:key — read atc | catcc | session
+app.get('/api/state/:key', (req, res) => {
+  const { key } = req.params
+  if (!stateFiles.isValidKey(key)) return res.status(400).json({ error: 'invalid state key' })
+  res.json(stateFiles.read(key))
+})
+
+// POST /api/state/:key — overwrite atc | catcc | session
+app.post('/api/state/:key', (req, res) => {
+  const { key } = req.params
+  if (!stateFiles.isValidKey(key)) return res.status(400).json({ error: 'invalid state key' })
+  if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'body must be a JSON object' })
+  try {
+    stateFiles.write(key, req.body)
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PATCH /api/state/:key — shallow-merge updates into atc | catcc | session
+app.patch('/api/state/:key', (req, res) => {
+  const { key } = req.params
+  if (!stateFiles.isValidKey(key)) return res.status(400).json({ error: 'invalid state key' })
+  if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'body must be a JSON object' })
+  try {
+    stateFiles.patch(key, req.body)
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Fallback: serve index.html for SPA routes (production only)
 app.get('*', (req, res) => {
   res.sendFile(path.join(CLIENT_DIST, 'index.html'))
@@ -164,6 +210,21 @@ wss.on('connection', (ws) => {
 
   // Status
   ws.send(JSON.stringify({ type: 'status', data: { polling: olympus.isPolling() } }))
+
+  // Send persisted state files so the browser can hydrate after refresh.
+  // If intentionalReset is true (deliberate position change), send defaults
+  // and clear the flag so the next connection gets a clean slate.
+  const sessionState = stateFiles.read('session')
+  if (sessionState.intentionalReset) {
+    stateFiles.setIntentionalReset(false)
+    ws.send(JSON.stringify({ type: 'state', key: 'atc',     data: stateFiles.DEFAULTS.atc }))
+    ws.send(JSON.stringify({ type: 'state', key: 'catcc',   data: stateFiles.DEFAULTS.catcc }))
+    ws.send(JSON.stringify({ type: 'state', key: 'session', data: { ...stateFiles.DEFAULTS.session, olympusAddress: sessionState.olympusAddress } }))
+  } else {
+    ws.send(JSON.stringify({ type: 'state', key: 'atc',     data: stateFiles.read('atc') }))
+    ws.send(JSON.stringify({ type: 'state', key: 'catcc',   data: stateFiles.read('catcc') }))
+    ws.send(JSON.stringify({ type: 'state', key: 'session', data: sessionState }))
+  }
 
   ws.on('close', () => {
     clients.delete(ws)

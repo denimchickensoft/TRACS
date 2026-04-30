@@ -4,6 +4,7 @@ import { useControllersStore } from '../../store/controllers'
 import { useUnitsStore } from '../../store/units'
 import { useAicStore } from '../../store/aic'
 import { wsClient } from '../../ws/client'
+import { initWebrtc } from '../../webrtc/client'
 import { CARRIER_TYPES } from '../../utils/carriers'
 import './Login.css'
 
@@ -392,6 +393,21 @@ function PositionPhase({ onSignedIn }) {
     setActiveModule(selectedModule)
     setPositionSet(true)
     onSignedIn()
+
+    const { olympusUrl } = useSessionStore.getState()
+    let rtcPosition  = ''
+    let rtcFrequency = ''
+    if (selectedModule === MODULE.ATC) {
+      rtcPosition  = constructedName.toUpperCase()
+      rtcFrequency = parseFloat(frequency).toFixed(3)
+    } else if (selectedModule === MODULE.CATCC) {
+      rtcPosition  = catccPositionId
+      rtcFrequency = parseFloat(catccFrequency).toFixed(3)
+    } else if (selectedModule === MODULE.AIC) {
+      rtcPosition  = aicCallsign.trim().toUpperCase()
+      rtcFrequency = parseFloat(aicFrequency).toFixed(3)
+    }
+    initWebrtc({ olympusUrl, password: sessionPassword, position: rtcPosition, module: selectedModule, frequency: rtcFrequency })
   }
 
   return (

@@ -74,12 +74,31 @@ export const useStatusBoardStore = create((set) => ({
   }),
 }))
 
-// ── Persistence + cross-window sync ─────────────────────────────────────────
+// ── Persistence + cross-window sync ──────────────────────────────────────────
 let _externalUpdate = false
+
+// WebRTC broadcast hook — registered by the WebRTC client after sign-in.
+// Receives the full STATUS_BOARD_UPDATE payload to send.
+let _webrtcBroadcast = null
+export function registerStatusBoardBroadcast(fn) { _webrtcBroadcast = fn }
+
+function buildPayload(s) {
+  return {
+    eventHeader: {
+      event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz,
+    },
+    recoveryStatus: {
+      caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery,
+      app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn,
+    },
+    entries: s.entries,
+  }
+}
 
 useStatusBoardStore.subscribe((state) => {
   if (_externalUpdate) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
+  _webrtcBroadcast?.(buildPayload(state))
 })
 
 window.addEventListener('storage', (e) => {
@@ -92,3 +111,16 @@ window.addEventListener('storage', (e) => {
     _externalUpdate = false
   }
 })
+
+// Apply an incoming STATUS_BOARD_UPDATE payload without triggering re-broadcast.
+// Called by the WebRTC handler when a remote STATUS_BOARD_UPDATE arrives.
+export function applyStatusBoardUpdate(payload) {
+  _externalUpdate = true
+  try {
+    const flat = { ...(payload.eventHeader ?? {}), ...(payload.recoveryStatus ?? {}) }
+    if (Object.keys(flat).length > 0)  useStatusBoardStore.setState(flat)
+    if (payload.entries != null)        useStatusBoardStore.setState({ entries: payload.entries })
+  } finally {
+    _externalUpdate = false
+  }
+}

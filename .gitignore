@@ -22,3 +22,6 @@ npm-debug.log*
 # Build output
 dist/
 build/
+
+# Runtime state files (per-machine, not committed)
+server/state/
