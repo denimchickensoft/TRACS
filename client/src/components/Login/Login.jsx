@@ -8,6 +8,12 @@ import { initWebrtc } from '../../webrtc/client'
 import { CARRIER_TYPES } from '../../utils/carriers'
 import './Login.css'
 
+const SUFFIX_TO_NAVDATA_ROLE = {
+  TWR: 'twr',
+  APP: 'tracon', DEP: 'tracon', RDR: 'tracon',
+  CTR: 'ctr',
+}
+
 const CATCC_POSITION_TYPES = [
   { suffix: 'MAR', displayName: 'Marshal'   },
   { suffix: 'APP', displayName: 'Approach'  },
@@ -135,6 +141,11 @@ function PositionPhase({ onSignedIn }) {
   })
   const [suffix,    setSuffix]    = useState(() => localStorage.getItem('tracs.atc.lastSuffix')    ?? '')
   const [frequency, setFrequency] = useState(() => localStorage.getItem('tracs.atc.lastFrequency') ?? '')
+
+  // Tracks the last frequency pre-filled from navdata so we know whether the
+  // current value was user-typed (in which case we don't overwrite it).
+  const [suggestedFreq,  setSuggestedFreq]  = useState(null)
+  const prevSuggestionRef = useRef(null)
 
   // ── CATCC state ────────────────────────────────────────────────────
   const [selectedCarrierId, setSelectedCarrierId] = useState(
@@ -280,6 +291,37 @@ function PositionPhase({ onSignedIn }) {
     setSelectedBase('')
     setFacilityId('')
   }, [isCtr])
+
+  // Fetch frequency suggestion from navdata when facilityId + suffix are usable
+  useEffect(() => {
+    const role     = SUFFIX_TO_NAVDATA_ROLE[suffix?.toUpperCase()]
+    const carrier  = airbaseList.find((ab) => ab.name === selectedBase)?.isCarrier ?? false
+    if (selectedModule !== MODULE.ATC || !facilityId || carrier || !role) {
+      setSuggestedFreq(null)
+      return
+    }
+
+    const ac = new AbortController()
+    fetch(`/api/navdata/frequencies?icao=${encodeURIComponent(facilityId)}&role=${role}`, { signal: ac.signal })
+      .then((r) => { console.log(`[navdata] freq ${facilityId}/${role} → ${r.status}`); return r.ok ? r.json() : Promise.reject(r.status) })
+      .then((data) => {
+        console.log('[navdata] freq data', data)
+        const raw = data?.freqs?.[0]
+        if (!raw) { setSuggestedFreq(null); prevSuggestionRef.current = null; return }
+        const formatted = parseFloat(raw).toFixed(3)
+        setSuggestedFreq(formatted)
+        setFrequency((prev) => {
+          if (!prev.trim() || prev === prevSuggestionRef.current) {
+            prevSuggestionRef.current = formatted
+            return formatted
+          }
+          return prev
+        })
+      })
+      .catch((status) => { console.warn('[navdata] freq lookup failed', status); setSuggestedFreq(null) })
+
+    return () => ac.abort()
+  }, [facilityId, suffix, selectedModule, selectedBase, airbaseList]) // eslint-disable-line
 
   const selectedEntry   = airbaseList.find((ab) => ab.name === selectedBase) ?? null
   const isCarrier       = selectedEntry?.isCarrier ?? false
@@ -552,12 +594,15 @@ function PositionPhase({ onSignedIn }) {
             <input
               type="text"
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
+              onChange={(e) => { setFrequency(e.target.value) }}
               onBlur={(e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) setFrequency(n.toFixed(3)) }}
               placeholder="118.100"
               maxLength={7}
               disabled={signingIn}
             />
+            {suggestedFreq && frequency === suggestedFreq && (
+              <span className="login-hint">Suggested from navdata</span>
+            )}
           </section>
         </>
       )}

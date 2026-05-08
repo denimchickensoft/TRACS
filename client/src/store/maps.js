@@ -1,16 +1,15 @@
 import { create } from 'zustand'
 
 // ── Position preset order ─────────────────────────────────────────────────────
+// Names must match colors[acCode].label values from airspace_colors.json
 const ICAO_PRESETS = {
-  TWR:     ['CTR', 'TMA', 'ATZ', 'Restricted', 'Prohibited'],
-  APP:     ['TMA', 'CTR', 'CTA', 'Restricted', 'Prohibited'],
-  DEP:     ['TMA', 'CTR', 'CTA', 'Restricted', 'Prohibited'],
-  RDR:     ['TMA', 'CTR', 'CTA', 'Restricted', 'Prohibited'],
-  CTR:     ['FIR', 'UIR', 'TMA', 'Restricted', 'Prohibited'],
-  default: ['TMA', 'CTR', 'CTA', 'Restricted', 'Prohibited'],
+  TWR:     ['CTR', 'TMA', 'R', 'P', 'Class D'],
+  APP:     ['TMA', 'CTR', 'CTA', 'R', 'P'],
+  DEP:     ['TMA', 'CTR', 'CTA', 'R', 'P'],
+  RDR:     ['TMA', 'CTR', 'CTA', 'R', 'P'],
+  CTR:     ['FIR', 'UIR', 'TMA', 'R', 'P'],
+  default: ['TMA', 'CTR', 'CTA', 'R', 'P'],
 }
-
-const FAA_PRESET = ['Class B', 'Class C', 'Class D', 'FIR', 'UIR']
 
 // ── Distance filtering ────────────────────────────────────────────────────────
 
@@ -51,10 +50,8 @@ function filterGroupsByDistance(groups, suffix, facilityLat, facilityLng) {
 
 // ── Button assignment ─────────────────────────────────────────────────────────
 
-function assignButtons(groups, theaterStyle, suffix) {
-  const presetOrder = theaterStyle === 'FAA'
-    ? FAA_PRESET
-    : (ICAO_PRESETS[suffix?.toUpperCase()] ?? ICAO_PRESETS.default)
+function assignButtons(groups, suffix) {
+  const presetOrder = ICAO_PRESETS[suffix?.toUpperCase()] ?? ICAO_PRESETS.default
 
   const available = new Map(groups.map((g) => [g.name, g]))
   const assigned  = []
@@ -79,40 +76,62 @@ function assignButtons(groups, theaterStyle, suffix) {
 // ── Server response cache (per theatre, keyed by name) ───────────────────────
 const serverCache = {}
 
+function lsKey(theatre, positionKey) {
+  return `tracs-maps-${theatre}:${positionKey}`
+}
+
+function saveVisible(theatre, positionKey, visible) {
+  if (!theatre || !positionKey) return
+  try { localStorage.setItem(lsKey(theatre, positionKey), JSON.stringify(visible)) } catch {}
+}
+
+function loadSaved(theatre, positionKey) {
+  if (!theatre || !positionKey) return null
+  try { return JSON.parse(localStorage.getItem(lsKey(theatre, positionKey))) } catch { return null }
+}
+
 export const useMapsStore = create((set, get) => ({
-  maps:         [],    // flat: [assigned(0-4), ...submenu(5+)]
-  theaterStyle: null,  // 'ICAO' | 'FAA' | null
-  visible:      {},    // { [index]: bool, lbl: bool }
-  theatre:      null,
-  loading:      false,
+  maps:        [],    // flat: [assigned(0-4), ...submenu(5+)]
+  colors:      null,  // { [acCode]: { stroke, fill, label } } from navdata
+  visible:     {},    // { [index]: bool, lbl: bool }
+  theatre:     null,
+  positionKey: null,
+  loading:     false,
   _lastLoadKey: null,
 
-  loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null) => {
+  loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null, positionKey = null) => {
     if (!theatre) return
     const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}`
     if (get()._lastLoadKey === loadKey) return
-    set({ loading: true })
+    set({ loading: true, positionKey })
     try {
       if (!serverCache[theatre]) {
-        const res = await fetch(`/api/maps?theatre=${encodeURIComponent(theatre)}`)
+        const res = await fetch(`/api/navdata/airspace?theatre=${encodeURIComponent(theatre)}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         serverCache[theatre] = await res.json()
       }
 
-      const { theaterStyle, groups } = serverCache[theatre]
+      const { groups, colors } = serverCache[theatre]
 
       const filtered = filterGroupsByDistance(groups ?? [], suffix, facilityLat, facilityLng)
-      const maps     = assignButtons(filtered, theaterStyle, suffix)
+      const maps     = assignButtons(filtered, suffix)
 
       // Preserve visibility when re-filtering the same theatre (e.g. airbases update);
       // only reset when switching to a different theatre.
       const isNewTheatre = get().theatre !== theatre
-      const visible = isNewTheatre
-        ? (() => { const v = { lbl: false }; maps.forEach((_, i) => { v[i] = false }); return v })()
-        : get().visible
+      let visible
+      if (isNewTheatre) {
+        const v = { lbl: false }
+        maps.forEach((_, i) => { v[i] = false })
+        const saved = loadSaved(theatre, positionKey)
+        if (saved) Object.assign(v, saved)
+        visible = v
+      } else {
+        visible = get().visible
+      }
 
-      set({ maps, theaterStyle, visible, theatre, loading: false, _lastLoadKey: loadKey })
-      console.log(`[maps] ${theatre}: ${theaterStyle}, suffix=${suffix || 'none'}, ${maps.length} groups (${Math.min(maps.length, 5)} main, ${Math.max(0, maps.length - 5)} submenu)`)
+      set({ maps, colors: colors ?? null, visible, theatre, loading: false, _lastLoadKey: loadKey })
+      console.log(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${maps.length} groups (${Math.min(maps.length, 5)} main, ${Math.max(0, maps.length - 5)} submenu)`)
     } catch (err) {
       console.error('[maps] load error:', err.message)
       set({ loading: false })
@@ -120,9 +139,17 @@ export const useMapsStore = create((set, get) => ({
   },
 
   toggleMap: (key) =>
-    set((s) => ({ visible: { ...s.visible, [key]: !s.visible[key] } })),
+    set((s) => {
+      const visible = { ...s.visible, [key]: !s.visible[key] }
+      saveVisible(s.theatre, s.positionKey, visible)
+      return { visible }
+    }),
 
-  setVisible: (visible) => set({ visible }),
+  setVisible: (visible) => {
+    const { theatre, positionKey } = get()
+    saveVisible(theatre, positionKey, visible)
+    set({ visible })
+  },
 
-  reset: () => set({ maps: [], theaterStyle: null, visible: {}, theatre: null, loading: false }),
+  reset: () => set({ maps: [], colors: null, visible: {}, theatre: null, positionKey: null, loading: false }),
 }))

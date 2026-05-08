@@ -1,0 +1,42 @@
+{
+  "Caucasus": {
+    "folder": "caucasus",
+    "bbox": [33.0, 40.0, 50.0, 47.0]
+  },
+  "PersianGulf": {
+    "folder": "persian_gulf",
+    "bbox": [48.0, 20.0, 63.0, 30.0]
+  },
+  "Syria": {
+    "folder": "syria",
+    "bbox": [28.0, 32.0, 42.0, 39.0]
+  },
+  "MarianaIslands": {
+    "folder": "marianas",
+    "bbox": [140.0, 13.0, 148.0, 22.0]
+  },
+  "Nevada": {
+    "folder": "nevada",
+    "bbox": [-120.0, 34.0, -112.0, 40.0]
+  },
+  "SouthAtlantic": {
+    "folder": "south_atlantic",
+    "bbox": [-65.0, -55.0, -55.0, -45.0]
+  },
+  "Sinai": {
+    "folder": "sinai",
+    "bbox": [29.0, 27.0, 40.0, 35.0]
+  },
+  "Kola": {
+    "folder": "kola",
+    "bbox": [19.0, 65.0, 40.0, 72.0]
+  },
+  "Afghanistan": {
+    "folder": "afghanistan",
+    "bbox": [58.0, 29.0, 76.0, 40.0]
+  },
+  "Germany": {
+    "folder": "germany",
+    "bbox": [6.0, 46.0, 20.0, 56.0]
+  }
+}

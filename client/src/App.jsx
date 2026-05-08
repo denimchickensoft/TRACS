@@ -225,7 +225,7 @@ export function App() {
             <>
               <span style={{ color: '#888' }}>Change Position?</span>
               <button
-                onClick={() => { disconnectWebrtc(); resetPosition() }}
+                onClick={() => { disconnectWebrtc(); resetPosition(); setConfirmingReset(false) }}
                 style={{
                   background:    '#3a1a1a',
                   border:        '1px solid #662222',

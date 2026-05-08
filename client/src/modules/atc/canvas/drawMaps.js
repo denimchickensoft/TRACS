@@ -1,34 +1,6 @@
 import { latLngToCanvas } from './projection.js'
 
-const TYPE_COLOR = {
-  4:  '#22AA55',  // CTR
-  15: '#33CC66',  // ATZ
-  7:  '#2266BB',  // TMA/CTA
-  9:  '#2A3F5F',  // FIR
-  10: '#2A3F5F',  // UIR
-  1:  '#CC9900',  // Restricted
-  2:  '#CC6600',  // Danger
-  3:  '#CC2200',  // Prohibited
-  5:  '#8866AA',  // TMZ
-  6:  '#8866AA',  // RMZ
-  8:  '#447788',  // TIZ
-  0:  '#556677',  // Other
-}
 const FALLBACK_COLOR = '#556677'
-
-const TYPE_LABEL = {
-  0:  'SUA',  1:  'R',    2:  'D',    3:  'P',
-  4:  'CTR',  5:  'TMZ',  6:  'RMZ',  7:  'TMA',
-  8:  'TRA',  9:  'TSA',  10: 'FIR',  11: 'UIR',
-  12: 'ADIZ', 13: 'ATZ',  14: 'MATZ', 15: 'AWY',
-  16: 'MTR',  17: 'ALRT', 18: 'WARN', 25: 'CTA',
-  33: 'FIZ',
-}
-
-const ICAO_CLASS_LABEL = {
-  0: 'Class A', 1: 'Class B', 2: 'Class C', 3: 'Class D',
-  4: 'Class E',  5: 'Class F', 6: 'Class G', 7: 'SUA', 8: 'ASP',
-}
 
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -38,8 +10,9 @@ const ICAO_CLASS_LABEL = {
  * @param {number}   briteGeom  0–100
  * @param {number}   briteLbl   0–100
  * @param {number}   csMap      0–5 (0 = no labels)
+ * @param {object}   colors     { [acCode]: { stroke, fill, label } } from navdata
  */
-export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap) {
+export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap, colors) {
   const { width, height } = view
   ctx.clearRect(0, 0, width, height)
   if (!maps.length) return
@@ -51,7 +24,7 @@ export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap) {
     if (!visible[i]) continue
     for (const f of maps[i].features) {
       if (!bboxInView(f.bbox, view)) continue
-      drawGeometry(ctx, view, f, gAlpha)
+      drawGeometry(ctx, view, f, gAlpha, colors)
     }
   }
 
@@ -70,11 +43,8 @@ export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap) {
     for (const f of maps[i].features) {
       if (!bboxInView(f.bbox, view)) continue
 
-      const typePrefix = f.type === 0
-        ? (ICAO_CLASS_LABEL[f.icaoClass] ?? 'ASP')
-        : (TYPE_LABEL[f.type] ?? 'ASP')
-
-      ctx.fillStyle = TYPE_COLOR[f.type] ?? FALLBACK_COLOR
+      const typePrefix = colors?.[f.acCode]?.label ?? f.acCode ?? 'ASP'
+      ctx.fillStyle = colors?.[f.acCode]?.stroke ?? FALLBACK_COLOR
 
       if (isCircular(f.geometry, f.centroid)) {
         const [cLng, cLat] = f.centroid
@@ -161,8 +131,8 @@ function bboxInView(bbox, view) {
   return !(br.x < -50 || tl.x > view.width + 50 || tl.y > view.height + 50 || br.y < -50)
 }
 
-function drawGeometry(ctx, view, feature, alpha) {
-  const color    = TYPE_COLOR[feature.type] ?? FALLBACK_COLOR
+function drawGeometry(ctx, view, feature, alpha, colors) {
+  const color    = colors?.[feature.acCode]?.stroke ?? FALLBACK_COLOR
   const polygons = feature.geometry.type === 'Polygon'
     ? [feature.geometry.coordinates]
     : feature.geometry.coordinates

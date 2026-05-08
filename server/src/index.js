@@ -8,6 +8,7 @@ const olympus    = require('./olympus')
 const state      = require('./state')
 const maps       = require('./maps')
 const stateFiles = require('./stateFiles')
+const navdata    = require('../navdata')
 
 const fs = require('fs')
 
@@ -90,6 +91,15 @@ app.get('/api/maps', async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 })
+
+// GET /api/navdata/* — Navigraph navdata endpoints
+app.get('/api/navdata/status',      navdata.handleStatus)
+app.get('/api/navdata/airspace',    navdata.handleAirspace)
+app.get('/api/navdata/fixes',       navdata.handleFixes)
+app.get('/api/navdata/navaids',     navdata.handleNavaids)
+app.get('/api/navdata/procedures',  navdata.handleProcedures)
+app.get('/api/navdata/frequencies', navdata.handleFrequencies)
+app.get('/api/navdata/sector',      navdata.handleSector)
 
 // GET /api/turn-credentials — ICE server list for WebRTC peers
 // Set TURN_URL / TURN_USER / TURN_PASS env vars to include a TURN relay.
@@ -329,6 +339,10 @@ function broadcast(message) {
     }
   }
 }
+
+// Start navdata build in the background — does not block HTTP server startup.
+// Endpoints return 503 until the cache is ready.
+navdata.init().catch((err) => console.error('[navdata] unexpected init error:', err.message))
 
 server.listen(PORT, () => {
   // The signal relay is fresh on every start — any WebRTC peers from the previous

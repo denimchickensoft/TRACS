@@ -28,8 +28,9 @@ async function fetchIceServers() {
   }
 }
 
-const DISCONNECT_TIMEOUT_MS = 10_000
-const PEER_ID_STORAGE_KEY   = 'tracs.previousPeerId'
+const DISCONNECT_TIMEOUT_MS    = 10_000
+const PEER_ID_STORAGE_KEY      = 'tracs.previousPeerId'
+const CONNECTED_AT_STORAGE_KEY = 'tracs.connectedAt'
 
 // ── Runtime state ─────────────────────────────────────────────────────────────
 let sessionRoom = null
@@ -284,43 +285,54 @@ async function onSessionMessage(msg, fromPeerId) {
 
   switch (msg.type) {
     case 'HANDSHAKE': {
-      const senderConnectedAt = msg.payload.connectedAt ?? Date.now()
-      const myConnectedAt     = clientList.find(c => c.peerId === selfId)?.connectedAt ?? Date.now()
+      const senderConnectedAt  = msg.payload.connectedAt  ?? Date.now()
+      // roomJoinedAt = actual wall-clock time the sender entered the WebRTC room in
+      // this session. Unlike connectedAt it is never preserved across refreshes, so
+      // it reliably reflects who has been in the room longest right now.
+      const senderRoomJoinedAt = msg.payload.roomJoinedAt ?? senderConnectedAt
+      const myEntry            = clientList.find(c => c.peerId === selfId)
+      const myRoomJoinedAt     = myEntry?.roomJoinedAt ?? myEntry?.connectedAt ?? Date.now()
 
-      // The global host is the single authority for session coordination: position
-      // resolution, ACK, and CLIENT_LIST_UPDATE. It is whichever currently-connected
-      // peer has the earliest connectedAt. We determine this BEFORE adding the sender
-      // so that resolvePosition() sees only existing entries.
+      // The global host is the single authority for session coordination. It is
+      // whichever effective peer entered the current room session earliest
+      // (smallest roomJoinedAt). We determine this BEFORE adding the sender so
+      // resolvePosition() sees only existing entries.
       //
-      // A peer is the host when:
-      //   (a) the sender is newer than us — we were here first, AND
-      //   (b) we are currently the oldest in the room (first in sorted clientList)
+      // A peer acts as host when:
+      //   (a) the sender's roomJoinedAt is later than ours — we joined first, AND
+      //   (b) we are the oldest-by-roomJoinedAt in the effective list
       //
-      // Non-hosts record the sender's requested position and will be corrected by
-      // the host's CLIENT_LIST_UPDATE.
-      // Use the effective list (excludes peers in the disconnect window) so that
-      // host duties transfer immediately when the current host fires onPeerLeave,
-      // rather than waiting for the full reconnect timeout to expire.
-      const effective      = effectiveClientList()
-      const senderIsNewer  = senderConnectedAt > myConnectedAt
-      const amGlobalHost   = senderIsNewer && (effective[0]?.peerId === selfId || effective.length === 0)
+      // Using roomJoinedAt (not connectedAt) fixes the refresh scenario: a refreshing
+      // peer preserves its original connectedAt (for group-number stability), which
+      // makes it appear older than established peers and would prevent any peer from
+      // taking the host role if we used connectedAt for this check.
+      const effective = effectiveClientList()
+      const effectiveSortedByJoin = [...effective].sort(
+        (a, b) => (a.roomJoinedAt ?? a.connectedAt) - (b.roomJoinedAt ?? b.connectedAt)
+      )
+      const senderIsNewer = senderRoomJoinedAt > myRoomJoinedAt
+      const amGlobalHost  = senderIsNewer && (effectiveSortedByJoin[0]?.peerId === selfId || effective.length === 0)
 
-      // Only the host resolves position conflicts.
-      const resolved = amGlobalHost
-        ? resolvePosition(msg.payload.position)
-        : msg.payload.position
-
-      // Reconnect: cancel the pending timer and remap the old peer ID
+      // All peers: cancel the reconnect timer and free the old slot so the host's
+      // resolvePosition() sees an accurate picture of taken positions.
       if (msg.payload.previousPeerId) {
         clearTimeout(disconnectTimers[msg.payload.previousPeerId])
         delete disconnectTimers[msg.payload.previousPeerId]
         removeClient(msg.payload.previousPeerId)
       }
 
+      // Non-hosts must not upsert the raw requested position — if it collides with
+      // an existing peer's position string, rebuildFromClientList would overwrite that
+      // peer's registry entry (wiping their controllerId) until the host's CLU arrives.
+      // Non-hosts wait for the authoritative CLU instead.
+      if (!amGlobalHost) break
+
+      const resolved = resolvePosition(msg.payload.position)
+
       // Host: frequency deconfliction — reject before upserting.
       // A frequency is blocked if another position with a different facility+suffix
       // is already using it. Same facility+suffix = same controllerId = allowed to share.
-      if (amGlobalHost && msg.payload.frequency) {
+      if (msg.payload.frequency) {
         const incomingFreq = parseFloat(msg.payload.frequency).toFixed(3)
         const incomingFac  = msg.payload.facility ?? ''
         const incomingSuf  = msg.payload.suffix   ?? ''
@@ -342,19 +354,17 @@ async function onSessionMessage(msg, fromPeerId) {
       }
 
       upsertClient({
-        peerId:      fromPeerId,
-        position:    resolved,
-        module:      msg.payload.module,
-        frequency:   msg.payload.frequency  ?? '',
-        facility:    msg.payload.facility   ?? '',
-        suffix:      msg.payload.suffix     ?? '',
-        connectedAt: senderConnectedAt,
+        peerId:        fromPeerId,
+        position:      resolved,
+        module:        msg.payload.module,
+        frequency:     msg.payload.frequency  ?? '',
+        facility:      msg.payload.facility   ?? '',
+        suffix:        msg.payload.suffix     ?? '',
+        connectedAt:   senderConnectedAt,
+        roomJoinedAt:  senderRoomJoinedAt,
       })
       syncPeers()
       persistSession()
-
-      // Non-hosts stop here — the host's ACK and CLU will correct all peers.
-      if (!amGlobalHost) break
 
       // Host: oldest module peer sends STATE_DUMP
       if (oldestPeerOfModule(msg.payload.module) === selfId) {
@@ -504,11 +514,30 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   clientList     = []
   peerSeqs       = {}
 
-  // Recover the peer ID from the previous session for browser-refresh reconnect.
-  // sessionStorage is per-tab — survives reloads but is not shared between windows,
-  // so a second position signing in on the same machine never sees another tab's peerId.
-  const previousPeerId = sessionStorage.getItem(PEER_ID_STORAGE_KEY) ?? undefined
+  // Recover the peer ID and original sign-on time from the previous session for
+  // browser-refresh reconnect. sessionStorage is per-tab — survives reloads but
+  // is not shared between windows, so a second position signing in on the same
+  // machine never sees another tab's peerId.
+  const previousPeerId    = sessionStorage.getItem(PEER_ID_STORAGE_KEY) ?? undefined
+  // Preserve the original connectedAt across refreshes so group number ordering
+  // (1T, 2A, …) remains stable. Without this, each refresh resets connectedAt to
+  // Date.now(), which re-sorts the peer among its siblings and causes group numbers
+  // to flip. An intentional disconnect clears this key, so re-login gets a fresh time.
+  const storedConnectedAt = previousPeerId
+    ? (parseInt(sessionStorage.getItem(CONNECTED_AT_STORAGE_KEY) ?? '', 10) || null)
+    : null
+  const myConnectedAt  = storedConnectedAt ?? Date.now()
+  // roomJoinedAt is the actual wall-clock time this tab entered the WebRTC room in
+  // this session. It is NEVER preserved across refreshes, unlike connectedAt. It is
+  // used exclusively for host determination: whoever joined the room most recently
+  // is newer, and the oldest-by-roomJoinedAt peer acts as host for their HANDSHAKE.
+  // Using connectedAt for this purpose breaks on refresh because a refreshing peer
+  // preserves an old timestamp that makes them appear older than established peers,
+  // causing senderIsNewer to be false and no peer to take the host role.
+  const myRoomJoinedAt = Date.now()
+
   sessionStorage.setItem(PEER_ID_STORAGE_KEY, selfId)
+  sessionStorage.setItem(CONNECTED_AT_STORAGE_KEY, String(myConnectedAt))
 
   const sessionRoomId = await deriveRoomId(olympusUrl, password)
   const moduleRoomId  = `${sessionRoomId}-${mod.toLowerCase()}`
@@ -535,8 +564,7 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   }
 
   // Add self immediately — if first peer, we're already "connected"
-  const myConnectedAt = Date.now()
-  upsertClient({ peerId: selfId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt })
+  upsertClient({ peerId: selfId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt })
   syncPeers()
   useSessionStore.getState().setWebrtcStatus('connected')
   persistSession()
@@ -555,7 +583,7 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
     }
     if (handshakeSent) return
     handshakeSent = true
-    const hsMsg = envelope('HANDSHAKE', { position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, previousPeerId })
+    const hsMsg = envelope('HANDSHAKE', { position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt, previousPeerId })
     logMsg('→ session', hsMsg)
     sendSession(hsMsg)
   })
@@ -567,8 +595,9 @@ export async function disconnectWebrtc() {
   registerStatusBoardBroadcast(null)
   await fetch('/api/state/intentional-reset', { method: 'POST' }).catch(() => {})
 
-  // Clear stored peer ID so next initWebrtc (new position) has no previousPeerId
+  // Clear stored peer ID and sign-on time so next initWebrtc (new position) starts fresh
   sessionStorage.removeItem(PEER_ID_STORAGE_KEY)
+  sessionStorage.removeItem(CONNECTED_AT_STORAGE_KEY)
 
   sessionRoom?.leave()
   moduleRoom?.leave()

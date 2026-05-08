@@ -65,6 +65,7 @@ export default function AtcScope() {
   const positionSuffix   = useSessionStore((s) => s.positionSuffix)
 
   const maps       = useMapsStore((s) => s.maps)
+  const mapColors  = useMapsStore((s) => s.colors)
   const mapVisible = useMapsStore((s) => s.visible)
   const centerlines   = useRunwaysStore((s) => s.centerlines)
   const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
@@ -259,7 +260,7 @@ export default function AtcScope() {
     const match  = facilityDcsName ? Object.values(raw).find((ab) => (ab.callsign || '') === facilityDcsName) : null
     const facLat = match?.latitude  ?? null
     const facLng = match?.longitude ?? null
-    useMapsStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng)
+    useMapsStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, positionName)
   }, [mission?.mission?.theatre, facilityDcsName, positionSuffix, airbases])
 
 
@@ -322,10 +323,10 @@ export default function AtcScope() {
     if (!view || !mapCanvasRef.current) return
     const ctx = mapCanvasRef.current.getContext('2d')
     drawMaps(ctx, view, maps, mapVisible,
-      windowSettings?.briteMapA ?? 80, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2)
+      windowSettings?.briteMapA ?? 80, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2, mapColors)
     drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, windowSettings?.briteMapA ?? 80)
     drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 80)
-  }, [view, maps, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
+  }, [view, maps, mapColors, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
       windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap])
 
   // ── Render compass rose ───────────────────────────────────────────

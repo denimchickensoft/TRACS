@@ -25,3 +25,7 @@ build/
 
 # Runtime state files (per-machine, not committed)
 server/state/
+
+# Navdata — source files (large Navigraph data) and built cache (generated at runtime)
+server/navdata/source/
+server/navdata/cache/

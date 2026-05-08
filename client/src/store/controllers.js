@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { syncStore } from '../utils/storeSync.js'
 
 /**
  * Controller registry.
@@ -187,8 +186,43 @@ export const useControllersStore = create((set, get) => ({
     ),
 }))
 
-syncStore(useControllersStore, 'tracs-controllers', (s) => ({
-  registry:        s.registry,
+// ── Cross-window registry sync ────────────────────────────────────────────────
+// The controllers registry is derived state — it is rebuilt deterministically
+// from the WebRTC clientList via rebuildFromClientList. Two scope windows must
+// NOT share registry state via BroadcastChannel because each window rebuilds
+// from its own (potentially momentarily different) clientList, and receiving a
+// partial-rebuild broadcast from the other window corrupts the local registry
+// until the next rebuild cycle runs.
+//
+// Flow:
+//   Main windows  → broadcast every change → popup windows apply it
+//   Popup windows → send REQUEST_STATE on open → main windows respond
+//   Main windows  → ignore STATE_UPDATE from other windows entirely
+const _isPopup = (() => {
+  try { return new URLSearchParams(window.location.search).has('window') }
+  catch { return false }
+})()
+
+const _ctrlCh = new BroadcastChannel('tracs-controllers')
+const _pickCtrl = (s) => ({
+  registry:         s.registry,
   groupAssignments: s.groupAssignments,
   nextGroupNumber:  s.nextGroupNumber,
-}))
+})
+
+if (!_isPopup) {
+  useControllersStore.subscribe((state) => {
+    _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pickCtrl(state) })
+  })
+  _ctrlCh.onmessage = (e) => {
+    if (e.data?.type === 'REQUEST_STATE') {
+      _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pickCtrl(useControllersStore.getState()) })
+    }
+    // Ignore STATE_UPDATE — registry is owned by WebRTC, not cross-tab sync
+  }
+} else {
+  _ctrlCh.onmessage = (e) => {
+    if (e.data?.type === 'STATE_UPDATE') useControllersStore.setState(e.data.state)
+  }
+  _ctrlCh.postMessage({ type: 'REQUEST_STATE' })
+}
