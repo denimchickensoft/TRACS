@@ -25,7 +25,11 @@ const SCOPE_DEFAULTS = {
   rrCenterLat: null,      // custom ring center (null = use scope center)
   rrCenterLng: null,
   rrOffCenter: false,     // true when rings moved from scope center
-  pendingAction: null,    // one-shot click mode: 'PLACE_RR' | null
+  pendingAction: null,    // one-shot click mode: 'PLACE_RR' | 'RBL_P2' | 'MIN_P2' | null
+  rbls: [],               // [{ p0, p1 }] each endpoint: { unitId } | { lat, lng }
+  rblWip: null,           // { p0 } while awaiting second click for RBL
+  minSep: null,           // { ac0: unitId, ac1: unitId } | null
+  minWip: null,           // { ac0: unitId } while awaiting second click for MIN
   dcbActiveSpinner: null, // ID of the currently-selected DCB value spinner (inhibits scope zoom)
   // Character size settings (0–5 scale, null = profile default → treated as 3)
   csDatablocks: null,

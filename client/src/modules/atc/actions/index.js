@@ -19,6 +19,7 @@ import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../../store/strips.js'
 import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
+import { useControllersStore } from '../../../store/controllers.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { sendWebrtcEvent } from '../../../webrtc/client.js'
 
@@ -33,14 +34,20 @@ function clearBuffer() { usePreviewStore.getState().clear() }
 function getAtc()     { return useAtcStore.getState() }
 function getDisplay() { return useDisplayStore.getState() }
 
+function getMyControllerId() {
+  const positionName = useSessionStore.getState().positionName
+  return useControllersStore.getState().registry[positionName]?.controllerId ?? null
+}
+
 // ── Action handlers ───────────────────────────────────────────────────────────
 
-export function INIT_CNTL({ slewTarget, positionName }) {
+export function INIT_CNTL({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
   const { ownership, claimTrack } = getAtc()
-  if (ownership[slewTarget.unitId]) return err('TRACK ALREADY OWNED')
-  claimTrack(slewTarget.unitId, positionName)
-  sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, position: positionName })
+  if (ownership[slewTarget.unitId]) return err('ILL TRK')
+  const controllerId = getMyControllerId()
+  claimTrack(slewTarget.unitId, controllerId)
+  sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, controllerId })
 
   const aid = resolveCallsign(slewTarget.unit)
   useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED })
@@ -61,9 +68,8 @@ export function OPEN_FPE({ captures, slewTarget }) {
   }
 
   if (unitId) {
-    const positionName = useSessionStore.getState().positionName
-    const owner        = useAtcStore.getState().ownership[unitId]
-    readOnly = !!(owner && owner !== positionName)
+    const owner = useAtcStore.getState().ownership[unitId]
+    readOnly = !!(owner && owner !== getMyControllerId())
   }
 
   useFpeStore.getState().openFpe({ aid, unitId, readOnly })
@@ -75,10 +81,10 @@ export function INIT_CNTL_BY_ID({ captures, positionName }) {
   err('NOT YET SUPPORTED')
 }
 
-export function TERM_CNTL({ slewTarget, positionName }) {
+export function TERM_CNTL({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
   const { ownership, dropTrack, clearHandoff } = getAtc()
-  if (ownership[slewTarget.unitId] !== positionName) return err('NOT YOUR TRACK')
+  if (ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
   clearHandoff(slewTarget.unitId)
   dropTrack(slewTarget.unitId)
   sendWebrtcEvent('TRACK_DROPPED', { unitId: slewTarget.unitId })
@@ -90,12 +96,13 @@ export function TERM_CNTL({ slewTarget, positionName }) {
   ok()
 }
 
-export function TERM_CNTL_ALL({ positionName }) {
+export function TERM_CNTL_ALL() {
   const { ownership, dropTrack, clearHandoff } = getAtc()
+  const controllerId = getMyControllerId()
   const { deleteOnDropTrack, deleteByAid } = useStripsStore.getState()
   const plans = useFlightPlansStore.getState().plans
   for (const [id, owner] of Object.entries(ownership)) {
-    if (owner === positionName) {
+    if (owner === controllerId) {
       clearHandoff(id)
       dropTrack(id)
       if (deleteOnDropTrack) {
@@ -107,88 +114,98 @@ export function TERM_CNTL_ALL({ positionName }) {
   ok()
 }
 
-export function HND_OFF({ captures, slewTarget, positionName }) {
+export function HND_OFF({ captures, slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
   const { ownership, handoffs, setHandoff } = getAtc()
+  const controllerId = getMyControllerId()
 
   // Bare HO + slew on a track with outgoing handoff = recall
   const existing = handoffs[slewTarget.unitId]
-  if (existing?.state === HANDOFF_STATE.INITIATED && existing.from === positionName) {
+  if (existing?.state === HANDOFF_STATE.INITIATED && existing.from === controllerId) {
     getAtc().clearHandoff(slewTarget.unitId)
     return ok()
   }
 
   const tcp = captures?.tcp
-  if (!tcp) return err('SPECIFY CONTROLLER')
-  if (ownership[slewTarget.unitId] !== positionName) return err('NOT YOUR TRACK')
-  setHandoff(slewTarget.unitId, { state: HANDOFF_STATE.INITIATED, from: positionName, to: tcp })
-  sendWebrtcEvent('HANDOFF_INITIATED', { unitId: slewTarget.unitId, fromPosition: positionName, toPosition: tcp })
+  if (!tcp) return err('ILL POS')
+  if (tcp === controllerId) return err('ILL POS')
+  const knownIds = new Set(Object.values(useControllersStore.getState().registry).map((e) => e.controllerId).filter(Boolean))
+  if (!knownIds.has(tcp)) return err('ILL POS')
+  if (ownership[slewTarget.unitId] !== controllerId) return err('ILL TRK')
+  setHandoff(slewTarget.unitId, { state: HANDOFF_STATE.INITIATED, from: controllerId, to: tcp })
+  sendWebrtcEvent('HANDOFF_INITIATED', { unitId: slewTarget.unitId, fromControllerId: controllerId, toControllerId: tcp })
   ok()
 }
 
-export function HND_OFF_BARE({ slewTarget, positionName }) {
+export function HND_OFF_BARE({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
-  const { handoffs, clearHandoff, claimTrack, setHandoff } = getAtc()
+  const { handoffs, clearHandoff, claimTrack } = getAtc()
+  const controllerId = getMyControllerId()
   const ho = handoffs[slewTarget.unitId]
 
-  if (!ho) return err('NO HANDOFF')
+  if (!ho) return err('ILL POS')
 
-  if (ho.state === HANDOFF_STATE.INITIATED && ho.from === positionName) {
+  if (ho.state === HANDOFF_STATE.INITIATED && ho.from === controllerId) {
     clearHandoff(slewTarget.unitId)
-    sendWebrtcEvent('HANDOFF_RECALLED', { unitId: slewTarget.unitId, fromPosition: positionName, toPosition: ho.to })
+    sendWebrtcEvent('HANDOFF_RECALLED', { unitId: slewTarget.unitId, fromControllerId: controllerId, toControllerId: ho.to })
     return ok()
   }
 
-  if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === positionName) {
+  if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === controllerId) {
     getAtc().dropTrack(slewTarget.unitId)
-    claimTrack(slewTarget.unitId, positionName)
+    claimTrack(slewTarget.unitId, controllerId)
     clearHandoff(slewTarget.unitId)
-    sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: slewTarget.unitId, fromPosition: ho.from, toPosition: positionName })
+    sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: slewTarget.unitId, fromControllerId: ho.from, toControllerId: controllerId })
     return ok()
   }
 
   err('INVALID HANDOFF STATE')
 }
 
-export function HND_OFF_ACCEPT_NEAR({ positionName }) {
+export function HND_OFF_ACCEPT_NEAR() {
   // Accept the handoff nearest range rings center (simplification: first incoming)
   const { handoffs, claimTrack, clearHandoff } = getAtc()
+  const controllerId = getMyControllerId()
   for (const [id, ho] of Object.entries(handoffs)) {
-    if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === positionName) {
-      claimTrack(id, positionName)
+    if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === controllerId) {
+      claimTrack(id, controllerId)
       clearHandoff(id)
+      sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: id, fromControllerId: ho.from, toControllerId: controllerId })
       return ok()
     }
   }
   err('NO INCOMING HANDOFF')
 }
 
-export function POINT_OUT({ captures, slewTarget, positionName }) {
+export function POINT_OUT({ captures, slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
   const tcp = captures?.tcp
-  if (!tcp) return err('SPECIFY CONTROLLER')
-  getAtc().setPointOut(slewTarget.unitId, { state: POINTOUT_STATE.SENT, from: positionName, to: tcp })
-  sendWebrtcEvent('POINT_OUT_SENT', { unitId: slewTarget.unitId, fromPosition: positionName, toPosition: tcp })
+  if (!tcp) return err('ILL POS')
+  const controllerId = getMyControllerId()
+  getAtc().setPointOut(slewTarget.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
+  sendWebrtcEvent('POINT_OUT_SENT', { unitId: slewTarget.unitId, fromControllerId: controllerId, toControllerId: tcp })
   ok()
 }
 
-export function REJECT_POINT_OUT({ slewTarget, positionName }) {
+export function REJECT_POINT_OUT({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
+  const controllerId = getMyControllerId()
   const po = getAtc().pointOuts[slewTarget.unitId]
-  if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== positionName) return err('NO INCOMING POINT OUT')
+  if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== controllerId) return err('ILL TRK')
   getAtc().clearPointOut(slewTarget.unitId)
-  sendWebrtcEvent('POINT_OUT_REJECTED', { unitId: slewTarget.unitId, fromPosition: po.from, toPosition: positionName })
+  sendWebrtcEvent('POINT_OUT_REJECTED', { unitId: slewTarget.unitId, fromControllerId: po.from, toControllerId: controllerId })
   ok()
 }
 
-export function CONVERT_POINT_OUT({ slewTarget, positionName }) {
+export function CONVERT_POINT_OUT({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
   const { pointOuts, clearPointOut, claimTrack } = getAtc()
+  const controllerId = getMyControllerId()
   const po = pointOuts[slewTarget.unitId]
-  if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== positionName) return err('NO INCOMING POINT OUT')
+  if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== controllerId) return err('ILL TRK')
   clearPointOut(slewTarget.unitId)
-  claimTrack(slewTarget.unitId, positionName)
-  sendWebrtcEvent('POINT_OUT_CONVERTED', { unitId: slewTarget.unitId, fromPosition: po.from, toPosition: positionName })
+  claimTrack(slewTarget.unitId, controllerId)
+  sendWebrtcEvent('POINT_OUT_CONVERTED', { unitId: slewTarget.unitId, fromControllerId: po.from, toControllerId: controllerId })
   ok()
 }
 
@@ -249,6 +266,49 @@ export function TOGGLE_PTL({ slewTarget }) {
   ok()
 }
 
+// ── Minimum separation ────────────────────────────────────────────────────────
+
+export function MIN_INIT({ slewTarget }) {
+  if (!slewTarget) return err('NO TRACK')
+  getDisplay().updateWindow(WINDOW_ID, {
+    pendingAction: 'MIN_P2',
+    minWip: { ac0: String(slewTarget.unitId) },
+  })
+  ok()
+}
+
+export function MIN_CLEAR() {
+  getDisplay().updateWindow(WINDOW_ID, { minSep: null, minWip: null, pendingAction: null })
+  ok()
+}
+
+// ── Range bearing line ────────────────────────────────────────────────────────
+
+export function RBL_INIT({ slewTarget, canvasLatLng }) {
+  const p0 = slewTarget
+    ? { unitId: String(slewTarget.unitId) }
+    : canvasLatLng
+      ? { lat: canvasLatLng.lat, lng: canvasLatLng.lng }
+      : null
+  if (!p0) return err('NO POSITION')
+  getDisplay().updateWindow(WINDOW_ID, { pendingAction: 'RBL_P2', rblWip: { p0 } })
+  ok()
+}
+
+export function RBL_CLEAR_ALL() {
+  getDisplay().updateWindow(WINDOW_ID, { rbls: [], rblWip: null, pendingAction: null })
+  ok()
+}
+
+export function RBL_CLEAR_N({ captures }) {
+  const n = parseInt(captures.n, 10)
+  const win = getDisplay().windows[WINDOW_ID]
+  const rbls = win?.rbls ?? []
+  if (n < 1 || n > rbls.length) return err('INVALID')
+  getDisplay().updateWindow(WINDOW_ID, { rbls: rbls.filter((_, i) => i !== n - 1) })
+  ok()
+}
+
 export function SET_RANGE({ captures }) {
   const range = parseInt(captures.range, 10)
   if (range < 6 || range > 256) return err('INVALID RANGE')
@@ -279,30 +339,34 @@ export function QUICK_LOOK_ALL() {
   ok()
 }
 
-export function BARE_SLEW({ slewTarget, positionName }) {
+export function BARE_SLEW({ slewTarget }) {
   if (!slewTarget) return clearBuffer()
 
   const { ownership, handoffs, pointOuts } = getAtc()
   const id = slewTarget.unitId
   const ho = handoffs[id]
   const po = pointOuts[id]
+  const controllerId = getMyControllerId()
 
   // Incoming handoff to accept
-  if (ho?.state === HANDOFF_STATE.RECEIVING && ho.to === positionName) {
-    getAtc().claimTrack(id, positionName)
+  if (ho?.state === HANDOFF_STATE.RECEIVING && ho.to === controllerId) {
+    getAtc().claimTrack(id, controllerId)
     getAtc().clearHandoff(id)
+    sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: id, fromControllerId: ho.from, toControllerId: controllerId })
     return ok()
   }
 
   // Outgoing handoff to recall
-  if (ho?.state === HANDOFF_STATE.INITIATED && ho.from === positionName) {
+  if (ho?.state === HANDOFF_STATE.INITIATED && ho.from === controllerId) {
     getAtc().clearHandoff(id)
+    sendWebrtcEvent('HANDOFF_RECALLED', { unitId: id, fromControllerId: controllerId, toControllerId: ho.to })
     return ok()
   }
 
   // Incoming point out to acknowledge
-  if (po?.state === POINTOUT_STATE.RECEIVING && po.to === positionName) {
+  if (po?.state === POINTOUT_STATE.RECEIVING && po.to === controllerId) {
     getAtc().clearPointOut(id)
+    sendWebrtcEvent('POINT_OUT_ACCEPTED', { unitId: id, fromControllerId: po.from, toControllerId: controllerId })
     return ok()
   }
 
@@ -380,6 +444,7 @@ const ACTION_MAP = {
   TERM_CNTL,
   TERM_CNTL_ALL,
   HND_OFF,
+  HND_OFF_SHORT: HND_OFF,
   HND_OFF_BARE,
   HND_OFF_ACCEPT_NEAR,
   POINT_OUT,
@@ -399,6 +464,11 @@ const ACTION_MAP = {
   QUICK_LOOK_TCP,
   QUICK_LOOK_ALL,
   BARE_SLEW,
+  MIN_INIT,
+  MIN_CLEAR,
+  RBL_INIT,
+  RBL_CLEAR_ALL,
+  RBL_CLEAR_N,
   // List management
   RELOCATE_SSA,
   TOGGLE_SIGNON, RELOCATE_SIGNON,

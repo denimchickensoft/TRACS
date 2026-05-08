@@ -84,9 +84,12 @@ export const useRunwaysStore = create((set, get) => ({
 
   theatre:         null,
   facilityAirbase: null,
+  _lastLoadKey:    null,
 
   loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null, facilityAirbase = null) => {
     if (!theatre) return
+    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}|${facilityAirbase}`
+    if (get()._lastLoadKey === loadKey) return
     try {
       if (!theatreCache[theatre]) {
         const res = await fetch(`/runways/${encodeURIComponent(theatre)}.json`)
@@ -188,7 +191,7 @@ export const useRunwaysStore = create((set, get) => ({
         }
       }
 
-      set({ centerlines, cltrVisible, obstructions, obstVisible: isNewTheatre ? false : get().obstVisible, theatre, facilityAirbase: facilityAirbase || null })
+      set({ centerlines, cltrVisible, obstructions, obstVisible: isNewTheatre ? false : get().obstVisible, theatre, facilityAirbase: facilityAirbase || null, _lastLoadKey: loadKey })
       console.log(`[runways] ${theatre}: ${centerlines.length} centerline maps, ${obstructions.length} obstructions`)
     } catch (err) {
       console.error('[runways] load error:', err.message)

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { syncStore } from '../utils/storeSync.js'
 
 /**
  * Controller registry.
@@ -17,20 +18,19 @@ import { create } from 'zustand'
  * registered for display purposes only — they have no controllerId or
  * position symbol and cannot receive handoffs or assume tracks.
  *
- * Duplicate letter handling (two controllers with the same typeLetter in the
- * same group) is resolved at WebRTC merge time. For now only one controller
- * per client, so duplicates cannot occur locally.
+ * Duplicate letter handling: letters are globally unique across the session —
+ * no two controllers share a letter regardless of facility. Collisions are
+ * resolved by assigning the next available letter in alphabetical order.
  */
 
-// Letters that are reserved for defined position types — duplicates must
-// not reuse these.
-const RESERVED = new Set(['C', 'A', 'D', 'R', 'T', 'G'])
-
-// Ordered pool for duplicate assignment (excludes reserved letters)
-const DUPE_POOL = Array.from('BEFHIJKLMNOPQSUVWXYZ')
+const ALL_LETTERS = Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
 function nextAvailableLetter(usedLetters) {
-  return DUPE_POOL.find((l) => !usedLetters.has(l)) ?? null
+  return ALL_LETTERS.find((l) => !usedLetters.has(l)) ?? null
+}
+
+function globalUsedLetters(registry) {
+  return new Set(Object.values(registry).map((e) => e.letter).filter(Boolean))
 }
 
 export const useControllersStore = create((set, get) => ({
@@ -44,12 +44,18 @@ export const useControllersStore = create((set, get) => ({
   // Loaded from /positionTypes.json
   positionTypes: [],
 
+  // Last clientList passed to rebuildFromClientList — used to re-run if positionTypes
+  // load after the first rebuild call (avoids null controllerId on late-load).
+  _cachedClientList: [],
+
   // ── Load position type definitions ───────────────────────────────
   loadPositionTypes: async () => {
     try {
       const res  = await fetch('/positionTypes.json')
       const data = await res.json()
       set({ positionTypes: data.positionTypes ?? [] })
+      const cached = get()._cachedClientList
+      if (cached.length > 0) get().rebuildFromClientList(cached)
     } catch (err) {
       console.error('[controllers] Failed to load positionTypes.json', err)
     }
@@ -77,18 +83,12 @@ export const useControllersStore = create((set, get) => ({
       newNextGroupNumber = nextGroupNumber + 1
     }
 
-    // Determine type letter — handle duplicates within the same group
+    // Determine type letter — globally unique across the session
     let letter = typeDef?.letter ?? null
     if (letter !== null) {
-      // Check if this letter is already used by another controller in this group
-      const usedInGroup = new Set(
-        Object.values(registry)
-          .filter((e) => e.groupNumber === groupNumber && e.letter !== null)
-          .map((e) => e.letter)
-      )
-      if (usedInGroup.has(letter)) {
-        // Duplicate — assign next available non-reserved letter
-        letter = nextAvailableLetter(usedInGroup)
+      const used = globalUsedLetters(registry)
+      if (used.has(letter)) {
+        letter = nextAvailableLetter(used)
       }
     }
 
@@ -117,6 +117,62 @@ export const useControllersStore = create((set, get) => ({
     })
   },
 
+  // ── Rebuild from client list ──────────────────────────────────────
+  // Called whenever the WebRTC client list changes. Deterministic — all
+  // peers arrive at the same IDs from the same sorted client list.
+  rebuildFromClientList: (clientList) => {
+    set({ _cachedClientList: clientList })
+    const { positionTypes } = get()
+    if (positionTypes.length === 0) {
+      console.warn('[controllers] rebuildFromClientList called before positionTypes loaded — IDs will be null until loadPositionTypes completes')
+    }
+
+    const sorted = [...clientList].sort((a, b) => a.connectedAt - b.connectedAt)
+
+    const registry        = {}
+    const groupAssignments = {}
+    let nextGroupNumber   = 1
+
+    for (const client of sorted) {
+      const { position, facility, suffix, frequency } = client
+      if (!facility || !suffix) continue
+
+      const typeDef = positionTypes.find((t) => t.suffix === suffix)
+
+      let groupNumber = groupAssignments[facility]
+      if (groupNumber === undefined) {
+        groupNumber = nextGroupNumber++
+        groupAssignments[facility] = groupNumber
+      }
+
+      let letter = typeDef?.letter ?? null
+      if (letter !== null) {
+        const used = globalUsedLetters(registry)
+        if (used.has(letter)) {
+          letter = nextAvailableLetter(used)
+        }
+      }
+
+      const canAssumeTrack = typeDef?.canAssumeTrack ?? false
+      const controllerId   = (canAssumeTrack && letter) ? `${groupNumber}${letter}` : null
+
+      registry[position] = {
+        positionName:   position,
+        facility,
+        suffix,
+        frequency,
+        letter,
+        controllerId,
+        positionSymbol: letter,
+        canAssumeTrack,
+        groupNumber,
+        displayName:    typeDef?.displayName ?? suffix,
+      }
+    }
+
+    set({ registry, groupAssignments, nextGroupNumber })
+  },
+
   // ── Convenience selectors ─────────────────────────────────────────
   getEntry:          (positionName) => get().registry[positionName] ?? null,
   getPositionSymbol: (positionName) => get().registry[positionName]?.positionSymbol ?? null,
@@ -129,4 +185,10 @@ export const useControllersStore = create((set, get) => ({
         ? a.groupNumber - b.groupNumber
         : a.suffix.localeCompare(b.suffix)
     ),
+}))
+
+syncStore(useControllersStore, 'tracs-controllers', (s) => ({
+  registry:        s.registry,
+  groupAssignments: s.groupAssignments,
+  nextGroupNumber:  s.nextGroupNumber,
 }))

@@ -15,13 +15,13 @@ export const POINTOUT_STATE = {
 }
 
 export const useAtcStore = create((set) => ({
-  // Ownership: unitId → positionName
+  // Ownership: unitId → controllerId (e.g. "1T")
   ownership: {},
 
-  // Handoffs: unitId → { state, from, to }
+  // Handoffs: unitId → { state, from: controllerId, to: controllerId }
   handoffs: {},
 
-  // Point outs: unitId → { state, from, to }
+  // Point outs: unitId → { state, from: controllerId, to: controllerId }
   pointOuts: {},
 
   // Per-unit scratchpad overrides (two fields per STARS model)
@@ -35,6 +35,12 @@ export const useAtcStore = create((set) => ({
 
   // Quick look active unit IDs
   quickLook: new Set(),
+
+  // Sticky FDB after outbound handoff acceptance: unitId → true
+  displayFdb: {},
+
+  // Blink-white after accepting a handoff: unitId → expiresAt (ms timestamp)
+  blinkTracks: {},
 
   claimTrack: (unitId, positionName) =>
     set((state) => ({
@@ -112,6 +118,28 @@ export const useAtcStore = create((set) => ({
       return { quickLook: next }
     }),
 
+  setDisplayFdb: (unitId) =>
+    set((state) => ({ displayFdb: { ...state.displayFdb, [unitId]: true } })),
+
+  clearDisplayFdb: (unitId) =>
+    set((state) => {
+      const next = { ...state.displayFdb }
+      delete next[unitId]
+      return { displayFdb: next }
+    }),
+
+  setBlinkTrack: (unitId) =>
+    set((state) => ({
+      blinkTracks: { ...state.blinkTracks, [unitId]: Date.now() + 5000 },
+    })),
+
+  clearBlinkTrack: (unitId) =>
+    set((state) => {
+      const next = { ...state.blinkTracks }
+      delete next[unitId]
+      return { blinkTracks: next }
+    }),
+
   reset: () =>
-    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, leaderDirs: {}, quickLook: new Set() }),
+    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, leaderDirs: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {} }),
 }))

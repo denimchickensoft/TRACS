@@ -5,7 +5,13 @@ import { useFlightPlansStore }  from '../store/flightPlans.js'
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../store/atc.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../store/strips.js'
 import { useSessionStore } from '../store/session.js'
+import { useControllersStore } from '../store/controllers.js'
 import { applyStatusBoardUpdate } from '../store/statusBoard.js'
+
+function getMyControllerId() {
+  const positionName = useSessionStore.getState().positionName
+  return useControllersStore.getState().registry[positionName]?.controllerId ?? null
+}
 
 export function handleModuleMessage(msg) {
   const { type, payload, module } = msg
@@ -37,7 +43,7 @@ function handleAtc(type, payload) {
       break
 
     case 'TRACK_CLAIMED':
-      atc.claimTrack(payload.unitId, payload.position)
+      atc.claimTrack(payload.unitId, payload.controllerId)
       if (strips.autoAddOnHandoff) {
         // Strip added when handoff is received, not when remote claims
       }
@@ -48,12 +54,12 @@ function handleAtc(type, payload) {
       break
 
     case 'HANDOFF_INITIATED': {
-      const myPosition = useSessionStore.getState().positionName
-      const isTarget   = payload.toPosition === myPosition
+      const myControllerId = getMyControllerId()
+      const isTarget       = payload.toControllerId === myControllerId
       atc.setHandoff(payload.unitId, {
         state: isTarget ? HANDOFF_STATE.RECEIVING : HANDOFF_STATE.INITIATED,
-        from:  payload.fromPosition,
-        to:    payload.toPosition,
+        from:  payload.fromControllerId,
+        to:    payload.toControllerId,
       })
       if (isTarget && strips.autoAddOnHandoff) {
         const plan = Object.values(fps.plans).find((p) => String(p.unitId) === String(payload.unitId))
@@ -62,10 +68,17 @@ function handleAtc(type, payload) {
       break
     }
 
-    case 'HANDOFF_ACCEPTED':
-      atc.claimTrack(payload.unitId, payload.toPosition)
+    case 'HANDOFF_ACCEPTED': {
+      const myId = getMyControllerId()
+      atc.claimTrack(payload.unitId, payload.toControllerId)
       atc.clearHandoff(payload.unitId)
+      // Sender: sticky FDB + 5-second blink to confirm handoff was accepted
+      if (payload.fromControllerId === myId) {
+        atc.setDisplayFdb(payload.unitId)
+        atc.setBlinkTrack(payload.unitId)
+      }
       break
+    }
 
     case 'HANDOFF_REJECTED':
       atc.clearHandoff(payload.unitId)
@@ -78,16 +91,16 @@ function handleAtc(type, payload) {
     case 'HANDOFF_REDIRECTED':
       atc.setHandoff(payload.unitId, {
         state: HANDOFF_STATE.INITIATED,
-        from:  payload.fromPosition,
-        to:    payload.toPosition,
+        from:  payload.fromControllerId,
+        to:    payload.toControllerId,
       })
       break
 
     case 'POINT_OUT_SENT':
       atc.setPointOut(payload.unitId, {
         state: POINTOUT_STATE.SENT,
-        from:  payload.fromPosition,
-        to:    payload.toPosition,
+        from:  payload.fromControllerId,
+        to:    payload.toControllerId,
       })
       break
 
@@ -101,10 +114,13 @@ function handleAtc(type, payload) {
 
     case 'POINT_OUT_CONVERTED':
       atc.clearPointOut(payload.unitId)
-      atc.claimTrack(payload.unitId, payload.toPosition)
+      atc.claimTrack(payload.unitId, payload.toControllerId)
       break
 
-    case 'STRIP_PASSED':
+    case 'STRIP_PASSED': {
+      const myPosition = useSessionStore.getState().positionName
+      if (payload.toPosition && payload.toPosition !== myPosition) break
+      if (strips.ignoreStripPasses) break
       if (strips.autoAddOnStripPass) {
         strips.addStrip(payload.aid, {
           annotations: payload.annotations,
@@ -112,6 +128,7 @@ function handleAtc(type, payload) {
         })
       }
       break
+    }
   }
 }
 

@@ -335,6 +335,7 @@
 }
 
 .sb-title {
+  position: relative;
   font-size: 9px;
   letter-spacing: 0.08em;
   color: #333;
@@ -355,6 +356,18 @@
 
 .sb-title-text {
   text-align: center;
+}
+
+.sb-title-scale-hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  color: #FFD700;
+  font-size: 9px;
+  padding: 1px 5px;
+  pointer-events: none;
+  letter-spacing: 0.08em;
 }
 
 .sb-title-right {

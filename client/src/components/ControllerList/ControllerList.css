@@ -1,0 +1,196 @@
+.cl-window {
+  position:        absolute;
+  z-index:         900;
+  display:         flex;
+  flex-direction:  column;
+  background:      #0d0d0d;
+  border:          1px solid #2a2a2a;
+  border-radius:   2px;
+  box-shadow:      0 6px 24px rgba(0, 0, 0, 0.7);
+  font-family:     'Roboto Mono', monospace;
+  font-size:       0.7rem;
+  color:           #aaa;
+  min-width:       240px;
+  min-height:      160px;
+  overflow:        hidden;
+}
+
+.cl-window--standalone {
+  position:   relative;
+  width:      100vw;
+  height:     100vh;
+  border:     none;
+  box-shadow: none;
+  min-width:  0;
+  min-height: 0;
+  opacity:    1 !important;
+}
+
+/* ── Resize handles ────────────────────────────────────────────── */
+.cl-resize {
+  position:   absolute;
+  z-index:    10;
+}
+
+/* Edges */
+.cl-resize--n  { top: 0; left: 6px; right: 6px; height: 5px; cursor: ns-resize;   }
+.cl-resize--s  { bottom: 0; left: 6px; right: 6px; height: 5px; cursor: ns-resize; }
+.cl-resize--w  { left: 0; top: 6px; bottom: 6px; width: 5px; cursor: ew-resize;   }
+.cl-resize--e  { right: 0; top: 6px; bottom: 6px; width: 5px; cursor: ew-resize;  }
+
+/* Corners */
+.cl-resize--nw { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
+.cl-resize--ne { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
+.cl-resize--sw { bottom: 0; left: 0; width: 10px; height: 10px; cursor: sw-resize; }
+.cl-resize--se { bottom: 0; right: 0; width: 10px; height: 10px; cursor: se-resize; }
+
+/* Visual cue on SE corner (most commonly used) */
+.cl-resize--se::after {
+  content:       '';
+  position:      absolute;
+  right:         3px;
+  bottom:        3px;
+  width:         6px;
+  height:        6px;
+  border-right:  2px solid #2a2a2a;
+  border-bottom: 2px solid #2a2a2a;
+  pointer-events: none;
+}
+
+/* ── Title bar ─────────────────────────────────────────────────── */
+.cl-titlebar {
+  display:        flex;
+  align-items:    center;
+  gap:            4px;
+  padding:        4px 6px;
+  background:     #0a0a0a;
+  border-bottom:  1px solid #1e1e1e;
+  cursor:         grab;
+  flex-shrink:    0;
+  user-select:    none;
+}
+
+.cl-window--standalone .cl-titlebar {
+  cursor: default;
+}
+
+.cl-titlebar:active { cursor: grabbing; }
+
+.cl-window--standalone .cl-titlebar:active { cursor: default; }
+
+.cl-title {
+  flex:           1;
+  font-size:      0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          #555;
+}
+
+.cl-opacity-hint {
+  font-size:      0.58rem;
+  letter-spacing: 0.06em;
+  color:          #667;
+  padding:        1px 4px;
+  background:     #151520;
+  border-radius:  2px;
+  pointer-events: none;
+}
+
+.cl-btn {
+  background:  transparent;
+  border:      none;
+  color:       #444;
+  cursor:      pointer;
+  font-size:   0.85rem;
+  line-height: 1;
+  padding:     1px 3px;
+  border-radius: 2px;
+  font-family: inherit;
+}
+
+.cl-btn:hover { color: #888; background: #1a1a1a; }
+
+/* ── Scrollable body ───────────────────────────────────────────── */
+.cl-body {
+  flex:       1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.cl-body::-webkit-scrollbar       { width: 4px; }
+.cl-body::-webkit-scrollbar-track { background: #0d0d0d; }
+.cl-body::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+/* ── Facility groups ───────────────────────────────────────────── */
+.cl-group + .cl-group { border-top: 1px solid #181818; }
+
+.cl-group-header {
+  display:        flex;
+  align-items:    center;
+  gap:            5px;
+  padding:        5px 8px 3px;
+  cursor:         pointer;
+  user-select:    none;
+  color:          #555;
+  font-size:      0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cl-group-header:hover { background: #121212; color: #777; }
+
+.cl-chevron {
+  font-size:   0.45rem;
+  color:       #3a3a3a;
+  width:       8px;
+  flex-shrink: 0;
+}
+
+.cl-facility-label { flex: 1; }
+
+.cl-group-entries { padding-bottom: 4px; }
+
+/* ── Controller rows ───────────────────────────────────────────── */
+.cl-entry {
+  display:     flex;
+  align-items: center;
+  padding:     2px 8px 2px 22px;
+  gap:         6px;
+  color:       #ccc;
+}
+
+.cl-entry:hover { background: #141414; }
+
+.cl-entry-id {
+  width:       22px;
+  flex-shrink: 0;
+  color:       #666;
+  font-size:   0.65rem;
+  text-align:  left;
+}
+
+.cl-entry-name {
+  flex:           1;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  font-size:      0.7rem;
+  letter-spacing: 0.02em;
+}
+
+.cl-entry-freq {
+  color:          #4a5a7a;
+  font-size:      0.65rem;
+  white-space:    nowrap;
+  letter-spacing: 0.02em;
+}
+
+/* ── Empty state ───────────────────────────────────────────────── */
+.cl-empty {
+  padding:        24px 16px;
+  text-align:     center;
+  color:          #2a2a2a;
+  font-size:      0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

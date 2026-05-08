@@ -6,7 +6,7 @@
     { "suffix": "RDR", "letter": "R", "canAssumeTrack": true,  "displayName": "Radar"     },
     { "suffix": "TWR", "letter": "T", "canAssumeTrack": true,  "displayName": "Tower"     },
     { "suffix": "MAR", "letter": "M", "canAssumeTrack": true,  "displayName": "Marshal"   },
-    { "suffix": "GND", "letter": null, "canAssumeTrack": false, "displayName": "Ground"   },
+    { "suffix": "GND", "letter": "G",  "canAssumeTrack": false, "displayName": "Ground"   },
     { "suffix": "DEL", "letter": null, "canAssumeTrack": false, "displayName": "Delivery" }
   ]
 }

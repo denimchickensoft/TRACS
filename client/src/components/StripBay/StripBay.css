@@ -36,6 +36,7 @@
 
 /* ── Header ─────────────────────────────────────────────────────── */
 .sb-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -43,6 +44,18 @@
   background: #0a0a0a;
   border-bottom: 1px solid #222;
   flex-shrink: 0;
+}
+
+.sb-header-scale-hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  color: #00b4d8;
+  font-size: 0.60rem;
+  padding: 1px 5px;
+  pointer-events: none;
+  letter-spacing: 0.08em;
 }
 
 .sb-title {
@@ -364,3 +377,41 @@
 }
 .sb-airport-add-btn:hover:not(:disabled) { border-color: #555; color: #888; }
 .sb-airport-add-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ── Strip context menu ──────────────────────────────────────────── */
+.sb-ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 2px;
+  padding: 2px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.70rem;
+}
+
+.sb-ctx-item {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  white-space: nowrap;
+}
+.sb-ctx-item:hover { background: #1e1e1e; color: #e0e0e0; }
+
+.sb-ctx-delete { color: #c0392b; }
+.sb-ctx-delete:hover { color: #e74c3c; background: #1a0a0a; }
+
+.sb-ctx-separator {
+  height: 1px;
+  background: #222;
+  margin: 2px 0;
+}

@@ -33,7 +33,9 @@ const M_PER_S_TO_KT = 1.94384
  * @param {number} csPos      0–5 character size index
  * @param {{ minutes: number, mode: 'OWN'|'ALL'|null, ownership: object, myPosition: string }|null} ptlOpts
  */
-export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8) {
+const BLINK_DIM = '#C0C0C0'
+
+export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8, blinkingUids = null, blinkOn = true) {
   const width  = ctx.canvas.width
   const height = ctx.canvas.height
   const { colors, symbol } = visual
@@ -108,19 +110,18 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
     }
 
     // --- Interior symbol: '*' unassociated, position letter if owned ---
+    const isBlinkUnit = blinkingUids?.has(String(id)) ?? false
     const entry      = symbolMap[id] ?? { sym: '*', mine: false }
     const isAsterisk = entry.sym === '*'
-    // csPos 0–5 (default 3) controls letter size.
-    // Asterisk renders small relative to capitals — boost its font size so it
-    // appears similarly weighted. Centering uses actual glyph metrics so both
-    // characters land on the visual centre regardless of font-cell geometry.
-    const letterPx = 10 + csPos * 2
-    const fontPx   = isAsterisk ? Math.round(letterPx * 1.76) : letterPx
+    const letterPx   = 10 + csPos * 2
+    const fontPx     = isAsterisk ? Math.round(letterPx * 1.76) : letterPx
+    const baseColor  = entry.mine ? colors.fdbText : colors.ldbText
+    const letColor   = isBlinkUnit ? (blinkOn ? colors.fdbText : BLINK_DIM) : baseColor
     ctx.font         = `bold ${fontPx}px "Roboto Mono", monospace`
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'alphabetic'
     ctx.globalAlpha  = Math.max(0, Math.min(1, britePos))
-    ctx.fillStyle    = entry.mine ? colors.fdbText : colors.ldbText
+    ctx.fillStyle    = letColor
     const m      = ctx.measureText(entry.sym)
     const yOffset = (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2
     ctx.fillText(entry.sym, x, y + yOffset)

@@ -1,7 +1,9 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useStripsStore, STRIP_HIGHLIGHT, CONFLICT_RESOLUTION } from '../../store/strips.js'
-import { useFlightPlansStore } from '../../store/flightPlans.js'
-import { useSessionStore }     from '../../store/session.js'
+import { useFlightPlansStore }  from '../../store/flightPlans.js'
+import { useSessionStore }      from '../../store/session.js'
+import { useControllersStore }  from '../../store/controllers.js'
+import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import './StripBay.css'
 
 const SORT_OPTIONS = [
@@ -66,10 +68,73 @@ function AnnCell({ stripId, cellIndex, value }) {
   )
 }
 
+// ── Strip context menu ────────────────────────────────────────────────────────
+function StripContextMenu({ x, y, strip, onClose }) {
+  const deleteStrip    = useStripsStore((s) => s.deleteStrip)
+  const myPosition     = useSessionStore((s) => s.positionName)
+  const allControllers = useControllersStore((s) => s.getAll())
+  const peers          = allControllers.filter((c) => c.positionName !== myPosition)
+
+  useEffect(() => {
+    function onPointerDown(e) {
+      if (!e.target.closest('.sb-ctx-menu')) onClose()
+    }
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true)
+      document.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [onClose])
+
+  function handleDelete() {
+    deleteStrip(strip.id)
+    onClose()
+  }
+
+  function handleSendTo(controller) {
+    sendWebrtcEvent('STRIP_PASSED', {
+      aid:        strip.aid,
+      annotations: strip.annotations,
+      toPosition:  controller.positionName,
+    })
+    deleteStrip(strip.id)
+    onClose()
+  }
+
+  return (
+    <div
+      className="sb-ctx-menu"
+      style={{ left: x, top: y }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <button className="sb-ctx-item sb-ctx-delete" onClick={handleDelete}>
+        Delete
+      </button>
+      {peers.length > 0 && (
+        <>
+          <div className="sb-ctx-separator" />
+          {peers.map((c) => (
+            <button
+              key={c.positionName}
+              className="sb-ctx-item"
+              onClick={() => handleSendTo(c)}
+            >
+              Send to {c.positionName}
+            </button>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Single strip ──────────────────────────────────────────────────────────────
-function Strip({ strip, plan, dragOver, onDragStart, onDragOver, onDragEnd, onDrop }) {
+function Strip({ strip, plan, dragOver, onDragStart, onDragOver, onDragEnd, onDrop, onContextMenu }) {
   const acknowledgeStrip = useStripsStore((s) => s.acknowledgeStrip)
-  const deleteStrip      = useStripsStore((s) => s.deleteStrip)
 
   const highlightClass = strip.highlight ? `highlight-${strip.highlight}` : ''
   const dragOverClass  = dragOver ? ' sb-strip--drag-over' : ''
@@ -84,7 +149,7 @@ function Strip({ strip, plan, dragOver, onDragStart, onDragOver, onDragEnd, onDr
 
   function handleContextMenu(e) {
     e.preventDefault()
-    deleteStrip(strip.id)
+    onContextMenu(e, strip)
   }
 
   const anns = strip.annotations
@@ -247,6 +312,15 @@ function SettingsPanel() {
         <label className="sb-setting-row">
           <input
             type="checkbox"
+            checked={s.ignoreStripPasses}
+            onChange={(e) => s.setSetting('ignoreStripPasses', e.target.checked)}
+          />
+          Ignore all incoming strip passes
+        </label>
+
+        <label className="sb-setting-row">
+          <input
+            type="checkbox"
             checked={s.autoAddOnDepMatch}
             onChange={(e) => s.setSetting('autoAddOnDepMatch', e.target.checked)}
           />
@@ -330,7 +404,28 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const [showSettings, setShowSettings] = useState(false)
   const [dragId,       setDragId]       = useState(null)
   const [dragOverId,   setDragOverId]   = useState(null)
-  const addInputRef = useRef(null)
+  const [ctxMenu,      setCtxMenu]      = useState(null)
+  const [scale,        setScale]        = useState(() => {
+    const saved = parseFloat(localStorage.getItem('tracs.strip-bay.scale'))
+    return isNaN(saved) ? 1.0 : Math.min(2.0, Math.max(0.5, saved))
+  })
+  const [scaleHint,    setScaleHint]    = useState(false)
+  const scaleHintRef = useRef(null)
+  const addInputRef  = useRef(null)
+
+  const handleHeaderWheel = (e) => {
+    e.preventDefault()
+    setScale((prev) => {
+      const next = Math.min(2.0, Math.max(0.5,
+        parseFloat((prev - Math.sign(e.deltaY) * 0.05).toFixed(2))
+      ))
+      localStorage.setItem('tracs.strip-bay.scale', String(next))
+      clearTimeout(scaleHintRef.current)
+      setScaleHint(true)
+      scaleHintRef.current = setTimeout(() => setScaleHint(false), 1200)
+      return next
+    })
+  }
 
   const bayStrips = bay.stripIds.map((id) => strips[id]).filter(Boolean)
   const sorted    = sortStrips(bayStrips, plans, bay.sortBy)
@@ -376,15 +471,18 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
     setDragOverId(null)
   }
 
-  const style = docked && width ? { width, minWidth: width } : undefined
+  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : {}) }
 
   return (
     <div className={`sb-panel${standalone ? ' sb-panel--standalone' : ''}`} style={style}>
       {docked && <div className="sb-resize-handle" onMouseDown={onResize} />}
 
       {/* Header */}
-      <div className="sb-header">
+      <div className="sb-header" onWheel={handleHeaderWheel}>
         <span className="sb-title">Strip Bay</span>
+        {scaleHint && (
+          <span className="sb-header-scale-hint">{Math.round(scale * 100)}%</span>
+        )}
 
         <select
           className="sb-sort-select"
@@ -431,9 +529,19 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onDragEnd={handleDragEnd}
+            onContextMenu={(e, s) => setCtxMenu({ x: e.clientX, y: e.clientY, strip: s })}
           />
         ))}
       </div>
+
+      {ctxMenu && (
+        <StripContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          strip={ctxMenu.strip}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
 
       {/* Add strip footer */}
       <div className="sb-footer">

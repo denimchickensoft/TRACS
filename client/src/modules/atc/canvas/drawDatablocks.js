@@ -28,8 +28,8 @@ function fmtSpd(mps) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} view         { centerLat, centerLng, pixelsPerNm, width, height }
  * @param {Object} units        filtered visible units { [id]: unit }
- * @param {Object} ownership    { [unitId]: positionName }
- * @param {string} myPosition   this controller's positionName
+ * @param {Object} ownership    { [unitId]: controllerId }
+ * @param {string} myPosition   this controller's controllerId
  * @param {object} visual       profile.visual
  */
 export function drawDatablocks(ctx, view, units, ownership, myPosition, visual) {

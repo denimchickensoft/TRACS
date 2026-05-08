@@ -235,6 +235,11 @@ function CaseField({ suffix, value, onChange }) {
   )
 }
 
+const SB_SCALE_KEY  = 'tracs.sb.scale'
+const SCALE_MIN     = 0.5
+const SCALE_MAX     = 2.0
+const SCALE_STEP    = 0.05
+
 // ── Main component ────────────────────────────────────────────────────────────
 export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide }) {
   const {
@@ -243,8 +248,28 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     entries, setHeader, addEntry, updateEntry, removeEntry, moveEntry,
   } = useStatusBoardStore()
 
-  const [sortField, setSortField] = useState(null)
-  const [sortDir,   setSortDir]   = useState('asc')
+  const [sortField,  setSortField]  = useState(null)
+  const [sortDir,    setSortDir]    = useState('asc')
+  const [scale,      setScale]      = useState(() => {
+    const saved = parseFloat(localStorage.getItem(SB_SCALE_KEY))
+    return isNaN(saved) ? 1.0 : Math.min(SCALE_MAX, Math.max(SCALE_MIN, saved))
+  })
+  const [scaleHint,  setScaleHint]  = useState(false)
+  const scaleHintRef = useRef(null)
+
+  const handleTitleWheel = (e) => {
+    e.preventDefault()
+    setScale((prev) => {
+      const next = Math.min(SCALE_MAX, Math.max(SCALE_MIN,
+        parseFloat((prev - Math.sign(e.deltaY) * SCALE_STEP).toFixed(2))
+      ))
+      localStorage.setItem(SB_SCALE_KEY, String(next))
+      clearTimeout(scaleHintRef.current)
+      setScaleHint(true)
+      scaleHintRef.current = setTimeout(() => setScaleHint(false), 1200)
+      return next
+    })
+  }
 
   const units       = useUnitsStore((s) => s.units)
   const coalition   = useSessionStore((s) => s.coalition)
@@ -351,14 +376,17 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     useCorrelationStore.getState().setAll(newCorrelations)
   }, [entries, visibleUnits])
 
-  const style = docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }
+  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
 
   return (
     <div className="sb" style={style}>
       {docked && <div className="sb-resize-handle" onMouseDown={onResize} />}
-      <div className="sb-title">
+      <div className="sb-title" onWheel={handleTitleWheel}>
         <span className="sb-title-time">{missionTime}</span>
         <span className="sb-title-text">CATCC Status Board</span>
+        {scaleHint && (
+          <span className="sb-title-scale-hint">{Math.round(scale * 100)}%</span>
+        )}
         <span className="sb-title-right">
           <span className="sb-title-date">{missionDateStr}</span>
           {docked  && onUndock && <button className="sb-dock-btn" onClick={onUndock} title="Undock">⬡</button>}

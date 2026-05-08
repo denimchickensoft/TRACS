@@ -7,7 +7,10 @@ import AtcScope          from './modules/atc/AtcScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard }   from './modules/catcc/StatusBoard'
 import { StripBay }      from './components/StripBay/StripBay'
+import { ControllerList } from './components/ControllerList/ControllerList'
 import { disconnectWebrtc } from './webrtc/client'
+
+const CL_VISIBLE_KEY = 'tracs.cl.visible'
 
 const PROFILE_STORAGE_KEY = 'tracs.lastProfile'
 const DEFAULT_PROFILE     = 'simple'
@@ -34,6 +37,11 @@ export function App() {
   const peers            = useSessionStore((s) => s.peers)
   const resetPosition    = useSessionStore((s) => s.resetPosition)
 
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const [clVisible, setClVisible] = useState(() => localStorage.getItem(CL_VISIBLE_KEY) === 'true')
+  const [clDocked,  setClDocked]  = useState(true)
+  const clPopupRef = useRef(null)
+
   const { loadManifest, loadProfile, availableProfiles, activeProfileId, activeProfile } = useOdsStore()
   const myEntry = useControllersStore((s) => s.registry[positionName])
 
@@ -45,6 +53,20 @@ export function App() {
   useEffect(() => {
     if (activeProfileId) localStorage.setItem(PROFILE_STORAGE_KEY, activeProfileId)
   }, [activeProfileId])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault()
+        setClVisible((v) => {
+          localStorage.setItem(CL_VISIBLE_KEY, String(!v))
+          return !v
+        })
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   // ── Status board dock/resize/visibility state ──────────────────────
   const [sbDocked,  setSbDocked]  = useState(true)
@@ -128,6 +150,22 @@ export function App() {
     }, 500)
   }, [])
 
+  const handleClUndock = useCallback(() => {
+    const { facilityId, facilityName: facName } = useSessionStore.getState()
+    const params = new URLSearchParams({ window: 'cl', facilityId, facilityName: facName }).toString()
+    const popup = window.open(`/?${params}`, 'tracs-cl', 'width=360,height=520,resizable=yes')
+    if (!popup) return
+    clPopupRef.current = popup
+    setClDocked(false)
+    const id = setInterval(() => {
+      if (popup.closed) {
+        setClDocked(true)
+        clPopupRef.current = null
+        clearInterval(id)
+      }
+    }, 500)
+  }, [])
+
   if (!positionSet) return <Login />
 
   const hasAtc   = activeModule === MODULE.ATC
@@ -183,25 +221,69 @@ export function App() {
         {/* Right side: Change Position + profile switcher */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
 
-          <button
-            onClick={() => { disconnectWebrtc(); resetPosition() }}
-            style={{
-              background:    'transparent',
-              border:        '1px solid #333',
-              borderRadius:  '2px',
-              color:         '#555',
-              fontFamily:    'inherit',
-              fontSize:      'inherit',
-              letterSpacing: 'inherit',
-              padding:       '1px 8px',
-              cursor:        'pointer',
-              textTransform: 'uppercase',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
-          >
-            Change Position
-          </button>
+          {confirmingReset ? (
+            <>
+              <span style={{ color: '#888' }}>Change Position?</span>
+              <button
+                onClick={() => { disconnectWebrtc(); resetPosition() }}
+                style={{
+                  background:    '#3a1a1a',
+                  border:        '1px solid #662222',
+                  borderRadius:  '2px',
+                  color:         '#cc4444',
+                  fontFamily:    'inherit',
+                  fontSize:      'inherit',
+                  letterSpacing: 'inherit',
+                  padding:       '1px 8px',
+                  cursor:        'pointer',
+                  textTransform: 'uppercase',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#994444'; e.currentTarget.style.color = '#ee6666' }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#662222'; e.currentTarget.style.color = '#cc4444' }}
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmingReset(false)}
+                style={{
+                  background:    'transparent',
+                  border:        '1px solid #333',
+                  borderRadius:  '2px',
+                  color:         '#555',
+                  fontFamily:    'inherit',
+                  fontSize:      'inherit',
+                  letterSpacing: 'inherit',
+                  padding:       '1px 8px',
+                  cursor:        'pointer',
+                  textTransform: 'uppercase',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirmingReset(true)}
+              style={{
+                background:    'transparent',
+                border:        '1px solid #333',
+                borderRadius:  '2px',
+                color:         '#555',
+                fontFamily:    'inherit',
+                fontSize:      'inherit',
+                letterSpacing: 'inherit',
+                padding:       '1px 8px',
+                cursor:        'pointer',
+                textTransform: 'uppercase',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
+            >
+              Change Position
+            </button>
+          )}
 
           {hasAtc && availableProfiles.map((p) => (
             <button
@@ -298,6 +380,23 @@ export function App() {
         {!hasAtc && !hasCatcc && (
           <div style={{ color: '#333', fontFamily: 'Roboto Mono, monospace', padding: '40px', fontSize: '0.8rem' }}>
             No active display module.
+          </div>
+        )}
+
+        {clDocked && (
+          <ControllerList
+            visible={clVisible}
+            onClose={() => { setClVisible(false); localStorage.setItem(CL_VISIBLE_KEY, 'false') }}
+            onUndock={handleClUndock}
+          />
+        )}
+        {!clDocked && (
+          <div
+            title="Controller list is in a separate window"
+            onClick={() => { if (clPopupRef.current && !clPopupRef.current.closed) clPopupRef.current.focus() }}
+            style={{ position: 'absolute', top: 8, right: 8, zIndex: 900, background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '2px', cursor: 'pointer', padding: '3px 7px', fontFamily: 'Roboto Mono, monospace', fontSize: '8px', letterSpacing: '0.1em', color: '#444', textTransform: 'uppercase', userSelect: 'none' }}
+          >
+            Controllers ↗
           </div>
         )}
       </div>

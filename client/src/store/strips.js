@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { syncStore } from '../utils/storeSync.js'
 
 // What caused the auto-add — drives the highlight color
 export const STRIP_HIGHLIGHT = {
@@ -33,8 +32,9 @@ const DEFAULT_SETTINGS = {
   autoAddOnTrack:       true,
   autoAddOnHandoff:     true,
   autoAddOnStripPass:   true,
+  ignoreStripPasses:    false,   // reject all incoming strip passes
   autoAddOnDepMatch:    false,
-  depAirports:          [],   // e.g. ['UGKO', 'UGKO']
+  depAirports:          [],
   autoAddOnDestMatch:   false,
   destAirports:         [],
   deleteOnDropTrack:    false,
@@ -206,16 +206,3 @@ export const useStripsStore = create((set, get) => ({
   reset: () => set({ strips: {}, bays: [{ ...DEFAULT_BAY }] }),
 }))
 
-syncStore(useStripsStore, 'tracs-strips', (s) => ({
-  strips: s.strips,
-  bays:   s.bays,
-  conflictResolution: s.conflictResolution,
-  autoAddOnTrack:     s.autoAddOnTrack,
-  autoAddOnHandoff:   s.autoAddOnHandoff,
-  autoAddOnStripPass: s.autoAddOnStripPass,
-  autoAddOnDepMatch:  s.autoAddOnDepMatch,
-  depAirports:        s.depAirports,
-  autoAddOnDestMatch: s.autoAddOnDestMatch,
-  destAirports:       s.destAirports,
-  deleteOnDropTrack:  s.deleteOnDropTrack,
-}))

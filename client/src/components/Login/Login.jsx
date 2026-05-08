@@ -116,6 +116,7 @@ function PositionPhase({ onSignedIn }) {
   const {
     airbases, mission,
     setPosition, setFacility, setActiveModule, setPositionSet, setAicConfig, reset,
+    webrtcRejection, clearWebrtcRejection,
   } = useSessionStore()
   const { positionTypes, loadPositionTypes, registerController } = useControllersStore()
 
@@ -161,6 +162,14 @@ function PositionPhase({ onSignedIn }) {
 
   const [error,     setError]     = useState(null)
   const [signingIn, setSigningIn] = useState(false)
+
+  // Display and clear any rejection message from a previous sign-on attempt
+  useEffect(() => {
+    if (webrtcRejection) {
+      setError(webrtcRejection)
+      clearWebrtcRejection()
+    }
+  }, []) // eslint-disable-line
 
   // Load position types + ICAO mapping
   useEffect(() => {
@@ -293,7 +302,7 @@ function PositionPhase({ onSignedIn }) {
     return !isNaN(n) && (isVhf || isUhf)
   }
 
-  function handleSignIn(e) {
+  async function handleSignIn(e) {
     e.preventDefault()
     setError(null)
 
@@ -312,6 +321,36 @@ function PositionPhase({ onSignedIn }) {
       if (!aicCallsign.trim())          { setError('Callsign is required.');                                                      return }
       if (!aicFrequency.trim())         { setError('Frequency is required.');                                                     return }
       if (!validateFreq(aicFrequency))  { setError('Frequency must be VHF (118.000–136.975) or UHF (225.000–399.975).');         return }
+    }
+
+    // Pre-flight frequency deconfliction against the server's current client list.
+    // Same facility+suffix = same controllerId = allowed to share a frequency.
+    const freqCheck = selectedModule === MODULE.ATC   ? parseFloat(frequency).toFixed(3)
+                    : selectedModule === MODULE.CATCC  ? parseFloat(catccFrequency).toFixed(3)
+                    :                                    parseFloat(aicFrequency).toFixed(3)
+    const facCheck  = selectedModule === MODULE.ATC   ? facilityId.toUpperCase()
+                    : selectedModule === MODULE.CATCC  ? catccFacilityId
+                    :                                    aicCallsign.trim().toUpperCase()
+    const sufCheck  = selectedModule === MODULE.ATC   ? suffix
+                    : selectedModule === MODULE.CATCC  ? catccSuffix
+                    :                                    'AIC'
+    try {
+      const res = await fetch('/api/state/session')
+      if (res.ok) {
+        const state = await res.json()
+        const peers = state.clientList ?? []
+        const conflict = peers.find((c) => {
+          if (!c.frequency) return false
+          if (parseFloat(c.frequency).toFixed(3) !== freqCheck) return false
+          return c.facility !== facCheck || c.suffix !== sufCheck
+        })
+        if (conflict) {
+          setError(`Frequency ${freqCheck} MHz is already in use by ${conflict.position}.`)
+          return
+        }
+      }
+    } catch {
+      // Pre-flight unavailable — proceed; the host's HANDSHAKE check is the fallback.
     }
 
     setSigningIn(true)
@@ -407,7 +446,19 @@ function PositionPhase({ onSignedIn }) {
       rtcPosition  = aicCallsign.trim().toUpperCase()
       rtcFrequency = parseFloat(aicFrequency).toFixed(3)
     }
-    initWebrtc({ olympusUrl, password: sessionPassword, position: rtcPosition, module: selectedModule, frequency: rtcFrequency })
+    let rtcFacility = ''
+    let rtcSuffix   = ''
+    if (selectedModule === MODULE.ATC) {
+      rtcFacility = facilityId.toUpperCase()
+      rtcSuffix   = suffix
+    } else if (selectedModule === MODULE.CATCC) {
+      rtcFacility = catccFacilityId
+      rtcSuffix   = catccSuffix
+    } else if (selectedModule === MODULE.AIC) {
+      rtcFacility = aicCallsign.trim().toUpperCase()
+      rtcSuffix   = 'AIC'
+    }
+    initWebrtc({ olympusUrl, password: sessionPassword, position: rtcPosition, module: selectedModule, frequency: rtcFrequency, facility: rtcFacility, suffix: rtcSuffix })
   }
 
   return (

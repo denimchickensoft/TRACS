@@ -85,9 +85,12 @@ export const useMapsStore = create((set, get) => ({
   visible:      {},    // { [index]: bool, lbl: bool }
   theatre:      null,
   loading:      false,
+  _lastLoadKey: null,
 
   loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null) => {
     if (!theatre) return
+    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}`
+    if (get()._lastLoadKey === loadKey) return
     set({ loading: true })
     try {
       if (!serverCache[theatre]) {
@@ -108,7 +111,7 @@ export const useMapsStore = create((set, get) => ({
         ? (() => { const v = { lbl: false }; maps.forEach((_, i) => { v[i] = false }); return v })()
         : get().visible
 
-      set({ maps, theaterStyle, visible, theatre, loading: false })
+      set({ maps, theaterStyle, visible, theatre, loading: false, _lastLoadKey: loadKey })
       console.log(`[maps] ${theatre}: ${theaterStyle}, suffix=${suffix || 'none'}, ${maps.length} groups (${Math.min(maps.length, 5)} main, ${Math.max(0, maps.length - 5)} submenu)`)
     } catch (err) {
       console.error('[maps] load error:', err.message)

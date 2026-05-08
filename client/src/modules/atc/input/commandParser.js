@@ -92,6 +92,11 @@ const COMMANDS = [
   { id: 'QUICK_LOOK_TCP',       pattern: /^\*\*([A-Z0-9]+)$/,     trigger: 'SLEW',  captures: ['tcp'] },
   { id: 'QUICK_LOOK_ALL',       pattern: /^\*\*ALL$/,             trigger: 'SLEW'  },
 
+  // ── Minimum separation ──────────────────────────────────────────
+  // Must precede SET_SP1 — "MIN" matches the 3-char scratchpad pattern
+  { id: 'MIN_INIT',             pattern: /^MIN$/,                trigger: 'SLEW'  },
+  { id: 'MIN_CLEAR',            pattern: /^MIN$/,                trigger: 'ENTER' },
+
   // ── Scratchpads ─────────────────────────────────────────────────
   // SP1 via MF Y
   { id: 'SET_SP1_MF',           pattern: /^MF Y(.+)$/,            trigger: 'SLEW',  captures: ['sp'] },
@@ -100,9 +105,9 @@ const COMMANDS = [
   { id: 'SET_SP2_MF',           pattern: /^MF Y\+(.+)$/,          trigger: 'SLEW',  captures: ['sp'] },
   { id: 'CLEAR_SP2_MF',         pattern: /^MF Y\+$/,              trigger: 'SLEW'  },
   // SP1 shorthand: (text) + SLEW
-  { id: 'SET_SP1',              pattern: /^([A-Z0-9/]{1,6})$/,    trigger: 'SLEW',  captures: ['sp'] },
+  { id: 'SET_SP1',              pattern: /^([A-Z0-9/]{3,4})$/,    trigger: 'SLEW',  captures: ['sp'] },
   // SP2 shorthand: +(text) + SLEW
-  { id: 'SET_SP2',              pattern: /^\+([A-Z0-9/]{1,6})$/,  trigger: 'SLEW',  captures: ['sp'] },
+  { id: 'SET_SP2',              pattern: /^\+([A-Z0-9/]{3,4})$/,  trigger: 'SLEW',  captures: ['sp'] },
   // Clear SP1: . + SLEW
   { id: 'CLEAR_SP1',            pattern: /^\.$/,                  trigger: 'SLEW'  },
   // Clear SP2: + + SLEW
@@ -113,6 +118,13 @@ const COMMANDS = [
   { id: 'SET_ALT_REPORTED',     pattern: /^(\d{3})$/,             trigger: 'SLEW',  captures: ['alt'] },
   // Assigned altitude: +(###) + SLEW
   { id: 'SET_ALT_ASSIGNED',     pattern: /^\+(\d{3})$/,           trigger: 'SLEW',  captures: ['alt'] },
+
+  // ── Range bearing line ──────────────────────────────────────────
+  // *T + ENTER → clear all RBLs; *Tn + ENTER → clear RBL #n
+  // *T + SLEW  → initiate RBL (P0 = slew target or click position)
+  { id: 'RBL_CLEAR_ALL',        pattern: /^\*T$/,                 trigger: 'ENTER' },
+  { id: 'RBL_CLEAR_N',          pattern: /^\*T(\d+)$/,            trigger: 'ENTER', captures: ['n'] },
+  { id: 'RBL_INIT',             pattern: /^\*T$/,                 trigger: 'SLEW'  },
 
   // ── Context-sensitive bare slew — MUST be last ──────────────────
   { id: 'BARE_SLEW',            pattern: /^$/,                    trigger: 'SLEW'  },

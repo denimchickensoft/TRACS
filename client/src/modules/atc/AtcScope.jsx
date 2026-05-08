@@ -11,6 +11,8 @@ import { rangeToPixelsPerNm, canvasToLatLng } from './canvas/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
 import { drawContacts }         from './canvas/drawContacts.js'
+import { drawRbls }             from './canvas/drawRbls.js'
+import { drawMinSep }          from './canvas/drawMinSep.js'
 import { drawMaps }                   from './canvas/drawMaps.js'
 import { drawExtendedCenterlines }    from './canvas/drawExtendedCenterlines.js'
 import { drawObstructions }           from './canvas/drawObstructions.js'
@@ -45,12 +47,17 @@ export default function AtcScope() {
   const ringCanvasRef    = useRef(null)
   const compassCanvasRef = useRef(null)
   const ctxCanvasRef     = useRef(null)
+  const rblCanvasRef     = useRef(null)
   const interactiveRef   = useRef(null)
 
   const units        = useUnitsStore((s) => s.units)
   const ownership    = useAtcStore((s) => s.ownership)
+  const handoffs     = useAtcStore((s) => s.handoffs)
+  const blinkTracks  = useAtcStore((s) => s.blinkTracks)
+  const displayFdb   = useAtcStore((s) => s.displayFdb)
   const coalition    = useSessionStore((s) => s.coalition)
   const positionName = useSessionStore((s) => s.positionName)
+  const myControllerId = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
   const mission         = useSessionStore((s) => s.mission)
   const airbases        = useSessionStore((s) => s.airbases)
   const facilityDcsName  = useSessionStore((s) => s.facilityDcsName)
@@ -63,7 +70,6 @@ export default function AtcScope() {
   const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
   const obstructions  = useRunwaysStore((s) => s.obstructions)
   const obstVisible   = useRunwaysStore((s) => s.obstVisible)
-  const getPositionSymbol = useControllersStore((s) => s.getPositionSymbol)
 
   const displayStore   = useDisplayStore()
   const windowSettings = displayStore.windows[WINDOW_ID]
@@ -72,10 +78,27 @@ export default function AtcScope() {
 
   const [view,       setView]      = useState(null)
   const [dcbVisible, setDcbVisible] = useState(true)
+  const [slewedPdbs, setSlewedPdbs] = useState(() => new Set())
+  // Tick every 200ms to drive symbol blink redraws
+  const [blinkTick, setBlinkTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setBlinkTick((t) => t + 1), 200)
+    return () => clearInterval(id)
+  }, [])
 
-  const viewRef   = useRef(null)    // always-current view for event handlers
-  const panRef    = useRef({ dragging: false, startX: 0, startY: 0, lastX: 0, lastY: 0 })
-  const historyRef = useRef({})
+  const handlePdbToggle = useCallback((uid) => {
+    setSlewedPdbs((prev) => {
+      const next = new Set(prev)
+      if (next.has(uid)) next.delete(uid)
+      else next.add(uid)
+      return next
+    })
+  }, [])
+
+  const viewRef      = useRef(null)    // always-current view for event handlers
+  const panRef       = useRef({ dragging: false, startX: 0, startY: 0, lastX: 0, lastY: 0 })
+  const historyRef   = useRef({})
+  const rblCursorRef = useRef(null)    // canvas-pixel cursor pos during RBL_P2 preview
 
   // Keep viewRef in sync
   useEffect(() => { viewRef.current = view }, [view])
@@ -94,12 +117,15 @@ export default function AtcScope() {
     const map = {}
     for (const id of Object.keys(visibleUnits)) {
       const owner = ownership[String(id)]
-      const mine  = owner === positionName
-      const sym   = owner ? (getPositionSymbol(owner) ?? '*') : '*'
+      // Treat as "mine" if owned by me, or if I have a sticky FDB (post-handoff sender)
+      const mine  = owner === myControllerId || !!displayFdb[String(id)]
+      // 2-char ID in either order (e.g. "1A" or "A1") — extract the letter
+      const m   = owner?.length === 2 ? owner.match(/[A-Z]/) : null
+      const sym = m ? m[0] : '*'
       map[id] = { sym, mine }
     }
     return map
-  }, [visibleUnits, ownership, positionName, getPositionSymbol])
+  }, [visibleUnits, ownership, displayFdb, myControllerId])
 
   // ── Load presets from server on mount; apply default if set ──────
   useEffect(() => {
@@ -167,7 +193,7 @@ export default function AtcScope() {
     const ro = new ResizeObserver(() => {
       const w = container.clientWidth
       const h = container.clientHeight
-      for (const ref of [mapCanvasRef, ringCanvasRef, compassCanvasRef, ctxCanvasRef]) {
+      for (const ref of [mapCanvasRef, ringCanvasRef, compassCanvasRef, ctxCanvasRef, rblCanvasRef]) {
         if (ref.current) { ref.current.width = w; ref.current.height = h }
       }
       setView(buildView())
@@ -314,18 +340,71 @@ export default function AtcScope() {
     if (!view || !ctxCanvasRef.current || !activeProfile) return
     const ptlOpts = (activeProfile.features?.PTL && windowSettings?.ptlMode)
       ? { minutes: windowSettings?.ptlLength ?? 2, mode: windowSettings?.ptlMode,
-          ownership, myPosition: positionName }
+          ownership, myPosition: myControllerId }
       : null
+
+    // Units whose symbol should blink: incoming HO to me, or active post-accept timer
+    const now = Date.now()
+    const blinkingUids = new Set()
+    for (const [uid, ho] of Object.entries(handoffs)) {
+      if (ho.to === myControllerId) blinkingUids.add(String(uid))
+    }
+    for (const [uid, expiresAt] of Object.entries(blinkTracks)) {
+      if (now < expiresAt) blinkingUids.add(String(uid))
+    }
+
+    const ctx = ctxCanvasRef.current.getContext('2d')
     drawContacts(
-      ctxCanvasRef.current.getContext('2d'), view,
+      ctx, view,
       visibleUnits, historyRef.current, activeProfile.visual,
       symbolMap, (windowSettings?.britePos ?? 80) / 100, windowSettings?.csPos ?? 3,
       ptlOpts, windowSettings?.historyLength ?? 5, (windowSettings?.briteHst ?? 80) / 100,
+      blinkingUids, blinkOn,
     )
-  }, [visibleUnits, view, symbolMap, ownership, positionName,
+
+  }, [visibleUnits, view, symbolMap, ownership, handoffs, blinkTracks, blinkTick,
+      myControllerId, positionName,
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
       activeProfile])
+
+  // ── RBL layer — rAF loop for smooth cursor tracking ───────────────
+  useEffect(() => {
+    let rafId
+    let ctx = null
+    let hadContent = false
+
+    function loop() {
+      // Resolve ctx lazily — canvas doesn't exist on first render (component returns null)
+      if (!ctx) {
+        const canvas = rblCanvasRef.current
+        if (canvas) ctx = canvas.getContext('2d')
+      }
+
+      const view    = viewRef.current
+      const win     = useDisplayStore.getState().windows[WINDOW_ID]
+      const rbls    = win?.rbls    ?? []
+      const rblWip  = win?.rblWip  ?? null
+      const minSep  = win?.minSep  ?? null
+      const minWip  = win?.minWip  ?? null
+      const csTools = win?.csTools ?? 3
+      const hasContent = rbls.length > 0 || rblWip != null || minSep != null || minWip != null
+
+      if (ctx && (hasContent || hadContent)) {
+        const canvas = rblCanvasRef.current
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        if (view && hasContent) {
+          drawRbls(ctx, view, rbls, rblWip, rblCursorRef.current, visibleUnitsRef.current, csTools)
+          drawMinSep(ctx, view, minSep, minWip, rblCursorRef.current, visibleUnitsRef.current, csTools)
+        }
+      }
+      hadContent = hasContent
+      rafId = requestAnimationFrame(loop)
+    }
+
+    rafId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafId)
+  }, []) // eslint-disable-line
 
   // ── Command evaluation helper ─────────────────────────────────────
   const evaluateCommand = useCallback((trigger, canvasPos = null) => {
@@ -340,15 +419,30 @@ export default function AtcScope() {
       ? resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
       : null
 
+    const canvasLatLng = (trigger === 'SLEW' && canvasPos && viewRef.current)
+      ? canvasToLatLng(canvasPos.x, canvasPos.y, viewRef.current)
+      : null
+
     const canvasSize = canvasAreaRef.current
       ? { w: canvasAreaRef.current.clientWidth, h: canvasAreaRef.current.clientHeight }
       : null
 
-    dispatchAction(parsed, slewTarget, { positionName, canvasPos, canvasSize })
-  }, [positionName])
+    dispatchAction(parsed, slewTarget, { positionName, canvasPos, canvasSize, canvasLatLng })
+  }, [positionName]) // eslint-disable-line
 
   // ── ENTER key handler (from InputHandler) ─────────────────────────
   const handleEnter = useCallback(() => {
+    // When awaiting RBL second endpoint, ENTER with a non-empty buffer will resolve
+    // it as a typed fix/ACID once fixes are implemented.
+    if (windowSettings?.pendingAction === 'RBL_P2') {
+      const buf = usePreviewStore.getState().buffer.trim()
+      if (buf) {
+        // TODO: resolve buf as fix name → lat/lng and complete the RBL
+        usePreviewStore.getState().setResponse('FIX N/I')
+        return
+      }
+    }
+
     const pending = usePresetsStore.getState().pendingMode
     if (pending?.type === 'name') {
       const name = usePreviewStore.getState().buffer.trim()
@@ -369,7 +463,17 @@ export default function AtcScope() {
       return
     }
     evaluateCommand('ENTER')
-  }, [evaluateCommand])
+  }, [evaluateCommand, windowSettings?.pendingAction])
+
+  // ── ESC handler ───────────────────────────────────────────────────
+  const handleEsc = useCallback(() => {
+    const pending = useDisplayStore.getState().windows[WINDOW_ID]?.pendingAction
+    if (pending === 'RBL_P2') {
+      displayStore.updateWindow(WINDOW_ID, { pendingAction: null, rblWip: null })
+    } else if (pending === 'MIN_P2') {
+      displayStore.updateWindow(WINDOW_ID, { pendingAction: null, minWip: null })
+    }
+  }, [displayStore])
 
   // ── Immediate action handler (DCB-style keys) ─────────────────────
   const handleImmediateAction = useCallback((action) => {
@@ -395,6 +499,9 @@ export default function AtcScope() {
   }, [])
 
   const handleMouseMove = useCallback((e) => {
+    const rect = interactiveRef.current?.getBoundingClientRect()
+    if (rect) rblCursorRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+
     if (!panRef.current.dragging || !viewRef.current || !windowSettings) return
     const dx = e.clientX - panRef.current.lastX
     const dy = e.clientY - panRef.current.lastY
@@ -434,7 +541,7 @@ export default function AtcScope() {
         if (target) {
           const aid      = resolveCallsign(target.unit)
           const owner    = useAtcStore.getState().ownership[target.unitId]
-          const readOnly = !!(owner && owner !== positionName)
+          const readOnly = !!(owner && owner !== myControllerId)
           useFpeStore.getState().openFpe({ aid, unitId: target.unitId, readOnly })
         }
       }
@@ -459,6 +566,64 @@ export default function AtcScope() {
         return
       }
 
+      if (pending === 'RBL_P2' && viewRef.current) {
+        const rblWip = windowSettings?.rblWip
+        if (!rblWip) { displayStore.updateWindow(WINDOW_ID, { pendingAction: null }); return }
+        const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+        const p1 = target
+          ? { unitId: String(target.unitId) }
+          : canvasToLatLng(canvasPos.x, canvasPos.y, viewRef.current)
+        const currentRbls = windowSettings?.rbls ?? []
+        displayStore.updateWindow(WINDOW_ID, {
+          rbls:          [...currentRbls, { p0: rblWip.p0, p1 }],
+          rblWip:        null,
+          pendingAction: null,
+        })
+        usePreviewStore.getState().clearAfterCommand()
+        return
+      }
+
+      if (pending === 'MIN_P2' && viewRef.current) {
+        const minWip = windowSettings?.minWip
+        if (!minWip) { displayStore.updateWindow(WINDOW_ID, { pendingAction: null }); return }
+        const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+        if (!target) return  // MIN requires a track; ignore empty-space clicks
+        const ac1 = String(target.unitId)
+        if (ac1 === minWip.ac0) return  // same track, ignore
+        displayStore.updateWindow(WINDOW_ID, {
+          minSep: { ac0: minWip.ac0, ac1 },
+          minWip: null,
+          pendingAction: null,
+        })
+        usePreviewStore.getState().clearAfterCommand()
+        return
+      }
+
+      // Bare-slew handling — only when the buffer is empty (no command pending).
+      if (viewRef.current && !usePreviewStore.getState().buffer.trim()) {
+        const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+        if (target) {
+          const atcState = useAtcStore.getState()
+          const uid      = String(target.unitId)
+          const owner    = atcState.ownership[uid]
+          const hoTo     = atcState.handoffs[uid]?.to
+
+          // Sender dismissing sticky FDB: clear it, stop blink, expand to slewed PDB
+          if (atcState.displayFdb[uid]) {
+            atcState.clearDisplayFdb(uid)
+            atcState.clearBlinkTrack(uid)
+            if (!slewedPdbs.has(uid)) handlePdbToggle(uid)
+            return
+          }
+
+          // PDB toggle: another controller's track, no pending handoff to me
+          if (owner && owner !== myControllerId && hoTo !== myControllerId) {
+            handlePdbToggle(uid)
+            return
+          }
+        }
+      }
+
       evaluateCommand('SLEW', canvasPos)
     }
     if (e.button === 1) {
@@ -478,6 +643,14 @@ export default function AtcScope() {
     const newRange = Math.max(6, Math.min(256, windowSettings.rangeNm + delta))
     displayStore.updateWindow(WINDOW_ID, { rangeNm: newRange })
   }, [windowSettings, displayStore])
+
+  // Attach wheel listener as non-passive so preventDefault() works
+  useEffect(() => {
+    const el = interactiveRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   if (!windowSettings || !activeProfile) return null
 
@@ -507,6 +680,10 @@ export default function AtcScope() {
 
   const dcbPos = windowSettings.dcbPosition ?? 'top'
 
+  // Computed once per render — shared by both canvas effect (closure) and SVG overlay (prop)
+  // so the symbol letter and datablock always blink from the same value in the same frame.
+  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0
+
   return (
     <div className="atc-scope" data-dcb-pos={dcbVisible && activeProfile.dcb ? dcbPos : undefined} style={{ background: bgColor }}>
       {dcbVisible && activeProfile.dcb && <Dcb profile={activeProfile} briteDcb={briteDcb} csDcb={csDcb} />}
@@ -516,12 +693,15 @@ export default function AtcScope() {
         <canvas ref={ringCanvasRef}    className="atc-layer" />
         <canvas ref={compassCanvasRef} className="atc-layer" />
         <canvas ref={ctxCanvasRef}     className="atc-layer" />
+        <canvas ref={rblCanvasRef}     className="atc-layer" />
 
         <DatablockOverlay
           units={visibleUnits} view={view} visual={activeProfile.visual}
           ldrLength={ldrLength} ldrAngleDeg={ldrAngleDeg}
           briteFdb={briteFdb} briteLdb={briteLdb}
           csDatablocks={csDatablocks}
+          slewedPdbs={slewedPdbs}
+          blinkOn={blinkOn}
         />
 
         <div
@@ -531,7 +711,6 @@ export default function AtcScope() {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={() => { panRef.current.dragging = false }}
-          onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()}
         />
 
@@ -553,6 +732,7 @@ export default function AtcScope() {
       <InputHandler
         onEnter={handleEnter}
         onImmediateAction={handleImmediateAction}
+        onEsc={handleEsc}
       />
     </div>
   )

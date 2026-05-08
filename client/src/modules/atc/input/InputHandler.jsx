@@ -20,7 +20,7 @@ import { matchStarsKey, isTypedInput } from './starsKeys.js'
  *   - ENTER             → trigger ENTER-type command evaluation (via callback)
  *   - Immediate actions → fire onImmediateAction callback
  */
-export function InputHandler({ onEnter, onImmediateAction }) {
+export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
   const preview     = usePreviewStore()
   const positionName = useSessionStore((s) => s.positionName)
 
@@ -30,9 +30,10 @@ export function InputHandler({ onEnter, onImmediateAction }) {
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
-      // ESC — clear buffer
+      // ESC — cancel any pending mode, then clear buffer
       if (e.key === 'Escape') {
         e.preventDefault()
+        onEsc?.()
         preview.clear()
         return
       }

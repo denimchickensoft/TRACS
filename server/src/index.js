@@ -91,6 +91,23 @@ app.get('/api/maps', async (req, res) => {
   }
 })
 
+// GET /api/turn-credentials — ICE server list for WebRTC peers
+// Set TURN_URL / TURN_USER / TURN_PASS env vars to include a TURN relay.
+app.get('/api/turn-credentials', (req, res) => {
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ]
+  if (process.env.TURN_URL) {
+    iceServers.push({
+      urls:       process.env.TURN_URL,
+      username:   process.env.TURN_USER ?? '',
+      credential: process.env.TURN_PASS ?? '',
+    })
+  }
+  res.json({ iceServers })
+})
+
 // GET /api/status
 app.get('/api/status', (req, res) => {
   res.json({ polling: olympus.isPolling() })
@@ -186,7 +203,70 @@ app.get('*', (req, res) => {
 // ─── HTTP + WS server ────────────────────────────────────────────────────────
 
 const server = http.createServer(app)
-const wss = new WebSocketServer({ server, path: '/ws' })
+const wss       = new WebSocketServer({ noServer: true })
+const signalWss = new WebSocketServer({ noServer: true })
+
+// Route WebSocket upgrade requests by path so both servers share one HTTP port.
+server.on('upgrade', (req, socket, head) => {
+  const { pathname } = new URL(req.url, 'http://localhost')
+  if (pathname === '/ws') {
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req))
+  } else if (pathname === '/signal') {
+    signalWss.handleUpgrade(req, socket, head, (ws) => signalWss.emit('connection', ws, req))
+  } else {
+    socket.destroy()
+  }
+})
+
+// ─── Trystero signal relay ───────────────────────────────────────────────────
+// Simple WebSocket pub/sub broker implementing the @trystero-p2p/ws-relay
+// server protocol. Browsers connect here instead of public Nostr relays so
+// signaling is local and reliable for LAN/offline deployments.
+const signalTopics = new Map()      // topic → Set<WebSocket>
+const signalSocks  = new WeakMap()  // WebSocket → Set<topic>
+
+function sigSubscribe(ws, topic) {
+  let subs = signalTopics.get(topic)
+  if (!subs) { subs = new Set(); signalTopics.set(topic, subs) }
+  subs.add(ws)
+  let mine = signalSocks.get(ws)
+  if (!mine) { mine = new Set(); signalSocks.set(ws, mine) }
+  mine.add(topic)
+}
+
+function sigUnsubscribe(ws, topic) {
+  signalSocks.get(ws)?.delete(topic)
+  const subs = signalTopics.get(topic)
+  if (!subs) return
+  subs.delete(ws)
+  if (subs.size === 0) signalTopics.delete(topic)
+}
+
+function sigPublish(topic, payload) {
+  const msg = JSON.stringify({ topic, payload })
+  const subs = signalTopics.get(topic)
+  if (!subs) return
+  for (const ws of subs) {
+    if (ws.readyState === ws.OPEN) ws.send(msg)
+  }
+}
+
+signalWss.on('connection', (ws) => {
+  ws.on('message', (raw) => {
+    let msg
+    try { msg = JSON.parse(Buffer.isBuffer(raw) ? raw.toString('utf8') : String(raw)) } catch { return }
+    if (!msg || typeof msg.topic !== 'string') return
+    if (msg.type === 'subscribe')                              sigSubscribe(ws, msg.topic)
+    else if (msg.type === 'unsubscribe')                       sigUnsubscribe(ws, msg.topic)
+    else if (msg.type === 'publish' && msg.payload !== undefined) sigPublish(msg.topic, msg.payload)
+  })
+  ws.on('close', () => {
+    for (const topic of signalSocks.get(ws) ?? []) sigUnsubscribe(ws, topic)
+  })
+  ws.on('error', (err) => {
+    if (err.code !== 'ECONNRESET') console.error('[signal] ws error:', err.message)
+  })
+})
 
 const clients = new Set()
 
@@ -229,6 +309,10 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     clients.delete(ws)
     console.log(`[ws] client disconnected (total: ${clients.size})`)
+    if (clients.size === 0) {
+      stateFiles.patch('session', { clientList: [] })
+      console.log('[ws] all clients gone — session clientList cleared')
+    }
   })
 
   ws.on('error', (err) => {
@@ -247,5 +331,9 @@ function broadcast(message) {
 }
 
 server.listen(PORT, () => {
+  // The signal relay is fresh on every start — any WebRTC peers from the previous
+  // run are gone. Clear the persisted clientList so pre-flight frequency checks
+  // don't reject new sign-ons based on stale entries.
+  stateFiles.patch('session', { clientList: [] })
   console.log(`TRACS server running on http://localhost:${PORT}`)
 })
