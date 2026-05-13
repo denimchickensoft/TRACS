@@ -32,6 +32,8 @@
       "lineWidth": 0.3
     },
 
+    "mapPolygonFill": 0,
+
     "symbol": {
       "shape":           "octagon",
       "diameter":        15,

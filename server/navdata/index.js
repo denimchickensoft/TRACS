@@ -114,6 +114,17 @@ function handleFrequencies(req, res) {
   } catch (err) { res.status(500).json({ error: err.message }) }
 }
 
+function handleCtrFacilities(req, res) {
+  if (!_ready) return notReady(res)
+  const { theatre } = req.query
+  if (!theatre) return res.status(400).json({ error: 'theatre is required' })
+  const folder = theatreFolder(theatre)
+  if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
+  const fp = path.join(CACHE_DIR, folder, 'ctrs.json')
+  if (!fs.existsSync(fp)) return res.status(404).json({ error: 'CTR data not built' })
+  try { res.json(JSON.parse(fs.readFileSync(fp, 'utf8'))) } catch (err) { res.status(500).json({ error: err.message }) }
+}
+
 function handleSector(req, res) {
   if (!_ready) return notReady(res)
   const { icao, role } = req.query
@@ -137,5 +148,6 @@ module.exports = {
   handleNavaids,
   handleProcedures,
   handleFrequencies,
+  handleCtrFacilities,
   handleSector,
 }

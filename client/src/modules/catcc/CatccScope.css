@@ -24,5 +24,44 @@
 }
 
 .catcc-interactive {
-  cursor: crosshair;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cline x1='0' y1='16' x2='11' y2='16' stroke='white' stroke-width='1'/%3E%3Cline x1='21' y1='16' x2='32' y2='16' stroke='white' stroke-width='1'/%3E%3Cline x1='16' y1='0' x2='16' y2='11' stroke='white' stroke-width='1'/%3E%3Cline x1='16' y1='21' x2='16' y2='32' stroke='white' stroke-width='1'/%3E%3Ccircle cx='16' cy='16' r='1.5' fill='white'/%3E%3C/svg%3E") 16 16, crosshair;
+  outline: none;
+}
+
+/* ── ODS preview area ──────────────────────────────────────────────────────── */
+.catcc-ods {
+  position: absolute;
+  bottom: 28px;
+  left: 50px;
+  min-width: 240px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  line-height: 16px;
+  color: #00dd55;
+  background: rgba(0, 0, 0, 0.80);
+  border-top: 1px solid rgba(0, 200, 60, 0.35);
+  border-right: 1px solid rgba(0, 200, 60, 0.35);
+  padding: 3px 7px 3px 6px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.catcc-ods-line {
+  white-space: pre;
+  color: rgba(0, 220, 80, 0.70);
+}
+
+.catcc-ods-input {
+  display: flex;
+  white-space: pre;
+  gap: 4px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.catcc-ods-cursor {
+  animation: blink 1.2s step-end infinite;
 }

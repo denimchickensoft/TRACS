@@ -7,6 +7,9 @@ resources/
 # Claude Code local settings
 .claude/
 
+# Spec documents — local reference only
+specs/
+
 # Environment and local config
 .env
 .env.local

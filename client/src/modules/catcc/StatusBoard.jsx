@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, memo, Fragment } from 'react'
+import { useWheelDirection } from '../../utils/wheel.js'
 import { useStatusBoardStore }  from '../../store/statusBoard.js'
 import { useCorrelationStore }  from '../../store/correlation.js'
 import { useUnitsStore }        from '../../store/units.js'
@@ -43,10 +44,15 @@ const COLUMNS = [
   { id: 'ata',    label: 'ATA',      field: 'ata',        w: 36,  maxLen: 4, digitsOnly: true, padZero: 4, timeValidate: true },
 ]
 
+// Pre-computed: editable columns in tab order, and index map by column id
+const EDITABLE_COLS    = COLUMNS.filter(c => !c.readOnly)
+const EDIT_COL_IDX_MAP = Object.fromEntries(EDITABLE_COLS.map((c, i) => [c.id, i]))
+
 // ── Inline-editable cell ──────────────────────────────────────────────────────
 const EditableCell = memo(function EditableCell({
   value, onCommit, maxLen, readOnly, inputW,
   digitsOnly = false, padZero = 0, decimalFmt = false, timeValidate = false, decimalValidate = false,
+  cellIdx, entryId, onInsertBelow,
 }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
@@ -73,6 +79,18 @@ const EditableCell = memo(function EditableCell({
     setDraft(v)
   }
 
+  const navigateTab = (shiftKey) => {
+    const idx = cellIdx
+    setTimeout(() => {
+      const cells = [...document.querySelectorAll('[data-sbcellidx]')]
+        .sort((a, b) => +a.dataset.sbcellidx - +b.dataset.sbcellidx)
+      const pos  = cells.findIndex(el => +el.dataset.sbcellidx === idx)
+      if (pos === -1) return
+      const next = cells[(pos + (shiftKey ? -1 : 1) + cells.length) % cells.length]
+      next?.click()
+    }, 0)
+  }
+
   if (editing) {
     return (
       <input
@@ -84,8 +102,10 @@ const EditableCell = memo(function EditableCell({
         onChange={handleChange}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === 'Enter')  { commit(); return }
-          if (e.key === 'Escape') { setEditing(false) }
+          if (e.key === 'Tab')                 { e.preventDefault(); commit(); navigateTab(e.shiftKey); return }
+          if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); commit(); onInsertBelow?.(); return }
+          if (e.key === 'Enter')               { commit(); return }
+          if (e.key === 'Escape')              { setEditing(false) }
         }}
       />
     )
@@ -94,7 +114,12 @@ const EditableCell = memo(function EditableCell({
   const invalid = (timeValidate && !isValidTime(value)) || (decimalValidate && !isValidDecimal(value))
   const cls = ['sb-cell', readOnly ? 'readonly' : '', !value ? 'empty' : '', invalid ? 'invalid' : ''].join(' ').trim()
   return (
-    <span className={cls} onClick={start}>
+    <span
+      className={cls}
+      data-sbcellidx={readOnly ? undefined : cellIdx}
+      data-sbentryid={readOnly ? undefined : entryId}
+      onClick={start}
+    >
       {value || ' '}
     </span>
   )
@@ -149,7 +174,7 @@ function useStabilityAlert(value, { threshold = 5, stabilityMs = 20000, circular
 }
 
 // ── Inline-editable header field ──────────────────────────────────────────────
-function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, timeValidate = false, flash = false }) {
+function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, timeValidate = false, flash = false, hdrIdx }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
 
@@ -169,6 +194,17 @@ function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, ma
     setDraft(v)
   }
 
+  const navigateHdrTab = (shiftKey) => {
+    const idx = hdrIdx
+    setTimeout(() => {
+      const fields = [...document.querySelectorAll('[data-sbhdridx]')]
+        .sort((a, b) => +a.dataset.sbhdridx - +b.dataset.sbhdridx)
+      const pos = fields.findIndex(el => +el.dataset.sbhdridx === idx)
+      if (pos === -1) return
+      fields[(pos + (shiftKey ? -1 : 1) + fields.length) % fields.length]?.click()
+    }, 0)
+  }
+
   return (
     <div className={['sb-field', flash ? 'sb-field--alert' : ''].filter(Boolean).join(' ')}>
       <span className="sb-label">{label}</span>
@@ -182,6 +218,7 @@ function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, ma
           onChange={handleChange}
           onBlur={commit}
           onKeyDown={(e) => {
+            if (e.key === 'Tab')    { e.preventDefault(); commit(); navigateHdrTab(e.shiftKey); return }
             if (e.key === 'Enter')  { commit(); return }
             if (e.key === 'Escape') { setEditing(false) }
           }}
@@ -189,6 +226,7 @@ function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, ma
       ) : (
         <span
           className={['sb-value', readOnly ? 'readonly' : '', !value ? 'empty' : '', (timeValidate && !isValidTime(value)) ? 'invalid' : '', flash ? 'alert' : ''].join(' ').trim()}
+          data-sbhdridx={readOnly ? undefined : hdrIdx}
           onClick={start}
         >
           {value || '——'}
@@ -199,12 +237,23 @@ function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, ma
 }
 
 // ── CASE L / CASE R field: renders "CASE [1-char] LAUNCH/RECOVERY" ────────────
-function CaseField({ suffix, value, onChange }) {
+function CaseField({ suffix, value, onChange, hdrIdx }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
 
   const start = () => { setDraft(value); setEditing(true) }
   const commit = () => { onChange(draft); setEditing(false) }
+
+  const navigateHdrTab = (shiftKey) => {
+    const idx = hdrIdx
+    setTimeout(() => {
+      const fields = [...document.querySelectorAll('[data-sbhdridx]')]
+        .sort((a, b) => +a.dataset.sbhdridx - +b.dataset.sbhdridx)
+      const pos = fields.findIndex(el => +el.dataset.sbhdridx === idx)
+      if (pos === -1) return
+      fields[(pos + (shiftKey ? -1 : 1) + fields.length) % fields.length]?.click()
+    }, 0)
+  }
 
   return (
     <div className="sb-field">
@@ -218,6 +267,7 @@ function CaseField({ suffix, value, onChange }) {
           onChange={(e) => setDraft(e.target.value.toUpperCase())}
           onBlur={commit}
           onKeyDown={(e) => {
+            if (e.key === 'Tab')    { e.preventDefault(); commit(); navigateHdrTab(e.shiftKey); return }
             if (e.key === 'Enter')  { commit(); return }
             if (e.key === 'Escape') { setEditing(false) }
           }}
@@ -225,6 +275,7 @@ function CaseField({ suffix, value, onChange }) {
       ) : (
         <span
           className={['sb-case-value', !value ? 'empty' : ''].join(' ').trim()}
+          data-sbhdridx={hdrIdx}
           onClick={start}
         >
           {value || '_'}
@@ -242,10 +293,11 @@ const SCALE_STEP    = 0.05
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide }) {
+  const wheelDir = useWheelDirection()
   const {
     event, launch, recovery, tz,
     caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn,
-    entries, setHeader, addEntry, updateEntry, removeEntry, moveEntry,
+    entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
   } = useStatusBoardStore()
 
   const [sortField,  setSortField]  = useState(null)
@@ -259,9 +311,11 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
 
   const handleTitleWheel = (e) => {
     e.preventDefault()
+    const dir = wheelDir(e)
+    if (dir === null) return
     setScale((prev) => {
       const next = Math.min(SCALE_MAX, Math.max(SCALE_MIN,
-        parseFloat((prev - Math.sign(e.deltaY) * SCALE_STEP).toFixed(2))
+        parseFloat((prev - dir * SCALE_STEP).toFixed(2))
       ))
       localStorage.setItem(SB_SCALE_KEY, String(next))
       clearTimeout(scaleHintRef.current)
@@ -364,6 +418,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     const newCorrelations = {}
     for (const entry of entries) {
       let uid = entry.unitId
+      if (uid && !visibleUnits[uid]) uid = null  // stale — unit was deleted and recreated
       if (!uid && entry.callsign) {
         for (const [id, unit] of Object.entries(visibleUnits)) {
           if (resolveCallsign(unit) === entry.callsign) { uid = id; break }
@@ -397,23 +452,23 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
 
       {/* ── Section 1: Event header ───────────────────────────────── */}
       <div className="sb-section">
-        <HeaderField label="EVENT"    value={event}    onChange={(v) => setHeader('event',    v)} inputW={18}  maxLen={2} />
-        <HeaderField label="LAUNCH"   value={launch}   onChange={(v) => setHeader('launch',   v)} inputW={32}  maxLen={4} digitsOnly timeValidate />
-        <HeaderField label="RECOVERY" value={recovery} onChange={(v) => setHeader('recovery', v)} inputW={32}  maxLen={4} digitsOnly timeValidate />
+        <HeaderField label="EVENT"    value={event}    onChange={(v) => setHeader('event',    v)} inputW={18}  maxLen={2}  hdrIdx={0} />
+        <HeaderField label="LAUNCH"   value={launch}   onChange={(v) => setHeader('launch',   v)} inputW={32}  maxLen={4}  digitsOnly timeValidate hdrIdx={1} />
+        <HeaderField label="RECOVERY" value={recovery} onChange={(v) => setHeader('recovery', v)} inputW={32}  maxLen={4}  digitsOnly timeValidate hdrIdx={2} />
         <HeaderField label="SUNRISE"  value={sunriseZ ?? '——'} onChange={() => {}} readOnly inputW={32} />
         <HeaderField label="SUNSET"   value={sunsetZ  ?? '——'} onChange={() => {}} readOnly inputW={32} />
         <HeaderField label="MAGVAR"   value={magvarStr} onChange={() => {}} readOnly inputW={36} />
-        <HeaderField label="TZ"       value={tz || autoTzStr} onChange={(v) => setHeader('tz', v)} inputW={24} maxLen={3} />
+        <HeaderField label="TZ"       value={tz || autoTzStr} onChange={(v) => setHeader('tz', v)} inputW={24} maxLen={3}  hdrIdx={3} />
       </div>
 
       {/* ── Section 2: Recovery status ────────────────────────────── */}
       <div className="sb-section">
-        <CaseField suffix="LAUNCH"   value={caseLaunch}   onChange={(v) => setHeader('caseLaunch',   v)} />
-        <CaseField suffix="RECOVERY" value={caseRecovery} onChange={(v) => setHeader('caseRecovery', v)} />
-        <HeaderField label="MAR BTN" value={marBtn}       onChange={(v) => setHeader('marBtn',       v)} inputW={22} maxLen={2} digitsOnly />
-        <HeaderField label="APP BTN" value={app}          onChange={(v) => setHeader('app',          v)} inputW={22} maxLen={2} digitsOnly />
-        <HeaderField label="TWR BTN" value={twrBtn}       onChange={(v) => setHeader('twrBtn',       v)} inputW={22} maxLen={2} digitsOnly />
-        <HeaderField label="DEP BTN" value={depBtn}       onChange={(v) => setHeader('depBtn',       v)} inputW={22} maxLen={2} digitsOnly />
+        <CaseField suffix="LAUNCH"   value={caseLaunch}   onChange={(v) => setHeader('caseLaunch',   v)} hdrIdx={4} />
+        <CaseField suffix="RECOVERY" value={caseRecovery} onChange={(v) => setHeader('caseRecovery', v)} hdrIdx={5} />
+        <HeaderField label="MAR BTN" value={marBtn}       onChange={(v) => setHeader('marBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={6} />
+        <HeaderField label="APP BTN" value={app}          onChange={(v) => setHeader('app',          v)} inputW={22} maxLen={2} digitsOnly hdrIdx={7} />
+        <HeaderField label="TWR BTN" value={twrBtn}       onChange={(v) => setHeader('twrBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={8} />
+        <HeaderField label="DEP BTN" value={depBtn}       onChange={(v) => setHeader('depBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={9} />
         <HeaderField label="BRC"     value={String(brc).padStart(3, '0')} onChange={() => {}} readOnly inputW={28} flash={brcAlert} />
         <HeaderField label="FB"      value={String(fb).padStart(3, '0')}  onChange={() => {}} readOnly inputW={28} flash={fbAlert} />
         <HeaderField label="SPD"     value={String(spd)}                  onChange={() => {}} readOnly inputW={24} flash={spdAlert} />
@@ -433,7 +488,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <div className="sb-th" />
 
           {/* Rows */}
-          {sortedEntries.map((entry) => (
+          {sortedEntries.map((entry, rowIdx) => (
             <Fragment key={entry.id}>
               {COLUMNS.map((col) => (
                 <div key={col.id} className="sb-td">
@@ -447,6 +502,17 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     decimalFmt={col.decimalFmt}
                     timeValidate={col.timeValidate}
                     decimalValidate={col.decimalValidate}
+                    cellIdx={col.readOnly ? undefined : rowIdx * EDITABLE_COLS.length + EDIT_COL_IDX_MAP[col.id]}
+                    entryId={col.readOnly ? undefined : entry.id}
+                    onInsertBelow={col.readOnly ? undefined : () => {
+                      const newId = useStatusBoardStore.getState().nextId
+                      insertEntryAfter(entry.id)
+                      setTimeout(() => {
+                        const cells = [...document.querySelectorAll(`[data-sbentryid="${newId}"][data-sbcellidx]`)]
+                          .sort((a, b) => +a.dataset.sbcellidx - +b.dataset.sbcellidx)
+                        cells[0]?.click()
+                      }, 0)
+                    }}
                     onCommit={(v) => {
                       if (!col.readOnly) updateEntry(entry.id, col.field, v)
                     }}

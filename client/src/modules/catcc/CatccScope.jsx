@@ -1,14 +1,14 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
+import { useWheelDirection } from '../../utils/wheel.js'
 import { useUnitsStore }         from '../../store/units.js'
 import { useSessionStore }       from '../../store/session.js'
 import { useDisplayStore }       from '../../store/display.js'
 import { useAtcStore }           from '../../store/atc.js'
-import { useControllersStore }   from '../../store/controllers.js'
+
 import { useCorrelationStore }   from '../../store/correlation.js'
 import { getVisibleUnits }       from '../atc/visibleUnits.js'
 import { rangeToPixelsPerNm }    from '../atc/canvas/projection.js'
 import { resolveSlew }           from '../atc/input/slewResolver.js'
-import { INIT_CNTL, TERM_CNTL }  from '../atc/actions/index.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
 import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
@@ -17,10 +17,15 @@ import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
 import { drawCompassRose }       from '../atc/canvas/drawCompassRose.js'
 import { THEATRE_MAGVAR }        from '../../utils/magvar.js'
 import { CARRIER_TYPES }         from '../../utils/carriers.js'
+import { matchStarsKey, isTypedInput } from '../atc/input/starsKeys.js'
+import { parseCommand }          from '../atc/input/commandParser.js'
+import { dispatch as dispatchAction } from '../atc/actions/index.js'
+import { usePreviewStore }       from '../../store/preview.js'
 import './CatccScope.css'
 
-const WINDOW_ID   = 'catcc-main'
-const MAX_HISTORY = 10
+const WINDOW_ID    = 'catcc-main'
+const MAX_HISTORY  = 10
+const ODS_MAX_LINES = 5
 
 // Reserved for history trails and PTL re-enable — do not delete.
 // Colors and symbol dimensions for drawCatccContacts when those features are wired back in.
@@ -41,6 +46,7 @@ const CATCC_VISUAL = {
 }
 
 export default function CatccScope() {
+  const wheelDir          = useWheelDirection()
   const mapCanvasRef      = useRef(null)
   const layersCanvasRef   = useRef(null)
   const compassCanvasRef  = useRef(null)
@@ -55,7 +61,7 @@ export default function CatccScope() {
   const positionName   = useSessionStore((s) => s.positionName)
 
   const ownership         = useAtcStore((s) => s.ownership)
-  const getPositionSymbol = useControllersStore((s) => s.getPositionSymbol)
+
   const correlations      = useCorrelationStore((s) => s.correlations)
 
   const displayStore   = useDisplayStore()
@@ -92,14 +98,17 @@ export default function CatccScope() {
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 
   // Tracked contacts: unitId → position letter (M/A/D/T). Absent = untracked.
+  // ownership[unitId] is a controllerId like "1M" — extract the letter directly.
   const trackMap = useMemo(() => {
     const map = {}
     for (const id of Object.keys(visibleUnits)) {
       const owner = ownership[String(id)]
-      if (owner) map[id] = getPositionSymbol(owner) ?? '?'
+      if (!owner) continue
+      const m = owner.length === 2 ? owner.match(/[A-Z]/) : null
+      map[id] = m ? m[0] : '?'
     }
     return map
-  }, [visibleUnits, ownership, getPositionSymbol])
+  }, [visibleUnits, ownership])
 
   const historyRef = useRef({})
 
@@ -220,9 +229,47 @@ export default function CatccScope() {
       ctx, view, visibleUnits, correlations,
       windowSettings?.britePos ?? 80,
       marshalBearing,
+      windowSettings?.leaderDirs      ?? {},
+      windowSettings?.globalLeaderDir ?? null,
     )
   }, [visibleUnits, view, trackMap, correlations,
       windowSettings?.britePos, windowSettings?.csPos])
+
+  // ── ODS (preview area) — shares STARS buffer + key map ───────────
+  const odsBuffer   = usePreviewStore((s) => s.buffer)
+  const odsResponse = usePreviewStore((s) => s.response)
+  const [odsLines, setOdsLines] = useState([])
+
+  // Push action error responses into the ODS history
+  useEffect(() => {
+    if (odsResponse) {
+      setOdsLines((prev) => [...prev, odsResponse].slice(-ODS_MAX_LINES))
+    }
+  }, [odsResponse])
+
+  const handleKeyDown = useCallback((e) => {
+    const starsKey = matchStarsKey(e)
+    if (starsKey) {
+      e.preventDefault()
+      if (starsKey.token) usePreviewStore.getState().appendToken(starsKey.token)
+      return
+    }
+    if (e.key === 'Escape')    { e.preventDefault(); usePreviewStore.getState().clear(); setOdsLines([]); return }
+    if (e.key === 'Backspace') { e.preventDefault(); usePreviewStore.getState().backspace(); return }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const parsed = parseCommand(usePreviewStore.getState().buffer, 'ENTER')
+      if (parsed) {
+        dispatchAction(parsed, null, { positionName, windowId: WINDOW_ID })
+        if (!usePreviewStore.getState().response) setOdsLines([])
+      }
+      return
+    }
+    if (isTypedInput(e)) {
+      e.preventDefault()
+      usePreviewStore.getState().appendChar(e.key.toUpperCase())
+    }
+  }, [positionName])
 
   // ── Mouse interactions ─────────────────────────────────────────────
   const handleMouseUp = useCallback((e) => {
@@ -233,25 +280,38 @@ export default function CatccScope() {
     if (!viewRef.current) return
     const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
 
+    // Ctrl+Shift+Click — initiate track (mirrors F3/IC + slew)
     if (e.ctrlKey && e.shiftKey) {
-      // Ctrl+Shift+Click — initiate track (take ownership)
-      if (target) INIT_CNTL({ slewTarget: target, positionName })
+      dispatchAction({ command: { id: 'INIT_CNTL' }, captures: {} }, target, { positionName, windowId: WINDOW_ID })
       return
     }
 
+    // Shift+Click — drop track (mirrors F4/TC + slew)
     if (e.shiftKey && !e.ctrlKey) {
-      // Shift+Click — drop track
-      if (target) TERM_CNTL({ slewTarget: target, positionName })
+      dispatchAction({ command: { id: 'TERM_CNTL' }, captures: {} }, target, { positionName, windowId: WINDOW_ID })
       return
     }
 
+    // Ctrl+Click — add contact to status board (CATCC-specific, no STARS equivalent)
     if (e.ctrlKey && !e.shiftKey) {
-      // Ctrl+Click — add contact to status board
       if (target) {
         const callsign = resolveCallsign(target.unit)
         useStatusBoardStore.getState().addEntry(callsign, target.unitId)
       }
       return
+    }
+
+    // STARS slew — parse ODS buffer as a SLEW command
+    const view = viewRef.current
+    const parsed = parseCommand(usePreviewStore.getState().buffer, 'SLEW')
+    if (parsed) {
+      dispatchAction(parsed, target, {
+        positionName,
+        canvasPos,
+        canvasSize: { w: view.width, h: view.height },
+        windowId: WINDOW_ID,
+      })
+      if (!usePreviewStore.getState().response) setOdsLines([])
     }
   }, [positionName])
 
@@ -259,11 +319,12 @@ export default function CatccScope() {
   const handleWheel = useCallback((e) => {
     e.preventDefault()
     if (!windowSettings) return
-    const step    = e.ctrlKey ? 3 : 1
-    const delta   = e.deltaY > 0 ? step : -step
-    const newRange = Math.max(6, Math.min(256, windowSettings.rangeNm + delta))
+    const dir = wheelDir(e)
+    if (dir === null) return
+    const step     = e.ctrlKey ? 3 : 1
+    const newRange = Math.max(6, Math.min(256, windowSettings.rangeNm + dir * step))
     displayStore.updateWindow(WINDOW_ID, { rangeNm: newRange })
-  }, [windowSettings, displayStore])
+  }, [windowSettings, displayStore, wheelDir])
 
   if (!windowSettings) return null
 
@@ -280,10 +341,22 @@ export default function CatccScope() {
         <div
           ref={interactiveRef}
           className="catcc-layer catcc-interactive"
+          tabIndex={0}
           onMouseUp={handleMouseUp}
           onWheel={handleWheel}
+          onKeyDown={handleKeyDown}
           onContextMenu={(e) => e.preventDefault()}
         />
+        <div className="catcc-ods">
+          {odsLines.map((line, i) => (
+            <div key={i} className="catcc-ods-line">{line}</div>
+          ))}
+          <div className="catcc-ods-input">
+            <span className="catcc-ods-prompt">{'>'}</span>
+            <span className="catcc-ods-preview">{odsBuffer}</span>
+            <span className="catcc-ods-cursor">_</span>
+          </div>
+        </div>
       </div>
     </div>
   )

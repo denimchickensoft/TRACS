@@ -3,7 +3,7 @@
     {
       "name": "DEFAULT",
       "settings": {
-        "rangeNm": 60,
+        "rangeNm": 33,
         "ringSpacingNm": 10,
         "historyLength": 4,
         "historyRate": 4.5,
@@ -13,8 +13,8 @@
         "ldrAngleDeg": -90,
         "briteDcb": null,
         "briteBkg": null,
-        "briteMapA": 35,
-        "briteMapB": 95,
+        "briteMapA": 25,
+        "briteMapB": 100,
         "briteFdb": null,
         "briteLst": null,
         "britePos": null,
@@ -85,11 +85,11 @@
           }
         },
         "mapsVisible": {
-          "0": false,
-          "1": false,
+          "0": true,
+          "1": true,
           "2": false,
-          "3": false,
-          "4": false,
+          "3": true,
+          "4": true,
           "lbl": false
         },
         "previewPosition": {

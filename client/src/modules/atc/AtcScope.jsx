@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
+import { useWheelDirection } from '../../utils/wheel.js'
 import { useUnitsStore }       from '../../store/units.js'
 import { useAtcStore }         from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
@@ -43,6 +44,7 @@ const WINDOW_ID  = 'atc-main'
 const MAX_HISTORY = 10  // absolute max; display capped by historyLength setting
 
 export default function AtcScope() {
+  const wheelDir         = useWheelDirection()
   const mapCanvasRef     = useRef(null)
   const ringCanvasRef    = useRef(null)
   const compassCanvasRef = useRef(null)
@@ -323,7 +325,8 @@ export default function AtcScope() {
     if (!view || !mapCanvasRef.current) return
     const ctx = mapCanvasRef.current.getContext('2d')
     drawMaps(ctx, view, maps, mapVisible,
-      windowSettings?.briteMapA ?? 80, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2, mapColors)
+      windowSettings?.briteMapA ?? 80, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2, mapColors,
+      activeProfile?.visual?.mapPolygonFill ?? 0)
     drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, windowSettings?.briteMapA ?? 80)
     drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 80)
   }, [view, maps, mapColors, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
@@ -428,7 +431,7 @@ export default function AtcScope() {
       ? { w: canvasAreaRef.current.clientWidth, h: canvasAreaRef.current.clientHeight }
       : null
 
-    dispatchAction(parsed, slewTarget, { positionName, canvasPos, canvasSize, canvasLatLng })
+    dispatchAction(parsed, slewTarget, { positionName, canvasPos, canvasSize, canvasLatLng, windowId: WINDOW_ID })
   }, [positionName]) // eslint-disable-line
 
   // ── ENTER key handler (from InputHandler) ─────────────────────────
@@ -639,11 +642,12 @@ export default function AtcScope() {
     if (!windowSettings) return
     // Inhibit zoom while a DCB spinner is active — the DCB bar handles its own scroll
     if (windowSettings.dcbActiveSpinner) return
-    const step   = e.ctrlKey ? 3 : 1
-    const delta  = e.deltaY > 0 ? step : -step
-    const newRange = Math.max(6, Math.min(256, windowSettings.rangeNm + delta))
+    const dir = wheelDir(e)
+    if (dir === null) return
+    const step     = e.ctrlKey ? 3 : 1
+    const newRange = Math.max(6, Math.min(256, windowSettings.rangeNm + dir * step))
     displayStore.updateWindow(WINDOW_ID, { rangeNm: newRange })
-  }, [windowSettings, displayStore])
+  }, [windowSettings, displayStore, wheelDir])
 
   // Attach wheel listener as non-passive so preventDefault() works
   useEffect(() => {

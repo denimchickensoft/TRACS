@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useWheelDirection } from '../../utils/wheel.js'
 import { useStripsStore, STRIP_HIGHLIGHT, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useSessionStore }      from '../../store/session.js'
@@ -391,6 +392,7 @@ function SettingsPanel() {
 
 // ── Strip Bay panel ───────────────────────────────────────────────────────────
 export function StripBay({ onClose, standalone = false, docked = false, width, onResize, onUndock, onHide }) {
+  const wheelDir    = useWheelDirection()
   const strips      = useStripsStore((s) => s.strips)
   const bays        = useStripsStore((s) => s.bays)
   const setSortBy   = useStripsStore((s) => s.setSortBy)
@@ -415,9 +417,11 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
 
   const handleHeaderWheel = (e) => {
     e.preventDefault()
+    const dir = wheelDir(e)
+    if (dir === null) return
     setScale((prev) => {
       const next = Math.min(2.0, Math.max(0.5,
-        parseFloat((prev - Math.sign(e.deltaY) * 0.05).toFixed(2))
+        parseFloat((prev - dir * 0.05).toFixed(2))
       ))
       localStorage.setItem('tracs.strip-bay.scale', String(next))
       clearTimeout(scaleHintRef.current)

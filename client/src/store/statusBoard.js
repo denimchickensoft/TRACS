@@ -54,6 +54,16 @@ export const useStatusBoardStore = create((set) => ({
       return { entries: s.entries.map((e) => e.id === id ? { ...e, [field]: value } : e) }
     }),
 
+  insertEntryAfter: (afterId) =>
+    set((s) => {
+      const newEntry = { id: s.nextId, evt: '', callsign: '', unitId: null, sideNumber: '', msn: '', atd: '', bingo: '', angls: '', state: '', ata: '' }
+      const idx = s.entries.findIndex((e) => e.id === afterId)
+      const entries = idx === -1
+        ? [...s.entries, newEntry]
+        : [...s.entries.slice(0, idx + 1), newEntry, ...s.entries.slice(idx + 1)]
+      return { entries, nextId: s.nextId + 1 }
+    }),
+
   removeEntry: (id) =>
     set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
 

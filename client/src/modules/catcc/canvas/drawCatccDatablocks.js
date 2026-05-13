@@ -1,4 +1,5 @@
 import { latLngToCanvas } from '../../atc/canvas/projection.js'
+import { DIR_TO_ANGLE }   from '../../atc/constants.js'
 
 const M_TO_FT  = 3.28084
 const MS_TO_KT = 1.94384
@@ -13,8 +14,22 @@ const DESCENT        = 2     // approx descent
 const PADDING        = 2     // extra clearance around each bbox
 const RADIAL_PENALTY = 1e6   // score penalty for hitting a radial line
 
+// Preference bonuses: subtracted from the chosen direction's collision score.
+// Unit-level wins against any label overlap but still yields to the radial (1e6).
+// Global-level yields to roughly one full label worth of overlap (~960 px²).
+const UNIT_DIR_BONUS   = 9e5
+const GLOBAL_DIR_BONUS = 400
+
 const CANDIDATE_ANGLES = [-45, -135, -90, 0, 45, 180, 90, 135]
   .map((d) => d * Math.PI / 180)
+
+// Pre-computed map: numpad dir string → canvas angle in radians (normalised to [-π, π])
+const DIR_TO_RAD = Object.fromEntries(
+  Object.entries(DIR_TO_ANGLE).map(([k, deg]) => {
+    const rad = ((deg + 180) % 360 - 180) * Math.PI / 180
+    return [k, rad]
+  })
+)
 
 function fmtAlt(metres) {
   if (metres == null) return '---'
@@ -109,14 +124,14 @@ function computeLeaderEnd(ox, oy, nx, ny, bbox) {
  * @param {number} brite           0–100
  * @param {number|null} marshalBearing  magnetic bearing of the marshal/approach radial (degrees)
  */
-export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, marshalBearing = null) {
+export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null) {
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
 
   const { width, height, pixelsPerNm } = view
 
   // ── Radial line segment (marshal + approach corridor, same bearing) ────────
-  // Both lines start at scope center; use the longer one (120nm marshal radial).
+  // Both lines start at scope center; use the longer one (50nm marshal radial).
   const radials = []
   if (marshalBearing != null) {
     const cx  = width  / 2
@@ -124,8 +139,8 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
     const rad = marshalBearing * Math.PI / 180
     radials.push({
       x0: cx, y0: cy,
-      x1: cx + Math.sin(rad) * 120 * pixelsPerNm,
-      y1: cy - Math.cos(rad) * 120 * pixelsPerNm,
+      x1: cx + Math.sin(rad) * 50 * pixelsPerNm,
+      y1: cy - Math.cos(rad) * 50 * pixelsPerNm,
     })
   }
 
@@ -142,7 +157,12 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
     if (x < -100 || x > width + 100 || y < -100 || y > height + 100) continue
     const line1 = correlations[String(id)] ?? 'XXX'
     const line2 = `${fmtAlt(pos.alt)} ${fmtGs(unit.speed)}`
-    contacts.push({ x, y, line1, line2, w1: ctx.measureText(line1).width, w2: ctx.measureText(line2).width })
+    const unitDir   = leaderDirs[String(id)] ?? null
+    const prefAngle = unitDir != null ? DIR_TO_RAD[unitDir]
+                    : globalLeaderDir != null ? DIR_TO_RAD[globalLeaderDir]
+                    : null
+    const prefBonus = unitDir != null ? UNIT_DIR_BONUS : GLOBAL_DIR_BONUS
+    contacts.push({ x, y, line1, line2, w1: ctx.measureText(line1).width, w2: ctx.measureText(line2).width, prefAngle, prefBonus })
   }
 
   // Symbol bboxes — fixed obstacles
@@ -154,8 +174,25 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
   // ── Pass 2: place labels ──────────────────────────────────────────────────
   const placedLabels = []
 
+  // For contacts within 1 NM cross-track of the final bearing, restrict
+  // candidates to the right side of the approach track (looking inbound).
+  const fbRad = marshalBearing != null
+    ? ((marshalBearing + 180) % 360) * Math.PI / 180
+    : null
+  const cx = width  / 2
+  const cy = height / 2
+
   for (let i = 0; i < contacts.length; i++) {
-    const { x, y, w1, w2 } = contacts[i]
+    const { x, y, w1, w2, prefAngle, prefBonus } = contacts[i]
+
+    let candidates = CANDIDATE_ANGLES
+    if (fbRad != null) {
+      const crossTrackNm = ((x - cx) * Math.cos(fbRad) + (y - cy) * Math.sin(fbRad)) / pixelsPerNm
+      if (Math.abs(crossTrackNm) < 1.0) {
+        const restricted = CANDIDATE_ANGLES.filter((a) => Math.cos(a - fbRad) > 0)
+        if (restricted.length > 0) candidates = restricted
+      }
+    }
 
     const obstacles = [
       ...symbolBBoxes.filter((_, j) => j !== i),
@@ -165,7 +202,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
     let bestBBox    = null
     let bestScore   = Infinity
 
-    for (const angle of CANDIDATE_ANGLES) {
+    for (const angle of candidates) {
       const lx1  = x + Math.cos(angle) * TEXT_DIST
       const ly1  = y + Math.sin(angle) * TEXT_DIST
       const bbox = labelBBox(lx1, ly1, angle, w1, w2)
@@ -176,11 +213,16 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
         if (segmentHitsBBox(r.x0, r.y0, r.x1, r.y1, bbox)) score += RADIAL_PENALTY
       }
 
+      // Apply preference bonus for the controller-chosen direction
+      if (prefAngle != null && Math.abs(angle - prefAngle) < 0.001) {
+        score -= prefBonus
+      }
+
       if (score < bestScore) {
         bestScore = score
         bestBBox  = bbox
       }
-      if (score === 0) break
+      if (score === 0 && prefAngle == null) break  // only short-circuit when no preference is active
     }
 
     placedLabels.push(bestBBox)

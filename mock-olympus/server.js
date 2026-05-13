@@ -20,10 +20,13 @@
  *   <n> d <alt>       — descend only (ignored if already at or below target)
  *   <n> h <hdg>       — turn shortest direction to heading
  *   <n> s <spd>       — set speed in KTAS (e.g. "2 s 280")
+ *   create <cs> [<type>] [<coal>] [H<hdg>] [S<spd>] [A<alt>]  — spawn unit (type defaults to FA-18C, coal defaults to BLU)
  */
 
 const http     = require('http')
 const readline = require('readline')
+const fs       = require('fs')
+const path     = require('path')
 
 const PORT = 4000
 
@@ -31,15 +34,32 @@ const PORT = 4000
 
 const KNOTS_TO_MS = 0.514444
 const FT_TO_M     = 0.3048
+const NM_TO_FEET  = 6076.115
 const NM_DEG      = 1 / 60
 const NM_PER_SEC  = 1 / 3600
 const DEG_TO_RAD  = Math.PI / 180
 const RAD_TO_DEG  = 180 / Math.PI
 const TWO_PI      = Math.PI * 2
 
+const GS_TOL_DEG      = 0.7  // glideslope full-scale deflection
+const AZ_TOL_DEG      = 2.5  // azimuth full-scale deflection
+
 const TURN_RATE_RPS   = 3 * DEG_TO_RAD        // standard rate: 3°/s in radians
 const CLIMB_RATE_MPS  = (1000 / 60) * FT_TO_M // 1000 fpm in m/s
 const ACCEL_KTS_PER_S = 5                     // knots/s speed change rate
+
+// Carrier deck metadata — mirrors client/src/utils/carriers.js
+const CARRIER_META = {
+  'Stennis':    { deckOffset: 9, deckHeightFt: 65 },
+  'Forrestal':  { deckOffset: 9, deckHeightFt: 65 },
+  'Kuznetsov':  { deckOffset: 0, deckHeightFt: 70 },
+  'LHA_Tarawa': { deckOffset: 0, deckHeightFt: 70 },
+  'CVN_71':     { deckOffset: 9, deckHeightFt: 65 },
+  'CVN_72':     { deckOffset: 9, deckHeightFt: 65 },
+  'CVN_73':     { deckOffset: 9, deckHeightFt: 65 },
+  'CVN_74':     { deckOffset: 9, deckHeightFt: 65 },
+  'CVN_75':     { deckOffset: 9, deckHeightFt: 65 },
+}
 
 // Aircraft type aliases → DCS internal name
 const TYPE_ALIASES = {
@@ -162,12 +182,43 @@ const units = new Map(unitDefs.map((u) => [u.id, {
 
 let serverTime  = BigInt(Date.now())
 let lastMovedAt = Date.now()
+let rl          = null  // set by startConsole, used for re-prompting after async events
+let magvarDeg   = 0     // magnetic variation used for BRC/FB ↔ true heading conversion
+let theatre     = 'Caucasus'
 
-// Carrier turn cycle: 5 min straight → 180° left turn at 1°/s → repeat
-const CARRIER_STRAIGHT_S = 300
-const CARRIER_TURN_S     = 180
-const CARRIER_CYCLE_S    = CARRIER_STRAIGHT_S + CARRIER_TURN_S
-const serverStartWallMs  = Date.now()
+// Default carrier position and heading for each DCS theatre
+const THEATRE_DEFAULTS = {
+  Caucasus:       { lat: 42.50,  lng: 43.20,  hdg: Math.PI / 2 },
+  Nevada:         { lat: 36.60,  lng: -115.10, hdg: 0 },
+  PersianGulf:    { lat: 26.50,  lng: 56.30,  hdg: Math.PI / 2 },
+  Syria:          { lat: 35.20,  lng: 34.80,  hdg: Math.PI / 2 },
+  MarianaIslands: { lat: 15.10,  lng: 145.70, hdg: Math.PI / 2 },
+  SouthAtlantic:  { lat: -51.50, lng: -58.00, hdg: Math.PI / 2 },
+  Sinai:          { lat: 30.00,  lng: 33.50,  hdg: Math.PI / 2 },
+  Kola:           { lat: 69.50,  lng: 33.00,  hdg: Math.PI / 2 },
+  Afghanistan:    { lat: 34.50,  lng: 69.00,  hdg: Math.PI / 2 },
+  Germany:        { lat: 51.50,  lng: 10.00,  hdg: Math.PI / 2 },
+}
+
+const serverStartWallMs = Date.now()
+
+// ─── Geometry helpers ─────────────────────────────────────────────────────────
+
+// Planar approximation — accurate enough for <50 NM
+function distNm(lat1, lng1, lat2, lng2) {
+  const midLat = ((lat1 + lat2) / 2) * DEG_TO_RAD
+  const dlat   = (lat2 - lat1) * 60
+  const dlng   = (lng2 - lng1) * 60 * Math.cos(midLat)
+  return Math.sqrt(dlat * dlat + dlng * dlng)
+}
+
+// Returns bearing in radians, 0 = North, π/2 = East (matches server heading convention)
+function bearingRad(fromLat, fromLng, toLat, toLng) {
+  const midLat = ((fromLat + toLat) / 2) * DEG_TO_RAD
+  const dlat   = (toLat - fromLat) * 60
+  const dlng   = (toLng - fromLng) * 60 * Math.cos(midLat)
+  return normalizeAngle(Math.atan2(dlng, dlat))
+}
 
 // ─── Flight physics ───────────────────────────────────────────────────────────
 
@@ -224,34 +275,111 @@ function applySpeed(unit, dt) {
   }
 }
 
+function stepParApproach(unit, dt) {
+  const pa = unit.parApproach
+
+  // For carrier approaches, chase the carrier's current position as the threshold.
+  const carrier   = pa.carrierId != null ? units.get(pa.carrierId) : null
+  const threshLat = carrier ? carrier.lat : pa.threshLat
+  const threshLng = carrier ? carrier.lng : pa.threshLng
+
+  // Current range from threshold along the approach axis
+  const dist        = distNm(unit.lat, unit.lng, threshLat, threshLng)
+  const brgToUnit   = bearingRad(threshLat, threshLng, unit.lat, unit.lng)
+  const outboundRad = normalizeAngle(pa.inboundHdgRad + Math.PI)
+  const offAngle    = ((brgToUnit - outboundRad) + Math.PI * 3) % (Math.PI * 2) - Math.PI
+  const rangeFinal  = Math.max(0, dist * Math.cos(offAngle))
+
+  // Advance along glidepath by one tick
+  const newRange = Math.max(0, rangeFinal - unit.spd * NM_PER_SEC * dt)
+
+  // On deck
+  if (unit.alt <= (pa.deckHeightFt + 20) * FT_TO_M) return true
+
+  // Proportional tolerance at new range (angular — narrows toward threshold)
+  const maxAltDev = pa.vertTolFt * (newRange / pa.rangeNm) * 0.85
+  const maxLatDev = pa.latTolNm  * (newRange / pa.rangeNm) * 0.85
+
+  // Altitude deviation: random walk scaled by devFactor; 0 = perfect approach
+  if (pa.devFactor > 0) {
+    pa.altDevFt += (Math.random() - 0.5) * 30 * pa.devFactor * dt
+    pa.altDevFt *= (1 - dt * 0.4)
+    pa.altDevFt  = Math.max(-maxAltDev, Math.min(maxAltDev, pa.altDevFt))
+  } else {
+    pa.altDevFt = 0
+  }
+
+  // Lateral deviation: same, direct cross-track offset (NM, +right of CL)
+  if (pa.devFactor > 0) {
+    pa.latDevNm += (Math.random() - 0.5) * 0.02 * pa.devFactor * dt
+    pa.latDevNm *= (1 - dt * 0.4)
+    pa.latDevNm  = Math.max(-maxLatDev, Math.min(maxLatDev, pa.latDevNm))
+  } else {
+    pa.latDevNm = 0
+  }
+
+  // GS altitude at new range
+  const gsAltFt = pa.deckHeightFt + newRange * NM_TO_FEET * Math.tan(pa.gsAngleDeg * DEG_TO_RAD)
+
+  // Place aircraft precisely: outbound from threshold by newRange, offset laterally.
+  // Longitude requires cos(lat) scaling: 1 NM = NM_DEG / cos(lat) degrees of longitude.
+  const cosLat       = Math.cos(threshLat * DEG_TO_RAD)
+  const rightPerpRad = normalizeAngle(pa.inboundHdgRad + Math.PI / 2)
+  unit.lat = threshLat
+    + Math.cos(outboundRad)   * newRange    * NM_DEG
+    + Math.cos(rightPerpRad)  * pa.latDevNm * NM_DEG
+  unit.lng = threshLng
+    + Math.sin(outboundRad)   * newRange    * NM_DEG / cosLat
+    + Math.sin(rightPerpRad)  * pa.latDevNm * NM_DEG / cosLat
+  unit.alt = Math.max(pa.deckHeightFt * FT_TO_M, (gsAltFt + pa.altDevFt) * FT_TO_M)
+  unit.hdg = pa.inboundHdgRad
+
+  // Hold approach speed
+  const spdDelta = pa.approachSpd - unit.spd
+  unit.spd += Math.sign(spdDelta) * Math.min(ACCEL_KTS_PER_S * dt, Math.abs(spdDelta))
+
+  return false
+}
+
 function moveUnits() {
   const now     = Date.now()
   const dt      = Math.min((now - lastMovedAt) / 1000, 1.0)
   lastMovedAt   = now
-  const elapsed = (now - serverStartWallMs) / 1000
+
+  const toDelete = []
 
   for (const unit of units.values()) {
-    // Advance position along current heading
-    const distDeg = unit.spd * dt * NM_PER_SEC * NM_DEG
-    unit.lat += Math.cos(unit.hdg) * distDeg
-    unit.lng += Math.sin(unit.hdg) * distDeg
+    // PAR aircraft: stepParApproach controls position directly — skip generic advance
+    if (!unit.parApproach) {
+      const distDeg = unit.spd * dt * NM_PER_SEC * NM_DEG
+      unit.lat += Math.cos(unit.hdg) * distDeg
+      unit.lng += Math.sin(unit.hdg) * distDeg
+    }
 
     if (unit.category === 'NavyUnit') {
-      // Carrier: 5-min straight then 180° left turn at 1°/s, repeat
-      const phase = elapsed % CARRIER_CYCLE_S
-      if (phase >= CARRIER_STRAIGHT_S) {
-        unit.hdg = normalizeAngle(unit.hdg - 1 * DEG_TO_RAD * dt)
-      }
+      // Carrier: steady course unless a heading has been commanded
+      if (unit.targetHdg !== null) applyTurn(unit, dt)
+    } else if (unit.parApproach) {
+      const onDeck = stepParApproach(unit, dt)
+      if (onDeck) toDelete.push(unit.id)
     } else if (unit.targetHdg !== null) {
       // Under positive heading control — execute commanded turn, no drift
       applyTurn(unit, dt)
+      applyClimb(unit, dt)
+      applySpeed(unit, dt)
     } else {
       // Free flight — gentle random heading drift
       unit.hdg = normalizeAngle(unit.hdg + (Math.random() - 0.5) * 0.02)
+      applyClimb(unit, dt)
+      applySpeed(unit, dt)
     }
+  }
 
-    applyClimb(unit, dt)
-    applySpeed(unit, dt)
+  for (const id of toDelete) {
+    const u = units.get(id)
+    units.delete(id)
+    console.log(`\n  ${u?.unitName ?? id}: on deck — removed`)
+    rl.prompt()
   }
 
   serverTime = BigInt(now)
@@ -371,13 +499,13 @@ function handleMission(req, res) {
   const s = totalS % 60
 
   json(res, {
-    theater: 'Caucasus',
+    theater: theatre,
     commandMode: 'GAME_MASTER',
     bullseyes: [
       { coalition: 2, name: 'BULLSEYE', lat: 42.35, lon: 43.32 },
     ],
     mission: {
-      theatre: 'Caucasus',
+      theatre: theatre,
       dateAndTime: {
         date: { Day: 1, Month: 6, Year: 2025 },
         time: { h, m, s },
@@ -388,29 +516,24 @@ function handleMission(req, res) {
 }
 
 function handleAirbases(req, res) {
-  json(res, [
-    { callsign: 'Anapa-Vityazevo',      coalition: 1, latitude: 45.002, longitude: 37.347, elevation: 141,  unitId: 0 },
-    { callsign: 'Batumi',               coalition: 2, latitude: 41.610, longitude: 41.599, elevation: 33,   unitId: 0 },
-    { callsign: 'Beslan',               coalition: 1, latitude: 43.205, longitude: 44.606, elevation: 1722, unitId: 0 },
-    { callsign: 'Gelendzhik',           coalition: 1, latitude: 44.582, longitude: 38.012, elevation: 72,   unitId: 0 },
-    { callsign: 'Gudauta',              coalition: 0, latitude: 43.103, longitude: 40.582, elevation: 69,   unitId: 0 },
-    { callsign: 'Kobuleti',             coalition: 2, latitude: 41.920, longitude: 41.851, elevation: 69,   unitId: 0 },
-    { callsign: 'Krasnodar-Center',     coalition: 1, latitude: 45.086, longitude: 38.974, elevation: 98,   unitId: 0 },
-    { callsign: 'Krasnodar-Pashkovsky', coalition: 1, latitude: 45.034, longitude: 39.170, elevation: 112,  unitId: 0 },
-    { callsign: 'Krymsk',               coalition: 1, latitude: 44.977, longitude: 37.998, elevation: 66,   unitId: 0 },
-    { callsign: 'Kutaisi',              coalition: 2, latitude: 42.177, longitude: 42.482, elevation: 148,  unitId: 0 },
-    { callsign: 'Maykop-Khanskaya',     coalition: 1, latitude: 44.682, longitude: 40.032, elevation: 591,  unitId: 0 },
-    { callsign: 'Mineralnye Vody',      coalition: 1, latitude: 44.224, longitude: 43.082, elevation: 1050, unitId: 0 },
-    { callsign: 'Mozdok',               coalition: 1, latitude: 43.789, longitude: 44.608, elevation: 507,  unitId: 0 },
-    { callsign: 'Nalchik',              coalition: 1, latitude: 43.513, longitude: 43.637, elevation: 1411, unitId: 0 },
-    { callsign: 'Novorossiysk',         coalition: 1, latitude: 44.671, longitude: 37.770, elevation: 131,  unitId: 0 },
-    { callsign: 'Senaki-Kolkhi',        coalition: 2, latitude: 42.240, longitude: 42.056, elevation: 43,   unitId: 0 },
-    { callsign: 'Sochi-Adler',          coalition: 1, latitude: 43.449, longitude: 39.956, elevation: 98,   unitId: 0 },
-    { callsign: 'Soganlug',             coalition: 2, latitude: 41.728, longitude: 44.959, elevation: 1500, unitId: 0 },
-    { callsign: 'Sukhumi-Babushara',    coalition: 0, latitude: 42.858, longitude: 41.128, elevation: 43,   unitId: 0 },
-    { callsign: 'Tbilisi-Lochini',      coalition: 2, latitude: 41.669, longitude: 44.954, elevation: 1574, unitId: 0 },
-    { callsign: 'Vaziani',              coalition: 2, latitude: 41.636, longitude: 45.033, elevation: 1524, unitId: 0 },
-  ])
+  const file = path.join(__dirname, '..', 'client', 'public', 'runways', `${theatre}.json`)
+  try {
+    const data   = JSON.parse(fs.readFileSync(file, 'utf8'))
+    const result = (data.airbases ?? []).map((ab) => {
+      const rwy = ab.runways?.[0]
+      return {
+        callsign:  ab.airbase,
+        coalition: 0,
+        latitude:  rwy?.lat            ?? 0,
+        longitude: rwy?.lon            ?? 0,
+        elevation: Math.round(rwy?.elevation_ft ?? 0),
+        unitId:    0,
+      }
+    })
+    json(res, result)
+  } catch {
+    json(res, [])
+  }
 }
 
 // ─── Console control ──────────────────────────────────────────────────────────
@@ -451,7 +574,22 @@ function unitStatus(unit) {
 }
 
 function printList() {
-  console.log('\nUNITS:')
+  // Carriers
+  for (const unit of units.values()) {
+    if (unit.category !== 'NavyUnit') continue
+    const meta     = CARRIER_META[unit.name]
+    if (!meta) continue
+    const trueHdg  = (unit.hdg * RAD_TO_DEG + 360) % 360
+    const brc      = ((trueHdg - magvarDeg) % 360 + 360) % 360
+    const fb       = ((brc - meta.deckOffset) % 360 + 360) % 360
+    const brcStr   = Math.round(brc).toString().padStart(3, '0')
+    const fbStr    = Math.round(fb).toString().padStart(3, '0')
+    const spdStr   = Math.round(unit.spd).toString().padStart(2)
+    console.log(`\nCARRIER  ${unit.unitName.padEnd(12)}  BRC ${brcStr}°  FB ${fbStr}°  SPD ${spdStr}kt${unitStatus(unit)}`)
+  }
+
+  // Aircraft
+  console.log('\nAIRCRAFT:')
   getAircraftIds().forEach((id, i) => {
     const u    = units.get(id)
     const num  = String(i + 1).padStart(2)
@@ -554,33 +692,50 @@ function cmdControl(parts) {
   }
 }
 
-// ── create <type> <coalition> [H<hdg>] [S<spd>] [A<alt>] ─────────────────────
+// ── create <callsign> [<type>] [<coalition>] [H<hdg>] [S<spd>] [A<alt>] ──────
+
+function isOption(s) { return /^[HSA]\d/i.test(s) }
 
 function cmdCreate(parts) {
-  if (parts.length < 3) {
-    console.log('  Usage: create <type> <coalition> [H<hdg>] [S<spd>] [A<alt>]')
-    console.log('  e.g.   create F-16 BLU H210 S310 A250')
+  if (parts.length < 2) {
+    console.log('  Usage: create <callsign> [<type>] [<coalition>] [H<hdg>] [S<spd>] [A<alt>]')
+    console.log('  e.g.   create HORNET41 FA-18C BLU H210 S310 A250')
     return
   }
 
-  const typeName  = resolveType(parts[1])
-  const coalition = COALITION_MAP[parts[2].toLowerCase()]
-  if (coalition === undefined) {
-    console.log(`  Unknown coalition: ${parts[2]}  (valid: BLU RED NEU)`)
-    return
+  const callsign = parts[1]
+  let typeName   = 'FA-18C_hornet'
+  let coalition  = 2  // default blue
+  let optStart   = 2
+
+  // parts[2]: optional type or coalition or option
+  if (parts[2] && !isOption(parts[2])) {
+    if (COALITION_MAP[parts[2].toLowerCase()] !== undefined) {
+      coalition = COALITION_MAP[parts[2].toLowerCase()]
+      optStart  = 3
+    } else {
+      typeName = resolveType(parts[2])
+      optStart = 3
+      // parts[3]: optional coalition or option
+      if (parts[3] && !isOption(parts[3])) {
+        if (COALITION_MAP[parts[3].toLowerCase()] !== undefined) {
+          coalition = COALITION_MAP[parts[3].toLowerCase()]
+          optStart  = 4
+        }
+      }
+    }
   }
 
   let hdgDegNew = 0, spdKts = 300, altHundreds = 100
-  for (let i = 3; i < parts.length; i++) {
+  for (let i = optStart; i < parts.length; i++) {
     const p = parts[i].toUpperCase()
     if (p.startsWith('H')) hdgDegNew   = parseInt(p.slice(1), 10)
     if (p.startsWith('S')) spdKts      = parseInt(p.slice(1), 10)
     if (p.startsWith('A')) altHundreds = parseInt(p.slice(1), 10)
   }
 
-  const newId    = Math.max(...units.keys()) + 1
-  const coalStr  = coalition === 2 ? 'BLU' : coalition === 1 ? 'RED' : 'NEU'
-  const callsign = `${typeName.split('_')[0].toUpperCase()}-${newId}`
+  const newId   = Math.max(...units.keys()) + 1
+  const coalStr = coalition === 2 ? 'BLU' : coalition === 1 ? 'RED' : 'NEU'
 
   units.set(newId, {
     id:        newId,
@@ -588,9 +743,9 @@ function cmdCreate(parts) {
     name:      typeName,
     category:  'Aircraft',
     coalition,
-    // Spawn near center of Caucasus action area with slight scatter
-    lat:       42.5 + (Math.random() - 0.5) * 0.3,
-    lng:       43.2 + (Math.random() - 0.5) * 0.3,
+    // Spawn near the current theatre's default carrier position with slight scatter
+    lat:       (THEATRE_DEFAULTS[theatre] ?? THEATRE_DEFAULTS.Caucasus).lat + (Math.random() - 0.5) * 0.3,
+    lng:       (THEATRE_DEFAULTS[theatre] ?? THEATRE_DEFAULTS.Caucasus).lng + (Math.random() - 0.5) * 0.3,
     alt:       altHundreds * 100 * FT_TO_M,
     hdg:       normalizeAngle(hdgDegNew * DEG_TO_RAD),
     spd:       spdKts,
@@ -600,6 +755,35 @@ function cmdCreate(parts) {
 
   console.log(`  Created: ${callsign} (${typeName}) ${coalStr} HDG ${String(hdgDegNew).padStart(3,'0')} SPD ${spdKts}kt ALT ${altHundreds * 100}ft`)
   printList()
+}
+
+// ── theatre <name> ────────────────────────────────────────────────────────────
+
+function cmdTheatre(parts) {
+  const name = parts[1]
+  if (!name) {
+    console.log(`  Current theatre: ${theatre}`)
+    console.log(`  Valid: ${Object.keys(THEATRE_DEFAULTS).join(', ')}`)
+    return
+  }
+  const match = Object.keys(THEATRE_DEFAULTS).find(k => k.toLowerCase() === name.toLowerCase())
+  if (!match) {
+    console.log(`  Unknown theatre: ${name}`)
+    console.log(`  Valid: ${Object.keys(THEATRE_DEFAULTS).join(', ')}`)
+    return
+  }
+  theatre = match
+  const defaults = THEATRE_DEFAULTS[match]
+  const carrier  = findCarrier()
+  if (carrier) {
+    carrier.lat = defaults.lat
+    carrier.lng = defaults.lng
+    carrier.hdg = defaults.hdg
+    carrier.targetHdg = null
+    console.log(`  Theatre: ${theatre}  — carrier moved to ${defaults.lat.toFixed(2)}, ${defaults.lng.toFixed(2)}`)
+  } else {
+    console.log(`  Theatre: ${theatre}`)
+  }
 }
 
 // ── delete <n> ────────────────────────────────────────────────────────────────
@@ -634,33 +818,174 @@ function cmdRename(parts) {
   printList()
 }
 
+// ── <n> par [at <nm>] [gs <°>] [spd <kt>] [dev <0-1>] ────────────────────────
+// ── <n> par rwy <lat> <lng> <hdg> [at <nm>] [gs <°>] [spd <kt>] [dev <0-1>] ─
+
+function cmdPar(parts) {
+  const ids = getAircraftIds()
+  const idx = parseInt(parts[0], 10) - 1
+  if (isNaN(idx) || idx < 0 || idx >= ids.length) {
+    console.log(`  Unknown unit number: ${parts[0]}`)
+    return
+  }
+  const unit = units.get(ids[idx])
+
+  // Defaults
+  let rangeNm     = 10
+  let gsAngleDeg  = 3.5
+  let approachSpd = 150
+  let devFactor   = 0
+  let threshLat = null, threshLng = null, inboundHdgDeg = null, deckHeightFt = 65
+  let modeName = 'carrier'
+  let carrierId = null
+
+  // Auto-detect carrier
+  for (const u of units.values()) {
+    if (u.category !== 'NavyUnit') continue
+    const meta = CARRIER_META[u.name]
+    if (!meta) continue
+    const trueHdgDeg = (u.hdg * RAD_TO_DEG + 360) % 360
+    inboundHdgDeg = (trueHdgDeg - meta.deckOffset + 360) % 360
+    threshLat     = u.lat
+    threshLng     = u.lng
+    deckHeightFt  = meta.deckHeightFt
+    carrierId     = u.id
+    break
+  }
+
+  // Parse keyword options
+  let i = 2
+  while (i < parts.length) {
+    const tok = parts[i].toLowerCase()
+    if (tok === 'at')  { rangeNm     = parseFloat(parts[++i]) || rangeNm;     i++; continue }
+    if (tok === 'gs')  { gsAngleDeg  = parseFloat(parts[++i]) || gsAngleDeg;  i++; continue }
+    if (tok === 'spd') { approachSpd = parseInt(parts[++i], 10) || approachSpd; i++; continue }
+    if (tok === 'dev') { devFactor   = Math.max(0, Math.min(1, parseFloat(parts[++i]) || 0)); i++; continue }
+    if (tok === 'rwy' || tok === 'airfield') {
+      threshLat     = parseFloat(parts[++i])
+      threshLng     = parseFloat(parts[++i])
+      inboundHdgDeg = parseFloat(parts[++i]) % 360
+      deckHeightFt  = 0
+      gsAngleDeg    = 3.0
+      modeName      = 'airfield'
+      i++; continue
+    }
+    i++
+  }
+
+  if (threshLat === null || inboundHdgDeg === null) {
+    console.log('  No carrier found. Use: par <n> rwy <lat> <lng> <inbound-hdg-true>')
+    return
+  }
+
+  const inboundHdgRad = normalizeAngle(inboundHdgDeg * DEG_TO_RAD)
+  const outboundHdgRad = normalizeAngle(inboundHdgRad + Math.PI)
+
+  // Place unit on the glideslope at the requested range
+  const distDeg = rangeNm * NM_DEG
+  unit.lat = threshLat + Math.cos(outboundHdgRad) * distDeg
+  unit.lng = threshLng + Math.sin(outboundHdgRad) * distDeg
+  unit.alt = (deckHeightFt + rangeNm * NM_TO_FEET * Math.tan(gsAngleDeg * DEG_TO_RAD)) * FT_TO_M
+  unit.hdg = inboundHdgRad
+  unit.spd = approachSpd
+  unit.targetHdg = null
+  unit.targetAlt = null
+  unit.targetSpd = null
+
+  unit.parApproach = {
+    threshLat, threshLng, inboundHdgRad, gsAngleDeg, deckHeightFt, approachSpd,
+    rangeNm,
+    vertTolFt: rangeNm * NM_TO_FEET * Math.tan(GS_TOL_DEG * DEG_TO_RAD),
+    latTolNm:  rangeNm * Math.tan(AZ_TOL_DEG * DEG_TO_RAD),
+    devFactor,
+    altDevFt: 0, latDevNm: 0, carrierId,
+  }
+
+  const fbStr = Math.round(inboundHdgDeg).toString().padStart(3, '0')
+  const altFt = Math.round((unit.alt / FT_TO_M))
+  console.log(`  ${unit.unitName}: PAR ${modeName}  FB ${fbStr}°  GS ${gsAngleDeg}°  ${rangeNm}NM  ${altFt}ft  ${approachSpd}kt`)
+}
+
+// ── Carrier heading commands ──────────────────────────────────────────────────
+
+function findCarrier() {
+  for (const unit of units.values()) {
+    if (unit.category === 'NavyUnit' && CARRIER_META[unit.name]) return unit
+  }
+  return null
+}
+
+function turnCarrierToTrue(trueHdgDeg) {
+  const carrier = findCarrier()
+  if (!carrier) { console.log('  No carrier found'); return }
+  const target    = normalizeAngle(trueHdgDeg * DEG_TO_RAD)
+  const rightDist = normalizeAngle(target - carrier.hdg)
+  const leftDist  = normalizeAngle(carrier.hdg - target)
+  carrier.targetHdg = target
+  carrier.turnDir   = rightDist <= leftDist ? 'r' : 'l'
+  return carrier
+}
+
+function cmdBrc(parts) {
+  const brc = parseFloat(parts[1])
+  if (isNaN(brc) || brc < 0 || brc > 360) {
+    console.log('  Usage: brc <magnetic-heading>  (e.g. brc 350)')
+    return
+  }
+  const trueHdg  = (brc + magvarDeg + 360) % 360
+  const carrier  = turnCarrierToTrue(trueHdg)
+  if (!carrier) return
+  const meta     = CARRIER_META[carrier.name]
+  const fb       = ((brc - (meta?.deckOffset ?? 9)) % 360 + 360) % 360
+  console.log(`  Carrier: BRC ${Math.round(brc).toString().padStart(3,'0')}°  FB ${Math.round(fb).toString().padStart(3,'0')}°  (true ${Math.round(trueHdg).toString().padStart(3,'0')}°)`)
+}
+
+function cmdFb(parts) {
+  const fb = parseFloat(parts[1])
+  if (isNaN(fb) || fb < 0 || fb > 360) {
+    console.log('  Usage: fb <magnetic-heading>  (e.g. fb 341)')
+    return
+  }
+  const carrier = findCarrier()
+  if (!carrier) { console.log('  No carrier found'); return }
+  const meta    = CARRIER_META[carrier.name]
+  const brc     = (fb + (meta?.deckOffset ?? 9) + 360) % 360
+  const trueHdg = (brc + magvarDeg + 360) % 360
+  turnCarrierToTrue(trueHdg)
+  console.log(`  Carrier: FB ${Math.round(fb).toString().padStart(3,'0')}°  BRC ${Math.round(brc).toString().padStart(3,'0')}°  (true ${Math.round(trueHdg).toString().padStart(3,'0')}°)`)
+}
+
+function cmdMagvar(parts) {
+  if (!parts[1]) { console.log(`  Magvar: ${magvarDeg}°`); return }
+  const deg = parseFloat(parts[1])
+  if (isNaN(deg)) { console.log('  Usage: magvar <degrees>  (e.g. magvar 5.2)'); return }
+  magvarDeg = deg
+  console.log(`  Magvar set to ${deg}°`)
+}
+
 // ── Command dispatcher ────────────────────────────────────────────────────────
 
 function parseCommand(line) {
   const parts = line.trim().split(/\s+/)
   if (!parts[0]) return
 
-  switch (parts[0].toLowerCase()) {
-    case 'list':
-    case 'refresh':
-      printList()
-      break
-    case 'create':
-      cmdCreate(parts)
-      break
-    case 'delete':
-      cmdDelete(parts)
-      break
-    case 'rename':
-      cmdRename(parts)
-      break
-    default:
-      cmdControl(parts)
-  }
+  const first  = parts[0].toLowerCase()
+  const second = (parts[1] ?? '').toLowerCase()
+
+  if (first === 'list' || first === 'refresh') { printList(); return }
+  if (first === 'create')  { cmdCreate(parts);  return }
+  if (first === 'theatre') { cmdTheatre(parts); return }
+  if (first === 'delete')  { cmdDelete(parts);  return }
+  if (first === 'rename')  { cmdRename(parts);  return }
+  if (first === 'brc')     { cmdBrc(parts);     return }
+  if (first === 'fb')      { cmdFb(parts);      return }
+  if (first === 'magvar')  { cmdMagvar(parts);  return }
+  if (second === 'par')    { cmdPar(parts);     return }
+  cmdControl(parts)
 }
 
 function startConsole() {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
   printList()
   console.log('Commands:')
@@ -670,9 +995,15 @@ function startConsole() {
   console.log('  <n> c <alt>                 climb only — ignored if already at or above')
   console.log('  <n> d <alt>                 descend only — ignored if already at or below')
   console.log('  <n> s <spd>                 set speed (KTAS)')
-  console.log('  create <type> <coal> [H S A]  e.g. create F-16 BLU H210 S310 A250')
+  console.log('  create <cs> [<type>] [<coal>] [H S A]  e.g. create HORNET41 FA-18C BLU H210 S310 A250')
   console.log('  delete <n>                  remove a unit')
   console.log('  rename <n> <callsign>       rename a unit')
+  console.log('  theatre [name]              show or set theatre (moves carrier to default position)')
+  console.log('  <n> par [at <nm>] [gs <°>] [spd <kt>] [dev <0-1>]   fly PAR to carrier (dev=0 perfect)')
+  console.log('  <n> par rwy <lat> <lng> <hdg> [...]                  fly PAR to airfield')
+  console.log('  brc <hdg°mag>               turn carrier to BRC (shortest direction)')
+  console.log('  fb  <hdg°mag>               turn carrier to FB  (shortest direction)')
+  console.log('  magvar [degrees]            show or set magnetic variation')
   console.log('  list / refresh              reprint unit list')
   rl.setPrompt('> ')
   rl.prompt()

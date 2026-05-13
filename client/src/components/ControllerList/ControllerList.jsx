@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react'
+import { useWheelDirection } from '../../utils/wheel.js'
 import { useControllersStore } from '../../store/controllers'
 import { useSessionStore }     from '../../store/session'
 import { useUnitsStore }       from '../../store/units'
@@ -165,6 +166,7 @@ function makeResizer(dir, posRef, sizeRef, setPos, setSize) {
 
 // ── Controller List window ────────────────────────────────────────────────────
 export function ControllerList({ visible, onClose, onUndock, standalone = false, facilityId: facilityIdProp, facilityName: facilityNameProp }) {
+  const wheelDir            = useWheelDirection()
   const registry            = useControllersStore((s) => s.registry)
   const peers               = useSessionStore((s) => s.peers)
   const airbases            = useSessionStore((s) => s.airbases)
@@ -231,16 +233,18 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
   // ── Opacity (scroll wheel on title bar) ───────────────────────────────────────
   const handleOpacityWheel = useCallback((e) => {
     e.preventDefault()
+    const dir = wheelDir(e)
+    if (dir === null) return
     setOpacity((prev) => {
       const next = Math.min(OPACITY_MAX, Math.max(OPACITY_MIN,
-        parseFloat((prev - Math.sign(e.deltaY) * OPACITY_STEP).toFixed(2))
+        parseFloat((prev - dir * OPACITY_STEP).toFixed(2))
       ))
       clearTimeout(opacityHintRef.current)
       setOpacityHint(true)
       opacityHintRef.current = setTimeout(() => setOpacityHint(false), 1200)
       return next
     })
-  }, [])
+  }, [wheelDir])
 
   // ── Resize handlers (all edges and corners) ───────────────────────────────────
   const resizers = useMemo(() => {

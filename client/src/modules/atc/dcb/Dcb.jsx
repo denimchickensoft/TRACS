@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
+import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }  from '../../../store/display.js'
 import { usePresetsStore }  from '../../../store/presets.js'
 import { usePreviewStore }  from '../../../store/preview.js'
@@ -368,6 +369,7 @@ function DcbButton({ btn, isActive, isToggled, valStr, colors, half, onClick }) 
 // ─── Dcb ─────────────────────────────────────────────────────────────────────
 
 export function Dcb({ profile, briteDcb, csDcb }) {
+  const wheelDir = useWheelDirection()
   const [menuKey, setMenuKey] = useState('main')
   const [toggles, setToggles] = useState(() => new Set())
 
@@ -564,9 +566,10 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     if (!activeButton) return
     e.preventDefault()
     e.stopPropagation()
-    const delta = e.deltaY > 0 ? 1 : -1
-    applyValueDelta(activeButton, delta, windowSettings, updateWindow)
-  }, [activeButton, windowSettings, updateWindow])
+    const dir = wheelDir(e)
+    if (dir === null) return
+    applyValueDelta(activeButton, dir, windowSettings, updateWindow)
+  }, [activeButton, windowSettings, updateWindow, wheelDir])
 
   // ── Render a single button def ────────────────────────────────────
   function renderBtn(btn, half = false) {

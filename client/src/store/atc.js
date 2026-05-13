@@ -30,8 +30,6 @@ export const useAtcStore = create((set) => ({
   // Callsign overrides: unitId → string (controller-assigned local label)
   callsignOverrides: {},
 
-  // Per-unit leader line direction: unitId → '1'–'9' (numpad direction code)
-  leaderDirs: {},
 
   // Quick look active unit IDs
   quickLook: new Set(),
@@ -98,18 +96,6 @@ export const useAtcStore = create((set) => ({
       return { callsignOverrides: next }
     }),
 
-  setLeaderDir: (unitId, dir) =>
-    set((state) => ({
-      leaderDirs: { ...state.leaderDirs, [unitId]: dir },
-    })),
-
-  clearLeaderDir: (unitId) =>
-    set((state) => {
-      const next = { ...state.leaderDirs }
-      delete next[unitId]
-      return { leaderDirs: next }
-    }),
-
   toggleQuickLook: (unitId) =>
     set((state) => {
       const next = new Set(state.quickLook)
@@ -141,5 +127,5 @@ export const useAtcStore = create((set) => ({
     }),
 
   reset: () =>
-    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, leaderDirs: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {} }),
+    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {} }),
 }))

@@ -99,6 +99,7 @@ app.get('/api/navdata/fixes',       navdata.handleFixes)
 app.get('/api/navdata/navaids',     navdata.handleNavaids)
 app.get('/api/navdata/procedures',  navdata.handleProcedures)
 app.get('/api/navdata/frequencies', navdata.handleFrequencies)
+app.get('/api/navdata/ctrs',        navdata.handleCtrFacilities)
 app.get('/api/navdata/sector',      navdata.handleSector)
 
 // GET /api/turn-credentials — ICE server list for WebRTC peers

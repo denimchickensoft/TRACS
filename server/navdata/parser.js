@@ -370,14 +370,25 @@ async function buildCache() {
     const airspace = airspaceByTheatre[tName] ?? { groups: [], colors: {} }
     const featureCount = airspace.groups.reduce((s, g) => s + g.features.length, 0)
 
+    const theatreCtrs = Object.entries(sectors)
+      .filter(([key]) => key.endsWith(':ctr'))
+      .filter(([, entry]) => entry.sectors.some((sec) => {
+        if (sec.polygon.length < 3) return false
+        const [cLon, cLat] = polygonCentroid(sec.polygon)
+        return inBbox(bbox, cLon, cLat)
+      }))
+      .map(([key, entry]) => ({ facilityId: key.split(':')[0], name: entry.name, freqs: entry.freqs }))
+      .sort((a, b) => a.facilityId.localeCompare(b.facilityId))
+
     await Promise.all([
       fsp.writeFile(path.join(folder, 'fixes.json'),    JSON.stringify(theatreFixes)),
       fsp.writeFile(path.join(folder, 'navaids.json'),  JSON.stringify(theatreNavaids)),
       fsp.writeFile(path.join(folder, 'airports.json'), JSON.stringify(theatreAirports)),
       fsp.writeFile(path.join(folder, 'airspace.json'), JSON.stringify(airspace)),
+      fsp.writeFile(path.join(folder, 'ctrs.json'),     JSON.stringify(theatreCtrs)),
     ])
 
-    console.log(`[navdata] ${tName}: ${theatreFixes.length} fixes, ${theatreNavaids.length} navaids, ${featureCount} airspace features, ${theatreAirports.length} airports`)
+    console.log(`[navdata] ${tName}: ${theatreFixes.length} fixes, ${theatreNavaids.length} navaids, ${featureCount} airspace features, ${theatreAirports.length} airports, ${theatreCtrs.length} CTRs`)
   }))
 
   await fsp.writeFile(path.join(CACHE_DIR, 'sectors.json'), JSON.stringify(sectors))

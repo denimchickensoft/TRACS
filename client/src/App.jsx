@@ -7,8 +7,10 @@ import AtcScope          from './modules/atc/AtcScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard }   from './modules/catcc/StatusBoard'
 import { StripBay }      from './components/StripBay/StripBay'
+import { Par }           from './modules/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
 import { disconnectWebrtc } from './webrtc/client'
+import { THEATRE_MAGVAR }   from './utils/magvar.js'
 
 const CL_VISIBLE_KEY = 'tracs.cl.visible'
 
@@ -36,6 +38,7 @@ export function App() {
   const webrtcStatus     = useSessionStore((s) => s.webrtcStatus)
   const peers            = useSessionStore((s) => s.peers)
   const resetPosition    = useSessionStore((s) => s.resetPosition)
+  const carrierUnitId    = useSessionStore((s) => s.carrierUnitId)
 
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [clVisible, setClVisible] = useState(() => localStorage.getItem(CL_VISIBLE_KEY) === 'true')
@@ -68,87 +71,86 @@ export function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // ── Status board dock/resize/visibility state ──────────────────────
+  // ── Helper: build undock handler for any docked panel ─────────────
+  function makeUndockHandler(url, winName, widthRef, setDocked, popupRef) {
+    return () => {
+      const popup = window.open(url, winName, `width=${widthRef.current},height=800,resizable=yes`)
+      if (!popup) return
+      popupRef.current = popup
+      setDocked(false)
+      const id = setInterval(() => {
+        if (popup.closed) { setDocked(true); popupRef.current = null; clearInterval(id) }
+      }, 500)
+    }
+  }
+
+  function makeResizeHandler(widthRef, setWidth, min, max) {
+    return (e) => {
+      e.preventDefault()
+      const startX = e.clientX
+      const startW = widthRef.current
+      const onMove = (ev) => {
+        const newW = Math.max(min, Math.min(max, startW - (ev.clientX - startX)))
+        widthRef.current = newW
+        setWidth(newW)
+      }
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup',   onUp)
+      }
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup',   onUp)
+    }
+  }
+
+  // ── Status board ───────────────────────────────────────────────────
   const [sbDocked,  setSbDocked]  = useState(true)
-  const [sbVisible, setSbVisible] = useState(true)
   const [sbWidth,   setSbWidth]   = useState(500)
   const sbWidthRef = useRef(500)
-  const popupRef   = useRef(null)
+  const sbPopupRef = useRef(null)
+  const handleSbResize  = useCallback(makeResizeHandler(sbWidthRef, setSbWidth, 320, 900), []) // eslint-disable-line
+  const handleSbUndock  = useCallback(makeUndockHandler('/?window=catcc-board', 'tracs-catcc-board', sbWidthRef, setSbDocked, sbPopupRef), []) // eslint-disable-line
 
-  // ── Strip bay dock/resize/visibility state ─────────────────────────
+  // ── Strip bay ──────────────────────────────────────────────────────
   const [stripsDocked,  setStripsDocked]  = useState(true)
-  const [stripsVisible, setStripsVisible] = useState(true)
   const [stripsWidth,   setStripsWidth]   = useState(520)
   const stripsWidthRef  = useRef(520)
   const stripsPopupRef  = useRef(null)
+  const handleStripsResize = useCallback(makeResizeHandler(stripsWidthRef, setStripsWidth, 280, 900), []) // eslint-disable-line
+  const handleStripsUndock = useCallback(makeUndockHandler('/?window=strips', 'tracs-strips', stripsWidthRef, setStripsDocked, stripsPopupRef), []) // eslint-disable-line
 
-  const handleStripsResize = useCallback((e) => {
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = stripsWidthRef.current
-    const onMove = (ev) => {
-      const newW = Math.max(280, Math.min(900, startW - (ev.clientX - startX)))
-      stripsWidthRef.current = newW
-      setStripsWidth(newW)
-    }
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup',   onUp)
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup',   onUp)
-  }, [])
+  // ── PAR drawer ─────────────────────────────────────────────────────
+  const [parDocked,  setParDocked]  = useState(true)
+  const [parWidth,   setParWidth]   = useState(560)
+  const parWidthRef  = useRef(560)
+  const parPopupRef  = useRef(null)
+  const handleParResize = useCallback(makeResizeHandler(parWidthRef, setParWidth, 400, 900), []) // eslint-disable-line
 
-  const handleStripsUndock = useCallback(() => {
-    const w = stripsWidthRef.current
-    const popup = window.open('/?window=strips', 'tracs-strips', `width=${w},height=800,resizable=yes`)
+  // ── Active right panel per scope ('main' | 'par') ─────────────────
+  const [atcPanel,   setAtcPanel]   = useState('main')   // 'main' = strips, 'par'
+  const [catccPanel, setCatccPanel] = useState('main')   // 'main' = status board, 'par'
+
+  const handleParUndock = useCallback(() => {
+    const { mission, carrierUnitId: cid } = useSessionStore.getState()
+    const theatre = mission?.mission?.theatre ?? null
+    const magvar  = THEATRE_MAGVAR[theatre] ?? 0
+    const p       = new URLSearchParams({ window: 'par' })
+    if (theatre) p.set('theatre', theatre)
+    p.set('magvar', String(magvar))
+    if (activeModule === MODULE.CATCC) {
+      p.set('module', 'catcc')
+      if (cid != null) p.set('carrierUnitId', String(cid))
+    } else {
+      p.set('module', 'atc')
+    }
+    const popup = window.open(`/?${p}`, 'tracs-par', `width=${parWidthRef.current},height=700,resizable=yes`)
     if (!popup) return
-    stripsPopupRef.current = popup
-    setStripsDocked(false)
+    parPopupRef.current = popup
+    setParDocked(false)
     const id = setInterval(() => {
-      if (popup.closed) {
-        setStripsDocked(true)
-        stripsPopupRef.current = null
-        clearInterval(id)
-      }
+      if (popup.closed) { setParDocked(true); parPopupRef.current = null; clearInterval(id) }
     }, 500)
-  }, [])
-
-  const handleSbResize = useCallback((e) => {
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = sbWidthRef.current
-    const onMove = (ev) => {
-      const newW = Math.max(320, Math.min(900, startW - (ev.clientX - startX)))
-      sbWidthRef.current = newW
-      setSbWidth(newW)
-    }
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup',   onUp)
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup',   onUp)
-  }, [])
-
-  const handleSbUndock = useCallback(() => {
-    const w = sbWidthRef.current
-    const popup = window.open(
-      '/?window=catcc-board',
-      'tracs-catcc-board',
-      `width=${w},height=800,resizable=yes`,
-    )
-    if (!popup) return
-    popupRef.current = popup
-    setSbDocked(false)
-    const id = setInterval(() => {
-      if (popup.closed) {
-        setSbDocked(true)
-        popupRef.current = null
-        clearInterval(id)
-      }
-    }, 500)
-  }, [])
+  }, [activeModule]) // eslint-disable-line
 
   const handleClUndock = useCallback(() => {
     const { facilityId, facilityName: facName } = useSessionStore.getState()
@@ -165,6 +167,7 @@ export function App() {
       }
     }, 500)
   }, [])
+
 
   if (!positionSet) return <Login />
 
@@ -314,69 +317,95 @@ export function App() {
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
               <AtcScope />
             </div>
-            {stripsVisible && stripsDocked && (
+
+            {/* ATC right panel — only one shown at a time */}
+            {atcPanel === 'main' && stripsDocked && (
               <StripBay
                 docked
                 width={stripsWidth}
                 onResize={handleStripsResize}
                 onUndock={handleStripsUndock}
-                onHide={() => setStripsVisible(false)}
+                onHide={() => setAtcPanel(null)}
               />
             )}
-            {stripsVisible && !stripsDocked && (
-              <div
-                title="Strip bay is undocked"
-                onClick={() => { if (stripsPopupRef.current && !stripsPopupRef.current.closed) stripsPopupRef.current.focus() }}
-                style={{ width: '18px', background: '#0d0d0d', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STRIPS</span>
-              </div>
+            {atcPanel === 'main' && !stripsDocked && null}
+            {atcPanel === 'par' && parDocked && (
+              <Par
+                docked
+                width={parWidth}
+                onResize={handleParResize}
+                onUndock={handleParUndock}
+                onHide={() => setAtcPanel(null)}
+              />
             )}
-            {!stripsVisible && (
-              <div
-                title="Show strip bay"
-                onClick={() => setStripsVisible(true)}
-                style={{ width: '18px', background: '#0d0d0d', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STRIPS</span>
-              </div>
-            )}
+            {atcPanel === 'par' && !parDocked && null}
+
+            {/* Tab strip */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0d0d0d', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
+              {[
+                { key: 'main', label: stripsDocked ? 'STRIPS' : 'STRIPS ↗', onClick: () => { if (!stripsDocked && stripsPopupRef.current) stripsPopupRef.current.focus(); else setAtcPanel('main') } },
+                { key: 'par',  label: parDocked    ? 'PAR'    : 'PAR ↗',    onClick: () => { if (!parDocked    && parPopupRef.current)    parPopupRef.current.focus();    else setAtcPanel('par')  } },
+              ].map(({ key, label, onClick }) => (
+                <div
+                  key={key}
+                  title={label}
+                  onClick={onClick}
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: atcPanel === key ? '#141414' : 'transparent' }}
+                >
+                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: atcPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
+
         {hasCatcc && (
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
               <CatccScope />
             </div>
-            {sbVisible && sbDocked && (
+
+            {/* CATCC right panel — only one shown at a time */}
+            {catccPanel === 'main' && sbDocked && (
               <StatusBoard
                 docked
                 width={sbWidth}
                 onResize={handleSbResize}
                 onUndock={handleSbUndock}
-                onHide={() => setSbVisible(false)}
+                onHide={() => setCatccPanel(null)}
               />
             )}
-            {sbVisible && !sbDocked && (
-              <div
-                title="Status board is undocked"
-                onClick={() => { if (popupRef.current && !popupRef.current.closed) popupRef.current.focus() }}
-                style={{ width: '18px', background: '#0A0A0A', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STATUS BOARD</span>
-              </div>
+            {catccPanel === 'main' && !sbDocked && null}
+            {catccPanel === 'par' && parDocked && (
+              <Par
+                docked
+                width={parWidth}
+                onResize={handleParResize}
+                onUndock={handleParUndock}
+                onHide={() => setCatccPanel(null)}
+              />
             )}
-            {!sbVisible && (
-              <div
-                title="Show status board"
-                onClick={() => setSbVisible(true)}
-                style={{ width: '18px', background: '#0A0A0A', borderLeft: '1px solid #222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: '#333', textTransform: 'uppercase' }}>STATUS BOARD</span>
-              </div>
-            )}
+            {catccPanel === 'par' && !parDocked && null}
+
+            {/* Tab strip */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
+              {[
+                { key: 'main', label: sbDocked  ? 'STATUS'  : 'STATUS ↗',  onClick: () => { if (!sbDocked  && sbPopupRef.current)  sbPopupRef.current.focus();  else setCatccPanel('main') } },
+                { key: 'par',  label: parDocked ? 'PAR'     : 'PAR ↗',     onClick: () => { if (!parDocked && parPopupRef.current) parPopupRef.current.focus(); else setCatccPanel('par')  } },
+              ].map(({ key, label, onClick }) => (
+                <div
+                  key={key}
+                  title={label}
+                  onClick={onClick}
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: catccPanel === key ? '#141414' : 'transparent' }}
+                >
+                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: catccPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
+
         {!hasAtc && !hasCatcc && (
           <div style={{ color: '#333', fontFamily: 'Roboto Mono, monospace', padding: '40px', fontSize: '0.8rem' }}>
             No active display module.

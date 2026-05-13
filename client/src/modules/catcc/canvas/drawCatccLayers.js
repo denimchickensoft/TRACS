@@ -76,6 +76,6 @@ export function drawCatccLayers(ctx, view, fb, marshalBearing, rangeNm, ringSpac
 
   // ── Marshal radial — dashed yellow ──────────────────────────────────────
   if (marshalBearing != null) {
-    bearingLine(marshalBearing, 120, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [pixelsPerNm, pixelsPerNm])
+    bearingLine(marshalBearing, 50, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [pixelsPerNm, pixelsPerNm])
   }
 }

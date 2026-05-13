@@ -11,7 +11,7 @@ import './Login.css'
 const SUFFIX_TO_NAVDATA_ROLE = {
   TWR: 'twr',
   APP: 'tracon', DEP: 'tracon', RDR: 'tracon',
-  CTR: 'ctr',
+  CTR: 'ctr', CONTROL: 'ctr',
 }
 
 const CATCC_POSITION_TYPES = [
@@ -137,7 +137,7 @@ function PositionPhase({ onSignedIn }) {
   const [facilityId,   setFacilityId]   = useState(() => {
     // Only pre-fill for CTR — non-CTR comes from the ICAO lookup once a base is selected
     const saved = localStorage.getItem('tracs.atc.lastSuffix')
-    return saved === 'CTR' ? (localStorage.getItem('tracs.atc.lastFacilityId') ?? '') : ''
+    return (saved === 'CTR' || saved === 'CONTROL') ? (localStorage.getItem('tracs.atc.lastFacilityId') ?? '') : ''
   })
   const [suffix,    setSuffix]    = useState(() => localStorage.getItem('tracs.atc.lastSuffix')    ?? '')
   const [frequency, setFrequency] = useState(() => localStorage.getItem('tracs.atc.lastFrequency') ?? '')
@@ -145,7 +145,8 @@ function PositionPhase({ onSignedIn }) {
   // Tracks the last frequency pre-filled from navdata so we know whether the
   // current value was user-typed (in which case we don't overwrite it).
   const [suggestedFreq,  setSuggestedFreq]  = useState(null)
-  const prevSuggestionRef = useRef(null)
+  const [ctrList,        setCtrList]        = useState([])
+  const [ctrLoading,     setCtrLoading]     = useState(false)
 
   // ── CATCC state ────────────────────────────────────────────────────
   const [selectedCarrierId, setSelectedCarrierId] = useState(
@@ -200,7 +201,7 @@ function PositionPhase({ onSignedIn }) {
     }
   }, [positionTypes]) // eslint-disable-line
 
-  const isCtr = suffix === 'CTR'
+  const isCtr = suffix === 'CTR' || suffix === 'CONTROL'
 
   // Skip the first run of the CTR-toggle clear so restored CTR facilityId isn't wiped on mount
   const isCtrMountRef = useRef(true)
@@ -307,25 +308,32 @@ function PositionPhase({ onSignedIn }) {
       .then((data) => {
         console.log('[navdata] freq data', data)
         const raw = data?.freqs?.[0]
-        if (!raw) { setSuggestedFreq(null); prevSuggestionRef.current = null; return }
+        if (!raw) { setSuggestedFreq(null); return }
         const formatted = parseFloat(raw).toFixed(3)
         setSuggestedFreq(formatted)
-        setFrequency((prev) => {
-          if (!prev.trim() || prev === prevSuggestionRef.current) {
-            prevSuggestionRef.current = formatted
-            return formatted
-          }
-          return prev
-        })
+        setFrequency(formatted)
       })
       .catch((status) => { console.warn('[navdata] freq lookup failed', status); setSuggestedFreq(null) })
 
     return () => ac.abort()
   }, [facilityId, suffix, selectedModule, selectedBase, airbaseList]) // eslint-disable-line
 
+  // Fetch CTR facility list for the current theatre when CTR is selected
+  useEffect(() => {
+    if (!isCtr || !mission?.theater) { setCtrList([]); setCtrLoading(false); return }
+    setCtrLoading(true)
+    const ac = new AbortController()
+    fetch(`/api/navdata/ctrs?theatre=${encodeURIComponent(mission.theater)}`, { signal: ac.signal })
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data) => { setCtrList(data); setCtrLoading(false) })
+      .catch(() => { setCtrList([]); setCtrLoading(false) })
+    return () => ac.abort()
+  }, [isCtr, mission?.theater]) // eslint-disable-line
+
   const selectedEntry   = airbaseList.find((ab) => ab.name === selectedBase) ?? null
   const isCarrier       = selectedEntry?.isCarrier ?? false
-  const constructedName = facilityId && suffix ? `${facilityId}_${suffix}` : ''
+  const positionSuffix  = isCtr ? 'CTR' : suffix
+  const constructedName = facilityId && suffix ? `${facilityId}_${positionSuffix}` : ''
 
   // CATCC: derive position ID from selected carrier + suffix
   const catccEntry      = catccCarriers.find((c) => String(c.unitId) === selectedCarrierId) ?? null
@@ -373,7 +381,7 @@ function PositionPhase({ onSignedIn }) {
     const facCheck  = selectedModule === MODULE.ATC   ? facilityId.toUpperCase()
                     : selectedModule === MODULE.CATCC  ? catccFacilityId
                     :                                    aicCallsign.trim().toUpperCase()
-    const sufCheck  = selectedModule === MODULE.ATC   ? suffix
+    const sufCheck  = selectedModule === MODULE.ATC   ? positionSuffix
                     : selectedModule === MODULE.CATCC  ? catccSuffix
                     :                                    'AIC'
     try {
@@ -416,12 +424,12 @@ function PositionPhase({ onSignedIn }) {
         facilityDcsName:  selectedEntry?.name ?? '',
         facilityName:     selectedBase,
         positionTypeName: typeDef?.displayName ?? suffix,
-        positionSuffix:   suffix,
+        positionSuffix:   positionSuffix,
         carrierUnitId:    isCarrier ? selectedEntry.unitId : null,
       })
       registerController(atcPositionName, {
         facility:  facilityId.toUpperCase(),
-        suffix,
+        suffix:    positionSuffix,
         frequency: formattedFreq,
       })
 
@@ -527,13 +535,38 @@ function PositionPhase({ onSignedIn }) {
       {/* ── ATC ──────────────────────────────────────────────────────── */}
       {selectedModule === MODULE.ATC && (
         <>
-          {!isCtr && (
-            <section>
-              <label>Facility</label>
-              {!airbasesLoaded ? (
+          <section className="position-section">
+            <label>Position</label>
+            <div className="position-fields">
+              {isCtr ? (
+                ctrList.length > 0 ? (
+                  <select
+                    className="facility-input"
+                    value={facilityId}
+                    onChange={(e) => setFacilityId(e.target.value)}
+                    disabled={signingIn}
+                  >
+                    <option value="">— Select center —</option>
+                    {ctrList.map((c) => (
+                      <option key={c.facilityId} value={c.facilityId}>{c.facilityId} — {c.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className="facility-input"
+                    value={facilityId}
+                    onChange={(e) => setFacilityId(e.target.value.toUpperCase())}
+                    placeholder="FIR"
+                    maxLength={4}
+                    disabled={signingIn || ctrLoading}
+                  />
+                )
+              ) : !airbasesLoaded ? (
                 <div className="login-loading">Waiting for Olympus data…</div>
               ) : (
                 <select
+                  className="facility-input"
                   value={selectedBase}
                   onChange={(e) => setSelectedBase(e.target.value)}
                   disabled={signingIn}
@@ -555,21 +588,6 @@ function PositionPhase({ onSignedIn }) {
                   )}
                 </select>
               )}
-            </section>
-          )}
-
-          <section className="position-section">
-            <label>Position</label>
-            <div className="position-fields">
-              <input
-                type="text"
-                className="facility-input"
-                value={facilityId}
-                onChange={(e) => setFacilityId(e.target.value.toUpperCase())}
-                placeholder={isCtr ? 'FIR' : isCarrier ? 'CV74' : 'ICAO'}
-                maxLength={4}
-                disabled={signingIn}
-              />
               <select
                 className="suffix-select"
                 value={suffix}
@@ -584,7 +602,10 @@ function PositionPhase({ onSignedIn }) {
             {constructedName && (
               <span className="callsign-preview">{constructedName.toUpperCase()}</span>
             )}
-            {isCtr && (
+            {isCtr && ctrLoading && (
+              <span className="login-hint">Loading centers…</span>
+            )}
+            {isCtr && !ctrLoading && ctrList.length === 0 && (
               <span className="login-hint">Enter your FIR or ARTCC identifier (e.g. UGGG, KZDC)</span>
             )}
           </section>

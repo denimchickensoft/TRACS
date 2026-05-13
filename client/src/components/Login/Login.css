@@ -96,14 +96,12 @@
 }
 
 .position-fields .facility-input {
-  width: 68px;
-  min-width: 68px;
-  flex-shrink: 0;
+  flex: 3;
+  min-width: 0;
 }
 
 .position-fields .suffix-select {
-  flex: 1;
-  width: auto;
+  flex: 2;
   min-width: 0;
 }
 

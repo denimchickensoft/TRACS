@@ -1,6 +1,7 @@
 {
   "positionTypes": [
-    { "suffix": "CTR", "letter": "C", "canAssumeTrack": true,  "displayName": "Center"    },
+    { "suffix": "CTR",     "letter": "C", "canAssumeTrack": true,  "displayName": "Center"  },
+    { "suffix": "CONTROL", "letter": "C", "canAssumeTrack": true,  "displayName": "Control" },
     { "suffix": "APP", "letter": "A", "canAssumeTrack": true,  "displayName": "Approach"  },
     { "suffix": "DEP", "letter": "D", "canAssumeTrack": true,  "displayName": "Departure" },
     { "suffix": "RDR", "letter": "R", "canAssumeTrack": true,  "displayName": "Radar"     },

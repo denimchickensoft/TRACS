@@ -235,28 +235,28 @@ export function CLEAR_SP2({ slewTarget }) {
   ok()
 }
 
-export function SET_LEADER_SHORT({ captures, slewTarget }) {
+export function SET_LEADER_SHORT({ captures, slewTarget, windowId }) {
   if (!slewTarget) return err('NO TARGET')
+  const wid = windowId ?? WINDOW_ID
   const dir = captures.dir
+  const current = getDisplay().windows[wid]?.leaderDirs ?? {}
   if (dir === '5') {
-    getAtc().clearLeaderDir(slewTarget.unitId)
+    const next = { ...current }
+    delete next[slewTarget.unitId]
+    getDisplay().updateWindow(wid, { leaderDirs: next })
   } else {
-    getAtc().setLeaderDir(slewTarget.unitId, dir)
+    getDisplay().updateWindow(wid, { leaderDirs: { ...current, [slewTarget.unitId]: dir } })
   }
   ok()
 }
 
-export function SET_LEADER_MF({ captures, slewTarget }) {
-  return SET_LEADER_SHORT({ captures, slewTarget })
+export function SET_LEADER_MF({ captures, slewTarget, windowId }) {
+  return SET_LEADER_SHORT({ captures, slewTarget, windowId })
 }
 
-export function SET_LEADER_GLOBAL({ captures }) {
+export function SET_LEADER_GLOBAL({ captures, windowId }) {
   const dir = captures.dir
-  if (dir === '5') {
-    getDisplay().updateWindow(WINDOW_ID, { globalLeaderDir: null })
-  } else {
-    getDisplay().updateWindow(WINDOW_ID, { globalLeaderDir: dir })
-  }
+  getDisplay().updateWindow(windowId ?? WINDOW_ID, { globalLeaderDir: dir === '5' ? null : dir })
   ok()
 }
 

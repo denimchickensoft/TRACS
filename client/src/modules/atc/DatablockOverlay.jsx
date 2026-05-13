@@ -213,12 +213,12 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   const quickLook   = useAtcStore((s) => s.quickLook)
   const displayFdb  = useAtcStore((s) => s.displayFdb)
   const scratchpads = useAtcStore((s) => s.scratchpads)
-  const leaderDirs  = useAtcStore((s) => s.leaderDirs)
   const blinkTracks = useAtcStore((s) => s.blinkTracks)
 
-  const positionName = useSessionStore((s) => s.positionName)
-  const myId         = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
+  const positionName    = useSessionStore((s) => s.positionName)
+  const myId            = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
 
+  const leaderDirs      = useDisplayStore((s) => s.windows[WINDOW_ID]?.leaderDirs      ?? {})
   const globalLeaderDir = useDisplayStore((s) => s.windows[WINDOW_ID]?.globalLeaderDir ?? null)
 
   const plans = useFlightPlansStore((s) => s.plans)

@@ -12,7 +12,7 @@ const FALLBACK_COLOR = '#556677'
  * @param {number}   csMap      0–5 (0 = no labels)
  * @param {object}   colors     { [acCode]: { stroke, fill, label } } from navdata
  */
-export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap, colors) {
+export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap, colors, polygonFill = 0) {
   const { width, height } = view
   ctx.clearRect(0, 0, width, height)
   if (!maps.length) return
@@ -24,7 +24,7 @@ export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap, c
     if (!visible[i]) continue
     for (const f of maps[i].features) {
       if (!bboxInView(f.bbox, view)) continue
-      drawGeometry(ctx, view, f, gAlpha, colors)
+      drawGeometry(ctx, view, f, gAlpha, colors, polygonFill / 100)
     }
   }
 
@@ -131,7 +131,7 @@ function bboxInView(bbox, view) {
   return !(br.x < -50 || tl.x > view.width + 50 || tl.y > view.height + 50 || br.y < -50)
 }
 
-function drawGeometry(ctx, view, feature, alpha, colors) {
+function drawGeometry(ctx, view, feature, alpha, colors, fillAlpha = 0) {
   const color    = colors?.[feature.acCode]?.stroke ?? FALLBACK_COLOR
   const polygons = feature.geometry.type === 'Polygon'
     ? [feature.geometry.coordinates]
@@ -146,9 +146,11 @@ function drawGeometry(ctx, view, feature, alpha, colors) {
       else ctx.lineTo(x, y)
     }
     ctx.closePath()
-    ctx.globalAlpha = alpha * 0.07
-    ctx.fillStyle   = color
-    ctx.fill()
+    if (fillAlpha > 0) {
+      ctx.globalAlpha = alpha * fillAlpha
+      ctx.fillStyle   = color
+      ctx.fill()
+    }
     ctx.globalAlpha = alpha
     ctx.strokeStyle = color
     ctx.lineWidth   = 1.0

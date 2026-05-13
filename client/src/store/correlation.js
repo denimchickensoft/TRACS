@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { syncStore } from '../utils/storeSync.js'
 
 // Maps unitId (string) → side number (string, e.g. "211").
 // Side numbers are carrier modex numbers assigned by CATCC when correlating
@@ -20,3 +21,5 @@ export const useCorrelationStore = create((set) => ({
 
   reset: () => set({ correlations: {} }),
 }))
+
+syncStore(useCorrelationStore, 'tracs-correlations', (s) => ({ correlations: s.correlations }))
