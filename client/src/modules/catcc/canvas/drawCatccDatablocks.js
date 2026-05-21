@@ -124,7 +124,7 @@ function computeLeaderEnd(ox, oy, nx, ny, bbox) {
  * @param {number} brite           0–100
  * @param {number|null} marshalBearing  magnetic bearing of the marshal/approach radial (degrees)
  */
-export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null) {
+export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null) {
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
 
@@ -162,7 +162,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
                     : globalLeaderDir != null ? DIR_TO_RAD[globalLeaderDir]
                     : null
     const prefBonus = unitDir != null ? UNIT_DIR_BONUS : GLOBAL_DIR_BONUS
-    contacts.push({ x, y, line1, line2, w1: ctx.measureText(line1).width, w2: ctx.measureText(line2).width, prefAngle, prefBonus })
+    contacts.push({ id, x, y, line1, line2, w1: ctx.measureText(line1).width, w2: ctx.measureText(line2).width, prefAngle, prefBonus })
   }
 
   // Symbol bboxes — fixed obstacles
@@ -230,10 +230,15 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
   }
 
   // ── Pass 3: draw leaders and text ─────────────────────────────────────────
-  const gold = `rgba(255,215,0,${alpha})`
-
-  for (const { x, y, line1, line2, bbox } of contacts) {
+  for (const { id, x, y, line1, line2, bbox } of contacts) {
     if (!bbox) continue
+
+    const isBlinking  = blinkingUids.has(String(id))
+    const isMine      = !!myControllerId && ownership[String(id)] === myControllerId
+    const contactAlpha = isBlinking
+      ? (blinkPhase ? alpha : alpha * 0.60)
+      : isMine ? alpha : alpha * 0.60
+    const gold = `rgba(255,215,0,${contactAlpha})`
 
     const dx  = bbox.lx1 - x
     const dy  = bbox.ly1 - y

@@ -35,7 +35,7 @@ export const useSessionStore = create((set) => ({
   carrierUnitId: null,
 
   // Display preferences
-  showPilotCallsigns: true,
+  useDcsNames: localStorage.getItem('tracs.settings.useDcsNames') !== 'false',
 
   // Active module (single paradigm per window)
   activeModule: null,
@@ -70,7 +70,11 @@ export const useSessionStore = create((set) => ({
 
   setPositionSet: (val) => set({ positionSet: val, signOnTime: val ? Date.now() : null }),
 
-  togglePilotCallsigns: () => set((s) => ({ showPilotCallsigns: !s.showPilotCallsigns })),
+  toggleDcsNames: () => set((s) => {
+    const next = !s.useDcsNames
+    localStorage.setItem('tracs.settings.useDcsNames', String(next))
+    return { useDcsNames: next }
+  }),
 
   setActiveModule: (module) => set({ activeModule: module }),
 

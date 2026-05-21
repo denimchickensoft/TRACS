@@ -43,7 +43,7 @@ function useDrag(panelRef) {
 // ── FPE component ─────────────────────────────────────────────────────────────
 export function FPE() {
   const { open, aid: prefillAid, unitId, readOnly, closeFpe } = useFpeStore()
-  const { plans, add, amend, recycleBcn } = useFlightPlansStore()
+  const { plans, add, amend, recycleBcn, remove } = useFlightPlansStore()
   const { addStrip, setHighlight } = useStripsStore()
 
   const panelRef = useRef(null)
@@ -51,6 +51,7 @@ export function FPE() {
   const aidInputRef = useRef(null)
 
   // ── Form state ────────────────────────────────────────────────────
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [aid,  setAid]  = useState('')
   const [cid,  setCid]  = useState('')
   const [bcn,  setBcn]  = useState('')
@@ -68,6 +69,7 @@ export function FPE() {
   // Populate form when FPE opens or when the plan changes externally
   useEffect(() => {
     if (!open) return
+    setConfirmDelete(false)
     const upperAid = prefillAid?.toUpperCase() ?? ''
     const plan = plans[upperAid]
 
@@ -92,6 +94,16 @@ export function FPE() {
       if (!upperAid) aidInputRef.current?.focus()
     }, 0)
   }, [open, prefillAid]) // intentionally not watching plans — live update handled below
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(e) {
+      if (e.key === 'Escape') closeFpe()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open, closeFpe])
 
   // Live update: if plan changes while FPE is open, refresh fields
   useEffect(() => {
@@ -129,6 +141,11 @@ export function FPE() {
     recycleBcn(aid)
   }
 
+  function handleDelete() {
+    remove(aid)
+    closeFpe()
+  }
+
   function handleAmend(e) {
     e.preventDefault()
     const normalizedAid = aid.trim().toUpperCase()
@@ -142,7 +159,7 @@ export function FPE() {
     } else {
       add({ aid: normalizedAid, typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk,
             ...(unitId ? { unitId } : {}) })
-      addStrip(normalizedAid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED })
+      addStrip(normalizedAid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: unitId ?? null })
     }
 
     // TODO: broadcast via WebRTC (FLIGHT_PLAN_CREATE / FLIGHT_PLAN_AMEND)
@@ -326,10 +343,22 @@ export function FPE() {
           <hr className="fpe-divider" />
 
           <div className="fpe-actions">
-            <button type="submit" className="fpe-btn-amend" disabled={disabled || !aid.trim()}>
-              {isExisting ? 'Amend' : 'Create'}
-            </button>
-            <button type="button" className="fpe-btn-cancel" onClick={closeFpe}>Cancel</button>
+            {confirmDelete ? (
+              <>
+                <button type="button" className="fpe-btn-cancel" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                <button type="button" className="fpe-btn-confirm" onClick={handleDelete}>Confirm Delete</button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="fpe-btn-cancel" onClick={closeFpe}>Cancel</button>
+                <button type="submit" className="fpe-btn-amend" disabled={disabled || !aid.trim()}>
+                  {isExisting ? 'Amend' : 'Create'}
+                </button>
+                {isExisting && !disabled && (
+                  <button type="button" className="fpe-btn-delete" onClick={() => setConfirmDelete(true)}>Delete</button>
+                )}
+              </>
+            )}
           </div>
 
         </form>

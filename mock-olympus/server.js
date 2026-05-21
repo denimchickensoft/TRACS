@@ -101,7 +101,7 @@ const DI = {
 
 // ─── World state ──────────────────────────────────────────────────────────────
 
-// Caucasus theater — Blue coalition = 2, Red = 1
+// Caucasus theatre — Blue coalition = 2, Red = 1
 // hdg: radians, DCS convention (0 = North, clockwise)
 // spd: knots (converted to m/s on encode)
 // contacts[].ID: uint32, contacts[].detectionMethod: bitmask (bit 4 = 16 = RADAR)
@@ -499,7 +499,7 @@ function handleMission(req, res) {
   const s = totalS % 60
 
   json(res, {
-    theater: theatre,
+    theatre: theatre,
     commandMode: 'GAME_MASTER',
     bullseyes: [
       { coalition: 2, name: 'BULLSEYE', lat: 42.35, lon: 43.32 },

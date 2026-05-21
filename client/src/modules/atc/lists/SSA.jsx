@@ -47,17 +47,24 @@ export function SSA() {
 
   if (!windowSettings || !activeProfile) return null
 
-  const { rangeNm, ptlLength, qnh, lists, briteLst, csLists } = windowSettings
+  const { rangeNm, ptlLength, qnh, lists, briteLst, csLists, tdmMode } = windowSettings
   const pos    = lists?.ssa ?? { xPct: 2, yPct: 2 }
   const brite  = (briteLst ?? 80) / 100
   const color  = activeProfile.visual?.colors?.pdbText ?? '#00cc00'
 
-  const status = connected ? 'OK/OK/NA' : 'NA/NA/NA'
   const qnhStr = qnh ?? '29.92'
+
+  const statusBase = connected ? 'OK/OK/NA' : 'NA/NA/NA'
+  const statusLine = (
+    <>
+      <span style={{ color: connected ? color : '#ff3333' }}>{statusBase} </span>
+      <span style={{ color }}>{`FUSED${tdmMode ? ' TDM' : ''}`}</span>
+    </>
+  )
 
   const rows = [
     `${displayTime} ${qnhStr}`,
-    status,
+    statusLine,
     `${rangeNm}NM PTL: ${Number(ptlLength).toFixed(1)}`,
     `001 600 U 001 600 A`,
     `${facilityId || '----'} ${qnhStr}`,

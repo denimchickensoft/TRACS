@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef, memo, Fragment } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useStatusBoardStore }  from '../../store/statusBoard.js'
+import { MissionImport } from './MissionImport.jsx'
 import { useCorrelationStore }  from '../../store/correlation.js'
 import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { getVisibleUnits }      from '../atc/visibleUnits.js'
-import { resolveCallsign }      from '../../utils/callsign.js'
+import { resolveCallsign, parseUnitName } from '../../utils/callsign.js'
 import { THEATRE_MAGVAR }       from '../../utils/magvar.js'
 import { CARRIER_TYPES }        from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
@@ -35,14 +36,21 @@ const COLUMNS = [
   { id: 'evt',    label: 'EVT',      field: 'evt',        w: 28,  maxLen: 2 },
   { id: 'side1',  label: 'SIDE',     field: 'sideNumber', w: 36,  maxLen: 3, digitsOnly: true },
   { id: 'cs',     label: 'CALLSIGN', field: 'callsign',   w: 72,  maxLen: 10 },
+  { id: 'pilot',  label: 'PILOT',    field: 'pilot',      w: 64,  maxLen: 24 },
+  { id: 'type',   label: 'TYPE',     field: 'type',       w: 38,  maxLen: 4 },
   { id: 'msn',    label: 'MISSION',  field: 'msn',        w: 60,  maxLen: 6 },
   { id: 'atd',    label: 'ATD',      field: 'atd',        w: 36,  maxLen: 4, digitsOnly: true, padZero: 4, timeValidate: true },
+  { id: 'radial', label: 'RADIAL',   field: 'radial',     w: 42,  maxLen: 3, digitsOnly: true, padZero: 3, radialFmt: true },
   { id: 'bingo',  label: 'BINGO',    field: 'bingo',      w: 44,  maxLen: 4, decimalFmt: true, decimalValidate: true },
   { id: 'side2',  label: 'SIDE',     field: 'sideNumber', w: 36,  maxLen: 3, readOnly: true },
-  { id: 'angls',  label: 'ANGLS',    field: 'angls',      w: 34,  maxLen: 2, digitsOnly: true },
+  { id: 'eat',    label: 'EAT',      field: 'eat',        w: 36,  maxLen: 4, digitsOnly: true, padZero: 4, timeValidate: true },
+  { id: 'angels', label: 'ANGELS',   field: 'angels',     w: 42,  maxLen: 2, digitsOnly: true },
   { id: 'state',  label: 'STATE',    field: 'state',      w: 44,  maxLen: 4, decimalFmt: true, decimalValidate: true },
   { id: 'ata',    label: 'ATA',      field: 'ata',        w: 36,  maxLen: 4, digitsOnly: true, padZero: 4, timeValidate: true },
 ]
+
+// Natural docked width: sum of all column tracks + move (28) + delete (20) columns
+export const SB_NATURAL_WIDTH = COLUMNS.reduce((s, c) => s + c.w, 0) + 28 + 20
 
 // Pre-computed: editable columns in tab order, and index map by column id
 const EDITABLE_COLS    = COLUMNS.filter(c => !c.readOnly)
@@ -52,6 +60,7 @@ const EDIT_COL_IDX_MAP = Object.fromEntries(EDITABLE_COLS.map((c, i) => [c.id, i
 const EditableCell = memo(function EditableCell({
   value, onCommit, maxLen, readOnly, inputW,
   digitsOnly = false, padZero = 0, decimalFmt = false, timeValidate = false, decimalValidate = false,
+  radialFmt = false,
   cellIdx, entryId, onInsertBelow,
 }) {
   const [editing, setEditing] = useState(false)
@@ -69,6 +78,7 @@ const EditableCell = memo(function EditableCell({
       if (!v.includes('.')) v = v + '.0'
       if (v.startsWith('.')) v = '0' + v
     }
+    if (radialFmt && v === '000') v = '360'
     onCommit(v)
     setEditing(false)
   }
@@ -174,7 +184,7 @@ function useStabilityAlert(value, { threshold = 5, stabilityMs = 20000, circular
 }
 
 // ── Inline-editable header field ──────────────────────────────────────────────
-function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, timeValidate = false, flash = false, hdrIdx }) {
+function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, padZero = 0, timeValidate = false, flash = false, hdrIdx }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
 
@@ -184,7 +194,9 @@ function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, ma
     setEditing(true)
   }
   const commit = () => {
-    onChange(draft)
+    let v = draft
+    if (padZero && v.length > 0) v = v.padStart(padZero, '0')
+    onChange(v)
     setEditing(false)
   }
 
@@ -295,10 +307,15 @@ const SCALE_STEP    = 0.05
 export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide }) {
   const wheelDir = useWheelDirection()
   const {
-    event, launch, recovery, tz,
-    caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn,
+    event, launch, recovery, tz, clg, vis, qnh,
+    caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn, rad,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
+    clearMissionData,
   } = useStatusBoardStore()
+
+  const [importOpen, setImportOpen] = useState(false)
+
+  const hasMissionData = clg || vis || qnh || entries.some(e => e.fromMission)
 
   const [sortField,  setSortField]  = useState(null)
   const [sortDir,    setSortDir]    = useState('asc')
@@ -431,6 +448,26 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     useCorrelationStore.getState().setAll(newCorrelations)
   }, [entries, visibleUnits])
 
+  // ── Pilot auto-populate ────────────────────────────────────────────
+  // Use all units (not AGL-filtered visibleUnits) — parked/low aircraft
+  // still appear on the status board and need pilot name resolution.
+  useEffect(() => {
+    for (const entry of entries) {
+      if (entry.pilot) continue
+      if (!entry.callsign) continue
+      let uid = entry.unitId ?? null
+      if (!uid) {
+        for (const [id, unit] of Object.entries(units)) {
+          const { acid } = parseUnitName(unit.unitName)
+          if (acid === entry.callsign) { uid = id; break }
+        }
+      }
+      if (!uid) continue
+      const { pilotName } = parseUnitName(units[uid]?.unitName)
+      if (pilotName) useStatusBoardStore.getState().updateEntry(entry.id, 'pilot', pilotName)
+    }
+  }, [entries, units])
+
   const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
 
   return (
@@ -452,26 +489,42 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
 
       {/* ── Section 1: Event header ───────────────────────────────── */}
       <div className="sb-section">
-        <HeaderField label="EVENT"    value={event}    onChange={(v) => setHeader('event',    v)} inputW={18}  maxLen={2}  hdrIdx={0} />
-        <HeaderField label="LAUNCH"   value={launch}   onChange={(v) => setHeader('launch',   v)} inputW={32}  maxLen={4}  digitsOnly timeValidate hdrIdx={1} />
-        <HeaderField label="RECOVERY" value={recovery} onChange={(v) => setHeader('recovery', v)} inputW={32}  maxLen={4}  digitsOnly timeValidate hdrIdx={2} />
-        <HeaderField label="SUNRISE"  value={sunriseZ ?? '——'} onChange={() => {}} readOnly inputW={32} />
-        <HeaderField label="SUNSET"   value={sunsetZ  ?? '——'} onChange={() => {}} readOnly inputW={32} />
-        <HeaderField label="MAGVAR"   value={magvarStr} onChange={() => {}} readOnly inputW={36} />
-        <HeaderField label="TZ"       value={tz || autoTzStr} onChange={(v) => setHeader('tz', v)} inputW={24} maxLen={3}  hdrIdx={3} />
+        <div className="sb-group">
+          <HeaderField label="EVENT"    value={event}    onChange={(v) => setHeader('event',    v)} inputW={18}  maxLen={2}  hdrIdx={0} />
+          <HeaderField label="LAUNCH"   value={launch}   onChange={(v) => setHeader('launch',   v)} inputW={32}  maxLen={4}  digitsOnly timeValidate hdrIdx={1} />
+          <HeaderField label="RECOVERY" value={recovery} onChange={(v) => setHeader('recovery', v)} inputW={32}  maxLen={4}  digitsOnly timeValidate hdrIdx={2} />
+        </div>
+        <div className="sb-group">
+          <HeaderField label="SUNRISE"  value={sunriseZ ?? '——'} onChange={() => {}} readOnly inputW={32} />
+          <HeaderField label="SUNSET"   value={sunsetZ  ?? '——'} onChange={() => {}} readOnly inputW={32} />
+          <HeaderField label="MAGVAR"   value={magvarStr} onChange={() => {}} readOnly inputW={36} />
+          <HeaderField label="TZ"       value={tz || autoTzStr} onChange={(v) => setHeader('tz', v)} inputW={24} maxLen={3}  hdrIdx={3} />
+        </div>
+        <div className="sb-group">
+          <HeaderField label="CLG"      value={clg}             onChange={(v) => setHeader('clg', v)} inputW={24} maxLen={3}  digitsOnly padZero={3} hdrIdx={4} />
+          <HeaderField label="VIS"      value={vis}             onChange={(v) => setHeader('vis', v)} inputW={18} maxLen={2}  digitsOnly hdrIdx={5} />
+          <HeaderField label="QNH"      value={qnh}             onChange={(v) => setHeader('qnh', v)} inputW={32} maxLen={4}  digitsOnly hdrIdx={6} />
+        </div>
       </div>
 
       {/* ── Section 2: Recovery status ────────────────────────────── */}
       <div className="sb-section">
-        <CaseField suffix="LAUNCH"   value={caseLaunch}   onChange={(v) => setHeader('caseLaunch',   v)} hdrIdx={4} />
-        <CaseField suffix="RECOVERY" value={caseRecovery} onChange={(v) => setHeader('caseRecovery', v)} hdrIdx={5} />
-        <HeaderField label="MAR BTN" value={marBtn}       onChange={(v) => setHeader('marBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={6} />
-        <HeaderField label="APP BTN" value={app}          onChange={(v) => setHeader('app',          v)} inputW={22} maxLen={2} digitsOnly hdrIdx={7} />
-        <HeaderField label="TWR BTN" value={twrBtn}       onChange={(v) => setHeader('twrBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={8} />
-        <HeaderField label="DEP BTN" value={depBtn}       onChange={(v) => setHeader('depBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={9} />
-        <HeaderField label="BRC"     value={String(brc).padStart(3, '0')} onChange={() => {}} readOnly inputW={28} flash={brcAlert} />
-        <HeaderField label="FB"      value={String(fb).padStart(3, '0')}  onChange={() => {}} readOnly inputW={28} flash={fbAlert} />
-        <HeaderField label="SPD"     value={String(spd)}                  onChange={() => {}} readOnly inputW={24} flash={spdAlert} />
+        <div className="sb-group">
+          <CaseField suffix="LAUNCH"   value={caseLaunch}   onChange={(v) => setHeader('caseLaunch',   v)} hdrIdx={7} />
+          <CaseField suffix="RECOVERY" value={caseRecovery} onChange={(v) => setHeader('caseRecovery', v)} hdrIdx={8} />
+        </div>
+        <div className="sb-group">
+          <HeaderField label="MAR BTN" value={marBtn}       onChange={(v) => setHeader('marBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={9} />
+          <HeaderField label="APP BTN" value={app}          onChange={(v) => setHeader('app',          v)} inputW={22} maxLen={2} digitsOnly hdrIdx={10} />
+          <HeaderField label="TWR BTN" value={twrBtn}       onChange={(v) => setHeader('twrBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={11} />
+          <HeaderField label="DEP BTN" value={depBtn}       onChange={(v) => setHeader('depBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={12} />
+        </div>
+        <div className="sb-group">
+          <HeaderField label="RAD"     value={rad || String((((fb + 180) % 360) || 360)).padStart(3, '0')}  onChange={(v) => setHeader('rad', v)} inputW={28} maxLen={3} digitsOnly padZero={3} hdrIdx={13} />
+          <HeaderField label="BRC"     value={String(brc).padStart(3, '0')} onChange={() => {}} readOnly inputW={28} flash={brcAlert} />
+          <HeaderField label="FB"      value={String(fb).padStart(3, '0')}  onChange={() => {}} readOnly inputW={28} flash={fbAlert} />
+          <HeaderField label="SPD"     value={String(spd)}                  onChange={() => {}} readOnly inputW={24} flash={spdAlert} />
+        </div>
       </div>
 
       {/* ── Section 3: Aircraft table ─────────────────────────────── */}
@@ -502,6 +555,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     decimalFmt={col.decimalFmt}
                     timeValidate={col.timeValidate}
                     decimalValidate={col.decimalValidate}
+                    radialFmt={col.radialFmt}
                     cellIdx={col.readOnly ? undefined : rowIdx * EDITABLE_COLS.length + EDIT_COL_IDX_MAP[col.id]}
                     entryId={col.readOnly ? undefined : entry.id}
                     onInsertBelow={col.readOnly ? undefined : () => {
@@ -535,9 +589,20 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
         </div>
       </div>
 
+      {importOpen && (
+        <MissionImport
+          activeCarrierType={carrier?.name}
+          onClose={() => setImportOpen(false)}
+        />
+      )}
+
       {/* ── Footer ──────────────────────────────────────────────────── */}
       <div className="sb-footer">
         <button className="sb-add-btn" onClick={() => addEntry()}>+ Add</button>
+        <button className="sb-add-btn" onClick={() => setImportOpen(true)}>⬆ Load Mission</button>
+        {hasMissionData && (
+          <button className="sb-add-btn sb-clear-mission-btn" onClick={clearMissionData}>✕ Clear Mission</button>
+        )}
         <select
           className="sb-sort-select"
           value={sortField ?? ''}

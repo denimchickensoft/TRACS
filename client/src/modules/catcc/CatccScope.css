@@ -28,11 +28,30 @@
   outline: none;
 }
 
-/* ── ODS preview area ──────────────────────────────────────────────────────── */
-.catcc-ods {
+/* ── ODS + MOMS stack ──────────────────────────────────────────────────────── */
+.catcc-ods-stack {
   position: absolute;
   bottom: 28px;
   left: 50px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  user-select: none;
+}
+
+.catcc-moms {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  line-height: 16px;
+  color: rgba(255, 215, 0, 0.90);
+  background: rgba(0, 0, 0, 0.80);
+  border-top: 1px solid rgba(255, 215, 0, 0.30);
+  border-right: 1px solid rgba(255, 215, 0, 0.30);
+  border-left: 1px solid rgba(255, 215, 0, 0.30);
+  padding: 2px 7px 2px 6px;
+}
+
+.catcc-ods {
   min-width: 240px;
   font-family: 'Roboto Mono', monospace;
   font-size: 11px;
@@ -41,9 +60,9 @@
   background: rgba(0, 0, 0, 0.80);
   border-top: 1px solid rgba(0, 200, 60, 0.35);
   border-right: 1px solid rgba(0, 200, 60, 0.35);
+  border-bottom: 1px solid rgba(0, 200, 60, 0.35);
+  border-left: 1px solid rgba(0, 200, 60, 0.35);
   padding: 3px 7px 3px 6px;
-  pointer-events: none;
-  user-select: none;
 }
 
 .catcc-ods-line {

@@ -9,6 +9,9 @@ const state      = require('./state')
 const maps       = require('./maps')
 const stateFiles = require('./stateFiles')
 const navdata    = require('../navdata')
+const elevation  = require('./elevation')
+
+elevation.init()
 
 const fs = require('fs')
 
@@ -33,7 +36,7 @@ app.post('/api/connect', async (req, res) => {
   }
 
   try {
-    await olympus.probe({ olympusUrl, password: password ?? '' })
+    await olympus.probe({ olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' })
   } catch (err) {
     return res.status(502).json({ error: `Cannot reach Olympus: ${err.message}` })
   }
@@ -90,6 +93,12 @@ app.get('/api/maps', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+// GET /api/debug/units — live unit snapshot (dev/debug)
+app.get('/api/debug/units', (req, res) => {
+  const { updated } = state.getSnapshot()
+  res.json(updated)
 })
 
 // GET /api/navdata/* — Navigraph navdata endpoints

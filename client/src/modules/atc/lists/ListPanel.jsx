@@ -10,16 +10,17 @@ const MAX_LINES_DEFAULT = 5
  * Shows "MORE N/M" footer when rows exceed maxLines.
  *
  * Props:
- *   title    — string header (omit or pass null for no title row, e.g. SSA)
- *   rows     — string[]
- *   xPct     — horizontal position as % of canvas width
- *   yPct     — vertical position as % of canvas height
- *   maxLines — max visible data rows (default 5)
- *   brite    — brightness 0–1 (default 1)
- *   csLists  — character size scale 0–5 (null = default 3)
- *   color    — text color (should match pdbText from active profile)
+ *   title     — string header (omit or pass null for no title row, e.g. SSA)
+ *   rows      — string[]
+ *   xPct      — horizontal position as % of canvas width
+ *   yPct      — vertical position as % of canvas height
+ *   maxLines  — max visible data rows (default 5)
+ *   brite     — brightness 0–1 (default 1)
+ *   csLists   — character size scale 0–5 (null = default 3)
+ *   color     — default text color (should match pdbText from active profile)
+ *   rowColors — optional { [rowIndex]: color } overrides per row
  */
-export function ListPanel({ title, rows = [], xPct = 2, yPct = 2, maxLines = MAX_LINES_DEFAULT, brite = 1, csLists = null, color = '#00cc00' }) {
+export function ListPanel({ title, rows = [], xPct = 2, yPct = 2, maxLines = MAX_LINES_DEFAULT, brite = 1, csLists = null, color = '#00cc00', rowColors = null }) {
   const visible  = rows.slice(0, maxLines)
   const total    = rows.length
   const more     = total > maxLines
@@ -38,7 +39,7 @@ export function ListPanel({ title, rows = [], xPct = 2, yPct = 2, maxLines = MAX
     >
       {title ? <div className="list-title">{title}</div> : null}
       {visible.map((row, i) => (
-        <div key={i}>{row}</div>
+        <div key={i} style={rowColors?.[i] ? { color: rowColors[i] } : undefined}>{row}</div>
       ))}
       {more && (
         <div className="list-more">MORE {maxLines}/{total}</div>

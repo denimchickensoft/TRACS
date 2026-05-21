@@ -210,3 +210,31 @@
   cursor: pointer;
 }
 .fpe-btn-cancel:hover { border-color: #555; color: #888; }
+
+.fpe-btn-delete {
+  height: 28px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid #5a1a1a;
+  color: #884444;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.fpe-btn-delete:hover { border-color: #993333; color: #cc4444; }
+
+.fpe-btn-confirm {
+  flex: 1;
+  height: 28px;
+  background: transparent;
+  border: 1px solid #993333;
+  color: #cc4444;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.fpe-btn-confirm:hover { background: rgba(180,0,0,0.1); border-color: #cc4444; color: #ff5555; }

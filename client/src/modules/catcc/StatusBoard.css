@@ -36,6 +36,15 @@
   align-items: stretch;
 }
 
+.sb-group {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border: 1px solid #2C2C2C;
+  gap: 1px;
+  padding: 1px;
+}
+
 .sb-field {
   display: flex;
   flex-direction: column;
@@ -253,6 +262,16 @@
 .sb-add-btn:hover {
   border-color: #666;
   color: #888;
+}
+
+.sb-clear-mission-btn {
+  border-color: #3A1A1A;
+  color: #663333;
+}
+
+.sb-clear-mission-btn:hover {
+  border-color: #664444;
+  color: #AA4444;
 }
 
 .sb-sort-select {

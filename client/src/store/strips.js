@@ -42,7 +42,7 @@ const DEFAULT_SETTINGS = {
 
 export const useStripsStore = create((set, get) => ({
   // { [id]: Strip }
-  // Strip: { id, aid, annotations[9], highlight, createdAt }
+  // Strip: { id, aid, unitId, annotations[9], highlight, createdAt }
   strips: {},
 
   // Array of bay objects: [{ id, name, sortBy, stripIds[] }]
@@ -52,7 +52,7 @@ export const useStripsStore = create((set, get) => ({
 
   // ── Add strip ─────────────────────────────────────────────────────
   // Returns strip ID if created, null if duplicate (no annotation update requested).
-  addStrip: (aid, { annotations = null, bayId = null, highlight = null } = {}) => {
+  addStrip: (aid, { annotations = null, bayId = null, highlight = null, unitId = null } = {}) => {
     const state = get()
     const normalizedAid = aid?.toUpperCase()
     if (!normalizedAid) return null
@@ -82,6 +82,7 @@ export const useStripsStore = create((set, get) => ({
         [id]: {
           id,
           aid: normalizedAid,
+          unitId: unitId != null ? unitId : null,
           annotations: annotations ? annotations.slice() : Array(9).fill(''),
           highlight,
           createdAt: Date.now(),
@@ -151,6 +152,20 @@ export const useStripsStore = create((set, get) => ({
           stripIds: b.stripIds.filter((id) => !toRemove.has(id)),
         })),
       }
+    }),
+
+  // ── Rename AID for all strips correlated to a unit ───────────────
+  renameAid: (unitId, newAid) =>
+    set((state) => {
+      const normalized = newAid?.toUpperCase()
+      if (!normalized) return {}
+      const updated = {}
+      for (const [id, strip] of Object.entries(state.strips)) {
+        updated[id] = String(strip.unitId) === String(unitId)
+          ? { ...strip, aid: normalized }
+          : strip
+      }
+      return { strips: updated }
     }),
 
   // ── Bay management ─────────────────────────────────────────────────

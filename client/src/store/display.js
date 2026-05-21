@@ -57,6 +57,7 @@ const SCOPE_DEFAULTS = {
   altFilterLow: null,
   altFilterHigh: null,
   qnh: '29.92',
+  tdmMode: false,
   lists: {
     ssa:    {                   xPct:  2, yPct:  2 },
     signOn: { visible: true,   xPct: 88, yPct: 88 },

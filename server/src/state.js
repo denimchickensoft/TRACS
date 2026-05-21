@@ -4,7 +4,7 @@
 // this is the single source of truth on the server side.
 
 const units = new Map()   // unitId (string) → unit object
-let mission = null        // { bullseyes, theater, commandMode, ... }
+let mission = null        // { bullseyes, theatre, commandMode, ... }
 let airbases = []
 let lastUpdateTime = 0
 
@@ -39,9 +39,10 @@ module.exports = {
   applyDelta,
   getSnapshot,
   clearUnits,
-  getMission: () => mission,
-  setMission: (m) => { mission = m },
-  getAirbases: () => airbases,
-  setAirbases: (a) => { airbases = a },
-  getLastUpdateTime: () => lastUpdateTime,
+  getUnit:          (id) => units.get(String(id)),
+  getMission:       ()   => mission,
+  setMission:       (m)  => { mission = m },
+  getAirbases:      ()   => airbases,
+  setAirbases:      (a)  => { airbases = a },
+  getLastUpdateTime: ()  => lastUpdateTime,
 }

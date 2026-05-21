@@ -1,10 +1,12 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useStripsStore, STRIP_HIGHLIGHT, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
+import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
+import { resolveCallsign }      from '../../utils/callsign.js'
 import './StripBay.css'
 
 const SORT_OPTIONS = [
@@ -16,13 +18,16 @@ const SORT_OPTIONS = [
 ]
 
 // ── Sort comparators ──────────────────────────────────────────────────────────
-function sortStrips(strips, plans, sortBy) {
+function sortStrips(strips, plans, plansByUnitId, sortBy) {
+  function getPlan(strip) {
+    return (strip.unitId != null ? plansByUnitId[String(strip.unitId)] : null) ?? plans[strip.aid] ?? null
+  }
   if (sortBy === 'manual') return strips  // preserve stripIds order
   return [...strips].sort((a, b) => {
     switch (sortBy) {
       case 'aid':  return a.aid.localeCompare(b.aid)
-      case 'dep':  return (plans[a.aid]?.dep ?? '').localeCompare(plans[b.aid]?.dep ?? '')
-      case 'dest': return (plans[a.aid]?.dest ?? '').localeCompare(plans[b.aid]?.dest ?? '')
+      case 'dep':  return (getPlan(a)?.dep ?? '').localeCompare(getPlan(b)?.dep ?? '')
+      case 'dest': return (getPlan(a)?.dest ?? '').localeCompare(getPlan(b)?.dest ?? '')
       default:     return a.createdAt - b.createdAt  // 'time'
     }
   })
@@ -98,7 +103,8 @@ function StripContextMenu({ x, y, strip, onClose }) {
 
   function handleSendTo(controller) {
     sendWebrtcEvent('STRIP_PASSED', {
-      aid:        strip.aid,
+      aid:         strip.aid,
+      unitId:      strip.unitId ?? null,
       annotations: strip.annotations,
       toPosition:  controller.positionName,
     })
@@ -134,8 +140,9 @@ function StripContextMenu({ x, y, strip, onClose }) {
 }
 
 // ── Single strip ──────────────────────────────────────────────────────────────
-function Strip({ strip, plan, dragOver, onDragStart, onDragOver, onDragEnd, onDrop, onContextMenu }) {
+function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onDragEnd, onDrop, onContextMenu }) {
   const acknowledgeStrip = useStripsStore((s) => s.acknowledgeStrip)
+  const deleteStrip      = useStripsStore((s) => s.deleteStrip)
 
   const highlightClass = strip.highlight ? `highlight-${strip.highlight}` : ''
   const dragOverClass  = dragOver ? ' sb-strip--drag-over' : ''
@@ -144,7 +151,8 @@ function Strip({ strip, plan, dragOver, onDragStart, onDragOver, onDragEnd, onDr
   const rte1 = rte.slice(0, 20)
   const rte2 = rte.slice(20, 40)
 
-  function handleClick() {
+  function handleClick(e) {
+    if (e.shiftKey) { deleteStrip(strip.id); return }
     if (strip.highlight) acknowledgeStrip(strip.id)
   }
 
@@ -168,7 +176,7 @@ function Strip({ strip, plan, dragOver, onDragStart, onDragOver, onDragEnd, onDr
     >
       {/* Col 1: AID / TYP/EQ / CID */}
       <div className="sb-col">
-        <div className="sb-cell sb-aid">{strip.aid}</div>
+        <div className="sb-cell sb-aid">{displayAid}</div>
         <div className="sb-cell sb-dim">
           {plan?.typ ?? ''}{plan?.eq ? `/${plan.eq}` : ''}
         </div>
@@ -399,6 +407,17 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const reorderBay  = useStripsStore((s) => s.reorderBay)
   const addStrip    = useStripsStore((s) => s.addStrip)
   const plans       = useFlightPlansStore((s) => s.plans)
+  const units       = useUnitsStore((s) => s.units)
+  // Subscribe so re-render fires when the toggle flips
+  useSessionStore((s) => s.useDcsNames)
+
+  const plansByUnitId = useMemo(() => {
+    const idx = {}
+    for (const plan of Object.values(plans)) {
+      if (plan.unitId != null) idx[String(plan.unitId)] = plan
+    }
+    return idx
+  }, [plans])
 
   const bay = bays[0] ?? { id: 'default', name: 'Bay 1', sortBy: 'time', stripIds: [] }
 
@@ -432,7 +451,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   }
 
   const bayStrips = bay.stripIds.map((id) => strips[id]).filter(Boolean)
-  const sorted    = sortStrips(bayStrips, plans, bay.sortBy)
+  const sorted    = sortStrips(bayStrips, plans, plansByUnitId, bay.sortBy)
 
   const handleAddStrip = useCallback((e) => {
     e.preventDefault()
@@ -523,19 +542,27 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
         {sorted.length === 0 && (
           <div className="sb-empty">No strips</div>
         )}
-        {sorted.map((strip) => (
-          <Strip
-            key={strip.id}
-            strip={strip}
-            plan={plans[strip.aid] ?? null}
-            dragOver={dragOverId === strip.id}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onDragEnd={handleDragEnd}
-            onContextMenu={(e, s) => setCtxMenu({ x: e.clientX, y: e.clientY, strip: s })}
-          />
-        ))}
+        {sorted.map((strip) => {
+          const unit       = strip.unitId != null ? units[String(strip.unitId)] : null
+          const displayAid = unit ? resolveCallsign(unit) : strip.aid
+          const plan       = (strip.unitId != null ? plansByUnitId[String(strip.unitId)] : null)
+                             ?? plans[strip.aid]
+                             ?? null
+          return (
+            <Strip
+              key={strip.id}
+              strip={strip}
+              plan={plan}
+              displayAid={displayAid}
+              dragOver={dragOverId === strip.id}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              onContextMenu={(e, s) => setCtxMenu({ x: e.clientX, y: e.clientY, strip: s })}
+            />
+          )
+        })}
       </div>
 
       {ctxMenu && (

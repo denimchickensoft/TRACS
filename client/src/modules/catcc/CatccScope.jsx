@@ -3,7 +3,8 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useUnitsStore }         from '../../store/units.js'
 import { useSessionStore }       from '../../store/session.js'
 import { useDisplayStore }       from '../../store/display.js'
-import { useAtcStore }           from '../../store/atc.js'
+import { useAtcStore, HANDOFF_STATE } from '../../store/atc.js'
+import { useControllersStore }   from '../../store/controllers.js'
 
 import { useCorrelationStore }   from '../../store/correlation.js'
 import { getVisibleUnits }       from '../atc/visibleUnits.js'
@@ -20,6 +21,7 @@ import { CARRIER_TYPES }         from '../../utils/carriers.js'
 import { matchStarsKey, isTypedInput } from '../atc/input/starsKeys.js'
 import { parseCommand }          from '../atc/input/commandParser.js'
 import { dispatch as dispatchAction } from '../atc/actions/index.js'
+import { processOdsCommand }     from './odsCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
 import './CatccScope.css'
 
@@ -61,8 +63,12 @@ export default function CatccScope() {
   const positionName   = useSessionStore((s) => s.positionName)
 
   const ownership         = useAtcStore((s) => s.ownership)
+  const handoffs          = useAtcStore((s) => s.handoffs)
+  const blinkTracks       = useAtcStore((s) => s.blinkTracks)
+  const myControllerId    = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
 
   const correlations      = useCorrelationStore((s) => s.correlations)
+  const sbEntries         = useStatusBoardStore((s) => s.entries)
 
   const displayStore   = useDisplayStore()
   const windowSettings = displayStore.windows[WINDOW_ID]
@@ -79,7 +85,23 @@ export default function CatccScope() {
   const brc        = ((carrierHeadingDeg - magvar) % 360 + 360) % 360
   const deckOffset = CARRIER_TYPES[carrierUnit?.name]?.deckOffset ?? 9
   const fb             = ((brc - deckOffset) % 360 + 360) % 360
+
   const marshalBearing = (fb + 180) % 360
+
+  const sbRad = useStatusBoardStore((s) => s.rad)
+  const radNum = sbRad ? parseInt(sbRad, 10) : NaN
+  // RAD is a radial (bearing FROM the carrier) — use directly, no +180.
+  // If RAD matches the displayed marshalBearing (rounded), snap to the exact
+  // floating-point value so the dashed line overlaps the solid line perfectly.
+  const radialBearing = (!isNaN(radNum) && radNum !== Math.round(marshalBearing))
+    ? radNum
+    : marshalBearing
+
+  const [blinkTick, setBlinkTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setBlinkTick((t) => t + 1), 200)
+    return () => clearInterval(id)
+  }, [])
 
   const [view, setView] = useState(null)
   const viewRef = useRef(null)
@@ -93,9 +115,27 @@ export default function CatccScope() {
   useEffect(() => { carrierLngRef.current = carrierLng }, [carrierLng])
   useEffect(() => { magvarRef.current     = magvar     }, [magvar])
 
-  const visibleUnits = useMemo(() => getVisibleUnits(units, coalition), [units, coalition])
+  const tdmMode = windowSettings?.tdmMode ?? false
+
+  const visibleUnits = useMemo(() => getVisibleUnits(units, coalition, tdmMode), [units, coalition, tdmMode])
+
+  // Auto-correlate: match live contact callsigns to modexes from mission import.
+  // Manual store correlations take priority over auto-matched ones.
+  const effectiveCorrelations = useMemo(() => {
+    const result = { ...correlations }
+    for (const [unitId, unit] of Object.entries(visibleUnits)) {
+      if (result[String(unitId)]) continue
+      const cs = resolveCallsign(unit)
+      const entry = sbEntries.find((e) => e.callsign === cs && e.sideNumber)
+      if (entry) result[String(unitId)] = entry.sideNumber
+    }
+    return result
+  }, [correlations, visibleUnits, sbEntries])
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
+
+  const effectiveCorrelationsRef = useRef(effectiveCorrelations)
+  useEffect(() => { effectiveCorrelationsRef.current = effectiveCorrelations }, [effectiveCorrelations])
 
   // Tracked contacts: unitId → position letter (M/A/D/T). Absent = untracked.
   // ownership[unitId] is a controllerId like "1M" — extract the letter directly.
@@ -168,8 +208,9 @@ export default function CatccScope() {
       windowSettings?.rangeNm       ?? 50,
       windowSettings?.ringSpacingNm ?? 10,
       windowSettings?.briteRr       ?? 80,
+      radialBearing,
     )
-  }, [view, fb, marshalBearing,
+  }, [view, fb, marshalBearing, radialBearing,
       windowSettings?.rangeNm, windowSettings?.ringSpacingNm, windowSettings?.briteRr])
 
   // ── Render compass rose ────────────────────────────────────────────
@@ -219,21 +260,56 @@ export default function CatccScope() {
     if (!view || !contactsCanvasRef.current) return
     const ctx = contactsCanvasRef.current.getContext('2d')
     ctx.clearRect(0, 0, view.width, view.height)
+    const now     = Date.now()
+    const blinkOn = Math.floor(now / 500) % 2 === 0
+
+    const blinkingUids = new Set()
+    for (const [uid, ho] of Object.entries(handoffs)) {
+      if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === myControllerId) blinkingUids.add(String(uid))
+    }
+    for (const [uid, expiresAt] of Object.entries(blinkTracks)) {
+      if (now < expiresAt) blinkingUids.add(String(uid))
+    }
+
     // History trails and PTL are captured but not drawn — see drawCatccContacts.js
     drawCatccContacts(
       ctx, view, visibleUnits, trackMap,
       windowSettings?.britePos ?? 80,
       windowSettings?.csPos    ?? 3,
+      blinkingUids,
+      blinkOn,
+      ownership,
+      myControllerId,
     )
     drawCatccDatablocks(
-      ctx, view, visibleUnits, correlations,
+      ctx, view, visibleUnits, effectiveCorrelations,
       windowSettings?.britePos ?? 80,
       marshalBearing,
       windowSettings?.leaderDirs      ?? {},
       windowSettings?.globalLeaderDir ?? null,
+      blinkingUids,
+      blinkOn,
+      ownership,
+      myControllerId,
     )
-  }, [visibleUnits, view, trackMap, correlations,
-      windowSettings?.britePos, windowSettings?.csPos])
+  }, [visibleUnits, view, trackMap, effectiveCorrelations, ownership, handoffs, blinkTracks, blinkTick,
+      myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos])
+
+  // ── Marking MOMS — bullseye readout from carrier to cursor ───────
+  const [momsReadout, setMomsReadout] = useState('')
+
+  const handleMouseMove = useCallback((e) => {
+    const rect = interactiveRef.current?.getBoundingClientRect()
+    if (!rect || !viewRef.current) return
+    const { width, height, pixelsPerNm } = viewRef.current
+    const dx = (e.clientX - rect.left) - width  / 2
+    const dy = (e.clientY - rect.top)  - height / 2
+    const distNm  = Math.sqrt(dx * dx + dy * dy) / pixelsPerNm
+    const bearDeg = ((Math.atan2(dx, -dy) * 180 / Math.PI) + 360) % 360
+    const brg  = Math.round(bearDeg) || 360
+    const dist = Math.round(distNm)
+    setMomsReadout(`${String(brg).padStart(3, '0')}/${dist}`)
+  }, [])
 
   // ── ODS (preview area) — shares STARS buffer + key map ───────────
   const odsBuffer   = usePreviewStore((s) => s.buffer)
@@ -251,6 +327,11 @@ export default function CatccScope() {
     const starsKey = matchStarsKey(e)
     if (starsKey) {
       e.preventDefault()
+      if (starsKey.action === 'TOGGLE_TOPDOWN') {
+        const current = useDisplayStore.getState().windows[WINDOW_ID]?.tdmMode ?? false
+        displayStore.updateWindow(WINDOW_ID, { tdmMode: !current })
+        return
+      }
       if (starsKey.token) usePreviewStore.getState().appendToken(starsKey.token)
       return
     }
@@ -258,18 +339,32 @@ export default function CatccScope() {
     if (e.key === 'Backspace') { e.preventDefault(); usePreviewStore.getState().backspace(); return }
     if (e.key === 'Enter') {
       e.preventDefault()
-      const parsed = parseCommand(usePreviewStore.getState().buffer, 'ENTER')
+      const buf    = usePreviewStore.getState().buffer
+      const parsed = parseCommand(buf, 'ENTER')
       if (parsed) {
         dispatchAction(parsed, null, { positionName, windowId: WINDOW_ID })
         if (!usePreviewStore.getState().response) setOdsLines([])
+        return
       }
+      // ODS text command fallback (IT, DT, HO, PO, RN, …)
+      const output = processOdsCommand(buf, {
+        visibleUnits: visibleUnitsRef.current,
+        correlations: effectiveCorrelationsRef.current,
+        positionName,
+      })
+      if (output.length) {
+        setOdsLines((prev) => [...prev, ...output].slice(-ODS_MAX_LINES))
+      } else {
+        setOdsLines([])
+      }
+      usePreviewStore.getState().clear()
       return
     }
     if (isTypedInput(e)) {
       e.preventDefault()
       usePreviewStore.getState().appendChar(e.key.toUpperCase())
     }
-  }, [positionName])
+  }, [positionName, displayStore])
 
   // ── Mouse interactions ─────────────────────────────────────────────
   const handleMouseUp = useCallback((e) => {
@@ -343,18 +438,23 @@ export default function CatccScope() {
           className="catcc-layer catcc-interactive"
           tabIndex={0}
           onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setMomsReadout('')}
           onWheel={handleWheel}
           onKeyDown={handleKeyDown}
           onContextMenu={(e) => e.preventDefault()}
         />
-        <div className="catcc-ods">
-          {odsLines.map((line, i) => (
-            <div key={i} className="catcc-ods-line">{line}</div>
-          ))}
-          <div className="catcc-ods-input">
-            <span className="catcc-ods-prompt">{'>'}</span>
-            <span className="catcc-ods-preview">{odsBuffer}</span>
-            <span className="catcc-ods-cursor">_</span>
+        <div className="catcc-ods-stack">
+          <div className="catcc-moms">{momsReadout || ' '}</div>
+          <div className="catcc-ods">
+            {odsLines.map((line, i) => (
+              <div key={i} className="catcc-ods-line">{line}</div>
+            ))}
+            <div className="catcc-ods-input">
+              <span className="catcc-ods-prompt">{'>'}</span>
+              <span className="catcc-ods-preview">{odsBuffer}</span>
+              <span className="catcc-ods-cursor">_</span>
+            </div>
           </div>
         </div>
       </div>

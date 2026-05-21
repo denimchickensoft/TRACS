@@ -9,7 +9,7 @@
  * All circles and bearing lines are drawn in canvas space from the carrier
  * at scope center, using magnetic bearing math (0° = up, CW positive).
  */
-export function drawCatccLayers(ctx, view, fb, marshalBearing, rangeNm, ringSpacingNm, brite = 80) {
+export function drawCatccLayers(ctx, view, fb, marshalBearing, rangeNm, ringSpacingNm, brite = 80, radialBearing = null) {
   const { pixelsPerNm } = view
   const width  = ctx.canvas.width
   const height = ctx.canvas.height
@@ -75,7 +75,8 @@ export function drawCatccLayers(ctx, view, fb, marshalBearing, rangeNm, ringSpac
   bearingLine(marshalBearing, 20, 0, `rgba(255,200,0,${alpha})`, 1)
 
   // ── Marshal radial — dashed yellow ──────────────────────────────────────
-  if (marshalBearing != null) {
-    bearingLine(marshalBearing, 50, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [pixelsPerNm, pixelsPerNm])
+  const dashedBearing = radialBearing ?? marshalBearing
+  if (dashedBearing != null) {
+    bearingLine(dashedBearing, 50, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [pixelsPerNm, pixelsPerNm])
   }
 }

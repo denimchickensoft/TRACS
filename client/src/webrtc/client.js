@@ -5,6 +5,7 @@ import { useFlightPlansStore } from '../store/flightPlans.js'
 import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadcast } from '../store/statusBoard.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
+import { applyCallsignRenameRemote } from '../utils/callsignRename.js'
 
 // ── Signal relay URL (same server the browser loaded from) ────────────────────
 function getSignalUrl() {
@@ -164,7 +165,13 @@ async function buildDump(mod) {
       }
     }
     if (mod === 'CATCC') {
-      return { ...base, statusBoard: data.statusBoard ?? {} }
+      return {
+        ...base,
+        statusBoard:    data.statusBoard    ?? {},
+        trackOwnership: data.trackOwnership ?? {},
+        handoffs:       data.handoffs       ?? {},
+        pointOuts:      data.pointOuts      ?? {},
+      }
     }
   } catch {}
   return base
@@ -201,6 +208,23 @@ function applyAtcDump(payload) {
 
 function applyCatccDump(payload) {
   if (payload.statusBoard) applyStatusBoardUpdate(payload.statusBoard)
+
+  const activeIds = new Set(
+    Object.values(useControllersStore.getState().registry)
+      .map((e) => e.controllerId)
+      .filter(Boolean)
+  )
+  const atc = useAtcStore.getState()
+  atc.reset()
+  for (const [uid, cid] of Object.entries(payload.trackOwnership ?? {})) {
+    if (activeIds.has(cid)) atc.claimTrack(uid, cid)
+  }
+  for (const [uid, ho] of Object.entries(payload.handoffs ?? {})) {
+    if (activeIds.has(ho.from) && activeIds.has(ho.to)) atc.setHandoff(uid, ho)
+  }
+  for (const [uid, po] of Object.entries(payload.pointOuts ?? {})) {
+    if (activeIds.has(po.from) && activeIds.has(po.to)) atc.setPointOut(uid, po)
+  }
 }
 
 function applyDump(mod, payload) {
@@ -254,12 +278,26 @@ function startDisconnectTimer(peerId) {
         // ownership from the server. Without this, the server retains the
         // departed controller's tracks indefinitely.
         const atcClean = useAtcStore.getState()
-        persistState('atc', {
-          flightPlans:    useFlightPlansStore.getState().plans,
-          trackOwnership: atcClean.ownership,
-          handoffs:       atcClean.handoffs,
-          pointOuts:      atcClean.pointOuts,
-        })
+        if (activeModule === 'CATCC') {
+          const s = useStatusBoardStore.getState()
+          persistState('catcc', {
+            statusBoard: {
+              eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
+              recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn, rad: s.rad },
+              entries:        s.entries,
+            },
+            trackOwnership: atcClean.ownership,
+            handoffs:       atcClean.handoffs,
+            pointOuts:      atcClean.pointOuts,
+          })
+        } else {
+          persistState('atc', {
+            flightPlans:    useFlightPlansStore.getState().plans,
+            trackOwnership: atcClean.ownership,
+            handoffs:       atcClean.handoffs,
+            pointOuts:      atcClean.pointOuts,
+          })
+        }
       }
     }
 
@@ -437,6 +475,11 @@ async function onSessionMessage(msg, fromPeerId) {
       break
     }
 
+    case 'CALLSIGN_RENAME': {
+      applyCallsignRenameRemote(msg.payload)
+      break
+    }
+
     case 'CONTROLLER_MESSAGE': {
       const { toPosition, toModule, text, broadcast } = msg.payload
       if (broadcast || toPosition === activePosition) {
@@ -475,13 +518,17 @@ function onModuleMessage(msg) {
     })
   }
   if (activeModule === 'CATCC') {
-    const s = useStatusBoardStore.getState()
+    const s   = useStatusBoardStore.getState()
+    const atc = useAtcStore.getState()
     persistState('catcc', {
       statusBoard: {
         eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
         recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn },
         entries:        s.entries,
       },
+      trackOwnership: atc.ownership,
+      handoffs:       atc.handoffs,
+      pointOuts:      atc.pointOuts,
     })
   }
 }
@@ -494,6 +541,14 @@ export function sendWebrtcEvent(type, payload) {
   const msg = envelope(type, payload)
   logMsg('→ module', msg)
   sendModule(msg)
+}
+
+// Send a session-room event visible to all peers regardless of module
+export function sendWebrtcSessionEvent(type, payload) {
+  if (!sendSession) return
+  const msg = envelope(type, payload, activeModule)
+  logMsg('→ session', msg)
+  sendSession(msg)
 }
 
 // Send a CONTROLLER_MESSAGE on the session room

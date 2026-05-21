@@ -320,13 +320,23 @@ async function buildCache() {
   const theatres    = JSON.parse(theatresRaw)
   const bboxHash    = crypto.createHash('sha256').update(theatresRaw).digest('hex').slice(0, 16)
 
+  // Files that must exist in every theatre folder for the cache to be considered valid.
+  // Add entries here whenever a new output file is introduced to the builder.
+  const REQUIRED_THEATRE_FILES = ['fixes.json', 'navaids.json', 'airports.json', 'airspace.json', 'ctrs.json']
+
   const manifestPath = path.join(CACHE_DIR, 'manifest.json')
   if (fs.existsSync(manifestPath)) {
     try {
       const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
       if (m.cycle === cycleData.cycle && m.revision === cycleData.revision && m.bboxHash === bboxHash) {
-        console.log(`[navdata] cache hit — cycle ${cycleData.cycle} rev ${cycleData.revision}`)
-        return
+        const allPresent = Object.values(theatres).every((tConf) =>
+          REQUIRED_THEATRE_FILES.every((f) => fs.existsSync(path.join(CACHE_DIR, tConf.folder, f)))
+        )
+        if (allPresent) {
+          console.log(`[navdata] cache hit — cycle ${cycleData.cycle} rev ${cycleData.revision}`)
+          return
+        }
+        console.log(`[navdata] cache incomplete — rebuilding`)
       }
     } catch { /* rebuild if manifest is corrupt */ }
   }

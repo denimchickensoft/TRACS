@@ -6,6 +6,7 @@ import { useSessionStore, MODULE } from '../../store/session.js'
 import { wsClient }             from '../../ws/client.js'
 import { CARRIER_TYPES }        from '../../utils/carriers.js'
 import { THEATRE_MAGVAR }       from '../../utils/magvar.js'
+import { resolveCallsign }      from '../../utils/callsign.js'
 import './Par.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -412,6 +413,7 @@ export function Par({
   // ── Units + correlation ────────────────────────────────────────────
   const units        = useUnitsStore((s) => s.units)
   const correlations = useCorrelationStore((s) => s.correlations)
+  const useDcsNames  = useSessionStore((s) => s.useDcsNames)
   const carrierUnit  = initCarrierId != null ? (units[initCarrierId] ?? null) : null
 
   // ── Approach config state ──────────────────────────────────────────
@@ -496,14 +498,14 @@ export function Par({
       if (Math.abs(proj.lateralDev) > proj.rangeFinal * azConeSlope * 1.1) continue
       // Reject if above the PAR elevation service volume ceiling
       if (proj.altAgl > proj.rangeFinal * svCeilSlope * 1.1) continue
-      // Carrier mode: show correlated side number or XXX. Airfield: show unitName.
+      // Carrier mode: show correlated side number or XXX. Airfield: resolve callsign per toggle.
       const label = mode === 'carrier'
         ? (correlations[String(id)] ?? 'XXX')
-        : (unit.unitName || unit.callsign || String(id)).slice(0, 8)
+        : resolveCallsign(unit).slice(0, 8)
       results.push({ id, label, ...proj })
     }
     return results
-  }, [units, approachCfg, mode, correlations])
+  }, [units, approachCfg, mode, correlations, useDcsNames])
 
   // ── Panel size tracking ────────────────────────────────────────────
   const elRef  = useRef(null)

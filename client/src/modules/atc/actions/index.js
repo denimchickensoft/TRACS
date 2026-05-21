@@ -21,7 +21,8 @@ import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
-import { sendWebrtcEvent } from '../../../webrtc/client.js'
+import { applyCallsignChange } from '../../../utils/callsignRename.js'
+import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -43,14 +44,16 @@ function getMyControllerId() {
 
 export function INIT_CNTL({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
-  const { ownership, claimTrack } = getAtc()
-  if (ownership[slewTarget.unitId]) return err('ILL TRK')
   const controllerId = getMyControllerId()
+  if (!controllerId) return err('NO POSITION')
+  const { ownership, claimTrack } = getAtc()
+  if (ownership[slewTarget.unitId] !== undefined) return err('ILL TRK')
   claimTrack(slewTarget.unitId, controllerId)
   sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, controllerId })
-
-  const aid = resolveCallsign(slewTarget.unit)
-  useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED })
+  if (useSessionStore.getState().activeModule === 'ATC') {
+    const aid = resolveCallsign(slewTarget.unit)
+    useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: slewTarget.unitId })
+  }
   ok()
 }
 
@@ -88,10 +91,12 @@ export function TERM_CNTL({ slewTarget }) {
   clearHandoff(slewTarget.unitId)
   dropTrack(slewTarget.unitId)
   sendWebrtcEvent('TRACK_DROPPED', { unitId: slewTarget.unitId })
-  const { deleteOnDropTrack, deleteByAid } = useStripsStore.getState()
-  if (deleteOnDropTrack) {
-    const aid = resolveCallsign(slewTarget.unit)
-    if (aid) deleteByAid(aid)
+  if (useSessionStore.getState().activeModule === 'ATC') {
+    const { deleteOnDropTrack, deleteByAid } = useStripsStore.getState()
+    if (deleteOnDropTrack) {
+      const aid = resolveCallsign(slewTarget.unit)
+      if (aid) deleteByAid(aid)
+    }
   }
   ok()
 }
@@ -374,6 +379,24 @@ export function BARE_SLEW({ slewTarget }) {
   clearBuffer()
 }
 
+// ── Callsign rename ───────────────────────────────────────────────────────────
+
+export function RENAME_CALLSIGN({ captures, slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  const newCallsign = captures?.newCallsign?.trim().toUpperCase()
+  if (!newCallsign) return err('NO CALLSIGN')
+  const { oldCallsign } = applyCallsignChange(slewTarget.unitId, slewTarget.unit, newCallsign)
+  sendWebrtcSessionEvent('CALLSIGN_RENAME', { unitId: String(slewTarget.unitId), oldCallsign, newCallsign })
+  ok()
+}
+
+export function RESET_CALLSIGN({ slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  const { oldCallsign } = applyCallsignChange(slewTarget.unitId, slewTarget.unit, null)
+  sendWebrtcSessionEvent('CALLSIGN_RENAME', { unitId: String(slewTarget.unitId), oldCallsign, newCallsign: null })
+  ok()
+}
+
 // ── List management helpers ───────────────────────────────────────────────────
 
 function toggleList(listId) {
@@ -439,6 +462,8 @@ export function RESIZE_VFR({ captures })                 { resizeList('vfr', cap
 
 const ACTION_MAP = {
   OPEN_FPE,
+  RENAME_CALLSIGN,
+  RESET_CALLSIGN,
   INIT_CNTL,
   INIT_CNTL_BY_ID,
   TERM_CNTL,

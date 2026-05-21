@@ -61,6 +61,10 @@ const COMMANDS = [
   { id: 'OPEN_FPE',             pattern: /^\.FP (.+)$/,           trigger: 'ENTER', captures: ['aid'] },
   { id: 'OPEN_FPE',             pattern: /^\.FP$/,                trigger: 'ENTER' },
 
+  // ── Callsign rename ──────────────────────────────────────────────
+  { id: 'RENAME_CALLSIGN',      pattern: /^\.RENAME (.+)$/,       trigger: 'SLEW',  captures: ['newCallsign'] },
+  { id: 'RESET_CALLSIGN',       pattern: /^\.RENAME$/,            trigger: 'SLEW'  },
+
   // ── Track control ───────────────────────────────────────────────
   { id: 'INIT_CNTL',            pattern: /^IC$/,                  trigger: 'SLEW'  },
   { id: 'INIT_CNTL_BY_ID',      pattern: /^IC (.+)$/,             trigger: 'ENTER', captures: ['flid'] },

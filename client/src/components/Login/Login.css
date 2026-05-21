@@ -105,6 +105,13 @@
   min-width: 0;
 }
 
+.facility-id-override {
+  margin-top: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  flex: none;
+}
+
 .callsign-preview {
   margin-top: 4px;
   font-size: 0.75rem;

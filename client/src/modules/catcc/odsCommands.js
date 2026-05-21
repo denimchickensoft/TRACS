@@ -13,8 +13,9 @@
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useControllersStore } from '../../store/controllers.js'
-import { sendWebrtcEvent }     from '../../webrtc/client.js'
+import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
+import { applyCallsignChange } from '../../utils/callsignRename.js'
 
 const COMMANDS = {}
 
@@ -108,6 +109,18 @@ register('PO', (parts, ctx) => {
   if (tcp === controllerId) return ['ILL POS']
   useAtcStore.getState().setPointOut(target.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
   sendWebrtcEvent('POINT_OUT_SENT', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
+  return []
+})
+
+// RN <callsign|side> [newCallsign] — rename or reset (no second arg = reset)
+register('RN', (parts, ctx) => {
+  const id = parts[1]
+  if (!id) return ['RN <callsign|side> [newCallsign]']
+  const target = findUnit(id, ctx)
+  if (!target) return [`NO TRACK: ${id}`]
+  const newCallsign = parts[2]?.toUpperCase() ?? null
+  const { oldCallsign } = applyCallsignChange(target.unitId, target.unit, newCallsign)
+  sendWebrtcSessionEvent('CALLSIGN_RENAME', { unitId: String(target.unitId), oldCallsign, newCallsign })
   return []
 })
 

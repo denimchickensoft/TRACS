@@ -24,6 +24,9 @@ const DEFAULTS = {
       eventHeader:    {},
       recoveryStatus: {},
     },
+    trackOwnership: {},
+    handoffs:       {},
+    pointOuts:      {},
   },
   session: {
     clientList:       [],

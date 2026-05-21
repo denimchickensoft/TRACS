@@ -38,7 +38,7 @@ export const STARS_KEY_MAP = [
   { code: 'F9',                ctrl: true,  action: 'DCB_RNG_RING' },  // RNG RING
   { code: 'F10',               ctrl: true,  action: 'DCB_RANGE'   },  // RANGE
   { code: 'Insert',            ctrl: false, action: 'DCB_PREF'    },  // PREF SET
-  { code: 'KeyT',              ctrl: true,  action: 'TOGGLE_TOPDOWN' }, // Ctrl+T = top-down
+  { code: 'KeyT',              alt: true,   action: 'TOGGLE_TOPDOWN' }, // Alt+T = top-down
 ]
 
 /**
@@ -50,6 +50,7 @@ export function matchStarsKey(e) {
     if (entry.code !== e.code) continue
     if (entry.ctrl  !== undefined && entry.ctrl  !== e.ctrlKey)  continue
     if (entry.shift !== undefined && entry.shift !== e.shiftKey) continue
+    if (entry.alt   !== undefined && entry.alt   !== e.altKey)   continue
     return entry
   }
   return null

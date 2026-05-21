@@ -42,16 +42,26 @@ function ConnectPhase({ onConnected }) {
 
   const { setConnection } = useSessionStore()
 
+  function normalizeUrl(raw) {
+    let url = raw.trim()
+    if (!/^https?:\/\//i.test(url)) url = 'http://' + url
+    url = url.replace(/\/+$/, '')
+    return url
+  }
+
   async function handleConnect(e) {
     e.preventDefault()
     setError(null)
     setConnecting(true)
 
+    const normalizedUrl = normalizeUrl(olympusUrl)
+    setOlympusUrl(normalizedUrl)
+
     try {
       const res = await fetch('/api/connect', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ olympusUrl, password, coalition }),
+        body:    JSON.stringify({ olympusUrl: normalizedUrl, password, coalition }),
       })
 
       if (!res.ok) {
@@ -59,9 +69,9 @@ function ConnectPhase({ onConnected }) {
         throw new Error(body.error ?? `Server responded ${res.status}`)
       }
 
-      localStorage.setItem('tracs.lastOlympusUrl', olympusUrl)
+      localStorage.setItem('tracs.lastOlympusUrl', normalizedUrl)
       localStorage.setItem('tracs.lastCoalitionPassword', password)
-      setConnection({ olympusUrl, coalition })
+      setConnection({ olympusUrl: normalizedUrl, coalition })
       wsClient.connect()
       onConnected()
     } catch (err) {
@@ -75,7 +85,7 @@ function ConnectPhase({ onConnected }) {
       <section>
         <label>Olympus Server URL</label>
         <input
-          type="url"
+          type="text"
           value={olympusUrl}
           onChange={(e) => setOlympusUrl(e.target.value)}
           placeholder="http://your-dcs-server:4514"
@@ -193,11 +203,12 @@ function PositionPhase({ onSignedIn }) {
   }, [loadPositionTypes])
 
   // Default suffix once positionTypes are loaded; also validates saved suffix still exists
+  const atcPositionTypes = positionTypes.filter((pt) => !pt.catccOnly)
   useEffect(() => {
-    if (positionTypes.length === 0) return
-    if (!suffix || !positionTypes.some((pt) => pt.suffix === suffix)) {
-      const twr = positionTypes.find((pt) => pt.suffix === 'TWR')
-      setSuffix(twr ? twr.suffix : positionTypes[0].suffix)
+    if (atcPositionTypes.length === 0) return
+    if (!suffix || !atcPositionTypes.some((pt) => pt.suffix === suffix)) {
+      const twr = atcPositionTypes.find((pt) => pt.suffix === 'TWR')
+      setSuffix(twr ? twr.suffix : atcPositionTypes[0].suffix)
     }
   }, [positionTypes]) // eslint-disable-line
 
@@ -269,7 +280,7 @@ function PositionPhase({ onSignedIn }) {
 
   // Lookup ICAO across all theatres
   function resolveIcao(dcsName) {
-    const theatre = (mission?.theater ?? '').toLowerCase()
+    const theatre = (mission?.mission?.theatre ?? '').toLowerCase()
     if (theatre && icaoMap[theatre]?.[dcsName]) return icaoMap[theatre][dcsName]
     for (const [key, map] of Object.entries(icaoMap)) {
       if (key === '_note' || typeof map !== 'object') continue
@@ -320,15 +331,16 @@ function PositionPhase({ onSignedIn }) {
 
   // Fetch CTR facility list for the current theatre when CTR is selected
   useEffect(() => {
-    if (!isCtr || !mission?.theater) { setCtrList([]); setCtrLoading(false); return }
+    const theatre = mission?.mission?.theatre
+    if (!isCtr || !theatre) { setCtrList([]); setCtrLoading(false); return }
     setCtrLoading(true)
     const ac = new AbortController()
-    fetch(`/api/navdata/ctrs?theatre=${encodeURIComponent(mission.theater)}`, { signal: ac.signal })
+    fetch(`/api/navdata/ctrs?theatre=${encodeURIComponent(theatre)}`, { signal: ac.signal })
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data) => { setCtrList(data); setCtrLoading(false) })
       .catch(() => { setCtrList([]); setCtrLoading(false) })
     return () => ac.abort()
-  }, [isCtr, mission?.theater]) // eslint-disable-line
+  }, [isCtr, mission?.mission?.theatre]) // eslint-disable-line
 
   const selectedEntry   = airbaseList.find((ab) => ab.name === selectedBase) ?? null
   const isCarrier       = selectedEntry?.isCarrier ?? false
@@ -572,20 +584,9 @@ function PositionPhase({ onSignedIn }) {
                   disabled={signingIn}
                 >
                   <option value="">— Select facility —</option>
-                  {landBases.length > 0 && (
-                    <optgroup label="Airports">
-                      {landBases.map((ab) => (
-                        <option key={ab.name} value={ab.name}>{ab.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {carriers.length > 0 && (
-                    <optgroup label="Carriers">
-                      {carriers.map((ab) => (
-                        <option key={ab.name} value={ab.name}>{ab.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
+                  {landBases.map((ab) => (
+                    <option key={ab.name} value={ab.name}>{ab.name}</option>
+                  ))}
                 </select>
               )}
               <select
@@ -594,13 +595,27 @@ function PositionPhase({ onSignedIn }) {
                 onChange={(e) => setSuffix(e.target.value)}
                 disabled={signingIn || positionTypes.length === 0}
               >
-                {positionTypes.map((pt) => (
+                {atcPositionTypes.map((pt) => (
                   <option key={pt.suffix} value={pt.suffix}>{pt.displayName}</option>
                 ))}
               </select>
             </div>
+            {!isCtr && selectedBase && (
+              <input
+                type="text"
+                className="facility-input facility-id-override"
+                value={facilityId}
+                onChange={(e) => setFacilityId(e.target.value.toUpperCase())}
+                placeholder="ICAO (e.g. OIAB)"
+                maxLength={4}
+                disabled={signingIn}
+              />
+            )}
             {constructedName && (
               <span className="callsign-preview">{constructedName.toUpperCase()}</span>
+            )}
+            {!isCtr && selectedBase && !facilityId && (
+              <span className="login-hint">No ICAO found — enter one manually</span>
             )}
             {isCtr && ctrLoading && (
               <span className="login-hint">Loading centers…</span>

@@ -106,8 +106,10 @@ export default function AtcScope() {
   // Keep viewRef in sync
   useEffect(() => { viewRef.current = view }, [view])
 
+  const tdmMode = windowSettings?.tdmMode ?? false
+
   // ── Visible units (filtered) ──────────────────────────────────────
-  const visibleUnits    = useMemo(() => getVisibleUnits(units, coalition), [units, coalition])
+  const visibleUnits    = useMemo(() => getVisibleUnits(units, coalition, tdmMode), [units, coalition, tdmMode])
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 
@@ -488,10 +490,15 @@ export default function AtcScope() {
       case 'TOGGLE_DCB':
         setDcbVisible(v => !v)
         break
+      case 'TOGGLE_TOPDOWN': {
+        const current = useDisplayStore.getState().windows[WINDOW_ID]?.tdmMode ?? false
+        displayStore.updateWindow(WINDOW_ID, { tdmMode: !current })
+        break
+      }
       default:
         break
     }
-  }, [])
+  }, [displayStore])
 
   // ── Mouse: LEFT click = slew, RIGHT drag = pan ────────────────────
   const handleMouseDown = useCallback((e) => {

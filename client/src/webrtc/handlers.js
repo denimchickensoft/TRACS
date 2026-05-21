@@ -21,38 +21,16 @@ export function handleModuleMessage(msg) {
   if (module === 'CATCC') handleCatcc(type, payload)
 }
 
-function handleAtc(type, payload) {
-  const fps  = useFlightPlansStore.getState()
-  const atc  = useAtcStore.getState()
-  const strips = useStripsStore.getState()
-
+// ── Shared track/handoff/point-out handler (ATC + CATCC) ─────────────────────
+function handleTrackAndHandoff(type, payload) {
+  const atc = useAtcStore.getState()
   switch (type) {
-    case 'FLIGHT_PLAN_CREATE':
-      fps.add(payload)
-      if (strips.autoAddOnTrack) {
-        // Don't auto-strip on remote creates — controller decides when to track
-      }
-      break
-
-    case 'FLIGHT_PLAN_AMEND':
-      fps.amend(payload.aid, payload)
-      break
-
-    case 'FLIGHT_PLAN_DELETE':
-      fps.remove(payload.aid)
-      break
-
     case 'TRACK_CLAIMED':
       atc.claimTrack(payload.unitId, payload.controllerId)
-      if (strips.autoAddOnHandoff) {
-        // Strip added when handoff is received, not when remote claims
-      }
       break
-
     case 'TRACK_DROPPED':
       atc.dropTrack(payload.unitId)
       break
-
     case 'HANDOFF_INITIATED': {
       const myControllerId = getMyControllerId()
       const isTarget       = payload.toControllerId === myControllerId
@@ -61,33 +39,24 @@ function handleAtc(type, payload) {
         from:  payload.fromControllerId,
         to:    payload.toControllerId,
       })
-      if (isTarget && strips.autoAddOnHandoff) {
-        const plan = Object.values(fps.plans).find((p) => String(p.unitId) === String(payload.unitId))
-        if (plan) strips.addStrip(plan.aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED })
-      }
       break
     }
-
     case 'HANDOFF_ACCEPTED': {
       const myId = getMyControllerId()
       atc.claimTrack(payload.unitId, payload.toControllerId)
       atc.clearHandoff(payload.unitId)
-      // Sender: sticky FDB + 5-second blink to confirm handoff was accepted
       if (payload.fromControllerId === myId) {
         atc.setDisplayFdb(payload.unitId)
         atc.setBlinkTrack(payload.unitId)
       }
       break
     }
-
     case 'HANDOFF_REJECTED':
       atc.clearHandoff(payload.unitId)
       break
-
     case 'HANDOFF_RECALLED':
       atc.clearHandoff(payload.unitId)
       break
-
     case 'HANDOFF_REDIRECTED':
       atc.setHandoff(payload.unitId, {
         state: HANDOFF_STATE.INITIATED,
@@ -95,7 +64,6 @@ function handleAtc(type, payload) {
         to:    payload.toControllerId,
       })
       break
-
     case 'POINT_OUT_SENT':
       atc.setPointOut(payload.unitId, {
         state: POINTOUT_STATE.SENT,
@@ -103,20 +71,43 @@ function handleAtc(type, payload) {
         to:    payload.toControllerId,
       })
       break
-
     case 'POINT_OUT_ACCEPTED':
       atc.clearPointOut(payload.unitId)
       break
-
     case 'POINT_OUT_REJECTED':
       atc.clearPointOut(payload.unitId)
       break
-
     case 'POINT_OUT_CONVERTED':
       atc.clearPointOut(payload.unitId)
       atc.claimTrack(payload.unitId, payload.toControllerId)
       break
+  }
+}
 
+function handleAtc(type, payload) {
+  const fps    = useFlightPlansStore.getState()
+  const strips = useStripsStore.getState()
+
+  handleTrackAndHandoff(type, payload)
+
+  switch (type) {
+    case 'FLIGHT_PLAN_CREATE':
+      fps.add(payload)
+      break
+    case 'FLIGHT_PLAN_AMEND':
+      fps.amend(payload.aid, payload)
+      break
+    case 'FLIGHT_PLAN_DELETE':
+      fps.remove(payload.aid)
+      break
+    case 'HANDOFF_INITIATED': {
+      const myControllerId = getMyControllerId()
+      if (payload.toControllerId === myControllerId && strips.autoAddOnHandoff) {
+        const plan = Object.values(fps.plans).find((p) => String(p.unitId) === String(payload.unitId))
+        if (plan) strips.addStrip(plan.aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: payload.unitId ?? null })
+      }
+      break
+    }
     case 'STRIP_PASSED': {
       const myPosition = useSessionStore.getState().positionName
       if (payload.toPosition && payload.toPosition !== myPosition) break
@@ -125,6 +116,7 @@ function handleAtc(type, payload) {
         strips.addStrip(payload.aid, {
           annotations: payload.annotations,
           highlight:   STRIP_HIGHLIGHT.AUTO_ADDED,
+          unitId:      payload.unitId ?? null,
         })
       }
       break
@@ -133,9 +125,6 @@ function handleAtc(type, payload) {
 }
 
 function handleCatcc(type, payload) {
-  switch (type) {
-    case 'STATUS_BOARD_UPDATE':
-      applyStatusBoardUpdate(payload)
-      break
-  }
+  handleTrackAndHandoff(type, payload)
+  if (type === 'STATUS_BOARD_UPDATE') applyStatusBoardUpdate(payload)
 }

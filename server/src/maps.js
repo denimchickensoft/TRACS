@@ -7,7 +7,7 @@ const readline = require('readline')
 const MAPS_DIR   = path.join(__dirname, '../../server/maps')
 const INDEX_PATH = path.join(MAPS_DIR, 'theatre_index.json')
 
-// Theatre name → { theaterStyle, groups }
+// Theatre name → { theatreStyle, groups }
 const cache = {}
 
 // ── ICAO type → group name ────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ async function parseFile(filePath) {
   })
 }
 
-function groupFeatures(features, theaterStyle) {
+function groupFeatures(features, theatreStyle) {
   const buckets = {}
 
   const add = (name, feat) => {
@@ -106,7 +106,7 @@ function groupFeatures(features, theaterStyle) {
     buckets[name].push(feat)
   }
 
-  if (theaterStyle === 'ICAO') {
+  if (theatreStyle === 'ICAO') {
     for (const feat of features) {
       add(TYPE_GROUP[feat.type] ?? 'Other', feat)
     }
@@ -130,17 +130,17 @@ async function loadTheatre(theatreName) {
 
   let index
   try { index = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8')) }
-  catch { console.warn('[maps] theatre_index.json missing or unreadable'); return { theaterStyle: null, groups: [] } }
+  catch { console.warn('[maps] theatre_index.json missing or unreadable'); return { theatreStyle: null, groups: [] } }
 
   const folder = index[theatreName]
-  if (!folder) { console.warn(`[maps] no folder mapped for theatre: ${theatreName}`); return { theaterStyle: null, groups: [] } }
+  if (!folder) { console.warn(`[maps] no folder mapped for theatre: ${theatreName}`); return { theatreStyle: null, groups: [] } }
 
   const dir = path.join(MAPS_DIR, folder)
-  if (!fs.existsSync(dir)) { console.warn(`[maps] folder not found: ${dir}`); return { theaterStyle: null, groups: [] } }
+  if (!fs.existsSync(dir)) { console.warn(`[maps] folder not found: ${dir}`); return { theatreStyle: null, groups: [] } }
 
   // Scan all .ndgeojson files — no manifest
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.ndgeojson'))
-  if (files.length === 0) { console.warn(`[maps] no .ndgeojson files in ${dir}`); return { theaterStyle: null, groups: [] } }
+  if (files.length === 0) { console.warn(`[maps] no .ndgeojson files in ${dir}`); return { theatreStyle: null, groups: [] } }
 
   const allFeatures = []
   for (const file of files) {
@@ -149,14 +149,14 @@ async function loadTheatre(theatreName) {
     console.log(`[maps] ${file}: ${feats.length} features`)
   }
 
-  // Detect theater style: any type > 0 → ICAO; all type === 0 → FAA
-  const theaterStyle = allFeatures.some((f) => f.type > 0) ? 'ICAO' : 'FAA'
-  console.log(`[maps] ${theatreName}: ${theaterStyle} theater, ${allFeatures.length} total features`)
+  // Detect theatre style: any type > 0 → ICAO; all type === 0 → FAA
+  const theatreStyle = allFeatures.some((f) => f.type > 0) ? 'ICAO' : 'FAA'
+  console.log(`[maps] ${theatreName}: ${theatreStyle} theatre, ${allFeatures.length} total features`)
 
-  const groups = groupFeatures(allFeatures, theaterStyle)
+  const groups = groupFeatures(allFeatures, theatreStyle)
   console.log(`[maps] groups: ${groups.map((g) => `${g.name}(${g.features.length})`).join(', ')}`)
 
-  const result = { theaterStyle, groups }
+  const result = { theatreStyle, groups }
   cache[theatreName] = result
   return result
 }

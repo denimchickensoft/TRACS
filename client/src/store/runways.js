@@ -73,6 +73,7 @@ export function computeAirbaseLabels(names) {
 }
 
 const theatreCache = {}
+let icaoMapping = null
 
 export const useRunwaysStore = create((set, get) => ({
   // centerlines: one entry per runway direction
@@ -92,39 +93,75 @@ export const useRunwaysStore = create((set, get) => ({
     if (get()._lastLoadKey === loadKey) return
     try {
       if (!theatreCache[theatre]) {
-        const res = await fetch(`/runways/${encodeURIComponent(theatre)}.json`)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        theatreCache[theatre] = await res.json()
+        const [rwyRes, abRes] = await Promise.all([
+          fetch(`/runways/${encodeURIComponent(theatre)}.json`),
+          fetch(`/api/airbases?theatre=${encodeURIComponent(theatre)}`),
+        ])
+        if (!rwyRes.ok) throw new Error(`HTTP ${rwyRes.status}`)
+        const rwyData = await rwyRes.json()
+
+        // headingLookup[abName] = array of runway groups, one per physical runway,
+        // in the same order as the airbase JSON. Each group maps full designator
+        // (e.g. "13L", "31R") to magnetic heading so parallel runways are distinct.
+        const headingLookup = {}
+        if (abRes.ok) {
+          const abData = await abRes.json()
+          for (const [abName, abInfo] of Object.entries(abData.airfields ?? {})) {
+            headingLookup[abName] = []
+            for (const rwy of abInfo.runways ?? []) {
+              const group = {}
+              for (const entry of rwy.headings ?? []) {
+                for (const [rwyNum, data] of Object.entries(entry)) {
+                  group[rwyNum] = parseInt(data.magHeading, 10)
+                }
+              }
+              headingLookup[abName].push(group)
+            }
+          }
+        }
+
+        theatreCache[theatre] = { ...rwyData, headingLookup }
       }
 
-      const { airbases } = theatreCache[theatre]
+      const { airbases, headingLookup } = theatreCache[theatre]
       const threshold    = filterThresholdNm(suffix)
       const hasPos       = facilityLat != null && facilityLng != null
       const magvar       = THEATRE_MAGVAR[theatre] ?? 0
       const isNewTheatre = get().theatre !== theatre
 
       const rawCenterlines = []
-      const seenRwy        = new Set()
       const seenCtr        = new Set()
 
       for (const ab of airbases ?? []) {
-        for (const rwy of ab.runways ?? []) {
+        const abGroups = headingLookup[ab.airbase] ?? []
+        for (let rwyIdx = 0; rwyIdx < (ab.runways ?? []).length; rwyIdx++) {
+          const rwy = ab.runways[rwyIdx]
           if (hasPos && nmBetween(facilityLat, facilityLng, rwy.lat, rwy.lon) > threshold) continue
 
-          const headingDeg = rwy.name * 10 + magvar
+          // Match this runway to its airbase JSON group by index so parallel
+          // runways (e.g. 13L/31R and 13R/31L) get their own full designators.
+          const group = abGroups[rwyIdx] ?? {}
+          const allEntries = Object.entries(group)  // e.g. [["13L",126],["31R",306]]
+
+          // Primary = entry whose base number equals rwy.name; other = reciprocal.
+          const primaryEntry = allEntries.find(([k]) => parseInt(k, 10) === rwy.name)
+          const otherEntry   = allEntries.find(([k]) => parseInt(k, 10) !== rwy.name)
+
+          const name1   = primaryEntry?.[0] ?? String(rwy.name)
+          const name2   = otherEntry?.[0]   ?? String(((rwy.name + 18) % 36) || 36)
+          const magHead = primaryEntry?.[1]  ?? rwy.name * 10
+
+          const headingDeg = magHead + magvar
           const headingRad = headingDeg * Math.PI / 180
           const { end1, end2 } = computeEndpoints(rwy.lat, rwy.lon, headingDeg, rwy.length_ft)
 
-          const rwyNum1 = rwy.name
-          const rwyNum2 = ((rwy.name + 18) % 36) || 36
-
           // ── Centerlines (one per direction), carrying pavement endpoints ──
-          const id1 = `${ab.airbase}__${rwyNum1}`
+          const id1 = `${ab.airbase}__${name1}`
           if (!seenCtr.has(id1)) {
             seenCtr.add(id1)
             rawCenterlines.push({
               airbase:      ab.airbase,
-              rwyNum:       rwyNum1,
+              rwyName:      name1,
               thresholdLat: end2.lat,
               thresholdLng: end2.lng,
               headingRad:   headingRad + Math.PI,
@@ -132,12 +169,12 @@ export const useRunwaysStore = create((set, get) => ({
               rwyEnd2:      end2,
             })
           }
-          const id2 = `${ab.airbase}__${rwyNum2}`
+          const id2 = `${ab.airbase}__${name2}`
           if (!seenCtr.has(id2)) {
             seenCtr.add(id2)
             rawCenterlines.push({
               airbase:      ab.airbase,
-              rwyNum:       rwyNum2,
+              rwyName:      name2,
               thresholdLat: end1.lat,
               thresholdLng: end1.lng,
               headingRad:   headingRad,
@@ -145,21 +182,31 @@ export const useRunwaysStore = create((set, get) => ({
               rwyEnd2:      end2,
             })
           }
-
-          // track seen pavements for deduplication (not needed for output, kept for seenRwy logic)
-          const lo  = Math.min(rwyNum1, rwyNum2)
-          const hi  = Math.max(rwyNum1, rwyNum2)
-          seenRwy.add(`${ab.airbase}__rwy__${lo}_${hi}`)
         }
       }
 
-      // Resolve abbreviated airbase labels (collision-aware)
-      const abNames  = [...new Set(rawCenterlines.map((c) => c.airbase))]
-      const labelMap = computeAirbaseLabels(abNames)
+      // Load ICAO mapping once
+      if (!icaoMapping) {
+        try {
+          const r = await fetch('/icaoMapping.json')
+          icaoMapping = r.ok ? await r.json() : {}
+        } catch {
+          icaoMapping = {}
+        }
+      }
+
+      // Resolve labels: ICAO code if available, abbreviated name as fallback
+      const abNames     = [...new Set(rawCenterlines.map((c) => c.airbase))]
+      const fallbackMap = computeAirbaseLabels(abNames)
+      const theatreIcao = icaoMapping[theatre.toLowerCase()] ?? {}
+      const labelMap    = {}
+      for (const name of abNames) {
+        labelMap[name] = theatreIcao[name] ?? fallbackMap[name]
+      }
 
       const centerlines = rawCenterlines.map((c) => ({
-        id:           `${c.airbase}__${c.rwyNum}`,
-        label:        `${labelMap[c.airbase]} ${String(c.rwyNum).padStart(2, '0')}`,
+        id:           `${c.airbase}__${c.rwyName}`,
+        label:        `${labelMap[c.airbase]} ${c.rwyName}`,
         airbase:      c.airbase,
         thresholdLat: c.thresholdLat,
         thresholdLng: c.thresholdLng,

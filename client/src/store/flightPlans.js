@@ -111,6 +111,22 @@ export const useFlightPlansStore = create((set, get) => ({
       return { plans: { ...state.plans, [key]: { ...state.plans[key], unitId } } }
     }),
 
+  renameAid: (unitId, newAid, oldAid) =>
+    set((state) => {
+      const normalized = newAid?.toUpperCase()
+      if (!normalized) return {}
+      let oldKey = Object.keys(state.plans).find(
+        (key) => String(state.plans[key].unitId) === String(unitId)
+      )
+      if (!oldKey && oldAid) oldKey = oldAid.toUpperCase()
+      if (!oldKey || !state.plans[oldKey] || oldKey === normalized) return {}
+      const plan = state.plans[oldKey]
+      const next = { ...state.plans }
+      delete next[oldKey]
+      next[normalized] = { ...plan, aid: normalized }
+      return { plans: next }
+    }),
+
   getByUnit: (unitId) =>
     Object.values(get().plans).find((p) => p.unitId === unitId) ?? null,
 

@@ -1,7 +1,8 @@
 'use strict'
 
-const crypto = require('crypto')
-const state = require('./state')
+const crypto    = require('crypto')
+const state     = require('./state')
+const elevation = require('./elevation')
 const { decodeUnits } = require('./decoder')
 
 const POLL_INTERVAL_MS = 1000
@@ -24,16 +25,24 @@ let onUnitsDelta = null
 let onMission = null
 let onAirbases = null
 
-function makeAuthHeader(password) {
+const COALITION_TO_ROLE = {
+  blue:  'Blue commander',
+  red:   'Red commander',
+  gm:    'Game master',
+  admin: 'Admin',
+}
+
+function makeAuthHeader(password, coalition) {
+  const role   = COALITION_TO_ROLE[coalition] ?? ''
   const hashed = crypto.createHash('sha256').update(password).digest('hex')
-  const credentials = Buffer.from(`:${hashed}`).toString('base64')
+  const credentials = Buffer.from(`${role}:${hashed}`).toString('base64')
   return `Basic ${credentials}`
 }
 
 async function fetchOlympusJson(path) {
   const url = `${config.olympusUrl}${path}`
   const res = await fetch(url, {
-    headers: { Authorization: makeAuthHeader(config.password) },
+    headers: { Authorization: makeAuthHeader(config.password, config.coalition) },
   })
   const text = await res.text()
   if (!res.ok) {
@@ -49,7 +58,7 @@ async function fetchOlympusJson(path) {
 async function fetchOlympusBinary(path) {
   const url = `${config.olympusUrl}${path}`
   const res = await fetch(url, {
-    headers: { Authorization: makeAuthHeader(config.password) },
+    headers: { Authorization: makeAuthHeader(config.password, config.coalition) },
   })
   if (!res.ok) {
     const text = await res.text()
@@ -86,6 +95,15 @@ async function pollUnits() {
       for (const knownId of Object.keys(state.getSnapshot().updated)) {
         if (!receivedIds.has(knownId)) removedIds.push(knownId)
       }
+    }
+
+    // Attach AGL to aircraft only; scrub any stale value from non-aircraft
+    for (const [id, unit] of Object.entries(updatedMap)) {
+      if (!unit.position) continue
+      const category = unit.category ?? state.getUnit(id)?.category
+      if (category !== 'Aircraft') { delete unit.agl; continue }
+      const agl = elevation.getAgl(unit.position.lat, unit.position.lng, unit.position.alt)
+      if (agl !== null) unit.agl = Math.max(0, Math.round(agl))
     }
 
     const delta = { updated: updatedMap, removed: removedIds, time: updateTime }
@@ -167,8 +185,7 @@ function isPolling() {
 
 async function probe(cfg) {
   const url = `${cfg.olympusUrl}/olympus/mission`
-  const hashed = crypto.createHash('sha256').update(cfg.password ?? '').digest('hex')
-  const authHeader = `Basic ${Buffer.from(`:${hashed}`).toString('base64')}`
+  const authHeader = makeAuthHeader(cfg.password ?? '', cfg.coalition ?? '')
   const res = await fetch(url, {
     headers: { Authorization: authHeader },
     signal: AbortSignal.timeout(5000),

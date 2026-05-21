@@ -5,14 +5,15 @@ import { useControllersStore } from './store/controllers'
 import { Login }         from './components/Login/Login'
 import AtcScope          from './modules/atc/AtcScope'
 import CatccScope        from './modules/catcc/CatccScope'
-import { StatusBoard }   from './modules/catcc/StatusBoard'
+import { StatusBoard, SB_NATURAL_WIDTH } from './modules/catcc/StatusBoard'
 import { StripBay }      from './components/StripBay/StripBay'
 import { Par }           from './modules/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
 import { disconnectWebrtc } from './webrtc/client'
 import { THEATRE_MAGVAR }   from './utils/magvar.js'
 
-const CL_VISIBLE_KEY = 'tracs.cl.visible'
+const CL_VISIBLE_KEY  = 'tracs.cl.visible'
+const SB_WIDTH_KEY    = 'tracs.sb.width'
 
 const PROFILE_STORAGE_KEY = 'tracs.lastProfile'
 const DEFAULT_PROFILE     = 'simple'
@@ -40,7 +41,11 @@ export function App() {
   const resetPosition    = useSessionStore((s) => s.resetPosition)
   const carrierUnitId    = useSessionStore((s) => s.carrierUnitId)
 
+  const useDcsNames    = useSessionStore((s) => s.useDcsNames)
+  const toggleDcsNames = useSessionStore((s) => s.toggleDcsNames)
+
   const [confirmingReset, setConfirmingReset] = useState(false)
+  const [settingsOpen,    setSettingsOpen]    = useState(false)
   const [clVisible, setClVisible] = useState(() => localStorage.getItem(CL_VISIBLE_KEY) === 'true')
   const [clDocked,  setClDocked]  = useState(true)
   const clPopupRef = useRef(null)
@@ -84,7 +89,7 @@ export function App() {
     }
   }
 
-  function makeResizeHandler(widthRef, setWidth, min, max) {
+  function makeResizeHandler(widthRef, setWidth, min, max, storageKey = null) {
     return (e) => {
       e.preventDefault()
       const startX = e.clientX
@@ -97,6 +102,7 @@ export function App() {
       const onUp = () => {
         document.removeEventListener('mousemove', onMove)
         document.removeEventListener('mouseup',   onUp)
+        if (storageKey) localStorage.setItem(storageKey, String(widthRef.current))
       }
       document.addEventListener('mousemove', onMove)
       document.addEventListener('mouseup',   onUp)
@@ -105,10 +111,11 @@ export function App() {
 
   // ── Status board ───────────────────────────────────────────────────
   const [sbDocked,  setSbDocked]  = useState(true)
-  const [sbWidth,   setSbWidth]   = useState(500)
-  const sbWidthRef = useRef(500)
+  const initSbWidth = (() => { const v = parseInt(localStorage.getItem(SB_WIDTH_KEY), 10); return isNaN(v) ? SB_NATURAL_WIDTH : v })()
+  const [sbWidth,   setSbWidth]   = useState(initSbWidth)
+  const sbWidthRef = useRef(initSbWidth)
   const sbPopupRef = useRef(null)
-  const handleSbResize  = useCallback(makeResizeHandler(sbWidthRef, setSbWidth, 320, 900), []) // eslint-disable-line
+  const handleSbResize  = useCallback(makeResizeHandler(sbWidthRef, setSbWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
   const handleSbUndock  = useCallback(makeUndockHandler('/?window=catcc-board', 'tracs-catcc-board', sbWidthRef, setSbDocked, sbPopupRef), []) // eslint-disable-line
 
   // ── Strip bay ──────────────────────────────────────────────────────
@@ -179,6 +186,7 @@ export function App() {
 
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <div style={{
+        position:       'relative',
         display:        'flex',
         alignItems:     'center',
         gap:            '12px',
@@ -307,7 +315,56 @@ export function App() {
               {p.name}
             </button>
           ))}
+
+          <button
+            onClick={() => setSettingsOpen((o) => !o)}
+            title="Settings"
+            style={{
+              background:    settingsOpen ? '#222' : 'transparent',
+              border:        `1px solid ${settingsOpen ? '#444' : '#333'}`,
+              borderRadius:  '2px',
+              color:         settingsOpen ? '#aaa' : '#555',
+              fontFamily:    'inherit',
+              fontSize:      '0.75rem',
+              padding:       '1px 6px',
+              cursor:        'pointer',
+              lineHeight:    1,
+            }}
+            onMouseEnter={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.color = '#888' } }}
+            onMouseLeave={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' } }}
+          >
+            ⚙
+          </button>
         </div>
+
+        {/* Settings panel */}
+        {settingsOpen && (
+          <div style={{
+            position:      'absolute',
+            top:           '100%',
+            right:         '8px',
+            background:    '#1a1a1a',
+            border:        '1px solid #333',
+            borderRadius:  '3px',
+            padding:       '10px 14px',
+            zIndex:        200,
+            minWidth:      '220px',
+            display:       'flex',
+            flexDirection: 'column',
+            gap:           '8px',
+          }}>
+            <div style={{ color: '#444', fontSize: '0.6rem', letterSpacing: '0.12em' }}>SETTINGS</div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#888', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={useDcsNames}
+                onChange={toggleDcsNames}
+                style={{ cursor: 'pointer', accentColor: '#4488cc' }}
+              />
+              Use DCS Multiplayer Names
+            </label>
+          </div>
+        )}
       </div>
 
       {/* ── Scope area ──────────────────────────────────────────────── */}
