@@ -1,0 +1,5 @@
+.cab-map.leaflet-container,
+.cab-map.leaflet-container.leaflet-grab,
+.leaflet-dragging .cab-map.leaflet-container {
+  cursor: crosshair !important;
+}

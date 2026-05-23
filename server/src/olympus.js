@@ -183,6 +183,10 @@ function isPolling() {
   return polling
 }
 
+function getConfig() {
+  return config
+}
+
 async function probe(cfg) {
   const url = `${cfg.olympusUrl}/olympus/mission`
   const authHeader = makeAuthHeader(cfg.password ?? '', cfg.coalition ?? '')
@@ -193,4 +197,4 @@ async function probe(cfg) {
   if (!res.ok) throw new Error(`Olympus responded ${res.status}`)
 }
 
-module.exports = { start, stop, isPolling, probe }
+module.exports = { start, stop, isPolling, getConfig, probe }

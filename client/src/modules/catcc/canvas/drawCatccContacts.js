@@ -1,30 +1,31 @@
 import { latLngToCanvas } from '../../atc/canvas/projection.js'
 
-// PTL and history trails are disabled for now — do not delete:
-// To re-enable, add (history, ptl, briteHst, historyLimit) parameters and draw
-// history dots + PTL line here before the main contact symbol.
+const CIRCLE_RADIUS  = 5   // px — contact symbol
+const HISTORY_RADIUS = 3   // px — history dot
 
-const CIRCLE_RADIUS = 5  // px
+const HISTORY_COLORS = ['#AA8800', '#886600', '#664400', '#442200']
 
 /**
- * Draw CATCC contact symbols on ctx (no clearRect — caller must clear).
+ * Draw CATCC contact symbols and history trails on ctx (no clearRect — caller clears).
  *
- *   Untracked (no ownership entry): empty yellow circle.
- *   Tracked   (has ownership):      position letter (M/A/D/T), no circle.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {object} view       { centerLat, centerLng, pixelsPerNm, width, height }
- * @param {object} units      { [id]: unit }
- * @param {object} trackMap   { [id]: letter } — only tracked contacts present
- * @param {number} brite      0–100
- * @param {number} csPos      0–5 symbol size (default 3)
+ *   Untracked: empty gold circle.
+ *   Tracked:   position letter (M/A/D/T), no circle.
+ *   History:   filled gold dots, dimming oldest→newest per HISTORY_COLORS.
  */
-export function drawCatccContacts(ctx, view, units, trackMap, brite = 80, csPos = 3, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null) {
-  const alpha = Math.max(0, Math.min(1, brite / 100))
+export function drawCatccContacts(
+  ctx, view, units, trackMap,
+  brite = 80, csPos = 3,
+  blinkingUids = new Set(), blinkPhase = false,
+  ownership = {}, myControllerId = null,
+  history = {}, historyLimit = 5, briteHst = 80,
+) {
+  const alpha    = Math.max(0, Math.min(1, brite    / 100))
+  const alphaHst = Math.max(0, Math.min(1, briteHst / 100))
   if (alpha <= 0) return
 
   const { width, height } = view
   const fontPx = 8 + csPos * 2
+  const maxColorIdx = HISTORY_COLORS.length - 1
 
   ctx.save()
 
@@ -35,13 +36,26 @@ export function drawCatccContacts(ctx, view, units, trackMap, brite = 80, csPos 
     const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
     if (x < -50 || x > width + 50 || y < -50 || y > height + 50) continue
 
+    // --- History trail (drawn first, under contact symbol) ---
+    if (alphaHst > 0) {
+      const trail = history[id] || []
+      const limit = Math.min(trail.length, historyLimit)
+      for (let i = 0; i < limit; i++) {
+        const hp = latLngToCanvas(trail[i].lat, trail[i].lng, view)
+        ctx.globalAlpha = alphaHst
+        ctx.fillStyle   = HISTORY_COLORS[Math.min(i, maxColorIdx)]
+        ctx.beginPath()
+        ctx.arc(hp.x, hp.y, HISTORY_RADIUS, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+
+    // --- Contact symbol ---
     const isBlinking = blinkingUids.has(id)
     const isMine     = !!myControllerId && ownership[id] === myControllerId
-    if (isBlinking) {
-      ctx.globalAlpha = blinkPhase ? alpha : alpha * 0.60
-    } else {
-      ctx.globalAlpha = isMine ? alpha : alpha * 0.60
-    }
+    ctx.globalAlpha  = isBlinking
+      ? (blinkPhase ? alpha : alpha * 0.60)
+      : (isMine ? alpha : alpha * 0.60)
 
     const letter = trackMap[id]
 

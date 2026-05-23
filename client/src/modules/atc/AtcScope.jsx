@@ -8,7 +8,7 @@ import { useDisplayStore }  from '../../store/display.js'
 import { useOdsStore }      from '../../store/ods.js'
 import { usePreviewStore }  from '../../store/preview.js'
 import { getVisibleUnits }      from './visibleUnits.js'
-import { rangeToPixelsPerNm, canvasToLatLng } from './canvas/projection.js'
+import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from './canvas/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
 import { drawContacts }         from './canvas/drawContacts.js'
@@ -33,10 +33,10 @@ import { VFRList }              from './lists/VFRList.jsx'
 import { resolveSlew }          from './input/slewResolver.js'
 import { parseCommand }         from './input/commandParser.js'
 import { dispatch as dispatchAction, INIT_CNTL } from './actions/index.js'
-import { usePresetsStore } from '../../store/presets.js'
-import { useFpeStore }     from '../../store/fpe.js'
+import { usePresetsStore }  from '../../store/presets.js'
+import { useFpeStore }      from '../../store/fpe.js'
+import { useNavdataStore }  from '../../store/navdata.js'
 import { resolveCallsign } from '../../utils/callsign.js'
-import { THEATRE_MAGVAR }  from '../../utils/magvar.js'
 import { FPE }             from '../../components/FPE/FPE.jsx'
 import './AtcScope.css'
 
@@ -102,6 +102,7 @@ export default function AtcScope() {
   const panRef       = useRef({ dragging: false, startX: 0, startY: 0, lastX: 0, lastY: 0 })
   const historyRef   = useRef({})
   const rblCursorRef = useRef(null)    // canvas-pixel cursor pos during RBL_P2 preview
+  const coordsRef    = useRef(null)    // debug coords display div
 
   // Keep viewRef in sync
   useEffect(() => { viewRef.current = view }, [view])
@@ -169,8 +170,14 @@ export default function AtcScope() {
   }, [activeProfile]) // eslint-disable-line
 
   // ── Build view ────────────────────────────────────────────────────
-  const theatre = mission?.mission?.theatre
-  const magvar  = THEATRE_MAGVAR[theatre] ?? 0
+  const theatre    = mission?.mission?.theatre
+  const facilityCl = centerlines.find((c) => c.airbase === facilityDcsName)
+  const magvar     = facilityCl?.geoMagvar ?? facilityCl?.magvar ?? 0
+
+  // Load fixes + navaids for the current theatre so .FIND lookups work
+  useEffect(() => {
+    if (theatre) useNavdataStore.getState().loadForTheatre(theatre)
+  }, [theatre])
 
   const buildView = useCallback(() => {
     const canvas = ringCanvasRef.current
@@ -179,15 +186,16 @@ export default function AtcScope() {
     const w = canvas.width
     const h = canvas.height
     if (!w || !h) return null
+    const effectiveMagvar = typeof window.__magvarOverride === 'number' ? window.__magvarOverride : magvar
     return {
       centerLat: centerLat ?? 0,
       centerLng: centerLng ?? 0,
       pixelsPerNm: rangeToPixelsPerNm(rangeNm, w, h),
       width: w,
       height: h,
-      magvar,
+      magvar: effectiveMagvar,
     }
-  }, [windowSettings])
+  }, [windowSettings, magvar])
 
   const canvasAreaRef = useRef(null)
 
@@ -207,7 +215,7 @@ export default function AtcScope() {
     return () => ro.disconnect()
   }, [buildView])
 
-  useEffect(() => { setView(buildView()) }, [buildView])
+  useEffect(() => { setView(buildView()) }, [buildView, blinkTick])
 
   // ── Auto-center on facility airbase ──────────────────────────────
   // Stores the facilityDcsName that was last auto-centered so that changing
@@ -253,8 +261,9 @@ export default function AtcScope() {
     const match  = facilityDcsName ? Object.values(raw).find((ab) => (ab.callsign || '') === facilityDcsName) : null
     const facLat = match?.latitude  ?? null
     const facLng = match?.longitude ?? null
-    useRunwaysStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, facilityDcsName)
-  }, [mission?.mission?.theatre, facilityDcsName, positionSuffix, airbases])
+    const missionDate = mission?.mission?.dateAndTime?.date ?? null
+    useRunwaysStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, facilityDcsName, missionDate)
+  }, [mission?.mission?.theatre, mission?.mission?.dateAndTime?.date, facilityDcsName, positionSuffix, airbases])
 
   // ── Load airspace maps when theatre or facility changes ──────────
   useEffect(() => {
@@ -368,10 +377,19 @@ export default function AtcScope() {
       blinkingUids, blinkOn,
     )
 
+    // Draw .FIND marker — small green square centered on the found fix
+    const marker = windowSettings?.findMarker
+    if (marker) {
+      const { x, y } = latLngToCanvas(marker.lat, marker.lon, view)
+      ctx.fillStyle = '#00e000'
+      ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
+    }
+
   }, [visibleUnits, view, symbolMap, ownership, handoffs, blinkTracks, blinkTick,
       myControllerId, positionName,
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
+      windowSettings?.findMarker,
       activeProfile])
 
   // ── RBL layer — rAF loop for smooth cursor tracking ───────────────
@@ -443,8 +461,17 @@ export default function AtcScope() {
     if (windowSettings?.pendingAction === 'RBL_P2') {
       const buf = usePreviewStore.getState().buffer.trim()
       if (buf) {
-        // TODO: resolve buf as fix name → lat/lng and complete the RBL
-        usePreviewStore.getState().setResponse('FIX N/I')
+        const result = useNavdataStore.getState().lookupFix(buf)
+        if (!result) { usePreviewStore.getState().setResponse('NOT FOUND'); return }
+        const rblWip = useDisplayStore.getState().windows[WINDOW_ID]?.rblWip
+        if (!rblWip) { displayStore.updateWindow(WINDOW_ID, { pendingAction: null }); return }
+        const currentRbls = windowSettings?.rbls ?? []
+        displayStore.updateWindow(WINDOW_ID, {
+          rbls:          [...currentRbls, { p0: rblWip.p0, p1: { lat: result.lat, lng: result.lon } }],
+          rblWip:        null,
+          pendingAction: null,
+        })
+        usePreviewStore.getState().clearAfterCommand()
         return
       }
     }
@@ -473,7 +500,12 @@ export default function AtcScope() {
 
   // ── ESC handler ───────────────────────────────────────────────────
   const handleEsc = useCallback(() => {
-    const pending = useDisplayStore.getState().windows[WINDOW_ID]?.pendingAction
+    const win     = useDisplayStore.getState().windows[WINDOW_ID]
+    const pending = win?.pendingAction
+    if (win?.findMarker) {
+      displayStore.updateWindow(WINDOW_ID, { findMarker: null })
+      return
+    }
     if (pending === 'RBL_P2') {
       displayStore.updateWindow(WINDOW_ID, { pendingAction: null, rblWip: null })
     } else if (pending === 'MIN_P2') {
@@ -511,7 +543,16 @@ export default function AtcScope() {
 
   const handleMouseMove = useCallback((e) => {
     const rect = interactiveRef.current?.getBoundingClientRect()
-    if (rect) rblCursorRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    if (rect) {
+      const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      rblCursorRef.current = pos
+      if (coordsRef.current && viewRef.current) {
+        const { lat, lng } = canvasToLatLng(pos.x, pos.y, viewRef.current)
+        const latStr = `${Math.abs(lat).toFixed(6)}°${lat >= 0 ? 'N' : 'S'}`
+        const lngStr = `${Math.abs(lng).toFixed(6)}°${lng >= 0 ? 'E' : 'W'}`
+        coordsRef.current.textContent = `${latStr}  ${lngStr}`
+      }
+    }
 
     if (!panRef.current.dragging || !viewRef.current || !windowSettings) return
     const dx = e.clientX - panRef.current.lastX
@@ -553,7 +594,7 @@ export default function AtcScope() {
           const aid      = resolveCallsign(target.unit)
           const owner    = useAtcStore.getState().ownership[target.unitId]
           const readOnly = !!(owner && owner !== myControllerId)
-          useFpeStore.getState().openFpe({ aid, unitId: target.unitId, readOnly })
+          useFpeStore.getState().openFpe({ aid, unitId: target.unitId, readOnly, scope: 'atc' })
         }
       }
       return
@@ -690,7 +731,8 @@ export default function AtcScope() {
   const csDatablocks = windowSettings.csDatablocks ?? 3
   const csDcb        = windowSettings.csDcb        ?? 3
 
-  const dcbPos = windowSettings.dcbPosition ?? 'top'
+  const dcbPos      = windowSettings.dcbPosition ?? 'top'
+  const coordsVisible = windowSettings.coordsVisible ?? false
 
   // Computed once per render — shared by both canvas effect (closure) and SVG overlay (prop)
   // so the symbol letter and datablock always blink from the same value in the same frame.
@@ -738,7 +780,9 @@ export default function AtcScope() {
 
         {previewEnabled && <PreviewArea />}
 
-        <FPE />
+        <FPE scope="atc" />
+
+        {coordsVisible && <div ref={coordsRef} className="atc-coords-debug" />}
       </div>
 
       <InputHandler

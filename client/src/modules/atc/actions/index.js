@@ -20,6 +20,7 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../../../store/strips.js'
 import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
+import { useNavdataStore } from '../../../store/navdata.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
@@ -75,7 +76,7 @@ export function OPEN_FPE({ captures, slewTarget }) {
     readOnly = !!(owner && owner !== getMyControllerId())
   }
 
-  useFpeStore.getState().openFpe({ aid, unitId, readOnly })
+  useFpeStore.getState().openFpe({ aid, unitId, readOnly, scope: 'atc' })
   ok()
 }
 
@@ -458,10 +459,39 @@ export function TOGGLE_VFR()                             { toggleList('vfr') }
 export function RELOCATE_VFR({ canvasPos, canvasSize })  { relocateList('vfr', canvasPos, canvasSize) }
 export function RESIZE_VFR({ captures })                 { resizeList('vfr', captures.lines) }
 
+// ── Debug ─────────────────────────────────────────────────────────────────────
+
+export function TOGGLE_COORDS() {
+  const win = getDisplay().windows[WINDOW_ID]
+  getDisplay().updateWindow(WINDOW_ID, { coordsVisible: !(win?.coordsVisible ?? false) })
+  ok()
+}
+
+// ── Find fix / navaid / airport ───────────────────────────────────────────────
+
+export function FIND_FIX({ captures }) {
+  const result = useNavdataStore.getState().lookupFix(captures?.query)
+  if (!result) return err('NOT FOUND')
+  getDisplay().updateWindow(WINDOW_ID, { findMarker: result })
+  ok()
+}
+
+export function RBL_INIT_FIX({ captures }) {
+  const result = useNavdataStore.getState().lookupFix(captures?.query)
+  if (!result) return err('NOT FOUND')
+  getDisplay().updateWindow(WINDOW_ID, {
+    pendingAction: 'RBL_P2',
+    rblWip: { p0: { lat: result.lat, lng: result.lon } },
+  })
+  ok()
+}
+
 // ── Dispatch table ────────────────────────────────────────────────────────────
 
 const ACTION_MAP = {
   OPEN_FPE,
+  TOGGLE_COORDS,
+  FIND_FIX,
   RENAME_CALLSIGN,
   RESET_CALLSIGN,
   INIT_CNTL,
@@ -492,6 +522,7 @@ const ACTION_MAP = {
   MIN_INIT,
   MIN_CLEAR,
   RBL_INIT,
+  RBL_INIT_FIX,
   RBL_CLEAR_ALL,
   RBL_CLEAR_N,
   // List management

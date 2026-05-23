@@ -5,7 +5,7 @@ import { useCorrelationStore }  from '../../store/correlation.js'
 import { useSessionStore, MODULE } from '../../store/session.js'
 import { wsClient }             from '../../ws/client.js'
 import { CARRIER_TYPES }        from '../../utils/carriers.js'
-import { THEATRE_MAGVAR }       from '../../utils/magvar.js'
+import { computeMagvar }        from '../../utils/magvar.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import './Par.css'
 
@@ -19,6 +19,7 @@ const PAR_MAX_ELEV   = 8   // degrees — PAR elevation service volume upper lim
 const PAR_AZ_HALF    = 10  // degrees — PAR azimuth service volume half-angle (each side)
 const GS_TOL_DEG     = 0.7  // glideslope full-scale deflection (ILS/PAR standard)
 const AZ_TOL_DEG     = 2.5  // azimuth full-scale deflection
+const TCH_FT         = 50   // standard threshold crossing height (airfield)
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -45,13 +46,13 @@ function projectOnApproach(pos, cfg) {
   const dist       = distNm(cfg.threshLat, cfg.threshLng, pos.lat, pos.lng)
   if (dist < 0.001) return { rangeFinal: 0, lateralDev: 0, vertDev: 0, altAgl: 0 }
   const brg        = bearingDeg(cfg.threshLat, cfg.threshLng, pos.lat, pos.lng)
-  const off        = ((brg - outbound) + 540) % 360 - 180
+  const off        = ((outbound - brg) + 540) % 360 - 180
   const offRad     = off * D2R
   const rangeFinal = dist * Math.cos(offRad)
   const lateralDev = dist * Math.sin(offRad)
   const altFt      = (pos.alt ?? 0) * METERS_TO_FEET
   const altAgl     = altFt - (cfg.threshElev ?? 0)
-  const gpAlt      = rangeFinal * NM_TO_FEET * Math.tan(cfg.gsAngle * D2R)
+  const gpAlt      = rangeFinal * NM_TO_FEET * Math.tan(cfg.gsAngle * D2R) + (cfg.tch ?? 0)
   const vertDev    = altAgl - gpAlt
   return { rangeFinal, lateralDev, vertDev, altAgl }
 }
@@ -80,24 +81,34 @@ function useSize(ref) {
 // to upper-left (far range, gsEndAlt ft). The service volume upper limit (8°)
 // is a steeper dashed diagonal forming the ceiling of what the PAR can detect.
 
-function ElevationPanel({ contacts, config, width, height, mode }) {
-  const { rangeNm, gsAngle, vertTol } = config
+function ElevationPanel({ contacts, config, width, height, mode, mirrored }) {
+  const { rangeNm, gsAngle, vertTol, tch = 0 } = config
   const M = { t: 14, b: 22, l: 42, r: 10 }
   const W = width  - M.l - M.r
   const H = height - M.t - M.b
 
-  // Altitude at far range for glideslope and service volume ceiling
-  const gsEndAlt  = rangeNm * NM_TO_FEET * Math.tan(gsAngle * D2R)
+  // Altitude at far range for glideslope (includes TCH offset) and service volume ceiling
+  const gsEndAlt  = rangeNm * NM_TO_FEET * Math.tan(gsAngle * D2R) + tch
   const svCeilAlt = rangeNm * NM_TO_FEET * Math.tan(PAR_MAX_ELEV * D2R)
 
   // Round display max up to a clean tick boundary
   const altStep = svCeilAlt <= 2000 ? 250 : svCeilAlt <= 6000 ? 500 : 1000
   const maxAlt  = Math.ceil(svCeilAlt / altStep) * altStep
 
-  // x: threshold = right edge of plot; far range = left edge
-  const xr = (r)   => M.l + (1 - r / rangeNm) * W
+  // x: threshold at right (standard) or left (mirrored); far range is the opposite end
+  const xr = mirrored
+    ? (r) => M.l + (r / rangeNm) * W
+    : (r) => M.l + (1 - r / rangeNm) * W
   // y: altitude 0 = bottom of plot; maxAlt = top (y decreases as altitude increases)
   const ya = (alt) => M.t + H * (1 - alt / maxAlt)
+
+  // Label anchors that follow the threshold end vs the far end
+  const thrX      = mirrored ? M.l + 4   : M.l + W - 2
+  const thrAnchor = mirrored ? 'start'   : 'end'
+  const farX      = mirrored ? M.l + W - 2 : M.l + 4
+  const farAnchor = mirrored ? 'end'     : 'start'
+  const tolOffset = mirrored ? 2         : -2
+  const tolAnchor = mirrored ? 'start'   : 'end'
 
   const rTickStep = rangeNm <= 5 ? 1 : rangeNm <= 12 ? 2 : 5
   const rTicks    = []
@@ -105,10 +116,9 @@ function ElevationPanel({ contacts, config, width, height, mode }) {
   for (let r = 0; r <= rangeNm; r += rTickStep) rTicks.push(r)
   for (let a = 0; a <= maxAlt; a += altStep) aTicks.push(a)
 
-  // Tolerance corridor: triangle that tapers to threshold point (angular tolerance).
-  // At far range the band is ±vertTol ft; it converges to 0 at the threshold.
+  // Tolerance corridor: triangle that tapers to TCH point at the threshold.
   const tolPoly = [
-    `${xr(0)},${ya(0)}`,
+    `${xr(0)},${ya(tch)}`,
     `${xr(rangeNm)},${ya(gsEndAlt + vertTol)}`,
     `${xr(rangeNm)},${ya(gsEndAlt - vertTol)}`,
   ].join(' ')
@@ -153,15 +163,15 @@ function ElevationPanel({ contacts, config, width, height, mode }) {
         {/* Tolerance corridor — parallelogram around glideslope */}
         <polygon points={tolPoly} fill="rgba(0,75,0,0.22)" stroke="none" />
 
-        {/* Tolerance upper edge — converges to threshold point */}
+        {/* Tolerance upper edge — converges to TCH at threshold */}
         <line
-          x1={xr(0)}       y1={ya(0)}
+          x1={xr(0)}       y1={ya(tch)}
           x2={xr(rangeNm)} y2={ya(gsEndAlt + vertTol)}
           stroke="#235a23" strokeWidth={1} strokeDasharray="5 3"
         />
-        {/* Tolerance lower edge — converges to threshold point */}
+        {/* Tolerance lower edge — converges to TCH at threshold */}
         <line
-          x1={xr(0)}       y1={ya(0)}
+          x1={xr(0)}       y1={ya(tch)}
           x2={xr(rangeNm)} y2={ya(gsEndAlt - vertTol)}
           stroke="#235a23" strokeWidth={1} strokeDasharray="5 3"
         />
@@ -178,20 +188,20 @@ function ElevationPanel({ contacts, config, width, height, mode }) {
           )
         })()}
 
-        {/* Ideal glideslope — primary diagonal */}
+        {/* Ideal glideslope — crosses threshold at TCH */}
         <line
-          x1={xr(0)}       y1={ya(0)}
+          x1={xr(0)}       y1={ya(tch)}
           x2={xr(rangeNm)} y2={ya(gsEndAlt)}
           stroke="#2a7a2a" strokeWidth={2}
         />
 
         {/* Tolerance band label at the far-range edge */}
-        <text x={xr(rangeNm) - 2} y={ya(gsEndAlt + vertTol) - 2}
-          textAnchor="end" fontSize={9} fill="#235a23">
+        <text x={xr(rangeNm) + tolOffset} y={ya(gsEndAlt + vertTol) - 2}
+          textAnchor={tolAnchor} fontSize={9} fill="#235a23">
           +{GS_TOL_DEG}°
         </text>
-        <text x={xr(rangeNm) - 2} y={ya(gsEndAlt - vertTol) + 9}
-          textAnchor="end" fontSize={9} fill="#235a23">
+        <text x={xr(rangeNm) + tolOffset} y={ya(gsEndAlt - vertTol) + 9}
+          textAnchor={tolAnchor} fontSize={9} fill="#235a23">
           -{GS_TOL_DEG}°
         </text>
 
@@ -237,9 +247,9 @@ function ElevationPanel({ contacts, config, width, height, mode }) {
           textAnchor="middle" fontSize={9} fill="#343434">{r}</text>
       ))}
 
-      {/* Panel identifier and threshold marker */}
-      <text x={M.l + 4} y={M.t + 11} fontSize={9} fill="#2c2c2c" letterSpacing={1}>EL</text>
-      <text x={M.l + W - 2} y={M.t + 11} textAnchor="end" fontSize={9} fill="#2c2c2c">THR</text>
+      {/* Panel identifier (far end) and threshold marker */}
+      <text x={farX} y={M.t + 11} textAnchor={farAnchor} fontSize={9} fill="#2c2c2c" letterSpacing={1}>EL</text>
+      <text x={thrX} y={M.t + 11} textAnchor={thrAnchor} fontSize={9} fill="#2c2c2c">THR</text>
     </svg>
   )
 }
@@ -249,7 +259,7 @@ function ElevationPanel({ contacts, config, width, height, mode }) {
 // Y-axis = lateral deviation from centerline (right of CL = positive = below center).
 // The PAR's ±10° azimuth coverage forms a V-cone from the threshold point outward.
 
-function AzimuthPanel({ contacts, config, width, height, mode }) {
+function AzimuthPanel({ contacts, config, width, height, mode, mirrored }) {
   const { rangeNm, latTol } = config
   const M  = { t: 14, b: 22, l: 42, r: 10 }
   const W  = width  - M.l - M.r
@@ -261,8 +271,15 @@ function AzimuthPanel({ contacts, config, width, height, mode }) {
   // Display range is slightly wider than the cone so the boundaries are visible
   const displayLat = Math.max(latTol * 2.5, coneHalfNm * 1.15)
 
-  const xr = (r)   => M.l + (1 - r / rangeNm) * W
+  const xr = mirrored
+    ? (r) => M.l + (r / rangeNm) * W
+    : (r) => M.l + (1 - r / rangeNm) * W
   const yl = (lat) => cy + (lat / displayLat) * (H / 2)
+
+  const thrX      = mirrored ? M.l + 4   : M.l + W - 2
+  const thrAnchor = mirrored ? 'start'   : 'end'
+  const farX      = mirrored ? M.l + W - 2 : M.l + 4
+  const farAnchor = mirrored ? 'end'     : 'start'
 
   const rTickStep = rangeNm <= 5 ? 1 : rangeNm <= 12 ? 2 : 5
   const rTicks    = []
@@ -361,9 +378,9 @@ function AzimuthPanel({ contacts, config, width, height, mode }) {
           textAnchor="middle" fontSize={9} fill="#343434">{r}</text>
       ))}
 
-      {/* Panel identifier and threshold marker */}
-      <text x={M.l + 4} y={M.t + 11} fontSize={9} fill="#2c2c2c" letterSpacing={1}>AZ</text>
-      <text x={M.l + W - 2} y={M.t + 11} textAnchor="end" fontSize={9} fill="#2c2c2c">THR</text>
+      {/* Panel identifier (far end) and threshold marker */}
+      <text x={farX} y={M.t + 11} textAnchor={farAnchor} fontSize={9} fill="#2c2c2c" letterSpacing={1}>AZ</text>
+      <text x={thrX} y={M.t + 11} textAnchor={thrAnchor} fontSize={9} fill="#2c2c2c">THR</text>
     </svg>
   )
 }
@@ -381,6 +398,8 @@ export function Par({
   const sessionMission    = useSessionStore((s) => s.mission)
   const sessionCarrierId  = useSessionStore((s) => s.carrierUnitId)
   const sessionModule     = useSessionStore((s) => s.activeModule)
+  const sessionAirbases   = useSessionStore((s) => s.airbases)
+  const facilityDcsName   = useSessionStore((s) => s.facilityDcsName)
 
   const params = useMemo(() => new URLSearchParams(window.location.search), [])
 
@@ -388,9 +407,7 @@ export function Par({
     ? (sessionMission?.mission?.theatre ?? null)
     : (params.get('theatre') ?? null)
 
-  const initMagvar = docked
-    ? (THEATRE_MAGVAR[initTheatre] ?? 0)
-    : parseFloat(params.get('magvar') ?? '0')
+  const missionDate = sessionMission?.mission?.dateAndTime?.date ?? null
 
   const initCarrierId = docked
     ? (sessionModule === MODULE.CATCC ? sessionCarrierId : null)
@@ -405,10 +422,12 @@ export function Par({
   }, [docked]) // eslint-disable-line
 
   // ── Runway data (for airfield runway selector) ─────────────────────
+  // When docked, AtcScope owns loadForTheatre — don't conflict with it.
   const { centerlines, loadForTheatre } = useRunwaysStore()
   useEffect(() => {
-    if (initTheatre) loadForTheatre(initTheatre, '', null, null, null)
-  }, [initTheatre]) // eslint-disable-line
+    if (docked || !initTheatre) return
+    loadForTheatre(initTheatre, '', null, null, null, missionDate)
+  }, [docked, initTheatre, missionDate]) // eslint-disable-line
 
   // ── Units + correlation ────────────────────────────────────────────
   const units        = useUnitsStore((s) => s.units)
@@ -439,12 +458,17 @@ export function Par({
       const deckOff    = ct?.deckOffset    ?? 9
       const deckHt     = ct?.deckHeightFt  ?? 65
       const trueHdgDeg = (carrierUnit.heading ?? 0) / D2R
+      const magvar     = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
+      // Carrier trueHdg is the actual landing heading (true); mag FB = trueHdg − magvar
+      const finalBearingMag = ((trueHdgDeg - deckOff - magvar) % 360 + 360) % 360
       return {
         ...base,
         threshLat:  carrierUnit.position.lat,
         threshLng:  carrierUnit.position.lng,
         trueHdg:    ((trueHdgDeg - deckOff) % 360 + 360) % 360,
         threshElev: deckHt,
+        tch:        TCH_FT,
+        finalBearingMag,
         valid: true,
       }
     }
@@ -453,12 +477,17 @@ export function Par({
       if (runwayId) {
         const cl = centerlines.find((c) => c.id === runwayId)
         if (cl) {
+          const trueHdg = (cl.headingRad / D2R + 180 + 360) % 360
+          const magvar  = cl.magvar ?? computeMagvar(cl.thresholdLat, cl.thresholdLng, missionDate)
+          const finalBearingMag = cl.magHead ?? ((trueHdg - magvar) % 360 + 360) % 360
           return {
             ...base,
             threshLat:  cl.thresholdLat,
             threshLng:  cl.thresholdLng,
-            trueHdg:    (cl.headingRad / D2R + 360) % 360,
-            threshElev: threshElev,
+            trueHdg,
+            threshElev: cl.elevFt,
+            tch:        TCH_FT,
+            finalBearingMag,
             valid: true,
           }
         }
@@ -468,12 +497,15 @@ export function Par({
       const lng = parseFloat(manualLng)
       const hdg = parseFloat(manualHdg)
       if (!isNaN(lat) && !isNaN(lng) && !isNaN(hdg)) {
+        const magvar = computeMagvar(lat, lng, missionDate)
         return {
           ...base,
           threshLat:  lat,
           threshLng:  lng,
-          trueHdg:    ((hdg + initMagvar) % 360 + 360) % 360,
+          trueHdg:    ((hdg + magvar) % 360 + 360) % 360,
           threshElev: threshElev,
+          tch:        TCH_FT,
+          finalBearingMag: ((hdg % 360) + 360) % 360,  // user types magnetic directly
           valid: true,
         }
       }
@@ -481,7 +513,7 @@ export function Par({
 
     return { ...base, valid: false }
   }, [mode, carrierUnit, runwayId, centerlines, manualLat, manualLng, manualHdg,
-      gsAngle, rangeNm, latTol, vertTol, threshElev, initMagvar]) // latTol/vertTol derived from rangeNm
+      gsAngle, rangeNm, latTol, vertTol, threshElev, missionDate]) // latTol/vertTol derived from rangeNm
 
   // ── Contacts in approach corridor ─────────────────────────────────
   const contacts = useMemo(() => {
@@ -492,8 +524,9 @@ export function Par({
     for (const [id, unit] of Object.entries(units)) {
       if (!AIRBORNE.has(unit.category) || !unit.position) continue
       const proj = projectOnApproach(unit.position, approachCfg)
-      // Reject if behind the threshold or beyond display range
+      // Reject if behind the threshold, beyond display range, or below TCH (landed)
       if (proj.rangeFinal < 0 || proj.rangeFinal > approachCfg.rangeNm) continue
+      if (proj.altAgl <= (approachCfg.tch ?? 0)) continue
       // Reject if outside the PAR azimuth service volume cone
       if (Math.abs(proj.lateralDev) > proj.rangeFinal * azConeSlope * 1.1) continue
       // Reject if above the PAR elevation service volume ceiling
@@ -507,6 +540,18 @@ export function Par({
     return results
   }, [units, approachCfg, mode, correlations, useDcsNames])
 
+  // ── Centerlines sorted by distance to facility ────────────────────
+  const sortedCenterlines = useMemo(() => {
+    if (!facilityDcsName) return centerlines
+    const raw = sessionAirbases?.airbases ?? sessionAirbases ?? {}
+    const fac = Object.values(raw).find((ab) => (ab.callsign || '') === facilityDcsName)
+    if (!fac?.latitude) return centerlines
+    return [...centerlines].sort((a, b) =>
+      distNm(fac.latitude, fac.longitude, a.thresholdLat, a.thresholdLng) -
+      distNm(fac.latitude, fac.longitude, b.thresholdLat, b.thresholdLng)
+    )
+  }, [centerlines, facilityDcsName, sessionAirbases])
+
   // ── Panel size tracking ────────────────────────────────────────────
   const elRef  = useRef(null)
   const azRef  = useRef(null)
@@ -515,14 +560,16 @@ export function Par({
 
   // ── Carrier approach info for display ─────────────────────────────
   const carrierFbDisplay = useMemo(() => {
-    if (!carrierUnit) return null
+    if (!carrierUnit?.position) return null
     const deckOff = CARRIER_TYPES[carrierUnit.name]?.deckOffset ?? 9
-    const brc     = ((carrierUnit.heading ?? 0) / D2R - initMagvar + 360) % 360
+    const magvar  = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
+    const brc     = ((carrierUnit.heading ?? 0) / D2R - magvar + 360) % 360
     const fb      = Math.round(((brc - deckOff + 360) % 360))
     return fb === 0 ? 360 : fb
-  }, [carrierUnit, initMagvar])
+  }, [carrierUnit, missionDate])
 
   const hasCarrierData = mode === 'carrier' && carrierUnit?.position != null
+  const mirrored = approachCfg.valid && (approachCfg.finalBearingMag % 360) >= 180
 
   const windowStyle = docked && width ? { width, minWidth: width } : {}
 
@@ -564,12 +611,25 @@ export function Par({
                 className="par-select"
                 value={runwayId}
                 onChange={(e) => {
-                  setRunwayId(e.target.value)
-                  setManualLat(''); setManualLng(''); setManualHdg('')
+                  const id = e.target.value
+                  setRunwayId(id)
+                  if (id) {
+                    const cl = centerlines.find((c) => c.id === id)
+                    if (cl) {
+                      setManualLat(cl.thresholdLat.toFixed(6))
+                      setManualLng(cl.thresholdLng.toFixed(6))
+                      const magHdg = cl.magHead ?? ((cl.headingRad / D2R + 180 - cl.magvar) % 360 + 360) % 360
+                      setManualHdg(Math.round(magHdg).toString())
+                      setThreshElev(Math.round(cl.elevFt))
+                    }
+                  } else {
+                    setManualLat(''); setManualLng(''); setManualHdg('')
+                    setThreshElev(0)
+                  }
                 }}
               >
                 <option value="">— select —</option>
-                {centerlines.map((cl) => (
+                {sortedCenterlines.map((cl) => (
                   <option key={cl.id} value={cl.id}>{cl.label}</option>
                 ))}
               </select>
@@ -651,6 +711,7 @@ export function Par({
               width={elSize.width}
               height={elSize.height}
               mode={mode}
+              mirrored={mirrored}
             />
           : <div className="par-panel-msg">CONFIGURE APPROACH</div>
         }
@@ -665,6 +726,7 @@ export function Par({
               width={azSize.width}
               height={azSize.height}
               mode={mode}
+              mirrored={mirrored}
             />
           : <div className="par-panel-msg">CONFIGURE APPROACH</div>
         }

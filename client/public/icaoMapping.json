@@ -48,7 +48,7 @@
     "Murmansk International": "ULMM",
     "Rovaniemi":            "EFRO",
     "Severomorsk-1":        "ULMD",
-    "Severomorsk-3":        "XLMV"
+    "Severomorsk-3":        "ULMV"
   },
 
   "marianaislands": {
@@ -67,7 +67,7 @@
     "Jean":                 "0L7",
     "Laughlin":             "KIFP",
     "McCarran International": "KLAS",
-    "Mesquite":             "KQHQ",
+    "Mesquite":             "67L",
     "Nellis":               "KLSV",
     "North Las Vegas":      "KVGT",
     "Tonopah":              "KTPH",
@@ -124,6 +124,7 @@
   },
 
   "syria": {
+    "Abu al-Dhur":               "OS57",
     "Adana Sakirpasa":           "LTAF",
     "Akrotiri":                  "LCRA",
     "Aleppo":                    "OSAP",
@@ -138,11 +139,13 @@
     "Gazipasa":                  "LTFG",
     "Gecitkale":                 "LCGK",
     "H4":                        "OJHR",
+    "Jirah":                     "OS62",
     "Haifa":                     "LLHA",
     "Hatay":                     "LTDA",
     "Hatzor":                    "LLHS",
     "Herzliya":                  "LLHZ",
     "Incirlik":                  "LTAG",
+    "Khalkhalah":                "OS69",
     "King Abdullah II":          "OJKA",
     "King Hussein Air College":  "OJMF",
     "Kingsfield":                "LCRE",
@@ -150,6 +153,7 @@
     "Lakatamia":                 "LCRO",
     "Larnaca":                   "LCLK",
     "Marka":                     "OJAM",
+    "Minakh":                    "OS71",
     "Megiddo":                   "LLMG",
     "Muwaffaq Salti":            "OJ40",
     "Nicosia":                   "LCNC",
@@ -162,6 +166,8 @@
     "Rene Mouawad":              "OLKA",
     "Rosh Pina":                 "LLIB",
     "Sanliurfa":                 "LTCU",
-    "Tel Nof":                   "LLEK"
+    "Shayrat":                   "OS65",
+    "Tel Nof":                   "LLEK",
+    "Tiyas":                     "OS72"
   }
 }

@@ -256,6 +256,22 @@ function PositionPhase({ onSignedIn }) {
       }))
   , [unitsObj])
 
+  // Clear stale selections when the airbase/carrier lists change (e.g. theatre swap mid-login)
+  useEffect(() => {
+    if (!selectedBase) return
+    if (!airbaseList.some((ab) => ab.name === selectedBase)) {
+      setSelectedBase('')
+      setFacilityId('')
+    }
+  }, [airbaseList]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!selectedCarrierId) return
+    if (!catccCarriers.some((c) => String(c.unitId) === selectedCarrierId)) {
+      setSelectedCarrierId('')
+    }
+  }, [catccCarriers]) // eslint-disable-line
+
   // Restore last facility once airbaseList populates (one-shot)
   const facilityRestoredRef = useRef(false)
   useEffect(() => {
@@ -474,8 +490,7 @@ function PositionPhase({ onSignedIn }) {
       localStorage.setItem('tracs.aic.lastCallsign',  callsign)
       localStorage.setItem('tracs.aic.lastFrequency', aicFrequency)
       setAicConfig({ callsign, unitId: null, unitName: '' })
-      useAicStore.getState().setPlatform(null)
-      setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
+setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
       setFacility({
         facilityType:     'aic',
         facilityId:       callsign,
@@ -606,7 +621,7 @@ function PositionPhase({ onSignedIn }) {
                 className="facility-input facility-id-override"
                 value={facilityId}
                 onChange={(e) => setFacilityId(e.target.value.toUpperCase())}
-                placeholder="ICAO (e.g. OIAB)"
+                placeholder="ICAO or LID"
                 maxLength={4}
                 disabled={signingIn}
               />
@@ -615,7 +630,7 @@ function PositionPhase({ onSignedIn }) {
               <span className="callsign-preview">{constructedName.toUpperCase()}</span>
             )}
             {!isCtr && selectedBase && !facilityId && (
-              <span className="login-hint">No ICAO found — enter one manually</span>
+              <span className="login-hint">No ICAO/LID found — enter one manually</span>
             )}
             {isCtr && ctrLoading && (
               <span className="login-hint">Loading centers…</span>

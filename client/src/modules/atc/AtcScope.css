@@ -42,3 +42,15 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+
+.atc-coords-debug {
+  position: absolute;
+  bottom: 34px;
+  right: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: #00ff00;
+  pointer-events: none;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}

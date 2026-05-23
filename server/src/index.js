@@ -35,25 +35,30 @@ app.post('/api/connect', async (req, res) => {
     return res.status(400).json({ error: 'olympusUrl is required' })
   }
 
-  try {
-    await olympus.probe({ olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' })
-  } catch (err) {
-    return res.status(502).json({ error: `Cannot reach Olympus: ${err.message}` })
+  // Skip probe + restart only when already polling the same Olympus URL — a
+  // simultaneous probe to the same server triggers a 426 from Olympus.
+  // If the URL differs this is a reconnect to a different server, so probe and restart.
+  const alreadyOnSameServer = olympus.isPolling() && olympus.getConfig()?.olympusUrl === olympusUrl
+  if (!alreadyOnSameServer) {
+    try {
+      await olympus.probe({ olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' })
+    } catch (err) {
+      return res.status(502).json({ error: `Cannot reach Olympus: ${err.message}` })
+    }
+
+    olympus.start(
+      { olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' },
+      {
+        onUnitsDelta:   (delta) => broadcast({ type: 'units_delta', data: delta }),
+        onMission:      (data)  => broadcast({ type: 'mission',     data }),
+        onAirbases:     (data)  => broadcast({ type: 'airbases',    data }),
+        onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: 'olympus_unreachable' } }),
+      }
+    )
   }
 
-  olympus.start(
-    { olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' },
-    {
-      onUnitsDelta:   (delta) => broadcast({ type: 'units_delta', data: delta }),
-      onMission:      (data)  => broadcast({ type: 'mission',     data }),
-      onAirbases:     (data)  => broadcast({ type: 'airbases',    data }),
-      onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: 'olympus_unreachable' } }),
-    }
-  )
-
-  // Notify all currently-connected WS clients that polling has started.
-  // This covers the case where the browser's WS was already open and
-  // wsClient.connect() returned early without receiving a status message.
+  // Notify all currently-connected WS clients that polling has started (or is
+  // already running). This covers new browser windows joining an active session.
   broadcast({ type: 'status', data: { polling: true } })
 
   res.json({ ok: true })
@@ -80,6 +85,44 @@ app.get('/api/airbases', (req, res) => {
     res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')))
   } catch (err) {
     res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/tiles/:theatre/:z/:x/:y — transparent caching proxy for DCS map tiles
+const TILES_CACHE_DIR = path.join(__dirname, '../data/tiles')
+const OLYMPUS_THEATRE_KEY = {
+  syria:          'alt-syria',
+  caucasus:       'alt-caucasus',
+  nevada:         'alt-nevada',
+  persiangulf:    'alt-persiangulf',
+  normandy:       'alt-Normandy',
+  germanycw:      'alt-GermanyCW',
+  marianaislands: 'alt-marianaislands-modern',
+}
+
+app.get('/api/tiles/:theatre/:z/:x/:y', async (req, res) => {
+  const { theatre, z, x, y } = req.params
+  const localPath = path.join(TILES_CACHE_DIR, theatre, z, x, y)
+
+  if (fs.existsSync(localPath)) {
+    return res.type('png').sendFile(localPath)
+  }
+
+  const key = OLYMPUS_THEATRE_KEY[theatre]
+  if (!key) return res.status(404).end()
+
+  try {
+    const upstream = await fetch(`https://maps.dcsolympus.com/maps/${key}/${z}/${x}/${y}.png`)
+    if (!upstream.ok) return res.status(upstream.status).end()
+
+    const buf = Buffer.from(await upstream.arrayBuffer())
+    fs.mkdirSync(path.dirname(localPath), { recursive: true })
+    fs.writeFileSync(localPath, buf)
+
+    res.type('png').send(buf)
+  } catch (err) {
+    console.error('[tiles]', err.message)
+    res.status(502).end()
   }
 })
 

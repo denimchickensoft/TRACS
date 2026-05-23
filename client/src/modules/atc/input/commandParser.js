@@ -57,6 +57,12 @@ const COMMANDS = [
   // Leader length via DCB LDR key: LD 0-7
   { id: 'SET_LEADER_LEN',       pattern: /^LD ([0-7])$/,          trigger: 'ENTER', captures: ['len'] },
 
+  // ── Debug ────────────────────────────────────────────────────────
+  { id: 'TOGGLE_COORDS',        pattern: /^\.COORDS$/,            trigger: 'ENTER' },
+
+  // ── Find fix/navaid/airport ──────────────────────────────────────
+  { id: 'FIND_FIX',             pattern: /^\.FIND (.+)$/,         trigger: 'ENTER', captures: ['query'] },
+
   // ── Flight plan editor ──────────────────────────────────────────
   { id: 'OPEN_FPE',             pattern: /^\.FP (.+)$/,           trigger: 'ENTER', captures: ['aid'] },
   { id: 'OPEN_FPE',             pattern: /^\.FP$/,                trigger: 'ENTER' },
@@ -128,6 +134,7 @@ const COMMANDS = [
   // *T + SLEW  → initiate RBL (P0 = slew target or click position)
   { id: 'RBL_CLEAR_ALL',        pattern: /^\*T$/,                 trigger: 'ENTER' },
   { id: 'RBL_CLEAR_N',          pattern: /^\*T(\d+)$/,            trigger: 'ENTER', captures: ['n'] },
+  { id: 'RBL_INIT_FIX',         pattern: /^\*T (.+)$/,            trigger: 'ENTER', captures: ['query'] },
   { id: 'RBL_INIT',             pattern: /^\*T$/,                 trigger: 'SLEW'  },
 
   // ── Context-sensitive bare slew — MUST be last ──────────────────

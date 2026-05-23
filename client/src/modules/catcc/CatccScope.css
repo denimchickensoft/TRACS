@@ -76,6 +76,21 @@
   gap: 4px;
 }
 
+/* ── Status text overlay ───────────────────────────────────────────────────── */
+.catcc-status-text {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #00e5ff;
+  white-space: nowrap;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }

@@ -9,7 +9,7 @@
  *
  * Usage:
  *   node mock-olympus/server.js
- * Then connect TRACS to: http://localhost:4000  (any password accepted)
+ * Then connect TRACS to: http://localhost:4001  (any password accepted)
  *
  * Console commands:
  *   list              — print current unit list
@@ -28,7 +28,7 @@ const readline = require('readline')
 const fs       = require('fs')
 const path     = require('path')
 
-const PORT = 4000
+const PORT = 4001
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -186,18 +186,18 @@ let rl          = null  // set by startConsole, used for re-prompting after asyn
 let magvarDeg   = 0     // magnetic variation used for BRC/FB ↔ true heading conversion
 let theatre     = 'Caucasus'
 
-// Default carrier position and heading for each DCS theatre
+// Default carrier position, heading, and bullseye for each DCS theatre
 const THEATRE_DEFAULTS = {
-  Caucasus:       { lat: 42.50,  lng: 43.20,  hdg: Math.PI / 2 },
-  Nevada:         { lat: 36.60,  lng: -115.10, hdg: 0 },
-  PersianGulf:    { lat: 26.50,  lng: 56.30,  hdg: Math.PI / 2 },
-  Syria:          { lat: 35.20,  lng: 34.80,  hdg: Math.PI / 2 },
-  MarianaIslands: { lat: 15.10,  lng: 145.70, hdg: Math.PI / 2 },
-  SouthAtlantic:  { lat: -51.50, lng: -58.00, hdg: Math.PI / 2 },
-  Sinai:          { lat: 30.00,  lng: 33.50,  hdg: Math.PI / 2 },
-  Kola:           { lat: 69.50,  lng: 33.00,  hdg: Math.PI / 2 },
-  Afghanistan:    { lat: 34.50,  lng: 69.00,  hdg: Math.PI / 2 },
-  Germany:        { lat: 51.50,  lng: 10.00,  hdg: Math.PI / 2 },
+  Caucasus:       { lat: 42.50,  lng: 43.20,  hdg: Math.PI / 2, bullseyeLat: 42.35,  bullseyeLng: 43.32  },
+  Nevada:         { lat: 36.60,  lng: -115.10, hdg: 0,           bullseyeLat: 36.24,  bullseyeLng: -115.80 },
+  PersianGulf:    { lat: 26.50,  lng: 56.30,  hdg: Math.PI / 2, bullseyeLat: 26.90,  bullseyeLng: 56.10  },
+  Syria:          { lat: 35.20,  lng: 34.80,  hdg: Math.PI / 2, bullseyeLat: 35.40,  bullseyeLng: 37.10  },
+  MarianaIslands: { lat: 15.10,  lng: 145.70, hdg: Math.PI / 2, bullseyeLat: 15.20,  bullseyeLng: 145.50 },
+  SouthAtlantic:  { lat: -51.50, lng: -58.00, hdg: Math.PI / 2, bullseyeLat: -51.70, bullseyeLng: -57.80 },
+  Sinai:          { lat: 30.00,  lng: 33.50,  hdg: Math.PI / 2, bullseyeLat: 30.50,  bullseyeLng: 34.00  },
+  Kola:           { lat: 69.50,  lng: 33.00,  hdg: Math.PI / 2, bullseyeLat: 69.20,  bullseyeLng: 32.50  },
+  Afghanistan:    { lat: 34.50,  lng: 69.00,  hdg: Math.PI / 2, bullseyeLat: 34.50,  bullseyeLng: 69.20  },
+  Germany:        { lat: 51.50,  lng: 10.00,  hdg: Math.PI / 2, bullseyeLat: 51.30,  bullseyeLng: 10.50  },
 }
 
 const serverStartWallMs = Date.now()
@@ -498,11 +498,12 @@ function handleMission(req, res) {
   const m = Math.floor((totalS % 3600) / 60)
   const s = totalS % 60
 
+  const td = THEATRE_DEFAULTS[theatre] ?? THEATRE_DEFAULTS.Caucasus
   json(res, {
     theatre: theatre,
     commandMode: 'GAME_MASTER',
     bullseyes: [
-      { coalition: 2, name: 'BULLSEYE', lat: 42.35, lon: 43.32 },
+      { coalition: 2, name: 'BULLSEYE', lat: td.bullseyeLat, lon: td.bullseyeLng },
     ],
     mission: {
       theatre: theatre,
@@ -776,11 +777,21 @@ function cmdTheatre(parts) {
   const defaults = THEATRE_DEFAULTS[match]
   const carrier  = findCarrier()
   if (carrier) {
+    const dLat = defaults.lat - carrier.lat
+    const dLng = defaults.lng - carrier.lng
+    // Translate all aircraft by the same delta so relative positions are preserved
+    for (const unit of units.values()) {
+      if (unit.category !== 'Aircraft') continue
+      unit.lat += dLat
+      unit.lng += dLng
+      // Cancel PAR approaches — their threshold coordinates are now wrong
+      if (unit.parApproach) unit.parApproach = null
+    }
     carrier.lat = defaults.lat
     carrier.lng = defaults.lng
     carrier.hdg = defaults.hdg
     carrier.targetHdg = null
-    console.log(`  Theatre: ${theatre}  — carrier moved to ${defaults.lat.toFixed(2)}, ${defaults.lng.toFixed(2)}`)
+    console.log(`  Theatre: ${theatre}  — carrier and ${[...units.values()].filter(u => u.category === 'Aircraft').length} aircraft translated`)
   } else {
     console.log(`  Theatre: ${theatre}`)
   }
@@ -998,7 +1009,7 @@ function startConsole() {
   console.log('  create <cs> [<type>] [<coal>] [H S A]  e.g. create HORNET41 FA-18C BLU H210 S310 A250')
   console.log('  delete <n>                  remove a unit')
   console.log('  rename <n> <callsign>       rename a unit')
-  console.log('  theatre [name]              show or set theatre (moves carrier to default position)')
+  console.log('  theatre [name]              show or set theatre (translates carrier + aircraft to default position)')
   console.log('  <n> par [at <nm>] [gs <°>] [spd <kt>] [dev <0-1>]   fly PAR to carrier (dev=0 perfect)')
   console.log('  <n> par rwy <lat> <lng> <hdg> [...]                  fly PAR to airfield')
   console.log('  brc <hdg°mag>               turn carrier to BRC (shortest direction)')

@@ -7,7 +7,7 @@ import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { getVisibleUnits }      from '../atc/visibleUnits.js'
 import { resolveCallsign, parseUnitName } from '../../utils/callsign.js'
-import { THEATRE_MAGVAR }       from '../../utils/magvar.js'
+import { computeMagvar }        from '../../utils/magvar.js'
 import { CARRIER_TYPES }        from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
 import './StatusBoard.css'
@@ -350,18 +350,18 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const visibleUnits = useMemo(() => getVisibleUnits(units, coalition), [units, coalition])
 
   // ── Carrier-derived values ─────────────────────────────────────────
-  const theatre  = mission?.mission?.theatre
-  const magvar   = THEATRE_MAGVAR[theatre] ?? 0
-  const carrier  = carrierUnitId != null ? units[carrierUnitId] : null
-  const hdgDeg   = (carrier?.heading ?? 0) * 180 / Math.PI
-  const brcRaw   = Math.round(((hdgDeg - magvar) % 360 + 360) % 360)
-  const brc      = brcRaw === 0 ? 360 : brcRaw
+  const theatre    = mission?.mission?.theatre
+  const carrier    = carrierUnitId != null ? units[carrierUnitId] : null
+  const missionDate = mission?.mission?.dateAndTime?.date ?? null
+  const magvar     = computeMagvar(carrier?.position?.lat ?? 0, carrier?.position?.lng ?? 0, missionDate)
+  const hdgDeg     = (carrier?.heading ?? 0) * 180 / Math.PI
+  const brcRaw     = Math.round(((hdgDeg - magvar) % 360 + 360) % 360)
+  const brc        = brcRaw === 0 ? 360 : brcRaw
   const deckOffset = CARRIER_TYPES[carrier?.name]?.deckOffset ?? 9
-  const fbRaw    = Math.round(((brc - deckOffset) % 360 + 360) % 360)
-  const fb       = fbRaw === 0 ? 360 : fbRaw
-  const spd      = Math.round((carrier?.speed ?? 0) * 1.94384)
+  const fbRaw      = Math.round(((brc - deckOffset) % 360 + 360) % 360)
+  const fb         = fbRaw === 0 ? 360 : fbRaw
+  const spd        = Math.round((carrier?.speed ?? 0) * 1.94384)
 
-  const missionDate  = mission?.mission?.dateAndTime?.date
   const carrierPos   = carrier?.position
   const tzOffset     = carrierPos ? Math.round(carrierPos.lng / 15) : null
   const autoTzStr    = tzOffset == null ? ''

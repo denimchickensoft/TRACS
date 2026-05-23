@@ -32,3 +32,6 @@ server/state/
 # Navdata — source files (large Navigraph data) and built cache (generated at runtime)
 server/navdata/source/
 server/navdata/cache/
+
+# Tile cache — downloaded at runtime, not committed
+server/data/tiles/

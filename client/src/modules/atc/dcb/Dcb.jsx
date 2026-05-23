@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }  from '../../../store/display.js'
 import { usePresetsStore }  from '../../../store/presets.js'
@@ -370,6 +370,7 @@ function DcbButton({ btn, isActive, isToggled, valStr, colors, half, onClick }) 
 
 export function Dcb({ profile, briteDcb, csDcb }) {
   const wheelDir = useWheelDirection()
+  const barRef   = useRef(null)
   const [menuKey, setMenuKey] = useState('main')
   const [toggles, setToggles] = useState(() => new Set())
 
@@ -385,10 +386,17 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const activeButton = windowSettings?.dcbActiveSpinner ?? null
   const mapsVisible   = useMapsStore((s) => s.visible)
   const maps          = useMapsStore((s) => s.maps)
-  const centerlines   = useRunwaysStore((s) => s.centerlines)
-  const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
-  const obstructions  = useRunwaysStore((s) => s.obstructions)
-  const obstVisible   = useRunwaysStore((s) => s.obstVisible)
+  const centerlines     = useRunwaysStore((s) => s.centerlines)
+  const cltrVisible     = useRunwaysStore((s) => s.cltrVisible)
+  const satBuckets      = useRunwaysStore((s) => s.satBuckets)
+  const obstructions    = useRunwaysStore((s) => s.obstructions)
+  const obstVisible     = useRunwaysStore((s) => s.obstVisible)
+  const facilityAirbase = useRunwaysStore((s) => s.facilityAirbase)
+
+  const facilityCenterlines = useMemo(
+    () => facilityAirbase ? centerlines.filter((c) => c.airbase === facilityAirbase) : [],
+    [centerlines, facilityAirbase],
+  )
 
   const colors = profile?.dcb ?? DEFAULT_DCB
 
@@ -397,29 +405,30 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     if (menuKey === 'main') return MAIN_BUTTONS
     if (menuKey === 'aux')  return AUX_BUTTONS
     if (menuKey === 'maps') {
-      // Static geo slots (MAP_7–MAP_12, 3 halfV pairs = 6 button slots) +
-      // optional OBST slot + dynamic CLTR_* entries, cap at 24 total
       const staticSlots = SUBMENU_DEFS.maps.buttons.filter((b) => b.id !== 'DONE')
       const obstSlots   = obstructions.length > 0 ? [{ id: 'OBST', lines: ['OBST'], type: 'toggle' }] : []
-      const maxDynamic  = 24 - 6 - obstSlots.length
-      const cltrSlice   = centerlines.slice(0, maxDynamic)
 
+      // Individual halfV buttons for facility centerlines only
       const cltrPairs = []
-      for (let i = 0; i < cltrSlice.length; i += 2) {
-        const top = { id: `CLTR_${i}`,     lines: [cltrSlice[i].label],     type: 'toggle' }
-        const bot = cltrSlice[i + 1]
-          ? { id: `CLTR_${i + 1}`, lines: [cltrSlice[i + 1].label], type: 'toggle' }
-          : null
-        cltrPairs.push({
-          id:       `slot_cltr_${i}`,
-          slotType: 'halfV',
-          buttons:  bot ? [top, bot] : [top],
-        })
+      for (let i = 0; i < facilityCenterlines.length; i += 2) {
+        const cl0 = facilityCenterlines[i]
+        const cl1 = facilityCenterlines[i + 1]
+        const top = { id: `CLTR_${cl0.id}`, lines: [cl0.label], type: 'toggle' }
+        const bot = cl1 ? { id: `CLTR_${cl1.id}`, lines: [cl1.label], type: 'toggle' } : null
+        cltrPairs.push({ id: `slot_cltr_${i}`, slotType: 'halfV', buttons: bot ? [top, bot] : [top] })
       }
-      return [...staticSlots, ...obstSlots, ...cltrPairs, { id: 'DONE', lines: ['DONE'], type: 'done' }]
+
+      // One halfV slot for satellite flow buckets (SAT NW / SAT SE)
+      const satSlots = []
+      if (satBuckets.length > 0) {
+        const satBtns = satBuckets.map((b) => ({ id: `SAT_${b.label}`, lines: [`SAT ${b.label}`], type: 'toggle' }))
+        satSlots.push({ id: 'slot_sat', slotType: 'halfV', buttons: satBtns })
+      }
+
+      return [...staticSlots, ...obstSlots, ...cltrPairs, ...satSlots, { id: 'DONE', lines: ['DONE'], type: 'done' }]
     }
     return SUBMENU_DEFS[menuKey]?.buttons ?? MAIN_BUTTONS
-  }, [menuKey, centerlines, obstructions])
+  }, [menuKey, facilityCenterlines, satBuckets, obstructions])
 
   // ── Button click ───────────────────────────────────────────────────
   const handleButtonClick = useCallback((btn) => {
@@ -451,9 +460,9 @@ export function Dcb({ profile, briteDcb, csDcb }) {
         } else if (btn.id === 'OBST') {
           useRunwaysStore.getState().toggleObst()
         } else if (btn.id.startsWith('CLTR_')) {
-          const idx = parseInt(btn.id.slice(5), 10)
-          const cl  = centerlines[idx]
-          if (cl) useRunwaysStore.getState().toggleCenterline(cl.id)
+          useRunwaysStore.getState().toggleCenterline(btn.id.slice(5))
+        } else if (btn.id.startsWith('SAT_')) {
+          useRunwaysStore.getState().toggleSatBucket(btn.id.slice(4))
         } else {
           setToggles(prev => {
             const next = new Set(prev)
@@ -561,15 +570,32 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     }
   }, [menuKey, updateWindow, windowSettings])
 
-  // ── Wheel — adjust active value button ────────────────────────────
+  // ── Wheel — adjust active value button, or scroll DCB if overflowing ────
   const handleWheel = useCallback((e) => {
-    if (!activeButton) return
-    e.preventDefault()
-    e.stopPropagation()
-    const dir = wheelDir(e)
-    if (dir === null) return
-    applyValueDelta(activeButton, dir, windowSettings, updateWindow)
+    if (activeButton) {
+      e.preventDefault()
+      e.stopPropagation()
+      const dir = wheelDir(e)
+      if (dir === null) return
+      applyValueDelta(activeButton, dir, windowSettings, updateWindow)
+      return
+    }
+    const pos = windowSettings?.dcbPosition ?? 'top'
+    if ((pos === 'top' || pos === 'bottom') && barRef.current) {
+      const bar = barRef.current
+      if (bar.scrollWidth > bar.clientWidth) {
+        e.preventDefault()
+        bar.scrollLeft += e.deltaY
+      }
+    }
   }, [activeButton, windowSettings, updateWindow, wheelDir])
+
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   // ── Render a single button def ────────────────────────────────────
   function renderBtn(btn, half = false) {
@@ -594,8 +620,14 @@ export function Dcb({ profile, briteDcb, csDcb }) {
       : btn.id === 'OBST'
         ? obstVisible
         : btn.id.startsWith('CLTR_')
-        ? (() => { const cl = centerlines[parseInt(btn.id.slice(5), 10)]; return cl ? (cltrVisible[cl.id] ?? false) : false })()
-        : toggles.has(btn.id)
+          ? (cltrVisible[btn.id.slice(5)] ?? false)
+          : btn.id.startsWith('SAT_')
+            ? (() => {
+                const label  = btn.id.slice(4)
+                const bucket = satBuckets.find((b) => b.label === label)
+                return bucket ? bucket.ids.some((id) => cltrVisible[id]) : false
+              })()
+            : toggles.has(btn.id)
 
     if (btn.id === 'OFF_CNTR') {
       isToggled = windowSettings?.offCntr ?? false
@@ -649,6 +681,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
 
   return (
     <div
+      ref={barRef}
       className="dcb-bar"
       data-pos={windowSettings?.dcbPosition ?? 'top'}
       style={{
@@ -657,7 +690,6 @@ export function Dcb({ profile, briteDcb, csDcb }) {
         opacity: briteDcb ?? 1,
         fontSize: `${10 + (csDcb ?? 3) * 2}px`,
       }}
-      onWheel={handleWheel}
     >
       {slots.map((slot) => {
         if (slot.slotType === 'halfV') {

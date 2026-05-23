@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useStripsStore, STRIP_HIGHLIGHT, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
+import { useFpeStore }          from '../../store/fpe.js'
 import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
@@ -68,6 +69,7 @@ function AnnCell({ stripId, cellIndex, value }) {
         maxLength={3}
         data-cell-id={`${stripId}-${cellIndex}`}
         onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       />
     </div>
@@ -140,7 +142,7 @@ function StripContextMenu({ x, y, strip, onClose }) {
 }
 
 // ── Single strip ──────────────────────────────────────────────────────────────
-function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onDragEnd, onDrop, onContextMenu }) {
+function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onDragEnd, onDrop, onContextMenu, onDoubleClick }) {
   const acknowledgeStrip = useStripsStore((s) => s.acknowledgeStrip)
   const deleteStrip      = useStripsStore((s) => s.deleteStrip)
 
@@ -153,6 +155,7 @@ function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onD
 
   function handleClick(e) {
     if (e.shiftKey) { deleteStrip(strip.id); return }
+    if (e.ctrlKey)  { onDoubleClick(); return }
     if (strip.highlight) acknowledgeStrip(strip.id)
   }
 
@@ -172,6 +175,7 @@ function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onD
       onDragEnd={onDragEnd}
       onDrop={(e)      => onDrop(e, strip.id)}
       onClick={handleClick}
+      onDoubleClick={onDoubleClick}
       onContextMenu={handleContextMenu}
     >
       {/* Col 1: AID / TYP/EQ / CID */}
@@ -453,6 +457,10 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const bayStrips = bay.stripIds.map((id) => strips[id]).filter(Boolean)
   const sorted    = sortStrips(bayStrips, plans, plansByUnitId, bay.sortBy)
 
+  const handleOpenFpe = useCallback((strip) => {
+    useFpeStore.getState().openFpe({ aid: strip.aid, unitId: strip.unitId ?? null, scope: 'atc' })
+  }, [])
+
   const handleAddStrip = useCallback((e) => {
     e.preventDefault()
     const aid = addAid.trim().toUpperCase()
@@ -560,6 +568,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
               onDrop={handleDrop}
               onDragEnd={handleDragEnd}
               onContextMenu={(e, s) => setCtxMenu({ x: e.clientX, y: e.clientY, strip: s })}
+              onDoubleClick={() => handleOpenFpe(strip)}
             />
           )
         })}

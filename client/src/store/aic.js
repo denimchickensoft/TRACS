@@ -14,10 +14,6 @@ export const useAicStore = create((set) => ({
   // Whether datalink (detection method 32) contacts are displayed
   datalinkVisible: false,
 
-  // Platform for this scope instance
-  // { type: 'AWACS', unitId: '...' } | { type: 'GCI', lat: ..., lon: ... }
-  platform: null,
-
   setGroup: (groupId, group) =>
     set((state) => ({
       groups: { ...state.groups, [groupId]: group },
@@ -56,8 +52,6 @@ export const useAicStore = create((set) => ({
 
   toggleDatalink: () => set((state) => ({ datalinkVisible: !state.datalinkVisible })),
 
-  setPlatform: (platform) => set({ platform }),
-
   reset: () =>
-    set({ groups: {}, ownership: {}, assignments: {}, datalinkVisible: false, platform: null }),
+    set({ groups: {}, ownership: {}, assignments: {}, datalinkVisible: false }),
 }))

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { THEATRE_MAGVAR } from '../utils/magvar.js'
+import { computeMagvar, missionDecimalYear } from '../utils/magvar.js'
 
 const FT_PER_NM = 6076.115
 
@@ -30,6 +30,16 @@ function computeEndpoints(centerLat, centerLng, headingDeg, lengthFt) {
     end1: { lat: centerLat + dLat, lng: centerLng + dLng },
     end2: { lat: centerLat - dLat, lng: centerLng - dLng },
   }
+}
+
+function headingToCompass(deg) {
+  const idx = Math.round(((deg % 360) + 360) % 360 / 45) % 8
+  return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][idx]
+}
+
+function angDist(a, b) {
+  const d = Math.abs(((a - b) % 360 + 360) % 360)
+  return Math.min(d, 360 - d)
 }
 
 // ── Airbase label generation ──────────────────────────────────────────────────
@@ -80,6 +90,7 @@ export const useRunwaysStore = create((set, get) => ({
   // { id, label, thresholdLat, thresholdLng, headingRad, rwyEnd1, rwyEnd2 }
   centerlines:  [],
   cltrVisible:  {},
+  satBuckets:   [],   // [{ label: 'NW', ids: [...] }, { label: 'SE', ids: [...] }]
   obstructions: [],
   obstVisible:  false,
 
@@ -87,9 +98,11 @@ export const useRunwaysStore = create((set, get) => ({
   facilityAirbase: null,
   _lastLoadKey:    null,
 
-  loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null, facilityAirbase = null) => {
+  loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null, facilityAirbase = null, missionDate = null) => {
     if (!theatre) return
-    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}|${facilityAirbase}`
+    const yearKey     = missionDate ? missionDecimalYear(missionDate).toFixed(2) : 'now'
+    const overrideKey = (typeof window !== 'undefined' && typeof window.__magvarOverride === 'number') ? window.__magvarOverride : 'auto'
+    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}|${facilityAirbase}|${yearKey}|${overrideKey}`
     if (get()._lastLoadKey === loadKey) return
     try {
       if (!theatreCache[theatre]) {
@@ -126,34 +139,110 @@ export const useRunwaysStore = create((set, get) => ({
       const { airbases, headingLookup } = theatreCache[theatre]
       const threshold    = filterThresholdNm(suffix)
       const hasPos       = facilityLat != null && facilityLng != null
-      const magvar       = THEATRE_MAGVAR[theatre] ?? 0
       const isNewTheatre = get().theatre !== theatre
 
       const rawCenterlines = []
       const seenCtr        = new Set()
 
+      let facilityFlowMagHead = null  // mag heading of facility's longest runway
+      let facilityLongestLen  = 0
+
       for (const ab of airbases ?? []) {
+        if (!Array.isArray(ab.runways) || ab.runways.length === 0) continue
         const abGroups = headingLookup[ab.airbase] ?? []
-        for (let rwyIdx = 0; rwyIdx < (ab.runways ?? []).length; rwyIdx++) {
+        for (let rwyIdx = 0; rwyIdx < ab.runways.length; rwyIdx++) {
           const rwy = ab.runways[rwyIdx]
           if (hasPos && nmBetween(facilityLat, facilityLng, rwy.lat, rwy.lon) > threshold) continue
 
-          // Match this runway to its airbase JSON group by index so parallel
-          // runways (e.g. 13L/31R and 13R/31L) get their own full designators.
-          const group = abGroups[rwyIdx] ?? {}
+          // Match this runway to the airbase JSON group whose headings contain
+          // rwy.name or its reciprocal. Name-based matching is robust against
+          // the runway JSON and airbases JSON having different entry orders.
+          const reciprocal = ((rwy.name + 18) % 36) || 36
+          const matchingGroups = abGroups.filter((g) =>
+            Object.keys(g).some((k) => {
+              const n = parseInt(k, 10)
+              return n === rwy.name || n === reciprocal
+            })
+          )
+
+          let group
+          if (matchingGroups.length === 1) {
+            group = matchingGroups[0]
+          } else if (matchingGroups.length > 1) {
+            // Parallel runways share the same base numbers (e.g. 12L/30R and 12R/30L).
+            // Disambiguate by lateral geometry: project each runway center onto the axis
+            // perpendicular to the runway, using the lower-numbered heading so that
+            // smaller offset = left = 'L' suffix and larger = right = 'R'.
+            const lowerNum = Math.min(rwy.name, reciprocal)
+            const headRad  = (lowerNum * 10) * Math.PI / 180
+            const perpE    = Math.cos(headRad)   // right-hand perpendicular, east component
+            const perpN    = -Math.sin(headRad)  // right-hand perpendicular, north component
+            const cosLat   = Math.cos(rwy.lat * Math.PI / 180)
+
+            const parallelRwys = (ab.runways ?? []).filter((r) =>
+              r.name === rwy.name || r.name === reciprocal
+            )
+            const sorted = [...parallelRwys].sort((a, b) =>
+              (a.lon * cosLat * perpE + a.lat * perpN) -
+              (b.lon * cosLat * perpE + b.lat * perpN)
+            )
+            const rank = sorted.indexOf(rwy)  // 0 = leftmost = L
+
+            // Sort groups by L/R suffix of the lower-number designator (L=0, C=1, R=2)
+            const SUFFIX_RANK = { L: 0, C: 1, R: 2 }
+            const sortedGroups = [...matchingGroups].sort((a, b) => {
+              const sufA = (Object.keys(a).find((k) => parseInt(k, 10) === lowerNum) ?? '').replace(/\d/g, '')
+              const sufB = (Object.keys(b).find((k) => parseInt(k, 10) === lowerNum) ?? '').replace(/\d/g, '')
+              return (SUFFIX_RANK[sufA] ?? 9) - (SUFFIX_RANK[sufB] ?? 9)
+            })
+            group = sortedGroups[rank] ?? {}
+          } else {
+            group = {}
+          }
           const allEntries = Object.entries(group)  // e.g. [["13L",126],["31R",306]]
 
           // Primary = entry whose base number equals rwy.name; other = reciprocal.
           const primaryEntry = allEntries.find(([k]) => parseInt(k, 10) === rwy.name)
           const otherEntry   = allEntries.find(([k]) => parseInt(k, 10) !== rwy.name)
 
-          const name1   = primaryEntry?.[0] ?? String(rwy.name)
-          const name2   = otherEntry?.[0]   ?? String(((rwy.name + 18) % 36) || 36)
-          const magHead = primaryEntry?.[1]  ?? rwy.name * 10
+          const name1    = primaryEntry?.[0] ?? String(rwy.name)
+          const name2    = otherEntry?.[0]   ?? String(reciprocal)
+          const magHead  = primaryEntry?.[1]  ?? rwy.name * 10
+          const magHead2 = otherEntry?.[1]    ?? reciprocal * 10
 
-          const headingDeg = magHead + magvar
-          const headingRad = headingDeg * Math.PI / 180
-          const { end1, end2 } = computeEndpoints(rwy.lat, rwy.lon, headingDeg, rwy.length_ft)
+          // Track facility's longest runway for satellite flow bucket computation
+          if (facilityAirbase && ab.airbase === facilityAirbase && rwy.length_ft > facilityLongestLen) {
+            facilityLongestLen  = rwy.length_ft
+            facilityFlowMagHead = magHead
+          }
+
+          if (rwy.course_true_deg == null) continue
+          const headingDeg = -rwy.course_true_deg
+          let end1, end2
+          if (rwy.end1?.lat != null) {
+            end1 = { lat: rwy.end1.lat, lng: rwy.end1.lon }
+            end2 = { lat: rwy.end2.lat, lng: rwy.end2.lon }
+          } else {
+            ;({ end1, end2 } = computeEndpoints(rwy.lat, rwy.lon, headingDeg, rwy.length_ft))
+          }
+          // When geographic endpoints are available derive heading from them so the
+          // approach extension matches the tile (avoids meridian-convergence offset).
+          const headingRad = (rwy.end1?.lat != null)
+            ? Math.atan2(
+                (end1.lng - end2.lng) * Math.cos(end2.lat * Math.PI / 180),
+                end1.lat - end2.lat
+              )
+            : headingDeg * Math.PI / 180
+          const rwyMagvar = computeMagvar(rwy.lat, rwy.lon, missionDate)
+          // Convergence-corrected magvar: geographic heading vs. DCS published mag heading.
+          // Applying this to the scope makes RBL/compass bearings match DCS instruments.
+          let geoMagvar = rwyMagvar
+          if (rwy.end1?.lat != null) {
+            let diff = (headingRad * 180 / Math.PI) - magHead
+            if (diff > 180) diff -= 360
+            if (diff < -180) diff += 360
+            geoMagvar = diff
+          }
 
           // ── Centerlines (one per direction), carrying pavement endpoints ──
           const id1 = `${ab.airbase}__${name1}`
@@ -165,6 +254,10 @@ export const useRunwaysStore = create((set, get) => ({
               thresholdLat: end2.lat,
               thresholdLng: end2.lng,
               headingRad:   headingRad + Math.PI,
+              magHead:      magHead,
+              elevFt:       rwy.elevation_ft ?? 0,
+              magvar:       rwyMagvar,
+              geoMagvar:    geoMagvar,
               rwyEnd1:      end1,
               rwyEnd2:      end2,
             })
@@ -178,6 +271,10 @@ export const useRunwaysStore = create((set, get) => ({
               thresholdLat: end1.lat,
               thresholdLng: end1.lng,
               headingRad:   headingRad,
+              magHead:      magHead2,
+              elevFt:       rwy.elevation_ft ?? 0,
+              magvar:       rwyMagvar,
+              geoMagvar:    geoMagvar,
               rwyEnd1:      end1,
               rwyEnd2:      end2,
             })
@@ -211,6 +308,10 @@ export const useRunwaysStore = create((set, get) => ({
         thresholdLat: c.thresholdLat,
         thresholdLng: c.thresholdLng,
         headingRad:   c.headingRad,
+        magHead:      c.magHead,
+        elevFt:       c.elevFt,
+        magvar:       c.magvar,
+        geoMagvar:    c.geoMagvar,
         rwyEnd1:      c.rwyEnd1,
         rwyEnd2:      c.rwyEnd2,
       }))
@@ -238,8 +339,32 @@ export const useRunwaysStore = create((set, get) => ({
         }
       }
 
-      set({ centerlines, cltrVisible, obstructions, obstVisible: isNewTheatre ? false : get().obstVisible, theatre, facilityAirbase: facilityAirbase || null, _lastLoadKey: loadKey })
-      console.log(`[runways] ${theatre}: ${centerlines.length} centerline maps, ${obstructions.length} obstructions`)
+      // ── Satellite flow buckets ───────────────────────────────────────────────
+      // Group non-facility centerlines into two directional buckets derived from
+      // the facility's longest runway heading.  Each centerline goes into the
+      // bucket whose flow heading it is closest to (angular distance ≤ 90°).
+      const satBuckets = []
+      if (facilityFlowMagHead != null) {
+        const headA  = ((facilityFlowMagHead % 360) + 360) % 360
+        const headB  = (headA + 180) % 360
+        const labelA = headingToCompass(headA)
+        const labelB = headingToCompass(headB)
+        const bucketA = { label: labelA, ids: [] }
+        const bucketB = { label: labelB, ids: [] }
+
+        for (const cl of centerlines) {
+          if (cl.airbase === facilityAirbase) continue
+          const clMagHead = cl.magHead ?? ((cl.headingRad * 180 / Math.PI) - cl.magvar + 180 + 360) % 360
+          if (angDist(clMagHead, headA) <= angDist(clMagHead, headB)) bucketA.ids.push(cl.id)
+          else bucketB.ids.push(cl.id)
+        }
+
+        if (bucketA.ids.length > 0) satBuckets.push(bucketA)
+        if (bucketB.ids.length > 0) satBuckets.push(bucketB)
+      }
+
+      set({ centerlines, cltrVisible, satBuckets, obstructions, obstVisible: isNewTheatre ? false : get().obstVisible, theatre, facilityAirbase: facilityAirbase || null, _lastLoadKey: loadKey })
+      console.log(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
     } catch (err) {
       console.error('[runways] load error:', err.message)
     }
@@ -248,5 +373,14 @@ export const useRunwaysStore = create((set, get) => ({
   toggleCenterline: (id) => set((s) => ({ cltrVisible: { ...s.cltrVisible, [id]: !s.cltrVisible[id] } })),
   toggleObst:       ()   => set((s) => ({ obstVisible: !s.obstVisible })),
 
-  reset: () => set({ centerlines: [], cltrVisible: {}, obstructions: [], obstVisible: false, theatre: null, facilityAirbase: null }),
+  toggleSatBucket: (label) => set((s) => {
+    const bucket = s.satBuckets.find((b) => b.label === label)
+    if (!bucket) return {}
+    const allOn  = bucket.ids.every((id) => s.cltrVisible[id])
+    const updates = {}
+    for (const id of bucket.ids) updates[id] = !allOn
+    return { cltrVisible: { ...s.cltrVisible, ...updates } }
+  }),
+
+  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], obstructions: [], obstVisible: false, theatre: null, facilityAirbase: null }),
 }))

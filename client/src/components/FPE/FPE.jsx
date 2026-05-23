@@ -41,8 +41,9 @@ function useDrag(panelRef) {
 }
 
 // ── FPE component ─────────────────────────────────────────────────────────────
-export function FPE() {
-  const { open, aid: prefillAid, unitId, readOnly, closeFpe } = useFpeStore()
+export function FPE({ scope = null }) {
+  const { open, scope: storeScope, aid: prefillAid, unitId, readOnly, closeFpe } = useFpeStore()
+  if (open && scope !== storeScope) return null
   const { plans, add, amend, recycleBcn, remove } = useFlightPlansStore()
   const { addStrip, setHighlight } = useStripsStore()
 

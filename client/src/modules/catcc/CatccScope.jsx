@@ -16,13 +16,14 @@ import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
 import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
 import { drawCompassRose }       from '../atc/canvas/drawCompassRose.js'
-import { THEATRE_MAGVAR }        from '../../utils/magvar.js'
+import { computeMagvar }         from '../../utils/magvar.js'
 import { CARRIER_TYPES }         from '../../utils/carriers.js'
 import { matchStarsKey, isTypedInput } from '../atc/input/starsKeys.js'
 import { parseCommand }          from '../atc/input/commandParser.js'
 import { dispatch as dispatchAction } from '../atc/actions/index.js'
 import { processOdsCommand }     from './odsCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
+import { CatccStatusText }       from './CatccStatusText.jsx'
 import './CatccScope.css'
 
 const WINDOW_ID    = 'catcc-main'
@@ -73,13 +74,14 @@ export default function CatccScope() {
   const displayStore   = useDisplayStore()
   const windowSettings = displayStore.windows[WINDOW_ID]
 
-  const theatre = mission?.mission?.theatre
-  const magvar  = THEATRE_MAGVAR[theatre] ?? 0
+  const theatre     = mission?.mission?.theatre
+  const missionDate = mission?.mission?.dateAndTime?.date ?? null
 
   // Carrier unit — source of scope center and BRC
   const carrierUnit = carrierUnitId != null ? units[carrierUnitId] : null
   const carrierLat  = carrierUnit?.position?.lat ?? 0
   const carrierLng  = carrierUnit?.position?.lng ?? 0
+  const magvar      = computeMagvar(carrierLat, carrierLng, missionDate)
 
   const carrierHeadingDeg = (carrierUnit?.heading ?? 0) * 180 / Math.PI
   const brc        = ((carrierHeadingDeg - magvar) % 360 + 360) % 360
@@ -155,7 +157,7 @@ export default function CatccScope() {
   // ── Initialize display window ──────────────────────────────────────
   useEffect(() => {
     if (!windowSettings) {
-      displayStore.initWindow(WINDOW_ID, { rangeNm: 50, ringSpacingNm: 10 })
+      displayStore.initWindow(WINDOW_ID, { rangeNm: 50, ringSpacingNm: 10, statusTextXPct: 50, statusTextYPct: 2, showHistory: true, historyRate: 4.5 })
     }
   }, []) // eslint-disable-line
 
@@ -271,15 +273,17 @@ export default function CatccScope() {
       if (now < expiresAt) blinkingUids.add(String(uid))
     }
 
-    // History trails and PTL are captured but not drawn — see drawCatccContacts.js
     drawCatccContacts(
       ctx, view, visibleUnits, trackMap,
-      windowSettings?.britePos ?? 80,
-      windowSettings?.csPos    ?? 3,
+      windowSettings?.britePos    ?? 80,
+      windowSettings?.csPos       ?? 3,
       blinkingUids,
       blinkOn,
       ownership,
       myControllerId,
+      (windowSettings?.showHistory ?? true) ? historyRef.current : {},
+      windowSettings?.historyLength ?? 5,
+      windowSettings?.briteHst      ?? 80,
     )
     drawCatccDatablocks(
       ctx, view, visibleUnits, effectiveCorrelations,
@@ -396,6 +400,20 @@ export default function CatccScope() {
       return
     }
 
+    // MF S — relocate status text
+    if (usePreviewStore.getState().buffer.trim().toUpperCase() === 'MF S') {
+      const v = viewRef.current
+      if (v) {
+        useDisplayStore.getState().updateWindow(WINDOW_ID, {
+          statusTextXPct: (canvasPos.x / v.width)  * 100,
+          statusTextYPct: (canvasPos.y / v.height) * 100,
+        })
+        usePreviewStore.getState().clear()
+        setOdsLines([])
+      }
+      return
+    }
+
     // STARS slew — parse ODS buffer as a SLEW command
     const view = viewRef.current
     const parsed = parseCommand(usePreviewStore.getState().buffer, 'SLEW')
@@ -443,6 +461,13 @@ export default function CatccScope() {
           onWheel={handleWheel}
           onKeyDown={handleKeyDown}
           onContextMenu={(e) => e.preventDefault()}
+        />
+        <CatccStatusText
+          xPct={windowSettings?.statusTextXPct ?? 50}
+          yPct={windowSettings?.statusTextYPct ?? 2}
+          brc={carrierUnit ? brc : null}
+          fb={carrierUnit ? fb : null}
+          tacticalName={CARRIER_TYPES[carrierUnit?.name]?.tacticalName ?? null}
         />
         <div className="catcc-ods-stack">
           <div className="catcc-moms">{momsReadout || ' '}</div>

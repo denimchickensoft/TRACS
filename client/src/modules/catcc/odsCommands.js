@@ -13,9 +13,12 @@
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useControllersStore } from '../../store/controllers.js'
+import { useDisplayStore }     from '../../store/display.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { applyCallsignChange } from '../../utils/callsignRename.js'
+
+const WINDOW_ID = 'catcc-main'
 
 const COMMANDS = {}
 
@@ -121,6 +124,14 @@ register('RN', (parts, ctx) => {
   const newCallsign = parts[2]?.toUpperCase() ?? null
   const { oldCallsign } = applyCallsignChange(target.unitId, target.unit, newCallsign)
   sendWebrtcSessionEvent('CALLSIGN_RENAME', { unitId: String(target.unitId), oldCallsign, newCallsign })
+  return []
+})
+
+// .HISTORY — toggle history trails on/off
+register('.HISTORY', () => {
+  const ws = useDisplayStore.getState().windows[WINDOW_ID]
+  const current = ws?.showHistory ?? true
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { showHistory: !current })
   return []
 })
 

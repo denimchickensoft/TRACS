@@ -4,13 +4,13 @@ import { useOdsStore }        from './store/ods'
 import { useControllersStore } from './store/controllers'
 import { Login }         from './components/Login/Login'
 import AtcScope          from './modules/atc/AtcScope'
+import CabScope          from './modules/atc/CabScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard, SB_NATURAL_WIDTH } from './modules/catcc/StatusBoard'
 import { StripBay }      from './components/StripBay/StripBay'
 import { Par }           from './modules/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
 import { disconnectWebrtc } from './webrtc/client'
-import { THEATRE_MAGVAR }   from './utils/magvar.js'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
 const SB_WIDTH_KEY    = 'tracs.sb.width'
@@ -46,6 +46,7 @@ export function App() {
 
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [settingsOpen,    setSettingsOpen]    = useState(false)
+  const [activeOds,       setActiveOds]       = useState('atc')
   const [clVisible, setClVisible] = useState(() => localStorage.getItem(CL_VISIBLE_KEY) === 'true')
   const [clDocked,  setClDocked]  = useState(true)
   const clPopupRef = useRef(null)
@@ -140,10 +141,8 @@ export function App() {
   const handleParUndock = useCallback(() => {
     const { mission, carrierUnitId: cid } = useSessionStore.getState()
     const theatre = mission?.mission?.theatre ?? null
-    const magvar  = THEATRE_MAGVAR[theatre] ?? 0
     const p       = new URLSearchParams({ window: 'par' })
     if (theatre) p.set('theatre', theatre)
-    p.set('magvar', String(magvar))
     if (activeModule === MODULE.CATCC) {
       p.set('module', 'catcc')
       if (cid != null) p.set('carrierUnitId', String(cid))
@@ -299,10 +298,10 @@ export function App() {
           {hasAtc && availableProfiles.map((p) => (
             <button
               key={p.id}
-              onClick={() => loadProfile(p.id)}
+              onClick={() => { loadProfile(p.id); setActiveOds('atc') }}
               style={{
-                background:    activeProfileId === p.id ? '#2A4A7A' : '#1A1A1A',
-                color:         activeProfileId === p.id ? '#88BBFF' : '#555',
+                background:    activeOds === 'atc' && activeProfileId === p.id ? '#2A4A7A' : '#1A1A1A',
+                color:         activeOds === 'atc' && activeProfileId === p.id ? '#88BBFF' : '#555',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
                 padding:       '1px 6px',
@@ -315,6 +314,25 @@ export function App() {
               {p.name}
             </button>
           ))}
+
+          {hasAtc && (
+            <button
+              onClick={() => setActiveOds('cab')}
+              style={{
+                background:    activeOds === 'cab' ? '#2A4A7A' : '#1A1A1A',
+                color:         activeOds === 'cab' ? '#88BBFF' : '#555',
+                border:        '1px solid #333',
+                borderRadius:  '2px',
+                padding:       '1px 6px',
+                fontFamily:    'inherit',
+                fontSize:      'inherit',
+                letterSpacing: 'inherit',
+                cursor:        'pointer',
+              }}
+            >
+              CAB
+            </button>
+          )}
 
           <button
             onClick={() => setSettingsOpen((o) => !o)}
@@ -372,7 +390,7 @@ export function App() {
         {hasAtc && (
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
-              <AtcScope />
+              {activeOds === 'cab' ? <CabScope /> : <AtcScope />}
             </div>
 
             {/* ATC right panel — only one shown at a time */}
