@@ -263,7 +263,7 @@ export function findCarriersAndAircraft(mission) {
         for (const unit of toArray(group.units)) {
           aircraft.push({
             carrierUnitId,
-            callsign: (unit.callsign?.name ?? '').toUpperCase(),
+            callsign: (unit.name ?? '').replace(/[-\s]/g, '').toUpperCase(),
             type:     TYPE_ABBREV[unit.type] ?? (unit.type ?? '').slice(0, 4).toUpperCase(),
             modex:    String(unit.onboard_num ?? ''),
             task,

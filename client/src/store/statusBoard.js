@@ -121,6 +121,14 @@ export const useStatusBoardStore = create((set) => ({
     rad: '',
     entries: [], nextId: 1,
   }),
+
+  clearAll: (rad = '') => set({
+    event: '', launch: '', recovery: '', sunrise: '', sunset: '', tz: '',
+    clg: '', vis: '', qnh: '',
+    caseLaunch: '', caseRecovery: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
+    rad,
+    entries: [], nextId: 1,
+  }),
 }))
 
 // ── Persistence + cross-window sync ──────────────────────────────────────────

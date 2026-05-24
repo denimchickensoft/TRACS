@@ -2,18 +2,18 @@ import 'leaflet/dist/leaflet.css'
 import './CabScope.css'
 import { useEffect, useState, useCallback } from 'react'
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet'
-import { useSessionStore }  from '../../store/session'
-import { useRunwaysStore }  from '../../store/runways'
-import { useUnitsStore }    from '../../store/units'
-import { useDisplayStore }  from '../../store/display.js'
-import { CabDcb, CAB_WINDOW_ID }  from './cab/CabDcb.jsx'
-import { CabOverlay }             from './cab/CabOverlay.jsx'
-import { CabPreviewArea }         from './cab/CabPreviewArea.jsx'
-import { CabInputHandler }        from './cab/CabInputHandler.jsx'
-import { parseCabCommand }        from './cab/cabCommandParser.js'
-import { useCabPreviewStore }     from '../../store/cabPreview.js'
-import { useFpeStore }            from '../../store/fpe.js'
-import { FPE }                    from '../../components/FPE/FPE.jsx'
+import { useSessionStore }  from '../../../store/session'
+import { useRunwaysStore }  from '../../../store/runways'
+import { useUnitsStore }    from '../../../store/units'
+import { useDisplayStore }  from '../../../store/display.js'
+import { CabDcb, CAB_WINDOW_ID }  from './CabDcb.jsx'
+import { CabOverlay }             from './CabOverlay.jsx'
+import { CabPreviewArea }         from './CabPreviewArea.jsx'
+import { CabInputHandler }        from './CabInputHandler.jsx'
+import { parseCabCommand }        from './cabCommandParser.js'
+import { useCabPreviewStore }     from '../../../store/cabPreview.js'
+import { useFpeStore }            from '../../../store/fpe.js'
+import { FPE }                    from '../../../components/FPE/FPE.jsx'
 
 const TILE_RADIUS = 3  // must match server proxy / fetch script
 
@@ -175,6 +175,8 @@ export default function CabScope() {
     }
   }, []) // eslint-disable-line
 
+  const [centerlineVisible, setCenterlineVisible] = useState(false)
+
   const [magvarOverride, setMagvarOverride] = useState(() => window.__magvarOverride ?? null)
   useEffect(() => {
     const id = setInterval(() => {
@@ -195,7 +197,11 @@ export default function CabScope() {
       useFpeStore.getState().openFpe({ aid: parsed.captures.aid ?? null, scope: 'cab' })
       useCabPreviewStore.getState().clearAfterCommand()
     }
-  }, [])
+    if (parsed.command.id === 'TOGGLE_CENTERLINE') {
+      setCenterlineVisible((v) => !v)
+      useCabPreviewStore.getState().clearAfterCommand()
+    }
+  }, [setCenterlineVisible])
 
   const theatreRaw = (mission?.mission?.theatre ?? 'Syria').toLowerCase()
   const theatreCfg = THEATRES[theatreRaw] ?? THEATRES.syria
@@ -277,7 +283,7 @@ export default function CabScope() {
               />
             ))}
 
-            {centerlines.map((cl) => (
+            {centerlineVisible && centerlines.map((cl) => (
               <Polyline
                 key={cl.id}
                 positions={[[cl.rwyEnd1.lat, cl.rwyEnd1.lng], [cl.rwyEnd2.lat, cl.rwyEnd2.lng]]}

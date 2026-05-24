@@ -3,12 +3,12 @@ import { useSessionStore, MODULE } from './store/session'
 import { useOdsStore }        from './store/ods'
 import { useControllersStore } from './store/controllers'
 import { Login }         from './components/Login/Login'
-import AtcScope          from './modules/atc/AtcScope'
-import CabScope          from './modules/atc/CabScope'
+import StarsScope        from './modules/atc/stars/StarsScope'
+import CabScope          from './modules/atc/cab/CabScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard, SB_NATURAL_WIDTH } from './modules/catcc/StatusBoard'
 import { StripBay }      from './components/StripBay/StripBay'
-import { Par }           from './modules/par/Par'
+import { Par }           from './components/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
 import { disconnectWebrtc } from './webrtc/client'
 
@@ -390,7 +390,7 @@ export function App() {
         {hasAtc && (
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
-              {activeOds === 'cab' ? <CabScope /> : <AtcScope />}
+              {activeOds === 'cab' ? <CabScope /> : <StarsScope />}
             </div>
 
             {/* ATC right panel — only one shown at a time */}

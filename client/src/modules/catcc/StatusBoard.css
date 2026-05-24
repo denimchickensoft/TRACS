@@ -274,6 +274,34 @@
   color: #AA4444;
 }
 
+.sb-clear-all-btn {
+  border-color: #3A1A1A;
+  color: #884444;
+}
+
+.sb-clear-all-btn:hover {
+  border-color: #884444;
+  color: #CC4444;
+}
+
+.sb-confirm-label {
+  color: #886644;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+
+.sb-confirm-btn {
+  border-color: #664422;
+  color: #CC6633;
+}
+
+.sb-confirm-btn:hover {
+  border-color: #AA5533;
+  color: #FF7744;
+}
+
 .sb-sort-select {
   background: transparent;
   border: 1px solid #333;

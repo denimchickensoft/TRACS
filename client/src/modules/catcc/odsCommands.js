@@ -135,6 +135,35 @@ register('.HISTORY', () => {
   return []
 })
 
+// .LL [0-99] — set leader line length in pixels (omit to query current)
+register('.LL', (parts) => {
+  const val = parts[1]
+  if (!val) {
+    const ws = useDisplayStore.getState().windows[WINDOW_ID]
+    return [`LL: ${ws?.catccLeaderLen ?? 16}`]
+  }
+  const n = parseInt(val, 10)
+  if (isNaN(n) || n < 0 || n > 99) return ['ILL VAL']
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { catccLeaderLen: n })
+  return []
+})
+
+// .LD [N|NE|E|SE|S|SW|W|NW|1-9|OFF] — set global default leader direction (OFF to reset)
+const DIR_MAP = { N: '8', NE: '9', E: '6', SE: '3', S: '2', SW: '1', W: '4', NW: '7' }
+const NUMPAD_DIRS = new Set(['1','2','3','4','6','7','8','9'])
+
+register('.LD', (parts) => {
+  const val = parts[1]
+  if (!val || val === 'OFF') {
+    useDisplayStore.getState().updateWindow(WINDOW_ID, { globalLeaderDir: null })
+    return []
+  }
+  const key = DIR_MAP[val] ?? (NUMPAD_DIRS.has(val) ? val : null)
+  if (!key) return ['ILL DIR']
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { globalLeaderDir: key })
+  return []
+})
+
 // ── Dispatcher ────────────────────────────────────────────────────────────────
 export function processOdsCommand(raw, context) {
   const parts = raw.trim().toUpperCase().split(/\s+/)

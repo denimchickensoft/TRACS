@@ -7,19 +7,19 @@ import { useAtcStore, HANDOFF_STATE } from '../../store/atc.js'
 import { useControllersStore }   from '../../store/controllers.js'
 
 import { useCorrelationStore }   from '../../store/correlation.js'
-import { getVisibleUnits }       from '../atc/visibleUnits.js'
-import { rangeToPixelsPerNm }    from '../atc/canvas/projection.js'
-import { resolveSlew }           from '../atc/input/slewResolver.js'
+import { getVisibleUnits }       from '../atc/stars/visibleUnits.js'
+import { rangeToPixelsPerNm }    from '../atc/stars/canvas/projection.js'
+import { resolveSlew }           from '../atc/stars/input/slewResolver.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
 import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
 import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
-import { drawCompassRose }       from '../atc/canvas/drawCompassRose.js'
+import { drawCompassRose }       from '../atc/stars/canvas/drawCompassRose.js'
 import { computeMagvar }         from '../../utils/magvar.js'
 import { CARRIER_TYPES }         from '../../utils/carriers.js'
-import { matchStarsKey, isTypedInput } from '../atc/input/starsKeys.js'
-import { parseCommand }          from '../atc/input/commandParser.js'
+import { matchStarsKey, isTypedInput } from '../atc/stars/input/starsKeys.js'
+import { parseCommand }          from '../atc/stars/input/commandParser.js'
 import { dispatch as dispatchAction } from '../atc/actions/index.js'
 import { processOdsCommand }     from './odsCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
@@ -295,9 +295,11 @@ export default function CatccScope() {
       blinkOn,
       ownership,
       myControllerId,
+      windowSettings?.catccLeaderLen  ?? 16,
     )
   }, [visibleUnits, view, trackMap, effectiveCorrelations, ownership, handoffs, blinkTracks, blinkTick,
-      myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos])
+      myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos,
+      windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen])
 
   // ── Marking MOMS — bullseye readout from carrier to cursor ───────
   const [momsReadout, setMomsReadout] = useState('')

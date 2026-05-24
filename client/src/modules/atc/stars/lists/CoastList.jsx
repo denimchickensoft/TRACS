@@ -1,6 +1,6 @@
-import { useFlightPlansStore } from '../../../store/flightPlans.js'
-import { useDisplayStore }     from '../../../store/display.js'
-import { useOdsStore }         from '../../../store/ods.js'
+import { useFlightPlansStore } from '../../../../store/flightPlans.js'
+import { useDisplayStore }     from '../../../../store/display.js'
+import { useOdsStore }         from '../../../../store/ods.js'
 import { ListPanel }           from './ListPanel.jsx'
 
 const WINDOW_ID = 'atc-main'

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }   from '../../../store/display.js'
-import '../dcb/Dcb.css'
+import '../stars/dcb/Dcb.css'
 
 export const CAB_WINDOW_ID = 'cab-main'
 

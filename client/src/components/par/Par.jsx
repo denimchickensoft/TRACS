@@ -256,7 +256,10 @@ function ElevationPanel({ contacts, config, width, height, mode, mirrored }) {
 
 // ── AzimuthPanel ──────────────────────────────────────────────────────────────
 // Top-down view of the approach. X-axis = range (far out = left, threshold = right).
-// Y-axis = lateral deviation from centerline (right of CL = positive = below center).
+// Y-axis = lateral deviation from centerline. lateralDev is always +right from the pilot's
+// perspective, which is geographically +south for eastern approaches and +north for western.
+// yl() flips sign when mirrored so that right-of-CL always appears below center on screen
+// (i.e., the display is consistent regardless of approach direction).
 // The PAR's ±10° azimuth coverage forms a V-cone from the threshold point outward.
 
 function AzimuthPanel({ contacts, config, width, height, mode, mirrored }) {
@@ -274,7 +277,9 @@ function AzimuthPanel({ contacts, config, width, height, mode, mirrored }) {
   const xr = mirrored
     ? (r) => M.l + (r / rangeNm) * W
     : (r) => M.l + (1 - r / rangeNm) * W
-  const yl = (lat) => cy + (lat / displayLat) * (H / 2)
+  const yl = mirrored
+    ? (lat) => cy - (lat / displayLat) * (H / 2)
+    : (lat) => cy + (lat / displayLat) * (H / 2)
 
   const thrX      = mirrored ? M.l + 4   : M.l + W - 2
   const thrAnchor = mirrored ? 'start'   : 'end'

@@ -5,7 +5,7 @@ import { MissionImport } from './MissionImport.jsx'
 import { useCorrelationStore }  from '../../store/correlation.js'
 import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
-import { getVisibleUnits }      from '../atc/visibleUnits.js'
+import { getVisibleUnits }      from '../atc/stars/visibleUnits.js'
 import { resolveCallsign, parseUnitName } from '../../utils/callsign.js'
 import { computeMagvar }        from '../../utils/magvar.js'
 import { CARRIER_TYPES }        from '../../utils/carriers.js'
@@ -310,10 +310,11 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     event, launch, recovery, tz, clg, vis, qnh,
     caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn, rad,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
-    clearMissionData,
+    clearMissionData, clearAll,
   } = useStatusBoardStore()
 
-  const [importOpen, setImportOpen] = useState(false)
+  const [importOpen,       setImportOpen]       = useState(false)
+  const [confirmingClear,  setConfirmingClear]  = useState(false)
 
   const hasMissionData = clg || vis || qnh || entries.some(e => e.fromMission)
 
@@ -598,30 +599,51 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
 
       {/* ── Footer ──────────────────────────────────────────────────── */}
       <div className="sb-footer">
-        <button className="sb-add-btn" onClick={() => addEntry()}>+ Add</button>
-        <button className="sb-add-btn" onClick={() => setImportOpen(true)}>⬆ Load Mission</button>
-        {hasMissionData && (
-          <button className="sb-add-btn sb-clear-mission-btn" onClick={clearMissionData}>✕ Clear Mission</button>
-        )}
-        <select
-          className="sb-sort-select"
-          value={sortField ?? ''}
-          onChange={(e) => setSortField(e.target.value || null)}
-        >
-          <option value="">Sort...</option>
-          {COLUMNS.filter((c, i, arr) => !c.readOnly && arr.findIndex(x => x.field === c.field) === i)
-            .map((c) => (
-              <option key={c.id} value={c.field}>{c.label}</option>
-            ))}
-        </select>
-        {sortField && (
-          <button
-            className="sb-sort-dir-btn"
-            onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
-            title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-          >
-            {sortDir === 'asc' ? '▲' : '▼'}
-          </button>
+        {confirmingClear ? (
+          <>
+            <span className="sb-confirm-label">Clear all fields?</span>
+            <button
+              className="sb-add-btn sb-confirm-btn"
+              onClick={() => {
+                const reciprocal = String((((fb + 180) % 360) || 360)).padStart(3, '0')
+                clearAll(reciprocal)
+                setConfirmingClear(false)
+              }}
+            >Confirm</button>
+            <button
+              className="sb-add-btn"
+              onClick={() => setConfirmingClear(false)}
+            >Cancel</button>
+          </>
+        ) : (
+          <>
+            <button className="sb-add-btn" onClick={() => addEntry()}>+ Add</button>
+            <button className="sb-add-btn" onClick={() => setImportOpen(true)}>⬆ Load Mission</button>
+            {hasMissionData && (
+              <button className="sb-add-btn sb-clear-mission-btn" onClick={clearMissionData}>✕ Clear Mission</button>
+            )}
+            <button className="sb-add-btn sb-clear-all-btn" onClick={() => setConfirmingClear(true)}>✕ Clear ALL</button>
+            <select
+              className="sb-sort-select"
+              value={sortField ?? ''}
+              onChange={(e) => setSortField(e.target.value || null)}
+            >
+              <option value="">Sort...</option>
+              {COLUMNS.filter((c, i, arr) => !c.readOnly && arr.findIndex(x => x.field === c.field) === i)
+                .map((c) => (
+                  <option key={c.id} value={c.field}>{c.label}</option>
+                ))}
+            </select>
+            {sortField && (
+              <button
+                className="sb-sort-dir-btn"
+                onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
+                title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+              >
+                {sortDir === 'asc' ? '▲' : '▼'}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -5,7 +5,7 @@ import { App } from './App'
 import { StripBayWindow }      from './components/StripBay/StripBayWindow'
 import { StatusBoardWindow }   from './modules/catcc/StatusBoardWindow'
 import { ControllerListWindow } from './components/ControllerList/ControllerListWindow'
-import { ParWindow }            from './modules/par/ParWindow'
+import { ParWindow }            from './components/par/ParWindow'
 
 const windowMode = new URLSearchParams(window.location.search).get('window')
 

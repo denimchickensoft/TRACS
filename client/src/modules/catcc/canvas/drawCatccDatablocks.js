@@ -1,5 +1,5 @@
-import { latLngToCanvas } from '../../atc/canvas/projection.js'
-import { DIR_TO_ANGLE }   from '../../atc/constants.js'
+import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { DIR_TO_ANGLE }   from '../../atc/stars/constants.js'
 
 const M_TO_FT  = 3.28084
 const MS_TO_KT = 1.94384
@@ -85,7 +85,7 @@ function segmentHitsBBox(x0, y0, x1, y1, box) {
 
 // Find where the ray from symbol center (ox, oy) in direction (nx, ny) enters the bbox.
 // Returns the endpoint for the leader line (stopping just outside the text bbox).
-function computeLeaderEnd(ox, oy, nx, ny, bbox) {
+function computeLeaderEnd(ox, oy, nx, ny, bbox, textDist = TEXT_DIST) {
   let tBest = Infinity
   if (Math.abs(nx) > 1e-6) {
     for (const ex of [bbox.x1, bbox.x2]) {
@@ -105,7 +105,7 @@ function computeLeaderEnd(ox, oy, nx, ny, bbox) {
       }
     }
   }
-  const t = tBest === Infinity ? TEXT_DIST : Math.max(SYMBOL_RADIUS + 1, tBest - LEADER_GAP)
+  const t = tBest === Infinity ? textDist : Math.max(SYMBOL_RADIUS + 1, tBest - LEADER_GAP)
   return { x: ox + t * nx, y: oy + t * ny }
 }
 
@@ -124,9 +124,11 @@ function computeLeaderEnd(ox, oy, nx, ny, bbox) {
  * @param {number} brite           0–100
  * @param {number|null} marshalBearing  magnetic bearing of the marshal/approach radial (degrees)
  */
-export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null) {
+export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN) {
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
+
+  const effectiveTextDist = SYMBOL_RADIUS + leaderLen
 
   const { width, height, pixelsPerNm } = view
 
@@ -203,8 +205,8 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
     let bestScore   = Infinity
 
     for (const angle of candidates) {
-      const lx1  = x + Math.cos(angle) * TEXT_DIST
-      const ly1  = y + Math.sin(angle) * TEXT_DIST
+      const lx1  = x + Math.cos(angle) * effectiveTextDist
+      const ly1  = y + Math.sin(angle) * effectiveTextDist
       const bbox = labelBBox(lx1, ly1, angle, w1, w2)
 
       let score = obstacles.reduce((sum, o) => sum + overlapArea(bbox, o), 0)
@@ -247,7 +249,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
     const ny  = dy / len
     const lx0 = x + nx * SYMBOL_RADIUS
     const ly0 = y + ny * SYMBOL_RADIUS
-    const end = computeLeaderEnd(x, y, nx, ny, bbox)
+    const end = computeLeaderEnd(x, y, nx, ny, bbox, effectiveTextDist)
 
     ctx.strokeStyle = gold
     ctx.lineWidth   = 1

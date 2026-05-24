@@ -1,5 +1,5 @@
 import { latLngToCanvas } from './projection.js'
-import { resolveCallsign } from '../../../utils/callsign.js'
+import { resolveCallsign } from '../../../../utils/callsign.js'
 
 const M_PER_S_TO_KNOTS = 1.94384
 const METERS_TO_FEET   = 3.28084

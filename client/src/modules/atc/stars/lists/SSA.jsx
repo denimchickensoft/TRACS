@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { useSessionStore }  from '../../../store/session.js'
-import { useDisplayStore }  from '../../../store/display.js'
-import { useOdsStore }      from '../../../store/ods.js'
+import { useSessionStore }  from '../../../../store/session.js'
+import { useDisplayStore }  from '../../../../store/display.js'
+import { useOdsStore }      from '../../../../store/ods.js'
 import { ListPanel }        from './ListPanel.jsx'
 
 const WINDOW_ID = 'atc-main'

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useCabPreviewStore }   from '../../../store/cabPreview.js'
-import { isTypedInput }         from '../input/starsKeys.js'
+import { isTypedInput }         from '../stars/input/starsKeys.js'
 
 export function CabInputHandler({ onEnter, onEsc }) {
   const preview = useCabPreviewStore()

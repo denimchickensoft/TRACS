@@ -1,6 +1,6 @@
-import { usePreviewStore } from '../../store/preview.js'
-import { useDisplayStore } from '../../store/display.js'
-import { useOdsStore }     from '../../store/ods.js'
+import { usePreviewStore } from '../../../store/preview.js'
+import { useDisplayStore } from '../../../store/display.js'
+import { useOdsStore }     from '../../../store/ods.js'
 
 const WINDOW_ID = 'atc-main'
 

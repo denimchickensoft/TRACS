@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { usePreviewStore }  from '../../../store/preview.js'
-import { useSessionStore }  from '../../../store/session.js'
+import { usePreviewStore }  from '../../../../store/preview.js'
+import { useSessionStore }  from '../../../../store/session.js'
 import { matchStarsKey, isTypedInput } from './starsKeys.js'
 
 /**
