@@ -6,7 +6,7 @@ import { useFpeStore }          from '../../store/fpe.js'
 import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
-import { sendWebrtcEvent }      from '../../webrtc/client.js'
+import { dispatchWebrtcEvent }  from '../../utils/commandChannel.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import './StripBay.css'
 
@@ -104,7 +104,7 @@ function StripContextMenu({ x, y, strip, onClose }) {
   }
 
   function handleSendTo(controller) {
-    sendWebrtcEvent('STRIP_PASSED', {
+    dispatchWebrtcEvent('STRIP_PASSED', {
       aid:         strip.aid,
       unitId:      strip.unitId ?? null,
       annotations: strip.annotations,
@@ -403,7 +403,7 @@ function SettingsPanel() {
 }
 
 // ── Strip Bay panel ───────────────────────────────────────────────────────────
-export function StripBay({ onClose, standalone = false, docked = false, width, onResize, onUndock, onHide }) {
+export function StripBay({ onClose, standalone = false, docked = false, width, onResize, onUndock, onHide, onScaleChange }) {
   const wheelDir    = useWheelDirection()
   const strips      = useStripsStore((s) => s.strips)
   const bays        = useStripsStore((s) => s.bays)
@@ -437,6 +437,8 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const [scaleHint,    setScaleHint]    = useState(false)
   const scaleHintRef = useRef(null)
   const addInputRef  = useRef(null)
+
+  useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
 
   const handleHeaderWheel = (e) => {
     e.preventDefault()

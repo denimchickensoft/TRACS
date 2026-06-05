@@ -21,9 +21,15 @@ let unitsTimer = null
 let missionTimer = null
 let airbasesTimer = null
 
-let onUnitsDelta = null
-let onMission = null
-let onAirbases = null
+let onUnitsDelta  = null
+let onMission     = null
+let onAirbases    = null
+let onBullseyes   = null
+
+let lastTheatre     = null
+let lastSessionHash = null
+
+let bullseyesTimer = null
 
 const COALITION_TO_ROLE = {
   blue:  'Blue commander',
@@ -124,12 +130,38 @@ async function pollUnits() {
   }
 }
 
+async function pollBullseyes() {
+  if (!polling) return
+  try {
+    const data = await fetchOlympusJson('/olympus/bullseyes')
+    state.setBullseyes(data)
+    if (onBullseyes) onBullseyes(data)
+  } catch (err) {
+    console.error('[olympus] bullseyes poll error:', err.message)
+  }
+}
+
 async function pollMission() {
   if (!polling) return
   try {
     const data = await fetchOlympusJson('/olympus/mission')
     state.setMission(data)
     if (onMission) onMission(data)
+
+    // Re-poll bullseyes whenever the session hash changes (mission reload)
+    const newHash = data?.sessionHash ?? null
+    if (newHash && newHash !== lastSessionHash) {
+      lastSessionHash = newHash
+      clearTimeout(bullseyesTimer)
+      pollBullseyes()
+    }
+
+    const theatre = data?.mission?.theatre ?? data?.theatre ?? null
+    if (theatre && theatre !== lastTheatre) {
+      lastTheatre = theatre
+      clearTimeout(airbasesTimer)
+      pollAirbases()
+    }
   } catch (err) {
     console.error('[olympus] mission poll error:', err.message)
   } finally {
@@ -157,17 +189,21 @@ function start(cfg, callbacks = {}) {
   onUnitsDelta    = callbacks.onUnitsDelta    ?? null
   onMission       = callbacks.onMission       ?? null
   onAirbases      = callbacks.onAirbases      ?? null
+  onBullseyes     = callbacks.onBullseyes     ?? null
   onDisconnect    = callbacks.onDisconnect    ?? null
 
   polling = true
   pollCount = 0
   consecutiveErrors = 0
+  lastTheatre = null
+  lastSessionHash = null
   state.clearUnits()
 
   console.log(`[olympus] starting polling → ${config.olympusUrl}`)
   pollUnits()
   pollMission()
   pollAirbases()
+  pollBullseyes()
 }
 
 function stop() {
@@ -175,6 +211,7 @@ function stop() {
   clearTimeout(unitsTimer)
   clearTimeout(missionTimer)
   clearTimeout(airbasesTimer)
+  clearTimeout(bullseyesTimer)
   config = null
   console.log('[olympus] polling stopped')
 }

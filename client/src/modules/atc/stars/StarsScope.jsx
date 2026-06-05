@@ -67,7 +67,7 @@ export default function StarsScope() {
   const positionSuffix   = useSessionStore((s) => s.positionSuffix)
 
   const maps       = useMapsStore((s) => s.maps)
-  const mapColors  = useMapsStore((s) => s.colors)
+  const mapPalettes = useMapsStore((s) => s.palettes)
   const mapVisible = useMapsStore((s) => s.visible)
   const centerlines   = useRunwaysStore((s) => s.centerlines)
   const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
@@ -334,14 +334,16 @@ export default function StarsScope() {
   // ── Render geographic maps ────────────────────────────────────────
   useEffect(() => {
     if (!view || !mapCanvasRef.current) return
+    const aspColorIdx  = windowSettings?.aspColorIdx ?? 0
+    const activeColors = mapPalettes[aspColorIdx]?.colors ?? mapPalettes[0]?.colors ?? null
     const ctx = mapCanvasRef.current.getContext('2d')
     drawMaps(ctx, view, maps, mapVisible,
-      windowSettings?.briteMapA ?? 80, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2, mapColors,
+      windowSettings?.briteMapA ?? 50, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2, activeColors,
       activeProfile?.visual?.mapPolygonFill ?? 0)
-    drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, windowSettings?.briteMapA ?? 80)
-    drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 80)
-  }, [view, maps, mapColors, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
-      windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap])
+    drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, windowSettings?.briteMapB ?? 50)
+    drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 50)
+  }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
+      windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap, windowSettings?.aspColorIdx])
 
   // ── Render compass rose ───────────────────────────────────────────
   useEffect(() => {

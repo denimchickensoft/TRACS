@@ -3,6 +3,7 @@ import { useSessionStore }    from '../store/session.js'
 import { useAtcStore }        from '../store/atc.js'
 import { useFlightPlansStore } from '../store/flightPlans.js'
 import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadcast } from '../store/statusBoard.js'
+import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/aic.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
 import { applyCallsignRenameRemote } from '../utils/callsignRename.js'
@@ -53,6 +54,11 @@ const disconnectTimers = {}  // peerId → timeoutId
 
 // True while applying incoming data — suppresses re-broadcast in store subscriptions
 let _applying = false
+
+// Set true once we receive HANDSHAKE_ACK from the host. Until then, we re-send
+// HANDSHAKE on every new peer join so the host receives it even if our first
+// connection landed on a non-host peer.
+let handshakeAcked = false
 export function isApplying() { return _applying }
 
 // ── Room ID derivation ────────────────────────────────────────────────────────
@@ -90,7 +96,7 @@ function envelope(type, payload, mod) {
 
 // ── Client list helpers ───────────────────────────────────────────────────────
 function resolvePosition(requested) {
-  const taken = new Set(clientList.map(c => c.position))
+  const taken = new Set(effectiveClientList().map(c => c.position))
   if (!taken.has(requested)) return requested
   // Insert collision index before the last underscore-delimited segment.
   // e.g. KLAS_APP → KLAS_1_APP, KLAS_2_APP, …
@@ -121,6 +127,17 @@ function effectiveClientList() {
   return clientList.filter(c => !disconnectTimers[c.peerId])
 }
 
+// True when we are the globally oldest effective peer (by roomJoinedAt).
+// Matches the host-election logic in the HANDSHAKE handler.
+function amHost() {
+  const effective = effectiveClientList()
+  if (effective.length === 0) return true
+  const sorted = [...effective].sort(
+    (a, b) => (a.roomJoinedAt ?? a.connectedAt) - (b.roomJoinedAt ?? b.connectedAt)
+  )
+  return sorted[0]?.peerId === selfId
+}
+
 function oldestPeerOfModule(mod) {
   return effectiveClientList().filter(c => c.module === mod)[0]?.peerId ?? null
 }
@@ -149,9 +166,17 @@ function persistSession() {
 
 // ── Build STATE_DUMP payload ──────────────────────────────────────────────────
 async function buildDump(mod) {
+  const ctrl = useControllersStore.getState()
   const base = {
     clientList,
-    peerSequences: { ...peerSeqs, [selfId]: outSeq },
+    peerSequences:    { ...peerSeqs, [selfId]: outSeq },
+    registry:         ctrl.registry,
+    groupAssignments: ctrl.groupAssignments,
+    nextGroupNumber:  ctrl.nextGroupNumber,
+  }
+  if (mod === 'AIC') {
+    const aic = useAicStore.getState()
+    return { ...base, declarations: { ...aic.declarations }, roe: aic.roe }
   }
   try {
     const data = await fetch(`/api/state/${mod.toLowerCase()}`).then(r => r.json())
@@ -230,12 +255,68 @@ function applyCatccDump(payload) {
 function applyDump(mod, payload) {
   _applying = true
   try {
+    // Seed registry before syncPeers so rebuildFromClientList treats every
+    // peer as "already registered" (no local ID derivation) and so that the
+    // activeIds filter in applyAtcDump/applyCatccDump sees correct IDs.
+    if (payload.registry) {
+      useControllersStore.getState().setRegistry(
+        payload.registry,
+        payload.groupAssignments ?? {},
+        payload.nextGroupNumber  ?? 1,
+      )
+    }
     if (payload.clientList) { clientList = payload.clientList; syncPeers() }
     if (payload.peerSequences) Object.assign(peerSeqs, payload.peerSequences)
     if (mod === 'ATC')   applyAtcDump(payload)
     if (mod === 'CATCC') applyCatccDump(payload)
+    if (mod === 'AIC')   applyAicStateDump(payload)
   } finally {
     _applying = false
+  }
+}
+
+// ── Disconnect cleanup ────────────────────────────────────────────────────────
+// Drop tracks/handoffs/pointOuts owned by a departed controller, then persist.
+// Only acts if no remaining controller shares the same controllerId (covers the
+// case where UGKO_1_TWR leaves but UGKO_TWR is still connected with the same ID).
+// Must be called AFTER removeClient + syncPeers so the registry reflects reality.
+function dropControllerTracks(lostControllerId) {
+  if (!lostControllerId) return
+  const newRegistry = useControllersStore.getState().registry
+  const stillActive = Object.values(newRegistry).some(e => e.controllerId === lostControllerId)
+  if (stillActive) return
+
+  const atc = useAtcStore.getState()
+  for (const [uid, owner] of Object.entries(atc.ownership)) {
+    if (owner === lostControllerId) atc.dropTrack(uid)
+  }
+  for (const [uid, ho] of Object.entries(atc.handoffs)) {
+    if (ho.from === lostControllerId || ho.to === lostControllerId) atc.clearHandoff(uid)
+  }
+  for (const [uid, po] of Object.entries(atc.pointOuts)) {
+    if (po.from === lostControllerId || po.to === lostControllerId) atc.clearPointOut(uid)
+  }
+
+  const atcClean = useAtcStore.getState()
+  if (activeModule === 'CATCC') {
+    const s = useStatusBoardStore.getState()
+    persistState('catcc', {
+      statusBoard: {
+        eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
+        recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn, rad: s.rad },
+        entries:        s.entries,
+      },
+      trackOwnership: atcClean.ownership,
+      handoffs:       atcClean.handoffs,
+      pointOuts:      atcClean.pointOuts,
+    })
+  } else {
+    persistState('atc', {
+      flightPlans:    useFlightPlansStore.getState().plans,
+      trackOwnership: atcClean.ownership,
+      handoffs:       atcClean.handoffs,
+      pointOuts:      atcClean.pointOuts,
+    })
   }
 }
 
@@ -253,60 +334,20 @@ function startDisconnectTimer(peerId) {
     removeClient(peerId)
     syncPeers()
     persistSession()
+    dropControllerTracks(lostControllerId)
 
-    // Drop tracks and clear handoffs/pointOuts only if no remaining controller
-    // shares the same controllerId. If UGKO_1_TWR leaves but UGKO_TWR is still
-    // connected (same 1T), ownership stays.
-    if (lostControllerId) {
-      const newRegistry = useControllersStore.getState().registry
-      const stillActive = Object.values(newRegistry).some(e => e.controllerId === lostControllerId)
-      if (!stillActive) {
-        const atc = useAtcStore.getState()
-        for (const [uid, owner] of Object.entries(atc.ownership)) {
-          if (owner === lostControllerId) atc.dropTrack(uid)
-        }
-        // Clear any pending handoffs or point-outs involving the lost controller.
-        // Leaving them would produce phantom "receiving" states that can never resolve.
-        for (const [uid, ho] of Object.entries(atc.handoffs)) {
-          if (ho.from === lostControllerId || ho.to === lostControllerId) atc.clearHandoff(uid)
-        }
-        for (const [uid, po] of Object.entries(atc.pointOuts)) {
-          if (po.from === lostControllerId || po.to === lostControllerId) atc.clearPointOut(uid)
-        }
-
-        // Persist the cleaned-up state so future joiners don't receive stale
-        // ownership from the server. Without this, the server retains the
-        // departed controller's tracks indefinitely.
-        const atcClean = useAtcStore.getState()
-        if (activeModule === 'CATCC') {
-          const s = useStatusBoardStore.getState()
-          persistState('catcc', {
-            statusBoard: {
-              eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
-              recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn, rad: s.rad },
-              entries:        s.entries,
-            },
-            trackOwnership: atcClean.ownership,
-            handoffs:       atcClean.handoffs,
-            pointOuts:      atcClean.pointOuts,
-          })
-        } else {
-          persistState('atc', {
-            flightPlans:    useFlightPlansStore.getState().plans,
-            trackOwnership: atcClean.ownership,
-            handoffs:       atcClean.handoffs,
-            pointOuts:      atcClean.pointOuts,
-          })
-        }
-      }
-    }
-
+    const ctrl = useControllersStore.getState()
     sendSession?.(envelope('PEER_DISCONNECTED', {
       position: entry.position,
       module:   entry.module,
       peerId,
     }))
-    sendSession?.(envelope('CLIENT_LIST_UPDATE', { clients: clientList }))
+    sendSession?.(envelope('CLIENT_LIST_UPDATE', {
+      clients:          clientList,
+      registry:         ctrl.registry,
+      groupAssignments: ctrl.groupAssignments,
+      nextGroupNumber:  ctrl.nextGroupNumber,
+    }))
   }, DISCONNECT_TIMEOUT_MS)
 }
 
@@ -412,10 +453,18 @@ async function onSessionMessage(msg, fromPeerId) {
         sendSession?.(dumpMsg, fromPeerId)
       }
 
-      // Host: send ACK (with resolved position if changed) and authoritative CLU
+      // Host: send ACK (with resolved position if changed) and authoritative CLU.
+      // CLU carries the full registry so non-hosts apply host-assigned IDs directly
+      // rather than deriving them locally.
+      const ctrl   = useControllersStore.getState()
       const ack    = resolved !== msg.payload.position ? { resolvedPosition: resolved } : {}
       const ackMsg = envelope('HANDSHAKE_ACK', ack)
-      const cluMsg = envelope('CLIENT_LIST_UPDATE', { clients: clientList })
+      const cluMsg = envelope('CLIENT_LIST_UPDATE', {
+        clients:          clientList,
+        registry:         ctrl.registry,
+        groupAssignments: ctrl.groupAssignments,
+        nextGroupNumber:  ctrl.nextGroupNumber,
+      })
       logMsg('→ session', ackMsg, fromPeerId)
       logMsg('→ session', cluMsg)
       sendSession?.(ackMsg, fromPeerId)
@@ -424,6 +473,7 @@ async function onSessionMessage(msg, fromPeerId) {
     }
 
     case 'HANDSHAKE_ACK': {
+      handshakeAcked = true
       if (msg.payload?.resolvedPosition) {
         activePosition = msg.payload.resolvedPosition
         useSessionStore.setState({ positionName: activePosition })
@@ -462,6 +512,16 @@ async function onSessionMessage(msg, fromPeerId) {
         .map(c => incomingById[c.peerId] ?? c)   // update existing entries
         .concat(incoming.filter(c => !clientList.some(e => e.peerId === c.peerId))) // add new
       clientList = merged.sort((a, b) => a.connectedAt - b.connectedAt)
+      // Non-hosts apply the host's registry before syncPeers so that
+      // rebuildFromClientList treats every peer as already-registered and
+      // never derives IDs locally. The host never receives its own CLU.
+      if (!amHost() && msg.payload.registry) {
+        useControllersStore.getState().setRegistry(
+          msg.payload.registry,
+          msg.payload.groupAssignments ?? {},
+          msg.payload.nextGroupNumber  ?? 1,
+        )
+      }
       syncPeers()
       break
     }
@@ -469,8 +529,16 @@ async function onSessionMessage(msg, fromPeerId) {
     case 'PEER_DISCONNECTED': {
       // Never remove self — a remote peer can't authoritatively declare us gone.
       if (msg.payload.peerId !== selfId) {
+        // Cancel our local disconnect timer — the sender already did the cleanup.
+        clearTimeout(disconnectTimers[msg.payload.peerId])
+        delete disconnectTimers[msg.payload.peerId]
+        const entry = clientList.find(c => c.peerId === msg.payload.peerId)
+        const lostControllerId = entry
+          ? useControllersStore.getState().registry[entry.position]?.controllerId ?? null
+          : null
         removeClient(msg.payload.peerId)
         syncPeers()
+        dropControllerTracks(lostControllerId)
       }
       break
     }
@@ -481,13 +549,15 @@ async function onSessionMessage(msg, fromPeerId) {
     }
 
     case 'CONTROLLER_MESSAGE': {
-      const { toPosition, toModule, text, broadcast } = msg.payload
+      const { toPosition, text, broadcast } = msg.payload
       if (broadcast || toPosition === activePosition) {
         useSessionStore.getState().addControllerMessage({
-          from:      msg.fromPosition,
+          from:         msg.fromPosition,
+          fromPosition: msg.fromPosition,
           text,
-          broadcast: !!broadcast,
-          timestamp: msg.timestamp ?? Date.now(),
+          broadcast:    !!broadcast,
+          toPosition:   broadcast ? null : (toPosition ?? null),
+          timestamp:    msg.timestamp ?? Date.now(),
         })
       }
       break
@@ -559,6 +629,30 @@ export function sendControllerMessage({ toPosition, toModule, text, broadcast = 
   sendSession(msg)
 }
 
+// High-level chat send — routes to correct room and echoes to local store.
+// text: message body; toPosition: DM target or null; broadcast: cross-module all.
+export function sendChatMessage({ text, toPosition = null, broadcast = false }) {
+  const myPosition = activePosition
+  const timestamp  = Date.now()
+
+  if (toPosition) {
+    sendControllerMessage({ text, toPosition, broadcast: false })
+  } else if (broadcast) {
+    sendControllerMessage({ text, broadcast: true })
+  } else {
+    sendWebrtcEvent('CONTROLLER_MESSAGE', { text, broadcast: false })
+  }
+
+  useSessionStore.getState().addControllerMessage({
+    from:         myPosition,
+    fromPosition: myPosition,
+    text,
+    broadcast,
+    toPosition:   toPosition ?? null,
+    timestamp,
+  })
+}
+
 export async function initWebrtc({ olympusUrl, password, position, module: mod, frequency, facility = '', suffix = '' }) {
   activePosition = position
   activeModule   = mod
@@ -568,6 +662,7 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   outSeq         = 0
   clientList     = []
   peerSeqs       = {}
+  handshakeAcked = false
 
   // Recover the peer ID and original sign-on time from the previous session for
   // browser-refresh reconnect. sessionStorage is per-tab — survives reloads but
@@ -601,6 +696,12 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
     appId: 'tracs',
     relayConfig: { urls: [getSignalUrl()] },
     rtcConfig: { iceServers },
+    // Chrome obfuscates local IPs as random .local mDNS hostnames. Same-machine
+    // peers can't resolve these (they're synthetic, not real mDNS records), so the
+    // host candidates are dead. Rewriting to 127.0.0.1 makes same-machine connections
+    // work. For cross-machine LAN, these host candidates simply fail first; STUN
+    // reflexive candidates (real LAN IPs) still succeed.
+    _test_only_mdnsHostFallbackToLoopback: true,
   }
 
   sessionRoom = joinRoom(cfg, sessionRoomId)
@@ -617,6 +718,9 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   if (mod === 'CATCC') {
     registerStatusBoardBroadcast((payload) => sendWebrtcEvent('STATUS_BOARD_UPDATE', payload))
   }
+  if (mod === 'AIC') {
+    registerAicBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+  }
 
   // Add self immediately — if first peer, we're already "connected"
   upsertClient({ peerId: selfId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt })
@@ -624,20 +728,17 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   useSessionStore.getState().setWebrtcStatus('connected')
   persistSession()
 
-  // onPeerJoin fires on BOTH sides when a connection is established, so both peers
-  // send HANDSHAKE. The receiver must use the sender's actual sign-on time (myConnectedAt)
-  // rather than Date.now() so that ordinal IDs (1T, 2T, …) reflect true sign-in order.
-  let handshakeSent = false
+  // onPeerJoin fires on BOTH sides when a connection is established. We send
+  // HANDSHAKE on every new peer join until we receive HANDSHAKE_ACK. This ensures
+  // the host receives our HANDSHAKE even if our first connection landed on a
+  // non-host peer (which cannot process the HANDSHAKE itself).
   sessionRoom.onPeerJoin((peerId) => {
     // Reconnect: cancel the pending disconnect timer so the peer isn't evicted.
-    // This covers the case where a brief network blip triggers onPeerLeave then
-    // onPeerJoin without a new HANDSHAKE (handshakeSent is already true).
     if (disconnectTimers[peerId]) {
       clearTimeout(disconnectTimers[peerId])
       delete disconnectTimers[peerId]
     }
-    if (handshakeSent) return
-    handshakeSent = true
+    if (handshakeAcked) return
     const hsMsg = envelope('HANDSHAKE', { position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt, previousPeerId })
     logMsg('→ session', hsMsg)
     sendSession(hsMsg)
@@ -663,6 +764,7 @@ export async function disconnectWebrtc() {
   clientList     = []
   outSeq         = 0
   peerSeqs       = {}
+  handshakeAcked = false
   activeFacility = ''
   activeSuffix   = ''
 

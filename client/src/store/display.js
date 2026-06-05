@@ -46,6 +46,7 @@ const SCOPE_DEFAULTS = {
   briteBkg:  null,   // scope background (0 = black, 100 = light gray)
   briteMapA: null,   // video map group A
   briteMapB: null,   // video map group B
+  aspColorIdx: 0,    // index into airspace color palette array
   briteFdb:  null,   // full data block text
   briteLst:  null,   // list text
   britePos:  null,   // position character inside contact symbol
@@ -138,3 +139,4 @@ export const useDisplayStore = create((set) => ({
 
   reset: () => set({ windows: {} }),
 }))
+

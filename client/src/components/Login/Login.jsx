@@ -239,9 +239,10 @@ function PositionPhase({ onSignedIn }) {
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [airbases])
 
-  const landBases      = airbaseList.filter((ab) => !ab.isCarrier)
-  const carriers       = airbaseList.filter((ab) =>  ab.isCarrier)
-  const airbasesLoaded = airbaseList.length > 0
+  const landBases        = airbaseList.filter((ab) => !ab.isCarrier)
+  const carriers         = airbaseList.filter((ab) =>  ab.isCarrier)
+  const airbasesReceived = airbases !== null
+  const airbasesLoaded   = airbaseList.length > 0
 
   // CATCC: carriers derived from units store, not airbases — NavyUnits in the carrier table only.
   const unitsObj = useUnitsStore((s) => s.units)
@@ -340,7 +341,7 @@ function PositionPhase({ onSignedIn }) {
         setSuggestedFreq(formatted)
         setFrequency(formatted)
       })
-      .catch((status) => { console.warn('[navdata] freq lookup failed', status); setSuggestedFreq(null) })
+      .catch((err) => { if (err?.name === 'AbortError') return; console.warn('[navdata] freq lookup failed', err); setSuggestedFreq(null) })
 
     return () => ac.abort()
   }, [facilityId, suffix, selectedModule, selectedBase, airbaseList]) // eslint-disable-line
@@ -354,7 +355,7 @@ function PositionPhase({ onSignedIn }) {
     fetch(`/api/navdata/ctrs?theatre=${encodeURIComponent(theatre)}`, { signal: ac.signal })
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data) => { setCtrList(data); setCtrLoading(false) })
-      .catch(() => { setCtrList([]); setCtrLoading(false) })
+      .catch((err) => { if (err?.name === 'AbortError') return; setCtrList([]); setCtrLoading(false) })
     return () => ac.abort()
   }, [isCtr, mission?.mission?.theatre]) // eslint-disable-line
 
@@ -496,11 +497,11 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
         facilityId:       callsign,
         facilityDcsName:  '',
         facilityName:     callsign,
-        positionTypeName: 'Controller',
+        positionTypeName: 'AIC',
         carrierUnitId:    null,
       })
       registerController(callsign, {
-        facility:  callsign,
+        facility:  'AIC',
         suffix:    'AIC',
         frequency: formattedFreq,
       })
@@ -589,8 +590,10 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
                     disabled={signingIn || ctrLoading}
                   />
                 )
-              ) : !airbasesLoaded ? (
+              ) : !airbasesReceived ? (
                 <div className="login-loading">Waiting for Olympus data…</div>
+              ) : !airbasesLoaded ? (
+                <div className="login-loading">No airbases for theatre: {mission?.mission?.theatre ?? 'unknown'}</div>
               ) : (
                 <select
                   className="facility-input"

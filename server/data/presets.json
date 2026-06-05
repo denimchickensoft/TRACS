@@ -3,7 +3,7 @@
     {
       "name": "DEFAULT",
       "settings": {
-        "rangeNm": 33,
+        "rangeNm": 36,
         "ringSpacingNm": 10,
         "historyLength": 4,
         "historyRate": 4.5,
@@ -13,8 +13,8 @@
         "ldrAngleDeg": -90,
         "briteDcb": null,
         "briteBkg": null,
-        "briteMapA": 25,
-        "briteMapB": 100,
+        "briteMapA": 50,
+        "briteMapB": 50,
         "briteFdb": null,
         "briteLst": null,
         "britePos": null,

@@ -2,49 +2,55 @@ import { latLngToCanvas } from './projection.js'
 
 const FALLBACK_COLOR = '#556677'
 
+const SUA_CODES = new Set(['R', 'P', 'Q'])
+
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {object}   view       { centerLat, centerLng, pixelsPerNm, width, height }
- * @param {object[]} maps       [{ name, features }] from maps store
+ * @param {object[]} maps       [{ name, acCode, features }] from maps store
  * @param {object}   visible    { [index]: bool, lbl: bool }
- * @param {number}   briteGeom  0–100
- * @param {number}   briteLbl   0–100
+ * @param {number}   briteMapA  0–100  MAP A brite (non-SUA geometry)
+ * @param {number}   briteMapB  0–100  MAP B brite (SUA geometry + labels)
  * @param {number}   csMap      0–5 (0 = no labels)
  * @param {object}   colors     { [acCode]: { stroke, fill, label } } from navdata
  */
-export function drawMaps(ctx, view, maps, visible, briteGeom, briteLbl, csMap, colors, polygonFill = 0) {
+export function drawMaps(ctx, view, maps, visible, briteMapA, briteMapB, csMap, colors, polygonFill = 0) {
   const { width, height } = view
   ctx.clearRect(0, 0, width, height)
   if (!maps.length) return
 
-  const gAlpha = Math.max(0, Math.min(1, (briteGeom ?? 80) / 100))
+  const alphaA = Math.max(0, Math.min(1, (briteMapA ?? 80) / 100))
+  const alphaB = Math.max(0, Math.min(1, (briteMapB ?? 50) / 100))
 
   // ── Geometry ───────────────────────────────────────────────────────
   for (let i = 0; i < maps.length; i++) {
     if (!visible[i]) continue
+    const { acCode } = maps[i]
+    const alpha = SUA_CODES.has(acCode) ? alphaB : alphaA
     for (const f of maps[i].features) {
       if (!bboxInView(f.bbox, view)) continue
-      drawGeometry(ctx, view, f, gAlpha, colors, polygonFill / 100)
+      drawGeometry(ctx, view, f, acCode, alpha, colors, polygonFill / 100)
     }
   }
 
   // ── Labels ─────────────────────────────────────────────────────────
-  if (!visible.lbl || csMap <= 0 || briteLbl <= 0) return
+  if (!visible.lbl || csMap <= 0 || briteMapB <= 0) return
 
   const fontSize = 6 + csMap * 2
   const lineH    = fontSize + 3
   ctx.font         = `${fontSize}px "Roboto Mono", monospace`
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'middle'
-  ctx.globalAlpha  = Math.max(0, Math.min(1, briteLbl / 100))
+  ctx.globalAlpha  = Math.max(0, Math.min(1, briteMapB / 100))
 
   for (let i = 0; i < maps.length; i++) {
     if (!visible[i]) continue
+    const { acCode, name } = maps[i]
     for (const f of maps[i].features) {
       if (!bboxInView(f.bbox, view)) continue
 
-      const typePrefix = colors?.[f.acCode]?.label ?? f.acCode ?? 'ASP'
-      ctx.fillStyle = colors?.[f.acCode]?.stroke ?? FALLBACK_COLOR
+      const typePrefix = colors?.[acCode]?.label ?? name ?? 'ASP'
+      ctx.fillStyle = colors?.[acCode]?.stroke ?? FALLBACK_COLOR
 
       if (isCircular(f.geometry, f.centroid)) {
         const [cLng, cLat] = f.centroid
@@ -131,8 +137,8 @@ function bboxInView(bbox, view) {
   return !(br.x < -50 || tl.x > view.width + 50 || tl.y > view.height + 50 || br.y < -50)
 }
 
-function drawGeometry(ctx, view, feature, alpha, colors, fillAlpha = 0) {
-  const color    = colors?.[feature.acCode]?.stroke ?? FALLBACK_COLOR
+function drawGeometry(ctx, view, feature, acCode, alpha, colors, fillAlpha = 0) {
+  const color    = colors?.[acCode]?.stroke ?? FALLBACK_COLOR
   const polygons = feature.geometry.type === 'Polygon'
     ? [feature.geometry.coordinates]
     : feature.geometry.coordinates

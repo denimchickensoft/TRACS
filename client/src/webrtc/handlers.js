@@ -7,6 +7,7 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../store/strips.js'
 import { useSessionStore } from '../store/session.js'
 import { useControllersStore } from '../store/controllers.js'
 import { applyStatusBoardUpdate } from '../store/statusBoard.js'
+import { applyAicDeclaration, applyAicRoe } from '../store/aic.js'
 
 function getMyControllerId() {
   const positionName = useSessionStore.getState().positionName
@@ -14,11 +15,24 @@ function getMyControllerId() {
 }
 
 export function handleModuleMessage(msg) {
-  const { type, payload, module } = msg
+  const { type, payload, module, fromPosition, timestamp } = msg
   if (!type || !payload) return
 
-  if (module === 'ATC') handleAtc(type, payload)
+  if (type === 'CONTROLLER_MESSAGE') {
+    useSessionStore.getState().addControllerMessage({
+      from:        fromPosition,
+      fromPosition,
+      text:        payload.text,
+      broadcast:   false,
+      toPosition:  null,
+      timestamp:   timestamp ?? Date.now(),
+    })
+    return
+  }
+
+  if (module === 'ATC')   handleAtc(type, payload)
   if (module === 'CATCC') handleCatcc(type, payload)
+  if (module === 'AIC')   handleAic(type, payload)
 }
 
 // ── Shared track/handoff/point-out handler (ATC + CATCC) ─────────────────────
@@ -127,4 +141,15 @@ function handleAtc(type, payload) {
 function handleCatcc(type, payload) {
   handleTrackAndHandoff(type, payload)
   if (type === 'STATUS_BOARD_UPDATE') applyStatusBoardUpdate(payload)
+}
+
+function handleAic(type, payload) {
+  switch (type) {
+    case 'DECLARATION_SET':
+      applyAicDeclaration(payload.unitId, payload.classification)
+      break
+    case 'ROE_SET':
+      applyAicRoe(payload.roe)
+      break
+  }
 }

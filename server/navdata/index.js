@@ -59,7 +59,11 @@ function handleAirspace(req, res) {
   if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
   const fp = path.join(CACHE_DIR, folder, 'airspace.json')
   if (!fs.existsSync(fp)) return res.status(404).json({ error: 'airspace data not built' })
-  try { res.json(JSON.parse(fs.readFileSync(fp, 'utf8'))) } catch (err) { res.status(500).json({ error: err.message }) }
+  try {
+    const data = JSON.parse(fs.readFileSync(fp, 'utf8'))
+    data.palettes = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, 'airspace_colors.json'), 'utf8'))
+    res.json(data)
+  } catch (err) { res.status(500).json({ error: err.message }) }
 }
 
 function handleFixes(req, res) {
@@ -108,7 +112,7 @@ function handleFrequencies(req, res) {
     const sectors = JSON.parse(fs.readFileSync(fp, 'utf8'))
     const key     = `${icao.toUpperCase()}:${role.toLowerCase()}`
     const entry   = sectors[key]
-    if (!entry) return res.status(404).json({ error: `no frequency data for ${icao}/${role}` })
+    if (!entry) return res.json({ freqs: [] })
     const { name, freqs, class: cls, transitionAlt } = entry
     res.json({ name, freqs, class: cls, transitionAlt })
   } catch (err) { res.status(500).json({ error: err.message }) }

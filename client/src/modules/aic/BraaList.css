@@ -1,0 +1,159 @@
+.braa {
+  display:        flex;
+  flex-direction: column;
+  background:     #0a0a0a;
+  border-left:    1px solid #1a1a1a;
+  font-family:    'Roboto Mono', monospace;
+  color:          #ccc;
+  position:       relative;
+  overflow:       hidden;
+}
+
+.braa-resize {
+  position:   absolute;
+  left:       0;
+  top:        0;
+  bottom:     0;
+  width:      5px;
+  cursor:     ew-resize;
+  z-index:    10;
+}
+
+.braa-title {
+  position:        relative;
+  display:         flex;
+  align-items:     center;
+  padding:         4px 8px;
+  background:      #111;
+  border-bottom:   1px solid #222;
+  flex-shrink:     0;
+  cursor:          default;
+  user-select:     none;
+}
+
+.braa-title-text {
+  font-size:      0.65rem;
+  letter-spacing: 0.12em;
+  color:          #666;
+  flex:           1;
+}
+
+.braa-scale-hint {
+  position:       absolute;
+  left:           50%;
+  transform:      translateX(-50%);
+  color:          #54492A;
+  font-size:      0.6rem;
+  padding:        1px 5px;
+  pointer-events: none;
+  letter-spacing: 0.08em;
+}
+
+.braa-title-right {
+  display:    flex;
+  gap:        4px;
+  align-items: center;
+}
+
+.braa-btn {
+  background:     transparent;
+  border:         none;
+  color:          #444;
+  font-family:    inherit;
+  font-size:      0.75rem;
+  cursor:         pointer;
+  padding:        0 2px;
+  line-height:    1;
+}
+.braa-btn:hover { color: #888; }
+
+.braa-body {
+  flex:           1;
+  overflow-y:     auto;
+  padding:        4px 0;
+  text-transform: uppercase;
+}
+
+.braa-empty {
+  padding:    16px 12px;
+  font-size:  0.65rem;
+  color:      #333;
+  line-height: 1.6;
+}
+
+.braa-row {
+  padding:       6px 10px;
+  border-bottom: 1px solid #181818;
+}
+
+.braa-row-header {
+  display:        flex;
+  align-items:    center;
+  gap:            4px;
+  font-size:      0.7em;
+  margin-bottom:  3px;
+}
+
+.braa-callsign { font-weight: bold; }
+.braa-arrow    { color: #333; }
+
+.braa-remove {
+  background:  transparent;
+  border:      none;
+  color:       #333;
+  font-family: inherit;
+  font-size:   0.9em;
+  cursor:      pointer;
+  padding:     0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.braa-remove:hover { color: #cc4444; }
+
+.braa-data {
+  display:       flex;
+  gap:           10px;
+  font-size:     0.75em;
+  color:         #aaa;
+  margin-bottom: 2px;
+}
+.braa-data--na { color: #333; font-size: 0.65em; }
+
+.braa-aspect        { font-weight: bold; }
+.braa-aspect--hot   { color: #FF4444; }
+.braa-aspect--flank { color: #FF8844; }
+.braa-aspect--beam  { color: #FFCC44; }
+.braa-aspect--cold  { color: #44CC44; }
+
+.braa-intercept {
+  display:    flex;
+  gap:        12px;
+  font-size:  0.7em;
+  color:      #888;
+}
+.braa-intercept--na { color: #333; font-size: 0.65em; }
+
+.braa-flags { color: #888; font-size: 0.85em; letter-spacing: 0.04em; }
+
+.braa-footer {
+  border-top:  1px solid #1a1a1a;
+  padding:     4px 8px;
+  flex-shrink: 0;
+}
+
+.braa-clear-btn {
+  background:    transparent;
+  border:        1px solid #333;
+  border-radius: 2px;
+  color:         #555;
+  font-family:   inherit;
+  font-size:     0.65rem;
+  letter-spacing: 0.08em;
+  padding:       2px 8px;
+  cursor:        pointer;
+  text-transform: uppercase;
+}
+.braa-clear-btn:hover {
+  border-color: #555;
+  color: #888;
+}

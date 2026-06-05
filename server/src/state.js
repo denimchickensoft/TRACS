@@ -4,8 +4,9 @@
 // this is the single source of truth on the server side.
 
 const units = new Map()   // unitId (string) → unit object
-let mission = null        // { bullseyes, theatre, commandMode, ... }
-let airbases = []
+let mission   = null
+let airbases  = []
+let bullseyes = null
 let lastUpdateTime = 0
 
 function applyDelta(delta) {
@@ -44,5 +45,7 @@ module.exports = {
   setMission:       (m)  => { mission = m },
   getAirbases:      ()   => airbases,
   setAirbases:      (a)  => { airbases = a },
+  getBullseyes:     ()   => bullseyes,
+  setBullseyes:     (b)  => { bullseyes = b },
   getLastUpdateTime: ()  => lastUpdateTime,
 }

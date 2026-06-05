@@ -239,7 +239,7 @@ function getWindowValue(id, win) {
     case 'H_RATE':        return win?.historyRate   ?? 4.5
     case 'BR_DCB':        return win?.briteDcb   ?? 80
     case 'BR_BKG':        return win?.briteBkg   ?? 0
-    case 'BR_MAP_A':      return win?.briteMapA  ?? 80
+    case 'BR_MAP_A':      return win?.briteMapA  ?? 50
     case 'BR_MAP_B':      return win?.briteMapB  ?? 50
     case 'BR_FDB':        return win?.briteFdb   ?? 80
     case 'BR_LST':        return win?.briteLst   ?? 80

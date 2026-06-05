@@ -157,6 +157,8 @@
   padding:     2px 8px 2px 22px;
   gap:         6px;
   color:       #ccc;
+  cursor:      default;
+  user-select: none;
 }
 
 .cl-entry:hover { background: #141414; }

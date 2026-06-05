@@ -1,6 +1,6 @@
 import 'leaflet/dist/leaflet.css'
 import './CabScope.css'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet'
 import { useSessionStore }  from '../../../store/session'
 import { useRunwaysStore }  from '../../../store/runways'
@@ -43,7 +43,7 @@ const THEATRES = {
     ],
   },
   caucasus: {
-    key:    'alt-caucasus',
+    key:    'caucasus',
     layers: [
       { minNativeZoom: 1,  maxNativeZoom: 13 },
       { minNativeZoom: 13, maxNativeZoom: 16 },
@@ -51,7 +51,7 @@ const THEATRES = {
     ],
   },
   persiangulf: {
-    key:    'alt-persiangulf',
+    key:    'persiangulf',
     layers: [
       { minNativeZoom: 1,  maxNativeZoom: 12 },
       { minNativeZoom: 13, maxNativeZoom: 14 },
@@ -60,7 +60,7 @@ const THEATRES = {
     ],
   },
   nevada: {
-    key:    'alt-nevada',
+    key:    'nevada',
     layers: [
       { minNativeZoom: 1,  maxNativeZoom: 13 },
       { minNativeZoom: 13, maxNativeZoom: 16 },
@@ -68,7 +68,7 @@ const THEATRES = {
     ],
   },
   normandy: {
-    key:    'alt-Normandy',
+    key:    'normandy',
     layers: [
       { minNativeZoom: 1,  maxNativeZoom: 11 },
       { minNativeZoom: 12, maxNativeZoom: 13 },
@@ -78,7 +78,7 @@ const THEATRES = {
     ],
   },
   germanycw: {
-    key:    'alt-GermanyCW',
+    key:    'germanycw',
     layers: [
       { minNativeZoom: 1,  maxNativeZoom: 11 },
       { minNativeZoom: 13, maxNativeZoom: 13 },
@@ -86,7 +86,7 @@ const THEATRES = {
     ],
   },
   marianaislands: {
-    key:    'alt-marianaislands-modern',
+    key:    'marianaislands',
     layers: [
       { minNativeZoom: 1,  maxNativeZoom: 13 },
       { minNativeZoom: 13, maxNativeZoom: 18 },
@@ -97,6 +97,24 @@ const THEATRES = {
 const ZOOM_MIN  = 14
 const ZOOM_MAX  = 16
 const ZOOM_STEP = 0.25
+
+// Tracks mouse lat/lng when coords display is active.
+function CoordsTracker({ coordsRef, visible }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!visible) return
+    const onMove = (e) => {
+      if (!coordsRef.current) return
+      const { lat, lng } = e.latlng
+      const latStr = `${Math.abs(lat).toFixed(6)}°${lat >= 0 ? 'N' : 'S'}`
+      const lngStr = `${Math.abs(lng).toFixed(6)}°${lng >= 0 ? 'E' : 'W'}`
+      coordsRef.current.textContent = `${latStr}  ${lngStr}`
+    }
+    map.on('mousemove', onMove)
+    return () => map.off('mousemove', onMove)
+  }, [map, visible, coordsRef])
+  return null
+}
 
 // Replaces Leaflet's scroll zoom with a fixed 0.25-step handler.
 // Leaflet's built-in scroll handler ignores zoomDelta and uses its own accumulator.
@@ -171,9 +189,11 @@ export default function CabScope() {
   // Init display window with CAB defaults
   useEffect(() => {
     if (!windowSettings) {
-      displayStore.initWindow(CAB_WINDOW_ID, { rangeNm: 15, ptlLength: 0.5, ldrLength: 2 })
+      displayStore.initWindow(CAB_WINDOW_ID, { rangeNm: 15, ptlLength: 0, ldrLength: 2 })
     }
   }, []) // eslint-disable-line
+
+  const coordsRef = useRef(null)
 
   const [centerlineVisible, setCenterlineVisible] = useState(false)
 
@@ -199,6 +219,11 @@ export default function CabScope() {
     }
     if (parsed.command.id === 'TOGGLE_CENTERLINE') {
       setCenterlineVisible((v) => !v)
+      useCabPreviewStore.getState().clearAfterCommand()
+    }
+    if (parsed.command.id === 'TOGGLE_COORDS') {
+      const win = useDisplayStore.getState().windows[CAB_WINDOW_ID]
+      useDisplayStore.getState().updateWindow(CAB_WINDOW_ID, { coordsVisible: !(win?.coordsVisible ?? false) })
       useCabPreviewStore.getState().clearAfterCommand()
     }
   }, [setCenterlineVisible])
@@ -230,7 +255,8 @@ export default function CabScope() {
     if (match?.latitude != null) center = [match.latitude, match.longitude]
   }
 
-  const rangeNm = windowSettings?.rangeNm ?? 15
+  const rangeNm       = windowSettings?.rangeNm      ?? 15
+  const coordsVisible = windowSettings?.coordsVisible ?? false
   const maxBounds  = center ? tileBbox(center[0], center[1], 14, TILE_RADIUS) : null
 
   // Filter to airborne contacts only
@@ -292,8 +318,10 @@ export default function CabScope() {
             ))}
 
             <CabOverlay units={airUnits} />
+            <CoordsTracker coordsRef={coordsRef} visible={coordsVisible} />
           </MapContainer>
         )}
+        {coordsVisible && <div ref={coordsRef} className="cab-coords-debug" />}
       </div>
     </div>
   )

@@ -1,0 +1,315 @@
+/**
+ * AIC contact rendering:
+ *   - HAFU symbols (HOSTILE/UNKNOWN/NEUTRAL/FRIENDLY)
+ *   - Predicted Track Lines (PTL)
+ *   - Dugout diamonds on the gold band for out-of-range hostiles
+ *   - BRAA intercept overlay lines
+ */
+
+import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { DECLARATION } from '../../../store/aic.js'
+import { computeAicIntercept } from '../aicGeometry.js'
+
+const DECL_COLOR = {
+  [DECLARATION.HOSTILE]:  '#FF4444',
+  [DECLARATION.UNKNOWN]:  '#FFCC00',
+  [DECLARATION.NEUTRAL]:  '#44CC44',
+  [DECLARATION.FRIENDLY]: '#4488FF',
+}
+
+// Pixel radius for symSize 1-5. Default (3) → 9px.
+function symRadius(symSize) { return 3 + (symSize - 1) * 2 }
+
+function drawSymbol(ctx, x, y, declaration, S, colorOverride = null) {
+  const color = colorOverride ?? DECL_COLOR[declaration] ?? DECL_COLOR[DECLARATION.UNKNOWN]
+  ctx.strokeStyle = color
+  ctx.lineWidth   = 2
+
+  switch (declaration) {
+    case DECLARATION.HOSTILE: {
+      // Two legs only — no base. Wide angle (~90°).
+      const baseHW = S                                          // total width 2S — matches other symbols
+      const height = S / Math.tan(50 * Math.PI / 180)          // derived from 100° apex: height = baseHW / tan(50°)
+      const apexY  = y - height * 0.6
+      const baseY  = y + height * 0.4
+      ctx.beginPath()
+      ctx.moveTo(x - baseHW, baseY)
+      ctx.lineTo(x, apexY)
+      ctx.lineTo(x + baseHW, baseY)
+      ctx.stroke()
+      break
+    }
+    case DECLARATION.FRIENDLY: {
+      // Semi-circle dome up — clockwise from left (π) through top to right (0)
+      ctx.beginPath()
+      ctx.arc(x, y, S, Math.PI, 0, false)
+      ctx.stroke()
+      break
+    }
+    case DECLARATION.NEUTRAL: {
+      ctx.strokeStyle = DECL_COLOR[DECLARATION.NEUTRAL]
+      ctx.beginPath()
+      ctx.arc(x, y, S, Math.PI, 0, false)
+      ctx.stroke()
+      break
+    }
+    case DECLARATION.UNKNOWN:
+    default: {
+      // Staple ⊓ — top bar + two legs pointing down
+      ctx.beginPath()
+      ctx.moveTo(x - S, y - S * 0.5)
+      ctx.lineTo(x + S, y - S * 0.5)
+      ctx.moveTo(x - S, y - S * 0.5)
+      ctx.lineTo(x - S, y + S * 0.5)
+      ctx.moveTo(x + S, y - S * 0.5)
+      ctx.lineTo(x + S, y + S * 0.5)
+      ctx.stroke()
+      break
+    }
+  }
+}
+
+function drawPtl(ctx, x, y, unit, view, ptlSeconds, color) {
+  if (!unit.speed || !unit.track) return
+  const distNm = (unit.speed * ptlSeconds) / 1852
+  if (distNm < 0.01) return
+
+  // Rotate track by display magvar so PTL aligns with the magnetic-north-up canvas
+  const magTrackRad = unit.track - view.magvar * Math.PI / 180
+  const endX = x + Math.sin(magTrackRad) * distNm * view.pixelsPerNm
+  const endY = y - Math.cos(magTrackRad) * distNm * view.pixelsPerNm
+
+  ctx.strokeStyle = color
+  ctx.lineWidth   = 2
+  ctx.setLineDash([])
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(endX, endY)
+  ctx.stroke()
+}
+
+function drawDugout(ctx, view, units, getDecl, rangeNm, symSize) {
+  const { pixelsPerNm, width, height } = view
+  const cx    = width  / 2
+  const cy    = height / 2
+  const outerR = rangeNm * pixelsPerNm
+  const innerR = Math.max(0, (rangeNm - 10) * pixelsPerNm)
+  const D      = Math.max(4, 3 + symSize * 1.2)  // diamond half-size
+
+  ctx.strokeStyle = DECL_COLOR[DECLARATION.HOSTILE]
+  ctx.lineWidth   = 1.5
+
+  for (const [id, unit] of Object.entries(units)) {
+    if (!unit.position) continue
+    if (getDecl(id, unit) !== DECLARATION.HOSTILE) continue
+
+    const { x, y } = latLngToCanvas(unit.position.lat, unit.position.lng, view)
+    const dx = x - cx, dy = y - cy
+    if (Math.hypot(dx, dy) <= innerR) continue  // within inner ring — on scope, not dugout
+
+    // Place diamond on the inner ring at the bearing toward this contact
+    const angle = Math.atan2(dx, -dy)
+    const bx    = cx + Math.sin(angle) * innerR
+    const by    = cy - Math.cos(angle) * innerR
+
+    ctx.beginPath()
+    ctx.moveTo(bx,     by - D)
+    ctx.lineTo(bx + D, by)
+    ctx.lineTo(bx,     by + D)
+    ctx.lineTo(bx - D, by)
+    ctx.closePath()
+    ctx.stroke()
+  }
+}
+
+function computeMergePt(fighter, bogey) {
+  const result = computeAicIntercept(fighter, bogey)
+  if (!result) return null
+  return { lat: result.mergeLat, lng: result.mergeLng }
+}
+
+function drawBraaOverlays(ctx, view, braaList, units, rangeNm) {
+  const cx    = view.width  / 2
+  const cy    = view.height / 2
+  const clipR = Math.max(0, (rangeNm - 10) * view.pixelsPerNm)
+
+  for (const pair of braaList) {
+    const fighter = units[pair.fighterId]
+    const bogey   = units[pair.bogeyId]
+    if (!fighter?.position || !bogey?.position) continue
+
+    const fp = latLngToCanvas(fighter.position.lat, fighter.position.lng, view)
+    const bp = latLngToCanvas(bogey.position.lat,   bogey.position.lng,   view)
+
+    // Dashed line between fighter and bogey
+    ctx.strokeStyle = 'rgba(255,255,100,0.55)'
+    ctx.lineWidth   = 0.75
+    ctx.setLineDash([4, 4])
+    ctx.beginPath()
+    ctx.moveTo(fp.x, fp.y)
+    ctx.lineTo(bp.x, bp.y)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Merge point dot — only within the inner dugout ring
+    const merge = computeMergePt(fighter, bogey)
+    if (merge) {
+      const mp = latLngToCanvas(merge.lat, merge.lng, view)
+      if (Math.hypot(mp.x - cx, mp.y - cy) <= clipR) {
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'
+        ctx.beginPath()
+        ctx.arc(mp.x, mp.y, 3, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  }
+}
+
+function drawRbl(ctx, view, rbl, magvar) {
+  if (!rbl?.anchor || !rbl?.end) return
+
+  const ap = latLngToCanvas(rbl.anchor.lat, rbl.anchor.lng, view)
+  const ep = latLngToCanvas(rbl.end.lat,    rbl.end.lng,    view)
+
+  ctx.strokeStyle = rbl.fixed ? 'rgba(167,167,167,0.85)' : 'rgba(167,167,167,0.5)'
+  ctx.lineWidth   = 1
+  ctx.setLineDash(rbl.fixed ? [] : [5, 5])
+  ctx.beginPath()
+  ctx.moveTo(ap.x, ap.y)
+  ctx.lineTo(ep.x, ep.y)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  // Endpoint dots
+  ctx.fillStyle = 'rgba(167,167,167,0.9)'
+  ctx.beginPath(); ctx.arc(ap.x, ap.y, 3, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(ep.x, ep.y, 3, 0, Math.PI * 2); ctx.fill()
+
+  // Bearing / range label at midpoint
+  const avgLat      = (rbl.anchor.lat + rbl.end.lat) / 2
+  const nmPerDegLng = 60 * Math.cos(rbl.anchor.lat * Math.PI / 180)
+  const dN          = (rbl.end.lat - rbl.anchor.lat) * 60
+  const dE          = (rbl.end.lng - rbl.anchor.lng) * nmPerDegLng
+  const range       = Math.round(Math.hypot(dN, dE))
+  const trueBrg     = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360
+  const magBrg      = Math.round((trueBrg - magvar + 360) % 360) || 360
+  const label       = `${String(magBrg).padStart(3, '0')}°M  ${range}NM`
+
+  const midX = (ap.x + ep.x) / 2
+  const midY = (ap.y + ep.y) / 2
+
+  ctx.font      = '11px "Roboto Mono", monospace'
+  ctx.textAlign = 'center'
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'
+  ctx.fillText(label, midX + 1, midY - 5)
+  ctx.fillStyle = 'rgba(167,167,167,0.9)'
+  ctx.fillText(label, midX, midY - 6)
+}
+
+function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl) {
+  if (!threatRings.size) return
+  ctx.lineWidth   = 0.75
+  ctx.setLineDash([6, 4])
+  for (const unitId of threatRings) {
+    const unit = units[unitId]
+    if (!unit?.position) continue
+
+    const violated = Object.entries(units).some(([id, u]) => {
+      if (id === unitId || !u.position) return false
+      if (getDecl(id, u) === DECLARATION.FRIENDLY) return false
+      const nmPerDegLng = 60 * Math.cos(unit.position.lat * Math.PI / 180)
+      const dN = (u.position.lat - unit.position.lat) * 60
+      const dE = (u.position.lng - unit.position.lng) * nmPerDegLng
+      return Math.hypot(dN, dE) <= threatRadius
+    })
+
+    ctx.strokeStyle = violated ? 'rgba(255,68,68,0.7)' : 'rgba(255,180,0,0.55)'
+    const { x, y } = latLngToCanvas(unit.position.lat, unit.position.lng, view)
+    ctx.beginPath()
+    ctx.arc(x, y, threatRadius * view.pixelsPerNm, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+}
+
+function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize, ptlSeconds) {
+  const S = symRadius(symSize)
+  ctx.save()
+  ctx.globalAlpha = 0.5
+
+  for (const [, entry] of Object.entries(fadedContacts)) {
+    const { unit, disappearedAt, decl } = entry
+    if (!unit.position) continue
+    const elapsed     = (now - disappearedAt) / 1000
+    const distNm      = (unit.speed ?? 0) * elapsed / 1852
+    const track       = unit.track ?? 0
+    const nmPerDegLng = 60 * Math.cos(unit.position.lat * Math.PI / 180)
+    const coastLat    = unit.position.lat + (Math.cos(track) * distNm) / 60
+    const coastLng    = unit.position.lng + (Math.sin(track) * distNm) / nmPerDegLng
+    const { x, y }   = latLngToCanvas(coastLat, coastLng, view)
+    if (Math.hypot(x - cx, y - cy) > clipR) continue
+
+    // PTL along coast track (gray)
+    drawPtl(ctx, x, y, unit, view, ptlSeconds, '#888')
+
+    // Same HAFU symbol, gray
+    drawSymbol(ctx, x, y, decl ?? DECLARATION.UNKNOWN, S, '#888')
+  }
+
+  ctx.restore()
+}
+
+export function drawAicContacts(
+  ctx, view, units, getDecl, ptlSeconds, symSize, braaList, rangeNm,
+  rbl = null, magvar = 0,
+  threatRings = new Set(), threatRadius = 35,
+  fadedContacts = {}, fadedNow = 0,
+  findMarker = null,
+) {
+  const { width, height } = view
+  const S = symRadius(symSize)
+
+  ctx.clearRect(0, 0, width, height)
+  ctx.save()
+
+  // Threat rings (under everything else)
+  drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl)
+
+  // BRAA overlays first (under symbols)
+  drawBraaOverlays(ctx, view, braaList, units, rangeNm)
+
+  // Dugout diamonds on the band
+  drawDugout(ctx, view, units, getDecl, rangeNm, symSize)
+
+  // Contacts: PTL then symbol — only within the inner dugout ring
+  const cx      = width  / 2
+  const cy      = height / 2
+  const clipR   = Math.max(0, (rangeNm - 10) * view.pixelsPerNm)
+
+  for (const [id, unit] of Object.entries(units)) {
+    if (!unit.position) continue
+    const { x, y } = latLngToCanvas(unit.position.lat, unit.position.lng, view)
+    if (Math.hypot(x - cx, y - cy) > clipR) continue  // beyond inner ring — dugout only
+
+    const decl  = getDecl(id, unit)
+    const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.UNKNOWN]
+
+    drawPtl(ctx, x, y, unit, view, ptlSeconds, color)
+    drawSymbol(ctx, x, y, decl, S)
+  }
+
+  // Faded / coasting contacts
+  drawFadedContacts(ctx, view, fadedContacts, fadedNow, clipR, cx, cy, symSize, ptlSeconds)
+
+  // RBL on top of everything
+  drawRbl(ctx, view, rbl, magvar)
+
+  // .find marker — small green square
+  if (findMarker) {
+    const { x, y } = latLngToCanvas(findMarker.lat, findMarker.lon, view)
+    ctx.fillStyle = '#00e000'
+    ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
+  }
+
+  ctx.restore()
+}

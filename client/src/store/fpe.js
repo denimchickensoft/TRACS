@@ -1,5 +1,4 @@
-import { create }    from 'zustand'
-import { syncStore } from '../utils/storeSync.js'
+import { create } from 'zustand'
 
 export const useFpeStore = create((set) => ({
   open:     false,
@@ -15,6 +14,3 @@ export const useFpeStore = create((set) => ({
     set({ open: false, scope: null, aid: null, unitId: null, readOnly: false }),
 }))
 
-syncStore(useFpeStore, 'tracs-fpe', (s) => ({
-  open: s.open, scope: s.scope, aid: s.aid, unitId: s.unitId, readOnly: s.readOnly,
-}))

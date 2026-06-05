@@ -92,7 +92,7 @@ function loadSaved(theatre, positionKey) {
 
 export const useMapsStore = create((set, get) => ({
   maps:        [],    // flat: [assigned(0-4), ...submenu(5+)]
-  colors:      null,  // { [acCode]: { stroke, fill, label } } from navdata
+  palettes:    [],    // [{ name, colors: { [acCode]: { stroke, fill, label } } }]
   visible:     {},    // { [index]: bool, lbl: bool }
   theatre:     null,
   positionKey: null,
@@ -111,7 +111,7 @@ export const useMapsStore = create((set, get) => ({
         serverCache[theatre] = await res.json()
       }
 
-      const { groups, colors } = serverCache[theatre]
+      const { groups, palettes } = serverCache[theatre]
 
       const filtered = filterGroupsByDistance(groups ?? [], suffix, facilityLat, facilityLng)
       const maps     = assignButtons(filtered, suffix)
@@ -130,8 +130,8 @@ export const useMapsStore = create((set, get) => ({
         visible = get().visible
       }
 
-      set({ maps, colors: colors ?? null, visible, theatre, loading: false, _lastLoadKey: loadKey })
-      console.log(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${maps.length} groups (${Math.min(maps.length, 5)} main, ${Math.max(0, maps.length - 5)} submenu)`)
+      set({ maps, palettes: palettes ?? [], visible, theatre, loading: false, _lastLoadKey: loadKey })
+      console.log(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${maps.length} groups (${Math.min(maps.length, 5)} main, ${Math.max(0, maps.length - 5)} submenu), ${(palettes ?? []).length} palettes`)
     } catch (err) {
       console.error('[maps] load error:', err.message)
       set({ loading: false })
@@ -151,5 +151,6 @@ export const useMapsStore = create((set, get) => ({
     set({ visible })
   },
 
-  reset: () => set({ maps: [], colors: null, visible: {}, theatre: null, positionKey: null, loading: false }),
+  reset: () => set({ maps: [], palettes: [], visible: {}, theatre: null, positionKey: null, loading: false }),
 }))
+

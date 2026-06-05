@@ -1,3 +1,16 @@
+.cab-coords-debug {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: #ffffff;
+  pointer-events: none;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  z-index: 1000;
+}
+
 .cab-map.leaflet-container,
 .cab-map.leaflet-container.leaflet-grab,
 .leaflet-dragging .cab-map.leaflet-container {

@@ -104,7 +104,7 @@ const DI = {
 // Caucasus theatre — Blue coalition = 2, Red = 1
 // hdg: radians, DCS convention (0 = North, clockwise)
 // spd: knots (converted to m/s on encode)
-// contacts[].ID: uint32, contacts[].detectionMethod: bitmask (bit 4 = 16 = RADAR)
+// contacts[].ID: uint32, contacts[].detectionMethod: bitmask (VISUAL=1, OPTIC=2, RADAR=4, IRST=8, RWR=16, DLINK=32)
 const unitDefs = [
   {
     id: 1, unitName: 'Enfield 1-1', name: 'F-16C_50', category: 'Aircraft',
@@ -121,8 +121,8 @@ const unitDefs = [
     coalition: 2, lat: 42.60, lng: 43.40, alt: 7620,
     hdg: Math.PI / 2, spd: 480,
     contacts: [
-      { ID: 5, detectionMethod: 16 },
-      { ID: 6, detectionMethod: 16 },
+      { ID: 5, detectionMethod: 4 },
+      { ID: 6, detectionMethod: 4 },
     ],
   },
   {
@@ -201,6 +201,7 @@ const THEATRE_DEFAULTS = {
 }
 
 const serverStartWallMs = Date.now()
+const SESSION_HASH = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
 
 // ─── Geometry helpers ─────────────────────────────────────────────────────────
 
@@ -500,19 +501,31 @@ function handleMission(req, res) {
 
   const td = THEATRE_DEFAULTS[theatre] ?? THEATRE_DEFAULTS.Caucasus
   json(res, {
-    theatre: theatre,
-    commandMode: 'GAME_MASTER',
-    bullseyes: [
-      { coalition: 2, name: 'BULLSEYE', lat: td.bullseyeLat, lon: td.bullseyeLng },
-    ],
     mission: {
       theatre: theatre,
       dateAndTime: {
         date: { Day: 1, Month: 6, Year: 2025 },
         time: { h, m, s },
       },
+      commandModeOptions: { commandMode: 'Game master' },
     },
+    sessionHash: SESSION_HASH,
     time: Number(serverTime),
+    load: 5,
+    frameRate: 60,
+  })
+}
+
+function handleBullseyes(req, res) {
+  const td = THEATRE_DEFAULTS[theatre] ?? THEATRE_DEFAULTS.Caucasus
+  json(res, {
+    bullseyes: {
+      BULLSEYE: { latitude: td.bullseyeLat, longitude: td.bullseyeLng, coalition: 'blue' },
+    },
+    sessionHash: SESSION_HASH,
+    time: Number(serverTime),
+    load: 5,
+    frameRate: 60,
   })
 }
 
@@ -1044,9 +1057,10 @@ const server = http.createServer((req, res) => {
 
   if (!checkAuth(req, res)) return
 
-  if (path === '/olympus/units')    return handleUnits(req, res)
-  if (path === '/olympus/mission')  return handleMission(req, res)
-  if (path === '/olympus/airbases') return handleAirbases(req, res)
+  if (path === '/olympus/units')      return handleUnits(req, res)
+  if (path === '/olympus/mission')    return handleMission(req, res)
+  if (path === '/olympus/airbases')   return handleAirbases(req, res)
+  if (path === '/olympus/bullseyes')  return handleBullseyes(req, res)
 
   json(res, { error: 'Not found' }, 404)
 })

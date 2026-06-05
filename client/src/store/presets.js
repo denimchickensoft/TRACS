@@ -7,7 +7,7 @@ const PRESET_FIELDS = [
   'rangeNm', 'ringSpacingNm', 'historyLength', 'historyRate',
   'ptlLength', 'ptlMode',
   'ldrLength', 'ldrAngleDeg',
-  'briteDcb', 'briteBkg', 'briteMapA', 'briteMapB',
+  'briteDcb', 'briteBkg', 'briteMapA', 'briteMapB', 'aspColorIdx',
   'briteFdb', 'briteLst', 'britePos', 'briteLdb', 'briteRr', 'briteCmp', 'briteHst',
   'csDatablocks', 'csLists', 'csDcb', 'csTools', 'csPos', 'csMap',
   'altFilterLow', 'altFilterHigh',
@@ -99,3 +99,4 @@ export const usePresetsStore = create((set, get) => ({
   setActiveSlot:  (index) => set({ activeSlot: index }),
   setPendingMode: (mode)  => set({ pendingMode: mode }),
 }))
+

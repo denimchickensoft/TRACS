@@ -348,3 +348,30 @@ export function computeMagvar(latDeg, lngDeg, dateOrYear = new Date()) {
 
   return Math.atan2(-Y, X) / _D2R
 }
+
+// ── DCS meridian convergence ──────────────────────────────────────────────────
+// DCS uses a flat-earth grid anchored at a theatre-specific reference meridian.
+// Grid north diverges from geographic north by γ = (lng − λ₀) × sin(lat).
+// DCS_magvar = IGRF_magvar + convergence, so that:
+//   DCS_grid_heading − DCS_magvar  =  geographic_true − IGRF  =  magnetic_heading
+//
+// Reference meridians are estimates; exact values are not published by DCS.
+const _THEATRE_REF_MERIDIAN = {
+  Caucasus:       33,
+  PersianGulf:    56,
+  Syria:          33,
+  Sinai:          33,
+  MarianaIslands: 145,
+  Nevada:         -116,
+  SouthAtlantic:  -60,
+  Kola:           27,
+  Afghanistan:    67,
+  Germany:        13,
+}
+
+// Returns convergence in degrees. Add to IGRF to get the DCS-equivalent magvar.
+export function theatreConvergence(theatre, latDeg, lngDeg) {
+  const refMeridian = _THEATRE_REF_MERIDIAN[theatre]
+  if (refMeridian == null) return 0
+  return (lngDeg - refMeridian) * Math.sin(latDeg * _D2R)
+}

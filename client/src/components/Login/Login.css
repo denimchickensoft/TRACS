@@ -153,11 +153,13 @@
 
 .login-actions {
   display: flex;
+  align-items: stretch;
   gap: 8px;
 }
 
 .login-actions .connect-btn {
   flex: 1;
+  margin-top: 0;
 }
 
 .disconnect-btn {

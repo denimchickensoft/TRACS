@@ -30,6 +30,10 @@ function dispatch(message) {
       useSessionStore.getState().setAirbases(message.data)
       break
 
+    case 'bullseyes':
+      useSessionStore.getState().setBullseyes(message.data)
+      break
+
     case 'status':
       useSessionStore.getState().setConnected(message.data.polling === true)
       break
@@ -45,6 +49,7 @@ function dispatch(message) {
 
 function connect() {
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
+  intentionalClose = false
 
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
   const url = `${protocol}://${location.host}${WS_URL}`

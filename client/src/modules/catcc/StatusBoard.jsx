@@ -304,7 +304,7 @@ const SCALE_MAX     = 2.0
 const SCALE_STEP    = 0.05
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide }) {
+export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
   const {
     event, launch, recovery, tz, clg, vis, qnh,
@@ -326,6 +326,8 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   })
   const [scaleHint,  setScaleHint]  = useState(false)
   const scaleHintRef = useRef(null)
+
+  useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
 
   const handleTitleWheel = (e) => {
     e.preventDefault()

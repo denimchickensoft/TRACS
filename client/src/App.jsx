@@ -7,12 +7,16 @@ import StarsScope        from './modules/atc/stars/StarsScope'
 import CabScope          from './modules/atc/cab/CabScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard, SB_NATURAL_WIDTH } from './modules/catcc/StatusBoard'
+import AicScope          from './modules/aic/AicScope'
+import { BraaList, BRAA_NATURAL_WIDTH } from './modules/aic/BraaList'
 import { StripBay }      from './components/StripBay/StripBay'
 import { Par }           from './components/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
+import { Messages }        from './components/Messages/Messages'
 import { disconnectWebrtc } from './webrtc/client'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
+const MSG_VISIBLE_KEY = 'tracs.msg.visible'
 const SB_WIDTH_KEY    = 'tracs.sb.width'
 
 const PROFILE_STORAGE_KEY = 'tracs.lastProfile'
@@ -43,13 +47,20 @@ export function App() {
 
   const useDcsNames    = useSessionStore((s) => s.useDcsNames)
   const toggleDcsNames = useSessionStore((s) => s.toggleDcsNames)
+  const unreadGeneral  = useSessionStore((s) => s.unreadGeneral)
+  const unreadDm       = useSessionStore((s) => s.unreadDm)
+  const openDmTab      = useSessionStore((s) => s.openDmTab)
 
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [settingsOpen,    setSettingsOpen]    = useState(false)
   const [activeOds,       setActiveOds]       = useState('atc')
-  const [clVisible, setClVisible] = useState(() => localStorage.getItem(CL_VISIBLE_KEY) === 'true')
-  const [clDocked,  setClDocked]  = useState(true)
+  const [clVisible,  setClVisible]  = useState(() => localStorage.getItem(CL_VISIBLE_KEY)  === 'true')
+  const [msgVisible, setMsgVisible] = useState(() => localStorage.getItem(MSG_VISIBLE_KEY) === 'true')
+  const [clDocked,   setClDocked]   = useState(true)
   const clPopupRef = useRef(null)
+
+  const [cabOdsDocked, setCabOdsDocked] = useState(true)
+  const cabOdsPopupRef = useRef(null)
 
   const { loadManifest, loadProfile, availableProfiles, activeProfileId, activeProfile } = useOdsStore()
   const myEntry = useControllersStore((s) => s.registry[positionName])
@@ -69,6 +80,13 @@ export function App() {
         e.preventDefault()
         setClVisible((v) => {
           localStorage.setItem(CL_VISIBLE_KEY, String(!v))
+          return !v
+        })
+      }
+      if (e.ctrlKey && e.key === 'm') {
+        e.preventDefault()
+        setMsgVisible((v) => {
+          localStorage.setItem(MSG_VISIBLE_KEY, String(!v))
           return !v
         })
       }
@@ -110,10 +128,28 @@ export function App() {
     }
   }
 
+  // ── CAB ODS undock handler ─────────────────────────────────────────
+  const handleCabOdsUndock = useCallback(() => {
+    const { facilityDcsName, positionSuffix } = useSessionStore.getState()
+    const p = new URLSearchParams({ window: 'cab-ods', facilityDcsName, positionSuffix })
+    const popup = window.open(`/?${p}`, 'tracs-cab-ods', 'width=1024,height=768,resizable=yes')
+    if (!popup) return
+    cabOdsPopupRef.current = popup
+    setCabOdsDocked(false)
+    setActiveOds('atc')
+    const id = setInterval(() => {
+      if (popup.closed) { setCabOdsDocked(true); cabOdsPopupRef.current = null; clearInterval(id) }
+    }, 500)
+  }, [])
+
   // ── Status board ───────────────────────────────────────────────────
   const [sbDocked,  setSbDocked]  = useState(true)
   const initSbWidth = (() => { const v = parseInt(localStorage.getItem(SB_WIDTH_KEY), 10); return isNaN(v) ? SB_NATURAL_WIDTH : v })()
   const [sbWidth,   setSbWidth]   = useState(initSbWidth)
+  const [sbScale,   setSbScale]   = useState(() => {
+    const s = parseFloat(localStorage.getItem('tracs.sb.scale'))
+    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
+  })
   const sbWidthRef = useRef(initSbWidth)
   const sbPopupRef = useRef(null)
   const handleSbResize  = useCallback(makeResizeHandler(sbWidthRef, setSbWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
@@ -122,6 +158,10 @@ export function App() {
   // ── Strip bay ──────────────────────────────────────────────────────
   const [stripsDocked,  setStripsDocked]  = useState(true)
   const [stripsWidth,   setStripsWidth]   = useState(520)
+  const [stripsScale,   setStripsScale]   = useState(() => {
+    const s = parseFloat(localStorage.getItem('tracs.strip-bay.scale'))
+    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
+  })
   const stripsWidthRef  = useRef(520)
   const stripsPopupRef  = useRef(null)
   const handleStripsResize = useCallback(makeResizeHandler(stripsWidthRef, setStripsWidth, 280, 900), []) // eslint-disable-line
@@ -134,9 +174,22 @@ export function App() {
   const parPopupRef  = useRef(null)
   const handleParResize = useCallback(makeResizeHandler(parWidthRef, setParWidth, 400, 900), []) // eslint-disable-line
 
+  // ── BRAA list (AIC) ────────────────────────────────────────────────
+  const initBraaWidth = (() => { const v = parseInt(localStorage.getItem('tracs.braa.width'), 10); return isNaN(v) ? BRAA_NATURAL_WIDTH : v })()
+  const [braaWidth,  setBraaWidth]  = useState(initBraaWidth)
+  const [braaScale,  setBraaScale]  = useState(() => {
+    const s = parseFloat(localStorage.getItem('tracs.braa.scale'))
+    return isNaN(s) ? 1.0 : Math.max(0.7, Math.min(1.4, s))
+  })
+  const braaWidthRef = useRef(initBraaWidth)
+  const braaPopupRef = useRef(null)
+  const handleBraaResize = useCallback(makeResizeHandler(braaWidthRef, setBraaWidth, 220, 600, 'tracs.braa.width'), []) // eslint-disable-line
+  const handleBraaUndock = useCallback(makeUndockHandler('/?window=braa', 'tracs-braa', braaWidthRef, () => {}, braaPopupRef), []) // eslint-disable-line
+
   // ── Active right panel per scope ('main' | 'par') ─────────────────
   const [atcPanel,   setAtcPanel]   = useState('main')   // 'main' = strips, 'par'
   const [catccPanel, setCatccPanel] = useState('main')   // 'main' = status board, 'par'
+  const [aicPanel,   setAicPanel]   = useState('main')   // 'main' = braa list
 
   const handleParUndock = useCallback(() => {
     const { mission, carrierUnitId: cid } = useSessionStore.getState()
@@ -179,6 +232,28 @@ export function App() {
 
   const hasAtc   = activeModule === MODULE.ATC
   const hasCatcc = activeModule === MODULE.CATCC
+  const hasAic   = activeModule === MODULE.AIC
+
+  // Right inset = width consumed by the right panel + the 18px tab strip.
+  // Floating windows are clamped so they cannot overlap this area.
+  const TAB_STRIP_W = 18
+  const panelRightInset = (() => {
+    if (hasAtc) {
+      if (atcPanel === 'main' && stripsDocked) return Math.round(stripsWidth * stripsScale) + TAB_STRIP_W
+      if (atcPanel === 'par'  && parDocked)    return parWidth    + TAB_STRIP_W
+      return TAB_STRIP_W
+    }
+    if (hasCatcc) {
+      if (catccPanel === 'main' && sbDocked)   return Math.round(sbWidth * sbScale) + TAB_STRIP_W
+      if (catccPanel === 'par'  && parDocked)  return parWidth    + TAB_STRIP_W
+      return TAB_STRIP_W
+    }
+    if (hasAic) {
+      if (aicPanel === 'main')                 return Math.round(braaWidth * braaScale) + TAB_STRIP_W
+      return TAB_STRIP_W
+    }
+    return 0
+  })()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: activeProfile?.visual.colors.background ?? '#1A1A1A', overflow: 'hidden' }}>
@@ -227,6 +302,23 @@ export function App() {
             {peers.length} {peers.length === 1 ? 'PEER' : 'PEERS'}
           </span>
         </span>
+
+        {/* Unread message indicator */}
+        {(() => {
+          const totalDm = Object.values(unreadDm).reduce((a, b) => a + b, 0)
+          if (!msgVisible && (unreadGeneral > 0 || totalDm > 0)) {
+            return (
+              <span
+                style={{ color: '#cc9900', cursor: 'pointer', letterSpacing: '0.06em' }}
+                onClick={() => { setMsgVisible(true); localStorage.setItem(MSG_VISIBLE_KEY, 'true') }}
+                title="Open Messages (Ctrl+M)"
+              >
+                MSG: {unreadGeneral}{totalDm > 0 ? ` / ${totalDm} DM` : ''}
+              </span>
+            )
+          }
+          return null
+        })()}
 
         {/* Right side: Change Position + profile switcher */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -317,7 +409,18 @@ export function App() {
 
           {hasAtc && (
             <button
-              onClick={() => setActiveOds('cab')}
+              onClick={(e) => {
+                if (e.shiftKey) {
+                  if (!cabOdsDocked && cabOdsPopupRef.current && !cabOdsPopupRef.current.closed) {
+                    cabOdsPopupRef.current.focus()
+                  } else {
+                    handleCabOdsUndock()
+                  }
+                } else {
+                  setActiveOds('cab')
+                }
+              }}
+              title="CAB — shift-click to open ODS in new window"
               style={{
                 background:    activeOds === 'cab' ? '#2A4A7A' : '#1A1A1A',
                 color:         activeOds === 'cab' ? '#88BBFF' : '#555',
@@ -401,6 +504,7 @@ export function App() {
                 onResize={handleStripsResize}
                 onUndock={handleStripsUndock}
                 onHide={() => setAtcPanel(null)}
+                onScaleChange={setStripsScale}
               />
             )}
             {atcPanel === 'main' && !stripsDocked && null}
@@ -418,8 +522,8 @@ export function App() {
             {/* Tab strip */}
             <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0d0d0d', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
               {[
-                { key: 'main', label: stripsDocked ? 'STRIPS' : 'STRIPS ↗', onClick: () => { if (!stripsDocked && stripsPopupRef.current) stripsPopupRef.current.focus(); else setAtcPanel('main') } },
-                { key: 'par',  label: parDocked    ? 'PAR'    : 'PAR ↗',    onClick: () => { if (!parDocked    && parPopupRef.current)    parPopupRef.current.focus();    else setAtcPanel('par')  } },
+                { key: 'main', label: stripsDocked ? 'STRIPS' : 'STRIPS ↗', onClick: () => { if (!stripsDocked && stripsPopupRef.current) stripsPopupRef.current.focus(); else setAtcPanel((p) => p === 'main' ? null : 'main') } },
+                { key: 'par',  label: parDocked    ? 'PAR'    : 'PAR ↗',    onClick: () => { if (!parDocked    && parPopupRef.current)    parPopupRef.current.focus();    else setAtcPanel((p) => p === 'par'  ? null : 'par')  } },
               ].map(({ key, label, onClick }) => (
                 <div
                   key={key}
@@ -448,6 +552,7 @@ export function App() {
                 onResize={handleSbResize}
                 onUndock={handleSbUndock}
                 onHide={() => setCatccPanel(null)}
+                onScaleChange={setSbScale}
               />
             )}
             {catccPanel === 'main' && !sbDocked && null}
@@ -465,8 +570,8 @@ export function App() {
             {/* Tab strip */}
             <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
               {[
-                { key: 'main', label: sbDocked  ? 'STATUS'  : 'STATUS ↗',  onClick: () => { if (!sbDocked  && sbPopupRef.current)  sbPopupRef.current.focus();  else setCatccPanel('main') } },
-                { key: 'par',  label: parDocked ? 'PAR'     : 'PAR ↗',     onClick: () => { if (!parDocked && parPopupRef.current) parPopupRef.current.focus(); else setCatccPanel('par')  } },
+                { key: 'main', label: sbDocked  ? 'STATUS'  : 'STATUS ↗',  onClick: () => { if (!sbDocked  && sbPopupRef.current)  sbPopupRef.current.focus();  else setCatccPanel((p) => p === 'main' ? null : 'main') } },
+                { key: 'par',  label: parDocked ? 'PAR'     : 'PAR ↗',     onClick: () => { if (!parDocked && parPopupRef.current) parPopupRef.current.focus(); else setCatccPanel((p) => p === 'par'  ? null : 'par')  } },
               ].map(({ key, label, onClick }) => (
                 <div
                   key={key}
@@ -481,7 +586,42 @@ export function App() {
           </div>
         )}
 
-        {!hasAtc && !hasCatcc && (
+        {hasAic && (
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
+              <AicScope />
+            </div>
+
+            {aicPanel === 'main' && (
+              <BraaList
+                docked
+                width={braaWidth}
+                onResize={handleBraaResize}
+                onUndock={handleBraaUndock}
+                onHide={() => setAicPanel(null)}
+                onScaleChange={setBraaScale}
+              />
+            )}
+
+            {/* Tab strip */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
+              {[
+                { key: 'main', label: 'BRAA', onClick: () => setAicPanel(p => p === 'main' ? null : 'main') },
+              ].map(({ key, label, onClick }) => (
+                <div
+                  key={key}
+                  title={label}
+                  onClick={onClick}
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: aicPanel === key ? '#141414' : 'transparent' }}
+                >
+                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: aicPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!hasAtc && !hasCatcc && !hasAic && (
           <div style={{ color: '#333', fontFamily: 'Roboto Mono, monospace', padding: '40px', fontSize: '0.8rem' }}>
             No active display module.
           </div>
@@ -492,8 +632,20 @@ export function App() {
             visible={clVisible}
             onClose={() => { setClVisible(false); localStorage.setItem(CL_VISIBLE_KEY, 'false') }}
             onUndock={handleClUndock}
+            rightInset={panelRightInset}
+            onOpenDm={(positionName) => {
+              setMsgVisible(true)
+              localStorage.setItem(MSG_VISIBLE_KEY, 'true')
+              openDmTab(positionName)
+            }}
           />
         )}
+
+        <Messages
+          visible={msgVisible}
+          onClose={() => { setMsgVisible(false); localStorage.setItem(MSG_VISIBLE_KEY, 'false') }}
+          rightInset={panelRightInset}
+        />
         {!clDocked && (
           <div
             title="Controller list is in a separate window"

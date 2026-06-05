@@ -1,14 +1,15 @@
 import { latLngToCanvas } from './projection.js'
 
-const TOTAL_NM = 15
+const TOTAL_NM = 20
 const START_NM = 1   // first dash begins 1 NM from threshold
 const DASH_NM  = 1
 const GAP_NM   = 1
 
-export function drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, brite = 80) {
+export function drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, brite = 50) {
   if (!centerlines.length || brite <= 0) return
 
-  const alpha        = Math.max(0, Math.min(1, brite / 100))
+  const alpha    = Math.max(0, Math.min(1, brite / 100))
+  const alphaRwy = alpha
   const { width, height } = view
 
   ctx.save()
@@ -19,7 +20,7 @@ export function drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, bri
     if (!cltrVisible[cl.id]) continue
 
     // ── Runway pavement ───────────────────────────────────────────────
-    ctx.strokeStyle = `rgba(255,255,255,${alpha})`
+    ctx.strokeStyle = `rgba(192,192,192,${alphaRwy})`
     const rp1 = latLngToCanvas(cl.rwyEnd1.lat, cl.rwyEnd1.lng, view)
     const rp2 = latLngToCanvas(cl.rwyEnd2.lat, cl.rwyEnd2.lng, view)
     const rwyOffscreen =
@@ -33,7 +34,7 @@ export function drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, bri
     }
 
     // ── Extended centerline dashes ────────────────────────────────────
-    ctx.strokeStyle = `rgba(160,160,160,${alpha})`
+    ctx.strokeStyle = `rgba(96,96,96,${alpha})`
     const cosLat = Math.cos(cl.thresholdLat * Math.PI / 180)
     const sinH   = Math.sin(cl.headingRad)
     const cosH   = Math.cos(cl.headingRad)

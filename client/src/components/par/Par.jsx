@@ -3,9 +3,8 @@ import { useUnitsStore }        from '../../store/units.js'
 import { useRunwaysStore }      from '../../store/runways.js'
 import { useCorrelationStore }  from '../../store/correlation.js'
 import { useSessionStore, MODULE } from '../../store/session.js'
-import { wsClient }             from '../../ws/client.js'
 import { CARRIER_TYPES }        from '../../utils/carriers.js'
-import { computeMagvar }        from '../../utils/magvar.js'
+import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import './Par.css'
 
@@ -422,8 +421,6 @@ export function Par({
   useEffect(() => {
     if (docked) return
     document.title = 'PAR – TRACS'
-    wsClient.connect()
-    return () => wsClient.disconnect()
   }, [docked]) // eslint-disable-line
 
   // ── Runway data (for airfield runway selector) ─────────────────────
@@ -441,14 +438,30 @@ export function Par({
   const carrierUnit  = initCarrierId != null ? (units[initCarrierId] ?? null) : null
 
   // ── Approach config state ──────────────────────────────────────────
-  const [mode,       setMode]       = useState(initCarrierId != null ? 'carrier' : 'airfield')
-  const [runwayId,   setRunwayId]   = useState('')
+  const [mode, setMode] = useState(() => {
+    const saved = localStorage.getItem('tracs.par.mode')
+    if (saved === 'carrier' && initCarrierId == null) return 'airfield'
+    return saved ?? (initCarrierId != null ? 'carrier' : 'airfield')
+  })
+  const [runwayId,   setRunwayId]   = useState(() => localStorage.getItem('tracs.par.runwayId') ?? '')
   const [manualLat,  setManualLat]  = useState('')
   const [manualLng,  setManualLng]  = useState('')
   const [manualHdg,  setManualHdg]  = useState('')
   const [threshElev, setThreshElev] = useState(0)
-  const [gsAngle,    setGsAngle]    = useState(initCarrierId != null ? 3.5 : 3.0)
-  const [rangeNm,    setRangeNm]    = useState(10)
+  const [gsAngle,    setGsAngle]    = useState(() => {
+    const saved = parseFloat(localStorage.getItem('tracs.par.gsAngle'))
+    return isNaN(saved) ? (initCarrierId != null ? 3.5 : 3.0) : saved
+  })
+  const [rangeNm,    setRangeNm]    = useState(() => {
+    const saved = parseFloat(localStorage.getItem('tracs.par.rangeNm'))
+    return isNaN(saved) ? 10 : saved
+  })
+
+  // Persist PAR config across remounts and popup windows
+  useEffect(() => { localStorage.setItem('tracs.par.mode',     mode)           }, [mode])
+  useEffect(() => { localStorage.setItem('tracs.par.runwayId', runwayId)       }, [runwayId])
+  useEffect(() => { localStorage.setItem('tracs.par.gsAngle',  String(gsAngle)) }, [gsAngle])
+  useEffect(() => { localStorage.setItem('tracs.par.rangeNm',  String(rangeNm)) }, [rangeNm])
 
   // Tolerances derived from standard angular FSD values — not user-configurable
   const vertTol = rangeNm * NM_TO_FEET * Math.tan(GS_TOL_DEG * D2R)
@@ -461,10 +474,12 @@ export function Par({
     if (mode === 'carrier' && carrierUnit?.position) {
       const ct         = CARRIER_TYPES[carrierUnit.name]
       const deckOff    = ct?.deckOffset    ?? 9
-      const deckHt     = ct?.deckHeightFt  ?? 65
-      const trueHdgDeg = (carrierUnit.heading ?? 0) / D2R
+      const deckHt     = ct?.deckHeightFt  ?? 72
+      const gridHdgDeg = (carrierUnit.heading ?? 0) / D2R  // DCS grid heading
       const magvar     = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
-      // Carrier trueHdg is the actual landing heading (true); mag FB = trueHdg − magvar
+      const conv       = initTheatre ? theatreConvergence(initTheatre, carrierUnit.position.lat, carrierUnit.position.lng) : 0
+      const trueHdgDeg = gridHdgDeg - conv  // geographic true heading
+      // finalBearingMag: geographic true − IGRF (= DCS_grid − DCS_magvar, same result)
       const finalBearingMag = ((trueHdgDeg - deckOff - magvar) % 360 + 360) % 360
       return {
         ...base,
@@ -518,7 +533,7 @@ export function Par({
 
     return { ...base, valid: false }
   }, [mode, carrierUnit, runwayId, centerlines, manualLat, manualLng, manualHdg,
-      gsAngle, rangeNm, latTol, vertTol, threshElev, missionDate]) // latTol/vertTol derived from rangeNm
+      gsAngle, rangeNm, latTol, vertTol, threshElev, missionDate, initTheatre]) // latTol/vertTol derived from rangeNm
 
   // ── Contacts in approach corridor ─────────────────────────────────
   const contacts = useMemo(() => {
@@ -568,10 +583,12 @@ export function Par({
     if (!carrierUnit?.position) return null
     const deckOff = CARRIER_TYPES[carrierUnit.name]?.deckOffset ?? 9
     const magvar  = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
-    const brc     = ((carrierUnit.heading ?? 0) / D2R - magvar + 360) % 360
+    const conv    = initTheatre ? theatreConvergence(initTheatre, carrierUnit.position.lat, carrierUnit.position.lng) : 0
+    const gridHdg = (carrierUnit.heading ?? 0) / D2R
+    const brc     = ((gridHdg - conv - magvar + 720) % 360)
     const fb      = Math.round(((brc - deckOff + 360) % 360))
     return fb === 0 ? 360 : fb
-  }, [carrierUnit, missionDate])
+  }, [carrierUnit, missionDate, initTheatre])
 
   const hasCarrierData = mode === 'carrier' && carrierUnit?.position != null
   const mirrored = approachCfg.valid && (approachCfg.finalBearingMag % 360) >= 180

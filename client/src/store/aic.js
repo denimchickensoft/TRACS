@@ -1,57 +1,91 @@
 import { create } from 'zustand'
 
-export const useAicStore = create((set) => ({
-  // Group labels: groupId → { label, unitIds, positionName }
-  // Groups are ad-hoc collections of contacts assigned a tactical label by a controller
-  groups: {},
+export const DECLARATION = {
+  HOSTILE:  'HOSTILE',
+  UNKNOWN:  'UNKNOWN',
+  NEUTRAL:  'NEUTRAL',
+  FRIENDLY: 'FRIENDLY',
+}
 
-  // Contact ownership: unitId → positionName (which controller is working this contact)
-  ownership: {},
+export const ROE_STATE = {
+  FREE:  'FREE',
+  TIGHT: 'TIGHT',
+  HOLD:  'HOLD',
+}
 
-  // Fighter assignments: fighterId (Olympus unit ID) → { groupId, controller }
-  assignments: {},
+let _broadcastFn = null
 
-  // Whether datalink (detection method 32) contacts are displayed
-  datalinkVisible: false,
+export function registerAicBroadcast(fn) {
+  _broadcastFn = fn
+}
 
-  setGroup: (groupId, group) =>
-    set((state) => ({
-      groups: { ...state.groups, [groupId]: group },
-    })),
+export function applyAicDeclaration(unitId, classification) {
+  useAicStore.getState()._applyDeclaration(unitId, classification)
+}
 
-  deleteGroup: (groupId) =>
-    set((state) => {
-      const next = { ...state.groups }
-      delete next[groupId]
-      return { groups: next }
-    }),
+export function applyAicRoe(roe) {
+  useAicStore.getState()._applyRoe(roe)
+}
 
-  claimContact: (unitId, positionName) =>
-    set((state) => ({
-      ownership: { ...state.ownership, [unitId]: positionName },
-    })),
+export function applyAicStateDump(payload) {
+  const patch = {}
+  if (payload.declarations) patch.declarations = payload.declarations
+  if (payload.roe !== undefined) patch.roe = payload.roe
+  useAicStore.setState(patch)
+}
 
-  dropContact: (unitId) =>
-    set((state) => {
-      const next = { ...state.ownership }
-      delete next[unitId]
-      return { ownership: next }
-    }),
+export const useAicStore = create((set, get) => ({
+  declarations:       {},    // { [unitId]: DECLARATION }
+  roe:                null,  // ROE_STATE | null
+  braaList:           [],    // [{ id, fighterId, bogeyId }] — local, not synced
+  pendingBraaFighter: null,  // unitId awaiting second Ctrl+click
 
-  setAssignment: (fighterId, assignment) =>
-    set((state) => ({
-      assignments: { ...state.assignments, [fighterId]: assignment },
-    })),
+  setDeclaration: (unitId, classification) => {
+    set(s => ({ declarations: { ...s.declarations, [unitId]: classification } }))
+    _broadcastFn?.('DECLARATION_SET', { unitId, classification })
+  },
 
-  clearAssignment: (fighterId) =>
-    set((state) => {
-      const next = { ...state.assignments }
-      delete next[fighterId]
-      return { assignments: next }
-    }),
+  setRoe: (roe) => {
+    set({ roe })
+    _broadcastFn?.('ROE_SET', { roe })
+  },
 
-  toggleDatalink: () => set((state) => ({ datalinkVisible: !state.datalinkVisible })),
+  addBraaPair: (fighterId, bogeyId) => {
+    set(s => {
+      if (s.braaList.some(p => p.fighterId === fighterId && p.bogeyId === bogeyId)) return { pendingBraaFighter: null }
+      const id = `${fighterId}-${bogeyId}-${Date.now()}`
+      return { braaList: [...s.braaList, { id, fighterId, bogeyId }], pendingBraaFighter: null }
+    })
+  },
 
-  reset: () =>
-    set({ groups: {}, ownership: {}, assignments: {}, datalinkVisible: false }),
+  removeBraaPair: (id) => {
+    set(s => ({ braaList: s.braaList.filter(p => p.id !== id) }))
+  },
+
+  removeBraaPairsForUnit: (unitId) => {
+    set(s => ({
+      braaList:           s.braaList.filter(p => p.fighterId !== unitId && p.bogeyId !== unitId),
+      pendingBraaFighter: s.pendingBraaFighter === unitId ? null : s.pendingBraaFighter,
+    }))
+  },
+
+  setPendingBraaFighter: (unitId) => set({ pendingBraaFighter: unitId }),
+  clearPendingBraa:      ()       => set({ pendingBraaFighter: null }),
+
+  _applyDeclaration: (unitId, classification) => {
+    set(s => ({ declarations: { ...s.declarations, [unitId]: classification } }))
+  },
+
+  _applyRoe: (roe) => set({ roe }),
+
+  getEffectiveDeclaration: (unitId, unit, myCoalitionNum) => {
+    const explicit = get().declarations[String(unitId)]
+    if (explicit !== undefined) return explicit
+    const c = unit.coalition
+    if (c === myCoalitionNum) return DECLARATION.FRIENDLY
+    if (c === 0) return DECLARATION.NEUTRAL
+    return DECLARATION.HOSTILE
+  },
+
+  reset: () => set({ declarations: {}, roe: null, braaList: [], pendingBraaFighter: null }),
 }))

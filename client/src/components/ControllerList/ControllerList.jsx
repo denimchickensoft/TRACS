@@ -102,15 +102,20 @@ function buildGroups(registry, peers, airbases, myFacilityId, units, icaoMap) {
     facilityMap[e.facility].push(e)
   }
 
-  const ownGroup        = facilityMap[myFacilityId]
+  // AIC entries always go in the flat AIC section, even if own facility.
+  const ownGroup        = facilityMap[myFacilityId] && !facilityMap[myFacilityId].every((e) => e.suffix === 'AIC')
     ? { facilityId: myFacilityId, entries: facilityMap[myFacilityId] }
     : null
   const proximityGroups = []
   const otherEntries    = []
+  const aicEntries      = []
 
   for (const [facId, entries] of Object.entries(facilityMap)) {
-    if (facId === myFacilityId) continue
-    if (entries.every((e) => e.suffix === 'CTR' || e.suffix === 'AIC')) {
+    if (entries.every((e) => e.suffix === 'AIC')) {
+      aicEntries.push(...entries)
+    } else if (facId === myFacilityId) {
+      continue
+    } else if (entries.every((e) => e.suffix === 'CTR')) {
       otherEntries.push(...entries)
     } else {
       proximityGroups.push({ facilityId: facId, entries })
@@ -126,11 +131,11 @@ function buildGroups(registry, peers, airbases, myFacilityId, units, icaoMap) {
     return da - db
   })
 
-  return { ownGroup, proximityGroups, otherEntries }
+  return { ownGroup, proximityGroups, aicEntries, otherEntries }
 }
 
 // ── Directional resize handler factory ────────────────────────────────────────
-function makeResizer(dir, posRef, sizeRef, setPos, setSize) {
+function makeResizer(dir, posRef, sizeRef, setPos, setSize, windowRef, rightInsetRef) {
   return (e) => {
     if (e.button !== 0) return
     e.preventDefault()
@@ -140,15 +145,21 @@ function makeResizer(dir, posRef, sizeRef, setPos, setSize) {
     const has = (d) => dir.includes(d)
 
     const onMove = (ev) => {
+      const parent   = windowRef.current?.parentElement
+      const maxRight = parent ? parent.clientWidth - rightInsetRef.current : Infinity
       const dx = ev.clientX - sx
       const dy = ev.clientY - sy
       let { x, y } = sp
       let { w, h } = ss
 
-      if (has('e')) w = Math.max(MIN_W, ss.w + dx)
+      if (has('e')) w = Math.max(MIN_W, Math.min(ss.w + dx, maxRight - sp.x))
       if (has('s')) h = Math.max(MIN_H, ss.h + dy)
       if (has('w')) { const nw = Math.max(MIN_W, ss.w - dx); x = sp.x + (ss.w - nw); w = nw }
-      if (has('n')) { const nh = Math.max(MIN_H, ss.h - dy); y = sp.y + (ss.h - nh); h = nh }
+      if (has('n')) {
+        const desiredY = sp.y + ss.h - Math.max(MIN_H, ss.h - dy)
+        y = Math.max(0, desiredY)
+        h = Math.max(MIN_H, sp.y + ss.h - y)
+      }
 
       posRef.current  = { x, y }
       sizeRef.current = { w, h }
@@ -165,7 +176,7 @@ function makeResizer(dir, posRef, sizeRef, setPos, setSize) {
 }
 
 // ── Controller List window ────────────────────────────────────────────────────
-export function ControllerList({ visible, onClose, onUndock, standalone = false, facilityId: facilityIdProp, facilityName: facilityNameProp }) {
+export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInset = 0, standalone = false, facilityId: facilityIdProp, facilityName: facilityNameProp }) {
   const wheelDir            = useWheelDirection()
   const registry            = useControllersStore((s) => s.registry)
   const peers               = useSessionStore((s) => s.peers)
@@ -191,6 +202,19 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
   const sizeRef         = useRef(size)
   const opacityHintRef  = useRef(null)
   const windowRef       = useRef(null)
+  const rightInsetRef   = useRef(rightInset)
+  useEffect(() => {
+    rightInsetRef.current = rightInset
+    if (standalone) return
+    const parent = windowRef.current?.parentElement
+    if (!parent) return
+    const maxX = Math.max(0, parent.clientWidth - sizeRef.current.w - rightInset)
+    if (posRef.current.x > maxX) {
+      const next = { ...posRef.current, x: maxX }
+      posRef.current = next
+      setPos(next)
+    }
+  }, [rightInset, standalone])
 
   useEffect(() => {
     fetch('/icaoMapping.json').then((r) => r.json()).then(setIcaoMap).catch(() => {})
@@ -218,7 +242,13 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
     const ox = e.clientX - posRef.current.x
     const oy = e.clientY - posRef.current.y
     const onMove = (ev) => {
-      const next = { x: Math.max(0, ev.clientX - ox), y: Math.max(0, ev.clientY - oy) }
+      const parent = windowRef.current?.parentElement
+      const maxX   = parent ? Math.max(0, parent.clientWidth  - sizeRef.current.w - rightInsetRef.current) : Infinity
+      const maxY   = parent ? Math.max(0, parent.clientHeight - sizeRef.current.h) : Infinity
+      const next   = {
+        x: Math.max(0, Math.min(maxX, ev.clientX - ox)),
+        y: Math.max(0, Math.min(maxY, ev.clientY - oy)),
+      }
       posRef.current = next
       setPos(next)
     }
@@ -249,7 +279,7 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
   // ── Resize handlers (all edges and corners) ───────────────────────────────────
   const resizers = useMemo(() => {
     if (standalone) return {}
-    const make = (dir) => makeResizer(dir, posRef, sizeRef, setPos, setSize)
+    const make = (dir) => makeResizer(dir, posRef, sizeRef, setPos, setSize, windowRef, rightInsetRef)
     return {
       n: make('n'), s: make('s'), e: make('e'), w: make('w'),
       ne: make('ne'), nw: make('nw'), se: make('se'), sw: make('sw'),
@@ -263,7 +293,7 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
 
   if (!visible) return null
 
-  const { ownGroup, proximityGroups, otherEntries } = groups
+  const { ownGroup, proximityGroups, aicEntries, otherEntries } = groups
 
   function toggleCollapse(id) {
     setCollapsed((c) => ({ ...c, [id]: !c[id] }))
@@ -278,7 +308,12 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
     const entryFacName = carrierType?.tacticalName ?? facName
     const label = [entryFacName, entry.displayName].filter(Boolean).join(' ')
     return (
-      <div key={entry.positionName} className="cl-entry">
+      <div
+        key={entry.positionName}
+        className="cl-entry"
+        onDoubleClick={() => onOpenDm?.(entry.positionName)}
+        title="Double-click to open DM"
+      >
         <span className="cl-entry-id">{displayId(entry)}</span>
         <span className="cl-entry-name">{label}</span>
         <span className="cl-entry-freq">{entry.frequency || ''}</span>
@@ -288,7 +323,12 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
 
   function renderOtherEntry(entry) {
     return (
-      <div key={entry.positionName} className="cl-entry">
+      <div
+        key={entry.positionName}
+        className="cl-entry"
+        onDoubleClick={() => onOpenDm?.(entry.positionName)}
+        title="Double-click to open DM"
+      >
         <span className="cl-entry-id">{displayId(entry)}</span>
         <span className="cl-entry-name">{entry.positionName}</span>
         <span className="cl-entry-freq">{entry.frequency || ''}</span>
@@ -317,8 +357,9 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
     )
   }
 
+  const aicCollapsed   = collapsed['__AIC__']   ?? false
   const otherCollapsed = collapsed['__OTHER__'] ?? false
-  const hasAny = ownGroup || proximityGroups.length > 0 || otherEntries.length > 0
+  const hasAny = ownGroup || proximityGroups.length > 0 || aicEntries.length > 0 || otherEntries.length > 0
 
   const overlayStyle = standalone ? undefined : {
     left:    pos.x,
@@ -382,6 +423,20 @@ export function ControllerList({ visible, onClose, onUndock, standalone = false,
 
         {ownGroup && renderGroup(ownGroup, myFacilityName || null)}
         {proximityGroups.map((g) => renderGroup(g))}
+
+        {aicEntries.length > 0 && (
+          <div className="cl-group">
+            <div className="cl-group-header" onClick={() => toggleCollapse('__AIC__')}>
+              <span className="cl-chevron">{aicCollapsed ? '▶' : '▼'}</span>
+              <span className="cl-facility-label">AIC</span>
+            </div>
+            {!aicCollapsed && (
+              <div className="cl-group-entries">
+                {aicEntries.map((e) => renderOtherEntry(e))}
+              </div>
+            )}
+          </div>
+        )}
 
         {otherEntries.length > 0 && (
           <div className="cl-group">

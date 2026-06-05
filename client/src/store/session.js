@@ -50,12 +50,17 @@ export const useSessionStore = create((set) => ({
   sessionCode: null,
   isHost: false,
   peers: [],
-  controllerMessages: [],  // { from, text, timestamp, broadcast }[]
+  controllerMessages: [],  // { id, from, fromPosition, text, timestamp, broadcast, toPosition? }[]
+  unreadGeneral: 0,
+  unreadDm: {},       // { [positionName]: number }
+  openDmTabs: [],     // string[] ordered by open time
+  activeMsgTab: 'main',
   webrtcRejection: null,   // string | null — survives resetPosition so Login can show it
 
   // Mission data (from Olympus)
-  mission: null,
-  airbases: [],
+  mission:   null,
+  airbases:  null,
+  bullseyes: null,
 
   setConnection: ({ olympusUrl, coalition }) =>
     set({ olympusUrl, coalition }),
@@ -81,9 +86,9 @@ export const useSessionStore = create((set) => ({
   setAicConfig: ({ callsign, unitId = null, unitName = '' }) =>
     set({ aicCallsign: callsign, aicUnitId: unitId, aicUnitName: unitName }),
 
-  setMission: (mission) => set({ mission }),
-
-  setAirbases: (airbases) => set({ airbases }),
+  setMission:    (mission)    => set({ mission }),
+  setAirbases:   (airbases)   => set({ airbases }),
+  setBullseyes:  (bullseyes)  => set({ bullseyes }),
 
   setWebrtcStatus: (webrtcStatus) => set({ webrtcStatus }),
 
@@ -97,9 +102,43 @@ export const useSessionStore = create((set) => ({
   setPeers: (peers) => set({ peers }),
 
   addControllerMessage: (msg) =>
-    set((s) => ({ controllerMessages: [...s.controllerMessages, msg] })),
+    set((s) => {
+      const id    = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const entry = { id, ...msg }
+      const isDm  = !!msg.toPosition
+      if (isDm) {
+        const dmPartner  = msg.fromPosition === s.positionName ? msg.toPosition : msg.fromPosition
+        const openDmTabs = s.openDmTabs.includes(dmPartner) ? s.openDmTabs : [...s.openDmTabs, dmPartner]
+        const unreadDm   = { ...s.unreadDm, [dmPartner]: (s.unreadDm[dmPartner] ?? 0) + 1 }
+        return { controllerMessages: [...s.controllerMessages, entry], openDmTabs, unreadDm }
+      }
+      return { controllerMessages: [...s.controllerMessages, entry], unreadGeneral: s.unreadGeneral + 1 }
+    }),
 
   clearControllerMessages: () => set({ controllerMessages: [] }),
+
+  markMessagesRead: (tab) =>
+    set((s) => tab === 'main'
+      ? { unreadGeneral: 0 }
+      : { unreadDm: { ...s.unreadDm, [tab]: 0 } }
+    ),
+
+  openDmTab: (position) =>
+    set((s) => ({
+      openDmTabs:   s.openDmTabs.includes(position) ? s.openDmTabs : [...s.openDmTabs, position],
+      activeMsgTab: position,
+    })),
+
+  closeDmTab: (position) =>
+    set((s) => {
+      const tabs   = s.openDmTabs.filter((t) => t !== position)
+      const active = s.activeMsgTab === position ? 'main' : s.activeMsgTab
+      const dm     = { ...s.unreadDm }
+      delete dm[position]
+      return { openDmTabs: tabs, activeMsgTab: active, unreadDm: dm }
+    }),
+
+  setActiveMsgTab: (tab) => set({ activeMsgTab: tab }),
 
   // Clears position fields only — keeps Olympus connection alive.
   // Used by Change Position in the top bar.
@@ -126,6 +165,10 @@ export const useSessionStore = create((set) => ({
       isHost:              false,
       peers:               [],
       controllerMessages:  [],
+      unreadGeneral:       0,
+      unreadDm:            {},
+      openDmTabs:          [],
+      activeMsgTab:        'main',
       // webrtcRejection intentionally preserved — Login reads it after redirect
     }),
 
@@ -156,8 +199,13 @@ export const useSessionStore = create((set) => ({
       isHost:              false,
       peers:               [],
       controllerMessages:  [],
+      unreadGeneral:       0,
+      unreadDm:            {},
+      openDmTabs:          [],
+      activeMsgTab:        'main',
       mission:             null,
-      airbases:            [],
+      airbases:            null,
+      bullseyes:           null,
     }),
 }))
 
@@ -168,7 +216,8 @@ export const useSessionStore = create((set) => ({
 // causes scope windows to overwrite each other's facility identity when multiple
 // scopes are open simultaneously.
 syncStore(useSessionStore, 'tracs-session-cl', (s) => ({
-  airbases: s.airbases,
-  mission:  s.mission,
-  peers:    s.peers,
+  airbases:  s.airbases,
+  bullseyes: s.bullseyes,
+  mission:   s.mission,
+  peers:     s.peers,
 }))

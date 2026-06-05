@@ -55,9 +55,9 @@ export function drawCatccLayers(ctx, view, fb, marshalBearing, rangeNm, ringSpac
 
   if (fb == null) return
 
-  // Helper: line from scope center along a magnetic bearing.
-  // fwdNm extends toward the bearing; aftNm extends toward the reciprocal.
-  function bearingLine(magDeg, fwdNm, aftNm, color, lineWidth, dash = []) {
+  // Helper: line along a magnetic bearing from (startNm - aftNm) to fwdNm.
+  // fwdNm extends toward the bearing; aftNm extends toward the reciprocal; startNm offsets the forward start.
+  function bearingLine(magDeg, fwdNm, aftNm, color, lineWidth, dash = [], startNm = 0) {
     const rad  = magDeg * Math.PI / 180
     const sinB = Math.sin(rad)
     const cosB = Math.cos(rad)
@@ -65,18 +65,18 @@ export function drawCatccLayers(ctx, view, fb, marshalBearing, rangeNm, ringSpac
     ctx.lineWidth   = lineWidth
     ctx.setLineDash(dash)
     ctx.beginPath()
-    ctx.moveTo(cx - sinB * aftNm * pixelsPerNm, cy + cosB * aftNm * pixelsPerNm)
+    ctx.moveTo(cx + sinB * (startNm - aftNm) * pixelsPerNm, cy - cosB * (startNm - aftNm) * pixelsPerNm)
     ctx.lineTo(cx + sinB * fwdNm * pixelsPerNm, cy - cosB * fwdNm * pixelsPerNm)
     ctx.stroke()
     ctx.setLineDash([])
   }
 
   // ── Approach corridor — extends toward inbound aircraft (reciprocal of FB) ──
-  bearingLine(marshalBearing, 20, 0, `rgba(255,200,0,${alpha})`, 1)
+  bearingLine(marshalBearing, 10, 0, `rgba(255,200,0,${alpha})`, 1)
 
-  // ── Marshal radial — dashed yellow ──────────────────────────────────────
+  // ── Marshal radial — dashed yellow, 10–50 NM ────────────────────────────
   const dashedBearing = radialBearing ?? marshalBearing
   if (dashedBearing != null) {
-    bearingLine(dashedBearing, 50, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [pixelsPerNm, pixelsPerNm])
+    bearingLine(dashedBearing, 50, 0, `rgba(255,200,0,${alpha * 0.5})`, 0.75, [pixelsPerNm, pixelsPerNm], 10)
   }
 }

@@ -1,14 +1,104 @@
-{
-  "CTR": { "stroke": "#22AA55", "fill": "#22AA55", "label": "CTR" },
-  "D":   { "stroke": "#2266BB", "fill": "#2266BB", "label": "Class D" },
-  "C":   { "stroke": "#2266BB", "fill": "#2266BB", "label": "Class C" },
-  "B":   { "stroke": "#2266BB", "fill": "#2266BB", "label": "Class B" },
-  "A":   { "stroke": "#2A3F5F", "fill": "#2A3F5F", "label": "Class A" },
-  "R":   { "stroke": "#CC9900", "fill": "#CC9900", "label": "R" },
-  "P":   { "stroke": "#CC2200", "fill": "#CC2200", "label": "P" },
-  "Q":   { "stroke": "#CC6600", "fill": "#CC6600", "label": "Q" },
-  "TMA": { "stroke": "#4444AA", "fill": "#4444AA", "label": "TMA" },
-  "CTA": { "stroke": "#4444AA", "fill": "#4444AA", "label": "CTA" },
-  "FIR": { "stroke": "#884488", "fill": "#884488", "label": "FIR" },
-  "UIR": { "stroke": "#884488", "fill": "#884488", "label": "UIR" }
-}
+[
+  {
+    "name": "Classic",
+    "colors": {
+      "CTR": { "stroke": "#AABBCC", "fill": "#AABBCC", "label": "CTR" },
+      "D":   { "stroke": "#99AABB", "fill": "#99AABB", "label": "Class D" },
+      "C":   { "stroke": "#8899AA", "fill": "#8899AA", "label": "Class C" },
+      "B":   { "stroke": "#778899", "fill": "#778899", "label": "Class B" },
+      "A":   { "stroke": "#556677", "fill": "#556677", "label": "Class A" },
+      "R":   { "stroke": "#BBCCDD", "fill": "#BBCCDD", "label": "R" },
+      "P":   { "stroke": "#DDEEFF", "fill": "#DDEEFF", "label": "P" },
+      "Q":   { "stroke": "#CCDDE0", "fill": "#CCDDE0", "label": "Q" },
+      "TMA": { "stroke": "#8899BB", "fill": "#8899BB", "label": "TMA" },
+      "CTA": { "stroke": "#7788AA", "fill": "#7788AA", "label": "CTA" },
+      "FIR": { "stroke": "#667799", "fill": "#667799", "label": "FIR" },
+      "UIR": { "stroke": "#556688", "fill": "#556688", "label": "UIR" }
+    }
+  },
+  {
+    "name": "Contrast",
+    "colors": {
+      "CTR": { "stroke": "#22AA55", "fill": "#22AA55", "label": "CTR" },
+      "D":   { "stroke": "#2266BB", "fill": "#2266BB", "label": "Class D" },
+      "C":   { "stroke": "#2266BB", "fill": "#2266BB", "label": "Class C" },
+      "B":   { "stroke": "#2266BB", "fill": "#2266BB", "label": "Class B" },
+      "A":   { "stroke": "#2A3F5F", "fill": "#2A3F5F", "label": "Class A" },
+      "R":   { "stroke": "#CC9900", "fill": "#CC9900", "label": "R" },
+      "P":   { "stroke": "#CC2200", "fill": "#CC2200", "label": "P" },
+      "Q":   { "stroke": "#CC6600", "fill": "#CC6600", "label": "Q" },
+      "TMA": { "stroke": "#4444AA", "fill": "#4444AA", "label": "TMA" },
+      "CTA": { "stroke": "#4444AA", "fill": "#4444AA", "label": "CTA" },
+      "FIR": { "stroke": "#884488", "fill": "#884488", "label": "FIR" },
+      "UIR": { "stroke": "#884488", "fill": "#884488", "label": "UIR" }
+    }
+  },
+  {
+    "name": "Chart",
+    "colors": {
+      "CTR": { "stroke": "#00AAFF", "fill": "#00AAFF", "label": "CTR" },
+      "D":   { "stroke": "#4488FF", "fill": "#4488FF", "label": "Class D" },
+      "C":   { "stroke": "#FF44AA", "fill": "#FF44AA", "label": "Class C" },
+      "B":   { "stroke": "#0055CC", "fill": "#0055CC", "label": "Class B" },
+      "A":   { "stroke": "#667799", "fill": "#667799", "label": "Class A" },
+      "R":   { "stroke": "#FF3300", "fill": "#FF3300", "label": "R" },
+      "P":   { "stroke": "#CC0033", "fill": "#CC0033", "label": "P" },
+      "Q":   { "stroke": "#FF8800", "fill": "#FF8800", "label": "Q" },
+      "TMA": { "stroke": "#33BBFF", "fill": "#33BBFF", "label": "TMA" },
+      "CTA": { "stroke": "#5599DD", "fill": "#5599DD", "label": "CTA" },
+      "FIR": { "stroke": "#44CC88", "fill": "#44CC88", "label": "FIR" },
+      "UIR": { "stroke": "#228855", "fill": "#228855", "label": "UIR" }
+    }
+  },
+  {
+    "name": "Mono",
+    "colors": {
+      "CTR": { "stroke": "#BBBBBB", "fill": "#BBBBBB", "label": "CTR" },
+      "D":   { "stroke": "#999999", "fill": "#999999", "label": "Class D" },
+      "C":   { "stroke": "#999999", "fill": "#999999", "label": "Class C" },
+      "B":   { "stroke": "#888888", "fill": "#888888", "label": "Class B" },
+      "A":   { "stroke": "#666666", "fill": "#666666", "label": "Class A" },
+      "R":   { "stroke": "#FFFFFF", "fill": "#FFFFFF", "label": "R" },
+      "P":   { "stroke": "#FFFFFF", "fill": "#FFFFFF", "label": "P" },
+      "Q":   { "stroke": "#DDDDDD", "fill": "#DDDDDD", "label": "Q" },
+      "TMA": { "stroke": "#AAAAAA", "fill": "#AAAAAA", "label": "TMA" },
+      "CTA": { "stroke": "#AAAAAA", "fill": "#AAAAAA", "label": "CTA" },
+      "FIR": { "stroke": "#777777", "fill": "#777777", "label": "FIR" },
+      "UIR": { "stroke": "#777777", "fill": "#777777", "label": "UIR" }
+    }
+  },
+  {
+    "name": "Cab",
+    "colors": {
+      "CTR": { "stroke": "#FFEE00", "fill": "#FFEE00", "label": "CTR" },
+      "D":   { "stroke": "#FFCC00", "fill": "#FFCC00", "label": "Class D" },
+      "C":   { "stroke": "#FFBB00", "fill": "#FFBB00", "label": "Class C" },
+      "B":   { "stroke": "#FF9900", "fill": "#FF9900", "label": "Class B" },
+      "A":   { "stroke": "#CC7700", "fill": "#CC7700", "label": "Class A" },
+      "R":   { "stroke": "#FF4400", "fill": "#FF4400", "label": "R" },
+      "P":   { "stroke": "#FF2200", "fill": "#FF2200", "label": "P" },
+      "Q":   { "stroke": "#FF6600", "fill": "#FF6600", "label": "Q" },
+      "TMA": { "stroke": "#FFD700", "fill": "#FFD700", "label": "TMA" },
+      "CTA": { "stroke": "#FFCC33", "fill": "#FFCC33", "label": "CTA" },
+      "FIR": { "stroke": "#AA8800", "fill": "#AA8800", "label": "FIR" },
+      "UIR": { "stroke": "#886600", "fill": "#886600", "label": "UIR" }
+    }
+  },
+  {
+    "name": "Random",
+    "colors": {
+      "CTR": { "stroke": "#FF1493", "fill": "#FF1493", "label": "CTR" },
+      "D":   { "stroke": "#00FF7F", "fill": "#00FF7F", "label": "Class D" },
+      "C":   { "stroke": "#FF4500", "fill": "#FF4500", "label": "Class C" },
+      "B":   { "stroke": "#00CED1", "fill": "#00CED1", "label": "Class B" },
+      "A":   { "stroke": "#FF8C00", "fill": "#FF8C00", "label": "Class A" },
+      "R":   { "stroke": "#9400D3", "fill": "#9400D3", "label": "R" },
+      "P":   { "stroke": "#DC143C", "fill": "#DC143C", "label": "P" },
+      "Q":   { "stroke": "#00FA9A", "fill": "#00FA9A", "label": "Q" },
+      "TMA": { "stroke": "#FF69B4", "fill": "#FF69B4", "label": "TMA" },
+      "CTA": { "stroke": "#1E90FF", "fill": "#1E90FF", "label": "CTA" },
+      "FIR": { "stroke": "#ADFF2F", "fill": "#ADFF2F", "label": "FIR" },
+      "UIR": { "stroke": "#FF6347", "fill": "#FF6347", "label": "UIR" }
+    }
+  }
+]

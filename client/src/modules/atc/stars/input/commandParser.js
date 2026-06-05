@@ -57,6 +57,10 @@ const COMMANDS = [
   // Leader length via DCB LDR key: LD 0-7
   { id: 'SET_LEADER_LEN',       pattern: /^LD ([0-7])$/,          trigger: 'ENTER', captures: ['len'] },
 
+  // ── Display settings ─────────────────────────────────────────────
+  { id: 'SET_ALTIM',            pattern: /^\.(?:ALTIM|QNH) (\d+(?:\.\d+)?)$/, trigger: 'ENTER', captures: ['value'] },
+  { id: 'SET_ASP_COLORS',       pattern: /^\.ASPCOLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
+
   // ── Debug ────────────────────────────────────────────────────────
   { id: 'TOGGLE_COORDS',        pattern: /^\.COORDS$/,            trigger: 'ENTER' },
 

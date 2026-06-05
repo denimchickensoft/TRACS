@@ -1,0 +1,250 @@
+.msg-window {
+  position:        absolute;
+  z-index:         900;
+  display:         flex;
+  flex-direction:  column;
+  background:      #0d0d0d;
+  border:          1px solid #2a2a2a;
+  border-radius:   2px;
+  box-shadow:      0 6px 24px rgba(0, 0, 0, 0.7);
+  font-family:     'Roboto Mono', monospace;
+  font-size:       0.7rem;
+  color:           #aaa;
+  min-width:       260px;
+  min-height:      200px;
+  overflow:        hidden;
+}
+
+/* ── Resize handles ────────────────────────────────────────────── */
+.msg-resize {
+  position:   absolute;
+  z-index:    10;
+}
+
+.msg-resize--n  { top: 0; left: 6px; right: 6px; height: 5px; cursor: ns-resize; }
+.msg-resize--s  { bottom: 0; left: 6px; right: 6px; height: 5px; cursor: ns-resize; }
+.msg-resize--w  { left: 0; top: 6px; bottom: 6px; width: 5px; cursor: ew-resize; }
+.msg-resize--e  { right: 0; top: 6px; bottom: 6px; width: 5px; cursor: ew-resize; }
+.msg-resize--nw { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
+.msg-resize--ne { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
+.msg-resize--sw { bottom: 0; left: 0; width: 10px; height: 10px; cursor: sw-resize; }
+.msg-resize--se { bottom: 0; right: 0; width: 10px; height: 10px; cursor: se-resize; }
+
+.msg-resize--se::after {
+  content:       '';
+  position:      absolute;
+  right:         3px;
+  bottom:        3px;
+  width:         6px;
+  height:        6px;
+  border-right:  2px solid #2a2a2a;
+  border-bottom: 2px solid #2a2a2a;
+  pointer-events: none;
+}
+
+/* ── Title bar ─────────────────────────────────────────────────── */
+.msg-titlebar {
+  display:        flex;
+  align-items:    center;
+  gap:            4px;
+  padding:        4px 6px;
+  background:     #0a0a0a;
+  border-bottom:  1px solid #1e1e1e;
+  cursor:         grab;
+  flex-shrink:    0;
+  user-select:    none;
+}
+
+.msg-titlebar:active { cursor: grabbing; }
+
+.msg-title {
+  flex:           1;
+  font-size:      0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color:          #555;
+}
+
+.msg-opacity-hint {
+  font-size:      0.58rem;
+  letter-spacing: 0.06em;
+  color:          #667;
+  padding:        1px 4px;
+  background:     #151520;
+  border-radius:  2px;
+  pointer-events: none;
+}
+
+.msg-btn {
+  background:    transparent;
+  border:        none;
+  color:         #444;
+  cursor:        pointer;
+  font-size:     0.85rem;
+  line-height:   1;
+  padding:       1px 3px;
+  border-radius: 2px;
+  font-family:   inherit;
+}
+
+.msg-btn:hover { color: #888; background: #1a1a1a; }
+
+/* ── Tab bar ───────────────────────────────────────────────────── */
+.msg-tabs {
+  display:        flex;
+  flex-direction: row;
+  overflow-x:     auto;
+  overflow-y:     hidden;
+  background:     #080808;
+  border-bottom:  1px solid #1a1a1a;
+  flex-shrink:    0;
+}
+
+.msg-tabs::-webkit-scrollbar       { height: 2px; }
+.msg-tabs::-webkit-scrollbar-track { background: #080808; }
+.msg-tabs::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+.msg-tab {
+  display:        flex;
+  align-items:    center;
+  gap:            4px;
+  padding:        3px 8px;
+  cursor:         pointer;
+  user-select:    none;
+  white-space:    nowrap;
+  font-size:      0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color:          #3a3a3a;
+  border-right:   1px solid #1a1a1a;
+  flex-shrink:    0;
+}
+
+.msg-tab:hover { background: #111; color: #666; }
+
+.msg-tab--active {
+  background: #0d0d0d;
+  color:      #888;
+  border-top: 1px solid #2a2a2a;
+}
+
+.msg-tab-label { flex: 1; }
+
+.msg-tab-badge {
+  background:    #443300;
+  color:         #cc9900;
+  border-radius: 8px;
+  font-size:     0.55rem;
+  padding:       0 4px;
+  min-width:     14px;
+  text-align:    center;
+}
+
+.msg-tab-close {
+  background:    transparent;
+  border:        none;
+  color:         #333;
+  cursor:        pointer;
+  font-size:     0.75rem;
+  line-height:   1;
+  padding:       0 2px;
+  border-radius: 2px;
+  font-family:   inherit;
+}
+
+.msg-tab-close:hover { color: #888; background: #1a1a1a; }
+
+/* ── Message list ──────────────────────────────────────────────── */
+.msg-body {
+  flex:       1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding:    4px 0;
+}
+
+.msg-body::-webkit-scrollbar       { width: 4px; }
+.msg-body::-webkit-scrollbar-track { background: #0d0d0d; }
+.msg-body::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+.msg-empty {
+  padding:        24px 16px;
+  text-align:     center;
+  color:          #2a2a2a;
+  font-size:      0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.msg-row {
+  display:   flex;
+  gap:       6px;
+  padding:   2px 8px;
+  flex-wrap: wrap;
+  color:     #bbb;
+}
+
+.msg-row:hover { background: #111; }
+
+.msg-row--broadcast { color: #cc9900; }
+.msg-row--dm        { color: #4abbe8; }
+
+.msg-time {
+  color:       #444;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.msg-broadcast-tag {
+  color:       #886600;
+  flex-shrink: 0;
+}
+
+.msg-from {
+  color:       #888;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+.msg-row--broadcast .msg-from { color: #aa7700; }
+.msg-row--dm        .msg-from { color: #3a8aaa; }
+
+.msg-text { word-break: break-word; }
+
+/* ── Input row ─────────────────────────────────────────────────── */
+.msg-input-row {
+  display:     flex;
+  gap:         4px;
+  padding:     4px 6px;
+  background:  #080808;
+  border-top:  1px solid #1a1a1a;
+  flex-shrink: 0;
+}
+
+.msg-input {
+  flex:          1;
+  background:    #111;
+  border:        1px solid #2a2a2a;
+  border-radius: 2px;
+  color:         #bbb;
+  font-family:   'Roboto Mono', monospace;
+  font-size:     0.68rem;
+  padding:       3px 6px;
+  outline:       none;
+}
+
+.msg-input:focus { border-color: #3a3a3a; }
+
+.msg-input::placeholder { color: #333; }
+
+.msg-send-btn {
+  background:    #1a1a1a;
+  border:        1px solid #2a2a2a;
+  border-radius: 2px;
+  color:         #555;
+  cursor:        pointer;
+  font-family:   'Roboto Mono', monospace;
+  font-size:     0.7rem;
+  padding:       2px 8px;
+}
+
+.msg-send-btn:hover { color: #888; border-color: #3a3a3a; }

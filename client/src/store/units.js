@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { syncStore } from '../utils/storeSync.js'
 
 export const useUnitsStore = create((set) => ({
   // Keyed by Olympus unit ID
@@ -23,3 +24,7 @@ export const useUnitsStore = create((set) => ({
 
   clearUnits: () => set({ units: {}, lastUpdateTime: 0 }),
 }))
+
+if (typeof window !== 'undefined') {
+  syncStore(useUnitsStore, 'tracs-units', (s) => ({ units: s.units, lastUpdateTime: s.lastUpdateTime }))
+}

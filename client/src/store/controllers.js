@@ -117,23 +117,41 @@ export const useControllersStore = create((set, get) => ({
   },
 
   // ── Rebuild from client list ──────────────────────────────────────
-  // Called whenever the WebRTC client list changes. Deterministic — all
-  // peers arrive at the same IDs from the same sorted client list.
+  // Called whenever the WebRTC client list changes. Additive — existing
+  // registry entries are preserved and departed peers are removed. Only
+  // new peers (not yet in the registry) have IDs assigned. This means
+  // the host is the sole authority that ever mints new IDs; non-host
+  // peers receive IDs via CLU (setRegistry) so their rebuildFromClientList
+  // calls only prune departed entries without reassigning anything.
   rebuildFromClientList: (clientList) => {
     set({ _cachedClientList: clientList })
-    const { positionTypes } = get()
+    const { registry: prevRegistry, groupAssignments: prevGroups, nextGroupNumber: prevNext, positionTypes } = get()
     if (positionTypes.length === 0) {
       console.warn('[controllers] rebuildFromClientList called before positionTypes loaded — IDs will be null until loadPositionTypes completes')
     }
 
+    const positions = new Set(clientList.map((c) => c.position))
+
+    // Start from existing registry, removing entries for departed peers.
+    // Remaining entries are carried over unchanged — IDs are never reassigned.
+    const registry = {}
+    for (const [pos, entry] of Object.entries(prevRegistry)) {
+      if (positions.has(pos)) registry[pos] = entry
+    }
+
+    // Group assignments are sticky — never reset or freed, even when all
+    // controllers for a facility leave. This prevents group-number churn
+    // if they reconnect later.
+    const groupAssignments = { ...prevGroups }
+    let nextGroupNumber    = prevNext
+
+    // Assign IDs only for peers not yet in the registry (new arrivals).
+    // On non-host peers this loop is effectively a no-op: new arrivals are
+    // added to the registry via setRegistry (CLU) before syncPeers runs.
     const sorted = [...clientList].sort((a, b) => a.connectedAt - b.connectedAt)
-
-    const registry        = {}
-    const groupAssignments = {}
-    let nextGroupNumber   = 1
-
     for (const client of sorted) {
       const { position, facility, suffix, frequency } = client
+      if (registry[position]) continue  // preserve existing entry — no reassignment
       if (!facility || !suffix) continue
 
       const typeDef = positionTypes.find((t) => t.suffix === suffix)
@@ -147,9 +165,7 @@ export const useControllersStore = create((set, get) => ({
       let letter = typeDef?.letter ?? null
       if (letter !== null) {
         const used = globalUsedLetters(registry)
-        if (used.has(letter)) {
-          letter = nextAvailableLetter(used)
-        }
+        if (used.has(letter)) letter = nextAvailableLetter(used)
       }
 
       const canAssumeTrack = typeDef?.canAssumeTrack ?? false
@@ -172,6 +188,13 @@ export const useControllersStore = create((set, get) => ({
     set({ registry, groupAssignments, nextGroupNumber })
   },
 
+  // ── Apply host-assigned registry ──────────────────────────────────
+  // Used by non-hosts when receiving a CLU or STATE_DUMP that carries
+  // the host's authoritative registry. Replaces local state wholesale
+  // so the host's group numbers and letters are canonical.
+  setRegistry: (registry, groupAssignments = {}, nextGroupNumber = 1) =>
+    set({ registry, groupAssignments, nextGroupNumber }),
+
   // ── Convenience selectors ─────────────────────────────────────────
   getEntry:          (positionName) => get().registry[positionName] ?? null,
   getPositionSymbol: (positionName) => get().registry[positionName]?.positionSymbol ?? null,
@@ -187,38 +210,17 @@ export const useControllersStore = create((set, get) => ({
 }))
 
 // ── Cross-window registry sync ────────────────────────────────────────────────
-// The controllers registry is derived state — it is rebuilt deterministically
-// from the WebRTC clientList via rebuildFromClientList. Two scope windows must
-// NOT share registry state via BroadcastChannel because each window rebuilds
-// from its own (potentially momentarily different) clientList, and receiving a
-// partial-rebuild broadcast from the other window corrupts the local registry
-// until the next rebuild cycle runs.
-//
-// Flow:
-//   Main windows  → broadcast every change → popup windows apply it
-//   Popup windows → send REQUEST_STATE on open → main windows respond
-//   Main windows  → ignore STATE_UPDATE from other windows entirely
-const _isPopup = (() => {
-  try { return new URLSearchParams(window.location.search).has('window') }
-  catch { return false }
-})()
-
-const _ctrlCh = new BroadcastChannel('tracs-controllers')
-const _pickCtrl = (s) => ({
-  registry:         s.registry,
-  groupAssignments: s.groupAssignments,
-  nextGroupNumber:  s.nextGroupNumber,
-})
+// One-directional: main windows broadcast every rebuild but never apply incoming
+// state. The correction path for main windows is STATE_DUMP → rebuildFromClientList,
+// not BroadcastChannel. Popups have no WebRTC and rely entirely on receiving.
+const _isPopup = !!new URLSearchParams(window.location.search).get('window')
+const _ctrlCh  = new BroadcastChannel('tracs-controllers')
+const _pick    = (s) => ({ registry: s.registry, groupAssignments: s.groupAssignments, nextGroupNumber: s.nextGroupNumber })
 
 if (!_isPopup) {
-  useControllersStore.subscribe((state) => {
-    _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pickCtrl(state) })
-  })
+  useControllersStore.subscribe((state) => _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pick(state) }))
   _ctrlCh.onmessage = (e) => {
-    if (e.data?.type === 'REQUEST_STATE') {
-      _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pickCtrl(useControllersStore.getState()) })
-    }
-    // Ignore STATE_UPDATE — registry is owned by WebRTC, not cross-tab sync
+    if (e.data?.type === 'REQUEST_STATE') _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pick(useControllersStore.getState()) })
   }
 } else {
   _ctrlCh.onmessage = (e) => {

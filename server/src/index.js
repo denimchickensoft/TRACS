@@ -50,8 +50,9 @@ app.post('/api/connect', async (req, res) => {
       { olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' },
       {
         onUnitsDelta:   (delta) => broadcast({ type: 'units_delta', data: delta }),
-        onMission:      (data)  => broadcast({ type: 'mission',     data }),
-        onAirbases:     (data)  => broadcast({ type: 'airbases',    data }),
+        onMission:      (data)  => broadcast({ type: 'mission',    data }),
+        onAirbases:     (data)  => broadcast({ type: 'airbases',  data }),
+        onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
         onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: 'olympus_unreachable' } }),
       }
     )
@@ -350,6 +351,9 @@ wss.on('connection', (ws) => {
   const airbases = state.getAirbases()
   if (airbases && typeof airbases === 'object' && Object.keys(airbases).length > 0)
     ws.send(JSON.stringify({ type: 'airbases', data: airbases }))
+
+  const bullseyes = state.getBullseyes()
+  if (bullseyes) ws.send(JSON.stringify({ type: 'bullseyes', data: bullseyes }))
 
   // Status
   ws.send(JSON.stringify({ type: 'status', data: { polling: olympus.isPolling() } }))

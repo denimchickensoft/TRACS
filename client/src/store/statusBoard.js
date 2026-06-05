@@ -132,10 +132,11 @@ export const useStatusBoardStore = create((set) => ({
 }))
 
 // ── Persistence + cross-window sync ──────────────────────────────────────────
-let _externalUpdate = false
+// _syncing suppresses re-broadcast in all three cases: BroadcastChannel apply,
+// WebRTC apply (applyStatusBoardUpdate), and callsign rename (renameStatusBoardEntry).
+let _syncing = false
 
 // WebRTC broadcast hook — registered by the WebRTC client after sign-in.
-// Receives the full STATUS_BOARD_UPDATE payload to send.
 let _webrtcBroadcast = null
 export function registerStatusBoardBroadcast(fn) { _webrtcBroadcast = fn }
 
@@ -154,43 +155,44 @@ function buildPayload(s) {
   }
 }
 
+const _sbCh = new BroadcastChannel('tracs-statusboard')
+
 useStatusBoardStore.subscribe((state) => {
-  if (_externalUpdate) return
+  if (_syncing) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
   _webrtcBroadcast?.(buildPayload(state))
+  _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
 })
 
-window.addEventListener('storage', (e) => {
-  if (e.key !== SB_KEY || !e.newValue) return
-  try {
-    _externalUpdate = true
-    useStatusBoardStore.setState(JSON.parse(e.newValue))
-    _externalUpdate = false
-  } catch {
-    _externalUpdate = false
+_sbCh.onmessage = (e) => {
+  if (e.data?.type === 'STATE_UPDATE') {
+    _syncing = true
+    useStatusBoardStore.setState(e.data.state)
+    _syncing = false
+  } else if (e.data?.type === 'REQUEST_STATE') {
+    _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(useStatusBoardStore.getState()) })
   }
-})
+}
+_sbCh.postMessage({ type: 'REQUEST_STATE' })
 
 // Update a status board entry's callsign by unitId without triggering re-broadcast.
-// Used by incoming CALLSIGN_RENAME session-room events.
 export function renameStatusBoardEntry(unitId, newCallsign) {
-  _externalUpdate = true
+  _syncing = true
   try {
     useStatusBoardStore.getState().renameEntry(unitId, newCallsign)
   } finally {
-    _externalUpdate = false
+    _syncing = false
   }
 }
 
 // Apply an incoming STATUS_BOARD_UPDATE payload without triggering re-broadcast.
-// Called by the WebRTC handler when a remote STATUS_BOARD_UPDATE arrives.
 export function applyStatusBoardUpdate(payload) {
-  _externalUpdate = true
+  _syncing = true
   try {
     const flat = { ...(payload.eventHeader ?? {}), ...(payload.recoveryStatus ?? {}) }
     if (Object.keys(flat).length > 0)  useStatusBoardStore.setState(flat)
     if (payload.entries != null)        useStatusBoardStore.setState({ entries: payload.entries })
   } finally {
-    _externalUpdate = false
+    _syncing = false
   }
 }

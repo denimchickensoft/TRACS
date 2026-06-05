@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { syncStore } from '../utils/storeSync.js'
 
 // What caused the auto-add — drives the highlight color
 export const STRIP_HIGHLIGHT = {
@@ -40,7 +42,9 @@ const DEFAULT_SETTINGS = {
   deleteOnDropTrack:    false,
 }
 
-export const useStripsStore = create((set, get) => ({
+export const useStripsStore = create(
+  persist(
+    (set, get) => ({
   // { [id]: Strip }
   // Strip: { id, aid, unitId, annotations[9], highlight, createdAt }
   strips: {},
@@ -219,5 +223,32 @@ export const useStripsStore = create((set, get) => ({
   removeDestAirport:      (icao) => set((s) => ({ destAirports: s.destAirports.filter((a) => a !== icao) })),
 
   reset: () => set({ strips: {}, bays: [{ ...DEFAULT_BAY }] }),
-}))
+    }),
+    {
+      name: 'tracs.strips',
+      partialize: (state) => ({ strips: state.strips, bays: state.bays }),
+    }
+  )
+)
+
+if (typeof window !== 'undefined') {
+  const _isPopup  = !!new URLSearchParams(window.location.search).get('window')
+  const _stripsCh = new BroadcastChannel('tracs-strips')
+  const _pick     = (s) => ({ strips: s.strips, bays: s.bays })
+
+  if (!_isPopup) {
+    // Main window: broadcast changes and respond to requests, but never apply
+    // incoming state — each main window owns its own strip bays independently.
+    useStripsStore.subscribe((state) => _stripsCh.postMessage({ type: 'STATE_UPDATE', state: _pick(state) }))
+    _stripsCh.onmessage = (e) => {
+      if (e.data?.type === 'REQUEST_STATE') _stripsCh.postMessage({ type: 'STATE_UPDATE', state: _pick(useStripsStore.getState()) })
+    }
+  } else {
+    // Popup window: receive strips from the main window, never broadcast.
+    _stripsCh.onmessage = (e) => {
+      if (e.data?.type === 'STATE_UPDATE') useStripsStore.setState(e.data.state)
+    }
+    _stripsCh.postMessage({ type: 'REQUEST_STATE' })
+  }
+}
 

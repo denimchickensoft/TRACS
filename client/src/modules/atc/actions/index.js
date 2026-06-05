@@ -21,6 +21,7 @@ import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
 import { useNavdataStore } from '../../../store/navdata.js'
+import { useMapsStore }   from '../../../store/maps.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
@@ -315,6 +316,28 @@ export function RBL_CLEAR_N({ captures }) {
   ok()
 }
 
+export function SET_ALTIM({ captures }) {
+  const raw = captures.value
+  let display
+  if (raw.includes('.')) {
+    const val = parseFloat(raw)
+    if (val < 26 || val > 32) return err('INVALID ALTIM')
+    display = val.toFixed(2)
+  } else {
+    const n = parseInt(raw, 10)
+    if (n >= 2000) {
+      const val = n / 100
+      if (val < 26 || val > 32) return err('INVALID ALTIM')
+      display = val.toFixed(2)
+    } else {
+      if (n < 800 || n > 1100) return err('INVALID ALTIM')
+      display = String(n)
+    }
+  }
+  getDisplay().updateWindow(WINDOW_ID, { qnh: display })
+  ok()
+}
+
 export function SET_RANGE({ captures }) {
   const range = parseInt(captures.range, 10)
   if (range < 6 || range > 256) return err('INVALID RANGE')
@@ -459,6 +482,17 @@ export function TOGGLE_VFR()                             { toggleList('vfr') }
 export function RELOCATE_VFR({ canvasPos, canvasSize })  { relocateList('vfr', canvasPos, canvasSize) }
 export function RESIZE_VFR({ captures })                 { resizeList('vfr', captures.lines) }
 
+// ── Airspace color palette ────────────────────────────────────────────────────
+
+export function SET_ASP_COLORS({ captures, windowId }) {
+  const name     = captures.name.trim().toUpperCase()
+  const palettes = useMapsStore.getState().palettes
+  const idx      = palettes.findIndex(p => p.name.toUpperCase() === name)
+  if (idx < 0) return err('INVALID')
+  getDisplay().updateWindow(windowId ?? WINDOW_ID, { aspColorIdx: idx })
+  ok()
+}
+
 // ── Debug ─────────────────────────────────────────────────────────────────────
 
 export function TOGGLE_COORDS() {
@@ -490,6 +524,7 @@ export function RBL_INIT_FIX({ captures }) {
 
 const ACTION_MAP = {
   OPEN_FPE,
+  SET_ASP_COLORS,
   TOGGLE_COORDS,
   FIND_FIX,
   RENAME_CALLSIGN,
@@ -513,6 +548,7 @@ const ACTION_MAP = {
   SET_LEADER_MF,
   SET_LEADER_GLOBAL,
   TOGGLE_PTL,
+  SET_ALTIM,
   SET_RANGE,
   SET_RNG_RING,
   RELOCATE_PREVIEW,

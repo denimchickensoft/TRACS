@@ -4,14 +4,14 @@
  * Rules:
  *   - Friendly units (same coalition as controller) are always visible.
  *   - Enemy / neutral units are visible only if at least one friendly unit
- *     has them in its contacts list with bit 4 (RADAR, value 16) set in
+ *     has them in its contacts list with RADAR (value 4) set in
  *     the detectionMethod bitmask.
  *
  * Coalition values from Olympus:
  *   0 = neutral, 1 = red, 2 = blue
  */
 
-const DETECTION_RADAR = 16  // bit 4
+const DETECTION_RADAR = 4
 
 const AIRBORNE_CATEGORIES = new Set(['Aircraft', 'Helicopter'])
 

@@ -16,7 +16,7 @@ import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
 import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
 import { drawCompassRose }       from '../atc/stars/canvas/drawCompassRose.js'
-import { computeMagvar }         from '../../utils/magvar.js'
+import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
 import { CARRIER_TYPES }         from '../../utils/carriers.js'
 import { matchStarsKey, isTypedInput } from '../atc/stars/input/starsKeys.js'
 import { parseCommand }          from '../atc/stars/input/commandParser.js'
@@ -83,8 +83,10 @@ export default function CatccScope() {
   const carrierLng  = carrierUnit?.position?.lng ?? 0
   const magvar      = computeMagvar(carrierLat, carrierLng, missionDate)
 
+  const convergence    = theatre ? theatreConvergence(theatre, carrierLat, carrierLng) : 0
+  const dcsMagvar      = magvar + convergence
   const carrierHeadingDeg = (carrierUnit?.heading ?? 0) * 180 / Math.PI
-  const brc        = ((carrierHeadingDeg - magvar) % 360 + 360) % 360
+  const brc        = ((carrierHeadingDeg - dcsMagvar) % 360 + 360) % 360
   const deckOffset = CARRIER_TYPES[carrierUnit?.name]?.deckOffset ?? 9
   const fb             = ((brc - deckOffset) % 360 + 360) % 360
 
@@ -93,9 +95,11 @@ export default function CatccScope() {
   const sbRad = useStatusBoardStore((s) => s.rad)
   const radNum = sbRad ? parseInt(sbRad, 10) : NaN
   // RAD is a radial (bearing FROM the carrier) — use directly, no +180.
-  // If RAD matches the displayed marshalBearing (rounded), snap to the exact
-  // floating-point value so the dashed line overlaps the solid line perfectly.
-  const radialBearing = (!isNaN(radNum) && radNum !== Math.round(marshalBearing))
+  // Snap to the exact float when RAD is within 3° of marshalBearing so the two
+  // line segments visually continue. The 3° window covers any map convergence
+  // correction without masking intentional custom radials.
+  const _radDiff = isNaN(radNum) ? 0 : (d => Math.min(d, 360 - d))(Math.abs((radNum - marshalBearing + 360) % 360))
+  const radialBearing = (!isNaN(radNum) && _radDiff > 3)
     ? radNum
     : marshalBearing
 
@@ -110,12 +114,14 @@ export default function CatccScope() {
   useEffect(() => { viewRef.current = view }, [view])
 
   // Refs for values that buildView and the ResizeObserver need to stay stable
-  const carrierLatRef = useRef(carrierLat)
-  const carrierLngRef = useRef(carrierLng)
-  const magvarRef     = useRef(magvar)
-  useEffect(() => { carrierLatRef.current = carrierLat }, [carrierLat])
-  useEffect(() => { carrierLngRef.current = carrierLng }, [carrierLng])
-  useEffect(() => { magvarRef.current     = magvar     }, [magvar])
+  const carrierLatRef  = useRef(carrierLat)
+  const carrierLngRef  = useRef(carrierLng)
+  const magvarRef      = useRef(magvar)
+  const dcsMagvarRef   = useRef(dcsMagvar)
+  useEffect(() => { carrierLatRef.current  = carrierLat  }, [carrierLat])
+  useEffect(() => { carrierLngRef.current  = carrierLng  }, [carrierLng])
+  useEffect(() => { magvarRef.current      = magvar      }, [magvar])
+  useEffect(() => { dcsMagvarRef.current   = dcsMagvar   }, [dcsMagvar])
 
   const tdmMode = windowSettings?.tdmMode ?? false
 
@@ -183,7 +189,7 @@ export default function CatccScope() {
       pixelsPerNm: rangeToPixelsPerNm(ws.rangeNm, w, h),
       width:  w,
       height: h,
-      magvar: magvarRef.current,
+      magvar: dcsMagvarRef.current,
     }
   }, []) // stable — all changing values read from refs/store
 
@@ -199,7 +205,7 @@ export default function CatccScope() {
   // Rebuild view when carrier position, zoom, or magvar changes
   useEffect(() => {
     setView(buildView())
-  }, [carrierLat, carrierLng, magvar, windowSettings?.rangeNm]) // eslint-disable-line
+  }, [carrierLat, carrierLng, dcsMagvar, windowSettings?.rangeNm]) // eslint-disable-line
 
   // ── Render CATCC layers (rings + CCZ/CCA + corridor + radial) ─────
   useEffect(() => {

@@ -85,7 +85,8 @@ async function parseAirspace(theatreConfigs) {
     return {}
   }
 
-  const colors = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, 'airspace_colors.json'), 'utf8'))
+  const palettes     = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, 'airspace_colors.json'), 'utf8'))
+  const labelColors  = palettes[0]?.colors ?? {}
 
   // acc[theatreName][acCode] = feature[]
   const acc = {}
@@ -130,11 +131,11 @@ async function parseAirspace(theatreConfigs) {
   for (const [tName, byAc] of Object.entries(acc)) {
     result[tName] = {
       groups: Object.entries(byAc).map(([acCode, features]) => ({
-        name: colors[acCode]?.label ?? acCode,
+        name: labelColors[acCode]?.label ?? acCode,
         acCode,
         features,
       })),
-      colors,
+      palettes,
     }
   }
   return result
