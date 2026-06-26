@@ -185,8 +185,12 @@
 
 .msg-row:hover { background: #111; }
 
-.msg-row--broadcast { color: #cc9900; }
-.msg-row--dm        { color: #4abbe8; }
+.msg-row--other          { color: #4ac984; }
+.msg-row--self           { color: #4abbe8; }
+.msg-row--broadcast      { color: #cc9900; }
+.msg-row--self-broadcast { color: #9966cc; }
+.msg-row--dm             { color: #4ac984; }
+.msg-row--self-dm        { color: #4abbe8; }
 
 .msg-time {
   color:       #444;
@@ -199,14 +203,20 @@
   flex-shrink: 0;
 }
 
+.msg-row--self-broadcast .msg-broadcast-tag { color: #7744aa; }
+
 .msg-from {
   color:       #888;
   flex-shrink: 0;
   font-weight: bold;
 }
 
-.msg-row--broadcast .msg-from { color: #aa7700; }
-.msg-row--dm        .msg-from { color: #3a8aaa; }
+.msg-row--other          .msg-from { color: #3a9a64; }
+.msg-row--self           .msg-from { color: #3a8aaa; }
+.msg-row--broadcast      .msg-from { color: #aa7700; }
+.msg-row--self-broadcast .msg-from { color: #7744aa; }
+.msg-row--dm             .msg-from { color: #3a9a64; }
+.msg-row--self-dm        .msg-from { color: #3a8aaa; }
 
 .msg-text { word-break: break-word; }
 

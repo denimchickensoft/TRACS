@@ -3,6 +3,7 @@ const CAB_COMMANDS = [
   { id: 'OPEN_FPE',           pattern: /^\.FP$/,            trigger: 'ENTER' },
   { id: 'TOGGLE_CENTERLINE',  pattern: /^\.CENTERLINE$/,    trigger: 'ENTER' },
   { id: 'TOGGLE_COORDS',      pattern: /^\.COORDS$/,        trigger: 'ENTER' },
+  { id: 'SET_LEADER_SHORT',   pattern: /^([1-9])$/,         trigger: 'SLEW',  captures: ['dir'] },
 ]
 
 export function parseCabCommand(buffer, trigger) {

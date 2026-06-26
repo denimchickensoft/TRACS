@@ -7,14 +7,17 @@ import { useAtcStore }            from '../../../store/atc.js'
 import { useSessionStore }        from '../../../store/session.js'
 import { useControllersStore }    from '../../../store/controllers.js'
 import { useFpeStore }            from '../../../store/fpe.js'
+import { useCabPreviewStore }     from '../../../store/cabPreview.js'
 import { resolveCallsign }        from '../../../utils/callsign.js'
+import { DIR_TO_ANGLE }           from '../stars/constants.js'
+import { parseCabCommand }        from './cabCommandParser.js'
 import { CAB_WINDOW_ID }          from './CabDcb.jsx'
 
 const M_PER_S_TO_KT = 1.94384
 const MAX_HISTORY   = 10
 const SYMBOL_R      = 7
 const SLEW_RADIUS   = 15
-const RIGHT_ALIGN_ANGLES = new Set([90, 135, 180, -135])
+const RIGHT_ALIGN_ANGLES = new Set([90, 135, 180, 225])
 
 function projectLatLng(lat, lng, trackRad, distNm) {
   const latRad = lat * Math.PI / 180
@@ -87,15 +90,11 @@ export function CabOverlay({ units }) {
       ctx.clearRect(0, 0, w, h)
 
       const win          = winRef.current ?? {}
-      const ldrAngleDeg  = win.ldrAngleDeg  ?? -45
+      const globalAngle  = win.ldrAngleDeg  ?? -45
       const ldrLengthPx  = win.ldrLength != null ? win.ldrLength * 10 : 20
       const ptlMinutes   = win.ptlLength    ?? 0.5
       const historyLimit = win.historyLength ?? 5
-
-      const ldrAngleRad = ldrAngleDeg * Math.PI / 180
-      const ldx         = Math.cos(ldrAngleRad) * ldrLengthPx
-      const ldy         = Math.sin(ldrAngleRad) * ldrLengthPx
-      const rightAlign  = RIGHT_ALIGN_ANGLES.has(ldrAngleDeg)
+      const leaderDirs   = win.leaderDirs   ?? {}
 
       const plansByUnit = {}
       for (const p of Object.values(plansRef.current)) {
@@ -150,9 +149,17 @@ export function CabOverlay({ units }) {
         ctx.fill()
         ctx.restore()
 
+        // Per-unit leader direction overrides global angle
+        const unitDir    = leaderDirs[String(id)]
+        const angleDeg   = unitDir != null ? (DIR_TO_ANGLE[unitDir] ?? globalAngle) : globalAngle
+        const angleRad   = angleDeg * Math.PI / 180
+        const ldx        = Math.cos(angleRad) * ldrLengthPx
+        const ldy        = Math.sin(angleRad) * ldrLengthPx
+        const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
+
         // Leader line
-        const lx0 = x + Math.cos(ldrAngleRad) * SYMBOL_R
-        const ly0 = y + Math.sin(ldrAngleRad) * SYMBOL_R
+        const lx0 = x + Math.cos(angleRad) * SYMBOL_R
+        const ly0 = y + Math.sin(angleRad) * SYMBOL_R
         const lx1 = x + ldx
         const ly1 = y + ldy
         ctx.beginPath()
@@ -185,8 +192,8 @@ export function CabOverlay({ units }) {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [map]) // eslint-disable-line
 
-  // Ctrl+click — find nearest contact within SLEW_RADIUS
-  const handleMapClick = useCallback((e) => {
+  // Ctrl+click — FPE only
+  const handleCtrlClick = useCallback((e) => {
     if (!e.originalEvent.ctrlKey) return
     const cp = e.containerPoint
     let nearest = null
@@ -201,16 +208,56 @@ export function CabOverlay({ units }) {
     }
 
     if (!nearest) return
-    const aid     = resolveCallsign(nearest.unit).toUpperCase()
-    const owner   = useAtcStore.getState().ownership[String(nearest.id)]
+    const aid      = resolveCallsign(nearest.unit).toUpperCase()
+    const owner    = useAtcStore.getState().ownership[String(nearest.id)]
     const readOnly = !!(owner && owner !== myControllerIdRef.current)
     useFpeStore.getState().openFpe({ aid, unitId: Number(nearest.id), readOnly, scope: 'cab' })
   }, [map])
 
+  // Plain click — slew commands (e.g. digit 1-9 to set datablock direction)
+  const handleSlew = useCallback((e) => {
+    if (e.originalEvent.ctrlKey) return
+    const buffer = useCabPreviewStore.getState().buffer
+    const parsed = parseCabCommand(buffer, 'SLEW')
+    if (!parsed) return
+
+    const cp = e.containerPoint
+    let nearest = null
+    let nearestDist = SLEW_RADIUS
+
+    for (const [id, unit] of Object.entries(unitsRef.current)) {
+      const pos = unit.position
+      if (!pos) continue
+      const up   = map.latLngToContainerPoint([pos.lat, pos.lng])
+      const dist = Math.hypot(up.x - cp.x, up.y - cp.y)
+      if (dist < nearestDist) { nearestDist = dist; nearest = { id, unit } }
+    }
+
+    if (!nearest) return
+
+    if (parsed.command.id === 'SET_LEADER_SHORT') {
+      const dir     = parsed.captures.dir
+      const wid     = CAB_WINDOW_ID
+      const current = useDisplayStore.getState().windows[wid]?.leaderDirs ?? {}
+      if (dir === '5') {
+        const next = { ...current }
+        delete next[String(nearest.id)]
+        useDisplayStore.getState().updateWindow(wid, { leaderDirs: next })
+      } else {
+        useDisplayStore.getState().updateWindow(wid, { leaderDirs: { ...current, [String(nearest.id)]: dir } })
+      }
+      useCabPreviewStore.getState().clearAfterCommand()
+    }
+  }, [map])
+
   useEffect(() => {
-    map.on('click', handleMapClick)
-    return () => map.off('click', handleMapClick)
-  }, [map, handleMapClick])
+    map.on('click', handleCtrlClick)
+    map.on('click', handleSlew)
+    return () => {
+      map.off('click', handleCtrlClick)
+      map.off('click', handleSlew)
+    }
+  }, [map, handleCtrlClick, handleSlew])
 
   // Portal the canvas directly into the map container (outside Leaflet's pane
   // hierarchy) so it is never subject to Leaflet's CSS zoom-animation transforms.

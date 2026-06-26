@@ -150,8 +150,6 @@ function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onD
   const dragOverClass  = dragOver ? ' sb-strip--drag-over' : ''
 
   const rte  = plan?.rte  ?? ''
-  const rte1 = rte.slice(0, 20)
-  const rte2 = rte.slice(20, 40)
 
   function handleClick(e) {
     if (e.shiftKey) { deleteStrip(strip.id); return }
@@ -203,8 +201,7 @@ function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onD
 
       {/* Col 4: route rows */}
       <div className="sb-col">
-        <div className="sb-cell sb-rte">{rte1}</div>
-        <div className="sb-cell sb-rte">{rte2}</div>
+        <div className="sb-cell sb-rte sb-rte--route">{rte}</div>
         <div className="sb-cell sb-rte">{plan?.rmk ?? ''}</div>
       </div>
 

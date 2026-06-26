@@ -60,12 +60,17 @@ const COMMANDS = [
   // ── Display settings ─────────────────────────────────────────────
   { id: 'SET_ALTIM',            pattern: /^\.(?:ALTIM|QNH) (\d+(?:\.\d+)?)$/, trigger: 'ENTER', captures: ['value'] },
   { id: 'SET_ASP_COLORS',       pattern: /^\.ASPCOLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
+  { id: 'REFRESH_ASP_COLORS',  pattern: /^\.REFRESH$/,           trigger: 'ENTER' },
 
   // ── Debug ────────────────────────────────────────────────────────
   { id: 'TOGGLE_COORDS',        pattern: /^\.COORDS$/,            trigger: 'ENTER' },
 
   // ── Find fix/navaid/airport ──────────────────────────────────────
   { id: 'FIND_FIX',             pattern: /^\.FIND (.+)$/,         trigger: 'ENTER', captures: ['query'] },
+
+  // ── Procedure display ────────────────────────────────────────────
+  { id: 'SHOW_PROC',            pattern: /^\.PROC (.+)$/,         trigger: 'ENTER', captures: ['name'] },
+  { id: 'CLEAR_PROCS',          pattern: /^\.PROC$/,              trigger: 'ENTER' },
 
   // ── Flight plan editor ──────────────────────────────────────────
   { id: 'OPEN_FPE',             pattern: /^\.FP (.+)$/,           trigger: 'ENTER', captures: ['aid'] },

@@ -23,21 +23,28 @@ try {
   process.exit(1)
 }
 
-const DB_PATH = path.join(__dirname, '../data/elevation.db')
+const DB_PATH       = path.join(__dirname, '../data/elevation.db')
+const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 
-// DCS theatre bboxes — SW corner (inclusive) to NE corner (exclusive)
-const THEATRES = [
-  { name: 'Caucasus',       latMin: 38, latMax: 48, lonMin: 27,   lonMax: 47  },
-  { name: 'Nevada',         latMin: 34, latMax: 40, lonMin: -120, lonMax: -113 },
-  { name: 'PersianGulf',    latMin: 22, latMax: 29, lonMin: 49,   lonMax: 63  },
-  { name: 'Syria',          latMin: 32, latMax: 38, lonMin: 34,   lonMax: 43  },
-  { name: 'MarianaIslands', latMin: 13, latMax: 21, lonMin: 143,  lonMax: 149 },
-  { name: 'SouthAtlantic',  latMin: -54, latMax: -50, lonMin: -62, lonMax: -56 },
-  { name: 'SinaiMap',       latMin: 28, latMax: 34, lonMin: 30,   lonMax: 40  },
-  { name: 'Kola',           latMin: 66, latMax: 72, lonMin: 24,   lonMax: 41  },
-  { name: 'Afghanistan',    latMin: 29, latMax: 39, lonMin: 60,   lonMax: 76  },
-  { name: 'Germany',        latMin: 47, latMax: 56, lonMin: 5,    lonMax: 17  },
-]
+// Tile coverage is derived from the navdata theatre bboxes — a single source of
+// truth, so elevation coverage stays in lockstep with what the scope actually
+// charts (a prior hardcoded copy here had drifted, leaving theatre edges with
+// no terrain). Padded by MARGIN_DEG so terrain-analysis windows have data right
+// up to the theatre boundary. theatres.json bbox = [lonMin, latMin,
+// lonMax, latMax]; tiles are 1°×1°, SW corner inclusive / NE corner exclusive.
+const MARGIN_DEG = 1
+
+const theatreConf = JSON.parse(fs.readFileSync(THEATRES_PATH, 'utf8'))
+const THEATRES = Object.entries(theatreConf).map(([name, { bbox }]) => {
+  const [lonMin, latMin, lonMax, latMax] = bbox
+  return {
+    name,
+    latMin: Math.floor(latMin - MARGIN_DEG),
+    latMax: Math.ceil(latMax  + MARGIN_DEG),
+    lonMin: Math.floor(lonMin - MARGIN_DEG),
+    lonMax: Math.ceil(lonMax  + MARGIN_DEG),
+  }
+})
 
 // Collect unique 1°×1° tiles needed across all theatres
 const tileSet = new Set()
@@ -127,9 +134,10 @@ async function runBatch(tiles, concurrency) {
 
 async function build() {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
-  if (fs.existsSync(DB_PATH)) fs.unlinkSync(DB_PATH)
+  const TMP_PATH = DB_PATH + '.tmp'
+  if (fs.existsSync(TMP_PATH)) fs.unlinkSync(TMP_PATH)
 
-  const db = new Database(DB_PATH)
+  const db = new Database(TMP_PATH)
   db.exec(`
     CREATE TABLE elevation_tiles (
       lat0 INTEGER NOT NULL,
@@ -172,6 +180,10 @@ async function build() {
 
   db.exec('ANALYZE')
   db.close()
+
+  // Swap into place only after a successful build, so a failed or offline run
+  // never destroys an existing elevation.db.
+  fs.renameSync(TMP_PATH, DB_PATH)
 
   const { size } = fs.statSync(DB_PATH)
   console.log(`\n\nDone.`)

@@ -10,7 +10,9 @@ import './Login.css'
 
 const SUFFIX_TO_NAVDATA_ROLE = {
   TWR: 'twr',
-  APP: 'tracon', DEP: 'tracon', RDR: 'tracon',
+  APP: 'app', RDR: 'app',
+  DEP: 'dep',
+  GND: 'gnd',
   CTR: 'ctr', CONTROL: 'ctr',
 }
 
@@ -75,7 +77,10 @@ function ConnectPhase({ onConnected }) {
       wsClient.connect()
       onConnected()
     } catch (err) {
-      setError(err.message)
+      const msg = err instanceof TypeError && err.message === 'Failed to fetch'
+        ? 'Cannot reach TRACS server — is it running?'
+        : err.message
+      setError(msg)
       setConnecting(false)
     }
   }

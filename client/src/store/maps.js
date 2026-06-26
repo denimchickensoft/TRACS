@@ -1,14 +1,17 @@
 import { create } from 'zustand'
 
 // ── Position preset order ─────────────────────────────────────────────────────
-// Names must match colors[acCode].label values from airspace_colors.json
+// Each entry is exactly 5 slots. 'MVA' is a sentinel — not a displayCategory —
+// that pins the MVA terrain overlay to that slot on the main bar.
+// Note: position key 'CTR' = Center, distinct from the 'CTR' control-zone displayCategory.
 const ICAO_PRESETS = {
-  TWR:     ['CTR', 'TMA', 'R', 'P', 'Class D'],
-  APP:     ['TMA', 'CTR', 'CTA', 'R', 'P'],
-  DEP:     ['TMA', 'CTR', 'CTA', 'R', 'P'],
-  RDR:     ['TMA', 'CTR', 'CTA', 'R', 'P'],
-  CTR:     ['FIR', 'UIR', 'TMA', 'R', 'P'],
-  default: ['TMA', 'CTR', 'CTA', 'R', 'P'],
+  TWR:     ['CTR', 'TMA', 'CTA', 'CLASS D', 'MVA'],
+  APP:     ['TMA', 'CTR', 'CTA', 'CLASS C', 'MVA'],
+  DEP:     ['TMA', 'CTR', 'CTA', 'CLASS C', 'MVA'],
+  RDR:     ['TMA', 'CTR', 'CTA', 'CLASS C', 'MVA'],
+  CTR:     ['CTA', 'TMA', 'CTR', 'CLASS A', 'CLASS B'],
+  CONTROL: ['CTA', 'TMA', 'CTR', 'CLASS A', 'CLASS B'],
+  default: ['CTR', 'TMA', 'CTA', 'CLASS D', 'MVA'],
 }
 
 // ── Distance filtering ────────────────────────────────────────────────────────
@@ -37,40 +40,58 @@ function filterThresholdNm(suffix) {
   return 60
 }
 
-function filterGroupsByDistance(groups, suffix, facilityLat, facilityLng) {
-  if (facilityLat == null || facilityLng == null) return groups
+function filterGroupsByDistance(features, suffix, facilityLat, facilityLng) {
+  if (facilityLat == null || facilityLng == null) return features
   const threshold = filterThresholdNm(suffix)
-  return groups
-    .map((g) => ({
-      ...g,
-      features: g.features.filter((f) => minNmToBbox(facilityLat, facilityLng, f.bbox) <= threshold),
-    }))
-    .filter((g) => g.features.length > 0)
+  return features.filter((f) => minNmToBbox(facilityLat, facilityLng, f.bbox) <= threshold)
 }
 
 // ── Button assignment ─────────────────────────────────────────────────────────
 
-function assignButtons(groups, suffix) {
-  const presetOrder = ICAO_PRESETS[suffix?.toUpperCase()] ?? ICAO_PRESETS.default
+function assignButtons(features, categories, suffix) {
+  const preset = ICAO_PRESETS[suffix?.toUpperCase()] ?? ICAO_PRESETS.default
 
-  const available = new Map(groups.map((g) => [g.name, g]))
+  // Separate MVA sentinel from airspace categories
+  const mvaIdx         = preset.indexOf('MVA')
+  const mvaSlot        = mvaIdx >= 0 ? mvaIdx : null
+  const airspacePreset = preset.filter(c => c !== 'MVA')
+  const mainSlots      = mvaSlot != null ? 4 : 5
+
+  // Group filtered features by displayCategory, preserving server's canonical order
+  const categoryRank = new Map(categories.map((c, i) => [c, i]))
+  const groupMap = new Map()
+  for (const f of features) {
+    const cat = f.displayCategory
+    if (!groupMap.has(cat)) groupMap.set(cat, [])
+    groupMap.get(cat).push(f)
+  }
+  const allGroups = [...groupMap.entries()]
+    .sort(([a], [b]) => (categoryRank.get(a) ?? 999) - (categoryRank.get(b) ?? 999))
+    .map(([cat, feats]) => ({ name: cat, displayCategory: cat, features: feats }))
+
+  const available = new Map(allGroups.map((g) => [g.displayCategory, g]))
   const assigned  = []
   const submenu   = []
 
-  for (const name of presetOrder) {
-    if (assigned.length >= 5) break
-    if (available.has(name)) {
-      assigned.push(available.get(name))
-      available.delete(name)
+  for (const cat of airspacePreset) {
+    if (assigned.length >= mainSlots) break
+    if (available.has(cat)) {
+      assigned.push(available.get(cat))
+      available.delete(cat)
     }
   }
 
   for (const group of available.values()) {
-    if (assigned.length < 5) assigned.push(group)
+    if (assigned.length < mainSlots) assigned.push(group)
     else submenu.push(group)
   }
 
-  return [...assigned, ...submenu]
+  // Pad with null at mvaSlot so submenu items remain at indices 5+
+  const maps = mvaSlot != null
+    ? [...assigned.slice(0, mvaSlot), null, ...assigned.slice(mvaSlot), ...submenu]
+    : [...assigned, ...submenu]
+
+  return { maps, mvaSlot }
 }
 
 // ── Server response cache (per theatre, keyed by name) ───────────────────────
@@ -91,8 +112,9 @@ function loadSaved(theatre, positionKey) {
 }
 
 export const useMapsStore = create((set, get) => ({
-  maps:        [],    // flat: [assigned(0-4), ...submenu(5+)]
-  palettes:    [],    // [{ name, colors: { [acCode]: { stroke, fill, label } } }]
+  maps:        [],    // flat: [assigned(0-4), ...submenu(5+)]; index 4 is null when MVA occupies that slot
+  mvaSlot:     null, // index 0-4 where MVA button appears on main bar, or null (CTR positions)
+  palettes:    [],    // [{ name, colors: { [displayCategory]: { stroke, fill, label } } }]
   visible:     {},    // { [index]: bool, lbl: bool }
   theatre:     null,
   positionKey: null,
@@ -111,10 +133,10 @@ export const useMapsStore = create((set, get) => ({
         serverCache[theatre] = await res.json()
       }
 
-      const { groups, palettes } = serverCache[theatre]
+      const { features, categories, palettes } = serverCache[theatre]
 
-      const filtered = filterGroupsByDistance(groups ?? [], suffix, facilityLat, facilityLng)
-      const maps     = assignButtons(filtered, suffix)
+      const filtered           = filterGroupsByDistance(features ?? [], suffix, facilityLat, facilityLng)
+      const { maps, mvaSlot } = assignButtons(filtered, categories ?? [], suffix)
 
       // Preserve visibility when re-filtering the same theatre (e.g. airbases update);
       // only reset when switching to a different theatre.
@@ -122,7 +144,7 @@ export const useMapsStore = create((set, get) => ({
       let visible
       if (isNewTheatre) {
         const v = { lbl: false }
-        maps.forEach((_, i) => { v[i] = false })
+        maps.forEach((entry, i) => { if (entry != null) v[i] = false })
         const saved = loadSaved(theatre, positionKey)
         if (saved) Object.assign(v, saved)
         visible = v
@@ -130,8 +152,9 @@ export const useMapsStore = create((set, get) => ({
         visible = get().visible
       }
 
-      set({ maps, palettes: palettes ?? [], visible, theatre, loading: false, _lastLoadKey: loadKey })
-      console.log(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${maps.length} groups (${Math.min(maps.length, 5)} main, ${Math.max(0, maps.length - 5)} submenu), ${(palettes ?? []).length} palettes`)
+      set({ maps, mvaSlot, palettes: palettes ?? [], visible, theatre, loading: false, _lastLoadKey: loadKey })
+      const mainCount = maps.slice(0, 5).filter(Boolean).length
+      console.log(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${mainCount} main airspace (+${mvaSlot != null ? 'MVA' : 'none'}), ${Math.max(0, maps.length - 5)} submenu, ${(palettes ?? []).length} palettes`)
     } catch (err) {
       console.error('[maps] load error:', err.message)
       set({ loading: false })
@@ -151,6 +174,22 @@ export const useMapsStore = create((set, get) => ({
     set({ visible })
   },
 
-  reset: () => set({ maps: [], palettes: [], visible: {}, theatre: null, positionKey: null, loading: false }),
-}))
+  refreshPalettes: async () => {
+    const { theatre } = get()
+    if (!theatre) return false
+    try {
+      const res = await fetch(`/api/navdata/airspace?theatre=${encodeURIComponent(theatre)}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const palettes = data.palettes ?? []
+      if (serverCache[theatre]) serverCache[theatre].palettes = palettes
+      set({ palettes })
+      return true
+    } catch (e) {
+      console.error('[maps] palette refresh error:', e.message)
+      return false
+    }
+  },
 
+  reset: () => set({ maps: [], mvaSlot: null, palettes: [], visible: {}, theatre: null, positionKey: null, loading: false }),
+}))

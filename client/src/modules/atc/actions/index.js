@@ -20,8 +20,9 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../../../store/strips.js'
 import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
-import { useNavdataStore } from '../../../store/navdata.js'
-import { useMapsStore }   from '../../../store/maps.js'
+import { useNavdataStore }    from '../../../store/navdata.js'
+import { useMapsStore }        from '../../../store/maps.js'
+import { useProceduresStore }  from '../../../store/procedures.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
@@ -493,6 +494,12 @@ export function SET_ASP_COLORS({ captures, windowId }) {
   ok()
 }
 
+export async function REFRESH_ASP_COLORS() {
+  const success = await useMapsStore.getState().refreshPalettes()
+  if (success) ok()
+  else err('REFRESH FAILED')
+}
+
 // ── Debug ─────────────────────────────────────────────────────────────────────
 
 export function TOGGLE_COORDS() {
@@ -520,11 +527,30 @@ export function RBL_INIT_FIX({ captures }) {
   ok()
 }
 
+// ── Procedure display ─────────────────────────────────────────────────────────
+
+export function SHOW_PROC({ captures }) {
+  const name = captures?.name?.trim().toUpperCase()
+  if (!name) return err('INVALID')
+  const { raw } = useProceduresStore.getState()
+  if (!raw) return err('NO PROC DATA')
+  const found = raw.SID?.[name] || raw.STAR?.[name] || raw.APPCH?.[name]
+  if (!found) return err('NOT FOUND')
+  useProceduresStore.getState().toggleProc(name)
+  ok()
+}
+
+export function CLEAR_PROCS() {
+  useProceduresStore.getState().clearCommandProcs()
+  ok()
+}
+
 // ── Dispatch table ────────────────────────────────────────────────────────────
 
 const ACTION_MAP = {
   OPEN_FPE,
   SET_ASP_COLORS,
+  REFRESH_ASP_COLORS,
   TOGGLE_COORDS,
   FIND_FIX,
   RENAME_CALLSIGN,
@@ -561,6 +587,8 @@ const ACTION_MAP = {
   RBL_INIT_FIX,
   RBL_CLEAR_ALL,
   RBL_CLEAR_N,
+  SHOW_PROC,
+  CLEAR_PROCS,
   // List management
   RELOCATE_SSA,
   TOGGLE_SIGNON, RELOCATE_SIGNON,

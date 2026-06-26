@@ -1,5 +1,5 @@
-import { create } from 'zustand'
-import { useRunwaysStore } from './runways.js'
+import { create }          from 'zustand'
+import { useRunwaysStore }  from './runways.js'
 
 export const useNavdataStore = create((set, get) => ({
   fixes:   [],
@@ -43,6 +43,11 @@ export const useNavdataStore = create((set, get) => ({
         id:  q,
       }
     }
+
+    // Last resort: airport positions built from the full theatre roster,
+    // not distance-filtered.  Resolves ICAO codes for distant DEP/DEST airports.
+    const apPos = useRunwaysStore.getState().airportPositions[q]
+    if (apPos) return { lat: apPos.lat, lon: apPos.lon, id: q }
 
     return null
   },

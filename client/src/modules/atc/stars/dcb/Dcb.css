@@ -138,9 +138,9 @@
     inset -1px -1px 0 rgba(255, 255, 255, 0.14);
 }
 
-/* Half-height variant — fills its halfV container */
+/* Half-height variant — always exactly half the halfV container */
 .dcb-btn--half {
-  flex: 1;
+  flex: 0 0 50%;
   width: 100%;
   min-height: 0;
 }

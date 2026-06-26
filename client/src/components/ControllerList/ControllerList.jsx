@@ -6,19 +6,27 @@ import { useUnitsStore }       from '../../store/units'
 import { CARRIER_TYPES }       from '../../utils/carriers'
 import './ControllerList.css'
 
-const LS_POS     = 'tracs.cl.pos'
-const LS_SIZE    = 'tracs.cl.size'
-const LS_OPACITY = 'tracs.cl.opacity'
-
-const DEFAULT_SIZE = { w: 330, h: 420 }
-const MIN_W = 240
-const MIN_H = 160
-const OPACITY_STEP = 0.05
-const OPACITY_MIN  = 0.2
-const OPACITY_MAX  = 1.0
+const DEFAULT_SIZE   = { w: 330, h: 420 }
+const MIN_W          = 240
+const MIN_H          = 160
+const OPACITY_STEP   = 0.05
+const OPACITY_MIN    = 0.2
+const OPACITY_MAX    = 1.0
+const SNAP_THRESHOLD = 20
 
 function loadLS(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback }
+}
+
+// Resolve absolute x/y from pos (which may be docked or free-floating)
+function resolveX(pos, size, rightInset, parentWidth) {
+  if (pos.docked) return parentWidth - rightInset - size.w - (pos.rightGap ?? 0)
+  return pos.x ?? 0
+}
+
+function resolveY(pos, size, parentHeight) {
+  if (pos.bottomDocked) return parentHeight - size.h - (pos.bottomGap ?? 0)
+  return pos.y ?? 0
 }
 
 // ── Haversine distance in km ──────────────────────────────────────────────────
@@ -141,12 +149,20 @@ function makeResizer(dir, posRef, sizeRef, setPos, setSize, windowRef, rightInse
     e.preventDefault()
     e.stopPropagation()
     const sx = e.clientX, sy = e.clientY
-    const sp = { ...posRef.current }, ss = { ...sizeRef.current }
+    // Resolve absolute start pos, un-docking if needed
+    const parent  = windowRef.current?.parentElement
+    const parentW = parent ? parent.clientWidth  : 0
+    const parentH = parent ? parent.clientHeight : 0
+    const sp = {
+      x: resolveX(posRef.current, sizeRef.current, rightInsetRef.current, parentW),
+      y: resolveY(posRef.current, sizeRef.current, parentH),
+    }
+    const ss = { ...sizeRef.current }
     const has = (d) => dir.includes(d)
 
     const onMove = (ev) => {
-      const parent   = windowRef.current?.parentElement
-      const maxRight = parent ? parent.clientWidth - rightInsetRef.current : Infinity
+      const par      = windowRef.current?.parentElement
+      const maxRight = par ? par.clientWidth - rightInsetRef.current : Infinity
       const dx = ev.clientX - sx
       const dy = ev.clientY - sy
       let { x, y } = sp
@@ -161,9 +177,9 @@ function makeResizer(dir, posRef, sizeRef, setPos, setSize, windowRef, rightInse
         h = Math.max(MIN_H, sp.y + ss.h - y)
       }
 
-      posRef.current  = { x, y }
+      posRef.current  = { docked: false, x, y }
       sizeRef.current = { w, h }
-      setPos({ x, y })
+      setPos({ docked: false, x, y })
       setSize({ w, h })
     }
     const onUp = () => {
@@ -183,6 +199,7 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   const airbases            = useSessionStore((s) => s.airbases)
   const storeFacilityId     = useSessionStore((s) => s.facilityId)
   const storeFacilityName   = useSessionStore((s) => s.facilityName)
+  const activeModule        = useSessionStore((s) => s.activeModule)
   const units               = useUnitsStore((s) => s.units)
 
   // Standalone popup mode: facility identity passed as props (URL params) so the
@@ -191,10 +208,15 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   const myFacilityId   = facilityIdProp   ?? storeFacilityId
   const myFacilityName = facilityNameProp ?? storeFacilityName
 
+  const moduleKey = standalone ? 'standalone' : (activeModule ?? 'unknown').toLowerCase()
+  const lsPos     = `tracs.${moduleKey}.cl.pos`
+  const lsSize    = `tracs.${moduleKey}.cl.size`
+  const lsOpacity = `tracs.${moduleKey}.cl.opacity`
+
   const [icaoMap,     setIcaoMap]     = useState({})
-  const [pos,         setPos]         = useState(() => loadLS(LS_POS, { x: 24, y: 56 }))
-  const [size,        setSize]        = useState(() => loadLS(LS_SIZE, DEFAULT_SIZE))
-  const [opacity,     setOpacity]     = useState(() => loadLS(LS_OPACITY, 1.0))
+  const [pos,         setPos]         = useState(() => loadLS(lsPos,     { docked: true, rightGap: 0, y: 56 }))
+  const [size,        setSize]        = useState(() => loadLS(lsSize,    DEFAULT_SIZE))
+  const [opacity,     setOpacity]     = useState(() => loadLS(lsOpacity, 1.0))
   const [opacityHint, setOpacityHint] = useState(false)
   const [collapsed,   setCollapsed]   = useState({})
 
@@ -203,13 +225,15 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   const opacityHintRef  = useRef(null)
   const windowRef       = useRef(null)
   const rightInsetRef   = useRef(rightInset)
+
   useEffect(() => {
     rightInsetRef.current = rightInset
     if (standalone) return
+    if (posRef.current.docked) return  // position derived from rightInset, follows automatically
     const parent = windowRef.current?.parentElement
     if (!parent) return
     const maxX = Math.max(0, parent.clientWidth - sizeRef.current.w - rightInset)
-    if (posRef.current.x > maxX) {
+    if ((posRef.current.x ?? 0) > maxX) {
       const next = { ...posRef.current, x: maxX }
       posRef.current = next
       setPos(next)
@@ -220,32 +244,35 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
     fetch('/icaoMapping.json').then((r) => r.json()).then(setIcaoMap).catch(() => {})
   }, [])
 
-  useEffect(() => { posRef.current = pos;   localStorage.setItem(LS_POS,  JSON.stringify(pos))  }, [pos])
-  useEffect(() => { sizeRef.current = size; localStorage.setItem(LS_SIZE, JSON.stringify(size)) }, [size])
-  useEffect(() => { localStorage.setItem(LS_OPACITY, JSON.stringify(opacity)) }, [opacity])
+  useEffect(() => { posRef.current = pos;   localStorage.setItem(lsPos,     JSON.stringify(pos))     }, [pos, lsPos])       // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { sizeRef.current = size; localStorage.setItem(lsSize,    JSON.stringify(size))    }, [size, lsSize])      // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {                         localStorage.setItem(lsOpacity, JSON.stringify(opacity)) }, [opacity, lsOpacity]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Position window in top-right on first use (no saved position)
+  // Default position: docked flush to panel on first use
   useLayoutEffect(() => {
-    if (standalone || localStorage.getItem(LS_POS) !== null || !windowRef.current) return
-    const parent = windowRef.current.parentElement
-    if (!parent) return
-    const x = Math.max(0, parent.offsetWidth - sizeRef.current.w - 20)
-    const next = { x, y: 40 }
+    if (standalone || localStorage.getItem(lsPos) !== null || !windowRef.current) return
+    const next = { docked: true, rightGap: 0, y: 40 }
     posRef.current = next
     setPos(next)
-  }, [standalone]) // eslint-disable-line
+  }, [standalone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Drag ─────────────────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e) => {
     if (standalone || e.button !== 0) return
     e.preventDefault()
-    const ox = e.clientX - posRef.current.x
-    const oy = e.clientY - posRef.current.y
+    // Resolve absolute start position, un-docking if needed
+    const parent  = windowRef.current?.parentElement
+    const parentW = parent ? parent.clientWidth : 0
+    const startX  = resolveX(posRef.current, sizeRef.current, rightInsetRef.current, parentW)
+    const startY  = posRef.current.y ?? 0
+    const ox = e.clientX - startX
+    const oy = e.clientY - startY
     const onMove = (ev) => {
-      const parent = windowRef.current?.parentElement
-      const maxX   = parent ? Math.max(0, parent.clientWidth  - sizeRef.current.w - rightInsetRef.current) : Infinity
-      const maxY   = parent ? Math.max(0, parent.clientHeight - sizeRef.current.h) : Infinity
-      const next   = {
+      const par  = windowRef.current?.parentElement
+      const maxX = par ? Math.max(0, par.clientWidth  - sizeRef.current.w - rightInsetRef.current) : Infinity
+      const maxY = par ? Math.max(0, par.clientHeight - sizeRef.current.h) : Infinity
+      const next = {
+        docked: false,
         x: Math.max(0, Math.min(maxX, ev.clientX - ox)),
         y: Math.max(0, Math.min(maxY, ev.clientY - oy)),
       }
@@ -255,6 +282,19 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
     const onUp = () => {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup',   onUp)
+      const par = windowRef.current?.parentElement
+      if (!par) return
+      const { x, y } = posRef.current
+      let next = { docked: false, bottomDocked: false, x, y }
+      // Right-panel snap
+      if (rightInsetRef.current > 0) {
+        const gap = (par.clientWidth - rightInsetRef.current) - (x + sizeRef.current.w)
+        if (gap >= 0 && gap <= SNAP_THRESHOLD) next = { ...next, docked: true, rightGap: gap }
+      }
+      // Bottom snap
+      const bottomGap = par.clientHeight - (y + sizeRef.current.h)
+      if (bottomGap >= 0 && bottomGap <= SNAP_THRESHOLD) next = { ...next, bottomDocked: true, bottomGap }
+      if (next.docked || next.bottomDocked) { posRef.current = next; setPos(next) }
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup',   onUp)
@@ -362,11 +402,9 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   const hasAny = ownGroup || proximityGroups.length > 0 || aicEntries.length > 0 || otherEntries.length > 0
 
   const overlayStyle = standalone ? undefined : {
-    left:    pos.x,
-    top:     pos.y,
-    width:   size.w,
-    height:  size.h,
-    opacity,
+    ...(pos.docked       ? { right:  (pos.rightGap  ?? 0) + rightInset } : { left:   pos.x ?? 0 }),
+    ...(pos.bottomDocked ? { bottom: (pos.bottomGap ?? 0) }              : { top:    pos.y ?? 0 }),
+    width: size.w, height: size.h, opacity,
   }
 
   return (

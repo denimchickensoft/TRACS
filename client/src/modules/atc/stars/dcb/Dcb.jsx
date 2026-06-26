@@ -5,6 +5,13 @@ import { usePresetsStore }  from '../../../../store/presets.js'
 import { usePreviewStore }  from '../../../../store/preview.js'
 import { useMapsStore }     from '../../../../store/maps.js'
 import { useRunwaysStore }  from '../../../../store/runways.js'
+import { useHoldingsStore } from '../../../../store/holdings.js'
+import { useAirwaysStore }  from '../../../../store/airways.js'
+import { useMsaStore }      from '../../../../store/msa.js'
+import { useMoraStore }       from '../../../../store/mora.js'
+import { useReliefStore }     from '../../../../store/relief.js'
+import { useMvaStore }        from '../../../../store/mva.js'
+import { useProceduresStore } from '../../../../store/procedures.js'
 import './Dcb.css'
 
 const WINDOW_ID = 'atc-main'
@@ -44,17 +51,17 @@ const MAIN_BUTTONS = [
   // 5 — full
   { id: 'MAPS', lines: ['MAPS'], type: 'submenu', target: 'maps' },
 
-  // 6-8 — halfV pairs: map slots OWN/SUA, SCT/FIR, ADJ/LBL
+  // 6-8 — halfV pairs: map slots (labels resolved at render from maps store)
   { id: 'slot_map_0', slotType: 'halfV', buttons: [
-    { id: 'MAP_1', lines: ['OWN'], type: 'toggle' },
-    { id: 'MAP_4', lines: ['SUA'], type: 'toggle' },
+    { id: 'MAP_1', lines: [], type: 'toggle' },
+    { id: 'MAP_4', lines: [], type: 'toggle' },
   ]},
   { id: 'slot_map_1', slotType: 'halfV', buttons: [
-    { id: 'MAP_2', lines: ['SCT'], type: 'toggle' },
-    { id: 'MAP_5', lines: ['FIR'], type: 'toggle' },
+    { id: 'MAP_2', lines: [], type: 'toggle' },
+    { id: 'MAP_5', lines: [], type: 'toggle' },
   ]},
   { id: 'slot_map_2', slotType: 'halfV', buttons: [
-    { id: 'MAP_3', lines: ['ADJ'], type: 'toggle' },
+    { id: 'MAP_3', lines: [], type: 'toggle' },
     { id: 'MAP_6', lines: ['LBL'], type: 'toggle' },
   ]},
 
@@ -106,17 +113,17 @@ const SUBMENU_DEFS = {
   maps: {
     parent: 'main',
     buttons: [
-      { id: 'slot_map_3', slotType: 'halfV', buttons: [
-        { id: 'MAP_7',  lines: ['7'],  type: 'toggle' },
-        { id: 'MAP_10', lines: ['10'], type: 'toggle' },
+      { id: 'slot_holds_msa', slotType: 'halfV', buttons: [
+        { id: 'HOLDS', lines: ['HOLDS'], type: 'toggle' },
+        { id: 'MSA',   lines: ['MSA'],   type: 'toggle' },
       ]},
-      { id: 'slot_map_4', slotType: 'halfV', buttons: [
-        { id: 'MAP_8',  lines: ['8'],  type: 'toggle' },
-        { id: 'MAP_11', lines: ['11'], type: 'toggle' },
+      { id: 'slot_vj', slotType: 'halfV', buttons: [
+        { id: 'AIR_V', lines: ['V'], type: 'toggle' },
+        { id: 'AIR_J', lines: ['J'], type: 'toggle' },
       ]},
-      { id: 'slot_map_5', slotType: 'halfV', buttons: [
-        { id: 'MAP_9',  lines: ['9'],  type: 'toggle' },
-        { id: 'MAP_12', lines: ['12'], type: 'toggle' },
+      { id: 'slot_b_mora', slotType: 'halfV', buttons: [
+        { id: 'AIR_B', lines: ['B'],            type: 'toggle' },
+        { id: 'MORA',  lines: ['GRID', 'MORA'], type: 'toggle' },
       ]},
       { id: 'DONE', lines: ['DONE'], type: 'done' },
     ],
@@ -322,12 +329,16 @@ const DEFAULT_DCB = {
   valueColor:             '#FFFFFF',
 }
 
-// MAP_1–5 → maps array index; MAP_6 → 'lbl'; MAP_7–12 → submenu indices 5–10
+// MAP_1–5 → maps array index; MAP_6 → 'lbl'
 const MAP_SLOT_KEYS = {
-  MAP_1: 0, MAP_2: 1, MAP_3:  2,
-  MAP_4: 3, MAP_5: 4, MAP_6:  'lbl',
-  MAP_7: 5, MAP_8: 6, MAP_9:  7,
-  MAP_10: 8, MAP_11: 9, MAP_12: 10,
+  MAP_1: 0, MAP_2: 1, MAP_3: 2,
+  MAP_4: 3, MAP_5: 4, MAP_6: 'lbl',
+}
+
+// A map-toggle button's store key — an explicit `mapKey` (used for buttons placed
+// dynamically, e.g. the SUA↔MVA swap) takes precedence over the static slot table.
+function mapKeyOf(btn) {
+  return btn.mapKey ?? MAP_SLOT_KEYS[btn.id]
 }
 
 // ─── DcbButton ────────────────────────────────────────────────────────────────
@@ -386,6 +397,20 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const activeButton = windowSettings?.dcbActiveSpinner ?? null
   const mapsVisible   = useMapsStore((s) => s.visible)
   const maps          = useMapsStore((s) => s.maps)
+  const mvaSlot       = useMapsStore((s) => s.mvaSlot)
+
+  const holdsVisible   = useHoldingsStore((s) => s.visible)
+  const airwaysVisible = useAirwaysStore((s) => s.visible)
+  const msaVisible     = useMsaStore((s) => s.visible)
+  const moraVisible    = useMoraStore((s) => s.visible)
+  const reliefVisible  = useReliefStore((s) => s.visible)
+  const mvaVisible     = useMvaStore((s) => s.visible)
+
+  const procSidGroups   = useProceduresStore((s) => s.sidGroups)
+  const procStarGroups  = useProceduresStore((s) => s.starGroups)
+  const procAppchGroups = useProceduresStore((s) => s.appchGroups)
+  const procVisible     = useProceduresStore((s) => s.visible)
+
   const centerlines     = useRunwaysStore((s) => s.centerlines)
   const cltrVisible     = useRunwaysStore((s) => s.cltrVisible)
   const satBuckets      = useRunwaysStore((s) => s.satBuckets)
@@ -402,10 +427,32 @@ export function Dcb({ profile, briteDcb, csDcb }) {
 
   // ── Resolve current slot list ──────────────────────────────────────
   const slots = useMemo(() => {
-    if (menuKey === 'main') return MAIN_BUTTONS
+    if (menuKey === 'main') {
+      if (mvaSlot == null) return MAIN_BUTTONS
+      // Pin MVA to its fixed slot index from the store (derived from ICAO_PRESETS).
+      return MAIN_BUTTONS.map((slot) => {
+        if (slot.slotType !== 'halfV') return slot
+        return { ...slot, buttons: slot.buttons.map((b) =>
+          MAP_SLOT_KEYS[b.id] === mvaSlot ? { id: 'MVA', lines: ['MVA'], type: 'toggle' } : b) }
+      })
+    }
     if (menuKey === 'aux')  return AUX_BUTTONS
     if (menuKey === 'maps') {
-      const staticSlots = SUBMENU_DEFS.maps.buttons.filter((b) => b.id !== 'DONE')
+      const staticSlots = SUBMENU_DEFS.maps.buttons
+        .filter((b) => b.id !== 'DONE')
+
+      // Pool RELIEF with overflow map categories and pair them sequentially
+      const halfPool = [{ id: 'RELIEF', lines: ['RELIEF'], type: 'toggle' }]
+      for (let i = 5; i < maps.length; i++) {
+        if (maps[i] != null) halfPool.push({ id: `MAP_OVF_${i}`, mapKey: i, lines: [], type: 'toggle' })
+      }
+      const overflowSlots = []
+      for (let i = 0; i < halfPool.length; i += 2) {
+        const top = halfPool[i]
+        const bot = halfPool[i + 1] ?? null
+        overflowSlots.push({ id: `slot_ovf_${i}`, slotType: 'halfV', buttons: bot ? [top, bot] : [top] })
+      }
+
       const obstSlots   = obstructions.length > 0 ? [{ id: 'OBST', lines: ['OBST'], type: 'toggle' }] : []
 
       // Individual halfV buttons for facility centerlines only
@@ -425,10 +472,34 @@ export function Dcb({ profile, briteDcb, csDcb }) {
         satSlots.push({ id: 'slot_sat', slotType: 'halfV', buttons: satBtns })
       }
 
-      return [...staticSlots, ...obstSlots, ...cltrPairs, ...satSlots, { id: 'DONE', lines: ['DONE'], type: 'done' }]
+      // Procedure buttons — SIDs, STARs, then approaches, paired into halfV slots
+      const procBtns = []
+      for (const groupKey of Object.keys(procSidGroups).sort()) {
+        const lastSpace = groupKey.lastIndexOf(' ')
+        const lines = lastSpace >= 0 ? [groupKey.slice(0, lastSpace), groupKey.slice(lastSpace + 1)] : [groupKey]
+        procBtns.push({ id: `PROC_SID_${groupKey}`, lines, type: 'toggle' })
+      }
+      for (const groupKey of Object.keys(procStarGroups).sort()) {
+        const lastSpace = groupKey.lastIndexOf(' ')
+        const lines = lastSpace >= 0 ? [groupKey.slice(0, lastSpace), groupKey.slice(lastSpace + 1)] : [groupKey]
+        procBtns.push({ id: `PROC_STAR_${groupKey}`, lines, type: 'toggle' })
+      }
+      for (const groupKey of Object.keys(procAppchGroups).sort()) {
+        const lastSpace = groupKey.lastIndexOf(' ')
+        const lines = lastSpace >= 0 ? [groupKey.slice(0, lastSpace), groupKey.slice(lastSpace + 1)] : [groupKey]
+        procBtns.push({ id: `PROC_APPCH_${groupKey}`, lines, type: 'toggle' })
+      }
+      const procSlots = []
+      for (let i = 0; i < procBtns.length; i += 2) {
+        const top = procBtns[i]
+        const bot = procBtns[i + 1] ?? null
+        procSlots.push({ id: `_proc_hv_${i}`, slotType: 'halfV', buttons: bot ? [top, bot] : [top] })
+      }
+
+      return [...staticSlots, ...overflowSlots, ...obstSlots, ...cltrPairs, ...satSlots, ...procSlots, { id: 'DONE', lines: ['DONE'], type: 'done' }]
     }
     return SUBMENU_DEFS[menuKey]?.buttons ?? MAIN_BUTTONS
-  }, [menuKey, facilityCenterlines, satBuckets, obstructions])
+  }, [menuKey, maps, facilityCenterlines, satBuckets, obstructions, procSidGroups, procStarGroups, procAppchGroups, mvaSlot])
 
   // ── Button click ───────────────────────────────────────────────────
   const handleButtonClick = useCallback((btn) => {
@@ -454,15 +525,38 @@ export function Dcb({ profile, briteDcb, csDcb }) {
         updateWindow(WINDOW_ID, { dcbActiveSpinner: null })
         return
 
-      case 'toggle':
-        if (btn.id in MAP_SLOT_KEYS) {
-          useMapsStore.getState().toggleMap(MAP_SLOT_KEYS[btn.id])
+      case 'toggle': {
+        const mapKey = mapKeyOf(btn)
+        if (mapKey != null) {
+          useMapsStore.getState().toggleMap(mapKey)
+        } else if (btn.id === 'HOLDS') {
+          useHoldingsStore.getState().toggleVisible()
+        } else if (btn.id === 'MSA') {
+          useMsaStore.getState().toggleVisible()
+        } else if (btn.id === 'MORA') {
+          useMoraStore.getState().toggleVisible()
+        } else if (btn.id === 'RELIEF') {
+          useReliefStore.getState().toggleVisible()
+        } else if (btn.id === 'MVA') {
+          useMvaStore.getState().toggleVisible()
+        } else if (btn.id === 'AIR_V') {
+          useAirwaysStore.getState().toggleVisible('V')
+        } else if (btn.id === 'AIR_J') {
+          useAirwaysStore.getState().toggleVisible('J')
+        } else if (btn.id === 'AIR_B') {
+          useAirwaysStore.getState().toggleVisible('B')
         } else if (btn.id === 'OBST') {
           useRunwaysStore.getState().toggleObst()
         } else if (btn.id.startsWith('CLTR_')) {
           useRunwaysStore.getState().toggleCenterline(btn.id.slice(5))
         } else if (btn.id.startsWith('SAT_')) {
           useRunwaysStore.getState().toggleSatBucket(btn.id.slice(4))
+        } else if (btn.id.startsWith('PROC_SID_')) {
+          useProceduresStore.getState().toggleVisible(`SID:${btn.id.slice(9)}`)
+        } else if (btn.id.startsWith('PROC_STAR_')) {
+          useProceduresStore.getState().toggleVisible(`STAR:${btn.id.slice(10)}`)
+        } else if (btn.id.startsWith('PROC_APPCH_')) {
+          useProceduresStore.getState().toggleVisible(`APPCH:${btn.id.slice(11)}`)
         } else {
           setToggles(prev => {
             const next = new Set(prev)
@@ -472,6 +566,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           })
         }
         return
+      }
 
       case 'preset-slot': {
         const idx     = parseInt(btn.id.replace('PRESET_', ''), 10)
@@ -602,9 +697,9 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     // Resolve preset-slot display before anything else
     let displayBtn = btn
 
-    if (btn.id in MAP_SLOT_KEYS) {
-      const key   = MAP_SLOT_KEYS[btn.id]
-      const label = typeof key === 'number' ? (maps[key]?.name ?? '') : 'LBL'
+    const mapKey = mapKeyOf(btn)
+    if (mapKey != null) {
+      const label = typeof mapKey === 'number' ? (maps[mapKey]?.name ?? '') : 'LBL'
       displayBtn = { ...btn, lines: [label] }
     }
 
@@ -615,9 +710,25 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     }
 
     const isActive  = activeButton === displayBtn.id
-    let   isToggled = btn.id in MAP_SLOT_KEYS
-      ? (mapsVisible[MAP_SLOT_KEYS[btn.id]] ?? false)
-      : btn.id === 'OBST'
+    let   isToggled = mapKey != null
+      ? (mapsVisible[mapKey] ?? false)
+      : btn.id === 'HOLDS'
+        ? holdsVisible
+        : btn.id === 'MSA'
+          ? msaVisible
+          : btn.id === 'MORA'
+            ? moraVisible
+            : btn.id === 'RELIEF'
+              ? reliefVisible
+            : btn.id === 'MVA'
+              ? mvaVisible
+            : btn.id === 'AIR_V'
+              ? airwaysVisible.V
+              : btn.id === 'AIR_J'
+                ? airwaysVisible.J
+                : btn.id === 'AIR_B'
+                  ? airwaysVisible.B
+                  : btn.id === 'OBST'
         ? obstVisible
         : btn.id.startsWith('CLTR_')
           ? (cltrVisible[btn.id.slice(5)] ?? false)
@@ -627,7 +738,13 @@ export function Dcb({ profile, briteDcb, csDcb }) {
                 const bucket = satBuckets.find((b) => b.label === label)
                 return bucket ? bucket.ids.some((id) => cltrVisible[id]) : false
               })()
-            : toggles.has(btn.id)
+            : btn.id.startsWith('PROC_SID_')
+              ? procVisible.has(`SID:${btn.id.slice(9)}`)
+              : btn.id.startsWith('PROC_STAR_')
+                ? procVisible.has(`STAR:${btn.id.slice(10)}`)
+                : btn.id.startsWith('PROC_APPCH_')
+                  ? procVisible.has(`APPCH:${btn.id.slice(11)}`)
+                  : toggles.has(btn.id)
 
     if (btn.id === 'OFF_CNTR') {
       isToggled = windowSettings?.offCntr ?? false

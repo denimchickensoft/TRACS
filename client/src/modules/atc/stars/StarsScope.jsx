@@ -17,8 +17,24 @@ import { drawMinSep }          from './canvas/drawMinSep.js'
 import { drawMaps }                   from './canvas/drawMaps.js'
 import { drawExtendedCenterlines }    from './canvas/drawExtendedCenterlines.js'
 import { drawObstructions }           from './canvas/drawObstructions.js'
+import { drawHoldings }               from './canvas/drawHoldings.js'
+import { drawAirways }                from './canvas/drawAirways.js'
+import { drawMsa }                    from './canvas/drawMsa.js'
+import { drawMora }                   from './canvas/drawMora.js'
+import { drawRelief }                 from './canvas/drawRelief.js'
+import { drawMva }                    from './canvas/drawMva.js'
+import { drawProcedures }             from './canvas/drawProcedures.js'
+import { resolveRoute }              from './canvas/routeResolver.js'
+import { drawRoute }                 from './canvas/drawRoute.js'
 import { useMapsStore }         from '../../../store/maps.js'
 import { useRunwaysStore }      from '../../../store/runways.js'
+import { useHoldingsStore }     from '../../../store/holdings.js'
+import { useAirwaysStore }      from '../../../store/airways.js'
+import { useMsaStore }          from '../../../store/msa.js'
+import { useMoraStore }         from '../../../store/mora.js'
+import { useReliefStore }       from '../../../store/relief.js'
+import { useMvaStore }          from '../../../store/mva.js'
+import { useProceduresStore }   from '../../../store/procedures.js'
 import { DatablockOverlay }     from './DatablockOverlay.jsx'
 import { InputHandler }         from './input/InputHandler.jsx'
 import { PreviewArea }          from './PreviewArea.jsx'
@@ -35,7 +51,8 @@ import { parseCommand }         from './input/commandParser.js'
 import { dispatch as dispatchAction, INIT_CNTL } from '../actions/index.js'
 import { usePresetsStore }  from '../../../store/presets.js'
 import { useFpeStore }      from '../../../store/fpe.js'
-import { useNavdataStore }  from '../../../store/navdata.js'
+import { useNavdataStore }      from '../../../store/navdata.js'
+import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
 import './StarsScope.css'
@@ -46,6 +63,7 @@ const MAX_HISTORY = 10  // absolute max; display capped by historyLength setting
 export default function StarsScope() {
   const wheelDir         = useWheelDirection()
   const mapCanvasRef     = useRef(null)
+  const routeCanvasRef   = useRef(null)
   const ringCanvasRef    = useRef(null)
   const compassCanvasRef = useRef(null)
   const ctxCanvasRef     = useRef(null)
@@ -65,10 +83,32 @@ export default function StarsScope() {
   const facilityDcsName  = useSessionStore((s) => s.facilityDcsName)
   const facilityType     = useSessionStore((s) => s.facilityType)
   const positionSuffix   = useSessionStore((s) => s.positionSuffix)
+  const facilityId       = useSessionStore((s) => s.facilityId)
 
   const maps       = useMapsStore((s) => s.maps)
   const mapPalettes = useMapsStore((s) => s.palettes)
   const mapVisible = useMapsStore((s) => s.visible)
+
+  const holdings      = useHoldingsStore((s) => s.holdings)
+  const holdsVisible  = useHoldingsStore((s) => s.visible)
+  const airways       = useAirwaysStore((s) => s.airways)
+  const airwaysVisible = useAirwaysStore((s) => s.visible)
+  const msa           = useMsaStore((s) => s.msa)
+  const msaVisible    = useMsaStore((s) => s.visible)
+  const mora          = useMoraStore((s) => s.mora)
+  const moraVisible   = useMoraStore((s) => s.visible)
+  const relief        = useReliefStore((s) => s.relief)
+  const reliefVisible = useReliefStore((s) => s.visible)
+  const mva           = useMvaStore((s) => s.mva)
+  const mvaVisible    = useMvaStore((s) => s.visible)
+
+  const procRaw           = useProceduresStore((s) => s.raw)
+  const procSidGroups     = useProceduresStore((s) => s.sidGroups)
+  const procStarGroups    = useProceduresStore((s) => s.starGroups)
+  const procAppchGroups   = useProceduresStore((s) => s.appchGroups)
+  const procVisible       = useProceduresStore((s) => s.visible)
+  const procCommandVisible = useProceduresStore((s) => s.commandVisible)
+
   const centerlines   = useRunwaysStore((s) => s.centerlines)
   const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
   const obstructions  = useRunwaysStore((s) => s.obstructions)
@@ -82,11 +122,32 @@ export default function StarsScope() {
   const [view,       setView]      = useState(null)
   const [dcbVisible, setDcbVisible] = useState(true)
   const [slewedPdbs, setSlewedPdbs] = useState(() => new Set())
+  const [routeProcData, setRouteProcData] = useState({})  // { [icao]: raw | null }
+
+  const routeDisplayedUids = useMemo(
+    () => new Set(windowSettings?.routeDisplayedUids ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [windowSettings?.routeDisplayedUids]
+  )
+
   // Tick every 200ms to drive symbol blink redraws
   const [blinkTick, setBlinkTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setBlinkTick((t) => t + 1), 200)
     return () => clearInterval(id)
+  }, [])
+
+  // Ctrl+F → open blank FPE
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault()
+        const s = useFpeStore.getState()
+        if (!s.open) s.openFpe({ scope: 'atc' })
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
 
   const handlePdbToggle = useCallback((uid) => {
@@ -206,7 +267,7 @@ export default function StarsScope() {
     const ro = new ResizeObserver(() => {
       const w = container.clientWidth
       const h = container.clientHeight
-      for (const ref of [mapCanvasRef, ringCanvasRef, compassCanvasRef, ctxCanvasRef, rblCanvasRef]) {
+      for (const ref of [mapCanvasRef, routeCanvasRef, ringCanvasRef, compassCanvasRef, ctxCanvasRef, rblCanvasRef]) {
         if (ref.current) { ref.current.width = w; ref.current.height = h }
       }
       setView(buildView())
@@ -276,6 +337,24 @@ export default function StarsScope() {
     useMapsStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, positionName)
   }, [mission?.mission?.theatre, facilityDcsName, positionSuffix, airbases])
 
+  // ── Load new overlays when theatre changes ────────────────────────
+  useEffect(() => {
+    const theatre = mission?.mission?.theatre
+    if (!theatre) return
+    useHoldingsStore.getState().loadForTheatre(theatre)
+    useAirwaysStore.getState().loadForTheatre(theatre)
+    useMsaStore.getState().loadForTheatre(theatre)
+    useMoraStore.getState().loadForTheatre(theatre)
+    useReliefStore.getState().loadForTheatre(theatre)
+  }, [mission?.mission?.theatre])
+
+  // ── Load procedures + MVA when facility ICAO changes ──────────────────────────
+  useEffect(() => {
+    if (!facilityId) return
+    useProceduresStore.getState().loadForIcao(facilityId)
+    useMvaStore.getState().loadForFacility(facilityId)
+  }, [facilityId])
+
 
   // ── History capture ───────────────────────────────────────────────
   // Rate driven by windowSettings.historyRate (seconds). Uses a ref for the
@@ -336,14 +415,95 @@ export default function StarsScope() {
     if (!view || !mapCanvasRef.current) return
     const aspColorIdx  = windowSettings?.aspColorIdx ?? 0
     const activeColors = mapPalettes[aspColorIdx]?.colors ?? mapPalettes[0]?.colors ?? null
+    const briteB = windowSettings?.briteMapB ?? 50
+    const csMap  = windowSettings?.csMap ?? 2
     const ctx = mapCanvasRef.current.getContext('2d')
     drawMaps(ctx, view, maps, mapVisible,
-      windowSettings?.briteMapA ?? 50, windowSettings?.briteMapB ?? 50, windowSettings?.csMap ?? 2, activeColors,
+      windowSettings?.briteMapA ?? 50, briteB, csMap, activeColors,
       activeProfile?.visual?.mapPolygonFill ?? 0)
-    drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, windowSettings?.briteMapB ?? 50)
+    drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, briteB)
     drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 50)
+    drawHoldings(ctx, view, holdings, holdsVisible, briteB, csMap, activeColors)
+    drawAirways(ctx, view, airways, airwaysVisible, briteB, activeColors, mapVisible.lbl, csMap)
+    drawMsa(ctx, view, msa.filter(r => r.ident === facilityId), msaVisible, briteB, csMap, activeColors)
+    drawMora(ctx, view, mora, moraVisible, briteB, activeColors)
+    drawRelief(ctx, view, relief, reliefVisible, briteB, activeColors)
+    drawMva(ctx, view, mva, mvaVisible, briteB, activeColors)
+    drawProcedures(ctx, view, procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, briteB, csMap, activeColors, procCommandVisible)
   }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
+      holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, mva, mvaVisible, facilityId,
+      procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
       windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap, windowSettings?.aspColorIdx])
+
+  // ── Load procedure data for displayed routes (async, per-ICAO cache) ────
+  useEffect(() => {
+    if (routeDisplayedUids.size === 0) return
+    const plans = useFlightPlansStore.getState().plans
+    const allUnits = useUnitsStore.getState().units
+    const icaosNeeded = new Set()
+    for (const uid of routeDisplayedUids) {
+      const unit = Object.values(allUnits).find(u => String(u.id) === uid)
+      const aid  = unit ? resolveCallsign(unit)?.toUpperCase() : null
+      const fpl  = (aid ? plans[aid] : null)
+                ?? Object.values(plans).find(p => String(p.unitId) === uid)
+      if (fpl?.dep)  icaosNeeded.add(fpl.dep.toUpperCase())
+      if (fpl?.dest) icaosNeeded.add(fpl.dest.toUpperCase())
+    }
+    const missing = [...icaosNeeded].filter(icao => !(icao in routeProcData))
+    if (!missing.length) return
+    Promise.all(missing.map(async icao => {
+      try {
+        const res = await fetch(`/api/navdata/procedures?icao=${encodeURIComponent(icao)}`)
+        return { icao, raw: res.ok ? await res.json() : null }
+      } catch {
+        return { icao, raw: null }
+      }
+    })).then(results => {
+      setRouteProcData(prev => {
+        const next = { ...prev }
+        for (const { icao, raw } of results) next[icao] = raw
+        return next
+      })
+    })
+  }, [routeDisplayedUids])  // intentionally excludes routeProcData to avoid fetch loop
+
+  // ── Render flight plan routes ──────────────────────────────────
+  useEffect(() => {
+    const canvas = routeCanvasRef.current
+    if (!canvas || !view) return
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if (routeDisplayedUids.size === 0) return
+
+    const plans      = useFlightPlansStore.getState().plans
+    const navdata    = useNavdataStore.getState()
+    const aspColorIdx = windowSettings?.aspColorIdx ?? 0
+    const activeColors = mapPalettes[aspColorIdx]?.colors ?? mapPalettes[0]?.colors ?? null
+    const briteB     = windowSettings?.briteMapB ?? 50
+    const csMap      = windowSettings?.csMap ?? 2
+
+    const allUnits = useUnitsStore.getState().units
+    const routesByUid = new Map()
+    for (const uid of routeDisplayedUids) {
+      const unit = Object.values(allUnits).find(u => String(u.id) === uid)
+      const aid  = unit ? resolveCallsign(unit)?.toUpperCase() : null
+      const fpl  = (aid ? plans[aid] : null)
+                ?? Object.values(plans).find(p => String(p.unitId) === uid)
+      if (!fpl) continue
+      const depProcs  = fpl.dep  ? (routeProcData[fpl.dep.toUpperCase()]  ?? null) : null
+      const destProcs = fpl.dest ? (routeProcData[fpl.dest.toUpperCase()] ?? null) : null
+      routesByUid.set(uid, resolveRoute({
+        fpl,
+        lookupFix: navdata.lookupFix,
+        airways,
+        depProcs,
+        destProcs,
+      }))
+    }
+
+    drawRoute(ctx, view, routesByUid, briteB, csMap, activeColors)
+  }, [routeDisplayedUids, routeProcData, view, airways, mapPalettes,
+      windowSettings?.aspColorIdx, windowSettings?.briteMapB, windowSettings?.csMap])
 
   // ── Render compass rose ───────────────────────────────────────────
   useEffect(() => {
@@ -504,6 +664,10 @@ export default function StarsScope() {
   const handleEsc = useCallback(() => {
     const win     = useDisplayStore.getState().windows[WINDOW_ID]
     const pending = win?.pendingAction
+    if (win?.routeDisplayedUids?.length > 0) {
+      displayStore.updateWindow(WINDOW_ID, { routeDisplayedUids: [] })
+      return
+    }
     if (win?.findMarker) {
       displayStore.updateWindow(WINDOW_ID, { findMarker: null })
       return
@@ -598,6 +762,22 @@ export default function StarsScope() {
           const readOnly = !!(owner && owner !== myControllerId)
           useFpeStore.getState().openFpe({ aid, unitId: target.unitId, readOnly, scope: 'atc' })
         }
+      }
+      return
+    }
+
+    if (e.button === 0 && e.altKey) {
+      const rect = interactiveRef.current?.getBoundingClientRect()
+      if (!rect || !viewRef.current) return
+      const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+      if (target) {
+        const uid     = String(target.unitId)
+        const current = windowSettings?.routeDisplayedUids ?? []
+        const next    = new Set(current)
+        if (next.has(uid)) next.delete(uid)
+        else               next.add(uid)
+        displayStore.updateWindow(WINDOW_ID, { routeDisplayedUids: [...next] })
       }
       return
     }
@@ -746,6 +926,7 @@ export default function StarsScope() {
 
       <div ref={canvasAreaRef} className="atc-canvas-area">
         <canvas ref={mapCanvasRef}     className="atc-layer" />
+        <canvas ref={routeCanvasRef}   className="atc-layer" />
         <canvas ref={ringCanvasRef}    className="atc-layer" />
         <canvas ref={compassCanvasRef} className="atc-layer" />
         <canvas ref={ctxCanvasRef}     className="atc-layer" />

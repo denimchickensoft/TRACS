@@ -5,12 +5,19 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "extract": "node navdata/tools/extract-navdata.js",
+    "build:relief": "node scripts/buildReliefMap.js",
+    "build:mva": "node scripts/buildMvaMap.js",
+    "package:extract": "node --experimental-sea-config navdata/tools/sea-config.json"
   },
   "dependencies": {
     "@trystero-p2p/ws-relay": "^0.24.0",
     "better-sqlite3": "^9.0.0",
+    "d3-contour": "^4.0.2",
     "express": "^4.19.2",
+    "polylabel": "^2.0.1",
+    "sql.js": "^1.12.0",
     "ws": "^8.18.0"
   }
 }

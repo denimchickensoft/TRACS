@@ -190,6 +190,7 @@
 .sb-dep  { color: #999; }
 .sb-dest { color: #999; }
 .sb-rte  { color: #666; font-size: 0.65rem; overflow: hidden; text-overflow: ellipsis; }
+.sb-rte--route { min-height: 36px; white-space: normal; align-items: flex-start; }
 
 /* Annotation cells — editable */
 .sb-ann-cell {

@@ -43,7 +43,6 @@ function useDrag(panelRef) {
 // ── FPE component ─────────────────────────────────────────────────────────────
 export function FPE({ scope = null }) {
   const { open, scope: storeScope, aid: prefillAid, unitId, readOnly, closeFpe } = useFpeStore()
-  if (open && scope !== storeScope) return null
   const { plans, add, amend, recycleBcn, remove } = useFlightPlansStore()
   const { addStrip, setHighlight } = useStripsStore()
 
@@ -92,21 +91,24 @@ export function FPE({ scope = null }) {
     }
 
     setTimeout(() => {
-      if (!upperAid) aidInputRef.current?.focus()
+      aidInputRef.current?.focus()
     }, 0)
   }, [open, prefillAid]) // intentionally not watching plans — live update handled below
 
   // Close on Escape
   useEffect(() => {
-    if (!open) return
+    if (!open || scope !== storeScope) return
     function onKeyDown(e) {
       if (e.key === 'Escape') closeFpe()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, closeFpe])
+  }, [open, storeScope, scope, closeFpe])
 
-  // Live update: if plan changes while FPE is open, refresh fields
+  // Live update: if plan changes externally while FPE is open, refresh fields.
+  // Deliberately omits 'open' from deps — on-open init is handled by the populate
+  // effect above. Including 'open' causes a race where this effect fires with the
+  // stale 'aid' from the previous session and repopulates fields from the wrong plan.
   useEffect(() => {
     if (!open || !aid) return
     const plan = plans[aid]
@@ -121,10 +123,18 @@ export function FPE({ scope = null }) {
     setAlt(plan.alt   ?? '')
     setRte(plan.rte   ?? '')
     setRmk(plan.rmk   ?? '')
-  }, [plans, aid, open])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, aid])
 
   function clearOnEscape(setter) {
     return (e) => { if (e.key === 'Escape') { e.preventDefault(); setter('') } }
+  }
+
+  function textareaKeyDown(setter) {
+    return (e) => {
+      if (e.key === 'Enter') { handleAmend(e); return }
+      if (e.key === 'Escape') { e.preventDefault(); setter('') }
+    }
   }
 
   function handleAltBlur() {
@@ -167,7 +177,7 @@ export function FPE({ scope = null }) {
     closeFpe()
   }
 
-  if (!open) return null
+  if (!open || scope !== storeScope) return null
 
   const panelStyle = pos
     ? { left: pos.x, top: pos.y, transform: 'none' }
@@ -319,7 +329,7 @@ export function FPE({ scope = null }) {
               className="fpe-textarea"
               value={rte}
               onChange={(e) => setRte(e.target.value.toUpperCase())}
-              onKeyDown={clearOnEscape(setRte)}
+              onKeyDown={textareaKeyDown(setRte)}
               onBlur={handleRteBlur}
               readOnly={disabled}
               placeholder="ROUTE"
@@ -334,7 +344,7 @@ export function FPE({ scope = null }) {
               className="fpe-textarea"
               value={rmk}
               onChange={(e) => setRmk(e.target.value.toUpperCase())}
-              onKeyDown={clearOnEscape(setRmk)}
+              onKeyDown={textareaKeyDown(setRmk)}
               readOnly={disabled}
               placeholder="REMARKS"
               maxLength={120}

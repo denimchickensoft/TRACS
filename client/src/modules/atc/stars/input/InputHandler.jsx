@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { usePreviewStore }  from '../../../../store/preview.js'
 import { useSessionStore }  from '../../../../store/session.js'
+import { useFpeStore }      from '../../../../store/fpe.js'
 import { matchStarsKey, isTypedInput } from './starsKeys.js'
 
 /**
@@ -26,6 +27,9 @@ export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
 
   useEffect(() => {
     function handleKeyDown(e) {
+      // FPE takes precedence over all STARS input while open
+      if (useFpeStore.getState().open) return
+
       // Ignore when typing in form elements
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return

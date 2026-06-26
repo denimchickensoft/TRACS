@@ -154,6 +154,12 @@ app.get('/api/navdata/procedures',  navdata.handleProcedures)
 app.get('/api/navdata/frequencies', navdata.handleFrequencies)
 app.get('/api/navdata/ctrs',        navdata.handleCtrFacilities)
 app.get('/api/navdata/sector',      navdata.handleSector)
+app.get('/api/navdata/holdings',    navdata.handleHoldings)
+app.get('/api/navdata/airways',     navdata.handleAirways)
+app.get('/api/navdata/msa',         navdata.handleMsa)
+app.get('/api/navdata/mora',        navdata.handleMora)
+app.get('/api/navdata/relief',      navdata.handleRelief)
+app.get('/api/navdata/mva',         navdata.handleMva)
 
 // GET /api/turn-credentials — ICE server list for WebRTC peers
 // Set TURN_URL / TURN_USER / TURN_PASS env vars to include a TURN relay.

@@ -1,0 +1,5 @@
+{
+  "main": "extract-navdata.js",
+  "output": "extract-navdata.blob",
+  "disableExperimentalSEAWarning": true
+}

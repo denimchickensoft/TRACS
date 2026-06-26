@@ -88,11 +88,12 @@ let icaoMapping = null
 export const useRunwaysStore = create((set, get) => ({
   // centerlines: one entry per runway direction
   // { id, label, thresholdLat, thresholdLng, headingRad, rwyEnd1, rwyEnd2 }
-  centerlines:  [],
-  cltrVisible:  {},
-  satBuckets:   [],   // [{ label: 'NW', ids: [...] }, { label: 'SE', ids: [...] }]
-  obstructions: [],
-  obstVisible:  false,
+  centerlines:      [],
+  cltrVisible:      {},
+  satBuckets:       [],   // [{ label: 'NW', ids: [...] }, { label: 'SE', ids: [...] }]
+  obstructions:     [],
+  obstVisible:      false,
+  airportPositions: {},   // ICAO → {lat, lon} — all theatre airports, no distance filter
 
   theatre:         null,
   facilityAirbase: null,
@@ -245,15 +246,25 @@ export const useRunwaysStore = create((set, get) => ({
           }
 
           // ── Centerlines (one per direction), carrying pavement endpoints ──
+          // headingRad = bearing from end2 → end1. The primary runway (rwy.name)
+          // lands in the magHead direction. If magHead aligns with headingRad the
+          // threshold is at end2; if it aligns with the opposite end (end1) we swap.
+          const headRad_deg   = ((headingRad * 180 / Math.PI) % 360 + 360) % 360
+          const swap          = angDist(magHead, headRad_deg) > 90
+          const primThresh    = swap ? end1 : end2
+          const otherThresh   = swap ? end2 : end1
+          const primHeadRad   = swap ? headingRad         : headingRad + Math.PI
+          const otherHeadRad  = swap ? headingRad + Math.PI : headingRad
+
           const id1 = `${ab.airbase}__${name1}`
           if (!seenCtr.has(id1)) {
             seenCtr.add(id1)
             rawCenterlines.push({
               airbase:      ab.airbase,
               rwyName:      name1,
-              thresholdLat: end2.lat,
-              thresholdLng: end2.lng,
-              headingRad:   headingRad + Math.PI,
+              thresholdLat: primThresh.lat,
+              thresholdLng: primThresh.lng,
+              headingRad:   primHeadRad,
               magHead:      magHead,
               elevFt:       rwy.elevation_ft ?? 0,
               magvar:       rwyMagvar,
@@ -268,9 +279,9 @@ export const useRunwaysStore = create((set, get) => ({
             rawCenterlines.push({
               airbase:      ab.airbase,
               rwyName:      name2,
-              thresholdLat: end1.lat,
-              thresholdLng: end1.lng,
-              headingRad:   headingRad,
+              thresholdLat: otherThresh.lat,
+              thresholdLng: otherThresh.lng,
+              headingRad:   otherHeadRad,
               magHead:      magHead2,
               elevFt:       rwy.elevation_ft ?? 0,
               magvar:       rwyMagvar,
@@ -299,6 +310,22 @@ export const useRunwaysStore = create((set, get) => ({
       const labelMap    = {}
       for (const name of abNames) {
         labelMap[name] = theatreIcao[name] ?? fallbackMap[name]
+      }
+
+      // Build airport positions for ALL ICAO-mapped airports in the theatre,
+      // independent of the distance filter.  Used by lookupFix so that route
+      // drawing can connect to distant DEP/DEST airports (e.g. OMAA from OMDB).
+      const airportPositions = {}
+      for (const ab of airbases ?? []) {
+        const icaoCode = theatreIcao[ab.airbase]
+        if (!icaoCode) continue
+        let latSum = 0, lonSum = 0, count = 0
+        for (const rwy of (ab.runways ?? [])) {
+          if (rwy.lat != null && rwy.lon != null) {
+            latSum += rwy.lat; lonSum += rwy.lon; count++
+          }
+        }
+        if (count > 0) airportPositions[icaoCode] = { lat: latSum / count, lon: lonSum / count }
       }
 
       const centerlines = rawCenterlines.map((c) => ({
@@ -363,7 +390,7 @@ export const useRunwaysStore = create((set, get) => ({
         if (bucketB.ids.length > 0) satBuckets.push(bucketB)
       }
 
-      set({ centerlines, cltrVisible, satBuckets, obstructions, obstVisible: isNewTheatre ? false : get().obstVisible, theatre, facilityAirbase: facilityAirbase || null, _lastLoadKey: loadKey })
+      set({ centerlines, cltrVisible, satBuckets, obstructions, obstVisible: isNewTheatre ? false : get().obstVisible, theatre, facilityAirbase: facilityAirbase || null, airportPositions, _lastLoadKey: loadKey })
       console.log(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
     } catch (err) {
       console.error('[runways] load error:', err.message)
@@ -382,5 +409,5 @@ export const useRunwaysStore = create((set, get) => ({
     return { cltrVisible: { ...s.cltrVisible, ...updates } }
   }),
 
-  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], obstructions: [], obstVisible: false, theatre: null, facilityAirbase: null }),
+  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], obstructions: [], obstVisible: false, theatre: null, facilityAirbase: null, airportPositions: {} }),
 }))
