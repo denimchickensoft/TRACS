@@ -36,5 +36,6 @@ export const useReliefStore = create((set, get) => ({
   },
 
   toggleVisible: () => set((s) => ({ visible: !s.visible })),
+  setVisible:    (v) => set({ visible: v }),
   reset: () => set({ relief: [], visible: false, theatre: null, loading: false }),
 }))

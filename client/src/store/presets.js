@@ -14,6 +14,9 @@ const PRESET_FIELDS = [
   'qnh',
   'lists',
   'mapsVisible',
+  'reliefVisible', 'geoVisible', 'mvaVisible', 'msaVisible', 'moraVisible', 'holdsVisible',
+  'airwaysVisible',
+  'procVisible',
   'previewPosition',
 ]
 
@@ -26,10 +29,11 @@ function extractSettings(win) {
 }
 
 export const usePresetsStore = create((set, get) => ({
-  slots:        Array(SLOT_COUNT).fill(null), // null | { name, settings }
-  activeSlot:   null,   // number | null — currently loaded preset index
-  defaultSlot:  null,   // number | null — auto-loaded on session start
-  pendingMode:  null,   // null | { type: 'pick' } | { type: 'name', slotIndex: number }
+  slots:            Array(SLOT_COUNT).fill(null), // null | { name, settings, bookmarks }
+  activeSlot:       null,   // number | null — currently loaded preset index
+  defaultSlot:      null,   // number | null — auto-loaded on session start
+  pendingMode:      null,   // null | { type: 'pick' } | { type: 'name', slotIndex: number }
+  pendingBookmarks: Array(10).fill(null), // bookmark slots when no preset is active
 
   load: async () => {
     try {
@@ -63,22 +67,51 @@ export const usePresetsStore = create((set, get) => ({
 
   // Save current window settings to a specific slot with a given name
   saveToSlot: (slotIndex, name, win) => {
-    const slots = [...get().slots]
-    slots[slotIndex] = { name: name.toUpperCase(), settings: extractSettings(win) }
-    set({ slots, activeSlot: slotIndex, pendingMode: null })
-    get()._persist(slots)
+    const { activeSlot, slots, pendingBookmarks } = get()
+    const bookmarks = activeSlot !== null
+      ? (slots[activeSlot]?.bookmarks ?? Array(10).fill(null))
+      : pendingBookmarks
+    const next = [...slots]
+    next[slotIndex] = { name: name.toUpperCase(), settings: extractSettings(win), bookmarks }
+    set({ slots: next, activeSlot: slotIndex, pendingMode: null })
+    get()._persist(next)
   },
 
   // Overwrite the currently active slot (SAVE)
   saveActive: (win) => {
     const { activeSlot, slots } = get()
     if (activeSlot === null) return false
-    const name = slots[activeSlot]?.name ?? 'PRESET'
+    const slot = slots[activeSlot]
     const next = [...slots]
-    next[activeSlot] = { name, settings: extractSettings(win) }
+    next[activeSlot] = { name: slot?.name ?? 'PRESET', settings: extractSettings(win), bookmarks: slot?.bookmarks ?? Array(10).fill(null) }
     set({ slots: next })
     get()._persist(next)
     return true
+  },
+
+  // Set bookmark n in the active preset slot (or pendingBookmarks if none loaded)
+  setBookmark: (n, data) => {
+    const { activeSlot, slots } = get()
+    if (activeSlot !== null && slots[activeSlot]) {
+      const next = [...slots]
+      const bms = [...(next[activeSlot].bookmarks ?? Array(10).fill(null))]
+      bms[n] = data
+      next[activeSlot] = { ...next[activeSlot], bookmarks: bms }
+      set({ slots: next })
+    } else {
+      const bms = [...get().pendingBookmarks]
+      bms[n] = data
+      set({ pendingBookmarks: bms })
+    }
+  },
+
+  // Get bookmark n from the active preset slot (or pendingBookmarks if none loaded)
+  getBookmark: (n) => {
+    const { activeSlot, slots, pendingBookmarks } = get()
+    if (activeSlot !== null && slots[activeSlot]) {
+      return slots[activeSlot].bookmarks?.[n] ?? null
+    }
+    return pendingBookmarks[n] ?? null
   },
 
   deleteSlot: (slotIndex) => {

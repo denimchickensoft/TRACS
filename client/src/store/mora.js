@@ -21,5 +21,6 @@ export const useMoraStore = create((set, get) => ({
   },
 
   toggleVisible: () => set((s) => ({ visible: !s.visible })),
+  setVisible:    (v) => set({ visible: v }),
   reset: () => set({ mora: [], visible: false, theatre: null, loading: false }),
 }))

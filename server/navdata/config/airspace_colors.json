@@ -14,7 +14,7 @@
       "CLASS G": { "stroke": "#CCDDE0", "fill": "#CCDDE0", "dash": [5, 2], "label": "Class G" },
       "FIR":     { "stroke": "#667799", "fill": "#667799", "dash": [5, 2], "label": "FIR" },
       "UIR":     { "stroke": "#556688", "fill": "#556688", "dash": [5, 2], "label": "UIR" },
-      "SUA":     { "stroke": "#BBCCDD", "fill": "#BBCCDD", "dash": [0, 0], "label": "SUA" },
+      "SUA":     { "stroke": "#BBCCDD", "fill": "#BBCCDD", "dash": [1, 5], "label": "SUA" },
       "MIL":     { "stroke": "#99AABB", "fill": "#99AABB", "dash": [5, 2], "label": "MIL" },
       "TRSA":    { "stroke": "#8899BB", "fill": "#8899BB", "dash": [5, 2], "label": "TRSA" },
       "HOLDS":     { "stroke": "#7BBFBF", "fill": "#7BBFBF", "dash": [0, 0] },
@@ -23,12 +23,14 @@
       "AIRWAYS_B": { "stroke": "#8899AA", "fill": "#8899AA", "dash": [5, 2] },
       "MSA":       { "stroke": "#AA8866", "fill": "#AA8866", "dash": [5, 2] },
       "MORA":      { "stroke": "#667788", "fill": "#99AABB", "dash": [5, 2] },
-      "RELIEF":    { "stroke": "#88AA88", "fill": "#88AA88", "dash": [] },
-      "MVA":       { "stroke": "#7788AA", "fill": "#AABBDD", "dash": [] },
-      "PROC_SID":  { "stroke": "#6699AA", "fill": "#6699AA", "dash": [] },
-      "PROC_STAR": { "stroke": "#7799AA", "fill": "#7799AA", "dash": [] },
-      "PROC_APPCH":{ "stroke": "#8899AA", "fill": "#8899AA", "dash": [] },
-      "ROUTE":     { "stroke": "#C8AA88", "fill": "#C8AA88", "dash": [] }
+      "RELIEF":       { "stroke": "#88AA88", "fill": "#88AA88", "dash": [] },
+      "MVA":          { "stroke": "#7788AA", "fill": "#AABBDD", "dash": [] },
+      "PROC_SID":     { "stroke": "#6699AA", "fill": "#6699AA", "dash": [] },
+      "PROC_STAR":    { "stroke": "#7799AA", "fill": "#7799AA", "dash": [] },
+      "PROC_APPCH":   { "stroke": "#8899AA", "fill": "#8899AA", "dash": [] },
+      "ROUTE":        { "stroke": "#C8AA88", "fill": "#C8AA88", "dash": [] },
+      "GEO_COAST":    { "stroke": "#6699AA", "fill": "#6699AA", "dash": [] },
+      "GEO_BOUNDARY": { "stroke": "#557788", "fill": "#557788", "dash": [4, 3] }
     }
   },
   {
@@ -55,12 +57,14 @@
       "AIRWAYS_B": { "stroke": "#8899AA", "fill": "#8899AA", "dash": [5, 2] },
       "MSA":       { "stroke": "#FF8800", "fill": "#FF8800", "dash": [5, 2] },
       "MORA":      { "stroke": "#446688", "fill": "#6688AA", "dash": [5, 2] },
-      "RELIEF":    { "stroke": "#00CC66", "fill": "#00CC66", "dash": [] },
-      "MVA":       { "stroke": "#4466CC", "fill": "#88AAFF", "dash": [] },
-      "PROC_SID":  { "stroke": "#00FF88", "fill": "#00FF88", "dash": [] },
-      "PROC_STAR": { "stroke": "#88FFFF", "fill": "#88FFFF", "dash": [] },
-      "PROC_APPCH":{ "stroke": "#FFFF44", "fill": "#FFFF44", "dash": [] },
-      "ROUTE":     { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] }
+      "RELIEF":       { "stroke": "#00CC66", "fill": "#00CC66", "dash": [] },
+      "MVA":          { "stroke": "#4466CC", "fill": "#88AAFF", "dash": [] },
+      "PROC_SID":     { "stroke": "#00FF88", "fill": "#00FF88", "dash": [] },
+      "PROC_STAR":    { "stroke": "#88FFFF", "fill": "#88FFFF", "dash": [] },
+      "PROC_APPCH":   { "stroke": "#FFFF44", "fill": "#FFFF44", "dash": [] },
+      "ROUTE":        { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] },
+      "GEO_COAST":    { "stroke": "#22CCDD", "fill": "#22CCDD", "dash": [] },
+      "GEO_BOUNDARY": { "stroke": "#2266AA", "fill": "#2266AA", "dash": [4, 3] }
     }
   },
   {
@@ -87,12 +91,14 @@
       "AIRWAYS_B": { "stroke": "#AABBCC", "fill": "#AABBCC", "dash": [5, 2] },
       "MSA":       { "stroke": "#FF8800", "fill": "#FF8800", "dash": [5, 2] },
       "MORA":      { "stroke": "#4488BB", "fill": "#77AACC", "dash": [5, 2] },
-      "RELIEF":    { "stroke": "#66CC99", "fill": "#66CC99", "dash": [] },
-      "MVA":       { "stroke": "#5577CC", "fill": "#99BBEE", "dash": [] },
-      "PROC_SID":  { "stroke": "#00FF88", "fill": "#00FF88", "dash": [] },
-      "PROC_STAR": { "stroke": "#88FFFF", "fill": "#88FFFF", "dash": [] },
-      "PROC_APPCH":{ "stroke": "#FFFF44", "fill": "#FFFF44", "dash": [] },
-      "ROUTE":     { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] }
+      "RELIEF":       { "stroke": "#66CC99", "fill": "#66CC99", "dash": [] },
+      "MVA":          { "stroke": "#5577CC", "fill": "#99BBEE", "dash": [] },
+      "PROC_SID":     { "stroke": "#00FF88", "fill": "#00FF88", "dash": [] },
+      "PROC_STAR":    { "stroke": "#88FFFF", "fill": "#88FFFF", "dash": [] },
+      "PROC_APPCH":   { "stroke": "#FFFF44", "fill": "#FFFF44", "dash": [] },
+      "ROUTE":        { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] },
+      "GEO_COAST":    { "stroke": "#33BBDD", "fill": "#33BBDD", "dash": [] },
+      "GEO_BOUNDARY": { "stroke": "#2255AA", "fill": "#2255AA", "dash": [4, 3] }
     }
   },
   {
@@ -119,12 +125,14 @@
       "AIRWAYS_B": { "stroke": "#808080", "fill": "#808080", "dash": [5, 2] },
       "MSA":       { "stroke": "#808080", "fill": "#808080", "dash": [5, 2] },
       "MORA":      { "stroke": "#808080", "fill": "#808080", "dash": [5, 2] },
-      "RELIEF":    { "stroke": "#808080", "fill": "#808080", "dash": [] },
-      "MVA":       { "stroke": "#808080", "fill": "#808080", "dash": [] },
-      "PROC_SID":  { "stroke": "#AA0000", "fill": "#AA0000", "dash": [] },
-      "PROC_STAR": { "stroke": "#00AA00", "fill": "#00AA00", "dash": [] },
-      "PROC_APPCH":{ "stroke": "#0000AA", "fill": "#0000AA", "dash": [] },
-      "ROUTE":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [] }
+      "RELIEF":       { "stroke": "#808080", "fill": "#808080", "dash": [] },
+      "MVA":          { "stroke": "#808080", "fill": "#808080", "dash": [] },
+      "PROC_SID":     { "stroke": "#AA0000", "fill": "#AA0000", "dash": [] },
+      "PROC_STAR":    { "stroke": "#00AA00", "fill": "#00AA00", "dash": [] },
+      "PROC_APPCH":   { "stroke": "#0000AA", "fill": "#0000AA", "dash": [] },
+      "ROUTE":        { "stroke": "#FFD700", "fill": "#FFD700", "dash": [] },
+      "GEO_COAST":    { "stroke": "#808080", "fill": "#808080", "dash": [] },
+      "GEO_BOUNDARY": { "stroke": "#606060", "fill": "#606060", "dash": [4, 3] }
     }
   },
   {
@@ -151,12 +159,14 @@
       "AIRWAYS_B": { "stroke": "#FFCC99", "fill": "#FFCC99", "dash": [5, 2] },
       "MSA":       { "stroke": "#FF9900", "fill": "#FF9900", "dash": [5, 2] },
       "MORA":      { "stroke": "#AA7700", "fill": "#CCAA00", "dash": [5, 2] },
-      "RELIEF":    { "stroke": "#CCAA66", "fill": "#CCAA66", "dash": [] },
-      "MVA":       { "stroke": "#CC8844", "fill": "#FFCC99", "dash": [] },
-      "PROC_SID":  { "stroke": "#FFEE44", "fill": "#FFEE44", "dash": [] },
-      "PROC_STAR": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [] },
-      "PROC_APPCH":{ "stroke": "#FF9900", "fill": "#FF9900", "dash": [] },
-      "ROUTE":     { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] }
+      "RELIEF":       { "stroke": "#CCAA66", "fill": "#CCAA66", "dash": [] },
+      "MVA":          { "stroke": "#CC8844", "fill": "#FFCC99", "dash": [] },
+      "PROC_SID":     { "stroke": "#FFEE44", "fill": "#FFEE44", "dash": [] },
+      "PROC_STAR":    { "stroke": "#FFD700", "fill": "#FFD700", "dash": [] },
+      "PROC_APPCH":   { "stroke": "#FF9900", "fill": "#FF9900", "dash": [] },
+      "ROUTE":        { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] },
+      "GEO_COAST":    { "stroke": "#AA8833", "fill": "#AA8833", "dash": [] },
+      "GEO_BOUNDARY": { "stroke": "#886622", "fill": "#886622", "dash": [4, 3] }
     }
   },
   {
@@ -183,12 +193,14 @@
       "AIRWAYS_B": { "stroke": "#AABBCC", "fill": "#AABBCC", "dash": [5, 2] },
       "MSA":       { "stroke": "#FF8C00", "fill": "#FF8C00", "dash": [5, 2] },
       "MORA":      { "stroke": "#667788", "fill": "#99AABB", "dash": [5, 2] },
-      "RELIEF":    { "stroke": "#88CC44", "fill": "#88CC44", "dash": [] },
-      "MVA":       { "stroke": "#CC66AA", "fill": "#FF99DD", "dash": [] },
-      "PROC_SID":  { "stroke": "#00FF88", "fill": "#00FF88", "dash": [] },
-      "PROC_STAR": { "stroke": "#00CED1", "fill": "#00CED1", "dash": [] },
-      "PROC_APPCH":{ "stroke": "#FFDD44", "fill": "#FFDD44", "dash": [] },
-      "ROUTE":     { "stroke": "#FF88CC", "fill": "#FF88CC", "dash": [] }
+      "RELIEF":       { "stroke": "#88CC44", "fill": "#88CC44", "dash": [] },
+      "MVA":          { "stroke": "#CC66AA", "fill": "#FF99DD", "dash": [] },
+      "PROC_SID":     { "stroke": "#00FF88", "fill": "#00FF88", "dash": [] },
+      "PROC_STAR":    { "stroke": "#00CED1", "fill": "#00CED1", "dash": [] },
+      "PROC_APPCH":   { "stroke": "#FFDD44", "fill": "#FFDD44", "dash": [] },
+      "ROUTE":        { "stroke": "#FF88CC", "fill": "#FF88CC", "dash": [] },
+      "GEO_COAST":    { "stroke": "#00FFFF", "fill": "#00FFFF", "dash": [] },
+      "GEO_BOUNDARY": { "stroke": "#FF69B4", "fill": "#FF69B4", "dash": [4, 3] }
     }
   }
 ]

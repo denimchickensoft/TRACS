@@ -1,7 +1,9 @@
 import { latLngToCanvas } from './projection.js'
+import { fixSymbolType, drawFixSymbol } from './fixSymbol.js'
 
 const HOLD_COLOR_FALLBACK = '#00CED1'
 const ARC_SEGS   = 16
+const TRI_GAP    = 6  // px clearance between racetrack endpoint and fix triangle center
 
 function projectPoint(lat, lon, hdgDeg, distNm) {
   const R    = 3440.065
@@ -116,20 +118,30 @@ export function drawHoldings(ctx, view, holdings, visible, brite = 50, csMap = 2
 
     const poly = buildRacetrackPoly(hold.lat, hold.lon, trueCourse, hold.turnDir ?? 'R', legNm, turnRadius)
 
-    ctx.beginPath()
-    let first = true
-    for (const { lat, lon } of poly) {
-      const { x, y } = latLngToCanvas(lat, lon, view)
-      if (first) { ctx.moveTo(x, y); first = false }
-      else ctx.lineTo(x, y)
-    }
-    ctx.closePath()
-    ctx.stroke()
+    // poly[0] is the fix point; the outbound arc starts there and closePath() would
+    // draw the inbound leg back to it. Leave a gap around the fix triangle instead.
+    if (poly.length >= 2) {
+      const cpts = poly.map(({ lat, lon }) => latLngToCanvas(lat, lon, view))
+      // cpts[0] === fixPt; start the path slightly past fix toward cpts[1]
+      const p1  = cpts[1]
+      const dx0 = p1.x - fixPt.x, dy0 = p1.y - fixPt.y
+      const len0 = Math.hypot(dx0, dy0)
+      const startX = len0 > TRI_GAP ? fixPt.x + dx0 * TRI_GAP / len0 : p1.x
+      const startY = len0 > TRI_GAP ? fixPt.y + dy0 * TRI_GAP / len0 : p1.y
 
-    // Fix dot
-    ctx.beginPath()
-    ctx.arc(fixPt.x, fixPt.y, 2, 0, Math.PI * 2)
-    ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(startX, startY)
+      for (let i = 1; i < cpts.length; i++) ctx.lineTo(cpts[i].x, cpts[i].y)
+
+      // Close the inbound leg to just before the fix triangle
+      const last = cpts[cpts.length - 1]
+      const dxL = fixPt.x - last.x, dyL = fixPt.y - last.y
+      const lenL = Math.hypot(dxL, dyL)
+      if (lenL > TRI_GAP) ctx.lineTo(last.x + dxL * TRI_GAP / lenL, last.y + dyL * TRI_GAP / lenL)
+      ctx.stroke()
+    }
+
+    drawFixSymbol(ctx, fixPt.x, fixPt.y, fixSymbolType(hold.ident))
 
     // Ident label
     if (csMap > 0) {

@@ -3,7 +3,6 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useStripsStore, STRIP_HIGHLIGHT, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useFpeStore }          from '../../store/fpe.js'
-import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
 import { dispatchWebrtcEvent }  from '../../utils/commandChannel.js'
@@ -408,7 +407,6 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const reorderBay  = useStripsStore((s) => s.reorderBay)
   const addStrip    = useStripsStore((s) => s.addStrip)
   const plans       = useFlightPlansStore((s) => s.plans)
-  const units       = useUnitsStore((s) => s.units)
   // Subscribe so re-render fires when the toggle flips
   useSessionStore((s) => s.useDcsNames)
 
@@ -550,8 +548,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
           <div className="sb-empty">No strips</div>
         )}
         {sorted.map((strip) => {
-          const unit       = strip.unitId != null ? units[String(strip.unitId)] : null
-          const displayAid = unit ? resolveCallsign(unit) : strip.aid
+          const displayAid = strip.aid
           const plan       = (strip.unitId != null ? plansByUnitId[String(strip.unitId)] : null)
                              ?? plans[strip.aid]
                              ?? null

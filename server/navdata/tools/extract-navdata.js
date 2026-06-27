@@ -279,10 +279,15 @@ function extractHoldings(db, [minLon, minLat, maxLon, maxLat]) {
 function extractAirways(db, [minLon, minLat, maxLon, maxLat]) {
   // LNM column names: airway_name, airway_type (not name/type)
   const rows = queryAll(db,
-    `SELECT airway_name, airway_type, from_lonx, from_laty, to_lonx, to_laty, minimum_altitude, maximum_altitude
-     FROM airway
-     WHERE (from_lonx BETWEEN ? AND ? AND from_laty BETWEEN ? AND ?)
-        OR (to_lonx   BETWEEN ? AND ? AND to_laty   BETWEEN ? AND ?)`,
+    `SELECT a.airway_name, a.airway_type,
+            a.from_lonx, a.from_laty, a.to_lonx, a.to_laty,
+            a.minimum_altitude, a.maximum_altitude,
+            wf.ident AS from_ident, wt.ident AS to_ident
+     FROM airway a
+     JOIN waypoint wf ON wf.waypoint_id = a.from_waypoint_id
+     JOIN waypoint wt ON wt.waypoint_id = a.to_waypoint_id
+     WHERE (a.from_lonx BETWEEN ? AND ? AND a.from_laty BETWEEN ? AND ?)
+        OR (a.to_lonx   BETWEEN ? AND ? AND a.to_laty   BETWEEN ? AND ?)`,
     [minLon, maxLon, minLat, maxLat,
      minLon, maxLon, minLat, maxLat],
   )
@@ -292,6 +297,8 @@ function extractAirways(db, [minLon, minLat, maxLon, maxLat]) {
       name:   r.airway_name,
       from:   [+r.from_lonx.toFixed(6), +r.from_laty.toFixed(6)],
       to:     [+r.to_lonx.toFixed(6),   +r.to_laty.toFixed(6)],
+      fromId: r.from_ident ?? null,
+      toId:   r.to_ident   ?? null,
       minAlt: r.minimum_altitude ?? null,
       maxAlt: r.maximum_altitude ?? null,
     }

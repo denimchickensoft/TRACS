@@ -1,4 +1,5 @@
 import { latLngToCanvas } from './projection.js'
+import { fixSymbolType, drawFixSymbol } from './fixSymbol.js'
 
 const PROC_FALLBACKS = {
   SID:   { stroke: '#00FF88' },
@@ -6,41 +7,61 @@ const PROC_FALLBACKS = {
   APPCH: { stroke: '#FFFF44' },
 }
 
+const TRI_GAP = 6  // px clearance between line endpoint and triangle center
+
 // Draw a single polyline, switching to dashed when entering missed approach legs.
+// Leaves a gap around any point that has an id (fix triangle).
 function drawPolyline(ctx, view, pts, missedDash) {
   if (!pts || pts.length < 2) return
 
+  const cpts   = pts.map(p => latLngToCanvas(p.lat, p.lon, view))
   let inMissed = false
-  ctx.setLineDash([])
-  ctx.beginPath()
-  const first = latLngToCanvas(pts[0].lat, pts[0].lon, view)
-  ctx.moveTo(first.x, first.y)
+  let pathOpen = false
 
-  for (let i = 1; i < pts.length; i++) {
-    const isMissed = !!pts[i].missed
-    if (isMissed !== inMissed) {
-      ctx.stroke()
-      ctx.beginPath()
-      const prev = latLngToCanvas(pts[i - 1].lat, pts[i - 1].lon, view)
-      ctx.moveTo(prev.x, prev.y)
-      ctx.setLineDash(isMissed ? missedDash : [])
-      inMissed = isMissed
-    }
-    const { x, y } = latLngToCanvas(pts[i].lat, pts[i].lon, view)
-    ctx.lineTo(x, y)
+  function flushPath() {
+    if (pathOpen) { ctx.stroke(); pathOpen = false }
   }
-  ctx.stroke()
+
+  ctx.setLineDash([])
+
+  for (let i = 0; i < cpts.length - 1; i++) {
+    const pa         = cpts[i], pb = cpts[i + 1]
+    const aHasTri    = !!pts[i].id
+    const bHasTri    = !!pts[i + 1].id
+    const nextMissed = !!pts[i + 1].missed
+    const dashChange = nextMissed !== inMissed
+
+    if (dashChange) {
+      flushPath()
+      ctx.setLineDash(nextMissed ? missedDash : [])
+      inMissed = nextMissed
+    }
+
+    let sx = pa.x, sy = pa.y, ex = pb.x, ey = pb.y
+    if (aHasTri || bHasTri) {
+      const dx = pb.x - pa.x, dy = pb.y - pa.y
+      const len = Math.hypot(dx, dy)
+      if (len <= TRI_GAP * 2) { flushPath(); continue }
+      if (aHasTri) { sx = pa.x + dx * TRI_GAP / len; sy = pa.y + dy * TRI_GAP / len }
+      if (bHasTri) { ex = pb.x - dx * TRI_GAP / len; ey = pb.y - dy * TRI_GAP / len }
+    }
+
+    if (aHasTri) flushPath()
+    if (!pathOpen) { ctx.beginPath(); ctx.moveTo(sx, sy); pathOpen = true }
+    ctx.lineTo(ex, ey)
+    if (bHasTri) flushPath()
+  }
+
+  flushPath()
   ctx.setLineDash([])
 }
 
-// Draw fix dots and ident labels for named waypoints.
+// Draw fix symbols and ident labels for named waypoints.
 function drawFixLabels(ctx, view, pts, fontSize) {
   for (const pt of pts) {
     if (!pt.id) continue
     const { x, y } = latLngToCanvas(pt.lat, pt.lon, view)
-    ctx.beginPath()
-    ctx.arc(x, y, 2, 0, Math.PI * 2)
-    ctx.fill()
+    drawFixSymbol(ctx, x, y, fixSymbolType(pt.id))
     ctx.fillText(pt.id, x + 4, y - 3)
   }
 }

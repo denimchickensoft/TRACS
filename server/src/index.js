@@ -16,6 +16,7 @@ elevation.init()
 const fs = require('fs')
 
 const PORT = process.env.PORT ?? 3000
+const SERVER_INSTANCE_ID = Date.now().toString(36) + Math.random().toString(36).slice(2)
 const CLIENT_DIST  = path.join(__dirname, '../../client/dist')
 const PRESETS_PATH = path.join(__dirname, '../data/presets.json')
 
@@ -56,6 +57,7 @@ app.post('/api/connect', async (req, res) => {
         onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: 'olympus_unreachable' } }),
       }
     )
+    broadcast({ type: 'units_clear' })
   }
 
   // Notify all currently-connected WS clients that polling has started (or is
@@ -160,6 +162,7 @@ app.get('/api/navdata/msa',         navdata.handleMsa)
 app.get('/api/navdata/mora',        navdata.handleMora)
 app.get('/api/navdata/relief',      navdata.handleRelief)
 app.get('/api/navdata/mva',         navdata.handleMva)
+app.get('/api/navdata/geo',         navdata.handleGeo)
 
 // GET /api/turn-credentials — ICE server list for WebRTC peers
 // Set TURN_URL / TURN_USER / TURN_PASS env vars to include a TURN relay.
@@ -361,8 +364,8 @@ wss.on('connection', (ws) => {
   const bullseyes = state.getBullseyes()
   if (bullseyes) ws.send(JSON.stringify({ type: 'bullseyes', data: bullseyes }))
 
-  // Status
-  ws.send(JSON.stringify({ type: 'status', data: { polling: olympus.isPolling() } }))
+  // Status — includes instanceId so clients can detect server restarts
+  ws.send(JSON.stringify({ type: 'status', data: { polling: olympus.isPolling(), instanceId: SERVER_INSTANCE_ID } }))
 
   // Send persisted state files so the browser can hydrate after refresh.
   // If intentionalReset is true (deliberate position change), send defaults
@@ -411,6 +414,10 @@ server.listen(PORT, () => {
   // The signal relay is fresh on every start — any WebRTC peers from the previous
   // run are gone. Clear the persisted clientList so pre-flight frequency checks
   // don't reject new sign-ons based on stale entries.
+  // ATC/CATCC state is now authoritative in client localStorage; server-side
+  // files are a redundant backup and should not carry over across restarts.
+  stateFiles.write('atc',   stateFiles.DEFAULTS.atc)
+  stateFiles.write('catcc', stateFiles.DEFAULTS.catcc)
   stateFiles.patch('session', { clientList: [] })
   console.log(`TRACS server running on http://localhost:${PORT}`)
 })

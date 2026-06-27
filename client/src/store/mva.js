@@ -38,5 +38,6 @@ export const useMvaStore = create((set, get) => ({
   },
 
   toggleVisible: () => set((s) => ({ visible: !s.visible })),
+  setVisible:    (v) => set({ visible: v }),
   reset: () => set({ mva: [], visible: false, icao: null, loading: false }),
 }))

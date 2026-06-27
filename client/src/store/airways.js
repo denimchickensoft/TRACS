@@ -25,5 +25,6 @@ export const useAirwaysStore = create((set, get) => ({
   },
 
   toggleVisible: (type) => set((s) => ({ visible: { ...s.visible, [type]: !s.visible[type] } })),
+  setVisible:    (v)    => set({ visible: v }),
   reset: () => set({ airways: { V: [], J: [], B: [] }, visible: { V: false, J: false, B: false }, theatre: null, loading: false }),
 }))

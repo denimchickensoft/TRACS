@@ -78,19 +78,36 @@ function handleTrackAndHandoff(type, payload) {
         to:    payload.toControllerId,
       })
       break
-    case 'POINT_OUT_SENT':
+    case 'POINT_OUT_SENT': {
+      const myControllerId = getMyControllerId()
+      const isTarget = payload.toControllerId === myControllerId
       atc.setPointOut(payload.unitId, {
-        state: POINTOUT_STATE.SENT,
+        state: isTarget ? POINTOUT_STATE.RECEIVING : POINTOUT_STATE.SENT,
         from:  payload.fromControllerId,
         to:    payload.toControllerId,
       })
       break
+    }
+    case 'POINT_OUT_RECALLED':
+      atc.clearPointOut(payload.unitId)
+      break
     case 'POINT_OUT_ACCEPTED':
       atc.clearPointOut(payload.unitId)
       break
-    case 'POINT_OUT_REJECTED':
-      atc.clearPointOut(payload.unitId)
+    case 'POINT_OUT_REJECTED': {
+      const myId = getMyControllerId()
+      if (payload.fromControllerId === myId) {
+        // I'm the original sender — hold REJECTED state so UN indicator is shown
+        atc.setPointOut(payload.unitId, {
+          state: POINTOUT_STATE.REJECTED,
+          from:  payload.fromControllerId,
+          to:    payload.toControllerId,
+        })
+      } else {
+        atc.clearPointOut(payload.unitId)
+      }
       break
+    }
     case 'POINT_OUT_CONVERTED':
       atc.clearPointOut(payload.unitId)
       atc.claimTrack(payload.unitId, payload.toControllerId)

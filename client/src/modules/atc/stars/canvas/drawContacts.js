@@ -33,9 +33,11 @@ const M_PER_S_TO_KT = 1.94384
  * @param {number} csPos      0–5 character size index
  * @param {{ minutes: number, mode: 'OWN'|'ALL'|null, ownership: object, myPosition: string }|null} ptlOpts
  */
-const BLINK_DIM = '#C0C0C0'
+const BLINK_DIM    = '#C0C0C0'
+const PO_BLINK_ON  = '#FFFF00'
+const PO_BLINK_OFF = '#808000'
 
-export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8, blinkingUids = null, blinkOn = true) {
+export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8, blinkingUids = null, blinkOn = true, poReceivingUids = null) {
   const width  = ctx.canvas.width
   const height = ctx.canvas.height
   const { colors, symbol } = visual
@@ -99,6 +101,8 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
     }
 
     // --- Contact symbol ---
+    const isBlinkUnit = blinkingUids?.has(String(id)) ?? false
+    const isPoUnit    = poReceivingUids?.has(String(id)) ?? false
     drawOctagon(ctx, x, y, radius, rotDeg)
     if (filled) {
       ctx.fillStyle = colors.contact
@@ -110,13 +114,14 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
     }
 
     // --- Interior symbol: '*' unassociated, position letter if owned ---
-    const isBlinkUnit = blinkingUids?.has(String(id)) ?? false
     const entry      = symbolMap[id] ?? { sym: '*', mine: false }
     const isAsterisk = entry.sym === '*'
     const letterPx   = 10 + csPos * 2
     const fontPx     = isAsterisk ? Math.round(letterPx * 1.76) : letterPx
     const baseColor  = entry.mine ? colors.fdbText : colors.ldbText
-    const letColor   = isBlinkUnit ? (blinkOn ? colors.fdbText : BLINK_DIM) : baseColor
+    const letColor   = isPoUnit    ? (blinkOn ? PO_BLINK_ON : PO_BLINK_OFF)
+                     : isBlinkUnit ? (blinkOn ? colors.fdbText : BLINK_DIM)
+                     : baseColor
     ctx.font         = `bold ${fontPx}px "Roboto Mono", monospace`
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'alphabetic'

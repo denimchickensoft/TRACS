@@ -30,7 +30,7 @@ async function fetchIceServers() {
   }
 }
 
-const DISCONNECT_TIMEOUT_MS    = 10_000
+const DISCONNECT_TIMEOUT_MS    = 30_000
 const PEER_ID_STORAGE_KEY      = 'tracs.previousPeerId'
 const CONNECTED_AT_STORAGE_KEY = 'tracs.connectedAt'
 
@@ -165,7 +165,9 @@ function persistSession() {
 }
 
 // ── Build STATE_DUMP payload ──────────────────────────────────────────────────
-async function buildDump(mod) {
+// Reads from in-memory stores (localStorage-backed) — not from server files.
+// This ensures the host always sends its current truth regardless of server state.
+function buildDump(mod) {
   const ctrl = useControllersStore.getState()
   const base = {
     clientList,
@@ -178,27 +180,32 @@ async function buildDump(mod) {
     const aic = useAicStore.getState()
     return { ...base, declarations: { ...aic.declarations }, roe: aic.roe }
   }
-  try {
-    const data = await fetch(`/api/state/${mod.toLowerCase()}`).then(r => r.json())
-    if (mod === 'ATC') {
-      return {
-        ...base,
-        flightPlans:    data.flightPlans    ?? {},
-        trackOwnership: data.trackOwnership ?? {},
-        handoffs:       data.handoffs       ?? {},
-        pointOuts:      data.pointOuts      ?? {},
-      }
+  if (mod === 'ATC') {
+    const fps = useFlightPlansStore.getState()
+    const atc = useAtcStore.getState()
+    return {
+      ...base,
+      flightPlans:    fps.plans,
+      trackOwnership: atc.ownership,
+      handoffs:       atc.handoffs,
+      pointOuts:      atc.pointOuts,
     }
-    if (mod === 'CATCC') {
-      return {
-        ...base,
-        statusBoard:    data.statusBoard    ?? {},
-        trackOwnership: data.trackOwnership ?? {},
-        handoffs:       data.handoffs       ?? {},
-        pointOuts:      data.pointOuts      ?? {},
-      }
+  }
+  if (mod === 'CATCC') {
+    const s   = useStatusBoardStore.getState()
+    const atc = useAtcStore.getState()
+    return {
+      ...base,
+      statusBoard: {
+        eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
+        recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn, rad: s.rad },
+        entries:        s.entries,
+      },
+      trackOwnership: atc.ownership,
+      handoffs:       atc.handoffs,
+      pointOuts:      atc.pointOuts,
     }
-  } catch {}
+  }
   return base
 }
 
@@ -297,27 +304,6 @@ function dropControllerTracks(lostControllerId) {
     if (po.from === lostControllerId || po.to === lostControllerId) atc.clearPointOut(uid)
   }
 
-  const atcClean = useAtcStore.getState()
-  if (activeModule === 'CATCC') {
-    const s = useStatusBoardStore.getState()
-    persistState('catcc', {
-      statusBoard: {
-        eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
-        recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn, rad: s.rad },
-        entries:        s.entries,
-      },
-      trackOwnership: atcClean.ownership,
-      handoffs:       atcClean.handoffs,
-      pointOuts:      atcClean.pointOuts,
-    })
-  } else {
-    persistState('atc', {
-      flightPlans:    useFlightPlansStore.getState().plans,
-      trackOwnership: atcClean.ownership,
-      handoffs:       atcClean.handoffs,
-      pointOuts:      atcClean.pointOuts,
-    })
-  }
 }
 
 // ── Disconnect timeout ────────────────────────────────────────────────────────
@@ -575,31 +561,6 @@ function onModuleMessage(msg) {
     handleModuleMessage(msg)
   } finally {
     _applying = false
-  }
-  // Persist state after applying remote event
-  if (activeModule === 'ATC') {
-    const atc = useAtcStore.getState()
-    const fps = useFlightPlansStore.getState()
-    persistState('atc', {
-      flightPlans:    fps.plans,
-      trackOwnership: atc.ownership,
-      handoffs:       atc.handoffs,
-      pointOuts:      atc.pointOuts,
-    })
-  }
-  if (activeModule === 'CATCC') {
-    const s   = useStatusBoardStore.getState()
-    const atc = useAtcStore.getState()
-    persistState('catcc', {
-      statusBoard: {
-        eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
-        recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn },
-        entries:        s.entries,
-      },
-      trackOwnership: atc.ownership,
-      handoffs:       atc.handoffs,
-      pointOuts:      atc.pointOuts,
-    })
   }
 }
 

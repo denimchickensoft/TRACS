@@ -88,7 +88,7 @@ function ElevationPanel({ contacts, config, width, height, mode, mirrored }) {
 
   // Altitude at far range for glideslope (includes TCH offset) and service volume ceiling
   const gsEndAlt  = rangeNm * NM_TO_FEET * Math.tan(gsAngle * D2R) + tch
-  const svCeilAlt = rangeNm * NM_TO_FEET * Math.tan(PAR_MAX_ELEV * D2R)
+  const svCeilAlt = rangeNm * NM_TO_FEET * Math.tan(PAR_MAX_ELEV * D2R) + tch
 
   // Round display max up to a clean tick boundary
   const altStep = svCeilAlt <= 2000 ? 250 : svCeilAlt <= 6000 ? 500 : 1000
@@ -154,7 +154,7 @@ function ElevationPanel({ contacts, config, width, height, mode, mirrored }) {
 
         {/* Service volume upper bound — 8° diagonal from threshold */}
         <line
-          x1={xr(0)}       y1={ya(0)}
+          x1={xr(0)}       y1={ya(tch)}
           x2={xr(rangeNm)} y2={ya(svCeilAlt)}
           stroke="#1a3a1a" strokeWidth={1} strokeDasharray="9 5"
         />
@@ -463,6 +463,18 @@ export function Par({
   useEffect(() => { localStorage.setItem('tracs.par.gsAngle',  String(gsAngle)) }, [gsAngle])
   useEffect(() => { localStorage.setItem('tracs.par.rangeNm',  String(rangeNm)) }, [rangeNm])
 
+  // Sync manual fields from selected runway (handles dropdown changes and on-mount restore)
+  useEffect(() => {
+    if (!runwayId || !centerlines.length) return
+    const cl = centerlines.find((c) => c.id === runwayId)
+    if (!cl) return
+    setManualLat(cl.thresholdLat.toFixed(6))
+    setManualLng(cl.thresholdLng.toFixed(6))
+    const magHdg = cl.magHead ?? ((cl.headingRad / D2R + 180 - cl.magvar) % 360 + 360) % 360
+    setManualHdg(Math.round(magHdg).toString())
+    setThreshElev(Math.round(cl.elevFt))
+  }, [runwayId, centerlines]) // eslint-disable-line
+
   // Tolerances derived from standard angular FSD values — not user-configurable
   const vertTol = rangeNm * NM_TO_FEET * Math.tan(GS_TOL_DEG * D2R)
   const latTol  = rangeNm * Math.tan(AZ_TOL_DEG * D2R)
@@ -494,25 +506,6 @@ export function Par({
     }
 
     if (mode === 'airfield') {
-      if (runwayId) {
-        const cl = centerlines.find((c) => c.id === runwayId)
-        if (cl) {
-          const trueHdg = (cl.headingRad / D2R + 180 + 360) % 360
-          const magvar  = cl.magvar ?? computeMagvar(cl.thresholdLat, cl.thresholdLng, missionDate)
-          const finalBearingMag = cl.magHead ?? ((trueHdg - magvar) % 360 + 360) % 360
-          return {
-            ...base,
-            threshLat:  cl.thresholdLat,
-            threshLng:  cl.thresholdLng,
-            trueHdg,
-            threshElev: cl.elevFt,
-            tch:        TCH_FT,
-            finalBearingMag,
-            valid: true,
-          }
-        }
-      }
-
       const lat = parseFloat(manualLat)
       const lng = parseFloat(manualLng)
       const hdg = parseFloat(manualHdg)
@@ -525,14 +518,14 @@ export function Par({
           trueHdg:    ((hdg + magvar) % 360 + 360) % 360,
           threshElev: threshElev,
           tch:        TCH_FT,
-          finalBearingMag: ((hdg % 360) + 360) % 360,  // user types magnetic directly
+          finalBearingMag: ((hdg % 360) + 360) % 360,
           valid: true,
         }
       }
     }
 
     return { ...base, valid: false }
-  }, [mode, carrierUnit, runwayId, centerlines, manualLat, manualLng, manualHdg,
+  }, [mode, carrierUnit, manualLat, manualLng, manualHdg,
       gsAngle, rangeNm, latTol, vertTol, threshElev, missionDate, initTheatre]) // latTol/vertTol derived from rangeNm
 
   // ── Contacts in approach corridor ─────────────────────────────────
@@ -635,16 +628,7 @@ export function Par({
                 onChange={(e) => {
                   const id = e.target.value
                   setRunwayId(id)
-                  if (id) {
-                    const cl = centerlines.find((c) => c.id === id)
-                    if (cl) {
-                      setManualLat(cl.thresholdLat.toFixed(6))
-                      setManualLng(cl.thresholdLng.toFixed(6))
-                      const magHdg = cl.magHead ?? ((cl.headingRad / D2R + 180 - cl.magvar) % 360 + 360) % 360
-                      setManualHdg(Math.round(magHdg).toString())
-                      setThreshElev(Math.round(cl.elevFt))
-                    }
-                  } else {
+                  if (!id) {
                     setManualLat(''); setManualLng(''); setManualHdg('')
                     setThreshElev(0)
                   }

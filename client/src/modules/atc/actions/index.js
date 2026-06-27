@@ -190,6 +190,9 @@ export function POINT_OUT({ captures, slewTarget }) {
   const tcp = captures?.tcp
   if (!tcp) return err('ILL POS')
   const controllerId = getMyControllerId()
+  if (tcp === controllerId) return err('ILL POS')
+  const knownIds = new Set(Object.values(useControllersStore.getState().registry).map((e) => e.controllerId).filter(Boolean))
+  if (!knownIds.has(tcp)) return err('ILL POS')
   getAtc().setPointOut(slewTarget.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
   sendWebrtcEvent('POINT_OUT_SENT', { unitId: slewTarget.unitId, fromControllerId: controllerId, toControllerId: tcp })
   ok()
@@ -219,6 +222,7 @@ export function CONVERT_POINT_OUT({ slewTarget }) {
 
 export function SET_SP1({ captures, slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
+  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
   const sp = captures?.sp ?? ''
   getAtc().setScratchpad(slewTarget.unitId, 'sp1', sp)
   ok()
@@ -226,12 +230,14 @@ export function SET_SP1({ captures, slewTarget }) {
 
 export function CLEAR_SP1({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
+  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
   getAtc().setScratchpad(slewTarget.unitId, 'sp1', '')
   ok()
 }
 
 export function SET_SP2({ captures, slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
+  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
   const sp = captures?.sp ?? ''
   getAtc().setScratchpad(slewTarget.unitId, 'sp2', sp)
   ok()
@@ -239,6 +245,7 @@ export function SET_SP2({ captures, slewTarget }) {
 
 export function CLEAR_SP2({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
+  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
   getAtc().setScratchpad(slewTarget.unitId, 'sp2', '')
   ok()
 }
@@ -393,10 +400,23 @@ export function BARE_SLEW({ slewTarget }) {
     return ok()
   }
 
+  // Outgoing point out to recall
+  if (po?.state === POINTOUT_STATE.SENT && po.from === controllerId) {
+    getAtc().clearPointOut(id)
+    sendWebrtcEvent('POINT_OUT_RECALLED', { unitId: id, fromControllerId: controllerId, toControllerId: po.to })
+    return ok()
+  }
+
   // Incoming point out to acknowledge
   if (po?.state === POINTOUT_STATE.RECEIVING && po.to === controllerId) {
     getAtc().clearPointOut(id)
     sendWebrtcEvent('POINT_OUT_ACCEPTED', { unitId: id, fromControllerId: po.from, toControllerId: controllerId })
+    return ok()
+  }
+
+  // Rejected point out — sender dismisses the UN indicator
+  if (po?.state === POINTOUT_STATE.REJECTED && po.from === controllerId) {
+    getAtc().clearPointOut(id)
     return ok()
   }
 
@@ -485,8 +505,9 @@ export function RESIZE_VFR({ captures })                 { resizeList('vfr', cap
 
 // ── Airspace color palette ────────────────────────────────────────────────────
 
-export function SET_ASP_COLORS({ captures, windowId }) {
-  const name     = captures.name.trim().toUpperCase()
+export async function SET_ASP_COLORS({ captures, windowId }) {
+  const name = captures.name.trim().toUpperCase()
+  await useMapsStore.getState().refreshPalettes()
   const palettes = useMapsStore.getState().palettes
   const idx      = palettes.findIndex(p => p.name.toUpperCase() === name)
   if (idx < 0) return err('INVALID')

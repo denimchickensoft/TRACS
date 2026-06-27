@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useUnitsStore }       from '../../../store/units.js'
-import { useAtcStore }         from '../../../store/atc.js'
+import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../../store/atc.js'
 import { useSessionStore }     from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
 import { useDisplayStore }  from '../../../store/display.js'
@@ -23,6 +23,7 @@ import { drawMsa }                    from './canvas/drawMsa.js'
 import { drawMora }                   from './canvas/drawMora.js'
 import { drawRelief }                 from './canvas/drawRelief.js'
 import { drawMva }                    from './canvas/drawMva.js'
+import { drawGeo }                    from './canvas/drawGeo.js'
 import { drawProcedures }             from './canvas/drawProcedures.js'
 import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
@@ -34,6 +35,7 @@ import { useMsaStore }          from '../../../store/msa.js'
 import { useMoraStore }         from '../../../store/mora.js'
 import { useReliefStore }       from '../../../store/relief.js'
 import { useMvaStore }          from '../../../store/mva.js'
+import { useGeoStore }          from '../../../store/geo.js'
 import { useProceduresStore }   from '../../../store/procedures.js'
 import { DatablockOverlay }     from './DatablockOverlay.jsx'
 import { InputHandler }         from './input/InputHandler.jsx'
@@ -73,6 +75,7 @@ export default function StarsScope() {
   const units        = useUnitsStore((s) => s.units)
   const ownership    = useAtcStore((s) => s.ownership)
   const handoffs     = useAtcStore((s) => s.handoffs)
+  const pointOuts    = useAtcStore((s) => s.pointOuts)
   const blinkTracks  = useAtcStore((s) => s.blinkTracks)
   const displayFdb   = useAtcStore((s) => s.displayFdb)
   const coalition    = useSessionStore((s) => s.coalition)
@@ -101,6 +104,9 @@ export default function StarsScope() {
   const reliefVisible = useReliefStore((s) => s.visible)
   const mva           = useMvaStore((s) => s.mva)
   const mvaVisible    = useMvaStore((s) => s.visible)
+  const geoBoundaries = useGeoStore((s) => s.boundaries)
+  const geoCoastlines = useGeoStore((s) => s.coastlines)
+  const geoVisible    = useGeoStore((s) => s.visible)
 
   const procRaw           = useProceduresStore((s) => s.raw)
   const procSidGroups     = useProceduresStore((s) => s.sidGroups)
@@ -209,8 +215,15 @@ export default function StarsScope() {
           pendingAction:   null,
           dcbActiveSpinner: null,
         })
-        if (settings.mapsVisible)
-          useMapsStore.getState().setVisible(settings.mapsVisible)
+        if (settings.mapsVisible)              useMapsStore.getState().setVisible(settings.mapsVisible)
+        if (settings.reliefVisible  != null)   useReliefStore.getState().setVisible(settings.reliefVisible)
+        if (settings.geoVisible     != null)   useGeoStore.getState().setVisible(settings.geoVisible)
+        if (settings.mvaVisible     != null)   useMvaStore.getState().setVisible(settings.mvaVisible)
+        if (settings.msaVisible     != null)   useMsaStore.getState().setVisible(settings.msaVisible)
+        if (settings.moraVisible    != null)   useMoraStore.getState().setVisible(settings.moraVisible)
+        if (settings.holdsVisible   != null)   useHoldingsStore.getState().setVisible(settings.holdsVisible)
+        if (settings.airwaysVisible != null)   useAirwaysStore.getState().setVisible(settings.airwaysVisible)
+        if (settings.procVisible    != null)   useProceduresStore.getState().setVisible(settings.procVisible)
         if (settings.previewPosition !== undefined)
           usePreviewStore.getState().setPosition(settings.previewPosition)
         usePresetsStore.getState().setActiveSlot(defaultSlot)
@@ -346,6 +359,7 @@ export default function StarsScope() {
     useMsaStore.getState().loadForTheatre(theatre)
     useMoraStore.getState().loadForTheatre(theatre)
     useReliefStore.getState().loadForTheatre(theatre)
+    useGeoStore.getState().loadForTheatre(theatre)
   }, [mission?.mission?.theatre])
 
   // ── Load procedures + MVA when facility ICAO changes ──────────────────────────
@@ -428,10 +442,11 @@ export default function StarsScope() {
     drawMsa(ctx, view, msa.filter(r => r.ident === facilityId), msaVisible, briteB, csMap, activeColors)
     drawMora(ctx, view, mora, moraVisible, briteB, activeColors)
     drawRelief(ctx, view, relief, reliefVisible, briteB, activeColors)
+    drawGeo(ctx, view, geoBoundaries, geoCoastlines, geoVisible, briteB, activeColors)
     drawMva(ctx, view, mva, mvaVisible, briteB, activeColors)
     drawProcedures(ctx, view, procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, briteB, csMap, activeColors, procCommandVisible)
   }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
-      holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, mva, mvaVisible, facilityId,
+      holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible, mva, mvaVisible, facilityId,
       procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
       windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap, windowSettings?.aspColorIdx])
 
@@ -530,13 +545,25 @@ export default function StarsScope() {
       if (now < expiresAt) blinkingUids.add(String(uid))
     }
 
+    // Units whose symbol should blink yellow: incoming PO to me
+    const poReceivingUids = new Set()
+    for (const [uid, po] of Object.entries(pointOuts)) {
+      if (po.state === POINTOUT_STATE.RECEIVING && po.to === myControllerId) {
+        poReceivingUids.add(String(uid))
+      }
+      // Rejected PO (sender side) uses white blink, same as handoffs
+      if (po.state === POINTOUT_STATE.REJECTED && po.from === myControllerId) {
+        blinkingUids.add(String(uid))
+      }
+    }
+
     const ctx = ctxCanvasRef.current.getContext('2d')
     drawContacts(
       ctx, view,
       visibleUnits, historyRef.current, activeProfile.visual,
       symbolMap, (windowSettings?.britePos ?? 80) / 100, windowSettings?.csPos ?? 3,
       ptlOpts, windowSettings?.historyLength ?? 5, (windowSettings?.briteHst ?? 80) / 100,
-      blinkingUids, blinkOn,
+      blinkingUids, blinkOn, poReceivingUids,
     )
 
     // Draw .FIND marker — small green square centered on the found fix
@@ -547,7 +574,7 @@ export default function StarsScope() {
       ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
     }
 
-  }, [visibleUnits, view, symbolMap, ownership, handoffs, blinkTracks, blinkTick,
+  }, [visibleUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick,
       myControllerId, positionName,
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
@@ -693,8 +720,55 @@ export default function StarsScope() {
         displayStore.updateWindow(WINDOW_ID, { tdmMode: !current })
         break
       }
-      default:
+      default: {
+        const setMatch = action.match(/^SET_BOOKMARK_(\d)$/)
+        if (setMatch) {
+          const n = parseInt(setMatch[1], 10)
+          const win = useDisplayStore.getState().windows[WINDOW_ID]
+          usePresetsStore.getState().setBookmark(n, {
+            centerLat:      win?.centerLat,
+            centerLng:      win?.centerLng,
+            offCntr:        win?.offCntr ?? false,
+            rangeNm:        win?.rangeNm,
+            tdmMode:        win?.tdmMode ?? false,
+            mapsVisible:    useMapsStore.getState().visible,
+            reliefVisible:  useReliefStore.getState().visible,
+            geoVisible:     useGeoStore.getState().visible,
+            mvaVisible:     useMvaStore.getState().visible,
+            msaVisible:     useMsaStore.getState().visible,
+            moraVisible:    useMoraStore.getState().visible,
+            holdsVisible:   useHoldingsStore.getState().visible,
+            airwaysVisible: useAirwaysStore.getState().visible,
+            procVisible:    [...useProceduresStore.getState().visible],
+          })
+          usePreviewStore.getState().setResponse('BOOKMARK SAVED')
+          break
+        }
+        const loadMatch = action.match(/^LOAD_BOOKMARK_(\d)$/)
+        if (loadMatch) {
+          const n = parseInt(loadMatch[1], 10)
+          const bm = usePresetsStore.getState().getBookmark(n)
+          if (!bm) break
+          displayStore.updateWindow(WINDOW_ID, {
+            centerLat: bm.centerLat,
+            centerLng: bm.centerLng,
+            offCntr:   bm.offCntr ?? false,
+            rangeNm:   bm.rangeNm,
+            tdmMode:   bm.tdmMode,
+          })
+          if (bm.mapsVisible)            useMapsStore.getState().setVisible(bm.mapsVisible)
+          if (bm.reliefVisible  != null) useReliefStore.getState().setVisible(bm.reliefVisible)
+          if (bm.geoVisible     != null) useGeoStore.getState().setVisible(bm.geoVisible)
+          if (bm.mvaVisible     != null) useMvaStore.getState().setVisible(bm.mvaVisible)
+          if (bm.msaVisible     != null) useMsaStore.getState().setVisible(bm.msaVisible)
+          if (bm.moraVisible    != null) useMoraStore.getState().setVisible(bm.moraVisible)
+          if (bm.holdsVisible   != null) useHoldingsStore.getState().setVisible(bm.holdsVisible)
+          if (bm.airwaysVisible != null) useAirwaysStore.getState().setVisible(bm.airwaysVisible)
+          if (bm.procVisible    != null) useProceduresStore.getState().setVisible(bm.procVisible)
+          break
+        }
         break
+      }
     }
   }, [displayStore])
 
@@ -839,19 +913,27 @@ export default function StarsScope() {
         if (target) {
           const atcState = useAtcStore.getState()
           const uid      = String(target.unitId)
-          const owner    = atcState.ownership[uid]
-          const hoTo     = atcState.handoffs[uid]?.to
+          const ho       = atcState.handoffs[uid]
+          const po       = atcState.pointOuts[uid]
 
-          // Sender dismissing sticky FDB: clear it, stop blink, expand to slewed PDB
-          if (atcState.displayFdb[uid]) {
-            atcState.clearDisplayFdb(uid)
-            atcState.clearBlinkTrack(uid)
-            if (!slewedPdbs.has(uid)) handlePdbToggle(uid)
-            return
-          }
+          // If there's a pending HO or PO action, let BARE_SLEW handle it
+          const hasPendingAction =
+            (ho?.state === HANDOFF_STATE.RECEIVING  && ho.to   === myControllerId) ||
+            (ho?.state === HANDOFF_STATE.INITIATED  && ho.from === myControllerId) ||
+            (po?.state === POINTOUT_STATE.RECEIVING && po.to   === myControllerId) ||
+            (po?.state === POINTOUT_STATE.SENT      && po.from === myControllerId) ||
+            (po?.state === POINTOUT_STATE.REJECTED  && po.from === myControllerId)
 
-          // PDB toggle: another controller's track, no pending handoff to me
-          if (owner && owner !== myControllerId && hoTo !== myControllerId) {
+          if (!hasPendingAction) {
+            // Sender dismissing sticky FDB: clear it, stop blink, expand to slewed PDB
+            if (atcState.displayFdb[uid]) {
+              atcState.clearDisplayFdb(uid)
+              atcState.clearBlinkTrack(uid)
+              if (!slewedPdbs.has(uid)) handlePdbToggle(uid)
+              return
+            }
+
+            // PDB toggle for any track with no pending action
             handlePdbToggle(uid)
             return
           }

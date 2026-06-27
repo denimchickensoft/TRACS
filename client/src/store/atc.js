@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 // Handoff states for a given unit
 export const HANDOFF_STATE = {
@@ -9,12 +10,15 @@ export const HANDOFF_STATE = {
 
 // Point out states
 export const POINTOUT_STATE = {
-  NONE: 'NONE',
-  SENT: 'SENT',
+  NONE:      'NONE',
+  SENT:      'SENT',
   RECEIVING: 'RECEIVING',
+  REJECTED:  'REJECTED',   // sender sees UN indicator until they dismiss it
 }
 
-export const useAtcStore = create((set) => ({
+export const useAtcStore = create(
+  persist(
+    (set) => ({
   // Ownership: unitId → controllerId (e.g. "1T")
   ownership: {},
 
@@ -128,4 +132,15 @@ export const useAtcStore = create((set) => ({
 
   reset: () =>
     set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {} }),
-}))
+    }),
+    {
+      name: 'tracs.atc',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        ownership: state.ownership,
+        handoffs:  state.handoffs,
+        pointOuts: state.pointOuts,
+      }),
+    }
+  )
+)

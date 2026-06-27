@@ -1,5 +1,5 @@
 import { memo, useMemo, useState, useEffect } from 'react'
-import { useAtcStore }         from '../../../store/atc.js'
+import { useAtcStore, POINTOUT_STATE } from '../../../store/atc.js'
 import { useSessionStore }     from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
 import { useDisplayStore }     from '../../../store/display.js'
@@ -14,7 +14,7 @@ const M_PER_S_TO_KNOTS = 1.94384
 const METERS_TO_FEET   = 3.28084
 
 const DEFAULT_SEQUENCE  = [1, 2, 1, 3]
-const DEFAULT_INTERVALS = [2, 2, 2, 2]
+const DEFAULT_INTERVALS = [3, 2, 3, 2]
 
 // ── Formatting ───────────────────────────────────────────────────────────────
 
@@ -53,6 +53,7 @@ function resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFd
   if (handoffs[uid]?.to === myId) return 'FDB'
   if (displayFdb[uid]) return 'FDB'
   if (pointOuts[uid]?.to === myId) return 'FDB'
+  if (pointOuts[uid]?.from === myId) return 'FDB'
   if (quickLook.has(uid)) return 'FDB'
   return 'PDB'
 }
@@ -78,13 +79,23 @@ function resolveHandoffId(uid, handoffs, myId) {
 // Empty substitution: if the phase-specific data is absent, falls back to the
 // phase-1 value — the field never goes blank.
 
-function computeLine2(phase, alt, sp1, handoffId, gs, actype) {
+function computeLine2(phase, alt, sp1, sp2, handoffId, gs, actype) {
   const hid    = handoffId
   const sp1Set = sp1 && sp1.trim() !== ''
+  const sp2Set = sp2 && sp2.trim() !== ''
   const acSet  = actype && actype.trim() !== ''
 
-  const left  = (phase === 1 || !sp1Set) ? (alt + hid) : (sp1.slice(0, 3).padEnd(3) + hid)
-  const right = (phase === 1 || !acSet)  ? gs           : actype.slice(0, 4)
+  let left, right
+  if (phase === 3 && sp2Set) {
+    left  = sp2.slice(0, 3).padEnd(3) + hid
+    right = gs
+  } else if (phase !== 1 && sp1Set) {
+    left  = sp1.slice(0, 3).padEnd(3) + hid
+    right = acSet ? actype.slice(0, 4) : gs
+  } else {
+    left  = alt + hid
+    right = gs
+  }
 
   return left + ' ' + right.padStart(4)
 }
@@ -135,10 +146,14 @@ const Datablock = memo(function Datablock({
   const alt       = fmtAlt(pos.alt)
   const gs        = fmtSpd(unit.speed)
   const sp1       = scratchpads[uid]?.sp1 ?? ''
+  const sp2       = scratchpads[uid]?.sp2 ?? ''
   const handoffId = resolveHandoffId(uid, handoffs, myId)
   const cs        = resolveCallsign(unit).toUpperCase()
-  const poActive  = pointOuts[uid]?.to === myId
-  const line2     = computeLine2(clockPhase, alt, sp1, handoffId, gs, actype ?? '')
+  const po            = pointOuts[uid]
+  const isPoReceiving = po?.state === POINTOUT_STATE.RECEIVING && po?.to   === myId
+  const isPoSent      = po?.state === POINTOUT_STATE.SENT      && po?.from === myId
+  const isPoRejected  = po?.state === POINTOUT_STATE.REJECTED  && po?.from === myId
+  const line2     = computeLine2(clockPhase, alt, sp1, sp2, handoffId, gs, actype ?? '')
 
   const leader = leaderLen > 0
     ? <line x1={lx0} y1={ly0} x2={lx1} y2={ly1} stroke={colors.leaderLine} strokeWidth={0.8} />
@@ -187,10 +202,15 @@ const Datablock = memo(function Datablock({
   // Leader attaches at the ACID line. Data line is one line below.
   // Blink states: incoming HO (continuous) or post-acceptance on sender (5s).
   // Both blink between white and light gray — never go invisible.
-  const isIncomingHo = handoffs[uid]?.to === myId
-  const shouldBlink  = isBlinking || isIncomingHo
-  const fdbColor     = shouldBlink ? (blinkOn ? '#FFFFFF' : '#C0C0C0') : colors.fdbText
-  const acidLine     = poActive ? cs + ' PO' : cs
+  const isIncomingHo  = handoffs[uid]?.to === myId
+  const shouldBlink   = isBlinking || isIncomingHo || isPoReceiving || isPoRejected
+  const fdbColor      = isPoReceiving
+    ? (blinkOn ? '#FFFF00' : '#808000')
+    : shouldBlink ? (blinkOn ? '#FFFFFF' : '#C0C0C0') : colors.fdbText
+  const acidLine      = isPoReceiving ? cs + ' PO'
+                      : isPoSent      ? cs + ' PO' + po.to
+                      : isPoRejected  ? cs + ' UN'
+                      : cs
   return (
     <g>
       {leader}

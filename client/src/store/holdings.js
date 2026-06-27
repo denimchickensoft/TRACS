@@ -21,5 +21,6 @@ export const useHoldingsStore = create((set, get) => ({
   },
 
   toggleVisible: () => set((s) => ({ visible: !s.visible })),
+  setVisible:    (v) => set({ visible: v }),
   reset: () => set({ holdings: [], visible: false, theatre: null, loading: false }),
 }))

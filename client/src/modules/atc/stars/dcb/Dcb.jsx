@@ -11,6 +11,7 @@ import { useMsaStore }      from '../../../../store/msa.js'
 import { useMoraStore }       from '../../../../store/mora.js'
 import { useReliefStore }     from '../../../../store/relief.js'
 import { useMvaStore }        from '../../../../store/mva.js'
+import { useGeoStore }        from '../../../../store/geo.js'
 import { useProceduresStore } from '../../../../store/procedures.js'
 import './Dcb.css'
 
@@ -405,6 +406,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const moraVisible    = useMoraStore((s) => s.visible)
   const reliefVisible  = useReliefStore((s) => s.visible)
   const mvaVisible     = useMvaStore((s) => s.visible)
+  const geoVisible     = useGeoStore((s) => s.visible)
 
   const procSidGroups   = useProceduresStore((s) => s.sidGroups)
   const procStarGroups  = useProceduresStore((s) => s.starGroups)
@@ -441,8 +443,11 @@ export function Dcb({ profile, briteDcb, csDcb }) {
       const staticSlots = SUBMENU_DEFS.maps.buttons
         .filter((b) => b.id !== 'DONE')
 
-      // Pool RELIEF with overflow map categories and pair them sequentially
-      const halfPool = [{ id: 'RELIEF', lines: ['RELIEF'], type: 'toggle' }]
+      // Pool RELIEF + GEO with overflow map categories and pair them sequentially
+      const halfPool = [
+        { id: 'RELIEF', lines: ['RELIEF'], type: 'toggle' },
+        { id: 'GEO',    lines: ['GEO'],    type: 'toggle' },
+      ]
       for (let i = 5; i < maps.length; i++) {
         if (maps[i] != null) halfPool.push({ id: `MAP_OVF_${i}`, mapKey: i, lines: [], type: 'toggle' })
       }
@@ -537,6 +542,8 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           useMoraStore.getState().toggleVisible()
         } else if (btn.id === 'RELIEF') {
           useReliefStore.getState().toggleVisible()
+        } else if (btn.id === 'GEO') {
+          useGeoStore.getState().toggleVisible()
         } else if (btn.id === 'MVA') {
           useMvaStore.getState().toggleVisible()
         } else if (btn.id === 'AIR_V') {
@@ -591,10 +598,18 @@ export function Dcb({ profile, briteDcb, csDcb }) {
               pendingAction:   null,
               dcbActiveSpinner: null,
             })
-            if (slot.settings.mapsVisible)
-              useMapsStore.getState().setVisible(slot.settings.mapsVisible)
-            if (slot.settings.previewPosition !== undefined)
-              usePreviewStore.getState().setPosition(slot.settings.previewPosition)
+            const s = slot.settings
+            if (s.mapsVisible)              useMapsStore.getState().setVisible(s.mapsVisible)
+            if (s.reliefVisible  != null)   useReliefStore.getState().setVisible(s.reliefVisible)
+            if (s.geoVisible     != null)   useGeoStore.getState().setVisible(s.geoVisible)
+            if (s.mvaVisible     != null)   useMvaStore.getState().setVisible(s.mvaVisible)
+            if (s.msaVisible     != null)   useMsaStore.getState().setVisible(s.msaVisible)
+            if (s.moraVisible    != null)   useMoraStore.getState().setVisible(s.moraVisible)
+            if (s.holdsVisible   != null)   useHoldingsStore.getState().setVisible(s.holdsVisible)
+            if (s.airwaysVisible != null)   useAirwaysStore.getState().setVisible(s.airwaysVisible)
+            if (s.procVisible    != null)   useProceduresStore.getState().setVisible(s.procVisible)
+            if (s.previewPosition !== undefined)
+              usePreviewStore.getState().setPosition(s.previewPosition)
             usePresetsStore.getState().setActiveSlot(idx)
           }
         }
@@ -630,6 +645,14 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           const enriched = {
             ...win,
             mapsVisible:     useMapsStore.getState().visible,
+            reliefVisible:   useReliefStore.getState().visible,
+            geoVisible:      useGeoStore.getState().visible,
+            mvaVisible:      useMvaStore.getState().visible,
+            msaVisible:      useMsaStore.getState().visible,
+            moraVisible:     useMoraStore.getState().visible,
+            holdsVisible:    useHoldingsStore.getState().visible,
+            airwaysVisible:  useAirwaysStore.getState().visible,
+            procVisible:     [...useProceduresStore.getState().visible],
             previewPosition: usePreviewStore.getState().position,
           }
           const saved = usePresetsStore.getState().saveActive(enriched)
@@ -720,6 +743,8 @@ export function Dcb({ profile, briteDcb, csDcb }) {
             ? moraVisible
             : btn.id === 'RELIEF'
               ? reliefVisible
+            : btn.id === 'GEO'
+              ? geoVisible
             : btn.id === 'MVA'
               ? mvaVisible
             : btn.id === 'AIR_V'

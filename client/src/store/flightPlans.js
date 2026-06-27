@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { generateBcn } from '../utils/bcn.js'
 import { syncStore } from '../utils/storeSync.js'
 
@@ -10,7 +11,9 @@ function generateCid() {
 
 export function resetCidCounter() { _cidCounter = 1 }
 
-export const useFlightPlansStore = create((set, get) => ({
+export const useFlightPlansStore = create(
+  persist(
+    (set, get) => ({
   // Keyed by AID (callsign, uppercase)
   plans: {},
 
@@ -131,6 +134,13 @@ export const useFlightPlansStore = create((set, get) => ({
     Object.values(get().plans).find((p) => p.unitId === unitId) ?? null,
 
   reset: () => { _cidCounter = 1; set({ plans: {} }) },
-}))
+    }),
+    {
+      name: 'tracs.flightPlans',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({ plans: state.plans }),
+    }
+  )
+)
 
 syncStore(useFlightPlansStore, 'tracs-plans', (s) => ({ plans: s.plans }))

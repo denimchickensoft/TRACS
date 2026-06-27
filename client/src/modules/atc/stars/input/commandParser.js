@@ -126,7 +126,7 @@ const COMMANDS = [
   // SP1 shorthand: (text) + SLEW
   { id: 'SET_SP1',              pattern: /^([A-Z0-9/]{3,4})$/,    trigger: 'SLEW',  captures: ['sp'] },
   // SP2 shorthand: +(text) + SLEW
-  { id: 'SET_SP2',              pattern: /^\+([A-Z0-9/]{3,4})$/,  trigger: 'SLEW',  captures: ['sp'] },
+  { id: 'SET_SP2',              pattern: /^\+([A-Z0-9/]{1,4})$/,  trigger: 'SLEW',  captures: ['sp'] },
   // Clear SP1: . + SLEW
   { id: 'CLEAR_SP1',            pattern: /^\.$/,                  trigger: 'SLEW'  },
   // Clear SP2: + + SLEW

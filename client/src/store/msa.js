@@ -21,5 +21,6 @@ export const useMsaStore = create((set, get) => ({
   },
 
   toggleVisible: () => set((s) => ({ visible: !s.visible })),
+  setVisible:    (v) => set({ visible: v }),
   reset: () => set({ msa: [], visible: false, theatre: null, loading: false }),
 }))

@@ -116,6 +116,40 @@ function CoordsTracker({ coordsRef, visible }) {
   return null
 }
 
+// Disables left-click drag and replaces it with right-click drag.
+function RightClickDrag() {
+  const map = useMap()
+  useEffect(() => {
+    map.dragging.disable()
+    let active = false, lastX = 0, lastY = 0
+    const onDown = (e) => {
+      if (e.button !== 2) return
+      active = true; lastX = e.clientX; lastY = e.clientY
+      e.preventDefault()
+    }
+    const onMove = (e) => {
+      if (!active) return
+      map.panBy([-(e.clientX - lastX), -(e.clientY - lastY)], { animate: false })
+      lastX = e.clientX; lastY = e.clientY
+    }
+    const onUp   = (e) => { if (e.button === 2) active = false }
+    const noCtx  = (e) => e.preventDefault()
+    const el = map.getContainer()
+    el.addEventListener('mousedown',   onDown)
+    el.addEventListener('contextmenu', noCtx)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+    return () => {
+      el.removeEventListener('mousedown',   onDown)
+      el.removeEventListener('contextmenu', noCtx)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup',   onUp)
+      map.dragging.enable()
+    }
+  }, [map])
+  return null
+}
+
 // Replaces Leaflet's scroll zoom with a fixed 0.25-step handler.
 // Leaflet's built-in scroll handler ignores zoomDelta and uses its own accumulator.
 function ScrollZoomOverride() {
@@ -297,6 +331,7 @@ export default function CabScope() {
             <ZoomController zoom={rangeNm} />
             <ZoomListener />
             <ScrollZoomOverride />
+            <RightClickDrag />
 
             {theatreCfg.layers.map((l, i) => (
               <TileLayer

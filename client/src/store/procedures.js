@@ -69,6 +69,7 @@ export const useProceduresStore = create((set, get) => ({
     next.has(key) ? next.delete(key) : next.add(key)
     return { visible: next }
   }),
+  setVisible: (keys) => set({ visible: new Set(keys) }),
 
   // Individual procedures shown via .proc command (keyed by raw proc name, e.g. "ATUD3F")
   commandVisible: new Set(),

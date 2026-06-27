@@ -202,6 +202,17 @@ function handleRelief(req, res) {
   serveJson(res, fp)
 }
 
+function handleGeo(req, res) {
+  if (!_ready) return notReady(res)
+  const { theatre } = req.query
+  if (!theatre) return res.status(400).json({ error: 'theatre is required' })
+  const folder = theatreFolder(theatre)
+  if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
+  const fp = path.join(CACHE_DIR, folder, 'geo.json')
+  if (!fs.existsSync(fp)) return res.status(404).json({ error: 'geo data not built' })
+  serveJson(res, fp)
+}
+
 // MVA is facility-scoped (per ICAO, ~50 NM radius), served like procedures —
 // search every theatre folder for cache/<folder>/mva/<ICAO>.json.
 function handleMva(req, res) {
@@ -231,4 +242,5 @@ module.exports = {
   handleMora,
   handleRelief,
   handleMva,
+  handleGeo,
 }

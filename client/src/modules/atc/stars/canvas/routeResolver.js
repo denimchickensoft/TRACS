@@ -29,15 +29,15 @@ function walkAirway(airwayName, entryPt, exitPt, airways) {
   if (!segs.length) return null
 
   const graph  = new Map()  // coordKey → Set<coordKey>
-  const coords = new Map()  // coordKey → {lat, lon}
+  const coords = new Map()  // coordKey → {lat, lon, id}
 
   for (const seg of segs) {
     const [fLon, fLat] = seg.from
     const [tLon, tLat] = seg.to
     const fk = coordKey(fLon, fLat)
     const tk = coordKey(tLon, tLat)
-    coords.set(fk, { lat: fLat, lon: fLon })
-    coords.set(tk, { lat: tLat, lon: tLon })
+    coords.set(fk, { lat: fLat, lon: fLon, id: seg.fromId ?? null })
+    coords.set(tk, { lat: tLat, lon: tLon, id: seg.toId   ?? null })
     if (!graph.has(fk)) graph.set(fk, new Set())
     if (!graph.has(tk)) graph.set(tk, new Set())
     graph.get(fk).add(tk)
@@ -102,7 +102,9 @@ function resolveProcLeg(procName, transId, rawProcs) {
 
     const common = proc.transitions[''] ?? []
     const trans  = transId ? (proc.transitions[transId] ?? []) : []
-    const all    = [...common, ...trans]
+    const all    = common.length || trans.length
+      ? [...common, ...trans]
+      : (!transId ? Object.values(proc.transitions).flat() : [])
     if (all.length > 0) return {
       pts:      all.map(l => ({ lat: l.lat, lon: l.lon, id: l.id ?? null })),
       procType: category,
@@ -126,7 +128,21 @@ function resolveProcLeg(procName, transId, rawProcs) {
  */
 export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
   const rte = (fpl?.rte ?? '').trim()
-  if (!rte) return { segments: [], missing: [], fixLabels: [] }
+  if (!rte) {
+    const depCoord  = fpl?.dep  ? lookupFix(fpl.dep)  : null
+    const destCoord = fpl?.dest ? lookupFix(fpl.dest) : null
+    if (depCoord && destCoord && coordsDiffer(depCoord, destCoord)) {
+      return {
+        segments:  [{ points: [depCoord, destCoord], dashed: false }],
+        missing:   [],
+        fixLabels: [
+          { lat: depCoord.lat,  lon: depCoord.lon,  id: fpl.dep  },
+          { lat: destCoord.lat, lon: destCoord.lon, id: fpl.dest },
+        ],
+      }
+    }
+    return { segments: [], missing: [], fixLabels: [] }
+  }
 
   // Build set of known airway names for O(1) token classification
   const airwayNames = new Set()
@@ -159,14 +175,6 @@ export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
     return { kind: 'fix', id: tok, coords: null }
   })
 
-  // Determine whether the route begins with a SID or ends with a STAR/APPCH.
-  // Used to suppress the DEP→first-fix and last-fix→DEST legs respectively.
-  const firstItem     = items[0]
-  const lastItem      = items[items.length - 1]
-  const startsWithSid = firstItem?.kind === 'proc' && firstItem?.procType === 'SID'
-  const endsWithStar  = lastItem?.kind  === 'proc' &&
-                        (lastItem?.procType === 'STAR' || lastItem?.procType === 'APPCH')
-
   const segments  = []  // { points:[{lat,lon}], dashed:bool }
   const missing   = []  // {lat,lon,a?,b?} — midpoint for '?'; a/b are segment endpoints for perpendicular offset
   const fixLabels = []  // {lat,lon,id} for named waypoint dots
@@ -197,6 +205,10 @@ export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
         const walkPts = walkAirway(item.name, prevPt, next.pt, airways)
         if (walkPts && walkPts.length >= 2) {
           segments.push({ points: walkPts, dashed: false })
+          for (let w = 1; w < walkPts.length - 1; w++) {
+            const wp = walkPts[w]
+            fixLabels.push({ lat: wp.lat, lon: wp.lon, id: wp.id ?? null })
+          }
         } else {
           // Airway walk failed — dashed direct line + ? offset from midpoint
           segments.push({ points: [prevPt, next.pt], dashed: true })
@@ -256,7 +268,9 @@ export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
         if (prevPt && coordsDiffer(prevPt, item.coords)) {
           segments.push({ points: [prevPt, item.coords], dashed: false })
         }
-        fixLabels.push({ ...item.coords, id: item.id })
+        if (!prevPt || coordsDiffer(prevPt, item.coords)) {
+          fixLabels.push({ ...item.coords, id: item.id })
+        }
         prevPt = item.coords
       } else {
         // Unresolved fix — dashed gap to next resolved point, ? offset from midpoint
@@ -278,8 +292,8 @@ export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
     i++
   }
 
-  // ── DEP → first fix (only when route does not begin with a SID) ──────────
-  if (!startsWithSid && firstResolvedPt) {
+  // ── DEP → first fix ───────────────────────────────────────────────────────
+  if (firstResolvedPt) {
     const depCoord = fpl?.dep ? lookupFix(fpl.dep) : null
     if (depCoord) {
       const dp = { lat: depCoord.lat, lon: depCoord.lon }
@@ -290,8 +304,8 @@ export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
     }
   }
 
-  // ── last fix → DEST (only when route does not end with a STAR/APPCH) ─────
-  if (!endsWithStar && prevPt) {
+  // ── last fix → DEST ───────────────────────────────────────────────────────
+  if (prevPt) {
     const destCoord = fpl?.dest ? lookupFix(fpl.dest) : null
     if (destCoord) {
       const dp = { lat: destCoord.lat, lon: destCoord.lon }
