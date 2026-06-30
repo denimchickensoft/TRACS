@@ -1,7 +1,7 @@
-import { useCabPreviewStore } from '../../../store/cabPreview.js'
+import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
 
-export function CabPreviewArea() {
-  const { buffer, response } = useCabPreviewStore()
+export function AsdexPreviewArea() {
+  const { buffer, response } = useAsdexPreviewStore()
 
   return (
     <div style={{
@@ -20,7 +20,7 @@ export function CabPreviewArea() {
       zIndex:        500,
     }}>
       {response && <div style={{ color: '#FF4444' }}>{response}</div>}
-      <div>{buffer || ' '}</div>
+      <div>{buffer || ' '}</div>
     </div>
   )
 }

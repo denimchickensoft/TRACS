@@ -161,6 +161,8 @@ async function pollMission() {
       lastTheatre = theatre
       clearTimeout(airbasesTimer)
       pollAirbases()
+      clearTimeout(bullseyesTimer)
+      pollBullseyes()
     }
   } catch (err) {
     console.error('[olympus] mission poll error:', err.message)

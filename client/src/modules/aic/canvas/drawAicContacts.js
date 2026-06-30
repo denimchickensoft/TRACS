@@ -304,11 +304,16 @@ export function drawAicContacts(
   // RBL on top of everything
   drawRbl(ctx, view, rbl, magvar)
 
-  // .find marker — small green square
+  // .find marker — small green square, clipped to inner dugout circle
   if (findMarker) {
     const { x, y } = latLngToCanvas(findMarker.lat, findMarker.lon, view)
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, clipR, 0, Math.PI * 2)
+    ctx.clip()
     ctx.fillStyle = '#00e000'
     ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
+    ctx.restore()
   }
 
   ctx.restore()

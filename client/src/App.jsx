@@ -4,7 +4,7 @@ import { useOdsStore }        from './store/ods'
 import { useControllersStore } from './store/controllers'
 import { Login }         from './components/Login/Login'
 import StarsScope        from './modules/atc/stars/StarsScope'
-import CabScope          from './modules/atc/cab/CabScope'
+import AsdexScope        from './modules/atc/asdex/AsdexScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard, SB_NATURAL_WIDTH } from './modules/catcc/StatusBoard'
 import AicScope          from './modules/aic/AicScope'
@@ -59,8 +59,8 @@ export function App() {
   const [clDocked,   setClDocked]   = useState(true)
   const clPopupRef = useRef(null)
 
-  const [cabOdsDocked, setCabOdsDocked] = useState(true)
-  const cabOdsPopupRef = useRef(null)
+  const [asdexDocked, setAsdexDocked] = useState(true)
+  const asdexPopupRef = useRef(null)
 
   const { loadManifest, loadProfile, availableProfiles, activeProfileId, activeProfile } = useOdsStore()
   const myEntry = useControllersStore((s) => s.registry[positionName])
@@ -128,63 +128,61 @@ export function App() {
     }
   }
 
-  // ── CAB ODS undock handler ─────────────────────────────────────────
-  const handleCabOdsUndock = useCallback(() => {
+  // ── ASDE-X ODS undock handler ──────────────────────────────────────
+  const handleAsdexUndock = useCallback(() => {
     const { facilityDcsName, positionSuffix } = useSessionStore.getState()
-    const p = new URLSearchParams({ window: 'cab-ods', facilityDcsName, positionSuffix })
-    const popup = window.open(`/?${p}`, 'tracs-cab-ods', 'width=1024,height=768,resizable=yes')
+    const p = new URLSearchParams({ window: 'asdex-ods', facilityDcsName, positionSuffix })
+    const popup = window.open(`/?${p}`, 'tracs-asdex-ods', 'width=1024,height=768,resizable=yes')
     if (!popup) return
-    cabOdsPopupRef.current = popup
-    setCabOdsDocked(false)
+    asdexPopupRef.current = popup
+    setAsdexDocked(false)
     setActiveOds('atc')
     const id = setInterval(() => {
-      if (popup.closed) { setCabOdsDocked(true); cabOdsPopupRef.current = null; clearInterval(id) }
+      if (popup.closed) { setAsdexDocked(true); asdexPopupRef.current = null; clearInterval(id) }
     }, 500)
   }, [])
 
-  // ── Status board ───────────────────────────────────────────────────
+  // ── CATCC right partition (status board + par share one width) ────
   const [sbDocked,  setSbDocked]  = useState(true)
-  const initSbWidth = (() => { const v = parseInt(localStorage.getItem(SB_WIDTH_KEY), 10); return isNaN(v) ? SB_NATURAL_WIDTH : v })()
-  const [sbWidth,   setSbWidth]   = useState(initSbWidth)
-  const [sbScale,   setSbScale]   = useState(() => {
+  const initCatccWidth = (() => { const v = parseInt(localStorage.getItem(SB_WIDTH_KEY), 10); return isNaN(v) ? SB_NATURAL_WIDTH : v })()
+  const [catccWidth, setCatccWidth] = useState(initCatccWidth)
+  const [sbScale,    setSbScale]    = useState(() => {
     const s = parseFloat(localStorage.getItem('tracs.sb.scale'))
     return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
   })
-  const sbWidthRef = useRef(initSbWidth)
-  const sbPopupRef = useRef(null)
-  const handleSbResize  = useCallback(makeResizeHandler(sbWidthRef, setSbWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
-  const handleSbUndock  = useCallback(makeUndockHandler('/?window=catcc-board', 'tracs-catcc-board', sbWidthRef, setSbDocked, sbPopupRef), []) // eslint-disable-line
+  const catccWidthRef = useRef(initCatccWidth)
+  const sbPopupRef    = useRef(null)
+  const handleCatccResize = useCallback(makeResizeHandler(catccWidthRef, setCatccWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
+  const handleSbUndock    = useCallback(makeUndockHandler('/?window=catcc-board', 'tracs-catcc-board', catccWidthRef, setSbDocked, sbPopupRef), []) // eslint-disable-line
 
-  // ── Strip bay ──────────────────────────────────────────────────────
+  // ── ATC right partition (strips + par share one width) ─────────────
   const [stripsDocked,  setStripsDocked]  = useState(true)
-  const [stripsWidth,   setStripsWidth]   = useState(520)
-  const [stripsScale,   setStripsScale]   = useState(() => {
+  const initAtcWidth = (() => { const v = parseInt(localStorage.getItem('tracs.atc.width'), 10); return isNaN(v) ? 520 : v })()
+  const [atcWidth,   setAtcWidth]   = useState(initAtcWidth)
+  const [stripsScale, setStripsScale] = useState(() => {
     const s = parseFloat(localStorage.getItem('tracs.strip-bay.scale'))
     return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
   })
-  const stripsWidthRef  = useRef(520)
-  const stripsPopupRef  = useRef(null)
-  const handleStripsResize = useCallback(makeResizeHandler(stripsWidthRef, setStripsWidth, 280, 900), []) // eslint-disable-line
-  const handleStripsUndock = useCallback(makeUndockHandler('/?window=strips', 'tracs-strips', stripsWidthRef, setStripsDocked, stripsPopupRef), []) // eslint-disable-line
+  const atcWidthRef    = useRef(initAtcWidth)
+  const stripsPopupRef = useRef(null)
+  const handleAtcResize    = useCallback(makeResizeHandler(atcWidthRef, setAtcWidth, 280, 900, 'tracs.atc.width'), []) // eslint-disable-line
+  const handleStripsUndock = useCallback(makeUndockHandler('/?window=strips', 'tracs-strips', atcWidthRef, setStripsDocked, stripsPopupRef), []) // eslint-disable-line
 
   // ── PAR drawer ─────────────────────────────────────────────────────
-  const [parDocked,  setParDocked]  = useState(true)
-  const [parWidth,   setParWidth]   = useState(560)
-  const parWidthRef  = useRef(560)
-  const parPopupRef  = useRef(null)
-  const handleParResize = useCallback(makeResizeHandler(parWidthRef, setParWidth, 400, 900), []) // eslint-disable-line
+  const [parDocked, setParDocked] = useState(true)
+  const parPopupRef = useRef(null)
 
-  // ── BRAA list (AIC) ────────────────────────────────────────────────
-  const initBraaWidth = (() => { const v = parseInt(localStorage.getItem('tracs.braa.width'), 10); return isNaN(v) ? BRAA_NATURAL_WIDTH : v })()
-  const [braaWidth,  setBraaWidth]  = useState(initBraaWidth)
+  // ── AIC right partition ────────────────────────────────────────────
+  const initAicWidth = (() => { const v = parseInt(localStorage.getItem('tracs.braa.width'), 10); return isNaN(v) ? BRAA_NATURAL_WIDTH : v })()
+  const [aicWidth,   setAicWidth]   = useState(initAicWidth)
   const [braaScale,  setBraaScale]  = useState(() => {
     const s = parseFloat(localStorage.getItem('tracs.braa.scale'))
     return isNaN(s) ? 1.0 : Math.max(0.7, Math.min(1.4, s))
   })
-  const braaWidthRef = useRef(initBraaWidth)
+  const aicWidthRef  = useRef(initAicWidth)
   const braaPopupRef = useRef(null)
-  const handleBraaResize = useCallback(makeResizeHandler(braaWidthRef, setBraaWidth, 220, 600, 'tracs.braa.width'), []) // eslint-disable-line
-  const handleBraaUndock = useCallback(makeUndockHandler('/?window=braa', 'tracs-braa', braaWidthRef, () => {}, braaPopupRef), []) // eslint-disable-line
+  const handleAicResize  = useCallback(makeResizeHandler(aicWidthRef, setAicWidth, 220, 600, 'tracs.braa.width'), []) // eslint-disable-line
+  const handleBraaUndock = useCallback(makeUndockHandler('/?window=braa', 'tracs-braa', aicWidthRef, () => {}, braaPopupRef), []) // eslint-disable-line
 
   // ── Active right panel per scope ('main' | 'par') ─────────────────
   const [atcPanel,   setAtcPanel]   = useState('main')   // 'main' = strips, 'par'
@@ -192,24 +190,25 @@ export function App() {
   const [aicPanel,   setAicPanel]   = useState('main')   // 'main' = braa list
 
   const handleParUndock = useCallback(() => {
-    const { mission, carrierUnitId: cid } = useSessionStore.getState()
+    const { mission, carrierUnitId: cid, activeModule: am } = useSessionStore.getState()
     const theatre = mission?.mission?.theatre ?? null
     const p       = new URLSearchParams({ window: 'par' })
     if (theatre) p.set('theatre', theatre)
-    if (activeModule === MODULE.CATCC) {
+    if (am === MODULE.CATCC) {
       p.set('module', 'catcc')
       if (cid != null) p.set('carrierUnitId', String(cid))
     } else {
       p.set('module', 'atc')
     }
-    const popup = window.open(`/?${p}`, 'tracs-par', `width=${parWidthRef.current},height=700,resizable=yes`)
+    const wRef  = am === MODULE.CATCC ? catccWidthRef : atcWidthRef
+    const popup = window.open(`/?${p}`, 'tracs-par', `width=${wRef.current},height=700,resizable=yes`)
     if (!popup) return
     parPopupRef.current = popup
     setParDocked(false)
     const id = setInterval(() => {
       if (popup.closed) { setParDocked(true); parPopupRef.current = null; clearInterval(id) }
     }, 500)
-  }, [activeModule]) // eslint-disable-line
+  }, []) // eslint-disable-line
 
   const handleClUndock = useCallback(() => {
     const { facilityId, facilityName: facName } = useSessionStore.getState()
@@ -239,17 +238,17 @@ export function App() {
   const TAB_STRIP_W = 18
   const panelRightInset = (() => {
     if (hasAtc) {
-      if (atcPanel === 'main' && stripsDocked) return Math.round(stripsWidth * stripsScale) + TAB_STRIP_W
-      if (atcPanel === 'par'  && parDocked)    return parWidth    + TAB_STRIP_W
+      if (atcPanel === 'main' && stripsDocked) return Math.round(atcWidth * stripsScale) + TAB_STRIP_W
+      if (atcPanel === 'par'  && parDocked)    return atcWidth + TAB_STRIP_W
       return TAB_STRIP_W
     }
     if (hasCatcc) {
-      if (catccPanel === 'main' && sbDocked)   return Math.round(sbWidth * sbScale) + TAB_STRIP_W
-      if (catccPanel === 'par'  && parDocked)  return parWidth    + TAB_STRIP_W
+      if (catccPanel === 'main' && sbDocked)   return Math.round(catccWidth * sbScale) + TAB_STRIP_W
+      if (catccPanel === 'par'  && parDocked)  return catccWidth + TAB_STRIP_W
       return TAB_STRIP_W
     }
     if (hasAic) {
-      if (aicPanel === 'main')                 return Math.round(braaWidth * braaScale) + TAB_STRIP_W
+      if (aicPanel === 'main')                 return Math.round(aicWidth * braaScale) + TAB_STRIP_W
       return TAB_STRIP_W
     }
     return 0
@@ -411,19 +410,19 @@ export function App() {
             <button
               onClick={(e) => {
                 if (e.shiftKey) {
-                  if (!cabOdsDocked && cabOdsPopupRef.current && !cabOdsPopupRef.current.closed) {
-                    cabOdsPopupRef.current.focus()
+                  if (!asdexDocked && asdexPopupRef.current && !asdexPopupRef.current.closed) {
+                    asdexPopupRef.current.focus()
                   } else {
-                    handleCabOdsUndock()
+                    handleAsdexUndock()
                   }
                 } else {
-                  setActiveOds('cab')
+                  setActiveOds('asdex')
                 }
               }}
-              title="CAB — shift-click to open ODS in new window"
+              title="ASDE-X — shift-click to open ODS in new window"
               style={{
-                background:    activeOds === 'cab' ? '#2A4A7A' : '#1A1A1A',
-                color:         activeOds === 'cab' ? '#88BBFF' : '#555',
+                background:    activeOds === 'asdex' ? '#2A4A7A' : '#1A1A1A',
+                color:         activeOds === 'asdex' ? '#88BBFF' : '#555',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
                 padding:       '1px 6px',
@@ -433,7 +432,7 @@ export function App() {
                 cursor:        'pointer',
               }}
             >
-              CAB
+              ASDE-X
             </button>
           )}
 
@@ -493,15 +492,15 @@ export function App() {
         {hasAtc && (
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
-              {activeOds === 'cab' ? <CabScope /> : <StarsScope />}
+              {activeOds === 'asdex' ? <AsdexScope /> : <StarsScope />}
             </div>
 
             {/* ATC right panel — only one shown at a time */}
             {atcPanel === 'main' && stripsDocked && (
               <StripBay
                 docked
-                width={stripsWidth}
-                onResize={handleStripsResize}
+                width={atcWidth}
+                onResize={handleAtcResize}
                 onUndock={handleStripsUndock}
                 onHide={() => setAtcPanel(null)}
                 onScaleChange={setStripsScale}
@@ -511,8 +510,8 @@ export function App() {
             {atcPanel === 'par' && parDocked && (
               <Par
                 docked
-                width={parWidth}
-                onResize={handleParResize}
+                width={atcWidth}
+                onResize={handleAtcResize}
                 onUndock={handleParUndock}
                 onHide={() => setAtcPanel(null)}
               />
@@ -548,8 +547,8 @@ export function App() {
             {catccPanel === 'main' && sbDocked && (
               <StatusBoard
                 docked
-                width={sbWidth}
-                onResize={handleSbResize}
+                width={catccWidth}
+                onResize={handleCatccResize}
                 onUndock={handleSbUndock}
                 onHide={() => setCatccPanel(null)}
                 onScaleChange={setSbScale}
@@ -559,8 +558,8 @@ export function App() {
             {catccPanel === 'par' && parDocked && (
               <Par
                 docked
-                width={parWidth}
-                onResize={handleParResize}
+                width={catccWidth}
+                onResize={handleCatccResize}
                 onUndock={handleParUndock}
                 onHide={() => setCatccPanel(null)}
               />
@@ -595,8 +594,8 @@ export function App() {
             {aicPanel === 'main' && (
               <BraaList
                 docked
-                width={braaWidth}
-                onResize={handleBraaResize}
+                width={aicWidth}
+                onResize={handleAicResize}
                 onUndock={handleBraaUndock}
                 onHide={() => setAicPanel(null)}
                 onScaleChange={setBraaScale}

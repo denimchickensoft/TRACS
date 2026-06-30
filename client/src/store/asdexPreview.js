@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export const useCabPreviewStore = create((set) => ({
+export const useAsdexPreviewStore = create((set) => ({
   buffer:   '',
   response: '',
 

@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
-import { useCabPreviewStore }   from '../../../store/cabPreview.js'
-import { isTypedInput }         from '../stars/input/starsKeys.js'
+import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
+import { isTypedInput }        from '../stars/input/starsKeys.js'
 
-export function CabInputHandler({ onEnter, onEsc }) {
-  const preview = useCabPreviewStore()
+export function AsdexInputHandler({ onEnter, onEsc }) {
+  const preview = useAsdexPreviewStore()
 
   useEffect(() => {
     function handleKeyDown(e) {

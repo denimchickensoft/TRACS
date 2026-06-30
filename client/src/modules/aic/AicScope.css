@@ -36,7 +36,7 @@
   right:       10px;
   width:       280px;
   font-family: 'Roboto Mono', monospace;
-  font-size:   1rem;
+  font-size:   0.8rem;
   line-height: 1.5;
   color:       #BFA100;
   padding:     4px 8px;
@@ -65,17 +65,8 @@
 }
 
 
-/* ── Cursor bullseye readout ─────────────────────────────────────────────────── */
-.aic-cursor-bs {
-  position:       absolute;
-  bottom:         8px;
-  right:          10px;
-  font-family:    'Roboto Mono', monospace;
-  font-size:      1rem;
-  color:          #BFA100;
-  pointer-events: none;
-  text-transform: uppercase;
-  white-space:    nowrap;
+.aic-readout-cursor-bs {
+  white-space: nowrap;
 }
 
 /* ── ROE indicator ───────────────────────────────────────────────────────────── */
@@ -89,11 +80,63 @@
   padding:     3px 8px;
   border-radius: 2px;
   pointer-events: none;
+  z-index:     1;
 }
 
 .aic-roe--free  { color: #FF4444; background: rgba(255,68,68,0.15);  border: 1px solid rgba(255,68,68,0.4); }
 .aic-roe--tight { color: #FFCC00; background: rgba(255,204,0,0.12);  border: 1px solid rgba(255,204,0,0.35); }
 .aic-roe--hold  { color: #44CC44; background: rgba(68,204,68,0.12);  border: 1px solid rgba(68,204,68,0.35); }
+
+/* ── PICTURE readout ─────────────────────────────────────────────────────────── */
+.aic-picture {
+  position:       absolute;
+  top:            10px;
+  left:           10px;
+  width:          420px;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.8rem;
+  line-height:    1.55;
+  color:          #BFA100;
+  pointer-events: auto;
+  cursor:         pointer;
+  text-transform: uppercase;
+  white-space:    pre;
+}
+
+.aic-picture-header {
+  font-weight:    600;
+  letter-spacing: 0.06em;
+}
+
+.aic-picture-header--alert {
+  color:     #ffffff;
+  animation: aic-picture-alert 0.75s step-end infinite;
+}
+
+@keyframes aic-picture-alert {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+
+.aic-picture-ampls {
+  color:          rgba(191,161,0,0.75);
+  letter-spacing: 0.04em;
+}
+
+.aic-picture-group {
+  color:          #BFA100;
+  letter-spacing: 0.02em;
+}
+
+.aic-picture-group--followon {
+  color: rgba(191,161,0,0.6);
+}
+
+.aic-picture-more {
+  color:       rgba(191,161,0,0.5);
+  font-size:   0.6rem;
+  margin-top:  1px;
+}
 
 /* ── No bullseye warning ─────────────────────────────────────────────────────── */
 .aic-warn {
@@ -109,6 +152,16 @@
 }
 
 /* ── Command entry ───────────────────────────────────────────────────────────── */
+.aic-cmd-feedback {
+  position:       absolute;
+  bottom:         26px;
+  left:           10px;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  color:          #FFD700;
+  pointer-events: none;
+}
+
 .aic-cmd-area {
   position:    absolute;
   bottom:      8px;

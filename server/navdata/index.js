@@ -202,6 +202,12 @@ function handleRelief(req, res) {
   serveJson(res, fp)
 }
 
+function handlePalettes(req, res) {
+  try {
+    serveJson(res, path.join(CONFIG_DIR, 'airspace_colors.json'))
+  } catch (err) { res.status(500).json({ error: err.message }) }
+}
+
 function handleGeo(req, res) {
   if (!_ready) return notReady(res)
   const { theatre } = req.query
@@ -228,6 +234,7 @@ function handleMva(req, res) {
 
 module.exports = {
   init,
+  theatreFolder,
   handleStatus,
   handleAirspace,
   handleFixes,
@@ -243,4 +250,5 @@ module.exports = {
   handleRelief,
   handleMva,
   handleGeo,
+  handlePalettes,
 }

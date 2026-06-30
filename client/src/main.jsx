@@ -6,9 +6,10 @@ import { StripBayWindow }      from './components/StripBay/StripBayWindow'
 import { StatusBoardWindow }   from './modules/catcc/StatusBoardWindow'
 import { ControllerListWindow } from './components/ControllerList/ControllerListWindow'
 import { ParWindow }            from './components/par/ParWindow'
-import { CabOdsWindow }        from './modules/atc/cab/CabOdsWindow'
+import { AsdexOdsWindow }      from './modules/atc/asdex/AsdexOdsWindow'
 
-const windowMode = new URLSearchParams(window.location.search).get('window')
+const _params    = new URLSearchParams(window.location.search)
+const windowMode = _params.get('window')
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -16,7 +17,7 @@ createRoot(document.getElementById('root')).render(
      windowMode === 'catcc-board' ? <StatusBoardWindow />    :
      windowMode === 'cl'          ? <ControllerListWindow /> :
      windowMode === 'par'         ? <ParWindow />            :
-     windowMode === 'cab-ods'     ? <CabOdsWindow />         :
+     windowMode === 'asdex-ods'   ? <AsdexOdsWindow />       :
      <App />}
   </StrictMode>
 )

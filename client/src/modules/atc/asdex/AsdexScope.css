@@ -1,0 +1,51 @@
+.asdex-scope {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+.asdex-canvas-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.asdex-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.asdex-interactive {
+  cursor: crosshair;
+}
+
+.asdex-coords {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: #ffffff;
+  pointer-events: none;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  z-index: 500;
+}
+
+.asdex-no-data {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}

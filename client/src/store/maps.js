@@ -191,5 +191,7 @@ export const useMapsStore = create((set, get) => ({
     }
   },
 
+  setPalettes: (palettes) => set({ palettes }),
+
   reset: () => set({ maps: [], mvaSlot: null, palettes: [], visible: {}, theatre: null, positionKey: null, loading: false }),
 }))

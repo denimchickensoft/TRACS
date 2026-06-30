@@ -1,0 +1,129 @@
+import { latLngToCanvas }  from '../../stars/canvas/projection.js'
+import { resolveCallsign } from '../../../../utils/callsign.js'
+import { DIR_TO_ANGLE }    from '../../stars/constants.js'
+
+const M_PER_S_TO_KT       = 1.94384
+const MAX_HISTORY          = 10
+const SYMBOL_R             = 7
+const RIGHT_ALIGN_ANGLES   = new Set([90, 135, 180, 225])
+
+function projectLatLng(lat, lng, trackRad, distNm) {
+  const latRad = lat * Math.PI / 180
+  return [
+    lat + (distNm / 60) * Math.cos(trackRad),
+    lng + (distNm / (60 * Math.cos(latRad))) * Math.sin(trackRad),
+  ]
+}
+
+export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors) {
+  ctx.clearRect(0, 0, view.width, view.height)
+
+  // Runway centerlines
+  if (centerlineVisible && centerlines?.length) {
+    ctx.strokeStyle = '#ffff00'
+    ctx.lineWidth   = 1
+    ctx.setLineDash([6, 4])
+    for (const cl of centerlines) {
+      const p1 = latLngToCanvas(cl.rwyEnd1.lat, cl.rwyEnd1.lng, view)
+      const p2 = latLngToCanvas(cl.rwyEnd2.lat, cl.rwyEnd2.lng, view)
+      ctx.beginPath()
+      ctx.moveTo(p1.x, p1.y)
+      ctx.lineTo(p2.x, p2.y)
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
+  }
+
+  if (!units) return
+
+  const globalAngle  = win?.ldrAngleDeg   ?? -45
+  const ldrLengthPx  = (win?.ldrLength    ?? 2) * 10
+  const ptlMinutes   = win?.ptlLength     ?? 0.5
+  const historyLimit = win?.historyLength ?? 5
+  const leaderDirs   = win?.leaderDirs    ?? {}
+
+  const plansByUnit = {}
+  for (const p of Object.values(plans ?? {})) {
+    if (p.unitId != null) plansByUnit[String(p.unitId)] = p
+  }
+
+  ctx.font = '11px "Roboto Mono", monospace'
+
+  for (const [id, unit] of Object.entries(units)) {
+    const pos = unit.position
+    if (!pos) continue
+
+    const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
+    if (x < -60 || x > view.width + 60 || y < -60 || y > view.height + 60) continue
+
+    // PTL
+    if (ptlMinutes > 0 && unit.track != null && unit.speed) {
+      const distNm = (unit.speed * M_PER_S_TO_KT * ptlMinutes) / 60
+      const [eLat, eLng] = projectLatLng(pos.lat, pos.lng, unit.track, distNm)
+      const ep = latLngToCanvas(eLat, eLng, view)
+      ctx.beginPath()
+      ctx.strokeStyle = colors.contacts
+      ctx.lineWidth   = 0.8
+      ctx.moveTo(x, y)
+      ctx.lineTo(ep.x, ep.y)
+      ctx.stroke()
+    }
+
+    // History dots
+    const trail = (history ?? {})[id] || []
+    for (let i = 0; i < trail.length && i < historyLimit; i++) {
+      const hp      = latLngToCanvas(trail[i].lat, trail[i].lng, view)
+      const opacity = Math.max(0.15, 0.65 - i * 0.12)
+      ctx.beginPath()
+      ctx.fillStyle = `rgba(255,255,255,${opacity})`
+      ctx.arc(hp.x, hp.y, 3, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    // Symbol — filled triangle rotated by heading
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(unit.track ?? 0)
+    ctx.beginPath()
+    ctx.moveTo(0, -7)
+    ctx.lineTo(5, 5)
+    ctx.lineTo(-5, 5)
+    ctx.closePath()
+    ctx.fillStyle = colors.contacts
+    ctx.fill()
+    ctx.restore()
+
+    // Leader line
+    const unitDir    = leaderDirs[String(id)]
+    const angleDeg   = unitDir != null ? (DIR_TO_ANGLE[unitDir] ?? globalAngle) : globalAngle
+    const angleRad   = angleDeg * Math.PI / 180
+    const ldx        = Math.cos(angleRad) * ldrLengthPx
+    const ldy        = Math.sin(angleRad) * ldrLengthPx
+    const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
+
+    const lx0 = x + Math.cos(angleRad) * SYMBOL_R
+    const ly0 = y + Math.sin(angleRad) * SYMBOL_R
+    const lx1 = x + ldx
+    const ly1 = y + ldy
+    ctx.beginPath()
+    ctx.strokeStyle = colors.contacts
+    ctx.lineWidth   = 0.8
+    ctx.moveTo(lx0, ly0)
+    ctx.lineTo(lx1, ly1)
+    ctx.stroke()
+
+    // Datablock
+    const cs    = resolveCallsign(unit).toUpperCase()
+    const plan  = plansByUnit[String(id)]
+    const typ   = plan?.typ  ? plan.typ.trim()  : ''
+    const dest  = plan?.dest ? plan.dest.trim() : ''
+    const line2 = [typ, dest].filter(Boolean).join(' ')
+    const tx    = lx1 + (rightAlign ? -2 : 2)
+
+    ctx.fillStyle    = colors.datablock
+    ctx.textAlign    = rightAlign ? 'right' : 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(cs, tx, ly1)
+    if (line2) ctx.fillText(line2, tx, ly1 + 13)
+  }
+}

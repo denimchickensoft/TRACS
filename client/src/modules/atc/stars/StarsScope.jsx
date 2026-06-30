@@ -264,6 +264,7 @@ export default function StarsScope() {
     return {
       centerLat: centerLat ?? 0,
       centerLng: centerLng ?? 0,
+      rangeNm,
       pixelsPerNm: rangeToPixelsPerNm(rangeNm, w, h),
       width: w,
       height: h,
@@ -274,16 +275,24 @@ export default function StarsScope() {
   const canvasAreaRef = useRef(null)
 
   // ── Resize observer ───────────────────────────────────────────────
+  // Deps include buildView so the observer is re-established when windowSettings
+  // first becomes available (component returns null until then, so canvasAreaRef
+  // is null on the very first mount). Canvas assignments are guarded so the
+  // reconnection's initial notification only clears canvases when size truly changed.
   useEffect(() => {
     const container = canvasAreaRef.current
     if (!container) return
     const ro = new ResizeObserver(() => {
       const w = container.clientWidth
       const h = container.clientHeight
+      let resized = false
       for (const ref of [mapCanvasRef, routeCanvasRef, ringCanvasRef, compassCanvasRef, ctxCanvasRef, rblCanvasRef]) {
-        if (ref.current) { ref.current.width = w; ref.current.height = h }
+        if (ref.current) {
+          if (ref.current.width  !== w) { ref.current.width  = w; resized = true }
+          if (ref.current.height !== h) { ref.current.height = h; resized = true }
+        }
       }
-      setView(buildView())
+      if (resized) setView(buildView())
     })
     ro.observe(container)
     return () => ro.disconnect()
@@ -417,10 +426,10 @@ export default function StarsScope() {
       : { lat: windowSettings?.homeCenterLat ?? 0, lng: windowSettings?.homeCenterLng ?? 0 }
     drawRangeRings(
       ringCanvasRef.current.getContext('2d'),
-      view, windowSettings?.rangeNm, windowSettings?.ringSpacingNm,
+      view, view.rangeNm, windowSettings?.ringSpacingNm,
       activeProfile.visual, rrCenter, windowSettings?.briteRr ?? 70,
     )
-  }, [view, windowSettings?.rangeNm, windowSettings?.ringSpacingNm, windowSettings?.briteRr,
+  }, [view, windowSettings?.ringSpacingNm, windowSettings?.briteRr,
       windowSettings?.rrCenterLat, windowSettings?.rrCenterLng,
       windowSettings?.homeCenterLat, windowSettings?.homeCenterLng, activeProfile])
 

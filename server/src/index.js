@@ -163,6 +163,44 @@ app.get('/api/navdata/mora',        navdata.handleMora)
 app.get('/api/navdata/relief',      navdata.handleRelief)
 app.get('/api/navdata/mva',         navdata.handleMva)
 app.get('/api/navdata/geo',         navdata.handleGeo)
+app.get('/api/navdata/palettes',    navdata.handlePalettes)
+
+// GET /api/airports/polygons/:theatre — airport surface polygon GeoJSON for ASDE-X
+app.get('/api/airports/polygons/:theatre', (req, res) => {
+  const { theatre } = req.params
+  const folder = navdata.theatreFolder(theatre)
+  if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
+  const filePath = path.join(__dirname, '../navdata/cache', folder, 'airports_polygons.json')
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'no surface data for this theatre' })
+  res.sendFile(filePath)
+})
+
+// GET /api/airports/names/:theatre — reversed name map: { dcsName: stemName }
+app.get('/api/airports/names/:theatre', (req, res) => {
+  const { theatre } = req.params
+  const mapPath = path.join(__dirname, '../navdata/config/airport_name_map.json')
+  if (!fs.existsSync(mapPath)) return res.status(404).json({ error: 'name map not found' })
+  try {
+    const fullMap  = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+    const theatreMap = fullMap[theatre] ?? {}
+    const reversed = {}
+    for (const [stem, dcsName] of Object.entries(theatreMap)) reversed[dcsName] = stem
+    res.json(reversed)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/asdex/colors — ASDE-X display colors config
+app.get('/api/asdex/colors', (req, res) => {
+  const filePath = path.join(__dirname, '../navdata/config/asdex-colors.json')
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'colors config not found' })
+  try {
+    res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')))
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 // GET /api/turn-credentials — ICE server list for WebRTC peers
 // Set TURN_URL / TURN_USER / TURN_PASS env vars to include a TURN relay.
@@ -197,6 +235,7 @@ app.get('/api/debug', (req, res) => {
     lastUpdateTime: snapshot.time,
     mission: state.getMission(),
     airbases: state.getAirbases(),
+    bullseyes: state.getBullseyes(),
     units: unitList,
   })
 })

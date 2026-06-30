@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Day",
+    "colors": {
+      "background": "#00627b",
+      "taxiway":    "#4b4b4b",
+      "runway":     "#221f1e",
+      "contacts":   "#ffffff",
+      "datablock":  "#20a634"
+    }
+  },
+  {
+    "name": "Night",
+    "colors": {
+      "background": "#070a0a",
+      "taxiway":    "#1a2020",
+      "runway":     "#2a3030",
+      "contacts":   "#00ff88",
+      "datablock":  "#00cc66"
+    }
+  }
+]

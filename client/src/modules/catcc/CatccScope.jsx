@@ -186,6 +186,7 @@ export default function CatccScope() {
     return {
       centerLat:   carrierLatRef.current,
       centerLng:   carrierLngRef.current,
+      rangeNm:     ws.rangeNm,
       pixelsPerNm: rangeToPixelsPerNm(ws.rangeNm, w, h),
       width:  w,
       height: h,
@@ -213,13 +214,13 @@ export default function CatccScope() {
     const ctx = layersCanvasRef.current.getContext('2d')
     drawCatccLayers(
       ctx, view, fb, marshalBearing,
-      windowSettings?.rangeNm       ?? 50,
+      view.rangeNm                  ?? 50,
       windowSettings?.ringSpacingNm ?? 10,
       windowSettings?.briteRr       ?? 80,
       radialBearing,
     )
   }, [view, fb, marshalBearing, radialBearing,
-      windowSettings?.rangeNm, windowSettings?.ringSpacingNm, windowSettings?.briteRr])
+      windowSettings?.ringSpacingNm, windowSettings?.briteRr])
 
   // ── Render compass rose ────────────────────────────────────────────
   useEffect(() => {

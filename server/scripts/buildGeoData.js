@@ -1,7 +1,7 @@
 'use strict'
 
 // Builds per-theatre GEO overlays (country boundaries + coastlines) from
-// Natural Earth 1:50m public-domain vector data. Downloads source GeoJSON
+// Natural Earth 1:10m public-domain vector data. Downloads source GeoJSON
 // once to server/data/geo/, then clips per theatre and writes:
 //   server/navdata/cache/<folder>/geo.json
 //
@@ -20,8 +20,8 @@ const GEO_DIR       = path.join(__dirname, '../data/geo')
 const BBOX_PAD      = 1.0   // degrees — extend theatre bbox before clipping
 
 const NE_SOURCES = {
-  boundaries: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_boundary_lines_land.geojson',
-  coastlines:  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_coastline.geojson',
+  boundaries: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_0_boundary_lines_land.geojson',
+  coastlines:  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_coastline.geojson',
 }
 
 // ── HTTP fetch with redirect support ─────────────────────────────────────────
@@ -109,7 +109,7 @@ async function main() {
     process.exit(1)
   }
 
-  console.log('\nBuilding GEO data (Natural Earth 1:50m)\n')
+  console.log('\nBuilding GEO data (Natural Earth 1:10m)\n')
 
   console.log('Source files:')
   const [boundaryFeatures, coastlineFeatures] = await Promise.all([

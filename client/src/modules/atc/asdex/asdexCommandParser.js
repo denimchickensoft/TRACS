@@ -1,0 +1,21 @@
+const ASDEX_COMMANDS = [
+  { id: 'OPEN_FPE',           pattern: /^\.FP (.+)$/,       trigger: 'ENTER', captures: ['aid'] },
+  { id: 'OPEN_FPE',           pattern: /^\.FP$/,             trigger: 'ENTER' },
+  { id: 'TOGGLE_CENTERLINE',  pattern: /^\.CENTERLINE$/,     trigger: 'ENTER' },
+  { id: 'TOGGLE_COORDS',      pattern: /^\.COORDS$/,         trigger: 'ENTER' },
+  { id: 'SET_COLORS',         pattern: /^\.COLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
+  { id: 'SET_LEADER_SHORT',   pattern: /^([1-9])$/,          trigger: 'SLEW',  captures: ['dir'] },
+]
+
+export function parseAsdexCommand(buffer, trigger) {
+  const trimmed = buffer.trim().toUpperCase()
+  for (const cmd of ASDEX_COMMANDS) {
+    if (cmd.trigger !== trigger && cmd.trigger !== 'EITHER') continue
+    const match = trimmed.match(cmd.pattern)
+    if (!match) continue
+    const captures = {}
+    if (cmd.captures) cmd.captures.forEach((name, i) => { captures[name] = match[i + 1] })
+    return { command: cmd, captures }
+  }
+  return null
+}

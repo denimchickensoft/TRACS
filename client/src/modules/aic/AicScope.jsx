@@ -9,12 +9,24 @@ import { useRunwaysStore }       from '../../store/runways.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../atc/stars/canvas/projection.js'
 import { resolveSlew }         from '../atc/stars/input/slewResolver.js'
 import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
-import { drawAicLayers }       from './canvas/drawAicLayers.js'
+import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
 import { drawAicContacts }     from './canvas/drawAicContacts.js'
+import { drawGeo }             from '../atc/stars/canvas/drawGeo.js'
+import { drawRelief }          from '../atc/stars/canvas/drawRelief.js'
+import { computePicture, sectorAxisBearing } from './canvas/computePicture.js'
+import { useGeoStore }         from '../../store/geo.js'
+import { useReliefStore }      from '../../store/relief.js'
+import { useMapsStore }        from '../../store/maps.js'
 import { BraaList }            from './BraaList.jsx'
 import './AicScope.css'
 
 const WINDOW_ID = 'aic-main'
+const AIC_SETTINGS_KEY = 'aic-settings'
+const AIC_WIN_FIELDS = [
+  'rangeNm', 'ringSpacingNm', 'ptlSeconds', 'symSize',
+  'fadedSeconds', 'threatRadius', 'centerLat', 'centerLng',
+  'centerOverridden', 'aspColorIdx',
+]
 
 const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
 
@@ -38,6 +50,13 @@ const ROE_DISPLAY = {
   [ROE_STATE.HOLD]:  'WEAPONS HOLD',
 }
 
+const DECL_PICTURE = {
+  [DECLARATION.HOSTILE]:  'HOSTILE',
+  [DECLARATION.UNKNOWN]:  'UNKNOWN',
+  [DECLARATION.NEUTRAL]:  'NEUTRAL',
+  [DECLARATION.FRIENDLY]: 'FRIENDLY',
+}
+
 function speedFlags(unit) {
   const kts = (unit.speed ?? 0) * 1.94384
   const alt  = (unit.position?.alt ?? 0) * 3.28084
@@ -45,6 +64,20 @@ function speedFlags(unit) {
   if (alt >= 40000)  parts.push('HIGH')
   if (kts >= 900)    parts.push('VERY FAST')
   else if (kts >= 600) parts.push('FAST')
+  return parts.join('  ')
+}
+
+
+function picFillIns(g) {
+  const parts = []
+  if (g.contactCount === 2) parts.push('2 CONTACTS')
+  else if (g.isHeavy) parts.push('HEAVY')
+  if (g.isStack) parts.push(`STACK ${g.stackHighFt / 1000}K/${g.stackLowFt / 1000}K`)
+  if (g.isHigh) parts.push('HIGH')
+  if (g.isVeryFast) parts.push('VERY FAST')
+  else if (g.isFast) parts.push('FAST')
+  if (g.isBogeySpades) parts.push('SPADES')
+  if (g.openingClosing) parts.push(g.openingClosing)
   return parts.join('  ')
 }
 
@@ -110,11 +143,13 @@ function resolveCallsignDisplay(unit) {
 
 export default function AicScope() {
   const wheelDir        = useWheelDirection()
+  const mapCanvasRef    = useRef(null)
   const layersRef       = useRef(null)
   const contactsRef     = useRef(null)
   const interactiveRef  = useRef(null)
   const canvasAreaRef   = useRef(null)
 
+  // ── External store hooks ──────────────────────────────────────────────────────
   const units      = useUnitsStore(s => s.units)
   const coalition  = useSessionStore(s => s.coalition)
   const mission    = useSessionStore(s => s.mission)
@@ -129,14 +164,21 @@ export default function AicScope() {
     setPendingBraaFighter, clearPendingBraa, getEffectiveDeclaration,
   } = useAicStore()
 
+  const geoBoundaries  = useGeoStore(s => s.boundaries)
+  const geoCoastlines  = useGeoStore(s => s.coastlines)
+  const geoVisible     = useGeoStore(s => s.visible)
+  const relief         = useReliefStore(s => s.relief)
+  const reliefVisible  = useReliefStore(s => s.visible)
+  const mapPalettes    = useMapsStore(s => s.palettes)
+
   const displayStore   = useDisplayStore()
   const windowSettings = displayStore.windows[WINDOW_ID]
 
+  // ── Derived session values ────────────────────────────────────────────────────
   const myCoalitionNum = COALITION_NUM[coalition] ?? 2
   const theatre        = mission?.mission?.theatre
   const missionDate    = mission?.mission?.dateAndTime?.date ?? null
 
-  // Bullseye position (our coalition)
   const bullseyeEntry = useMemo(() => {
     if (!bullseyes?.bullseyes) return null
     const coalStr = coalition === 'red' ? 'red' : 'blue'
@@ -148,7 +190,6 @@ export default function AicScope() {
   const bullseyeLat = bullseyeEntry?.latitude  ?? 0
   const bullseyeLng = bullseyeEntry?.longitude ?? 0
 
-  // Scope center: bullseye unless overridden
   const centerOverridden = windowSettings?.centerOverridden ?? false
   const centerLat = centerOverridden ? (windowSettings?.centerLat ?? bullseyeLat) : bullseyeLat
   const centerLng = centerOverridden ? (windowSettings?.centerLng ?? bullseyeLng) : bullseyeLng
@@ -157,9 +198,11 @@ export default function AicScope() {
     if (!theatre) return
     useNavdataStore.getState().loadForTheatre(theatre)
     if (useRunwaysStore.getState().theatre !== theatre) useRunwaysStore.getState().loadForTheatre(theatre)
+    useGeoStore.getState().loadForTheatre(theatre)
+    useReliefStore.getState().loadForTheatre(theatre)
   }, [theatre])
 
-  const magvar     = computeMagvar(centerLat, centerLng, missionDate)
+  const magvar      = computeMagvar(centerLat, centerLng, missionDate)
   const convergence = theatre ? theatreConvergence(theatre, centerLat, centerLng) : 0
   const effectiveMagvar = magvar + convergence
 
@@ -195,7 +238,7 @@ export default function AicScope() {
     const rawH = h ?? container.clientHeight
     if (!rawW || !rawH) return null
     const size = Math.min(rawW, rawH)
-    for (const ref of [layersRef, contactsRef]) {
+    for (const ref of [mapCanvasRef, layersRef, contactsRef]) {
       if (ref.current) {
         if (ref.current.width !== size)  ref.current.width  = size
         if (ref.current.height !== size) ref.current.height = size
@@ -210,6 +253,7 @@ export default function AicScope() {
     return {
       centerLat:   centerLatRef.current,
       centerLng:   centerLngRef.current,
+      rangeNm:     ws.rangeNm ?? 120,
       pixelsPerNm: rangeToPixelsPerNm(ws.rangeNm ?? 120, size, size),
       width: size, height: size,
       magvar: magvarRef.current,
@@ -230,34 +274,113 @@ export default function AicScope() {
   useEffect(() => { setView(buildView()) }, [centerLat, centerLng, effectiveMagvar, windowSettings?.rangeNm]) // eslint-disable-line
 
   useEffect(() => {
+    let saved = null
+    try { saved = JSON.parse(localStorage.getItem(AIC_SETTINGS_KEY) ?? 'null') } catch {}
+
     if (!windowSettings) {
-      displayStore.initWindow(WINDOW_ID, {
+      const defaults = {
         rangeNm: 120, ringSpacingNm: 20, ptlSeconds: 60, symSize: 3,
         centerLat: 0, centerLng: 0, centerOverridden: false,
         fadedSeconds: 30, threatRadius: 35,
-      })
+      }
+      const savedWin = saved
+        ? Object.fromEntries(AIC_WIN_FIELDS.filter(k => saved[k] !== undefined).map(k => [k, saved[k]]))
+        : {}
+      displayStore.initWindow(WINDOW_ID, { ...defaults, ...savedWin })
+    }
+    if (saved?.geoVisible    != null) useGeoStore.getState().setVisible(saved.geoVisible)
+    if (saved?.reliefVisible != null) useReliefStore.getState().setVisible(saved.reliefVisible)
+    if (saved?.aspColorIdx && !useMapsStore.getState().palettes.length) {
+      fetch('/api/navdata/palettes')
+        .then(r => r.json())
+        .then(palettes => useMapsStore.getState().setPalettes(palettes))
+        .catch(() => {})
     }
   }, []) // eslint-disable-line
 
-  // ── Draw layers (rings + gold band + bullseye) ────────────────────────────────
   useEffect(() => {
-    if (!view || !layersRef.current) return
-    const ctx = layersRef.current.getContext('2d')
-    drawAicLayers(ctx, view, rangeNm, ringSpacingNm, bullseyeLat, bullseyeLng)
-  }, [view, rangeNm, ringSpacingNm, bullseyeLat, bullseyeLng])
+    let timer = null
+    const save = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const ws = useDisplayStore.getState().windows[WINDOW_ID]
+        if (!ws) return
+        const entry = {}
+        for (const k of AIC_WIN_FIELDS) entry[k] = ws[k]
+        entry.geoVisible    = useGeoStore.getState().visible
+        entry.reliefVisible = useReliefStore.getState().visible
+        try { localStorage.setItem(AIC_SETTINGS_KEY, JSON.stringify(entry)) } catch {}
+      }, 500)
+    }
+    const unsubDisplay = useDisplayStore.subscribe(save)
+    const unsubGeo     = useGeoStore.subscribe(save)
+    const unsubRelief  = useReliefStore.subscribe(save)
+    return () => { clearTimeout(timer); unsubDisplay(); unsubGeo(); unsubRelief() }
+  }, []) // eslint-disable-line
 
-  // ── Threat rings ──────────────────────────────────────────────────────────────
+  // ── All state — declared before any effect that references them in deps ───────
+
   const [threatRings, setThreatRings] = useState(new Set())
   const toggleThreatRing = (unitId) =>
     setThreatRings(prev => { const n = new Set(prev); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
   const threatRadius = windowSettings?.threatRadius ?? 35
 
-  // ── Faded / coasting contacts ─────────────────────────────────────────────────
-  const fadedRef         = useRef({})   // { [unitId]: { unit, disappearedAt } }
-  const prevVisibleRef   = useRef({})
+  const fadedRef       = useRef({})
+  const prevVisibleRef = useRef({})
   const [fadedTick, setFadedTick] = useState(0)
 
-  // Detect contacts entering / leaving visibleUnits
+  const [findMarker, setFindMarker] = useState(null)
+
+  // Sector: stored as TRUE bearings; input is magnetic, converted on entry.
+  const [sector, setSector] = useState(null)
+  const sectorRef = useRef(null)
+  useEffect(() => { sectorRef.current = sector }, [sector])
+  const [sectorVisible, setSectorVisible] = useState(true)
+  const [sectorPreviewOrigin, setSectorPreviewOrigin] = useState(null)
+
+  // Picture acknowledgment baseline
+  const [ackPicture, setAckPicture] = useState(null)   // { labelKey, totalGroups }
+
+  const [rbl, setRbl] = useState(null)
+
+  const [hoveredUnit, setHoveredUnit] = useState(null)
+  const [cursorLatLng, setCursorLatLng] = useState(null)
+
+  const rightDragStartRef = useRef(null)
+
+  const [pendingDeclaration, setPendingDeclaration] = useState(null)
+
+  // Command buffer — must be declared before pendingSector useMemo
+  const [cmdBuffer, setCmdBuffer] = useState('')
+  const [cmdFeedback, setCmdFeedback] = useState('')
+  const [cmdHistory, setCmdHistory] = useState([])
+  const cmdHistoryRef = useRef([])
+  useEffect(() => { cmdHistoryRef.current = cmdHistory }, [cmdHistory])
+  const [cmdHistoryIdx, setCmdHistoryIdx] = useState(-1)
+  const cmdHistoryIdxRef = useRef(-1)
+  useEffect(() => { cmdHistoryIdxRef.current = cmdHistoryIdx }, [cmdHistoryIdx])
+  const cmdDraftRef = useRef('')
+
+  // Pending sector parsed from cmdBuffer (must be before contacts effect)
+  const pendingSector = useMemo(() => {
+    const m = cmdBuffer.trim().match(/^\.sector\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)$/i)
+    if (!m) return null
+    const fromMag = parseFloat(m[1]) % 360
+    const toMag   = parseFloat(m[2]) % 360
+    const rng     = parseFloat(m[3])
+    if (isNaN(fromMag) || isNaN(toMag) || isNaN(rng) || rng <= 0) return null
+    const fromTrue = (fromMag + effectiveMagvar + 360) % 360
+    const toTrue   = (toMag   + effectiveMagvar + 360) % 360
+    return { fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng, axisBearing: sectorAxisBearing(fromTrue, toTrue) }
+  }, [cmdBuffer, effectiveMagvar])
+
+  // Ref so event callbacks can always read the current pendingSector value
+  const pendingSectorRef = useRef(null)
+  useEffect(() => { pendingSectorRef.current = pendingSector }, [pendingSector])
+
+  // ── Canvas effects ────────────────────────────────────────────────────────────
+
+  // Faded contact tracking
   useEffect(() => {
     const now  = Date.now()
     const prev = prevVisibleRef.current
@@ -274,7 +397,6 @@ export default function AicScope() {
     prevVisibleRef.current = curr
   }, [visibleUnits])
 
-  // Coast timer — expire old faded contacts + trigger canvas redraws
   useEffect(() => {
     const id = setInterval(() => {
       const now          = Date.now()
@@ -288,29 +410,47 @@ export default function AicScope() {
     return () => clearInterval(id)
   }, []) // eslint-disable-line
 
-  // ── Find marker ───────────────────────────────────────────────────────────────
-  const [findMarker, setFindMarker] = useState(null)
+  // GEO / RELIEF map canvas
+  useEffect(() => {
+    if (!view || !mapCanvasRef.current) return
+    const ctx = mapCanvasRef.current.getContext('2d')
+    ctx.clearRect(0, 0, view.width, view.height)
+    const cx = view.width / 2
+    const cy = view.height / 2
+    const innerR = Math.max(0, (view.rangeNm - 10) * view.pixelsPerNm)
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, innerR, 0, Math.PI * 2)
+    ctx.clip()
+    const aspColorIdx  = windowSettings?.aspColorIdx ?? 0
+    const activeColors = mapPalettes[aspColorIdx]?.colors ?? mapPalettes[0]?.colors ?? null
+    drawRelief(ctx, view, relief, reliefVisible, 40, activeColors)
+    drawGeo(ctx, view, geoBoundaries, geoCoastlines, geoVisible, 50, activeColors)
+    ctx.restore()
+  }, [view, geoBoundaries, geoCoastlines, geoVisible, relief, reliefVisible, mapPalettes, windowSettings?.aspColorIdx])
 
-  // ── Range-bearing line (RBL) — declared before the contacts effect that uses it ─
-  // null | { anchor:{lat,lng}, end:{lat,lng}|null, fixed:boolean }
-  const [rbl, setRbl] = useState(null)
+  // Layers: rings + dugout band + placed sector
+  useEffect(() => {
+    if (!view || !layersRef.current) return
+    const ctx = layersRef.current.getContext('2d')
+    drawAicLayers(ctx, view, view.rangeNm, ringSpacingNm, bullseyeLat, bullseyeLng, sectorVisible ? sector : null)
+  }, [view, ringSpacingNm, bullseyeLat, bullseyeLng, sector, sectorVisible])
 
-  // ── Draw contacts ─────────────────────────────────────────────────────────────
+  // Contacts + sector preview
   useEffect(() => {
     if (!view || !contactsRef.current) return
     const ctx = contactsRef.current.getContext('2d')
     const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
     drawAicContacts(ctx, view, visibleUnits, getDecl, ptlSeconds, symSize, braaList, rangeNm, rbl, effectiveMagvar,
       threatRings, threatRadius, fadedRef.current, Date.now(), findMarker)
-  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, effectiveMagvar, threatRings, threatRadius, fadedTick, findMarker]) // eslint-disable-line
+    if (pendingSector && sectorPreviewOrigin) {
+      drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
+    }
+  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, effectiveMagvar, threatRings, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin]) // eslint-disable-line
 
-  // ── Hover readout ─────────────────────────────────────────────────────────────
-  const [hoveredUnit, setHoveredUnit] = useState(null)
-  const [cursorLatLng, setCursorLatLng] = useState(null)
-  const rblRef        = useRef(null)
+  // RBL drag (right-click)
+  const rblRef = useRef(null)
   useEffect(() => { rblRef.current = rbl }, [rbl])
-
-  const rightDragStartRef = useRef(null)  // { clientX, clientY, lat, lng }
 
   useEffect(() => {
     const onMove = (e) => {
@@ -322,7 +462,6 @@ export default function AicScope() {
       const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
       setRbl(prev => prev ? { ...prev, end: { lat, lng } } : null)
     }
-
     const onUp = (e) => {
       if (e.button !== 2) return
       const start = rightDragStartRef.current
@@ -330,14 +469,11 @@ export default function AicScope() {
       if (!start) return
       const dragged = Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) > 5
       if (dragged) {
-        // Anchor the line where it currently is
         setRbl(prev => prev?.end ? { ...prev, fixed: true } : null)
       } else {
-        // Plain right-click — clear existing fixed line
         setRbl(null)
       }
     }
-
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
     return () => {
@@ -346,29 +482,24 @@ export default function AicScope() {
     }
   }, []) // eslint-disable-line
 
+  // ── Callbacks ──────────────────────────────────────────────────────────────────
+
   const handleMouseMove = useCallback((e) => {
     const rect = interactiveRef.current?.getBoundingClientRect()
     if (!rect || !viewRef.current) return
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    const pos = { x, y }
-    const hit = resolveSlew(pos, visibleUnitsRef.current, viewRef.current)
+    const hit = resolveSlew({ x, y }, visibleUnitsRef.current, viewRef.current)
     setHoveredUnit(hit ? { unitId: hit.unitId, unit: hit.unit } : null)
-    setCursorLatLng(canvasToLatLng(x, y, viewRef.current))
+    const ll = canvasToLatLng(x, y, viewRef.current)
+    setCursorLatLng(ll)
+    if (pendingSectorRef.current) setSectorPreviewOrigin(ll)
   }, [])
-
-  // ── Declaration mode (F1-F4) ──────────────────────────────────────────────────
-  const [pendingDeclaration, setPendingDeclaration] = useState(null)
-
-  // ── Command buffer ────────────────────────────────────────────────────────────
-  const [cmdBuffer, setCmdBuffer] = useState('')
-  const [cmdFeedback, setCmdFeedback] = useState('')
 
   function clearCmd() { setCmdBuffer(''); setCmdFeedback('') }
 
   function execCommand(raw) {
     const str = raw.trim().toLowerCase()
-    const ws  = useDisplayStore.getState().windows[WINDOW_ID]
 
     if (str === '.center') {
       displayStore.updateWindow(WINDOW_ID, { centerOverridden: false })
@@ -380,12 +511,11 @@ export default function AicScope() {
         const brg = parseFloat(parts[0])
         const rng = parseFloat(parts[1])
         if (!isNaN(brg) && !isNaN(rng)) {
-          const bsLat = bullseyeLat, bsLng = bullseyeLng
-          const nmPerDegLng = 60 * Math.cos(bsLat * Math.PI / 180)
-          const magv = magvarRef.current
+          const nmPerDegLng = 60 * Math.cos(bullseyeLat * Math.PI / 180)
+          const magv    = magvarRef.current
           const trueRad = ((brg + magv) % 360) * Math.PI / 180
-          const newLat  = bsLat + (rng * Math.cos(trueRad)) / 60
-          const newLng  = bsLng + (rng * Math.sin(trueRad)) / nmPerDegLng
+          const newLat  = bullseyeLat + (rng * Math.cos(trueRad)) / 60
+          const newLng  = bullseyeLng + (rng * Math.sin(trueRad)) / nmPerDegLng
           displayStore.updateWindow(WINDOW_ID, { centerLat: newLat, centerLng: newLng, centerOverridden: true })
           setCmdFeedback(`CENTER ${Math.round(brg)}/${Math.round(rng)}`)
         } else { setCmdFeedback('INVALID: .CENTER <BRG> <RNG>') }
@@ -402,6 +532,10 @@ export default function AicScope() {
         setFindMarker(result)
         setCmdFeedback(`FIND ${result.id}`)
       } else { setCmdFeedback('NOT FOUND') }
+    } else if (str === '.rr') {
+      const next = ringSpacingNm > 0 ? 0 : 20
+      displayStore.updateWindow(WINDOW_ID, { ringSpacingNm: next })
+      setCmdFeedback(next === 0 ? 'RANGE RINGS OFF' : 'RANGE RINGS ON')
     } else if (str.startsWith('.rr ')) {
       const nm = parseFloat(str.slice(4))
       if (!isNaN(nm) && nm >= 0) {
@@ -431,9 +565,12 @@ export default function AicScope() {
       const nm = parseFloat(str.split(/\s+/)[1])
       displayStore.updateWindow(WINDOW_ID, { threatRadius: nm })
       setCmdFeedback(`THREAT RING ${nm}NM`)
-    } else if (str === '.clear all') {
+    } else if (str === '.clear') {
       setThreatRings(new Set())
       setRbl(null)
+      setSector(null)
+      setSectorVisible(true)
+      setAckPicture(null)
       useAicStore.getState().braaList.forEach(p => removeBraaPair(p.id))
       setCmdFeedback('ALL CLEARED')
     } else if (str === '.roe free') {
@@ -445,13 +582,61 @@ export default function AicScope() {
     } else if (str === '.roe hold') {
       setRoe(ROE_STATE.HOLD)
       setCmdFeedback('WEAPONS HOLD')
+    } else if (str.startsWith('.aspcolors ')) {
+      const name = str.slice(11).trim().toUpperCase()
+      const loadAndApply = (palettes) => {
+        const idx = palettes.findIndex(p => p.name.toUpperCase() === name)
+        if (idx < 0) { setCmdFeedback('INVALID PALETTE'); return }
+        displayStore.updateWindow(WINDOW_ID, { aspColorIdx: idx })
+        setCmdFeedback(`COLORS ${palettes[idx].name.toUpperCase()}`)
+      }
+      const cached = useMapsStore.getState().palettes
+      if (cached.length) {
+        loadAndApply(cached)
+      } else {
+        fetch('/api/navdata/palettes')
+          .then(r => r.json())
+          .then(palettes => { useMapsStore.getState().setPalettes(palettes); loadAndApply(palettes) })
+          .catch(() => setCmdFeedback('PALETTE LOAD FAILED'))
+      }
+    } else if (str === '.geo') {
+      useGeoStore.getState().toggleVisible()
+      setCmdFeedback(useGeoStore.getState().visible ? 'GEO ON' : 'GEO OFF')
+    } else if (str === '.relief') {
+      useReliefStore.getState().toggleVisible()
+      setCmdFeedback(useReliefStore.getState().visible ? 'RELIEF ON' : 'RELIEF OFF')
+    } else if (str === '.sector') {
+      if (sectorRef.current) { setSectorVisible(true); setCmdFeedback('SECTOR ON') }
+      else { setCmdFeedback('NO SECTOR') }
+    } else if (str === '.sector clear' || str === '.sector off') {
+      setSector(null)
+      setSectorVisible(true)
+      setSectorPreviewOrigin(null)
+      setAckPicture(null)
+      setCmdFeedback('SECTOR CLEARED')
+    } else if (str.match(/^\.sector\s+\d+(\.\d+)?\s+\d+(\.\d+)?\s+\d+(\.\d+)?$/)) {
+      // Place at bullseye when Enter pressed with no prior click
+      const parts = str.replace(/^\.sector\s+/, '').split(/\s+/)
+      const fromMag  = parseFloat(parts[0]) % 360
+      const toMag    = parseFloat(parts[1]) % 360
+      const rng      = parseFloat(parts[2])
+      const magv     = magvarRef.current
+      const fromTrue = (fromMag + magv + 360) % 360
+      const toTrue   = (toMag   + magv + 360) % 360
+      setSector({
+        origin:      { lat: bullseyeLat, lng: bullseyeLng },
+        fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng,
+        axisBearing: sectorAxisBearing(fromTrue, toTrue),
+      })
+      setSectorVisible(true)
+      setSectorPreviewOrigin(null)
+      setCmdFeedback(`SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(rng)}NM @BS`)
     } else {
       setCmdFeedback('UNKNOWN COMMAND')
     }
   }
 
   const handleKeyDown = useCallback((e) => {
-    // F-key declarations
     const fDecl = F_KEY_DECL[e.key]
     if (fDecl) {
       e.preventDefault()
@@ -466,18 +651,50 @@ export default function AicScope() {
       const previewClear = !pendingDeclaration && !pendingBraaFighter && !cmdBuffer && !cmdFeedback
       if (previewClear) {
         setRbl(null)
+        setSectorVisible(false)
+        setSectorPreviewOrigin(null)
       } else {
         setPendingDeclaration(null)
         clearPendingBraa()
         clearCmd()
+        setSectorPreviewOrigin(null)
       }
       return
     }
 
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (cmdBuffer.trim()) execCommand(cmdBuffer)
+      const trimmed = cmdBuffer.trim()
+      if (trimmed) {
+        execCommand(trimmed)
+        setCmdHistory(h => [trimmed, ...h.filter(c => c !== trimmed)].slice(0, 50))
+      }
       setCmdBuffer('')
+      setCmdHistoryIdx(-1)
+      cmdHistoryIdxRef.current = -1
+      cmdDraftRef.current = ''
+      return
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      const hist = cmdHistoryRef.current
+      if (!hist.length) return
+      if (cmdHistoryIdxRef.current === -1) cmdDraftRef.current = cmdBuffer
+      const next = Math.min(cmdHistoryIdxRef.current + 1, hist.length - 1)
+      setCmdHistoryIdx(next)
+      cmdHistoryIdxRef.current = next
+      setCmdBuffer(hist[next])
+      return
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (cmdHistoryIdxRef.current === -1) return
+      const next = cmdHistoryIdxRef.current - 1
+      setCmdHistoryIdx(next)
+      cmdHistoryIdxRef.current = next
+      setCmdBuffer(next === -1 ? cmdDraftRef.current : cmdHistoryRef.current[next])
       return
     }
 
@@ -503,12 +720,21 @@ export default function AicScope() {
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, visibleUnitsRef.current, viewRef.current)
 
+    // .sector + click: place sector origin at cursor
+    if (pendingSectorRef.current) {
+      const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
+      setSector({ ...pendingSectorRef.current, origin: ll })
+      setSectorVisible(true)
+      setSectorPreviewOrigin(null)
+      clearCmd()
+      return
+    }
+
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
       if (target) removeBraaPairsForUnit(target.unitId)
       return
     }
 
-    // CTRL+ALT+click — toggle threat ring
     if (e.ctrlKey && e.altKey) {
       if (target) { toggleThreatRing(target.unitId); clearCmd() }
       return
@@ -517,37 +743,29 @@ export default function AicScope() {
     if (e.ctrlKey && !e.shiftKey && !e.altKey) {
       if (!target) { clearPendingBraa(); return }
       const pending = useAicStore.getState().pendingBraaFighter
+      if (pending && target.unitId !== pending) { addBraaPair(pending, target.unitId); return }
       if (pending === target.unitId) clearPendingBraa()
       else setPendingBraaFighter(target.unitId)
       return
     }
 
-    // ALT+click — bogey dope: find nearest bogey to clicked fighter
     if (e.altKey && !e.ctrlKey) {
       if (!target) return
       const nearestId = findNearestBogey(
         target.unitId, target.unit,
-        visibleUnitsRef.current,
-        declarationsRef.current,
-        myCoalitionNum,
+        visibleUnitsRef.current, declarationsRef.current, myCoalitionNum,
       )
-      if (nearestId) {
-        addBraaPair(target.unitId, nearestId)
-        setCmdFeedback('BOGEY DOPE')
-      } else {
-        setCmdFeedback('NO BOGEY')
-      }
+      if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
+      else setCmdFeedback('NO BOGEY')
       return
     }
 
     const buf = cmdBuffer.trim().toLowerCase()
 
-    // .threat [N] + click — toggle threat ring (optionally set radius first)
     if (buf === '.threat' || buf.match(/^\.threat\s+\d+(\.\d+)?$/)) {
       if (target) {
         if (buf !== '.threat') {
-          const nm = parseFloat(buf.split(/\s+/)[1])
-          displayStore.updateWindow(WINDOW_ID, { threatRadius: nm })
+          displayStore.updateWindow(WINDOW_ID, { threatRadius: parseFloat(buf.split(/\s+/)[1]) })
         }
         toggleThreatRing(target.unitId)
         clearCmd()
@@ -555,26 +773,18 @@ export default function AicScope() {
       return
     }
 
-    // .dope + click — bogey dope
     if (buf === '.dope') {
       if (!target) return
       const nearestId = findNearestBogey(
         target.unitId, target.unit,
-        visibleUnitsRef.current,
-        declarationsRef.current,
-        myCoalitionNum,
+        visibleUnitsRef.current, declarationsRef.current, myCoalitionNum,
       )
-      if (nearestId) {
-        addBraaPair(target.unitId, nearestId)
-        setCmdFeedback('BOGEY DOPE')
-      } else {
-        setCmdFeedback('NO BOGEY')
-      }
+      if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
+      else setCmdFeedback('NO BOGEY')
       setCmdBuffer('')
       return
     }
 
-    // Plain click — complete BRAA pair if one is pending
     const pending = useAicStore.getState().pendingBraaFighter
     if (pending && target && target.unitId !== pending) { addBraaPair(pending, target.unitId); return }
     if (pending && !target) { clearPendingBraa(); return }
@@ -582,12 +792,9 @@ export default function AicScope() {
     if (pendingDeclaration && target) {
       setDeclaration(target.unitId, pendingDeclaration)
       setPendingDeclaration(null)
-      return
     }
   }, [pendingDeclaration, cmdBuffer, myCoalitionNum, setDeclaration, addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa, toggleThreatRing, displayStore]) // eslint-disable-line
 
-  // Non-passive wheel handler — must be attached via addEventListener, not onWheel prop,
-  // because React 17+ registers onWheel as passive at the root, preventing preventDefault.
   const wheelHandlerRef = useRef(null)
   wheelHandlerRef.current = (e) => {
     e.preventDefault()
@@ -606,9 +813,10 @@ export default function AicScope() {
     const fn = (e) => wheelHandlerRef.current(e)
     el.addEventListener('wheel', fn, { passive: false })
     return () => el.removeEventListener('wheel', fn)
-  }, []) // eslint-disable-line
+  }, [!!windowSettings]) // eslint-disable-line
 
-  // ── Readout: hovered unit info ────────────────────────────────────────────────
+  // ── Derived display values ─────────────────────────────────────────────────────
+
   const readout = useMemo(() => {
     if (!hoveredUnit || !view) return null
     const { unitId, unit } = hoveredUnit
@@ -621,23 +829,20 @@ export default function AicScope() {
     const { brg, range } = bearingRangeFromBullseye(
       unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, effectiveMagvar
     )
-    const decl        = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
-    const declLabel   = decl  // already uppercase: HOSTILE / UNKNOWN / NEUTRAL / FRIENDLY
-    const isFriendly  = decl === 'FRIENDLY'
-    const typeName    = (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
-    const callsign    = isFriendly ? resolveCallsignDisplay(unit) : null
-
-    const spdKts = Math.round((unit.speed ?? 0) * 1.94384)
-    const flags  = speedFlags(unit)
+    const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
+    const isFriendly = decl === 'FRIENDLY'
+    const typeName  = (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
+    const callsign  = isFriendly ? resolveCallsignDisplay(unit) : null
+    const spdKts    = Math.round((unit.speed ?? 0) * 1.94384)
 
     return {
       pos:      `${String(brg).padStart(3, '0')} / ${range}`,
       alt:      `${altRounded}`,
       trk:      `${subcardinal(magTrkDeg)} ${String(magTrkDeg).padStart(3, '0')}`,
-      decl:     declLabel,
+      decl,
       type:     typeName,
       spd:      `${spdKts}`,
-      flags,
+      flags:    speedFlags(unit),
       callsign,
     }
   }, [hoveredUnit, view, bullseyeLat, bullseyeLng, effectiveMagvar, declarations, myCoalitionNum]) // eslint-disable-line
@@ -650,6 +855,24 @@ export default function AicScope() {
     return `${String(brg).padStart(3, '0')} / ${range}`
   }, [cursorLatLng, bullseyeLat, bullseyeLng, effectiveMagvar, bullseyeEntry])
 
+  const picture = useMemo(() => {
+    if (!bullseyeEntry) return null
+    return computePicture(
+      visibleUnits,
+      (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
+      myCoalitionNum,
+      sector,
+      bullseyeLat, bullseyeLng,
+      effectiveMagvar,
+    )
+  }, [visibleUnits, declarations, myCoalitionNum, sector, bullseyeLat, bullseyeLng, effectiveMagvar]) // eslint-disable-line
+
+  const isPictureAlert = useMemo(() => {
+    if (!picture || picture.labelKey === 'CLEAN') return false
+    if (!ackPicture) return picture.totalGroups > 0
+    return picture.labelKey !== ackPicture.labelKey || picture.totalGroups !== ackPicture.totalGroups
+  }, [picture, ackPicture])
+
   if (!windowSettings) return null
 
   // ── Command area preview ──────────────────────────────────────────────────────
@@ -661,15 +884,14 @@ export default function AicScope() {
     cmdPreview = `BRAA: ${fu ? resolveCallsignDisplay(fu) : pendingBraaFighter} → ?`
   } else if (cmdBuffer) {
     cmdPreview = cmdBuffer
-  } else if (cmdFeedback) {
-    cmdPreview = cmdFeedback
   }
 
   return (
     <div className="aic-scope">
       <div ref={canvasAreaRef} className="aic-canvas-area">
-        <canvas ref={layersRef}   className="aic-layer" />
-        <canvas ref={contactsRef} className="aic-layer" />
+        <canvas ref={mapCanvasRef}  className="aic-layer" />
+        <canvas ref={layersRef}     className="aic-layer" />
+        <canvas ref={contactsRef}   className="aic-layer" />
         <div
           ref={interactiveRef}
           className="aic-layer aic-interactive"
@@ -691,21 +913,27 @@ export default function AicScope() {
           onContextMenu={e => e.preventDefault()}
         />
 
-        {/* Contact info readout — top right, only when hovered */}
-        {readout && (
+        {/* Contact info readout / cursor bullseye — top right */}
+        {(readout || cursorBullseye) && (
           <div className="aic-readout">
-            <div className="aic-readout-line1">
-              <span>{readout.pos}</span>
-              <span>{readout.alt}</span>
-              <span>{readout.trk}</span>
-            </div>
-            <div className="aic-readout-line2">
-              <span className={`aic-readout-decl${readout.decl ? ` aic-readout-decl--${readout.decl.toLowerCase()}` : ''}`}>{readout.decl}</span>
-              <span className="aic-readout-id">{readout.type}</span>
-              <span>{readout.spd}</span>
-            </div>
-            {readout.flags    && <div className="aic-readout-flags">{readout.flags}</div>}
-            {readout.callsign && <div className="aic-readout-callsign">{readout.callsign}</div>}
+            {readout ? (
+              <>
+                <div className="aic-readout-line1">
+                  <span>{readout.pos}</span>
+                  <span>{readout.alt}</span>
+                  <span>{readout.trk}</span>
+                </div>
+                <div className="aic-readout-line2">
+                  <span className={`aic-readout-decl${readout.decl ? ` aic-readout-decl--${readout.decl.toLowerCase()}` : ''}`}>{readout.decl}</span>
+                  <span className="aic-readout-id">{readout.type}</span>
+                  <span>{readout.spd}</span>
+                </div>
+                {readout.flags    && <div className="aic-readout-flags">{readout.flags}</div>}
+                {readout.callsign && <div className="aic-readout-callsign">{readout.callsign}</div>}
+              </>
+            ) : (
+              <div className="aic-readout-cursor-bs">{cursorBullseye}</div>
+            )}
           </div>
         )}
 
@@ -716,14 +944,57 @@ export default function AicScope() {
           </div>
         )}
 
+        {/* PICTURE readout — top left, below ROE. Click to acknowledge NEW PICTURE. */}
+        {picture && (
+          <div
+            className="aic-picture"
+            onClick={() => {
+              if (picture.labelKey !== 'CLEAN' && picture.totalGroups > 0)
+                setAckPicture({ labelKey: picture.labelKey, totalGroups: picture.totalGroups })
+            }}
+          >
+            <div className={`aic-picture-header${isPictureAlert ? ' aic-picture-header--alert' : ''}`}>
+              {picture.autoSector ? '~ ' : ''}{picture.label}
+              {picture.amplifiers?.dimensionStr ? `  ${picture.amplifiers.dimensionStr}` : ''}
+            </div>
+            {picture.labelKey !== 'CLEAN' && picture.amplifiers &&
+              (picture.amplifiers.openingClosing || picture.amplifiers.weighted || picture.amplifiers.echelon) && (
+              <div className="aic-picture-ampls">
+                {[
+                  picture.amplifiers.openingClosing,
+                  picture.amplifiers.weighted && `WEIGHTED ${picture.amplifiers.weighted}`,
+                  picture.amplifiers.echelon  && `ECHELON ${picture.amplifiers.echelon}`,
+                ].filter(Boolean).join('  ')}
+              </div>
+            )}
+            {picture.groups.slice(0, 6).map((g, i) => {
+              const name  = g.name.replace(' GROUP', '')
+              const bs    = `${String(g.bullseye.brg).padStart(3, '0')}/${String(g.bullseye.range).padStart(3)}`
+              const alt   = `${Math.round(g.altFt / 1000)}K`.padStart(4)
+              const trk   = g.trackDir ?? '-'
+              const decl  = DECL_PICTURE[g.decl] ?? 'UNKNOWN'
+              const fills = picFillIns(g)
+              return (
+                <div key={i} className={`aic-picture-group${g.isFollowOn ? ' aic-picture-group--followon' : ''}`}>
+                  {`${name}  ${bs}  ${alt}  ${trk}  ${decl}${fills ? '  ' + fills : ''}`}
+                </div>
+              )
+            })}
+            {picture.totalGroups > 6 && (
+              <div className="aic-picture-more">+{picture.totalGroups - 6} MORE</div>
+            )}
+          </div>
+        )}
+
         {/* No bullseye warning */}
         {!bullseyeEntry && (
           <div className="aic-warn">NO BULLSEYE</div>
         )}
 
-        {/* Cursor bullseye readout — bottom right */}
-        {cursorBullseye && (
-          <div className="aic-cursor-bs">{cursorBullseye}</div>
+
+        {/* Command feedback — above cmd entry */}
+        {cmdFeedback && (
+          <div className="aic-cmd-feedback">{cmdFeedback}</div>
         )}
 
         {/* Command entry — bottom left */}

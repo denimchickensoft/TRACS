@@ -3,13 +3,14 @@ import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }   from '../../../store/display.js'
 import '../stars/dcb/Dcb.css'
 
-export const CAB_WINDOW_ID = 'cab-main'
+export const ASDEX_WINDOW_ID = 'asdex-main'
 
+const RANGE_MIN = 0.1
+const RANGE_MAX = 2.0
 const LDR_DIR_SEQUENCE      = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 const LDR_DIR_CANVAS_ANGLES = [-90,  -45,   0,   45,  90,  135,  180, -135]
 
 const VALUE_CONFIG = {
-  RANGE:    { min: 14,  max: 16,  step: 0.25, dir: -1, fmt: v => v != null ? String(v) : '--' },
   LDR_DIR:  { min: 0,   max: 7,   step: 1,   dir: -1, fmt: v => LDR_DIR_SEQUENCE[v] ?? 'NE' },
   LDR_LEN:  { min: 0,   max: 7,   step: 1,   dir: -1, fmt: v => String(v)                   },
   PTL_LNTH: { min: 0,   max: 5,   step: 0.5, dir: -1, fmt: v => v.toFixed(1)                },
@@ -41,11 +42,9 @@ const COLORS = {
   valueColor:             '#ffffff',
 }
 
-// ── Read current value from display window ───────────────────────────────────
-
 function getValue(id, win) {
   switch (id) {
-    case 'RANGE':   return win?.rangeNmDisplay ?? null
+    case 'RANGE':   return win?.rangeNm ?? 1
     case 'LDR_DIR': {
       const idx = LDR_DIR_CANVAS_ANGLES.indexOf(win?.ldrAngleDeg ?? -45)
       return idx >= 0 ? idx : 1
@@ -58,19 +57,17 @@ function getValue(id, win) {
   }
 }
 
-// ── Apply a scroll delta to a value ─────────────────────────────────────────
-
 function applyDelta(id, delta, win, updateWindow) {
   if (id === 'RANGE') {
-    const cur  = win?.rangeNm ?? 15
-    const next = parseFloat(Math.max(14, Math.min(16, cur - delta * 0.25)).toFixed(3))
-    updateWindow(CAB_WINDOW_ID, { rangeNm: next })
+    const cur  = win?.rangeNm ?? 1
+    const next = Math.round(Math.max(RANGE_MIN, Math.min(RANGE_MAX, cur - delta * 0.1)) * 10) / 10
+    updateWindow(ASDEX_WINDOW_ID, { rangeNm: next })
     return
   }
   if (id === 'LDR_DIR') {
     const cur  = getValue('LDR_DIR', win)
     const next = ((cur - delta) % 8 + 8) % 8
-    updateWindow(CAB_WINDOW_ID, { ldrAngleDeg: LDR_DIR_CANVAS_ANGLES[next] })
+    updateWindow(ASDEX_WINDOW_ID, { ldrAngleDeg: LDR_DIR_CANVAS_ANGLES[next] })
     return
   }
   const cfg = VALUE_CONFIG[id]
@@ -80,16 +77,14 @@ function applyDelta(id, delta, win, updateWindow) {
     parseFloat((cur + delta * cfg.step * (cfg.dir ?? -1)).toFixed(3))
   ))
   switch (id) {
-    case 'LDR_LEN':  updateWindow(CAB_WINDOW_ID, { ldrLength: next });     break
-    case 'PTL_LNTH': updateWindow(CAB_WINDOW_ID, { ptlLength: next });     break
-    case 'HISTORY':  updateWindow(CAB_WINDOW_ID, { historyLength: next }); break
-    case 'H_RATE':   updateWindow(CAB_WINDOW_ID, { historyRate: next });   break
+    case 'LDR_LEN':  updateWindow(ASDEX_WINDOW_ID, { ldrLength: next });     break
+    case 'PTL_LNTH': updateWindow(ASDEX_WINDOW_ID, { ptlLength: next });     break
+    case 'HISTORY':  updateWindow(ASDEX_WINDOW_ID, { historyLength: next }); break
+    case 'H_RATE':   updateWindow(ASDEX_WINDOW_ID, { historyRate: next });   break
   }
 }
 
-// ── Single button ─────────────────────────────────────────────────────────────
-
-function CabDcbButton({ btn, isActive, valStr, half, onClick }) {
+function AsdexDcbButton({ btn, isActive, valStr, half, onClick }) {
   const lit = isActive
   const style = {
     background:  lit ? COLORS.buttonActiveBackground : COLORS.buttonBackground,
@@ -115,18 +110,16 @@ function CabDcbButton({ btn, isActive, valStr, half, onClick }) {
   )
 }
 
-// ── DCB bar ───────────────────────────────────────────────────────────────────
-
-export function CabDcb() {
-  const wheelDir          = useWheelDirection()
-  const barRef            = useRef(null)
-  const { updateWindow }  = useDisplayStore()
-  const win               = useDisplayStore((s) => s.windows[CAB_WINDOW_ID])
-  const activeSpinner     = win?.dcbActiveSpinner ?? null
+export function AsdexDcb() {
+  const wheelDir         = useWheelDirection()
+  const barRef           = useRef(null)
+  const { updateWindow } = useDisplayStore()
+  const win              = useDisplayStore(s => s.windows[ASDEX_WINDOW_ID])
+  const activeSpinner    = win?.dcbActiveSpinner ?? null
 
   const handleClick = useCallback((btn) => {
     const cur = win?.dcbActiveSpinner ?? null
-    updateWindow(CAB_WINDOW_ID, { dcbActiveSpinner: cur === btn.id ? null : btn.id })
+    updateWindow(ASDEX_WINDOW_ID, { dcbActiveSpinner: cur === btn.id ? null : btn.id })
   }, [win, updateWindow])
 
   const handleWheel = useCallback((e) => {
@@ -148,9 +141,14 @@ export function CabDcb() {
   function renderBtn(btn, half = false) {
     const isActive = activeSpinner === btn.id
     const raw      = btn.type === 'value' ? getValue(btn.id, win) : null
-    const valStr   = raw != null ? VALUE_CONFIG[btn.id]?.fmt(raw) : null
+    let   valStr   = null
+    if (raw != null) {
+      valStr = btn.id === 'RANGE'
+        ? `${raw}NM`
+        : VALUE_CONFIG[btn.id]?.fmt(raw) ?? null
+    }
     return (
-      <CabDcbButton
+      <AsdexDcbButton
         key={btn.id}
         btn={btn}
         isActive={isActive}
@@ -168,11 +166,11 @@ export function CabDcb() {
       data-pos="top"
       style={{ background: COLORS.background, borderBottomColor: COLORS.buttonBorder }}
     >
-      {BUTTONS.map((slot) => {
+      {BUTTONS.map(slot => {
         if (slot.slotType === 'halfV') {
           return (
             <div key={slot.id} className="dcb-halfV">
-              {slot.buttons.map((btn) => renderBtn(btn, true))}
+              {slot.buttons.map(btn => renderBtn(btn, true))}
             </div>
           )
         }
