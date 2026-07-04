@@ -100,6 +100,8 @@ function findNearestBogey(fighterId, fighterUnit, units, declarations, myCoaliti
   return nearestId
 }
 
+const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
+
 function getAicVisibleUnits(units, myCoalitionNum) {
   const result      = {}
   const detectedIds = new Set()
@@ -115,6 +117,7 @@ function getAicVisibleUnits(units, myCoalitionNum) {
     if (!unit.position) continue
     if (unit.alive === false) continue
     if (unit.category !== 'Aircraft' && unit.category !== 'Helicopter') continue
+    if (unit.agl !== undefined && unit.agl < AGL_FLOOR_M) continue
     const c = unit.coalition
     if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
   }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useUnitsStore }         from '../../store/units.js'
 import { useSessionStore }       from '../../store/session.js'
@@ -188,6 +188,30 @@ export default function CatccScope() {
     }
   }, []) // stable — all changing values read from refs/store
 
+  // ── Sync canvas pixel dimensions to the container's current size ───
+  const syncCanvasSize = useCallback(() => {
+    const container = canvasAreaRef.current
+    if (!container) return false
+    const w = container.clientWidth
+    const h = container.clientHeight
+    let resized = false
+    for (const ref of [mapCanvasRef, layersCanvasRef, compassCanvasRef, contactsCanvasRef]) {
+      if (ref.current) {
+        if (ref.current.width  !== w) { ref.current.width  = w; resized = true }
+        if (ref.current.height !== h) { ref.current.height = h; resized = true }
+      }
+    }
+    return resized
+  }, [])
+
+  // ── Size canvases synchronously before paint so the mount-time "rebuild
+  //    view" effect below never sees the browser's default 300×150 canvas
+  //    size — the ResizeObserver's own first callback fires too late (after
+  //    that effect) to prevent a warped initial render ──────────────────
+  useLayoutEffect(() => {
+    syncCanvasSize()
+  }, [syncCanvasSize])
+
   // ── Resize observer — sets canvas sizes first, then builds view so that
   //    buildView's canvas.width read and every draw function's ctx.canvas.width
   //    are always the same value in the same render cycle ─────────────────
@@ -195,20 +219,11 @@ export default function CatccScope() {
     const container = canvasAreaRef.current
     if (!container) return
     const ro = new ResizeObserver(() => {
-      const w = container.clientWidth
-      const h = container.clientHeight
-      let resized = false
-      for (const ref of [mapCanvasRef, layersCanvasRef, compassCanvasRef, contactsCanvasRef]) {
-        if (ref.current) {
-          if (ref.current.width  !== w) { ref.current.width  = w; resized = true }
-          if (ref.current.height !== h) { ref.current.height = h; resized = true }
-        }
-      }
-      if (resized) setView(buildView())
+      if (syncCanvasSize()) setView(buildView())
     })
     ro.observe(container)
     return () => ro.disconnect()
-  }, []) // eslint-disable-line
+  }, [syncCanvasSize]) // eslint-disable-line
 
   // Rebuild view when carrier position, zoom, or magvar changes
   useEffect(() => {

@@ -35,3 +35,8 @@ server/navdata/cache/
 
 # Tile cache — downloaded at runtime, not committed
 server/data/tiles/
+
+# Backup/preview scratch data — generated locally, not committed
+*.bak
+server/data/mva-preview/
+server/data/relief-preview/
