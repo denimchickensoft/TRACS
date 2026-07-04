@@ -1,4 +1,5 @@
-import { joinRoom, selfId }   from '@trystero-p2p/ws-relay'
+import * as nostrStrategy    from '@trystero-p2p/nostr'
+import * as wsRelayStrategy  from '@trystero-p2p/ws-relay'
 import { useSessionStore }    from '../store/session.js'
 import { useAtcStore }        from '../store/atc.js'
 import { useFlightPlansStore } from '../store/flightPlans.js'
@@ -34,11 +35,45 @@ const DISCONNECT_TIMEOUT_MS    = 30_000
 const PEER_ID_STORAGE_KEY      = 'tracs.previousPeerId'
 const CONNECTED_AT_STORAGE_KEY = 'tracs.connectedAt'
 
+// ── Signaling strategy selection ───────────────────────────────────────────────
+// Primary: public Nostr relay network (serverless, no port forwarding needed).
+// Fallback: this deployment's own self-hosted ws-relay (server/src/index.js
+// `/signal`), for LAN/offline deployments the public internet can't reach.
+// See resources/specs/webrtc-spec.md for the full rationale.
+const NOSTR_REDUNDANCY       = 5     // how many public relays to use simultaneously
+const RELAY_PROBE_TIMEOUT_MS = 8_000 // how long to wait for a Nostr relay to open before falling back
+const RELAY_PROBE_POLL_MS    = 250
+
+// True once any of the strategy's relay sockets reaches OPEN. This is a
+// transport-level signal (are we talking to a relay at all), independent of
+// whether any peer has joined the room yet -- so it can't be confused with
+// "signaling worked, I'm just the first one here."
+function relayIsOpen(getRelaySockets) {
+  return Object.values(getRelaySockets?.() ?? {}).some((ws) => ws?.readyState === WebSocket.OPEN)
+}
+
+function waitForRelayConnection(getRelaySockets, timeoutMs) {
+  return new Promise((resolve) => {
+    if (relayIsOpen(getRelaySockets)) { resolve(true); return }
+    const start = Date.now()
+    const poll = setInterval(() => {
+      if (relayIsOpen(getRelaySockets)) {
+        clearInterval(poll)
+        resolve(true)
+      } else if (Date.now() - start >= timeoutMs) {
+        clearInterval(poll)
+        resolve(false)
+      }
+    }, RELAY_PROBE_POLL_MS)
+  })
+}
+
 // ── Runtime state ─────────────────────────────────────────────────────────────
 let sessionRoom = null
 let moduleRoom  = null
 let sendSession = null
 let sendModule  = null
+let selfId      = null
 
 let activePosition = ''
 let activeModule   = ''
@@ -647,15 +682,13 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   // causing senderIsNewer to be false and no peer to take the host role.
   const myRoomJoinedAt = Date.now()
 
-  sessionStorage.setItem(PEER_ID_STORAGE_KEY, selfId)
   sessionStorage.setItem(CONNECTED_AT_STORAGE_KEY, String(myConnectedAt))
 
   const sessionRoomId = await deriveRoomId(olympusUrl, password)
   const moduleRoomId  = `${sessionRoomId}-${mod.toLowerCase()}`
   const iceServers = await fetchIceServers()
-  const cfg = {
+  const baseCfg = {
     appId: 'tracs',
-    relayConfig: { urls: [getSignalUrl()] },
     rtcConfig: { iceServers },
     // Chrome obfuscates local IPs as random .local mDNS hostnames. Same-machine
     // peers can't resolve these (they're synthetic, not real mDNS records), so the
@@ -663,10 +696,31 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
     // work. For cross-machine LAN, these host candidates simply fail first; STUN
     // reflexive candidates (real LAN IPs) still succeed.
     _test_only_mdnsHostFallbackToLoopback: true,
+    // AES-GCM encrypts SDP payloads so public relay operators can't read session
+    // descriptors in plaintext. Every peer already knows this password out-of-band
+    // (it's the same input used to derive sessionRoomId above), so this only hides
+    // signaling contents in transit -- it doesn't change who can find the room.
+    ...(password ? { password } : {}),
   }
 
-  sessionRoom = joinRoom(cfg, sessionRoomId)
-  moduleRoom  = joinRoom(cfg, moduleRoomId)
+  // Try the public Nostr relay network first (no port forwarding required).
+  // Fall back to this deployment's self-hosted ws-relay if no relay socket opens
+  // within the timeout -- e.g. an air-gapped LAN with no internet route at all.
+  let strategy = nostrStrategy
+  let cfg      = { ...baseCfg, relayConfig: { redundancy: NOSTR_REDUNDANCY } }
+  sessionRoom  = strategy.joinRoom(cfg, sessionRoomId)
+
+  const nostrReachable = await waitForRelayConnection(strategy.getRelaySockets, RELAY_PROBE_TIMEOUT_MS)
+  if (!nostrReachable) {
+    console.warn('[webrtc] Public Nostr relays unreachable within timeout; falling back to self-hosted relay')
+    await sessionRoom.leave()
+    strategy = wsRelayStrategy
+    cfg      = { ...baseCfg, relayConfig: { urls: [getSignalUrl()] } }
+    sessionRoom = strategy.joinRoom(cfg, sessionRoomId)
+  }
+  moduleRoom = strategy.joinRoom(cfg, moduleRoomId)
+  selfId     = strategy.selfId
+  sessionStorage.setItem(PEER_ID_STORAGE_KEY, selfId)
 
   const [_sendSession, getSession] = sessionRoom.makeAction('msg')
   const [_sendModule,  getModule]  = moduleRoom.makeAction('msg')
