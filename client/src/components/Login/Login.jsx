@@ -198,6 +198,8 @@ function PositionPhase({ onSignedIn }) {
     }
   }, []) // eslint-disable-line
 
+  const [runwayBaseNames, setRunwayBaseNames] = useState(null)
+
   // Load position types + ICAO mapping
   useEffect(() => {
     loadPositionTypes()
@@ -206,6 +208,26 @@ function PositionPhase({ onSignedIn }) {
       .then((data) => setIcaoMap(data))
       .catch(() => {})
   }, [loadPositionTypes])
+
+  // Fetch runway JSON for the current theatre to filter out helicopter pads / FOBs
+  useEffect(() => {
+    const theatre = mission?.mission?.theatre
+    if (!theatre) return
+    const ac = new AbortController()
+    fetch(`/runways/${encodeURIComponent(theatre)}.json`, { signal: ac.signal })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return
+        const names = new Set(
+          (data.airbases ?? [])
+            .filter((ab) => Array.isArray(ab.runways) && ab.runways.length > 0)
+            .map((ab) => ab.airbase.toLowerCase())
+        )
+        setRunwayBaseNames(names)
+      })
+      .catch(() => {})
+    return () => ac.abort()
+  }, [mission?.mission?.theatre])
 
   // Default suffix once positionTypes are loaded; also validates saved suffix still exists
   const atcPositionTypes = positionTypes.filter((pt) => !pt.catccOnly)
@@ -222,7 +244,8 @@ function PositionPhase({ onSignedIn }) {
   // Skip the first run of the CTR-toggle clear so restored CTR facilityId isn't wiped on mount
   const isCtrMountRef = useRef(true)
 
-  // Normalise Olympus airbases into a flat list, deduplicating by name
+  // Normalise Olympus airbases into a flat list, deduplicating by name.
+  // When runway data is loaded, filter out helicopter pads and FOBs (no runway geometry).
   const airbaseList = useMemo(() => {
     const raw  = airbases?.airbases ?? airbases ?? {}
     const seen = new Set()
@@ -239,10 +262,12 @@ function PositionPhase({ onSignedIn }) {
       .filter((ab) => {
         if (seen.has(ab.name)) return false
         seen.add(ab.name)
+        if (ab.isCarrier) return true
+        if (runwayBaseNames && !runwayBaseNames.has(ab.name.toLowerCase())) return false
         return true
       })
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [airbases])
+  }, [airbases, runwayBaseNames])
 
   const landBases        = airbaseList.filter((ab) => !ab.isCarrier)
   const carriers         = airbaseList.filter((ab) =>  ab.isCarrier)
@@ -598,7 +623,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
               ) : !airbasesReceived ? (
                 <div className="login-loading">Waiting for Olympus data…</div>
               ) : !airbasesLoaded ? (
-                <div className="login-loading">No airbases for theatre: {mission?.mission?.theatre ?? 'unknown'}</div>
+                <div className="login-loading">{mission?.mission?.theatre ? `No airbases for theatre: ${mission.mission.theatre}` : 'Waiting for mission data…'}</div>
               ) : (
                 <select
                   className="facility-input"

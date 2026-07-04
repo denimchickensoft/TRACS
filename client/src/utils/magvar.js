@@ -350,28 +350,29 @@ export function computeMagvar(latDeg, lngDeg, dateOrYear = new Date()) {
 }
 
 // ── DCS meridian convergence ──────────────────────────────────────────────────
-// DCS uses a flat-earth grid anchored at a theatre-specific reference meridian.
-// Grid north diverges from geographic north by γ = (lng − λ₀) × sin(lat).
+// DCS uses a Transverse Mercator projection. Grid north diverges from geographic
+// north by γ = (lng − λ₀) × sin(lat), where λ₀ is the theatre central meridian.
 // DCS_magvar = IGRF_magvar + convergence, so that:
 //   DCS_grid_heading − DCS_magvar  =  geographic_true − IGRF  =  magnetic_heading
 //
-// Reference meridians are estimates; exact values are not published by DCS.
-const _THEATRE_REF_MERIDIAN = {
-  Caucasus:       33,
-  PersianGulf:    56,
-  Syria:          33,
-  Sinai:          33,
-  MarianaIslands: 145,
-  Nevada:         -116,
-  SouthAtlantic:  -60,
-  Kola:           27,
-  Afghanistan:    67,
-  Germany:        13,
+// Central meridians are loaded from /projection_params.json (exact DCS values).
+// Fallback table covers theatres not yet in that file (e.g. Afghanistan).
+const _FALLBACK_MERIDIAN = {
+  Afghanistan: 67,
+}
+
+let _projectionParams = null
+
+// Called once at app startup after fetching /projection_params.json.
+export function setProjectionParams(data) {
+  _projectionParams = data
 }
 
 // Returns convergence in degrees. Add to IGRF to get the DCS-equivalent magvar.
 export function theatreConvergence(theatre, latDeg, lngDeg) {
-  const refMeridian = _THEATRE_REF_MERIDIAN[theatre]
-  if (refMeridian == null) return 0
-  return (lngDeg - refMeridian) * Math.sin(latDeg * _D2R)
+  const centralMeridian =
+    _projectionParams?.[theatre]?.central_meridian ??
+    _FALLBACK_MERIDIAN[theatre]
+  if (centralMeridian == null) return 0
+  return (lngDeg - centralMeridian) * Math.sin(latDeg * _D2R)
 }

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { computeMagvar, missionDecimalYear } from '../utils/magvar.js'
+import { computeMagvar, theatreConvergence, missionDecimalYear } from '../utils/magvar.js'
 
 const FT_PER_NM = 6076.115
 
@@ -107,37 +107,48 @@ export const useRunwaysStore = create((set, get) => ({
     if (get()._lastLoadKey === loadKey) return
     try {
       if (!theatreCache[theatre]) {
-        const [rwyRes, abRes] = await Promise.all([
-          fetch(`/runways/${encodeURIComponent(theatre)}.json`),
-          fetch(`/api/airbases?theatre=${encodeURIComponent(theatre)}`),
-        ])
+        const rwyRes = await fetch(`/runways/${encodeURIComponent(theatre)}.json`)
         if (!rwyRes.ok) throw new Error(`HTTP ${rwyRes.status}`)
         const rwyData = await rwyRes.json()
 
-        // headingLookup[abName] = array of runway groups, one per physical runway,
-        // in the same order as the airbase JSON. Each group maps full designator
-        // (e.g. "13L", "31R") to magnetic heading so parallel runways are distinct.
-        const headingLookup = {}
-        if (abRes.ok) {
-          const abData = await abRes.json()
-          for (const [abName, abInfo] of Object.entries(abData.airfields ?? {})) {
-            headingLookup[abName] = []
-            for (const rwy of abInfo.runways ?? []) {
-              const group = {}
-              for (const entry of rwy.headings ?? []) {
-                for (const [rwyNum, data] of Object.entries(entry)) {
-                  group[rwyNum] = parseInt(data.magHeading, 10)
-                }
-              }
-              headingLookup[abName].push(group)
+        // Pre-pass: group runway entries by lower designator to find parallels.
+        // suffixMap: rwy object → { lowerSuffix: 'L'|'C'|'R'|'' }
+        // lowerSuffix is the suffix in the lower-numbered heading direction.
+        const suffixMap = new Map()
+        for (const ab of rwyData.airbases ?? []) {
+          if (!Array.isArray(ab.runways) || ab.runways.length === 0) continue
+          const groups = {}
+          for (const rwy of ab.runways) {
+            const recip    = ((rwy.name + 18) % 36) || 36
+            const lowerNum = Math.min(rwy.name, recip)
+            if (!groups[lowerNum]) groups[lowerNum] = []
+            groups[lowerNum].push(rwy)
+          }
+          for (const [lowerNumStr, rwys] of Object.entries(groups)) {
+            if (rwys.length === 1) {
+              suffixMap.set(rwys[0], '')
+              continue
+            }
+            const lowerNum = parseInt(lowerNumStr, 10)
+            const headRad  = (lowerNum * 10) * Math.PI / 180
+            const perpE    = Math.cos(headRad)
+            const perpN    = -Math.sin(headRad)
+            const cosLat   = Math.cos(rwys[0].lat * Math.PI / 180)
+            const sorted   = [...rwys].sort((a, b) =>
+              (a.lon * cosLat * perpE + a.lat * perpN) -
+              (b.lon * cosLat * perpE + b.lat * perpN)
+            )
+            const SUFFIXES = rwys.length === 2 ? ['L', 'R'] : ['L', 'C', 'R']
+            for (let i = 0; i < sorted.length; i++) {
+              suffixMap.set(sorted[i], SUFFIXES[i] ?? 'R')
             }
           }
         }
 
-        theatreCache[theatre] = { ...rwyData, headingLookup }
+        theatreCache[theatre] = { ...rwyData, suffixMap }
       }
 
-      const { airbases, headingLookup } = theatreCache[theatre]
+      const { airbases, suffixMap } = theatreCache[theatre]
       const threshold    = filterThresholdNm(suffix)
       const hasPos       = facilityLat != null && facilityLng != null
       const isNewTheatre = get().theatre !== theatre
@@ -145,71 +156,32 @@ export const useRunwaysStore = create((set, get) => ({
       const rawCenterlines = []
       const seenCtr        = new Set()
 
-      let facilityFlowMagHead = null  // mag heading of facility's longest runway
+      let facilityFlowMagHead = null
       let facilityLongestLen  = 0
 
       for (const ab of airbases ?? []) {
         if (!Array.isArray(ab.runways) || ab.runways.length === 0) continue
-        const abGroups = headingLookup[ab.airbase] ?? []
-        for (let rwyIdx = 0; rwyIdx < ab.runways.length; rwyIdx++) {
-          const rwy = ab.runways[rwyIdx]
+        for (const rwy of ab.runways) {
+          if (rwy.course_true_deg == null) continue
           if (hasPos && nmBetween(facilityLat, facilityLng, rwy.lat, rwy.lon) > threshold) continue
 
-          // Match this runway to the airbase JSON group whose headings contain
-          // rwy.name or its reciprocal. Name-based matching is robust against
-          // the runway JSON and airbases JSON having different entry orders.
-          const reciprocal = ((rwy.name + 18) % 36) || 36
-          const matchingGroups = abGroups.filter((g) =>
-            Object.keys(g).some((k) => {
-              const n = parseInt(k, 10)
-              return n === rwy.name || n === reciprocal
-            })
-          )
+          const reciprocal  = ((rwy.name + 18) % 36) || 36
+          const lowerNum    = Math.min(rwy.name, reciprocal)
+          const lowerSuffix = suffixMap.get(rwy) ?? ''
+          const recipSuffix = lowerSuffix === 'L' ? 'R' : lowerSuffix === 'R' ? 'L' : lowerSuffix
+          const primaryIsLower = rwy.name === lowerNum
+          const name1 = String(rwy.name)    + (primaryIsLower ? lowerSuffix : recipSuffix)
+          const name2 = String(reciprocal)  + (primaryIsLower ? recipSuffix : lowerSuffix)
 
-          let group
-          if (matchingGroups.length === 1) {
-            group = matchingGroups[0]
-          } else if (matchingGroups.length > 1) {
-            // Parallel runways share the same base numbers (e.g. 12L/30R and 12R/30L).
-            // Disambiguate by lateral geometry: project each runway center onto the axis
-            // perpendicular to the runway, using the lower-numbered heading so that
-            // smaller offset = left = 'L' suffix and larger = right = 'R'.
-            const lowerNum = Math.min(rwy.name, reciprocal)
-            const headRad  = (lowerNum * 10) * Math.PI / 180
-            const perpE    = Math.cos(headRad)   // right-hand perpendicular, east component
-            const perpN    = -Math.sin(headRad)  // right-hand perpendicular, north component
-            const cosLat   = Math.cos(rwy.lat * Math.PI / 180)
-
-            const parallelRwys = (ab.runways ?? []).filter((r) =>
-              r.name === rwy.name || r.name === reciprocal
-            )
-            const sorted = [...parallelRwys].sort((a, b) =>
-              (a.lon * cosLat * perpE + a.lat * perpN) -
-              (b.lon * cosLat * perpE + b.lat * perpN)
-            )
-            const rank = sorted.indexOf(rwy)  // 0 = leftmost = L
-
-            // Sort groups by L/R suffix of the lower-number designator (L=0, C=1, R=2)
-            const SUFFIX_RANK = { L: 0, C: 1, R: 2 }
-            const sortedGroups = [...matchingGroups].sort((a, b) => {
-              const sufA = (Object.keys(a).find((k) => parseInt(k, 10) === lowerNum) ?? '').replace(/\d/g, '')
-              const sufB = (Object.keys(b).find((k) => parseInt(k, 10) === lowerNum) ?? '').replace(/\d/g, '')
-              return (SUFFIX_RANK[sufA] ?? 9) - (SUFFIX_RANK[sufB] ?? 9)
-            })
-            group = sortedGroups[rank] ?? {}
-          } else {
-            group = {}
-          }
-          const allEntries = Object.entries(group)  // e.g. [["13L",126],["31R",306]]
-
-          // Primary = entry whose base number equals rwy.name; other = reciprocal.
-          const primaryEntry = allEntries.find(([k]) => parseInt(k, 10) === rwy.name)
-          const otherEntry   = allEntries.find(([k]) => parseInt(k, 10) !== rwy.name)
-
-          const name1    = primaryEntry?.[0] ?? String(rwy.name)
-          const name2    = otherEntry?.[0]   ?? String(reciprocal)
-          const magHead  = primaryEntry?.[1]  ?? rwy.name * 10
-          const magHead2 = otherEntry?.[1]    ?? reciprocal * 10
+          // Compute magnetic headings from DCS grid heading via TM convergence + WMM.
+          // course_true_deg is a DCS grid heading; negating gives the approach direction.
+          const rwyMagvar    = computeMagvar(rwy.lat, rwy.lon, missionDate)
+          const convergence  = theatreConvergence(theatre, rwy.lat, rwy.lon)
+          const rawMagHead   = ((-rwy.course_true_deg) - rwyMagvar + 360) % 360
+          // Orient toward rwy.name * 10 (the primary designator direction).
+          const expected     = rwy.name * 10
+          const magHead      = angDist(rawMagHead, expected) <= 90 ? rawMagHead : (rawMagHead + 180) % 360
+          const magHead2     = (magHead + 180) % 360
 
           // Track facility's longest runway for satellite flow bucket computation
           if (facilityAirbase && ab.airbase === facilityAirbase && rwy.length_ft > facilityLongestLen) {
@@ -217,7 +189,6 @@ export const useRunwaysStore = create((set, get) => ({
             facilityFlowMagHead = magHead
           }
 
-          if (rwy.course_true_deg == null) continue
           const headingDeg = -rwy.course_true_deg
           let end1, end2
           if (rwy.end1?.lat != null) {
@@ -234,16 +205,9 @@ export const useRunwaysStore = create((set, get) => ({
                 end1.lat - end2.lat
               )
             : headingDeg * Math.PI / 180
-          const rwyMagvar = computeMagvar(rwy.lat, rwy.lon, missionDate)
-          // Convergence-corrected magvar: geographic heading vs. DCS published mag heading.
-          // Applying this to the scope makes RBL/compass bearings match DCS instruments.
-          let geoMagvar = rwyMagvar
-          if (rwy.end1?.lat != null) {
-            let diff = (headingRad * 180 / Math.PI) - magHead
-            if (diff > 180) diff -= 360
-            if (diff < -180) diff += 360
-            geoMagvar = diff
-          }
+          // geoMagvar: convergence-corrected magvar for scope bearing display.
+          // = convergence + WMM magvar, matching how AicScope/CatccScope compute effectiveMagvar.
+          const geoMagvar = convergence + rwyMagvar
 
           // ── Centerlines (one per direction), carrying pavement endpoints ──
           // headingRad = bearing from end2 → end1. The primary runway (rwy.name)

@@ -67,67 +67,6 @@ app.post('/api/connect', async (req, res) => {
   res.json({ ok: true })
 })
 
-// GET /api/airbases?theatre=Caucasus — static runway/airbase database
-app.get('/api/airbases', (req, res) => {
-  const { theatre } = req.query
-  if (!theatre) return res.status(400).json({ error: 'theatre is required' })
-
-  // Theatre name → filename mapping (mirrors theatre_index.json convention)
-  const FILE_MAP = {
-    Caucasus: 'caucasus', Nevada: 'nevada', PersianGulf: 'persiangulf',
-    Syria: 'syria', MarianaIslands: 'marianas', SouthAtlantic: 'falklands',
-    Sinai: 'sinaimap', Kola: 'kola', Afghanistan: 'afghanistan', Germany: 'germany',
-  }
-  const file = FILE_MAP[theatre]
-  if (!file) return res.status(404).json({ error: `no airbase data for theatre: ${theatre}` })
-
-  const filePath = path.join(__dirname, '../../server/maps/airbases', `${file}.json`)
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'airbase file not found' })
-
-  try {
-    res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')))
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
-
-// GET /api/tiles/:theatre/:z/:x/:y — transparent caching proxy for DCS map tiles
-const TILES_CACHE_DIR = path.join(__dirname, '../data/tiles')
-const OLYMPUS_THEATRE_KEY = {
-  syria:          'alt-syria',
-  caucasus:       'alt-caucasus',
-  nevada:         'alt-nevada',
-  persiangulf:    'alt-persiangulf',
-  normandy:       'alt-Normandy',
-  germanycw:      'alt-GermanyCW',
-  marianaislands: 'alt-marianaislands-modern',
-}
-
-app.get('/api/tiles/:theatre/:z/:x/:y', async (req, res) => {
-  const { theatre, z, x, y } = req.params
-  const localPath = path.join(TILES_CACHE_DIR, theatre, z, x, y)
-
-  if (fs.existsSync(localPath)) {
-    return res.type('png').sendFile(localPath)
-  }
-
-  const key = OLYMPUS_THEATRE_KEY[theatre]
-  if (!key) return res.status(404).end()
-
-  try {
-    const upstream = await fetch(`https://maps.dcsolympus.com/maps/${key}/${z}/${x}/${y}.png`)
-    if (!upstream.ok) return res.status(upstream.status).end()
-
-    const buf = Buffer.from(await upstream.arrayBuffer())
-    fs.mkdirSync(path.dirname(localPath), { recursive: true })
-    fs.writeFileSync(localPath, buf)
-
-    res.type('png').send(buf)
-  } catch (err) {
-    console.error('[tiles]', err.message)
-    res.status(502).end()
-  }
-})
 
 // GET /api/maps?theatre=Caucasus
 app.get('/api/maps', async (req, res) => {
@@ -193,7 +132,7 @@ app.get('/api/airports/names/:theatre', (req, res) => {
 
 // GET /api/asdex/colors — ASDE-X display colors config
 app.get('/api/asdex/colors', (req, res) => {
-  const filePath = path.join(__dirname, '../navdata/config/asdex-colors.json')
+  const filePath = path.join(__dirname, '../navdata/config/asdex_colors.json')
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'colors config not found' })
   try {
     res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')))

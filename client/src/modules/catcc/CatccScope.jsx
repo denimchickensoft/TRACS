@@ -167,22 +167,16 @@ export default function CatccScope() {
     }
   }, []) // eslint-disable-line
 
-  // ── Build view — reads dimensions from container so canvas default
-  //    size (300×150) never produces a wrong view on remount ──────────
+  // ── Build view — reads canvas attribute (set by ResizeObserver before
+  //    this is called) so all draw functions agree on the same dimensions ──
   const buildView = useCallback(() => {
-    const container = canvasAreaRef.current
-    if (!container) return null
+    const canvas = layersCanvasRef.current
+    if (!canvas) return null
     const ws = useDisplayStore.getState().windows[WINDOW_ID]
     if (!ws) return null
-    const w = container.clientWidth
-    const h = container.clientHeight
+    const w = canvas.width
+    const h = canvas.height
     if (!w || !h) return null
-    // Keep canvas pixel dims in sync with container so draw functions agree
-    for (const ref of [mapCanvasRef, layersCanvasRef, compassCanvasRef, contactsCanvasRef]) {
-      if (ref.current && (ref.current.width !== w || ref.current.height !== h)) {
-        ref.current.width = w; ref.current.height = h
-      }
-    }
     return {
       centerLat:   carrierLatRef.current,
       centerLng:   carrierLngRef.current,
@@ -194,11 +188,24 @@ export default function CatccScope() {
     }
   }, []) // stable — all changing values read from refs/store
 
-  // ── Resize observer — stable, never reconnects on carrier position change
+  // ── Resize observer — sets canvas sizes first, then builds view so that
+  //    buildView's canvas.width read and every draw function's ctx.canvas.width
+  //    are always the same value in the same render cycle ─────────────────
   useEffect(() => {
     const container = canvasAreaRef.current
     if (!container) return
-    const ro = new ResizeObserver(() => { setView(buildView()) })
+    const ro = new ResizeObserver(() => {
+      const w = container.clientWidth
+      const h = container.clientHeight
+      let resized = false
+      for (const ref of [mapCanvasRef, layersCanvasRef, compassCanvasRef, contactsCanvasRef]) {
+        if (ref.current) {
+          if (ref.current.width  !== w) { ref.current.width  = w; resized = true }
+          if (ref.current.height !== h) { ref.current.height = h; resized = true }
+        }
+      }
+      if (resized) setView(buildView())
+    })
     ro.observe(container)
     return () => ro.disconnect()
   }, []) // eslint-disable-line

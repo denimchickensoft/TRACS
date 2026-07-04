@@ -441,27 +441,32 @@ export function Par({
   const [mode, setMode] = useState(() => {
     const saved = localStorage.getItem('tracs.par.mode')
     if (saved === 'carrier' && initCarrierId == null) return 'airfield'
-    return saved ?? (initCarrierId != null ? 'carrier' : 'airfield')
+    if (initCarrierId != null) return 'carrier'
+    return saved ?? 'airfield'
   })
   const [runwayId,   setRunwayId]   = useState(() => localStorage.getItem('tracs.par.runwayId') ?? '')
   const [manualLat,  setManualLat]  = useState('')
   const [manualLng,  setManualLng]  = useState('')
   const [manualHdg,  setManualHdg]  = useState('')
   const [threshElev, setThreshElev] = useState(0)
-  const [gsAngle,    setGsAngle]    = useState(() => {
-    const saved = parseFloat(localStorage.getItem('tracs.par.gsAngle'))
-    return isNaN(saved) ? (initCarrierId != null ? 3.5 : 3.0) : saved
+  const [gsAngleRaw, setGsAngleRaw] = useState(() => {
+    const saved = localStorage.getItem('tracs.par.gsAngle')
+    const v = parseFloat(saved)
+    return isNaN(v) ? String(initCarrierId != null ? 3.5 : 3.0) : saved
   })
-  const [rangeNm,    setRangeNm]    = useState(() => {
-    const saved = parseFloat(localStorage.getItem('tracs.par.rangeNm'))
-    return isNaN(saved) ? 10 : saved
+  const [rangeNmRaw, setRangeNmRaw] = useState(() => {
+    const saved = localStorage.getItem('tracs.par.rangeNm')
+    const v = parseFloat(saved)
+    return isNaN(v) ? '10' : saved
   })
+  const gsAngle = Math.min(7, Math.max(1, parseFloat(gsAngleRaw) || (initCarrierId != null ? 3.5 : 3.0)))
+  const rangeNm = parseFloat(rangeNmRaw) || 10
 
   // Persist PAR config across remounts and popup windows
-  useEffect(() => { localStorage.setItem('tracs.par.mode',     mode)           }, [mode])
-  useEffect(() => { localStorage.setItem('tracs.par.runwayId', runwayId)       }, [runwayId])
-  useEffect(() => { localStorage.setItem('tracs.par.gsAngle',  String(gsAngle)) }, [gsAngle])
-  useEffect(() => { localStorage.setItem('tracs.par.rangeNm',  String(rangeNm)) }, [rangeNm])
+  useEffect(() => { localStorage.setItem('tracs.par.mode',     mode)      }, [mode])
+  useEffect(() => { localStorage.setItem('tracs.par.runwayId', runwayId)  }, [runwayId])
+  useEffect(() => { localStorage.setItem('tracs.par.gsAngle',  gsAngleRaw) }, [gsAngleRaw])
+  useEffect(() => { localStorage.setItem('tracs.par.rangeNm',  rangeNmRaw) }, [rangeNmRaw])
 
   // Sync manual fields from selected runway (handles dropdown changes and on-mount restore)
   useEffect(() => {
@@ -490,9 +495,8 @@ export function Par({
       const gridHdgDeg = (carrierUnit.heading ?? 0) / D2R  // DCS grid heading
       const magvar     = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
       const conv       = initTheatre ? theatreConvergence(initTheatre, carrierUnit.position.lat, carrierUnit.position.lng) : 0
-      const trueHdgDeg = gridHdgDeg - conv  // geographic true heading
-      // finalBearingMag: geographic true − IGRF (= DCS_grid − DCS_magvar, same result)
-      const finalBearingMag = ((trueHdgDeg - deckOff - magvar) % 360 + 360) % 360
+      const trueHdgDeg = gridHdgDeg + conv  // geographic true heading = grid + convergence
+      const finalBearingMag = ((gridHdgDeg - deckOff - magvar) % 360 + 360) % 360
       return {
         ...base,
         threshLat:  carrierUnit.position.lat,
@@ -511,11 +515,12 @@ export function Par({
       const hdg = parseFloat(manualHdg)
       if (!isNaN(lat) && !isNaN(lng) && !isNaN(hdg)) {
         const magvar = computeMagvar(lat, lng, missionDate)
+        const conv   = initTheatre ? theatreConvergence(initTheatre, lat, lng) : 0
         return {
           ...base,
           threshLat:  lat,
           threshLng:  lng,
-          trueHdg:    ((hdg + magvar) % 360 + 360) % 360,
+          trueHdg:    ((hdg + magvar + conv) % 360 + 360) % 360,
           threshElev: threshElev,
           tch:        TCH_FT,
           finalBearingMag: ((hdg % 360) + 360) % 360,
@@ -578,7 +583,7 @@ export function Par({
     const magvar  = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
     const conv    = initTheatre ? theatreConvergence(initTheatre, carrierUnit.position.lat, carrierUnit.position.lng) : 0
     const gridHdg = (carrierUnit.heading ?? 0) / D2R
-    const brc     = ((gridHdg - conv - magvar + 720) % 360)
+    const brc     = ((gridHdg - magvar + 720) % 360)
     const fb      = Math.round(((brc - deckOff + 360) % 360))
     return fb === 0 ? 360 : fb
   }, [carrierUnit, missionDate, initTheatre])
@@ -691,15 +696,16 @@ export function Par({
           <span className="par-label">GS</span>
           <input
             className="par-input par-input--xs"
-            value={gsAngle}
-            onChange={(e) => setGsAngle(parseFloat(e.target.value) || 3.0)}
+            value={gsAngleRaw}
+            onChange={(e) => setGsAngleRaw(e.target.value)}
+            onBlur={() => setGsAngleRaw(String(gsAngle))}
           />
           <span className="par-label">°</span>
           <span className="par-label" style={{ marginLeft: 6 }}>RNG</span>
           <input
             className="par-input par-input--xs"
-            value={rangeNm}
-            onChange={(e) => setRangeNm(parseFloat(e.target.value) || 10)}
+            value={rangeNmRaw}
+            onChange={(e) => setRangeNmRaw(e.target.value)}
           />
           <span className="par-label">NM</span>
           <span className="par-info" style={{ marginLeft: 10 }}>

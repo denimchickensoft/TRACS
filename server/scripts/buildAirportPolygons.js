@@ -17,7 +17,7 @@ const path = require('path')
 
 const ROOT         = path.join(__dirname, '../..')
 const CACHE_DIR    = path.join(__dirname, '../navdata/cache')
-const TM_PARAMS    = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/airspace_tm_params.json'), 'utf8'))
+const TM_PARAMS    = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/projection_params.json'), 'utf8'))
 const NAME_MAP     = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/airport_name_map.json'), 'utf8'))
 const THEATRES     = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/theatres.json'), 'utf8'))
 

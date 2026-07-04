@@ -14,6 +14,7 @@ import { Par }           from './components/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
 import { Messages }        from './components/Messages/Messages'
 import { disconnectWebrtc } from './webrtc/client'
+import { setProjectionParams } from './utils/magvar'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
 const MSG_VISIBLE_KEY = 'tracs.msg.visible'
@@ -66,6 +67,7 @@ export function App() {
   const myEntry = useControllersStore((s) => s.registry[positionName])
 
   useEffect(() => {
+    fetch('/projection_params.json').then((r) => r.ok ? r.json() : null).then((d) => { if (d) setProjectionParams(d) }).catch(() => {})
     loadManifest()
     loadProfile(getSavedProfile())
   }, []) // eslint-disable-line
