@@ -98,14 +98,19 @@ export function isApplying() { return _applying }
 
 // ── Room ID derivation ────────────────────────────────────────────────────────
 async function deriveRoomId(olympusAddress, password = '') {
+  // Hostnames are case-insensitive; lowercase before hashing so two peers who
+  // typed the same address with different casing still land in the same room.
   const normalized = olympusAddress
     .replace(/^https?:\/\//i, '')
     .replace(/\/.*$/, '')
     .trim()
+    .toLowerCase()
   const input = password ? `${normalized}:${password}` : normalized
   const hash  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
   const hex   = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
-  return 'tracs-' + hex.substring(0, 16)
+  const roomId = 'tracs-' + hex.substring(0, 16)
+  console.info(`[webrtc] derived room id ${roomId} from "${normalized}"`)
+  return roomId
 }
 
 // ── Dev logging ───────────────────────────────────────────────────────────────
