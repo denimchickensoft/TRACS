@@ -269,8 +269,9 @@ export default function StarsScope() {
       width: w,
       height: h,
       magvar: effectiveMagvar,
+      theatre,
     }
-  }, [windowSettings, magvar])
+  }, [windowSettings, magvar, theatre])
 
   const canvasAreaRef = useRef(null)
 

@@ -4,6 +4,9 @@ import { useUnitsStore }       from '../../store/units.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { useAicStore, DECLARATION, ROE_STATE } from '../../store/aic.js'
+import { useAtcStore }          from '../../store/atc.js'
+import { applyCallsignChange }  from '../../utils/callsignRename.js'
+import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useRunwaysStore }       from '../../store/runways.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../atc/stars/canvas/projection.js'
@@ -32,16 +35,35 @@ const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
 
 const F_KEY_DECL = {
   F1: DECLARATION.HOSTILE,
-  F2: DECLARATION.UNKNOWN,
+  F2: DECLARATION.BOGEY,
   F3: DECLARATION.NEUTRAL,
   F4: DECLARATION.FRIENDLY,
 }
 
 const DECL_LABEL = {
   [DECLARATION.HOSTILE]:  'HO',
-  [DECLARATION.UNKNOWN]:  'UN',
+  [DECLARATION.BOGEY]:    'BO',
   [DECLARATION.NEUTRAL]:  'NE',
   [DECLARATION.FRIENDLY]: 'FR',
+}
+
+// .class classification letters — same f/n/b/h convention as ABM's
+// .acq/.eng (b for BOGEY, MTTP brevity — not "u" for unknown), 2026-07-07.
+const CLASS_LETTER = {
+  f: DECLARATION.FRIENDLY,
+  n: DECLARATION.NEUTRAL,
+  b: DECLARATION.BOGEY,
+  h: DECLARATION.HOSTILE,
+}
+
+// .autoclass (2026-07-08) — a unit's TRUE classification, straight off
+// coalition: own side is FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL,
+// anything else is an enemy, i.e. HOSTILE (not BOGEY — autoclass means no
+// more fog-of-war ambiguity for that contact).
+function trueDeclaration(unit, myCoalitionNum) {
+  if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
+  if (unit.coalition === 0) return DECLARATION.NEUTRAL
+  return DECLARATION.HOSTILE
 }
 
 const ROE_DISPLAY = {
@@ -51,10 +73,23 @@ const ROE_DISPLAY = {
 }
 
 const DECL_PICTURE = {
-  [DECLARATION.HOSTILE]:  'HOSTILE',
-  [DECLARATION.UNKNOWN]:  'UNKNOWN',
-  [DECLARATION.NEUTRAL]:  'NEUTRAL',
-  [DECLARATION.FRIENDLY]: 'FRIENDLY',
+  [DECLARATION.HOSTILE]:  'H',
+  [DECLARATION.BOGEY]:    'B',
+  [DECLARATION.NEUTRAL]:  'NE',
+  [DECLARATION.FRIENDLY]: 'FR',
+}
+
+const CARDINAL_ABBR = {
+  NORTH: 'N', NORTHEAST: 'NE', EAST: 'E', SOUTHEAST: 'SE',
+  SOUTH: 'S', SOUTHWEST: 'SW', WEST: 'W', NORTHWEST: 'NW',
+}
+
+// Abbreviates cardinal directions and LEAD/TRAIL in a group's display name.
+// The formation amplifier line (e.g. "ECHELON WEST") is rendered separately
+// from picture.amplifiers and is NOT run through this — it stays full-word.
+const NAME_ABBR = { ...CARDINAL_ABBR, LEAD: 'L', TRAIL: 'T' }
+function abbrGroupName(name) {
+  return name.replace(' GROUP', '').split(' ').map(w => NAME_ABBR[w] ?? w).join(' ')
 }
 
 function speedFlags(unit) {
@@ -70,13 +105,10 @@ function speedFlags(unit) {
 
 function picFillIns(g) {
   const parts = []
-  if (g.contactCount === 2) parts.push('2 CONTACTS')
-  else if (g.isHeavy) parts.push('HEAVY')
   if (g.isStack) parts.push(`STACK ${g.stackHighFt / 1000}K/${g.stackLowFt / 1000}K`)
   if (g.isHigh) parts.push('HIGH')
   if (g.isVeryFast) parts.push('VERY FAST')
   else if (g.isFast) parts.push('FAST')
-  if (g.isBogeySpades) parts.push('SPADES')
   if (g.openingClosing) parts.push(g.openingClosing)
   return parts.join('  ')
 }
@@ -86,10 +118,7 @@ function findNearestBogey(fighterId, fighterUnit, units, declarations, myCoaliti
   let nearestId = null, nearestDist = Infinity
   for (const [id, unit] of Object.entries(units)) {
     if (id === fighterId || !unit.position) continue
-    const decl = declarations[id] ?? (
-      unit.coalition === myCoalitionNum ? 'FRIENDLY' :
-      unit.coalition === 0 ? 'NEUTRAL' : 'HOSTILE'
-    )
+    const decl = declarations[id] ?? (unit.coalition === myCoalitionNum ? 'FRIENDLY' : 'BOGEY')
     if (decl === 'FRIENDLY' || decl === 'NEUTRAL') continue
     const nmPerDegLng = 60 * Math.cos(fighterUnit.position.lat * Math.PI / 180)
     const dN = (unit.position.lat - fighterUnit.position.lat) * 60
@@ -102,7 +131,7 @@ function findNearestBogey(fighterId, fighterUnit, units, declarations, myCoaliti
 
 const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
 
-function getAicVisibleUnits(units, myCoalitionNum) {
+function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
   const result      = {}
   const detectedIds = new Set()
 
@@ -110,6 +139,7 @@ function getAicVisibleUnits(units, myCoalitionNum) {
     if (!unit.contacts) continue
     for (const c of unit.contacts) {
       if ((c.detectionMethod & 4) || (c.detectionMethod & 32)) detectedIds.add(String(c.ID))
+      if (c.detectionMethod & 16) rwrEverDetected?.add(String(c.ID))
     }
   }
 
@@ -141,7 +171,8 @@ function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, magvar) {
 }
 
 function resolveCallsignDisplay(unit) {
-  return unit.callsign || unit.unitName || unit.name || '?'
+  const override = useAtcStore.getState().callsignOverrides[String(unit.id)]
+  return override || unit.callsign || unit.unitName || unit.name || '?'
 }
 
 export default function AicScope() {
@@ -160,10 +191,11 @@ export default function AicScope() {
 
   const declarations      = useAicStore(s => s.declarations)
   const roe               = useAicStore(s => s.roe)
+  const autoClassify      = useAicStore(s => s.autoClassify)
   const braaList          = useAicStore(s => s.braaList)
   const pendingBraaFighter = useAicStore(s => s.pendingBraaFighter)
   const {
-    setDeclaration, setRoe, addBraaPair, removeBraaPair, removeBraaPairsForUnit,
+    setDeclaration, setRoe, setAutoClassify, addBraaPair, removeBraaPair, removeBraaPairsForUnit,
     setPendingBraaFighter, clearPendingBraa, getEffectiveDeclaration,
   } = useAicStore()
 
@@ -221,12 +253,31 @@ export default function AicScope() {
   const ptlSeconds    = windowSettings?.ptlSeconds    ?? 60
   const symSize       = windowSettings?.symSize       ?? 3
 
-  const visibleUnits = useMemo(() => getAicVisibleUnits(units, myCoalitionNum), [units, myCoalitionNum])
+  // IDs ever seen with the RWR detection bit (16) set — once a non-friendly
+  // contact is RWR-detected, its type stays revealed even if RWR drops out.
+  const rwrEverDetectedRef = useRef(new Set())
+  const visibleUnits = useMemo(
+    () => getAicVisibleUnits(units, myCoalitionNum, rwrEverDetectedRef.current),
+    [units, myCoalitionNum]
+  )
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
+
+  // .autoclass (2026-07-08) — while on, any unit that becomes visible with
+  // no explicit declaration yet gets one set to its TRUE classification.
+  // Only touches undeclared units so it never stomps a manual override (or
+  // its own prior auto-declaration) made after the fact. The bulk
+  // reclassify-everything-visible-now pass runs once, in execCommand, at
+  // the moment .autoclass is switched on.
+  useEffect(() => {
+    if (!autoClassify) return
+    for (const [id, unit] of Object.entries(visibleUnits)) {
+      if (declarationsRef.current[id] === undefined) setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
+    }
+  }, [visibleUnits, autoClassify, myCoalitionNum, setDeclaration])
 
   const [view, setView] = useState(null)
   const viewRef = useRef(null)
@@ -260,9 +311,15 @@ export default function AicScope() {
       pixelsPerNm: rangeToPixelsPerNm(ws.rangeNm ?? 120, size, size),
       width: size, height: size,
       magvar: magvarRef.current,
+      theatre,
     }
-  }, [])
+  }, [theatre])
 
+  // windowSettings is undefined (and the component returns null before the
+  // canvas mounts) on the first render of a cold load — canvasAreaRef.current
+  // is null then, so without this dep the observer would attach to nothing
+  // and never re-attach once the canvas actually mounts.
+  const hasWindowSettings = !!windowSettings
   useEffect(() => {
     const container = canvasAreaRef.current
     if (!container) return
@@ -272,7 +329,7 @@ export default function AicScope() {
     })
     ro.observe(container)
     return () => ro.disconnect()
-  }, []) // eslint-disable-line
+  }, [hasWindowSettings]) // eslint-disable-line
 
   useEffect(() => { setView(buildView()) }, [centerLat, centerLng, effectiveMagvar, windowSettings?.rangeNm]) // eslint-disable-line
 
@@ -284,7 +341,7 @@ export default function AicScope() {
       const defaults = {
         rangeNm: 120, ringSpacingNm: 20, ptlSeconds: 60, symSize: 3,
         centerLat: 0, centerLng: 0, centerOverridden: false,
-        fadedSeconds: 30, threatRadius: 35,
+        fadedSeconds: 30, threatRadius: 45,
       }
       const savedWin = saved
         ? Object.fromEntries(AIC_WIN_FIELDS.filter(k => saved[k] !== undefined).map(k => [k, saved[k]]))
@@ -326,7 +383,12 @@ export default function AicScope() {
   const [threatRings, setThreatRings] = useState(new Set())
   const toggleThreatRing = (unitId) =>
     setThreatRings(prev => { const n = new Set(prev); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
-  const threatRadius = windowSettings?.threatRadius ?? 35
+  const threatRadius = windowSettings?.threatRadius ?? 45
+
+  // .centroid / .axis — debug toggles for the hostile-picture centroid and
+  // the dynamic threat axis line derived from it (see computePicture.js).
+  const [showCentroid, setShowCentroid] = useState(false)
+  const [showAxis, setShowAxis] = useState(false)
 
   const fadedRef       = useRef({})
   const prevVisibleRef = useRef({})
@@ -349,7 +411,7 @@ export default function AicScope() {
   const [hoveredUnit, setHoveredUnit] = useState(null)
   const [cursorLatLng, setCursorLatLng] = useState(null)
 
-  const rightDragStartRef = useRef(null)
+  const leftDragStartRef = useRef(null)
 
   const [pendingDeclaration, setPendingDeclaration] = useState(null)
 
@@ -366,7 +428,16 @@ export default function AicScope() {
 
   // Pending sector parsed from cmdBuffer (must be before contacts effect)
   const pendingSector = useMemo(() => {
-    const m = cmdBuffer.trim().match(/^\.sector\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)$/i)
+    const trimmed = cmdBuffer.trim()
+
+    // Bare ".sector" while a sector already exists — click to move it,
+    // keeping its existing arc/range, rather than needing to retype it.
+    if (/^\.sector$/i.test(trimmed) && sector) {
+      const { fromBearing, toBearing, rangeNm, axisBearing } = sector
+      return { fromBearing, toBearing, rangeNm, axisBearing }
+    }
+
+    const m = trimmed.match(/^\.sector\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)$/i)
     if (!m) return null
     const fromMag = parseFloat(m[1]) % 360
     const toMag   = parseFloat(m[2]) % 360
@@ -375,7 +446,7 @@ export default function AicScope() {
     const fromTrue = (fromMag + effectiveMagvar + 360) % 360
     const toTrue   = (toMag   + effectiveMagvar + 360) % 360
     return { fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng, axisBearing: sectorAxisBearing(fromTrue, toTrue) }
-  }, [cmdBuffer, effectiveMagvar])
+  }, [cmdBuffer, effectiveMagvar, sector])
 
   // Ref so event callbacks can always read the current pendingSector value
   const pendingSectorRef = useRef(null)
@@ -439,25 +510,48 @@ export default function AicScope() {
     drawAicLayers(ctx, view, view.rangeNm, ringSpacingNm, bullseyeLat, bullseyeLng, sectorVisible ? sector : null)
   }, [view, ringSpacingNm, bullseyeLat, bullseyeLng, sector, sectorVisible])
 
+  const picture = useMemo(() => {
+    if (!bullseyeEntry) return null
+    return computePicture(
+      visibleUnits,
+      (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
+      myCoalitionNum,
+      sector,
+      bullseyeLat, bullseyeLng,
+      effectiveMagvar,
+    )
+  }, [visibleUnits, declarations, myCoalitionNum, sector, bullseyeLat, bullseyeLng, effectiveMagvar]) // eslint-disable-line
+
   // Contacts + sector preview
   useEffect(() => {
     if (!view || !contactsRef.current) return
     const ctx = contactsRef.current.getContext('2d')
     const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
     drawAicContacts(ctx, view, visibleUnits, getDecl, ptlSeconds, symSize, braaList, rangeNm, rbl, effectiveMagvar,
-      threatRings, threatRadius, fadedRef.current, Date.now(), findMarker)
+      threatRings, threatRadius, fadedRef.current, Date.now(), findMarker,
+      showCentroid ? picture?.centroid : null,
+      showAxis && picture?.axisOrigin ? { origin: picture.axisOrigin, axisBearing: picture.axisBearing } : null)
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }
-  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, effectiveMagvar, threatRings, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin]) // eslint-disable-line
+  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, effectiveMagvar, threatRings, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
 
-  // RBL drag (right-click)
+  // RBL drag (left-click) — only arms once the drag clears a threshold, so
+  // plain left-clicks used for declare/BRAA/sector/etc. don't touch the RBL
   const rblRef = useRef(null)
   useEffect(() => { rblRef.current = rbl }, [rbl])
+  const rblDragActiveRef = useRef(false)
 
   useEffect(() => {
     const onMove = (e) => {
-      if (!rightDragStartRef.current) return
+      const start = leftDragStartRef.current
+      if (!start) return
+      if (!rblDragActiveRef.current) {
+        const dist = Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY)
+        if (dist <= 5) return
+        rblDragActiveRef.current = true
+        setRbl({ anchor: { lat: start.lat, lng: start.lng }, end: null, fixed: false })
+      }
       const rect = interactiveRef.current?.getBoundingClientRect()
       if (!rect || !viewRef.current) return
       const x = e.clientX - rect.left
@@ -466,16 +560,12 @@ export default function AicScope() {
       setRbl(prev => prev ? { ...prev, end: { lat, lng } } : null)
     }
     const onUp = (e) => {
-      if (e.button !== 2) return
-      const start = rightDragStartRef.current
-      rightDragStartRef.current = null
-      if (!start) return
-      const dragged = Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) > 5
-      if (dragged) {
-        setRbl(prev => prev?.end ? { ...prev, fixed: true } : null)
-      } else {
-        setRbl(null)
-      }
+      if (e.button !== 0) return
+      const wasActive = rblDragActiveRef.current
+      leftDragStartRef.current = null
+      rblDragActiveRef.current = false
+      if (!wasActive) return
+      setRbl(prev => prev?.end ? { ...prev, fixed: true } : null)
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
@@ -576,6 +666,44 @@ export default function AicScope() {
       setAckPicture(null)
       useAicStore.getState().braaList.forEach(p => removeBraaPair(p.id))
       setCmdFeedback('ALL CLEARED')
+    } else if (str === '.class') {
+      // Returns every explicit declaration to its fog-of-war default (2026-07-07).
+      useAicStore.getState().resetDeclarations()
+      setCmdFeedback('CLASS RESET')
+    } else if (str.match(/^\.class\s+([fnbh])\s+([fnbh])$/)) {
+      // `.class <old> <new>` reclassifies every currently-visible contact whose
+      // *effective* declaration is <old> to <new> — e.g. `.class b h` turns
+      // every bogey into a hostile (2026-07-07).
+      const [, oldLetter, newLetter] = str.match(/^\.class\s+([fnbh])\s+([fnbh])$/)
+      const oldDecl = CLASS_LETTER[oldLetter]
+      const newDecl = CLASS_LETTER[newLetter]
+      let count = 0
+      for (const [id, unit] of Object.entries(visibleUnitsRef.current)) {
+        if (getEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
+          setDeclaration(id, newDecl)
+          count++
+        }
+      }
+      setCmdFeedback(`CLASS ${oldDecl} → ${newDecl}: ${count}`)
+    } else if (str === '.autoclass') {
+      // Toggles autoclassification (2026-07-08). Turning it ON sets every
+      // currently-visible contact to its TRUE (coalition-based) classification
+      // right away; ongoing auto-declaration of newly-visible units happens in
+      // the useEffect above. Turning it OFF does not revert anything already
+      // classified, it just stops future auto-declaration. `.class` (no args)
+      // overrides this and turns it back off.
+      const next = !autoClassify
+      setAutoClassify(next)
+      if (next) {
+        let count = 0
+        for (const [id, unit] of Object.entries(visibleUnitsRef.current)) {
+          setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
+          count++
+        }
+        setCmdFeedback(`AUTOCLASS ON: ${count}`)
+      } else {
+        setCmdFeedback('AUTOCLASS OFF')
+      }
     } else if (str === '.roe free') {
       setRoe(ROE_STATE.FREE)
       setCmdFeedback('WEAPONS FREE')
@@ -608,6 +736,12 @@ export default function AicScope() {
     } else if (str === '.relief') {
       useReliefStore.getState().toggleVisible()
       setCmdFeedback(useReliefStore.getState().visible ? 'RELIEF ON' : 'RELIEF OFF')
+    } else if (str === '.centroid') {
+      setShowCentroid(!showCentroid)
+      setCmdFeedback(!showCentroid ? 'CENTROID ON' : 'CENTROID OFF')
+    } else if (str === '.axis') {
+      setShowAxis(!showAxis)
+      setCmdFeedback(!showAxis ? 'AXIS ON' : 'AXIS OFF')
     } else if (str === '.sector') {
       if (sectorRef.current) { setSectorVisible(true); setCmdFeedback('SECTOR ON') }
       else { setCmdFeedback('NO SECTOR') }
@@ -633,7 +767,7 @@ export default function AicScope() {
       })
       setSectorVisible(true)
       setSectorPreviewOrigin(null)
-      setCmdFeedback(`SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(rng)}NM @BS`)
+      setCmdFeedback(`SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(rng)}NM @BE`)
     } else {
       setCmdFeedback('UNKNOWN COMMAND')
     }
@@ -718,6 +852,7 @@ export default function AicScope() {
 
   const handleMouseUp = useCallback((e) => {
     if (e.button !== 0) return
+    if (rblDragActiveRef.current) return // this mouseup is finishing an RBL drag, not a click
     const rect = interactiveRef.current?.getBoundingClientRect()
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
@@ -733,7 +868,7 @@ export default function AicScope() {
       return
     }
 
-    if (e.ctrlKey && e.shiftKey && !e.altKey) {
+    if (e.shiftKey && !e.altKey) {
       if (target) removeBraaPairsForUnit(target.unitId)
       return
     }
@@ -772,6 +907,17 @@ export default function AicScope() {
         }
         toggleThreatRing(target.unitId)
         clearCmd()
+      }
+      return
+    }
+
+    if (buf === '.rename' || buf.startsWith('.rename ')) {
+      if (target) {
+        const newCallsign = buf.slice(7).trim().toUpperCase() || null
+        const { oldCallsign } = applyCallsignChange(target.unitId, target.unit, newCallsign)
+        sendWebrtcSessionEvent('CALLSIGN_RENAME', { unitId: String(target.unitId), oldCallsign, newCallsign })
+        setCmdFeedback(newCallsign ? `RENAMED ${newCallsign}` : 'CALLSIGN RESET')
+        setCmdBuffer('')
       }
       return
     }
@@ -826,7 +972,7 @@ export default function AicScope() {
     if (!unit.position) return null
 
     const altFt      = Math.round((unit.position.alt ?? 0) * 3.28084)
-    const altRounded = Math.round(altFt / 100) * 100
+    const altK       = Math.round(altFt / 1000)
     const trueTrkDeg = ((unit.track ?? 0) * 180 / Math.PI + 360) % 360
     const magTrkDeg  = Math.round(((trueTrkDeg - effectiveMagvar) + 360) % 360) || 360
     const { brg, range } = bearingRangeFromBullseye(
@@ -834,13 +980,16 @@ export default function AicScope() {
     )
     const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
     const isFriendly = decl === 'FRIENDLY'
-    const typeName  = (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
+    const typeRevealed = isFriendly || rwrEverDetectedRef.current.has(String(unitId))
+    const typeName  = typeRevealed
+      ? (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
+      : null
     const callsign  = isFriendly ? resolveCallsignDisplay(unit) : null
     const spdKts    = Math.round((unit.speed ?? 0) * 1.94384)
 
     return {
       pos:      `${String(brg).padStart(3, '0')} / ${range}`,
-      alt:      `${altRounded}`,
+      alt:      `${altK}k`,
       trk:      `${subcardinal(magTrkDeg)} ${String(magTrkDeg).padStart(3, '0')}`,
       decl,
       type:     typeName,
@@ -858,18 +1007,6 @@ export default function AicScope() {
     return `${String(brg).padStart(3, '0')} / ${range}`
   }, [cursorLatLng, bullseyeLat, bullseyeLng, effectiveMagvar, bullseyeEntry])
 
-  const picture = useMemo(() => {
-    if (!bullseyeEntry) return null
-    return computePicture(
-      visibleUnits,
-      (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
-      myCoalitionNum,
-      sector,
-      bullseyeLat, bullseyeLng,
-      effectiveMagvar,
-    )
-  }, [visibleUnits, declarations, myCoalitionNum, sector, bullseyeLat, bullseyeLng, effectiveMagvar]) // eslint-disable-line
-
   const isPictureAlert = useMemo(() => {
     if (!picture || picture.labelKey === 'CLEAN') return false
     if (!ackPicture) return picture.totalGroups > 0
@@ -877,6 +1014,32 @@ export default function AicScope() {
   }, [picture, ackPicture])
 
   if (!windowSettings) return null
+
+  // ── Picture group rows (column-aligned, min 3 spaces between fields) ───────────
+  let pictureRows = []
+  let namedGroupCount = 0
+  if (picture) {
+    // FOLLOW ON groups aren't listed as their own PICTURE rows — doctrine
+    // reports them as a single trailing distance (picture.amplifiers.followOnNm).
+    const namedGroups = picture.groups.filter(g => !g.isFollowOn)
+    namedGroupCount = namedGroups.length
+    pictureRows = namedGroups.slice(0, 6).map(g => ({
+      name:       abbrGroupName(g.name),
+      bs:         `${String(g.bullseye.brg).padStart(3, '0')} / ${g.bullseye.range}`,
+      alt:        `${Math.round(g.altFt / 1000)}k`,
+      trk:        g.trackDir ? (CARDINAL_ABBR[g.trackDir] ?? g.trackDir) : '-',
+      decl:       DECL_PICTURE[g.decl] ?? '?',
+      strength:   g.isHeavy ? 'HVY' : `${g.contactCount}`,
+      fills:      picFillIns(g),
+    }))
+    const colWidth = key => Math.max(0, ...pictureRows.map(r => r[key].length)) + 3
+    const wName = colWidth('name'), wBs = colWidth('bs'), wAlt = colWidth('alt'), wTrk = colWidth('trk'), wDecl = colWidth('decl')
+    pictureRows = pictureRows.map(r => ({
+      ...r,
+      text: r.name.padEnd(wName) + r.bs.padEnd(wBs) + r.alt.padEnd(wAlt) + r.trk.padEnd(wTrk) + r.decl.padEnd(wDecl) + r.strength
+          + (r.fills ? '   ' + r.fills : ''),
+    }))
+  }
 
   // ── Command area preview ──────────────────────────────────────────────────────
   let cmdPreview = ''
@@ -900,14 +1063,13 @@ export default function AicScope() {
           className="aic-layer aic-interactive"
           tabIndex={0}
           onMouseDown={(e) => {
-            if (e.button !== 2) return
+            if (e.button !== 0) return
             const rect = interactiveRef.current?.getBoundingClientRect()
             if (!rect || !viewRef.current) return
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
             const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
-            rightDragStartRef.current = { clientX: e.clientX, clientY: e.clientY, lat, lng }
-            setRbl({ anchor: { lat, lng }, end: null, fixed: false })
+            leftDragStartRef.current = { clientX: e.clientX, clientY: e.clientY, lat, lng }
           }}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
@@ -921,12 +1083,10 @@ export default function AicScope() {
           <div className="aic-readout">
             {readout ? (
               <>
-                <div className="aic-readout-line1">
+                <div className="aic-readout-grid">
                   <span>{readout.pos}</span>
                   <span>{readout.alt}</span>
                   <span>{readout.trk}</span>
-                </div>
-                <div className="aic-readout-line2">
                   <span className={`aic-readout-decl${readout.decl ? ` aic-readout-decl--${readout.decl.toLowerCase()}` : ''}`}>{readout.decl}</span>
                   <span className="aic-readout-id">{readout.type}</span>
                   <span>{readout.spd}</span>
@@ -970,21 +1130,16 @@ export default function AicScope() {
                 ].filter(Boolean).join('  ')}
               </div>
             )}
-            {picture.groups.slice(0, 6).map((g, i) => {
-              const name  = g.name.replace(' GROUP', '')
-              const bs    = `${String(g.bullseye.brg).padStart(3, '0')}/${String(g.bullseye.range).padStart(3)}`
-              const alt   = `${Math.round(g.altFt / 1000)}K`.padStart(4)
-              const trk   = g.trackDir ?? '-'
-              const decl  = DECL_PICTURE[g.decl] ?? 'UNKNOWN'
-              const fills = picFillIns(g)
-              return (
-                <div key={i} className={`aic-picture-group${g.isFollowOn ? ' aic-picture-group--followon' : ''}`}>
-                  {`${name}  ${bs}  ${alt}  ${trk}  ${decl}${fills ? '  ' + fills : ''}`}
-                </div>
-              )
-            })}
-            {picture.totalGroups > 6 && (
-              <div className="aic-picture-more">+{picture.totalGroups - 6} MORE</div>
+            {pictureRows.map((r, i) => (
+              <div key={i} className="aic-picture-group">
+                {r.text}
+              </div>
+            ))}
+            {namedGroupCount > 6 && (
+              <div className="aic-picture-more">+{namedGroupCount - 6} MORE</div>
+            )}
+            {picture.amplifiers?.followOnNm != null && (
+              <div className="aic-picture-ampls">FOLLOW ON {picture.amplifiers.followOnNm}</div>
             )}
           </div>
         )}

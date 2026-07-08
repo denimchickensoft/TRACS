@@ -3,7 +3,7 @@
     {
       "name": "OMDM",
       "settings": {
-        "rangeNm": 50,
+        "rangeNm": 78,
         "ringSpacingNm": 10,
         "historyLength": 4,
         "historyRate": 4.5,
@@ -34,13 +34,13 @@
         "qnh": "29.92",
         "lists": {
           "ssa": {
-            "xPct": 4.071661237785016,
-            "yPct": 3.486394557823129
+            "xPct": 3.107789142407553,
+            "yPct": 3.3085194375516958
           },
           "signOn": {
             "visible": true,
-            "xPct": 93.10756972111554,
-            "yPct": 5.267629566694987
+            "xPct": 93.11565696302124,
+            "yPct": 3.391232423490488
           },
           "tab": {
             "visible": true,

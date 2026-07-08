@@ -109,7 +109,7 @@ function _groupProps(contacts, bsLat, bsLng, magvar, sector) {
   const trueBrg = (Math.atan2(bsDE, bsDN) * 180 / Math.PI + 360) % 360
   const magBrg  = Math.round((trueBrg - magvar + 360) % 360) || 360
 
-  const decl    = contacts.some(c => c.decl === 'HOSTILE') ? 'HOSTILE' : 'UNKNOWN'
+  const decl    = contacts.some(c => c.decl === 'HOSTILE') ? 'HOSTILE' : 'BOGEY'
   const platform = contacts.map(c => c.typeName).find(Boolean) ?? null
   const isStack = maxAltFt - minAltFt >= 10000
 
@@ -129,7 +129,6 @@ function _groupProps(contacts, bsLat, bsLng, magvar, sector) {
     isHigh:          avgAltFt >= 40000,
     isFast:          avgSpdKts >= 600 && avgSpdKts < 900,
     isVeryFast:      avgSpdKts >= 900,
-    isBogeySpades:   decl === 'UNKNOWN',
     platform,
     velocityAlongAxis,
   }
@@ -144,9 +143,24 @@ function _oc(lead, trail) {
   return null
 }
 
-function _cardFromOrigin(g, sector) {
-  if (!sector) return ''
-  return _card8(_bearingDeg(sector.origin.lat, sector.origin.lng, g.lat, g.lng))
+// Direction of a group relative to another hostile group (or a reference
+// point derived from other hostiles) — never relative to the threat axis
+// or a picture-wide centroid. Two distinct points' mutual bearing is always
+// ~180° apart from the reverse direction, so this can never produce the
+// same compass octant for both ends of a pair — unlike bearing-to-a-shared-
+// point schemes (axis or centroid), which can collide when two groups are
+// laterally close together.
+function _cardBetween(fromLat, fromLng, toLat, toLng, magvar) {
+  const trueBrg = _bearingDeg(fromLat, fromLng, toLat, toLng)
+  return _card8((trueBrg - magvar + 360) % 360)
+}
+
+function _centroidOf(groups) {
+  const n = groups.length
+  return {
+    lat: groups.reduce((s, g) => s + g.lat, 0) / n,
+    lng: groups.reduce((s, g) => s + g.lng, 0) / n,
+  }
 }
 
 const _ORDS = ['', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH']
@@ -197,7 +211,7 @@ function _detectFormation(groups) {
 
 // ── Group naming ───────────────────────────────────────────────────────────────
 
-function _nameGroups(formation, sector) {
+function _nameGroups(formation, magvar) {
   const { subtype, sorted } = formation
 
   switch (subtype) {
@@ -207,8 +221,8 @@ function _nameGroups(formation, sector) {
     case 'AZIMUTH': {
       const [a, b] = [...sorted].sort((x, y) => x.A - y.A)
       return [
-        { ...a, name: `${_cardFromOrigin(a, sector)} GROUP` },
-        { ...b, name: `${_cardFromOrigin(b, sector)} GROUP` },
+        { ...a, name: `${_cardBetween(b.lat, b.lng, a.lat, a.lng, magvar)} GROUP` },
+        { ...b, name: `${_cardBetween(a.lat, a.lng, b.lat, b.lng, magvar)} GROUP` },
       ]
     }
 
@@ -220,11 +234,21 @@ function _nameGroups(formation, sector) {
 
     case 'WALL': {
       const { sortedByA } = formation
+      const nOuter = sortedByA.length
+      const first  = sortedByA[0]
+      const last   = sortedByA[nOuter - 1]
+      const cardFirst = _cardBetween(last.lat, last.lng, first.lat, first.lng, magvar)
+      const cardLast  = _cardBetween(first.lat, first.lng, last.lat, last.lng, magvar)
+      const aMin = first.A, totalWidth = last.A - first.A
       return sortedByA.map((g, i) => {
         let name
-        if (i === 0 || i === sortedByA.length - 1) name = `${_cardFromOrigin(g, sector)} GROUP`
-        else if (sortedByA.length === 3) name = 'MIDDLE GROUP'
-        else name = `${_cardFromOrigin(g, sector)} MIDDLE GROUP`
+        if (i === 0)                name = `${cardFirst} GROUP`
+        else if (i === nOuter - 1)  name = `${cardLast} GROUP`
+        else if (nOuter === 3)      name = 'MIDDLE GROUP'
+        else {
+          const frac = totalWidth !== 0 ? (g.A - aMin) / totalWidth : 0.5
+          name = `${frac < 0.5 ? cardFirst : cardLast} MIDDLE GROUP`
+        }
         return { ...g, name }
       })
     }
@@ -234,8 +258,8 @@ function _nameGroups(formation, sector) {
       const [tL, tR] = [t1, t2].sort((a, b) => a.A - b.A)
       return [
         { ...lead, name: 'LEAD GROUP', openingClosing: _oc(lead, t1) },
-        { ...tL,   name: `${_cardFromOrigin(tL, sector)} TRAIL GROUP` },
-        { ...tR,   name: `${_cardFromOrigin(tR, sector)} TRAIL GROUP` },
+        { ...tL,   name: `${_cardBetween(tR.lat, tR.lng, tL.lat, tL.lng, magvar)} TRAIL GROUP` },
+        { ...tR,   name: `${_cardBetween(tL.lat, tL.lng, tR.lat, tR.lng, magvar)} TRAIL GROUP` },
       ]
     }
 
@@ -243,8 +267,8 @@ function _nameGroups(formation, sector) {
       const [l1, l2, trail] = sorted
       const [lL, lR] = [l1, l2].sort((a, b) => a.A - b.A)
       return [
-        { ...lL,   name: `${_cardFromOrigin(lL, sector)} LEAD GROUP` },
-        { ...lR,   name: `${_cardFromOrigin(lR, sector)} LEAD GROUP` },
+        { ...lL,   name: `${_cardBetween(lR.lat, lR.lng, lL.lat, lL.lng, magvar)} LEAD GROUP` },
+        { ...lR,   name: `${_cardBetween(lL.lat, lL.lng, lR.lat, lR.lng, magvar)} LEAD GROUP` },
         { ...trail, name: 'TRAIL GROUP', openingClosing: _oc(l1, trail) },
       ]
     }
@@ -264,22 +288,21 @@ function _nameGroups(formation, sector) {
       const [lL, lR] = [g0, g1].sort((a, b) => a.A - b.A)
       const [tL, tR] = [g2, g3].sort((a, b) => a.A - b.A)
       return [
-        { ...lL, name: `${_cardFromOrigin(lL, sector)} LEAD GROUP`  },
-        { ...lR, name: `${_cardFromOrigin(lR, sector)} LEAD GROUP`  },
-        { ...tL, name: `${_cardFromOrigin(tL, sector)} TRAIL GROUP` },
-        { ...tR, name: `${_cardFromOrigin(tR, sector)} TRAIL GROUP` },
+        { ...lL, name: `${_cardBetween(lR.lat, lR.lng, lL.lat, lL.lng, magvar)} LEAD GROUP`  },
+        { ...lR, name: `${_cardBetween(lL.lat, lL.lng, lR.lat, lR.lng, magvar)} LEAD GROUP`  },
+        { ...tL, name: `${_cardBetween(tR.lat, tR.lng, tL.lat, tL.lng, magvar)} TRAIL GROUP` },
+        { ...tR, name: `${_cardBetween(tL.lat, tL.lng, tR.lat, tR.lng, magvar)} TRAIL GROUP` },
       ]
     }
 
+    // FOLLOW ON groups are not named/detailed as their own PICTURE entries —
+    // doctrine reports them as a single distance amplifier (see _amplifiers).
+    // They're still tagged and returned so the scope can track/select them.
     case 'LEADING_EDGE': {
       const leadSlice  = sorted.slice(0, Math.min(3, sorted.length))
       const followSlice = sorted.slice(Math.min(3, sorted.length))
-      const named   = _nameGroups(_detectFormation(leadSlice), sector)
-      const follows = followSlice.map((g, i) => ({
-        ...g,
-        name: followSlice.length === 1 ? 'FOLLOW ON GROUP' : `${_ord(i + 2)} FOLLOW ON GROUP`,
-        isFollowOn: true,
-      }))
+      const named   = _nameGroups(_detectFormation(leadSlice), magvar)
+      const follows = followSlice.map(g => ({ ...g, name: 'FOLLOW ON', isFollowOn: true }))
       return [...named, ...follows]
     }
 
@@ -290,9 +313,9 @@ function _nameGroups(formation, sector) {
 
 // ── Amplifiers ─────────────────────────────────────────────────────────────────
 
-function _amplifiers(formation, sector) {
+function _amplifiers(formation, magvar) {
   const { subtype, sorted } = formation
-  const result = { openingClosing: null, weighted: null, echelon: null, dimensionStr: '' }
+  const result = { openingClosing: null, weighted: null, echelon: null, dimensionStr: '', followOnNm: null }
 
   const totalDepth = sorted.length > 1 ? Math.round(sorted[sorted.length - 1].R - sorted[0].R) : 0
   const sortedByA  = formation.sortedByA ?? [...sorted].sort((a, b) => a.A - b.A)
@@ -304,8 +327,8 @@ function _amplifiers(formation, sector) {
       result.dimensionStr = `${totalWidth}`
       const d = Math.abs(sorted[1].R - sorted[0].R)
       if (d > 5) {
-        const off = sorted[1].R > sorted[0].R ? sorted[1] : sorted[0]
-        result.echelon = _cardFromOrigin(off, sector)
+        const [near, off] = sorted[1].R > sorted[0].R ? [sorted[0], sorted[1]] : [sorted[1], sorted[0]]
+        result.echelon = _cardBetween(near.lat, near.lng, off.lat, off.lng, magvar)
       }
       break
     }
@@ -315,17 +338,22 @@ function _amplifiers(formation, sector) {
       const w = Math.round(Math.abs(sorted[1].A - sorted[0].A))
       result.dimensionStr    = `${d}`
       result.openingClosing  = _oc(sorted[0], sorted[1])
-      if (w >= 3) result.echelon = _cardFromOrigin(sorted[1], sector)
+      if (w >= 3) result.echelon = _cardBetween(sorted[0].lat, sorted[0].lng, sorted[1].lat, sorted[1].lng, magvar)
       break
     }
 
     case 'WALL': {
       result.dimensionStr = `${totalWidth} WIDE`
       if (sorted.length >= 3 && totalWidth > 0) {
-        const aMin  = sortedByA[0].A
+        const first = sortedByA[0], last = sortedByA[sortedByA.length - 1]
+        const midLat = (first.lat + last.lat) / 2, midLng = (first.lng + last.lng) / 2
+        const aMin  = first.A
         for (let i = 1; i < sortedByA.length - 1; i++) {
           const frac = (sortedByA[i].A - aMin) / totalWidth
-          if (frac < 1 / 3 || frac > 2 / 3) { result.weighted = _cardFromOrigin(sortedByA[i], sector); break }
+          if (frac < 1 / 3 || frac > 2 / 3) {
+            result.weighted = _cardBetween(midLat, midLng, sortedByA[i].lat, sortedByA[i].lng, magvar)
+            break
+          }
         }
       }
       break
@@ -338,7 +366,10 @@ function _amplifiers(formation, sector) {
       result.openingClosing = _oc(lead, t1)
       const midA  = (t1.A + t2.A) / 2
       const tSpan = Math.abs(t2.A - t1.A)
-      if (tSpan > 0 && Math.abs(lead.A - midA) > tSpan / 3) result.weighted = _cardFromOrigin(lead, sector)
+      if (tSpan > 0 && Math.abs(lead.A - midA) > tSpan / 3) {
+        const midLat = (t1.lat + t2.lat) / 2, midLng = (t1.lng + t2.lng) / 2
+        result.weighted = _cardBetween(midLat, midLng, lead.lat, lead.lng, magvar)
+      }
       break
     }
 
@@ -349,7 +380,10 @@ function _amplifiers(formation, sector) {
       result.openingClosing = _oc(l1, trail)
       const midA  = (l1.A + l2.A) / 2
       const lSpan = Math.abs(l2.A - l1.A)
-      if (lSpan > 0 && Math.abs(trail.A - midA) > lSpan / 3) result.weighted = _cardFromOrigin(trail, sector)
+      if (lSpan > 0 && Math.abs(trail.A - midA) > lSpan / 3) {
+        const midLat = (l1.lat + l2.lat) / 2, midLng = (l1.lng + l2.lng) / 2
+        result.weighted = _cardBetween(midLat, midLng, trail.lat, trail.lng, magvar)
+      }
       break
     }
 
@@ -366,6 +400,17 @@ function _amplifiers(formation, sector) {
       break
     }
 
+    // FOLLOW ON is a single parallel-to-axis distance from the leading edge
+    // to the closest follow-on group — not a per-group breakdown.
+    case 'LEADING_EDGE': {
+      const leadSlice   = sorted.slice(0, Math.min(3, sorted.length))
+      const followSlice = sorted.slice(Math.min(3, sorted.length))
+      if (followSlice.length) {
+        result.followOnNm = Math.round(followSlice[0].R - leadSlice[leadSlice.length - 1].R)
+      }
+      break
+    }
+
     default:
       break
   }
@@ -373,31 +418,40 @@ function _amplifiers(formation, sector) {
   return result
 }
 
-// ── Auto-sector ────────────────────────────────────────────────────────────────
+// ── Threat axis ────────────────────────────────────────────────────────────────
+// The threat axis is dynamic, not the bisector of a drawn sector — a manual
+// .sector only scopes which contacts are "in play." The axis itself is a line
+// from a friendly toward the hostile picture:
+//   - sector set, friendlies in it   → friendly nearest a hostile → centroid
+//                                      of hostiles in the sector.
+//   - sector set, no friendlies in it → sector origin → centroid of hostiles
+//                                      in the sector.
+//   - no sector                     → friendly nearest a hostile → centroid
+//                                      of all visible hostiles.
+function _deriveThreatAxis(hostiles, friendlies, sector, bsLat, bsLng) {
+  const hostileCentroid = _centroidOf(hostiles)
 
-export function deriveAutoSector(visibleUnits, getEffectiveDecl, myCoalitionNum) {
-  let best = Infinity, bestF = null, bestH = null
-  for (const [fId, f] of Object.entries(visibleUnits)) {
-    if (!f.position || getEffectiveDecl(fId, f) !== 'FRIENDLY') continue
-    for (const [hId, h] of Object.entries(visibleUnits)) {
-      if (!h.position) continue
-      const hd = getEffectiveDecl(hId, h)
-      if (hd !== 'HOSTILE' && hd !== 'UNKNOWN') continue
-      const d = _distNm(f.position.lat, f.position.lng, h.position.lat, h.position.lng)
-      if (d < best) { best = d; bestF = f; bestH = h }
+  let origin
+  if (friendlies.length) {
+    let best = Infinity, bestF = null
+    for (const f of friendlies) {
+      for (const h of hostiles) {
+        const d = _distNm(f.lat, f.lng, h.lat, h.lng)
+        if (d < best) { best = d; bestF = f }
+      }
     }
+    origin = bestF
+  } else if (sector) {
+    origin = sector.origin
+  } else {
+    origin = { lat: bsLat, lng: bsLng }
   }
-  if (!bestF || !bestH) return null
 
-  const axis = _bearingDeg(bestF.position.lat, bestF.position.lng, bestH.position.lat, bestH.position.lng)
-  return {
-    origin:      { lat: bestF.position.lat, lng: bestF.position.lng },
-    fromBearing: (axis - 45 + 360) % 360,
-    toBearing:   (axis + 45)       % 360,
-    rangeNm:     150,
-    axisBearing: axis,
-    isAuto:      true,
-  }
+  const dist = _distNm(origin.lat, origin.lng, hostileCentroid.lat, hostileCentroid.lng)
+  const axisBearing = dist > 0.01
+    ? _bearingDeg(origin.lat, origin.lng, hostileCentroid.lat, hostileCentroid.lng)
+    : 0
+  return { origin, axisBearing, centroid: hostileCentroid }
 }
 
 // ── Label string ───────────────────────────────────────────────────────────────
@@ -411,16 +465,14 @@ const _SUBTYPE_WORD = {
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export function computePicture(visibleUnits, getEffectiveDecl, myCoalitionNum, sector, bsLat, bsLng, magvar) {
-  const effectiveSector = sector
-    ?? deriveAutoSector(visibleUnits, getEffectiveDecl, myCoalitionNum)
-    ?? { origin: { lat: bsLat, lng: bsLng }, fromBearing: 0, toBearing: 0, rangeNm: 99999, axisBearing: 0, isAuto: true }
-
+  // Hostile/bogey contacts — scoped to the sector if one is set, otherwise
+  // every visible hostile/bogey is in play.
   const contacts = []
   for (const [id, unit] of Object.entries(visibleUnits)) {
     if (!unit.position) continue
     const decl = getEffectiveDecl(id, unit)
-    if (decl !== 'HOSTILE' && decl !== 'UNKNOWN') continue
-    if (!_inSector(unit.position.lat, unit.position.lng, effectiveSector)) continue
+    if (decl !== 'HOSTILE' && decl !== 'BOGEY') continue
+    if (sector && !_inSector(unit.position.lat, unit.position.lng, sector)) continue
     contacts.push({
       id, lat: unit.position.lat, lng: unit.position.lng,
       alt:      unit.position.alt ?? 0,
@@ -432,15 +484,39 @@ export function computePicture(visibleUnits, getEffectiveDecl, myCoalitionNum, s
   }
 
   if (!contacts.length) {
-    return { totalGroups: 0, groups: [], label: 'CLEAN', labelKey: 'CLEAN', amplifiers: null, autoSector: effectiveSector.isAuto ?? false }
+    return { totalGroups: 0, groups: [], label: 'CLEAN', labelKey: 'CLEAN', amplifiers: null, autoSector: !sector }
   }
 
-  const groups = _cluster(contacts).map(c => _groupProps(c, bsLat, bsLng, magvar, effectiveSector))
+  // Friendlies, scoped the same way as the hostiles — used only to derive
+  // the threat axis, never to fill out the PICTURE itself.
+  const friendlies = []
+  for (const [id, unit] of Object.entries(visibleUnits)) {
+    if (!unit.position) continue
+    if (getEffectiveDecl(id, unit) !== 'FRIENDLY') continue
+    if (sector && !_inSector(unit.position.lat, unit.position.lng, sector)) continue
+    friendlies.push({ lat: unit.position.lat, lng: unit.position.lng })
+  }
+
+  const axis = _deriveThreatAxis(contacts, friendlies, sector, bsLat, bsLng)
+
+  const groups = _cluster(contacts).map(c => _groupProps(c, bsLat, bsLng, magvar, axis))
   groups.sort((a, b) => a.R - b.R)
 
   const formation   = _detectFormation(groups)
-  const namedGroups = _nameGroups(formation, effectiveSector)
-  const ampls       = _amplifiers(formation, effectiveSector)
+  const namedGroups = _nameGroups(formation, magvar)
+  const ampls       = _amplifiers(formation, magvar)
+
+  // Hard guarantee: no two groups ever share a display name. Mutual-bearing
+  // naming makes collisions essentially impossible (two distinct points'
+  // bearing is always ~180° apart from the reverse), but this remains as a
+  // safety net for pathological many-group walls the fraction split doesn't
+  // cleanly resolve.
+  const nameCounts = new Map()
+  for (const g of namedGroups) {
+    const count = (nameCounts.get(g.name) ?? 0) + 1
+    nameCounts.set(g.name, count)
+    if (count > 1) g.name = `${g.name} ${count}`
+  }
 
   const n    = groups.length
   const word = _SUBTYPE_WORD[formation.subtype] ?? formation.subtype
@@ -452,6 +528,9 @@ export function computePicture(visibleUnits, getEffectiveDecl, myCoalitionNum, s
     label,
     labelKey:    formation.subtype,
     amplifiers:  ampls,
-    autoSector:  effectiveSector.isAuto ?? false,
+    autoSector:  !sector,
+    centroid:    axis.centroid,
+    axisOrigin:  axis.origin,
+    axisBearing: axis.axisBearing,
   }
 }

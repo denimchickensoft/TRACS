@@ -182,6 +182,14 @@ function PositionPhase({ onSignedIn }) {
     () => localStorage.getItem('tracs.aic.lastFrequency') ?? ''
   )
 
+  // ── ABM state ──────────────────────────────────────────────────────
+  const [abmCallsign,  setAbmCallsign]  = useState(
+    () => localStorage.getItem('tracs.abm.lastCallsign')  ?? ''
+  )
+  const [abmFrequency, setAbmFrequency] = useState(
+    () => localStorage.getItem('tracs.abm.lastFrequency') ?? ''
+  )
+
   // ── Session password (shared across modules) ───────────────────────
   const [sessionPassword, setSessionPassword] = useState(
     () => localStorage.getItem('tracs.lastSessionPassword') ?? ''
@@ -430,19 +438,26 @@ function PositionPhase({ onSignedIn }) {
       if (!aicCallsign.trim())          { setError('Callsign is required.');                                                      return }
       if (!aicFrequency.trim())         { setError('Frequency is required.');                                                     return }
       if (!validateFreq(aicFrequency))  { setError('Frequency must be VHF (118.000–136.975) or UHF (225.000–399.975).');         return }
+    } else if (selectedModule === MODULE.ABM) {
+      if (!abmCallsign.trim())          { setError('Callsign is required.');                                                      return }
+      if (!abmFrequency.trim())         { setError('Frequency is required.');                                                     return }
+      if (!validateFreq(abmFrequency))  { setError('Frequency must be VHF (118.000–136.975) or UHF (225.000–399.975).');         return }
     }
 
     // Pre-flight frequency deconfliction against the server's current client list.
     // Same facility+suffix = same controllerId = allowed to share a frequency.
     const freqCheck = selectedModule === MODULE.ATC   ? parseFloat(frequency).toFixed(3)
                     : selectedModule === MODULE.CATCC  ? parseFloat(catccFrequency).toFixed(3)
-                    :                                    parseFloat(aicFrequency).toFixed(3)
+                    : selectedModule === MODULE.AIC     ? parseFloat(aicFrequency).toFixed(3)
+                    :                                    parseFloat(abmFrequency).toFixed(3)
     const facCheck  = selectedModule === MODULE.ATC   ? facilityId.toUpperCase()
                     : selectedModule === MODULE.CATCC  ? catccFacilityId
-                    :                                    aicCallsign.trim().toUpperCase()
+                    : selectedModule === MODULE.AIC     ? aicCallsign.trim().toUpperCase()
+                    :                                    abmCallsign.trim().toUpperCase()
     const sufCheck  = selectedModule === MODULE.ATC   ? positionSuffix
                     : selectedModule === MODULE.CATCC  ? catccSuffix
-                    :                                    'AIC'
+                    : selectedModule === MODULE.AIC     ? 'AIC'
+                    :                                    'ABM'
     try {
       const res = await fetch('/api/state/session')
       if (res.ok) {
@@ -535,6 +550,26 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
         suffix:    'AIC',
         frequency: formattedFreq,
       })
+
+    } else if (selectedModule === MODULE.ABM) {
+      const formattedFreq = parseFloat(abmFrequency).toFixed(3)
+      const callsign      = abmCallsign.trim().toUpperCase()
+      localStorage.setItem('tracs.abm.lastCallsign',  callsign)
+      localStorage.setItem('tracs.abm.lastFrequency', abmFrequency)
+      setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
+      setFacility({
+        facilityType:     'abm',
+        facilityId:       callsign,
+        facilityDcsName:  '',
+        facilityName:     callsign,
+        positionTypeName: 'ABM',
+        carrierUnitId:    null,
+      })
+      registerController(callsign, {
+        facility:  'ABM',
+        suffix:    'ABM',
+        frequency: formattedFreq,
+      })
     }
 
     setActiveModule(selectedModule)
@@ -553,6 +588,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
     } else if (selectedModule === MODULE.AIC) {
       rtcPosition  = aicCallsign.trim().toUpperCase()
       rtcFrequency = parseFloat(aicFrequency).toFixed(3)
+    } else if (selectedModule === MODULE.ABM) {
+      rtcPosition  = abmCallsign.trim().toUpperCase()
+      rtcFrequency = parseFloat(abmFrequency).toFixed(3)
     }
     let rtcFacility = ''
     let rtcSuffix   = ''
@@ -565,6 +603,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
     } else if (selectedModule === MODULE.AIC) {
       rtcFacility = aicCallsign.trim().toUpperCase()
       rtcSuffix   = 'AIC'
+    } else if (selectedModule === MODULE.ABM) {
+      rtcFacility = abmCallsign.trim().toUpperCase()
+      rtcSuffix   = 'ABM'
     }
     initWebrtc({ olympusUrl, password: sessionPassword, position: rtcPosition, module: selectedModule, frequency: rtcFrequency, facility: rtcFacility, suffix: rtcSuffix })
   }
@@ -776,6 +817,35 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
               onChange={(e) => setAicFrequency(e.target.value)}
               onBlur={(e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) setAicFrequency(n.toFixed(3)) }}
               placeholder="256.100"
+              maxLength={7}
+              disabled={signingIn}
+            />
+          </section>
+        </>
+      )}
+
+      {/* ── ABM ──────────────────────────────────────────────────────── */}
+      {selectedModule === MODULE.ABM && (
+        <>
+          <section>
+            <label>Callsign</label>
+            <input
+              type="text"
+              value={abmCallsign}
+              onChange={(e) => setAbmCallsign(e.target.value.toUpperCase())}
+              placeholder="OVERLORD"
+              disabled={signingIn}
+            />
+          </section>
+
+          <section>
+            <label>Frequency (MHz)</label>
+            <input
+              type="text"
+              value={abmFrequency}
+              onChange={(e) => setAbmFrequency(e.target.value)}
+              onBlur={(e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) setAbmFrequency(n.toFixed(3)) }}
+              placeholder="251.100"
               maxLength={7}
               disabled={signingIn}
             />

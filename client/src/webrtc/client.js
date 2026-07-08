@@ -5,6 +5,7 @@ import { useAtcStore }        from '../store/atc.js'
 import { useFlightPlansStore } from '../store/flightPlans.js'
 import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadcast } from '../store/statusBoard.js'
 import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/aic.js'
+import { useAbmStore, registerAbmBroadcast, applyAbmStateDump } from '../store/abm.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
 import { applyCallsignRenameRemote } from '../utils/callsignRename.js'
@@ -97,7 +98,7 @@ let handshakeAcked = false
 export function isApplying() { return _applying }
 
 // ── Room ID derivation ────────────────────────────────────────────────────────
-async function deriveRoomId(olympusAddress, password = '') {
+export async function deriveRoomId(olympusAddress, password = '') {
   // Hostnames are case-insensitive; lowercase before hashing so two peers who
   // typed the same address with different casing still land in the same room.
   const normalized = olympusAddress
@@ -211,14 +212,22 @@ function buildDump(mod) {
   const ctrl = useControllersStore.getState()
   const base = {
     clientList,
-    peerSequences:    { ...peerSeqs, [selfId]: outSeq },
-    registry:         ctrl.registry,
-    groupAssignments: ctrl.groupAssignments,
-    nextGroupNumber:  ctrl.nextGroupNumber,
+    peerSequences:     { ...peerSeqs, [selfId]: outSeq },
+    registry:          ctrl.registry,
+    groupAssignments:  ctrl.groupAssignments,
+    nextGroupNumber:   ctrl.nextGroupNumber,
+    // Callsign overrides are session-wide (set via .RENAME/.rename in any
+    // module), not module-scoped state — included in every dump so a peer
+    // joining ANY module sees renames applied before they connected.
+    callsignOverrides: { ...useAtcStore.getState().callsignOverrides },
   }
   if (mod === 'AIC') {
     const aic = useAicStore.getState()
-    return { ...base, declarations: { ...aic.declarations }, roe: aic.roe }
+    return { ...base, declarations: { ...aic.declarations }, roe: aic.roe, autoClassify: aic.autoClassify }
+  }
+  if (mod === 'ABM') {
+    const abm = useAbmStore.getState()
+    return { ...base, declarations: { ...abm.declarations }, autoClassify: abm.autoClassify }
   }
   if (mod === 'ATC') {
     const fps = useFlightPlansStore.getState()
@@ -317,6 +326,12 @@ function applyDump(mod, payload) {
     if (mod === 'ATC')   applyAtcDump(payload)
     if (mod === 'CATCC') applyCatccDump(payload)
     if (mod === 'AIC')   applyAicStateDump(payload)
+    if (mod === 'ABM')   applyAbmStateDump(payload)
+    // Applied after the per-module dump above, since applyAtcDump/applyCatccDump
+    // call atc.reset() (which clears callsignOverrides) before this point.
+    if (payload.callsignOverrides) {
+      useAtcStore.setState({ callsignOverrides: payload.callsignOverrides })
+    }
   } finally {
     _applying = false
   }
@@ -363,17 +378,21 @@ function startDisconnectTimer(peerId) {
     dropControllerTracks(lostControllerId)
 
     const ctrl = useControllersStore.getState()
-    sendSession?.(envelope('PEER_DISCONNECTED', {
+    const pdMsg  = envelope('PEER_DISCONNECTED', {
       position: entry.position,
       module:   entry.module,
       peerId,
-    }))
-    sendSession?.(envelope('CLIENT_LIST_UPDATE', {
+    })
+    const cluMsg = envelope('CLIENT_LIST_UPDATE', {
       clients:          clientList,
       registry:         ctrl.registry,
       groupAssignments: ctrl.groupAssignments,
       nextGroupNumber:  ctrl.nextGroupNumber,
-    }))
+    })
+    logMsg('→ session', pdMsg)
+    logMsg('→ session', cluMsg)
+    sendSession?.(pdMsg)
+    sendSession?.(cluMsg)
   }, DISCONNECT_TIMEOUT_MS)
 }
 
@@ -596,12 +615,60 @@ function onModuleMessage(msg) {
   if (!msg?.type || _applying) return
   logMsg('← module', msg)
   trackSeq(msg)
+
+  if (msg.type === 'PILOT_FLIGHT_PLAN_REQUEST') {
+    // Any connected ATC peer acks receipt immediately, regardless of host status.
+    // This decouples "did my request reach anyone" (fast, from whoever's peer
+    // connection happens to be up) from "has the host resolved it" (potentially
+    // slower) -- the pilot page stops resending once acked, and only the actual
+    // host goes on to resolve it below.
+    if (activeModule === 'ATC') {
+      const ackMsg = envelope('PILOT_FLIGHT_PLAN_ACK', { aid: msg.payload?.aid }, 'ATC')
+      logMsg('→ module', ackMsg, msg.fromPeerId)
+      sendModule?.(ackMsg, msg.fromPeerId)
+    }
+    resolvePilotFlightPlanRequest(msg.payload, msg.fromPeerId)
+    return
+  }
+
   _applying = true
   try {
     handleModuleMessage(msg)
   } finally {
     _applying = false
   }
+}
+
+// A standalone pilot-filing page (see resources/specs/pilot-filed-flight-plans.md) joins the
+// ATC module room directly but never joins the session room, so it never appears in clientList
+// and is never host-eligible. Only the current global host acts on its request -- otherwise
+// every connected controller would independently mint a different CID/BCN for the same AID via
+// useFlightPlansStore.add()'s local generation. The host resolves it once, locally, then
+// re-broadcasts an ordinary FLIGHT_PLAN_CREATE that every peer (pilot included) applies through
+// the normal handleModuleMessage path.
+//
+// Pilots may only CREATE a new plan, never amend an existing one. If a plan already exists for
+// the AID, the host rejects the request explicitly (rather than silently dropping it) so the
+// pilot page can distinguish "already exists" from "no controller online." A controller frees the
+// AID via the FPE's Delete flow (broadcasts FLIGHT_PLAN_DELETE) so the pilot can refile.
+function resolvePilotFlightPlanRequest(payload, fromPeerId) {
+  if (activeModule !== 'ATC' || !amHost()) return
+  const aid = payload?.aid?.toUpperCase()
+  if (!aid) return
+
+  const fps = useFlightPlansStore.getState()
+  if (fps.plans[aid]) {
+    const rejectMsg = envelope('PILOT_FLIGHT_PLAN_REJECTED', { aid, reason: 'ALREADY_EXISTS' }, 'ATC')
+    logMsg('→ module', rejectMsg, fromPeerId)
+    sendModule?.(rejectMsg, fromPeerId)
+    return
+  }
+
+  fps.add(payload)
+  const resolved = useFlightPlansStore.getState().plans[aid]
+  const outMsg    = envelope('FLIGHT_PLAN_CREATE', resolved, 'ATC')
+  logMsg('→ module', outMsg)
+  sendModule?.(outMsg)
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -691,6 +758,7 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
 
   const sessionRoomId = await deriveRoomId(olympusUrl, password)
   const moduleRoomId  = `${sessionRoomId}-${mod.toLowerCase()}`
+  console.info(`[webrtc] joining module room ${moduleRoomId}`)
   const iceServers = await fetchIceServers()
   const baseCfg = {
     appId: 'tracs',
@@ -740,6 +808,9 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   }
   if (mod === 'AIC') {
     registerAicBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+  }
+  if (mod === 'ABM') {
+    registerAbmBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   }
 
   // Add self immediately — if first peer, we're already "connected"

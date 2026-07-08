@@ -1,0 +1,5915 @@
+{
+ "theatre": "Syria",
+ "towns": [
+  {
+   "name": "01burda",
+   "lat": 36.995316,
+   "lon": 35.308933
+  },
+  {
+   "name": "Abbaslar",
+   "lat": 37.388269,
+   "lon": 37.042192
+  },
+  {
+   "name": "Abdioglu",
+   "lat": 36.910213,
+   "lon": 35.565185
+  },
+  {
+   "name": "Abu Ad Dhuhur",
+   "lat": 35.749513,
+   "lon": 37.049436
+  },
+  {
+   "name": "Abudane",
+   "lat": 36.754267,
+   "lon": 36.91415
+  },
+  {
+   "name": "Acar",
+   "lat": 36.744358,
+   "lon": 37.193913
+  },
+  {
+   "name": "Acar",
+   "lat": 36.927262,
+   "lon": 37.624244
+  },
+  {
+   "name": "Acheritou",
+   "lat": 35.100507,
+   "lon": 33.860308
+  },
+  {
+   "name": "Acre",
+   "lat": 32.929521,
+   "lon": 35.07814
+  },
+  {
+   "name": "Ad Dumayr",
+   "lat": 33.643665,
+   "lon": 36.691055
+  },
+  {
+   "name": "Adabat",
+   "lat": 36.622446,
+   "lon": 37.4906
+  },
+  {
+   "name": "Adaisse",
+   "lat": 33.256673,
+   "lon": 35.536415
+  },
+  {
+   "name": "Adakoy",
+   "lat": 36.915268,
+   "lon": 32.897518
+  },
+  {
+   "name": "Adama",
+   "lat": 36.767841,
+   "lon": 36.661365
+  },
+  {
+   "name": "Adana",
+   "lat": 37.01681,
+   "lon": 35.275819
+  },
+  {
+   "name": "Adana Galleria",
+   "lat": 37.005156,
+   "lon": 35.333314
+  },
+  {
+   "name": "Adana HiltonSA",
+   "lat": 36.985252,
+   "lon": 35.335523
+  },
+  {
+   "name": "Adana Optimum",
+   "lat": 36.98907,
+   "lon": 35.342753
+  },
+  {
+   "name": "Adiller",
+   "lat": 36.686945,
+   "lon": 32.620597
+  },
+  {
+   "name": "Adiyaman",
+   "lat": 37.767544,
+   "lon": 38.273825
+  },
+  {
+   "name": "Afania",
+   "lat": 35.158185,
+   "lon": 33.586684
+  },
+  {
+   "name": "Afrin",
+   "lat": 36.508418,
+   "lon": 36.867495
+  },
+  {
+   "name": "Afula",
+   "lat": 32.610048,
+   "lon": 35.289515
+  },
+  {
+   "name": "Agia",
+   "lat": 35.110869,
+   "lon": 33.566215
+  },
+  {
+   "name": "Agia Barbara",
+   "lat": 34.750691,
+   "lon": 32.51047
+  },
+  {
+   "name": "Agia Eirini",
+   "lat": 35.298681,
+   "lon": 32.963554
+  },
+  {
+   "name": "Agia Marina Kelokedaron",
+   "lat": 34.828943,
+   "lon": 32.614453
+  },
+  {
+   "name": "Agioi Trimithias",
+   "lat": 35.114564,
+   "lon": 33.210728
+  },
+  {
+   "name": "Agios Andronikos",
+   "lat": 35.505036,
+   "lon": 34.162471
+  },
+  {
+   "name": "Agios Athanasios",
+   "lat": 34.710274,
+   "lon": 33.059699
+  },
+  {
+   "name": "Agios Demetrianos",
+   "lat": 34.90677,
+   "lon": 32.550754
+  },
+  {
+   "name": "Agios Epiktitos",
+   "lat": 35.321345,
+   "lon": 33.390658
+  },
+  {
+   "name": "Agios Ermolaos",
+   "lat": 35.278452,
+   "lon": 33.172702
+  },
+  {
+   "name": "Agios Georgios",
+   "lat": 34.815217,
+   "lon": 32.898745
+  },
+  {
+   "name": "Agios Georgios Pegeias",
+   "lat": 34.902241,
+   "lon": 32.325863
+  },
+  {
+   "name": "Agios Konstantinos & Elenis",
+   "lat": 35.070407,
+   "lon": 33.391708
+  },
+  {
+   "name": "Agios Sergios",
+   "lat": 35.196624,
+   "lon": 33.874025
+  },
+  {
+   "name": "Agios Theodoros Soleas",
+   "lat": 35.042093,
+   "lon": 32.927442
+  },
+  {
+   "name": "Agios Vasilios",
+   "lat": 35.219057,
+   "lon": 33.18443
+  },
+  {
+   "name": "Agirda",
+   "lat": 35.297065,
+   "lon": 33.266677
+  },
+  {
+   "name": "Agros",
+   "lat": 34.917642,
+   "lon": 33.018409
+  },
+  {
+   "name": "Air Defence Academy",
+   "lat": 34.61237,
+   "lon": 36.75006
+  },
+  {
+   "name": "Akaki",
+   "lat": 35.134529,
+   "lon": 33.129655
+  },
+  {
+   "name": "Akbudak",
+   "lat": 37.444552,
+   "lon": 37.93558
+  },
+  {
+   "name": "Akcagoze",
+   "lat": 37.260349,
+   "lon": 37.30236
+  },
+  {
+   "name": "Akcakoy",
+   "lat": 36.831429,
+   "lon": 37.869789
+  },
+  {
+   "name": "Akcakoyunlu",
+   "lat": 37.34565,
+   "lon": 37.185194
+  },
+  {
+   "name": "Akcatekir",
+   "lat": 37.346554,
+   "lon": 34.807748
+  },
+  {
+   "name": "Akdam",
+   "lat": 36.801189,
+   "lon": 35.445622
+  },
+  {
+   "name": "Akdam",
+   "lat": 37.236393,
+   "lon": 35.861465
+  },
+  {
+   "name": "Akdemir",
+   "lat": 37.276663,
+   "lon": 37.013836
+  },
+  {
+   "name": "Akincilar",
+   "lat": 36.388407,
+   "lon": 36.231198
+  },
+  {
+   "name": "Akko Old Town",
+   "lat": 32.921558,
+   "lon": 35.069468
+  },
+  {
+   "name": "Akova",
+   "lat": 36.389057,
+   "lon": 33.19231
+  },
+  {
+   "name": "Akrotiri",
+   "lat": 34.600749,
+   "lon": 32.956124
+  },
+  {
+   "name": "Aksifat Dam",
+   "lat": 36.827512,
+   "lon": 33.885884
+  },
+  {
+   "name": "Aksilou",
+   "lat": 34.806104,
+   "lon": 32.564681
+  },
+  {
+   "name": "Al Aabde",
+   "lat": 34.511339,
+   "lon": 35.962268
+  },
+  {
+   "name": "Al Ayubiyah",
+   "lat": 36.591243,
+   "lon": 37.517457
+  },
+  {
+   "name": "Al Bab",
+   "lat": 36.366231,
+   "lon": 37.512118
+  },
+  {
+   "name": "Al Baytariyah",
+   "lat": 33.315697,
+   "lon": 36.543629
+  },
+  {
+   "name": "Al Ghadfah",
+   "lat": 35.677496,
+   "lon": 36.801608
+  },
+  {
+   "name": "Al Ghuzlaniyah",
+   "lat": 33.398953,
+   "lon": 36.454461
+  },
+  {
+   "name": "Al Hadirah",
+   "lat": 36.703521,
+   "lon": 37.891848
+  },
+  {
+   "name": "Al Hannadi",
+   "lat": 35.480731,
+   "lon": 35.927036
+  },
+  {
+   "name": "Al Harah",
+   "lat": 33.057838,
+   "lon": 36.006797
+  },
+  {
+   "name": "Al Jeezah",
+   "lat": 32.56568,
+   "lon": 36.316322
+  },
+  {
+   "name": "Al Kafr",
+   "lat": 32.632244,
+   "lon": 36.648252
+  },
+  {
+   "name": "Al Mleha",
+   "lat": 33.484569,
+   "lon": 36.373028
+  },
+  {
+   "name": "Al Moadamyeh",
+   "lat": 33.463478,
+   "lon": 36.187321
+  },
+  {
+   "name": "Al Mudallalah",
+   "lat": 36.6953,
+   "lon": 36.856076
+  },
+  {
+   "name": "Al Qastal",
+   "lat": 36.734667,
+   "lon": 36.858705
+  },
+  {
+   "name": "Al Qusayr",
+   "lat": 34.512113,
+   "lon": 36.587781
+  },
+  {
+   "name": "Al Qutayfah",
+   "lat": 33.7417,
+   "lon": 36.594686
+  },
+  {
+   "name": "Al Rami",
+   "lat": 35.804366,
+   "lon": 36.487599
+  },
+  {
+   "name": "Al Safira Military Base",
+   "lat": 36.046375,
+   "lon": 37.334725
+  },
+  {
+   "name": "Al Tabqah",
+   "lat": 35.827092,
+   "lon": 38.541302
+  },
+  {
+   "name": "Al Zabadani",
+   "lat": 33.726458,
+   "lon": 36.101596
+  },
+  {
+   "name": "Al-Aqsa Mosque",
+   "lat": 31.77483,
+   "lon": 35.235355
+  },
+  {
+   "name": "Al-Dimass",
+   "lat": 33.588011,
+   "lon": 36.091209
+  },
+  {
+   "name": "Al-Karak",
+   "lat": 31.175175,
+   "lon": 35.710114
+  },
+  {
+   "name": "Al-Safirah",
+   "lat": 36.069189,
+   "lon": 37.377062
+  },
+  {
+   "name": "Alaca",
+   "lat": 36.990576,
+   "lon": 36.83103
+  },
+  {
+   "name": "Aladag",
+   "lat": 36.941463,
+   "lon": 34.497057
+  },
+  {
+   "name": "Alampra",
+   "lat": 34.995833,
+   "lon": 33.40366
+  },
+  {
+   "name": "Alassad",
+   "lat": 33.581558,
+   "lon": 36.35894
+  },
+  {
+   "name": "Alectora",
+   "lat": 34.709406,
+   "lon": 32.683189
+  },
+  {
+   "name": "Aleppo",
+   "lat": 36.219471,
+   "lon": 37.142091
+  },
+  {
+   "name": "Aleppo Citadel Building",
+   "lat": 36.200998,
+   "lon": 37.163936
+  },
+  {
+   "name": "Aleppo City Hall",
+   "lat": 36.203937,
+   "lon": 37.146673
+  },
+  {
+   "name": "Alethriko",
+   "lat": 34.861503,
+   "lon": 33.494229
+  },
+  {
+   "name": "Aliefendioglu",
+   "lat": 36.883629,
+   "lon": 34.910675
+  },
+  {
+   "name": "Amargeti",
+   "lat": 34.823625,
+   "lon": 32.583248
+  },
+  {
+   "name": "Amathus Beach Hotel",
+   "lat": 34.747825,
+   "lon": 32.425493
+  },
+  {
+   "name": "Amman",
+   "lat": 31.941718,
+   "lon": 35.921985
+  },
+  {
+   "name": "An Nabk",
+   "lat": 31.342993,
+   "lon": 37.316547
+  },
+  {
+   "name": "Anadiou",
+   "lat": 34.94447,
+   "lon": 32.566024
+  },
+  {
+   "name": "Analiontas",
+   "lat": 35.007475,
+   "lon": 33.291168
+  },
+  {
+   "name": "Anamur",
+   "lat": 36.07572,
+   "lon": 32.837883
+  },
+  {
+   "name": "Anarita",
+   "lat": 34.741019,
+   "lon": 32.533769
+  },
+  {
+   "name": "Androlikou",
+   "lat": 34.998735,
+   "lon": 32.381103
+  },
+  {
+   "name": "Angastina",
+   "lat": 35.204358,
+   "lon": 33.589232
+  },
+  {
+   "name": "Anglisides",
+   "lat": 34.853651,
+   "lon": 33.45742
+  },
+  {
+   "name": "Angolemi",
+   "lat": 35.118146,
+   "lon": 32.948238
+  },
+  {
+   "name": "Anjar",
+   "lat": 33.727388,
+   "lon": 35.931892
+  },
+  {
+   "name": "Ankhul",
+   "lat": 33.017328,
+   "lon": 36.130427
+  },
+  {
+   "name": "Anogyra",
+   "lat": 34.739796,
+   "lon": 32.734062
+  },
+  {
+   "name": "Anqele",
+   "lat": 36.462361,
+   "lon": 36.607504
+  },
+  {
+   "name": "Antakya",
+   "lat": 36.211221,
+   "lon": 36.15759
+  },
+  {
+   "name": "Aphrodite Hills",
+   "lat": 34.683989,
+   "lon": 32.613011
+  },
+  {
+   "name": "Aqrabac",
+   "lat": 33.111487,
+   "lon": 36.001655
+  },
+  {
+   "name": "Ar Rastan",
+   "lat": 34.923488,
+   "lon": 36.732503
+  },
+  {
+   "name": "Araban",
+   "lat": 37.425931,
+   "lon": 37.689199
+  },
+  {
+   "name": "Aradhippou",
+   "lat": 34.949618,
+   "lon": 33.592675
+  },
+  {
+   "name": "Arbil",
+   "lat": 33.53907,
+   "lon": 36.366804
+  },
+  {
+   "name": "Arediou",
+   "lat": 35.047838,
+   "lon": 33.194954
+  },
+  {
+   "name": "Argaka",
+   "lat": 35.065576,
+   "lon": 32.485881
+  },
+  {
+   "name": "Argaki",
+   "lat": 35.17996,
+   "lon": 33.035324
+  },
+  {
+   "name": "Arihah",
+   "lat": 35.819453,
+   "lon": 36.616768
+  },
+  {
+   "name": "Arminou",
+   "lat": 34.861572,
+   "lon": 32.720259
+  },
+  {
+   "name": "Army Training Ground",
+   "lat": 33.405091,
+   "lon": 36.319119
+  },
+  {
+   "name": "Army Vehicle Training Ground",
+   "lat": 33.365284,
+   "lon": 36.322571
+  },
+  {
+   "name": "Army Vehicle Training Ground",
+   "lat": 33.433665,
+   "lon": 36.124922
+  },
+  {
+   "name": "Army Vehicle Training Ground",
+   "lat": 33.737184,
+   "lon": 36.809278
+  },
+  {
+   "name": "Army Vehicle Training Ground",
+   "lat": 33.7107,
+   "lon": 36.665598
+  },
+  {
+   "name": "Arslankoy",
+   "lat": 37.01964,
+   "lon": 34.291595
+  },
+  {
+   "name": "Arsos",
+   "lat": 34.840546,
+   "lon": 32.76889
+  },
+  {
+   "name": "Artillery Base",
+   "lat": 33.457854,
+   "lon": 36.128248
+  },
+  {
+   "name": "As Sabuniyah",
+   "lat": 36.695042,
+   "lon": 37.81435
+  },
+  {
+   "name": "As Sanamayn",
+   "lat": 33.077101,
+   "lon": 36.185811
+  },
+  {
+   "name": "As Sawara",
+   "lat": 33.028305,
+   "lon": 36.578694
+  },
+  {
+   "name": "Ash Shamil",
+   "lat": 36.76712,
+   "lon": 38.01136
+  },
+  {
+   "name": "Asha",
+   "lat": 35.157788,
+   "lon": 33.608634
+  },
+  {
+   "name": "Ashdod",
+   "lat": 31.809189,
+   "lon": 34.653578
+  },
+  {
+   "name": "Asomatos",
+   "lat": 35.275328,
+   "lon": 33.107723
+  },
+  {
+   "name": "Asprogia",
+   "lat": 34.922564,
+   "lon": 32.613785
+  },
+  {
+   "name": "Astromeritis",
+   "lat": 35.139988,
+   "lon": 33.037487
+  },
+  {
+   "name": "At Tall",
+   "lat": 33.600323,
+   "lon": 36.315657
+  },
+  {
+   "name": "Atakoy",
+   "lat": 36.752564,
+   "lon": 35.113769
+  },
+  {
+   "name": "Atalan",
+   "lat": 37.260441,
+   "lon": 36.341777
+  },
+  {
+   "name": "Atalar",
+   "lat": 36.853973,
+   "lon": 34.852444
+  },
+  {
+   "name": "Atalar",
+   "lat": 37.174988,
+   "lon": 37.021694
+  },
+  {
+   "name": "Ataturk Dam",
+   "lat": 37.489151,
+   "lon": 38.326501
+  },
+  {
+   "name": "Athienou",
+   "lat": 35.061861,
+   "lon": 33.540495
+  },
+  {
+   "name": "Atlit",
+   "lat": 32.688863,
+   "lon": 34.943009
+  },
+  {
+   "name": "Atmana",
+   "lat": 36.656399,
+   "lon": 36.654559
+  },
+  {
+   "name": "Avdimou",
+   "lat": 34.695845,
+   "lon": 32.762085
+  },
+  {
+   "name": "Avgorou",
+   "lat": 35.035629,
+   "lon": 33.840146
+  },
+  {
+   "name": "Avlona",
+   "lat": 35.161698,
+   "lon": 33.106021
+  },
+  {
+   "name": "Aybasti",
+   "lat": 37.003451,
+   "lon": 33.10725
+  },
+  {
+   "name": "Aydincik",
+   "lat": 36.145295,
+   "lon": 33.322088
+  },
+  {
+   "name": "Ayia Anna",
+   "lat": 34.943078,
+   "lon": 33.47348
+  },
+  {
+   "name": "Ayia Marina",
+   "lat": 35.049164,
+   "lon": 33.057631
+  },
+  {
+   "name": "Ayia Marina Chrysochous",
+   "lat": 35.120305,
+   "lon": 32.514681
+  },
+  {
+   "name": "Ayia Napa",
+   "lat": 34.989322,
+   "lon": 33.996204
+  },
+  {
+   "name": "Ayia Thekla",
+   "lat": 34.980493,
+   "lon": 33.927541
+  },
+  {
+   "name": "Ayia Varvara",
+   "lat": 34.996237,
+   "lon": 33.369224
+  },
+  {
+   "name": "Ayios Amvrosios",
+   "lat": 34.781213,
+   "lon": 32.827274
+  },
+  {
+   "name": "Ayios Georgios Kafkallou",
+   "lat": 35.037317,
+   "lon": 33.013208
+  },
+  {
+   "name": "Ayios Ioannis",
+   "lat": 35.065989,
+   "lon": 33.183611
+  },
+  {
+   "name": "Ayios Konstantinos",
+   "lat": 34.867715,
+   "lon": 33.06672
+  },
+  {
+   "name": "Ayios Yeorgios",
+   "lat": 34.778531,
+   "lon": 32.652547
+  },
+  {
+   "name": "Aykadah",
+   "lat": 36.649405,
+   "lon": 37.180835
+  },
+  {
+   "name": "Aysehoca",
+   "lat": 37.26376,
+   "lon": 35.851606
+  },
+  {
+   "name": "Ayvagedigi Yaylasi",
+   "lat": 37.026981,
+   "lon": 34.565185
+  },
+  {
+   "name": "Az Ziyarah",
+   "lat": 36.854259,
+   "lon": 38.034358
+  },
+  {
+   "name": "Baalbek",
+   "lat": 33.997755,
+   "lon": 36.211899
+  },
+  {
+   "name": "Bab Laymun",
+   "lat": 36.701284,
+   "lon": 37.583533
+  },
+  {
+   "name": "Babbila",
+   "lat": 33.4772,
+   "lon": 36.336357
+  },
+  {
+   "name": "Bademli",
+   "lat": 37.023109,
+   "lon": 32.664723
+  },
+  {
+   "name": "Bademli",
+   "lat": 37.218197,
+   "lon": 36.743061
+  },
+  {
+   "name": "Bafra",
+   "lat": 35.379518,
+   "lon": 34.071254
+  },
+  {
+   "name": "Baglica",
+   "lat": 36.995418,
+   "lon": 37.883309
+  },
+  {
+   "name": "Bagtepe",
+   "lat": 37.331536,
+   "lon": 37.643092
+  },
+  {
+   "name": "Bahai World Centre",
+   "lat": 32.815351,
+   "lon": 34.985867
+  },
+  {
+   "name": "Bahcekoy",
+   "lat": 36.611977,
+   "lon": 35.446663
+  },
+  {
+   "name": "Bahsis",
+   "lat": 36.823593,
+   "lon": 34.884811
+  },
+  {
+   "name": "Bak Ubasi",
+   "lat": 36.797544,
+   "lon": 36.7662
+  },
+  {
+   "name": "Balaban",
+   "lat": 36.811863,
+   "lon": 37.768974
+  },
+  {
+   "name": "Balcilar",
+   "lat": 36.892547,
+   "lon": 32.685223
+  },
+  {
+   "name": "Ballik",
+   "lat": 37.331287,
+   "lon": 37.533859
+  },
+  {
+   "name": "Baniyas",
+   "lat": 35.189238,
+   "lon": 35.953516
+  },
+  {
+   "name": "Bar Elias",
+   "lat": 33.774479,
+   "lon": 35.900918
+  },
+  {
+   "name": "Basilica of Our Lady of Lebanon",
+   "lat": 33.983536,
+   "lon": 35.653944
+  },
+  {
+   "name": "Basilica of St. Paul",
+   "lat": 33.978804,
+   "lon": 35.650348
+  },
+  {
+   "name": "Basyayla",
+   "lat": 36.753599,
+   "lon": 32.679537
+  },
+  {
+   "name": "Batroun",
+   "lat": 34.252986,
+   "lon": 35.666329
+  },
+  {
+   "name": "Battal",
+   "lat": 37.103736,
+   "lon": 37.65162
+  },
+  {
+   "name": "Bawz Huyuk",
+   "lat": 36.731222,
+   "lon": 37.777528
+  },
+  {
+   "name": "Bayadiyah",
+   "lat": 36.837164,
+   "lon": 38.059051
+  },
+  {
+   "name": "Be'er Sheva",
+   "lat": 31.265082,
+   "lon": 34.794776
+  },
+  {
+   "name": "Bebeli",
+   "lat": 36.64048,
+   "lon": 35.490871
+  },
+  {
+   "name": "Begendik",
+   "lat": 37.283977,
+   "lon": 37.828846
+  },
+  {
+   "name": "Beirut",
+   "lat": 33.861187,
+   "lon": 35.526848
+  },
+  {
+   "name": "Beit Shean",
+   "lat": 32.492844,
+   "lon": 35.501891
+  },
+  {
+   "name": "Bekiralani",
+   "lat": 36.984575,
+   "lon": 34.523157
+  },
+  {
+   "name": "Beldibi",
+   "lat": 36.45,
+   "lon": 32.315278
+  },
+  {
+   "name": "Belenozu",
+   "lat": 36.878162,
+   "lon": 37.073924
+  },
+  {
+   "name": "Bellapais",
+   "lat": 35.306505,
+   "lon": 33.353218
+  },
+  {
+   "name": "Bent Jbail",
+   "lat": 33.125874,
+   "lon": 35.440673
+  },
+  {
+   "name": "Berdan Dam",
+   "lat": 36.964493,
+   "lon": 34.882153
+  },
+  {
+   "name": "Bereket",
+   "lat": 36.349506,
+   "lon": 33.248413
+  },
+  {
+   "name": "Besdeli",
+   "lat": 36.87817,
+   "lon": 37.462532
+  },
+  {
+   "name": "Beskuyu",
+   "lat": 37.106009,
+   "lon": 37.151234
+  },
+  {
+   "name": "Beyoglu",
+   "lat": 37.289216,
+   "lon": 36.785339
+  },
+  {
+   "name": "Bibaka",
+   "lat": 36.718727,
+   "lon": 36.822997
+  },
+  {
+   "name": "Bilek",
+   "lat": 37.129237,
+   "lon": 37.541495
+  },
+  {
+   "name": "Bolay",
+   "lat": 36.870377,
+   "lon": 32.616754
+  },
+  {
+   "name": "Boyluca",
+   "lat": 37.186996,
+   "lon": 37.632012
+  },
+  {
+   "name": "Boyno",
+   "lat": 37.185921,
+   "lon": 37.240212
+  },
+  {
+   "name": "Bozdogan",
+   "lat": 36.091793,
+   "lon": 32.900727
+  },
+  {
+   "name": "Bozdogan",
+   "lat": 36.692844,
+   "lon": 33.223659
+  },
+  {
+   "name": "Bozkandak",
+   "lat": 37.11932,
+   "lon": 32.842606
+  },
+  {
+   "name": "Bozon",
+   "lat": 36.804363,
+   "lon": 34.497238
+  },
+  {
+   "name": "Bozyazi",
+   "lat": 36.103255,
+   "lon": 32.974656
+  },
+  {
+   "name": "Bulbul",
+   "lat": 36.771627,
+   "lon": 36.818877
+  },
+  {
+   "name": "Buraq",
+   "lat": 33.185661,
+   "lon": 36.479501
+  },
+  {
+   "name": "Burc",
+   "lat": 37.017872,
+   "lon": 37.193914
+  },
+  {
+   "name": "Burhan",
+   "lat": 37.079319,
+   "lon": 33.075035
+  },
+  {
+   "name": "Burunsuzlar",
+   "lat": 36.943218,
+   "lon": 36.863838
+  },
+  {
+   "name": "Busra",
+   "lat": 32.517997,
+   "lon": 36.481645
+  },
+  {
+   "name": "Buyuk Karacaoren",
+   "lat": 36.763786,
+   "lon": 37.544601
+  },
+  {
+   "name": "Buyukeceli",
+   "lat": 36.169905,
+   "lon": 33.556496
+  },
+  {
+   "name": "Buyukkarakuyu",
+   "lat": 37.237745,
+   "lon": 37.530321
+  },
+  {
+   "name": "Buyuksahinbey",
+   "lat": 36.94994,
+   "lon": 37.421321
+  },
+  {
+   "name": "Buyuktuysuz",
+   "lat": 37.02079,
+   "lon": 36.109193
+  },
+  {
+   "name": "Caglarca",
+   "lat": 37.00513,
+   "lon": 34.445285
+  },
+  {
+   "name": "Caglayangedik",
+   "lat": 36.493715,
+   "lon": 33.579133
+  },
+  {
+   "name": "Cakmak",
+   "lat": 37.193043,
+   "lon": 36.847496
+  },
+  {
+   "name": "Calkaya",
+   "lat": 36.797222,
+   "lon": 36.834675
+  },
+  {
+   "name": "Camili",
+   "lat": 36.890831,
+   "lon": 34.617832
+  },
+  {
+   "name": "Camili",
+   "lat": 36.933723,
+   "lon": 35.43155
+  },
+  {
+   "name": "Camlidere",
+   "lat": 36.898954,
+   "lon": 34.55673
+  },
+  {
+   "name": "Camlipinaralani",
+   "lat": 36.042679,
+   "lon": 32.723845
+  },
+  {
+   "name": "Camliyayla",
+   "lat": 37.171067,
+   "lon": 34.621793
+  },
+  {
+   "name": "Camuzcu",
+   "lat": 36.917568,
+   "lon": 35.272533
+  },
+  {
+   "name": "Caputcu M.",
+   "lat": 36.865171,
+   "lon": 35.196627
+  },
+  {
+   "name": "Carmel Hospital ",
+   "lat": 32.784093,
+   "lon": 34.979872
+  },
+  {
+   "name": "Catalca",
+   "lat": 36.901715,
+   "lon": 37.69364
+  },
+  {
+   "name": "Catalcam",
+   "lat": 36.783039,
+   "lon": 37.702713
+  },
+  {
+   "name": "Catalhuyuk",
+   "lat": 37.19643,
+   "lon": 35.815067
+  },
+  {
+   "name": "Cataloluk",
+   "lat": 36.144695,
+   "lon": 32.789829
+  },
+  {
+   "name": "Catalsu",
+   "lat": 36.865063,
+   "lon": 37.421889
+  },
+  {
+   "name": "Cavak",
+   "lat": 36.840183,
+   "lon": 34.544435
+  },
+  {
+   "name": "Caykuyu",
+   "lat": 37.245266,
+   "lon": 37.459827
+  },
+  {
+   "name": "Ceceli",
+   "lat": 37.346626,
+   "lon": 36.804924
+  },
+  {
+   "name": "Cemilli",
+   "lat": 36.802769,
+   "lon": 34.450855
+  },
+  {
+   "name": "Central Bank of Syria",
+   "lat": 33.52276,
+   "lon": 36.297163
+  },
+  {
+   "name": "Cerityeniyapan",
+   "lat": 37.178158,
+   "lon": 37.154751
+  },
+  {
+   "name": "Cetmi",
+   "lat": 36.878479,
+   "lon": 32.62259
+  },
+  {
+   "name": "Cevlik",
+   "lat": 36.778763,
+   "lon": 34.457645
+  },
+  {
+   "name": "Cevreli",
+   "lat": 37.03579,
+   "lon": 37.076737
+  },
+  {
+   "name": "Ceyhan",
+   "lat": 37.032204,
+   "lon": 35.820925
+  },
+  {
+   "name": "Chekka",
+   "lat": 34.323663,
+   "lon": 35.731135
+  },
+  {
+   "name": "Chemical Weapons Storage Area",
+   "lat": 34.627713,
+   "lon": 38.24929
+  },
+  {
+   "name": "Chim",
+   "lat": 33.620974,
+   "lon": 35.488638
+  },
+  {
+   "name": "Chloraka",
+   "lat": 34.79959,
+   "lon": 32.40792
+  },
+  {
+   "name": "Choletria",
+   "lat": 34.762878,
+   "lon": 32.599142
+  },
+  {
+   "name": "Choulou Village",
+   "lat": 34.8719,
+   "lon": 32.557968
+  },
+  {
+   "name": "Chrysochou",
+   "lat": 35.003688,
+   "lon": 32.43951
+  },
+  {
+   "name": "Church of the Holy Sepulchre",
+   "lat": 31.780919,
+   "lon": 35.23025
+  },
+  {
+   "name": "Cicekli",
+   "lat": 36.874371,
+   "lon": 35.087093
+  },
+  {
+   "name": "Ciflikkoy",
+   "lat": 36.827686,
+   "lon": 37.796566
+  },
+  {
+   "name": "Ciftepinar",
+   "lat": 36.712413,
+   "lon": 34.350172
+  },
+  {
+   "name": "Cihadiye",
+   "lat": 37.050737,
+   "lon": 35.561613
+  },
+  {
+   "name": "Ciltoprak",
+   "lat": 37.288708,
+   "lon": 37.740048
+  },
+  {
+   "name": "Cimeli",
+   "lat": 36.69833,
+   "lon": 35.343601
+  },
+  {
+   "name": "Cimenli",
+   "lat": 37.283737,
+   "lon": 37.584349
+  },
+  {
+   "name": "Cinkoy",
+   "lat": 36.986992,
+   "lon": 34.756832
+  },
+  {
+   "name": "City Training and Research Hospital",
+   "lat": 37.02706,
+   "lon": 35.345891
+  },
+  {
+   "name": "Civi",
+   "lat": 36.848378,
+   "lon": 33.557506
+  },
+  {
+   "name": "Cobantepe",
+   "lat": 37.363365,
+   "lon": 36.927837
+  },
+  {
+   "name": "Cocelli",
+   "lat": 37.27879,
+   "lon": 37.138394
+  },
+  {
+   "name": "Comelek",
+   "lat": 36.711828,
+   "lon": 33.686224
+  },
+  {
+   "name": "Corten",
+   "lat": 36.77398,
+   "lon": 37.296283
+  },
+  {
+   "name": "Corus",
+   "lat": 36.332587,
+   "lon": 32.430553
+  },
+  {
+   "name": "Cotlu",
+   "lat": 36.874264,
+   "lon": 35.487177
+  },
+  {
+   "name": "Cubuk",
+   "lat": 36.995316,
+   "lon": 36.78598
+  },
+  {
+   "name": "Cubukdiken",
+   "lat": 37.031017,
+   "lon": 37.042729
+  },
+  {
+   "name": "Cukurkonak",
+   "lat": 36.391751,
+   "lon": 33.33265
+  },
+  {
+   "name": "Cukurkopru",
+   "lat": 37.339231,
+   "lon": 35.917985
+  },
+  {
+   "name": "Cukurkoy",
+   "lat": 36.944813,
+   "lon": 32.991434
+  },
+  {
+   "name": "Cukuroba",
+   "lat": 36.76424,
+   "lon": 37.143169
+  },
+  {
+   "name": "Cukurova",
+   "lat": 37.042264,
+   "lon": 35.307505
+  },
+  {
+   "name": "Cumhuriyet",
+   "lat": 36.798687,
+   "lon": 37.558102
+  },
+  {
+   "name": "CYTA",
+   "lat": 35.148824,
+   "lon": 33.370362
+  },
+  {
+   "name": "Dagli",
+   "lat": 36.709141,
+   "lon": 34.262116
+  },
+  {
+   "name": "Dagon Elevator",
+   "lat": 32.824593,
+   "lon": 34.996369
+  },
+  {
+   "name": "Dagpazari",
+   "lat": 36.829601,
+   "lon": 33.468057
+  },
+  {
+   "name": "Dalakdere",
+   "lat": 36.924936,
+   "lon": 34.568354
+  },
+  {
+   "name": "Dali",
+   "lat": 35.022569,
+   "lon": 33.421807
+  },
+  {
+   "name": "Daliyat al-Karmel",
+   "lat": 32.692722,
+   "lon": 35.050793
+  },
+  {
+   "name": "Damascus",
+   "lat": 33.518073,
+   "lon": 36.296386
+  },
+  {
+   "name": "Damascus Tower",
+   "lat": 33.513033,
+   "lon": 36.296703
+  },
+  {
+   "name": "Damlatas",
+   "lat": 37.450547,
+   "lon": 37.28005
+  },
+  {
+   "name": "Danisment",
+   "lat": 36.825291,
+   "lon": 35.447452
+  },
+  {
+   "name": "Darayya",
+   "lat": 33.460294,
+   "lon": 36.235558
+  },
+  {
+   "name": "Dasaki Achnas",
+   "lat": 35.029712,
+   "lon": 33.770819
+  },
+  {
+   "name": "Dawrish",
+   "lat": 36.674731,
+   "lon": 36.901906
+  },
+  {
+   "name": "Dedeler",
+   "lat": 36.269211,
+   "lon": 33.611233
+  },
+  {
+   "name": "Degirmendere",
+   "lat": 37.059589,
+   "lon": 34.540509
+  },
+  {
+   "name": "Degnek",
+   "lat": 37.067592,
+   "lon": 34.393852
+  },
+  {
+   "name": "Deir al-Asad",
+   "lat": 32.929701,
+   "lon": 35.27559
+  },
+  {
+   "name": "Delikkaya",
+   "lat": 36.28574,
+   "lon": 33.486439
+  },
+  {
+   "name": "Demirkonak",
+   "lat": 36.750146,
+   "lon": 37.599487
+  },
+  {
+   "name": "Demiroren",
+   "lat": 36.046132,
+   "lon": 32.678841
+  },
+  {
+   "name": "Demirtas",
+   "lat": 36.416868,
+   "lon": 32.198377
+  },
+  {
+   "name": "Demirtas",
+   "lat": 36.82238,
+   "lon": 35.815334
+  },
+  {
+   "name": "Deneia",
+   "lat": 35.166404,
+   "lon": 33.146445
+  },
+  {
+   "name": "Denizkuyusu",
+   "lat": 36.843975,
+   "lon": 35.299892
+  },
+  {
+   "name": "Derekoy",
+   "lat": 36.639501,
+   "lon": 33.659293
+  },
+  {
+   "name": "Dernek",
+   "lat": 37.210419,
+   "lon": 37.690298
+  },
+  {
+   "name": "Dersiwan",
+   "lat": 36.713392,
+   "lon": 36.99715
+  },
+  {
+   "name": "Deryneia",
+   "lat": 35.064867,
+   "lon": 33.960913
+  },
+  {
+   "name": "Dibecik",
+   "lat": 36.816789,
+   "lon": 37.646859
+  },
+  {
+   "name": "Dibin",
+   "lat": 32.439463,
+   "lon": 36.567784
+  },
+  {
+   "name": "Dierona",
+   "lat": 34.830596,
+   "lon": 33.111073
+  },
+  {
+   "name": "Dimona",
+   "lat": 31.068838,
+   "lon": 35.036878
+  },
+  {
+   "name": "Diorios",
+   "lat": 35.306173,
+   "lon": 33.05389
+  },
+  {
+   "name": "Dipkarpaz",
+   "lat": 35.597107,
+   "lon": 34.380133
+  },
+  {
+   "name": "Direkli",
+   "lat": 36.962502,
+   "lon": 37.604194
+  },
+  {
+   "name": "Distas",
+   "lat": 36.796483,
+   "lon": 33.267465
+  },
+  {
+   "name": "Dogancay",
+   "lat": 36.853901,
+   "lon": 34.429619
+  },
+  {
+   "name": "Dogankoy",
+   "lat": 37.402939,
+   "lon": 37.784596
+  },
+  {
+   "name": "Doglu",
+   "lat": 36.747231,
+   "lon": 34.425457
+  },
+  {
+   "name": "Dogusandal",
+   "lat": 36.763348,
+   "lon": 34.392998
+  },
+  {
+   "name": "Dokuztekne",
+   "lat": 37.009956,
+   "lon": 35.979076
+  },
+  {
+   "name": "Dokuzyol",
+   "lat": 36.894205,
+   "lon": 37.656132
+  },
+  {
+   "name": "Doluca",
+   "lat": 37.38889,
+   "lon": 36.695736
+  },
+  {
+   "name": "Dome of the Rock",
+   "lat": 31.780281,
+   "lon": 35.238327
+  },
+  {
+   "name": "Dora",
+   "lat": 34.780641,
+   "lon": 32.73813
+  },
+  {
+   "name": "Dortyol",
+   "lat": 36.837412,
+   "lon": 36.224341
+  },
+  {
+   "name": "Dorucak",
+   "lat": 36.853905,
+   "lon": 36.887199
+  },
+  {
+   "name": "Doruk",
+   "lat": 36.877598,
+   "lon": 35.76082
+  },
+  {
+   "name": "Dromolaxia",
+   "lat": 34.870834,
+   "lon": 33.588094
+  },
+  {
+   "name": "Drousha",
+   "lat": 34.962257,
+   "lon": 32.398645
+  },
+  {
+   "name": "Drymou",
+   "lat": 34.92547,
+   "lon": 32.513109
+  },
+  {
+   "name": "Duluk",
+   "lat": 37.153496,
+   "lon": 37.362061
+  },
+  {
+   "name": "Duma",
+   "lat": 33.571938,
+   "lon": 36.405781
+  },
+  {
+   "name": "Dumlu",
+   "lat": 37.150242,
+   "lon": 35.707294
+  },
+  {
+   "name": "Dunballi",
+   "lat": 36.610716,
+   "lon": 36.679572
+  },
+  {
+   "name": "Dunbullu",
+   "lat": 36.817236,
+   "lon": 37.027953
+  },
+  {
+   "name": "Duraqli",
+   "lat": 36.706618,
+   "lon": 36.910394
+  },
+  {
+   "name": "Durayhim Military Base",
+   "lat": 35.790074,
+   "lon": 37.728073
+  },
+  {
+   "name": "Durmuslar",
+   "lat": 37.105497,
+   "lon": 36.835158
+  },
+  {
+   "name": "Duruca",
+   "lat": 36.755982,
+   "lon": 37.029241
+  },
+  {
+   "name": "Durukoy",
+   "lat": 36.838182,
+   "lon": 37.506533
+  },
+  {
+   "name": "Dutluca",
+   "lat": 36.893303,
+   "lon": 37.612892
+  },
+  {
+   "name": "Duzici",
+   "lat": 37.240127,
+   "lon": 36.453543
+  },
+  {
+   "name": "Eastern Garyiah",
+   "lat": 32.677965,
+   "lon": 36.26094
+  },
+  {
+   "name": "Eceler",
+   "lat": 36.91646,
+   "lon": 37.924688
+  },
+  {
+   "name": "Egrice",
+   "lat": 37.360051,
+   "lon": 37.33196
+  },
+  {
+   "name": "Ein Elkorum",
+   "lat": 35.368802,
+   "lon": 36.409242
+  },
+  {
+   "name": "Ein Harod",
+   "lat": 32.556165,
+   "lon": 35.394209
+  },
+  {
+   "name": "Ein Hod",
+   "lat": 32.698984,
+   "lon": 34.987603
+  },
+  {
+   "name": "Ein Tamra",
+   "lat": 33.518276,
+   "lon": 36.352033
+  },
+  {
+   "name": "El Hajar Al Aswad",
+   "lat": 33.468749,
+   "lon": 36.309625
+  },
+  {
+   "name": "El Karak",
+   "lat": 32.685853,
+   "lon": 36.353277
+  },
+  {
+   "name": "El Khalil (Hebron)",
+   "lat": 31.552176,
+   "lon": 35.114792
+  },
+  {
+   "name": "El Taebah",
+   "lat": 32.564137,
+   "lon": 36.246336
+  },
+  {
+   "name": "Elbeyli",
+   "lat": 36.696751,
+   "lon": 34.017265
+  },
+  {
+   "name": "Elbeyli",
+   "lat": 36.674955,
+   "lon": 37.466985
+  },
+  {
+   "name": "Elbistanhuyugu",
+   "lat": 37.084524,
+   "lon": 36.740655
+  },
+  {
+   "name": "Elia",
+   "lat": 35.133123,
+   "lon": 32.913372
+  },
+  {
+   "name": "Elifkoy",
+   "lat": 37.376633,
+   "lon": 37.879514
+  },
+  {
+   "name": "Ellek",
+   "lat": 37.21542,
+   "lon": 36.374603
+  },
+  {
+   "name": "Elmadag",
+   "lat": 36.914432,
+   "lon": 33.158306
+  },
+  {
+   "name": "Emirler",
+   "lat": 37.289168,
+   "lon": 36.948717
+  },
+  {
+   "name": "Emiroglu",
+   "lat": 37.332144,
+   "lon": 37.062811
+  },
+  {
+   "name": "Empa",
+   "lat": 34.808747,
+   "lon": 32.423549
+  },
+  {
+   "name": "Epicho",
+   "lat": 35.227483,
+   "lon": 33.513494
+  },
+  {
+   "name": "Episkopi",
+   "lat": 34.795654,
+   "lon": 32.525533
+  },
+  {
+   "name": "Eptagoneia",
+   "lat": 34.846848,
+   "lon": 33.158371
+  },
+  {
+   "name": "Erdemli",
+   "lat": 36.605896,
+   "lon": 34.309941
+  },
+  {
+   "name": "Ereba",
+   "lat": 36.575155,
+   "lon": 36.708755
+  },
+  {
+   "name": "Erenkavak",
+   "lat": 37.047909,
+   "lon": 33.151283
+  },
+  {
+   "name": "Ergates",
+   "lat": 35.054048,
+   "lon": 33.243019
+  },
+  {
+   "name": "Erikli",
+   "lat": 37.204222,
+   "lon": 37.284423
+  },
+  {
+   "name": "Erikliyayla",
+   "lat": 36.723852,
+   "lon": 37.384788
+  },
+  {
+   "name": "Ermenek",
+   "lat": 36.639313,
+   "lon": 32.891781
+  },
+  {
+   "name": "Ermenek Dam",
+   "lat": 36.566693,
+   "lon": 32.956468
+  },
+  {
+   "name": "Erzin",
+   "lat": 36.953608,
+   "lon": 36.202282
+  },
+  {
+   "name": "Esencay",
+   "lat": 36.71291,
+   "lon": 33.458775
+  },
+  {
+   "name": "Esenli",
+   "lat": 36.940361,
+   "lon": 34.646919
+  },
+  {
+   "name": "Esenpinar",
+   "lat": 36.589546,
+   "lon": 34.113293
+  },
+  {
+   "name": "Esentepe",
+   "lat": 37.401196,
+   "lon": 37.712227
+  },
+  {
+   "name": "Eski Konak",
+   "lat": 36.915589,
+   "lon": 37.80194
+  },
+  {
+   "name": "Eski Sarkaya",
+   "lat": 37.218452,
+   "lon": 37.129997
+  },
+  {
+   "name": "Eski Yuruk",
+   "lat": 36.246223,
+   "lon": 33.400188
+  },
+  {
+   "name": "Et Turra",
+   "lat": 32.641456,
+   "lon": 35.990626
+  },
+  {
+   "name": "Et-Tabka Dam",
+   "lat": 35.878035,
+   "lon": 38.554539
+  },
+  {
+   "name": "Evren",
+   "lat": 36.586735,
+   "lon": 33.297371
+  },
+  {
+   "name": "Evri",
+   "lat": 37.256867,
+   "lon": 37.07038
+  },
+  {
+   "name": "Evrychou",
+   "lat": 35.03924,
+   "lon": 32.900035
+  },
+  {
+   "name": "Exo Metochi",
+   "lat": 35.214911,
+   "lon": 33.526624
+  },
+  {
+   "name": "Fairuzah",
+   "lat": 34.702436,
+   "lon": 36.757134
+  },
+  {
+   "name": "Famagusta",
+   "lat": 35.122964,
+   "lon": 33.934763
+  },
+  {
+   "name": "Farmakas",
+   "lat": 34.912829,
+   "lon": 33.136079
+  },
+  {
+   "name": "Fericek",
+   "lat": 36.879898,
+   "lon": 37.033341
+  },
+  {
+   "name": "Fevzipasa",
+   "lat": 37.099608,
+   "lon": 36.635078
+  },
+  {
+   "name": "Findikpinari",
+   "lat": 36.9223,
+   "lon": 34.367386
+  },
+  {
+   "name": "Fini",
+   "lat": 34.893841,
+   "lon": 32.83806
+  },
+  {
+   "name": "Flasou",
+   "lat": 35.065118,
+   "lon": 32.888541
+  },
+  {
+   "name": "Fotta",
+   "lat": 35.264565,
+   "lon": 33.222091
+  },
+  {
+   "name": "Four Seasons Hotel",
+   "lat": 33.515177,
+   "lon": 36.290071
+  },
+  {
+   "name": "Frenaros",
+   "lat": 35.042196,
+   "lon": 33.922345
+  },
+  {
+   "name": "Fyti",
+   "lat": 34.928563,
+   "lon": 32.544993
+  },
+  {
+   "name": "Gaza",
+   "lat": 31.512967,
+   "lon": 34.458627
+  },
+  {
+   "name": "Gaziantep",
+   "lat": 37.062653,
+   "lon": 37.383408
+  },
+  {
+   "name": "Gazikoy",
+   "lat": 37.29545,
+   "lon": 35.852451
+  },
+  {
+   "name": "Gaziler",
+   "lat": 37.19174,
+   "lon": 37.737264
+  },
+  {
+   "name": "Gazipasa",
+   "lat": 36.268494,
+   "lon": 32.314498
+  },
+  {
+   "name": "Gecerli",
+   "lat": 36.715923,
+   "lon": 37.52599
+  },
+  {
+   "name": "Gecitli",
+   "lat": 36.95282,
+   "lon": 35.626236
+  },
+  {
+   "name": "Gelinbugday",
+   "lat": 37.405014,
+   "lon": 37.58077
+  },
+  {
+   "name": "Geneyik",
+   "lat": 36.94397,
+   "lon": 37.309136
+  },
+  {
+   "name": "Gercebahsis",
+   "lat": 36.145644,
+   "lon": 32.864237
+  },
+  {
+   "name": "Geri",
+   "lat": 35.10685,
+   "lon": 33.420415
+  },
+  {
+   "name": "Gernagra",
+   "lat": 35.218012,
+   "lon": 33.6985
+  },
+  {
+   "name": "Gerolakkos",
+   "lat": 35.180659,
+   "lon": 33.253309
+  },
+  {
+   "name": "Geroskipou",
+   "lat": 34.761175,
+   "lon": 32.452697
+  },
+  {
+   "name": "Gevence",
+   "lat": 36.912609,
+   "lon": 37.844199
+  },
+  {
+   "name": "Gezende",
+   "lat": 36.511699,
+   "lon": 33.15699
+  },
+  {
+   "name": "Ghabagheb",
+   "lat": 33.182552,
+   "lon": 36.224414
+  },
+  {
+   "name": "Ghajar",
+   "lat": 33.271816,
+   "lon": 35.624125
+  },
+  {
+   "name": "Ghasam",
+   "lat": 32.549096,
+   "lon": 36.374564
+  },
+  {
+   "name": "Ghazze",
+   "lat": 33.668655,
+   "lon": 35.831698
+  },
+  {
+   "name": "Gocmez",
+   "lat": 37.339577,
+   "lon": 37.759079
+  },
+  {
+   "name": "Gokceli",
+   "lat": 36.879761,
+   "lon": 37.703012
+  },
+  {
+   "name": "Gokcesaray",
+   "lat": 36.260292,
+   "lon": 32.561065
+  },
+  {
+   "name": "Gokceseki",
+   "lat": 36.619481,
+   "lon": 33.021301
+  },
+  {
+   "name": "Gokceyol",
+   "lat": 37.295048,
+   "lon": 35.808819
+  },
+  {
+   "name": "Goksuncuk",
+   "lat": 37.20092,
+   "lon": 37.364616
+  },
+  {
+   "name": "Goktepe",
+   "lat": 36.627787,
+   "lon": 32.627055
+  },
+  {
+   "name": "Gonyeli",
+   "lat": 35.214514,
+   "lon": 33.302562
+  },
+  {
+   "name": "Gormeli",
+   "lat": 36.544789,
+   "lon": 32.977313
+  },
+  {
+   "name": "Goudi",
+   "lat": 34.991751,
+   "lon": 32.44185
+  },
+  {
+   "name": "Gourri",
+   "lat": 34.957275,
+   "lon": 33.15855
+  },
+  {
+   "name": "Gozluce",
+   "lat": 36.869453,
+   "lon": 37.000992
+  },
+  {
+   "name": "Gozluhuyuk",
+   "lat": 37.139744,
+   "lon": 36.781845
+  },
+  {
+   "name": "Gozne",
+   "lat": 36.99758,
+   "lon": 34.573647
+  },
+  {
+   "name": "Gozsuzce",
+   "lat": 36.153416,
+   "lon": 33.198791
+  },
+  {
+   "name": "Great Synagogue",
+   "lat": 31.773588,
+   "lon": 35.213866
+  },
+  {
+   "name": "Guder",
+   "lat": 37.170025,
+   "lon": 37.771377
+  },
+  {
+   "name": "Gulbaba",
+   "lat": 36.831773,
+   "lon": 36.794439
+  },
+  {
+   "name": "Gulbasak",
+   "lat": 37.251699,
+   "lon": 37.772819
+  },
+  {
+   "name": "Guldere",
+   "lat": 37.024464,
+   "lon": 33.470905
+  },
+  {
+   "name": "Gulluce",
+   "lat": 37.461207,
+   "lon": 37.578717
+  },
+  {
+   "name": "Gulluhuyuk",
+   "lat": 37.004236,
+   "lon": 36.68654
+  },
+  {
+   "name": "Gulnar",
+   "lat": 36.338683,
+   "lon": 33.40107
+  },
+  {
+   "name": "Gume",
+   "lat": 36.920553,
+   "lon": 33.509615
+  },
+  {
+   "name": "Gumussuyu",
+   "lat": 36.810836,
+   "lon": 37.291564
+  },
+  {
+   "name": "Gunbulur",
+   "lat": 37.02579,
+   "lon": 37.629534
+  },
+  {
+   "name": "Gunece",
+   "lat": 36.738989,
+   "lon": 37.44261
+  },
+  {
+   "name": "Gunesli",
+   "lat": 36.802671,
+   "lon": 36.87437
+  },
+  {
+   "name": "Guney",
+   "lat": 36.154167,
+   "lon": 32.450556
+  },
+  {
+   "name": "Guneyyurt",
+   "lat": 36.680996,
+   "lon": 32.808348
+  },
+  {
+   "name": "Gungoren",
+   "lat": 36.230743,
+   "lon": 32.632561
+  },
+  {
+   "name": "Gungoren",
+   "lat": 36.931271,
+   "lon": 36.798229
+  },
+  {
+   "name": "Gungurge",
+   "lat": 37.215573,
+   "lon": 37.46918
+  },
+  {
+   "name": "Gurcam",
+   "lat": 36.215515,
+   "lon": 32.486745
+  },
+  {
+   "name": "Guvecli",
+   "lat": 36.853234,
+   "lon": 37.680011
+  },
+  {
+   "name": "Guvendik",
+   "lat": 36.692513,
+   "lon": 37.37382
+  },
+  {
+   "name": "Guzeloluk",
+   "lat": 36.795725,
+   "lon": 34.082877
+  },
+  {
+   "name": "Guzelyayla",
+   "lat": 37.013122,
+   "lon": 34.476623
+  },
+  {
+   "name": "Guzelyurt",
+   "lat": 36.831459,
+   "lon": 33.203243
+  },
+  {
+   "name": "Habiller",
+   "lat": 37.096893,
+   "lon": 32.718903
+  },
+  {
+   "name": "Habima Theatre",
+   "lat": 32.075,
+   "lon": 34.780384
+  },
+  {
+   "name": "Hacibahattin",
+   "lat": 36.175754,
+   "lon": 33.350319
+  },
+  {
+   "name": "Hadera",
+   "lat": 32.428035,
+   "lon": 34.919863
+  },
+  {
+   "name": "Hafirah",
+   "lat": 36.710752,
+   "lon": 37.84994
+  },
+  {
+   "name": "Haifa",
+   "lat": 32.796019,
+   "lon": 34.995245
+  },
+  {
+   "name": "Haj Khalil",
+   "lat": 36.677861,
+   "lon": 36.683981
+  },
+  {
+   "name": "Halfaya",
+   "lat": 35.260712,
+   "lon": 36.606798
+  },
+  {
+   "name": "Hama",
+   "lat": 35.147288,
+   "lon": 36.757011
+  },
+  {
+   "name": "Hamat",
+   "lat": 34.285622,
+   "lon": 35.692717
+  },
+  {
+   "name": "Hamdilli",
+   "lat": 37.033039,
+   "lon": 35.926212
+  },
+  {
+   "name": "Hamidiye",
+   "lat": 37.108392,
+   "lon": 36.876015
+  },
+  {
+   "name": "Harasta",
+   "lat": 33.559036,
+   "lon": 36.366581
+  },
+  {
+   "name": "Haret Chbib",
+   "lat": 33.74092,
+   "lon": 35.457533
+  },
+  {
+   "name": "Harran al'Awamid",
+   "lat": 33.447575,
+   "lon": 36.561596
+  },
+  {
+   "name": "Hasanbeyli",
+   "lat": 37.130932,
+   "lon": 36.555539
+  },
+  {
+   "name": "Hasbaya",
+   "lat": 33.397627,
+   "lon": 35.685607
+  },
+  {
+   "name": "Hatunlu",
+   "lat": 36.782309,
+   "lon": 37.645971
+  },
+  {
+   "name": "Hatzor HaGlilit",
+   "lat": 32.980146,
+   "lon": 35.545722
+  },
+  {
+   "name": "Havutlu",
+   "lat": 36.933117,
+   "lon": 35.353413
+  },
+  {
+   "name": "Havuzkoy",
+   "lat": 37.352291,
+   "lon": 37.722023
+  },
+  {
+   "name": "Hawash",
+   "lat": 34.762026,
+   "lon": 36.322719
+  },
+  {
+   "name": "Haydar Basha",
+   "lat": 36.7,
+   "lon": 37.683333
+  },
+  {
+   "name": "Hayjanah",
+   "lat": 33.358906,
+   "lon": 36.544664
+  },
+  {
+   "name": "HaYovel Tower",
+   "lat": 32.070468,
+   "lon": 34.79145
+  },
+  {
+   "name": "Hazm",
+   "lat": 33.132337,
+   "lon": 36.524319
+  },
+  {
+   "name": "Hebilli",
+   "lat": 36.923302,
+   "lon": 34.666007
+  },
+  {
+   "name": "Herbert Samuel Opera",
+   "lat": 32.076545,
+   "lon": 34.763308
+  },
+  {
+   "name": "Hisarkoy",
+   "lat": 36.826561,
+   "lon": 36.766155
+  },
+  {
+   "name": "Hisarkoy",
+   "lat": 37.150306,
+   "lon": 36.905444
+  },
+  {
+   "name": "Hisarkoy",
+   "lat": 37.386158,
+   "lon": 37.917848
+  },
+  {
+   "name": "Homs",
+   "lat": 34.731897,
+   "lon": 36.711724
+  },
+  {
+   "name": "Houle",
+   "lat": 33.210746,
+   "lon": 35.517176
+  },
+  {
+   "name": "Husametli",
+   "lat": 36.66473,
+   "lon": 34.156929
+  },
+  {
+   "name": "Huseyinoglu",
+   "lat": 36.928833,
+   "lon": 36.929436
+  },
+  {
+   "name": "Ibilin",
+   "lat": 32.82219,
+   "lon": 35.192066
+  },
+  {
+   "name": "Ibrahimli",
+   "lat": 36.694454,
+   "lon": 33.639885
+  },
+  {
+   "name": "Ibrahimsehir",
+   "lat": 37.068382,
+   "lon": 37.633602
+  },
+  {
+   "name": "Icerisu",
+   "lat": 37.165314,
+   "lon": 36.8456
+  },
+  {
+   "name": "Idilli",
+   "lat": 36.983574,
+   "lon": 36.562073
+  },
+  {
+   "name": "Idlib",
+   "lat": 35.930952,
+   "lon": 36.633923
+  },
+  {
+   "name": "Igdeli",
+   "lat": 37.370328,
+   "lon": 37.217073
+  },
+  {
+   "name": "Ihsaniye",
+   "lat": 36.855573,
+   "lon": 32.935812
+  },
+  {
+   "name": "Ikizce",
+   "lat": 36.86258,
+   "lon": 37.773733
+  },
+  {
+   "name": "Ikizcinar",
+   "lat": 36.484788,
+   "lon": 32.927732
+  },
+  {
+   "name": "Ikizkuyu",
+   "lat": 36.877651,
+   "lon": 37.499959
+  },
+  {
+   "name": "Ikizkuyu",
+   "lat": 36.901325,
+   "lon": 37.478352
+  },
+  {
+   "name": "Ikizkuyu",
+   "lat": 37.139858,
+   "lon": 36.975552
+  },
+  {
+   "name": "Iksal",
+   "lat": 32.684349,
+   "lon": 35.325562
+  },
+  {
+   "name": "Ilemin",
+   "lat": 36.732933,
+   "lon": 34.312958
+  },
+  {
+   "name": "Imamoglu",
+   "lat": 37.256528,
+   "lon": 35.663411
+  },
+  {
+   "name": "Inalkoy",
+   "lat": 36.135199,
+   "lon": 32.54099
+  },
+  {
+   "name": "Incegedik",
+   "lat": 37.060494,
+   "lon": 36.764996
+  },
+  {
+   "name": "Incegiz",
+   "lat": 36.333648,
+   "lon": 32.34365
+  },
+  {
+   "name": "Inceyol",
+   "lat": 36.805349,
+   "lon": 37.462838
+  },
+  {
+   "name": "Incirli",
+   "lat": 36.893384,
+   "lon": 35.947136
+  },
+  {
+   "name": "Incirli",
+   "lat": 37.258228,
+   "lon": 36.951591
+  },
+  {
+   "name": "Incirlidere",
+   "lat": 36.882467,
+   "lon": 38.056445
+  },
+  {
+   "name": "Incirlik",
+   "lat": 36.987866,
+   "lon": 35.440832
+  },
+  {
+   "name": "Insu",
+   "lat": 36.867333,
+   "lon": 34.499275
+  },
+  {
+   "name": "InterContinental David",
+   "lat": 32.062828,
+   "lon": 34.762186
+  },
+  {
+   "name": "Irbid",
+   "lat": 32.557292,
+   "lon": 35.856121
+  },
+  {
+   "name": "Irmakli",
+   "lat": 36.571345,
+   "lon": 33.414811
+  },
+  {
+   "name": "Isfiya",
+   "lat": 32.719767,
+   "lon": 35.062365
+  },
+  {
+   "name": "Iskenderun",
+   "lat": 36.570207,
+   "lon": 36.147166
+  },
+  {
+   "name": "Islahiye",
+   "lat": 37.025433,
+   "lon": 36.632707
+  },
+  {
+   "name": "Jabab",
+   "lat": 33.113405,
+   "lon": 36.264712
+  },
+  {
+   "name": "Jabah",
+   "lat": 33.164877,
+   "lon": 35.927233
+  },
+  {
+   "name": "Jablah",
+   "lat": 35.363965,
+   "lon": 35.927291
+  },
+  {
+   "name": "Jadeidi Makr",
+   "lat": 32.927754,
+   "lon": 35.148612
+  },
+  {
+   "name": "Jalur",
+   "lat": 36.739688,
+   "lon": 36.708701
+  },
+  {
+   "name": "Jaqmaq",
+   "lat": 36.71509,
+   "lon": 36.698269
+  },
+  {
+   "name": "Jarabulus",
+   "lat": 36.818115,
+   "lon": 38.009831
+  },
+  {
+   "name": "Jasim",
+   "lat": 32.996681,
+   "lon": 36.064041
+  },
+  {
+   "name": "Jdaydet Alkhas",
+   "lat": 33.40568,
+   "lon": 36.544628
+  },
+  {
+   "name": "Jdaydet Artooz",
+   "lat": 33.438519,
+   "lon": 36.159494
+  },
+  {
+   "name": "Jerusalem",
+   "lat": 31.814225,
+   "lon": 35.228012
+  },
+  {
+   "name": "Jibnah",
+   "lat": 36.843834,
+   "lon": 38.091079
+  },
+  {
+   "name": "Jisr Ash-Shughur",
+   "lat": 35.814383,
+   "lon": 36.318373
+  },
+  {
+   "name": "Joub Jannine",
+   "lat": 33.627189,
+   "lon": 35.783124
+  },
+  {
+   "name": "Jounieh",
+   "lat": 33.97929,
+   "lon": 35.633664
+  },
+  {
+   "name": "Kabul",
+   "lat": 32.869646,
+   "lon": 35.213104
+  },
+  {
+   "name": "Kafr Batna",
+   "lat": 33.514919,
+   "lon": 36.384188
+  },
+  {
+   "name": "Kafr Manda",
+   "lat": 32.812136,
+   "lon": 35.262557
+  },
+  {
+   "name": "Kafr Nabi",
+   "lat": 35.614837,
+   "lon": 36.568447
+  },
+  {
+   "name": "Kafr Qara",
+   "lat": 32.504314,
+   "lon": 35.064774
+  },
+  {
+   "name": "Kafr Shams",
+   "lat": 33.122908,
+   "lon": 36.115409
+  },
+  {
+   "name": "Kafr Yasif",
+   "lat": 32.957481,
+   "lon": 35.166921
+  },
+  {
+   "name": "Kahramanmaras",
+   "lat": 37.581853,
+   "lon": 36.910948
+  },
+  {
+   "name": "Kaklijah",
+   "lat": 36.803299,
+   "lon": 37.956888
+  },
+  {
+   "name": "Kakopetria",
+   "lat": 34.989549,
+   "lon": 32.90324
+  },
+  {
+   "name": "Kale",
+   "lat": 36.946903,
+   "lon": 37.836978
+  },
+  {
+   "name": "Kaledibi",
+   "lat": 37.300315,
+   "lon": 36.667388
+  },
+  {
+   "name": "Kalekoy",
+   "lat": 36.767647,
+   "lon": 34.525433
+  },
+  {
+   "name": "Kalemli",
+   "lat": 36.785786,
+   "lon": 35.763584
+  },
+  {
+   "name": "Kallepeia",
+   "lat": 34.84573,
+   "lon": 32.500867
+  },
+  {
+   "name": "Kalo Chorio",
+   "lat": 34.928468,
+   "lon": 33.537421
+  },
+  {
+   "name": "Kalopanagiotis",
+   "lat": 34.99201,
+   "lon": 32.828077
+  },
+  {
+   "name": "Kalopsida",
+   "lat": 35.095984,
+   "lon": 33.794515
+  },
+  {
+   "name": "Kalyvakia",
+   "lat": 35.257759,
+   "lon": 33.548666
+  },
+  {
+   "name": "Kampia",
+   "lat": 35.007635,
+   "lon": 33.256669
+  },
+  {
+   "name": "Kampos",
+   "lat": 35.040153,
+   "lon": 32.732495
+  },
+  {
+   "name": "Kampyli",
+   "lat": 35.301416,
+   "lon": 33.10786
+  },
+  {
+   "name": "Kanaker",
+   "lat": 33.268693,
+   "lon": 36.09464
+  },
+  {
+   "name": "Kanaviou",
+   "lat": 34.915585,
+   "lon": 32.574702
+  },
+  {
+   "name": "Kannavia",
+   "lat": 34.983561,
+   "lon": 32.976925
+  },
+  {
+   "name": "Kapdegirmeni",
+   "lat": 36.717937,
+   "lon": 37.228786
+  },
+  {
+   "name": "Kapouti",
+   "lat": 35.245008,
+   "lon": 33.039549
+  },
+  {
+   "name": "Kapparis",
+   "lat": 35.052898,
+   "lon": 34.008009
+  },
+  {
+   "name": "Karaahmetli",
+   "lat": 36.548332,
+   "lon": 34.127121
+  },
+  {
+   "name": "Karabacak",
+   "lat": 37.25934,
+   "lon": 36.037716
+  },
+  {
+   "name": "Karacaburc",
+   "lat": 37.225086,
+   "lon": 37.344504
+  },
+  {
+   "name": "Karacaoglan",
+   "lat": 36.667161,
+   "lon": 33.732463
+  },
+  {
+   "name": "Karacaoren",
+   "lat": 37.477552,
+   "lon": 37.682149
+  },
+  {
+   "name": "Karacay",
+   "lat": 37.346967,
+   "lon": 37.116762
+  },
+  {
+   "name": "Karacukur",
+   "lat": 36.281629,
+   "lon": 32.405868
+  },
+  {
+   "name": "Karacurun",
+   "lat": 36.730019,
+   "lon": 37.469414
+  },
+  {
+   "name": "Karacurun",
+   "lat": 36.871498,
+   "lon": 37.904994
+  },
+  {
+   "name": "Karadibek",
+   "lat": 36.837216,
+   "lon": 37.587918
+  },
+  {
+   "name": "Karadiken",
+   "lat": 36.999853,
+   "lon": 34.713617
+  },
+  {
+   "name": "Karakaya",
+   "lat": 36.425696,
+   "lon": 33.785061
+  },
+  {
+   "name": "Karakaya",
+   "lat": 36.96368,
+   "lon": 36.779167
+  },
+  {
+   "name": "Karakese",
+   "lat": 36.824791,
+   "lon": 36.245556
+  },
+  {
+   "name": "Karakesek",
+   "lat": 37.32505,
+   "lon": 37.243027
+  },
+  {
+   "name": "Karakesli",
+   "lat": 36.67542,
+   "lon": 34.115603
+  },
+  {
+   "name": "Karakoumi",
+   "lat": 35.332686,
+   "lon": 33.342067
+  },
+  {
+   "name": "Karaman",
+   "lat": 36.844384,
+   "lon": 37.653016
+  },
+  {
+   "name": "Karamelik",
+   "lat": 36.790436,
+   "lon": 37.252199
+  },
+  {
+   "name": "Karanfilkoy",
+   "lat": 36.830124,
+   "lon": 37.973151
+  },
+  {
+   "name": "Karatas",
+   "lat": 36.565325,
+   "lon": 35.381304
+  },
+  {
+   "name": "Karatas",
+   "lat": 37.072662,
+   "lon": 36.385815
+  },
+  {
+   "name": "Karatay City Park",
+   "lat": 37.875133,
+   "lon": 32.555411
+  },
+  {
+   "name": "Karatepe",
+   "lat": 36.407597,
+   "lon": 32.413929
+  },
+  {
+   "name": "Karavas",
+   "lat": 35.343171,
+   "lon": 33.195612
+  },
+  {
+   "name": "Karavostasi",
+   "lat": 35.138837,
+   "lon": 32.834612
+  },
+  {
+   "name": "Karayakup",
+   "lat": 36.777904,
+   "lon": 34.368607
+  },
+  {
+   "name": "Karayigit",
+   "lat": 37.078213,
+   "lon": 36.496819
+  },
+  {
+   "name": "Karayusuflu",
+   "lat": 37.323496,
+   "lon": 37.453066
+  },
+  {
+   "name": "Karayusuflu M.",
+   "lat": 36.869614,
+   "lon": 35.243854
+  },
+  {
+   "name": "Karbeyaz",
+   "lat": 36.862712,
+   "lon": 36.961181
+  },
+  {
+   "name": "Karmiel",
+   "lat": 32.907124,
+   "lon": 35.286717
+  },
+  {
+   "name": "Karsi",
+   "lat": 36.761068,
+   "lon": 36.223837
+  },
+  {
+   "name": "Kartal",
+   "lat": 37.1063,
+   "lon": 36.98008
+  },
+  {
+   "name": "Kasyolu",
+   "lat": 36.873036,
+   "lon": 37.585093
+  },
+  {
+   "name": "Kathikas",
+   "lat": 34.91254,
+   "lon": 32.425781
+  },
+  {
+   "name": "Kato Koutrafas",
+   "lat": 35.103145,
+   "lon": 32.977614
+  },
+  {
+   "name": "Kato Moni",
+   "lat": 35.060715,
+   "lon": 33.092081
+  },
+  {
+   "name": "Kato Pyrgos",
+   "lat": 35.181229,
+   "lon": 32.684581
+  },
+  {
+   "name": "Kato Zodia",
+   "lat": 35.168557,
+   "lon": 33.00662
+  },
+  {
+   "name": "Katokopia",
+   "lat": 35.174702,
+   "lon": 33.051777
+  },
+  {
+   "name": "Katydata",
+   "lat": 35.083202,
+   "lon": 32.888147
+  },
+  {
+   "name": "Kavakozu",
+   "lat": 36.873481,
+   "lon": 33.394556
+  },
+  {
+   "name": "Kavakozu",
+   "lat": 37.165939,
+   "lon": 33.744881
+  },
+  {
+   "name": "Kavsak",
+   "lat": 37.010789,
+   "lon": 37.140553
+  },
+  {
+   "name": "Kavunluk",
+   "lat": 36.926754,
+   "lon": 37.566585
+  },
+  {
+   "name": "Kaxire",
+   "lat": 36.51493,
+   "lon": 36.704075
+  },
+  {
+   "name": "Kayalar",
+   "lat": 37.224019,
+   "lon": 37.768471
+  },
+  {
+   "name": "Kayaonu",
+   "lat": 37.125499,
+   "lon": 33.832249
+  },
+  {
+   "name": "Kaypak",
+   "lat": 37.110833,
+   "lon": 36.462343
+  },
+  {
+   "name": "Kayrak",
+   "lat": 36.349243,
+   "lon": 33.523804
+  },
+  {
+   "name": "Kazanc",
+   "lat": 36.502742,
+   "lon": 32.859488
+  },
+  {
+   "name": "Kazivera",
+   "lat": 35.172484,
+   "lon": 32.916449
+  },
+  {
+   "name": "KEAN Factory",
+   "lat": 34.694807,
+   "lon": 33.073931
+  },
+  {
+   "name": "Kecikuyusu",
+   "lat": 36.993656,
+   "lon": 37.609859
+  },
+  {
+   "name": "Keklik",
+   "lat": 37.081448,
+   "lon": 37.814728
+  },
+  {
+   "name": "Kelahmet",
+   "lat": 36.818691,
+   "lon": 34.979096
+  },
+  {
+   "name": "Kelekli",
+   "lat": 36.915291,
+   "lon": 37.99044
+  },
+  {
+   "name": "Kellia",
+   "lat": 34.975592,
+   "lon": 33.622728
+  },
+  {
+   "name": "Kelokedara",
+   "lat": 34.812611,
+   "lon": 32.651651
+  },
+  {
+   "name": "Kemenli",
+   "lat": 36.51495,
+   "lon": 33.500919
+  },
+  {
+   "name": "Kerimler",
+   "lat": 36.935673,
+   "lon": 34.772594
+  },
+  {
+   "name": "Kesmeburun",
+   "lat": 36.764503,
+   "lon": 35.490646
+  },
+  {
+   "name": "Kfar Yehoshua",
+   "lat": 32.681006,
+   "lon": 35.153116
+  },
+  {
+   "name": "Khalde",
+   "lat": 33.777551,
+   "lon": 35.475219
+  },
+  {
+   "name": "Khalfatli",
+   "lat": 36.657703,
+   "lon": 37.324518
+  },
+  {
+   "name": "Khalil Kulku",
+   "lat": 36.578888,
+   "lon": 36.64325
+  },
+  {
+   "name": "Khan Alsheh",
+   "lat": 33.373053,
+   "lon": 36.113067
+  },
+  {
+   "name": "Khan Arnabeh",
+   "lat": 33.182506,
+   "lon": 35.890276
+  },
+  {
+   "name": "Khan Assubul",
+   "lat": 35.751556,
+   "lon": 36.758686
+  },
+  {
+   "name": "Khan Yunus",
+   "lat": 31.343213,
+   "lon": 34.318337
+  },
+  {
+   "name": "Khilalka",
+   "lat": 36.755368,
+   "lon": 36.740887
+  },
+  {
+   "name": "Khirbe",
+   "lat": 34.583839,
+   "lon": 36.017331
+  },
+  {
+   "name": "Khirbet Ghazaleh",
+   "lat": 32.737882,
+   "lon": 36.201831
+  },
+  {
+   "name": "Kiados",
+   "lat": 35.255921,
+   "lon": 33.601667
+  },
+  {
+   "name": "Killik",
+   "lat": 36.836252,
+   "lon": 37.393863
+  },
+  {
+   "name": "Kings Avenue Mall",
+   "lat": 34.767441,
+   "lon": 32.413772
+  },
+  {
+   "name": "Kinoussa",
+   "lat": 35.033124,
+   "lon": 32.507161
+  },
+  {
+   "name": "Kirikhan",
+   "lat": 36.501251,
+   "lon": 36.361665
+  },
+  {
+   "name": "Kirsanli",
+   "lat": 36.660694,
+   "lon": 37.536368
+  },
+  {
+   "name": "Kiryat Ata",
+   "lat": 32.809126,
+   "lon": 35.115174
+  },
+  {
+   "name": "Kiryat Motzkin",
+   "lat": 32.834316,
+   "lon": 35.084219
+  },
+  {
+   "name": "Kiryat Tivon",
+   "lat": 32.717158,
+   "lon": 35.126145
+  },
+  {
+   "name": "Kiryat Yam",
+   "lat": 32.842731,
+   "lon": 35.069248
+  },
+  {
+   "name": "Kissonerga",
+   "lat": 34.822866,
+   "lon": 32.401922
+  },
+  {
+   "name": "Kiti",
+   "lat": 34.845623,
+   "lon": 33.572605
+  },
+  {
+   "name": "Kivides",
+   "lat": 34.759421,
+   "lon": 32.85225
+  },
+  {
+   "name": "Kizilca",
+   "lat": 36.309841,
+   "lon": 33.072708
+  },
+  {
+   "name": "Klavdia",
+   "lat": 34.892715,
+   "lon": 33.515011
+  },
+  {
+   "name": "Klepini",
+   "lat": 35.306699,
+   "lon": 33.433474
+  },
+  {
+   "name": "Knodara",
+   "lat": 35.264077,
+   "lon": 33.661483
+  },
+  {
+   "name": "Kocahamzali",
+   "lat": 36.863732,
+   "lon": 34.522803
+  },
+  {
+   "name": "Kocasli",
+   "lat": 36.54978,
+   "lon": 32.635845
+  },
+  {
+   "name": "Kocatepe",
+   "lat": 37.041597,
+   "lon": 37.691841
+  },
+  {
+   "name": "Koclu",
+   "lat": 37.307465,
+   "lon": 37.428173
+  },
+  {
+   "name": "Kocyurdu",
+   "lat": 37.213474,
+   "lon": 36.043549
+  },
+  {
+   "name": "Kofinou",
+   "lat": 34.824591,
+   "lon": 33.392021
+  },
+  {
+   "name": "Koili",
+   "lat": 34.860107,
+   "lon": 32.455015
+  },
+  {
+   "name": "Kokkinotrimithia",
+   "lat": 35.154271,
+   "lon": 33.198654
+  },
+  {
+   "name": "Kokluce",
+   "lat": 37.469769,
+   "lon": 37.620025
+  },
+  {
+   "name": "Koksalan",
+   "lat": 37.278297,
+   "lon": 37.239052
+  },
+  {
+   "name": "Kolossi",
+   "lat": 34.676059,
+   "lon": 32.938111
+  },
+  {
+   "name": "Komurler",
+   "lat": 37.16397,
+   "lon": 36.809811
+  },
+  {
+   "name": "Komurlu",
+   "lat": 36.166385,
+   "lon": 32.934444
+  },
+  {
+   "name": "Konia",
+   "lat": 34.784944,
+   "lon": 32.457557
+  },
+  {
+   "name": "Kontemenos",
+   "lat": 35.268873,
+   "lon": 33.125908
+  },
+  {
+   "name": "Koprubasi",
+   "lat": 36.783476,
+   "lon": 33.178883
+  },
+  {
+   "name": "Korahmethoyugu",
+   "lat": 36.98807,
+   "lon": 36.959826
+  },
+  {
+   "name": "Korakou",
+   "lat": 35.040145,
+   "lon": 32.887412
+  },
+  {
+   "name": "Korkuyu",
+   "lat": 36.949184,
+   "lon": 35.823029
+  },
+  {
+   "name": "Kormakitis",
+   "lat": 35.342845,
+   "lon": 33.00971
+  },
+  {
+   "name": "Kornokipos",
+   "lat": 35.282707,
+   "lon": 33.573077
+  },
+  {
+   "name": "Korucak",
+   "lat": 37.153023,
+   "lon": 34.715847
+  },
+  {
+   "name": "Korucuk",
+   "lat": 36.111542,
+   "lon": 32.734665
+  },
+  {
+   "name": "Koseler",
+   "lat": 37.242718,
+   "lon": 37.804107
+  },
+  {
+   "name": "Kosereli",
+   "lat": 36.70903,
+   "lon": 34.170876
+  },
+  {
+   "name": "Kosreli",
+   "lat": 37.161445,
+   "lon": 35.977732
+  },
+  {
+   "name": "Kouklia",
+   "lat": 34.710843,
+   "lon": 32.573612
+  },
+  {
+   "name": "Koutsoventis",
+   "lat": 35.26585,
+   "lon": 33.420857
+  },
+  {
+   "name": "Kozlubag",
+   "lat": 36.957342,
+   "lon": 37.004342
+  },
+  {
+   "name": "Kozlubucak",
+   "lat": 36.993269,
+   "lon": 33.266675
+  },
+  {
+   "name": "Krak des Chevaliers",
+   "lat": 34.758087,
+   "lon": 36.294083
+  },
+  {
+   "name": "Krini",
+   "lat": 35.287148,
+   "lon": 33.237457
+  },
+  {
+   "name": "Kritou Marottou",
+   "lat": 34.926635,
+   "lon": 32.562511
+  },
+  {
+   "name": "Kritou Terra",
+   "lat": 34.955673,
+   "lon": 32.422224
+  },
+  {
+   "name": "Kucuk Dikili",
+   "lat": 36.997665,
+   "lon": 35.211193
+  },
+  {
+   "name": "Kucuk Karakuyu",
+   "lat": 37.350483,
+   "lon": 37.541284
+  },
+  {
+   "name": "Kucuklu",
+   "lat": 37.431027,
+   "lon": 37.824547
+  },
+  {
+   "name": "Kullu",
+   "lat": 37.071801,
+   "lon": 37.577859
+  },
+  {
+   "name": "Kumacukuru",
+   "lat": 36.665833,
+   "lon": 33.538662
+  },
+  {
+   "name": "Kumbet",
+   "lat": 37.33063,
+   "lon": 36.053292
+  },
+  {
+   "name": "Kumlu",
+   "lat": 36.3657,
+   "lon": 36.465543
+  },
+  {
+   "name": "Kumru Yaylasi",
+   "lat": 36.735004,
+   "lon": 33.511791
+  },
+  {
+   "name": "Kundurah",
+   "lat": 36.742913,
+   "lon": 37.88965
+  },
+  {
+   "name": "Kupluce",
+   "lat": 36.753452,
+   "lon": 37.243218
+  },
+  {
+   "name": "Kurkculer",
+   "lat": 36.989556,
+   "lon": 35.510233
+  },
+  {
+   "name": "Kurtaran",
+   "lat": 36.896869,
+   "lon": 36.969922
+  },
+  {
+   "name": "Kurttepe",
+   "lat": 37.0569,
+   "lon": 35.273949
+  },
+  {
+   "name": "Kurtulus",
+   "lat": 36.632671,
+   "lon": 33.552654
+  },
+  {
+   "name": "Kurucahuyuk",
+   "lat": 36.871071,
+   "lon": 37.743124
+  },
+  {
+   "name": "Kurum",
+   "lat": 36.947131,
+   "lon": 37.163154
+  },
+  {
+   "name": "Kuskan",
+   "lat": 36.487873,
+   "lon": 33.269501
+  },
+  {
+   "name": "Kuzoluk",
+   "lat": 37.07003,
+   "lon": 36.904369
+  },
+  {
+   "name": "Kuzuculu",
+   "lat": 36.883835,
+   "lon": 36.225632
+  },
+  {
+   "name": "Kykkos Monastery",
+   "lat": 35.160533,
+   "lon": 33.339254
+  },
+  {
+   "name": "Kyperounta",
+   "lat": 34.941192,
+   "lon": 32.974253
+  },
+  {
+   "name": "Kyra",
+   "lat": 35.20325,
+   "lon": 33.060546
+  },
+  {
+   "name": "Kyrenia",
+   "lat": 35.33444,
+   "lon": 33.311163
+  },
+  {
+   "name": "Kyrenia Castle",
+   "lat": 35.343319,
+   "lon": 33.322147
+  },
+  {
+   "name": "Lakatamia",
+   "lat": 35.120095,
+   "lon": 33.30785
+  },
+  {
+   "name": "Lale",
+   "lat": 36.209045,
+   "lon": 32.581318
+  },
+  {
+   "name": "Lapithos",
+   "lat": 35.342051,
+   "lon": 33.167295
+  },
+  {
+   "name": "Larnaca",
+   "lat": 34.923609,
+   "lon": 33.623618
+  },
+  {
+   "name": "Larnaca General Hospital",
+   "lat": 34.920698,
+   "lon": 33.605023
+  },
+  {
+   "name": "Larnakas tis  Lapithiou",
+   "lat": 35.310705,
+   "lon": 33.140665
+  },
+  {
+   "name": "Latakia",
+   "lat": 35.525744,
+   "lon": 35.785411
+  },
+  {
+   "name": "Latsia",
+   "lat": 35.099565,
+   "lon": 33.381599
+  },
+  {
+   "name": "Lefka",
+   "lat": 35.1132,
+   "lon": 32.849994
+  },
+  {
+   "name": "Lefkoniko",
+   "lat": 35.260533,
+   "lon": 33.732199
+  },
+  {
+   "name": "Lemona",
+   "lat": 34.862611,
+   "lon": 32.55795
+  },
+  {
+   "name": "Lenger",
+   "lat": 36.246613,
+   "lon": 33.153984
+  },
+  {
+   "name": "Leonardo Plaza Hotel",
+   "lat": 31.778177,
+   "lon": 35.217767
+  },
+  {
+   "name": "Leonarisso",
+   "lat": 35.468513,
+   "lon": 34.138289
+  },
+  {
+   "name": "Limassol",
+   "lat": 34.68529,
+   "lon": 33.033266
+  },
+  {
+   "name": "Limassol General Hospital ",
+   "lat": 34.70491,
+   "lon": 32.982627
+  },
+  {
+   "name": "Liopetri",
+   "lat": 35.006349,
+   "lon": 33.892496
+  },
+  {
+   "name": "Livadia",
+   "lat": 34.949164,
+   "lon": 33.628193
+  },
+  {
+   "name": "Livera",
+   "lat": 35.383253,
+   "lon": 32.952996
+  },
+  {
+   "name": "Loutros",
+   "lat": 35.149,
+   "lon": 32.772348
+  },
+  {
+   "name": "Louvaras",
+   "lat": 34.836624,
+   "lon": 33.039209
+  },
+  {
+   "name": "Lympia",
+   "lat": 34.997869,
+   "lon": 33.462627
+  },
+  {
+   "name": "Lysi",
+   "lat": 35.105865,
+   "lon": 33.682267
+  },
+  {
+   "name": "Lysos",
+   "lat": 34.994907,
+   "lon": 32.512007
+  },
+  {
+   "name": "Lythrodontas",
+   "lat": 34.951079,
+   "lon": 33.296681
+  },
+  {
+   "name": "Maarat al-Numan",
+   "lat": 35.641889,
+   "lon": 36.675356
+  },
+  {
+   "name": "Maarrat Misrin",
+   "lat": 36.013735,
+   "lon": 36.678771
+  },
+  {
+   "name": "Madaba",
+   "lat": 31.723613,
+   "lon": 35.800724
+  },
+  {
+   "name": "Madaya",
+   "lat": 33.682698,
+   "lon": 36.095064
+  },
+  {
+   "name": "Madryara",
+   "lat": 33.544681,
+   "lon": 36.395586
+  },
+  {
+   "name": "Mahmutaga",
+   "lat": 36.936993,
+   "lon": 34.969502
+  },
+  {
+   "name": "Majdel Anjar",
+   "lat": 33.707532,
+   "lon": 35.907553
+  },
+  {
+   "name": "Mall of Cyprus",
+   "lat": 35.131057,
+   "lon": 33.371148
+  },
+  {
+   "name": "Mallia",
+   "lat": 34.816663,
+   "lon": 32.782711
+  },
+  {
+   "name": "Mallidag",
+   "lat": 35.332739,
+   "lon": 33.689058
+  },
+  {
+   "name": "Mammari",
+   "lat": 35.175594,
+   "lon": 33.205065
+  },
+  {
+   "name": "Mamonia",
+   "lat": 34.769794,
+   "lon": 32.636721
+  },
+  {
+   "name": "Manbij",
+   "lat": 36.525941,
+   "lon": 37.960087
+  },
+  {
+   "name": "Mandres",
+   "lat": 35.21517,
+   "lon": 33.378666
+  },
+  {
+   "name": "Mandria",
+   "lat": 34.715793,
+   "lon": 32.53227
+  },
+  {
+   "name": "Maqne",
+   "lat": 34.076334,
+   "lon": 36.206335
+  },
+  {
+   "name": "Marathounta",
+   "lat": 34.791211,
+   "lon": 32.487025
+  },
+  {
+   "name": "Marathovounos",
+   "lat": 35.222767,
+   "lon": 33.616837
+  },
+  {
+   "name": "Marbat El-Hassan Reservoir",
+   "lat": 34.667083,
+   "lon": 38.224691
+  },
+  {
+   "name": "Mari",
+   "lat": 34.74067,
+   "lon": 33.298627
+  },
+  {
+   "name": "Mariamite Cathedral",
+   "lat": 33.509446,
+   "lon": 36.314067
+  },
+  {
+   "name": "Marjayoun",
+   "lat": 33.365911,
+   "lon": 35.593865
+  },
+  {
+   "name": "Marma al Hajar",
+   "lat": 36.782245,
+   "lon": 37.992475
+  },
+  {
+   "name": "Marsawiyah",
+   "lat": 36.762839,
+   "lon": 36.95398
+  },
+  {
+   "name": "Masari",
+   "lat": 35.186833,
+   "lon": 33.076005
+  },
+  {
+   "name": "Maskah",
+   "lat": 36.64939,
+   "lon": 36.679211
+  },
+  {
+   "name": "Maskanah",
+   "lat": 35.964663,
+   "lon": 38.042601
+  },
+  {
+   "name": "Mathiatis",
+   "lat": 34.962425,
+   "lon": 33.336218
+  },
+  {
+   "name": "Mathikoloni",
+   "lat": 34.775343,
+   "lon": 33.047382
+  },
+  {
+   "name": "Mazotos",
+   "lat": 34.804063,
+   "lon": 33.488422
+  },
+  {
+   "name": "Melini",
+   "lat": 34.867512,
+   "lon": 33.157683
+  },
+  {
+   "name": "Melouseia",
+   "lat": 35.07731,
+   "lon": 33.58409
+  },
+  {
+   "name": "Meneou",
+   "lat": 34.836802,
+   "lon": 33.605426
+  },
+  {
+   "name": "Meniko",
+   "lat": 35.110851,
+   "lon": 33.145559
+  },
+  {
+   "name": "Mercimek",
+   "lat": 37.104513,
+   "lon": 35.79495
+  },
+  {
+   "name": "Merit Park Hotel Casino & SPA",
+   "lat": 35.351048,
+   "lon": 33.256455
+  },
+  {
+   "name": "Mersin",
+   "lat": 36.824224,
+   "lon": 34.628565
+  },
+  {
+   "name": "Mersin Hazrat Mikdad Mosque",
+   "lat": 36.78412,
+   "lon": 34.601226
+  },
+  {
+   "name": "Mesa Chorio",
+   "lat": 34.809478,
+   "lon": 32.461618
+  },
+  {
+   "name": "Mesthuyuk",
+   "lat": 37.216805,
+   "lon": 36.813888
+  },
+  {
+   "name": "Meteler",
+   "lat": 37.051567,
+   "lon": 37.91592
+  },
+  {
+   "name": "Mezere",
+   "lat": 37.404636,
+   "lon": 37.375384
+  },
+  {
+   "name": "Mezitli",
+   "lat": 36.745137,
+   "lon": 34.524236
+  },
+  {
+   "name": "Mia Milia",
+   "lat": 35.206372,
+   "lon": 33.42002
+  },
+  {
+   "name": "Miarbah",
+   "lat": 32.544797,
+   "lon": 36.428341
+  },
+  {
+   "name": "Migdal HaEmek",
+   "lat": 32.678191,
+   "lon": 35.241797
+  },
+  {
+   "name": "Migdal Halr",
+   "lat": 31.782637,
+   "lon": 35.213605
+  },
+  {
+   "name": "Mihrap",
+   "lat": 36.933507,
+   "lon": 37.867497
+  },
+  {
+   "name": "Milia",
+   "lat": 35.239504,
+   "lon": 33.780851
+  },
+  {
+   "name": "Military Research Base",
+   "lat": 35.983058,
+   "lon": 37.403046
+  },
+  {
+   "name": "Ministry of Expatriates",
+   "lat": 33.501204,
+   "lon": 36.268777
+  },
+  {
+   "name": "Ministry of Finance",
+   "lat": 35.168682,
+   "lon": 33.353756
+  },
+  {
+   "name": "Mirza Shahid",
+   "lat": 36.630199,
+   "lon": 37.738552
+  },
+  {
+   "name": "Mohammad Al-Amin Mosque",
+   "lat": 33.896589,
+   "lon": 35.502576
+  },
+  {
+   "name": "Monagrouli",
+   "lat": 34.748795,
+   "lon": 33.212988
+  },
+  {
+   "name": "Moniatis",
+   "lat": 34.865176,
+   "lon": 32.904931
+  },
+  {
+   "name": "Mora",
+   "lat": 35.175973,
+   "lon": 33.552892
+  },
+  {
+   "name": "Morcali",
+   "lat": 37.074318,
+   "lon": 33.106819
+  },
+  {
+   "name": "Morfou",
+   "lat": 35.198552,
+   "lon": 32.993499
+  },
+  {
+   "name": "Mosfili",
+   "lat": 35.179978,
+   "lon": 32.631516
+  },
+  {
+   "name": "Motides",
+   "lat": 35.338091,
+   "lon": 33.207692
+  },
+  {
+   "name": "Mouttagiaka",
+   "lat": 34.720734,
+   "lon": 33.100903
+  },
+  {
+   "name": "Muadamyat Al Qalamon",
+   "lat": 33.741316,
+   "lon": 36.640933
+  },
+  {
+   "name": "Muhradah",
+   "lat": 35.249643,
+   "lon": 36.572717
+  },
+  {
+   "name": "Murseloglu M.",
+   "lat": 36.810181,
+   "lon": 35.163867
+  },
+  {
+   "name": "Musabeyli",
+   "lat": 36.885432,
+   "lon": 36.915641
+  },
+  {
+   "name": "Mustafabeyli",
+   "lat": 37.078514,
+   "lon": 36.073406
+  },
+  {
+   "name": "Mustafalar",
+   "lat": 37.113766,
+   "lon": 35.510112
+  },
+  {
+   "name": "Mut",
+   "lat": 36.643451,
+   "lon": 33.438188
+  },
+  {
+   "name": "My Mall",
+   "lat": 34.654901,
+   "lon": 32.996942
+  },
+  {
+   "name": "Mylikouri",
+   "lat": 34.962104,
+   "lon": 32.750769
+  },
+  {
+   "name": "Myrtou",
+   "lat": 35.307206,
+   "lon": 33.075147
+  },
+  {
+   "name": "Naba Alsakher",
+   "lat": 33.088327,
+   "lon": 35.947298
+  },
+  {
+   "name": "Nabatieh",
+   "lat": 33.3812,
+   "lon": 35.479974
+  },
+  {
+   "name": "Nabghah",
+   "lat": 36.637955,
+   "lon": 37.670658
+  },
+  {
+   "name": "Nahalal",
+   "lat": 32.690694,
+   "lon": 35.198958
+  },
+  {
+   "name": "Nahariyya",
+   "lat": 33.008845,
+   "lon": 35.100274
+  },
+  {
+   "name": "Naimler",
+   "lat": 37.241722,
+   "lon": 36.916809
+  },
+  {
+   "name": "Nasrettin",
+   "lat": 36.042645,
+   "lon": 32.778973
+  },
+  {
+   "name": "Nata",
+   "lat": 34.778942,
+   "lon": 32.571063
+  },
+  {
+   "name": "Nazareth",
+   "lat": 32.704739,
+   "lon": 35.306182
+  },
+  {
+   "name": "Nemiroglu",
+   "lat": 36.918541,
+   "lon": 35.012615
+  },
+  {
+   "name": "Neo Chorio",
+   "lat": 35.026539,
+   "lon": 32.36344
+  },
+  {
+   "name": "Netafim military base",
+   "lat": 32.810372,
+   "lon": 35.420586
+  },
+  {
+   "name": "Nicosia",
+   "lat": 35.172754,
+   "lon": 33.347521
+  },
+  {
+   "name": "Nicosia General Hospital",
+   "lat": 35.12538,
+   "lon": 33.376821
+  },
+  {
+   "name": "Nikitari",
+   "lat": 35.074412,
+   "lon": 32.994035
+  },
+  {
+   "name": "Nikitas",
+   "lat": 35.176535,
+   "lon": 32.956714
+  },
+  {
+   "name": "Nikoklia",
+   "lat": 34.729321,
+   "lon": 32.576835
+  },
+  {
+   "name": "Nisou",
+   "lat": 35.021139,
+   "lon": 33.389249
+  },
+  {
+   "name": "Nizip",
+   "lat": 37.010886,
+   "lon": 37.793173
+  },
+  {
+   "name": "Nogaylar",
+   "lat": 37.229652,
+   "lon": 36.870453
+  },
+  {
+   "name": "Nurdagi",
+   "lat": 37.178612,
+   "lon": 36.741441
+  },
+  {
+   "name": "Oguzeli",
+   "lat": 36.96387,
+   "lon": 37.512537
+  },
+  {
+   "name": "Olukkoyagi",
+   "lat": 37.228803,
+   "lon": 34.684591
+  },
+  {
+   "name": "Olympic Residence",
+   "lat": 34.685848,
+   "lon": 33.064137
+  },
+  {
+   "name": "Omeroglu",
+   "lat": 36.87517,
+   "lon": 37.191569
+  },
+  {
+   "name": "Omodhos",
+   "lat": 34.848106,
+   "lon": 32.809067
+  },
+  {
+   "name": "Onculer",
+   "lat": 36.779978,
+   "lon": 37.850091
+  },
+  {
+   "name": "Ora",
+   "lat": 34.862074,
+   "lon": 33.195996
+  },
+  {
+   "name": "Ordekdede",
+   "lat": 37.300379,
+   "lon": 37.097641
+  },
+  {
+   "name": "Orenli",
+   "lat": 37.25524,
+   "lon": 37.512359
+  },
+  {
+   "name": "Orga",
+   "lat": 35.360685,
+   "lon": 33.042131
+  },
+  {
+   "name": "Ormideia",
+   "lat": 34.992619,
+   "lon": 33.776457
+  },
+  {
+   "name": "Oroklini",
+   "lat": 34.982275,
+   "lon": 33.655855
+  },
+  {
+   "name": "Orounta",
+   "lat": 35.101424,
+   "lon": 33.093839
+  },
+  {
+   "name": "Ortaklar",
+   "lat": 37.052678,
+   "lon": 37.020822
+  },
+  {
+   "name": "Ortulu",
+   "lat": 36.451421,
+   "lon": 33.413284
+  },
+  {
+   "name": "Ortulu",
+   "lat": 37.05598,
+   "lon": 36.71841
+  },
+  {
+   "name": "Osmaniye",
+   "lat": 37.073671,
+   "lon": 36.255941
+  },
+  {
+   "name": "Otaybah",
+   "lat": 33.483517,
+   "lon": 36.610154
+  },
+  {
+   "name": "Ozyurt",
+   "lat": 37.108963,
+   "lon": 37.783169
+  },
+  {
+   "name": "Pachna",
+   "lat": 34.776586,
+   "lon": 32.792975
+  },
+  {
+   "name": "Pachyammos",
+   "lat": 35.171212,
+   "lon": 32.585264
+  },
+  {
+   "name": "Pafos",
+   "lat": 34.774399,
+   "lon": 32.423159
+  },
+  {
+   "name": "Palaikythro",
+   "lat": 35.201877,
+   "lon": 33.484779
+  },
+  {
+   "name": "Paliometocho",
+   "lat": 35.124703,
+   "lon": 33.191649
+  },
+  {
+   "name": "Palmyra",
+   "lat": 34.565481,
+   "lon": 38.284229
+  },
+  {
+   "name": "Palmyra Castle",
+   "lat": 34.563791,
+   "lon": 38.256857
+  },
+  {
+   "name": "Palodeia",
+   "lat": 34.74845,
+   "lon": 33.00472
+  },
+  {
+   "name": "Panagra",
+   "lat": 35.336326,
+   "lon": 33.068166
+  },
+  {
+   "name": "Pano Arodes",
+   "lat": 34.936156,
+   "lon": 32.407228
+  },
+  {
+   "name": "Pano Dikomo",
+   "lat": 35.277494,
+   "lon": 33.315093
+  },
+  {
+   "name": "Pano Panagia",
+   "lat": 34.920522,
+   "lon": 32.631212
+  },
+  {
+   "name": "Pano Platres",
+   "lat": 34.883226,
+   "lon": 32.860383
+  },
+  {
+   "name": "Pano Polemidia",
+   "lat": 34.701607,
+   "lon": 32.998671
+  },
+  {
+   "name": "Pano Zodia",
+   "lat": 35.162132,
+   "lon": 33.015938
+  },
+  {
+   "name": "Panorama Towers",
+   "lat": 32.804419,
+   "lon": 34.988495
+  },
+  {
+   "name": "Paphos General Hospital",
+   "lat": 34.787247,
+   "lon": 32.44439
+  },
+  {
+   "name": "Papiri pumping station",
+   "lat": 36.099713,
+   "lon": 38.012783
+  },
+  {
+   "name": "Paralimni",
+   "lat": 35.039134,
+   "lon": 33.982792
+  },
+  {
+   "name": "Paramytha",
+   "lat": 34.759549,
+   "lon": 32.9933
+  },
+  {
+   "name": "Pardes Hanna-Karkur",
+   "lat": 32.473446,
+   "lon": 34.969511
+  },
+  {
+   "name": "Parekklisia",
+   "lat": 34.742872,
+   "lon": 33.161365
+  },
+  {
+   "name": "Park Adana",
+   "lat": 36.997536,
+   "lon": 35.301085
+  },
+  {
+   "name": "Parmakkurdu",
+   "lat": 36.973209,
+   "lon": 34.665067
+  },
+  {
+   "name": "Pelathousa",
+   "lat": 35.028011,
+   "lon": 32.47556
+  },
+  {
+   "name": "Pentageia",
+   "lat": 35.153115,
+   "lon": 32.884403
+  },
+  {
+   "name": "Pentakomo",
+   "lat": 34.739878,
+   "lon": 33.241226
+  },
+  {
+   "name": "Pentalia",
+   "lat": 34.855844,
+   "lon": 32.620447
+  },
+  {
+   "name": "People's Palace",
+   "lat": 33.51481,
+   "lon": 36.248643
+  },
+  {
+   "name": "Pera",
+   "lat": 35.031929,
+   "lon": 33.253596
+  },
+  {
+   "name": "Pera Pedi",
+   "lat": 34.86069,
+   "lon": 32.874353
+  },
+  {
+   "name": "Pergamos",
+   "lat": 35.043163,
+   "lon": 33.708323
+  },
+  {
+   "name": "Peristerona",
+   "lat": 35.129875,
+   "lon": 33.079999
+  },
+  {
+   "name": "Peristeronari",
+   "lat": 35.132526,
+   "lon": 32.864638
+  },
+  {
+   "name": "Peyia",
+   "lat": 34.883505,
+   "lon": 32.38032
+  },
+  {
+   "name": "Pigenia",
+   "lat": 35.169002,
+   "lon": 32.657078
+  },
+  {
+   "name": "Pileri",
+   "lat": 35.289681,
+   "lon": 33.216143
+  },
+  {
+   "name": "Pinarbasi",
+   "lat": 37.102082,
+   "lon": 33.052489
+  },
+  {
+   "name": "Pinarkaya",
+   "lat": 37.113716,
+   "lon": 33.718575
+  },
+  {
+   "name": "Pinaronu",
+   "lat": 36.566399,
+   "lon": 32.838634
+  },
+  {
+   "name": "Pissouri",
+   "lat": 34.668905,
+   "lon": 32.701048
+  },
+  {
+   "name": "Plataniskia",
+   "lat": 34.71247,
+   "lon": 32.711061
+  },
+  {
+   "name": "Platinum Tower",
+   "lat": 33.902475,
+   "lon": 35.495663
+  },
+  {
+   "name": "Polatbey",
+   "lat": 36.804074,
+   "lon": 37.191159
+  },
+  {
+   "name": "Polateli",
+   "lat": 36.841509,
+   "lon": 37.143582
+  },
+  {
+   "name": "Polemi",
+   "lat": 34.885627,
+   "lon": 32.507547
+  },
+  {
+   "name": "Polis",
+   "lat": 35.034969,
+   "lon": 32.425935
+  },
+  {
+   "name": "Pomos",
+   "lat": 35.16065,
+   "lon": 32.546536
+  },
+  {
+   "name": "Port of Limassol",
+   "lat": 34.656783,
+   "lon": 33.022966
+  },
+  {
+   "name": "Potami",
+   "lat": 35.104428,
+   "lon": 33.029883
+  },
+  {
+   "name": "Potamia",
+   "lat": 35.042349,
+   "lon": 33.445564
+  },
+  {
+   "name": "Potamiou",
+   "lat": 34.824362,
+   "lon": 32.806959
+  },
+  {
+   "name": "Potamos",
+   "lat": 35.146207,
+   "lon": 32.803648
+  },
+  {
+   "name": "Prastio",
+   "lat": 35.175578,
+   "lon": 33.756855
+  },
+  {
+   "name": "Pretori",
+   "lat": 34.84921,
+   "lon": 32.746407
+  },
+  {
+   "name": "Prodromos",
+   "lat": 34.94995,
+   "lon": 32.832486
+  },
+  {
+   "name": "Protaras",
+   "lat": 35.009259,
+   "lon": 34.058308
+  },
+  {
+   "name": "Psimolofou",
+   "lat": 35.060218,
+   "lon": 33.259777
+  },
+  {
+   "name": "Pyrgos",
+   "lat": 34.738,
+   "lon": 33.185028
+  },
+  {
+   "name": "Qanli Quyu",
+   "lat": 36.662291,
+   "lon": 37.679501
+  },
+  {
+   "name": "Qarah Baba",
+   "lat": 36.747498,
+   "lon": 36.627846
+  },
+  {
+   "name": "Qarah Kubri",
+   "lat": 36.635632,
+   "lon": 37.261948
+  },
+  {
+   "name": "Qarah Kuz",
+   "lat": 36.735114,
+   "lon": 37.648246
+  },
+  {
+   "name": "Qarah Tashli",
+   "lat": 36.666667,
+   "lon": 37.783333
+  },
+  {
+   "name": "Qaraoun",
+   "lat": 33.567601,
+   "lon": 35.721222
+  },
+  {
+   "name": "Qatana",
+   "lat": 33.438131,
+   "lon": 36.079687
+  },
+  {
+   "name": "Qestele Xidiriya",
+   "lat": 36.753734,
+   "lon": 36.782822
+  },
+  {
+   "name": "Qiryat Shemona",
+   "lat": 33.209375,
+   "lon": 35.570715
+  },
+  {
+   "name": "Qubbat at Turkuman",
+   "lat": 36.7,
+   "lon": 37.733333
+  },
+  {
+   "name": "Qudah Kuwi",
+   "lat": 36.619247,
+   "lon": 36.644039
+  },
+  {
+   "name": "Qudssaya",
+   "lat": 33.53674,
+   "lon": 36.234351
+  },
+  {
+   "name": "Qudssaya Suburb",
+   "lat": 33.540064,
+   "lon": 36.19227
+  },
+  {
+   "name": "Qura Al-Assad",
+   "lat": 33.556956,
+   "lon": 36.135584
+  },
+  {
+   "name": "Racetrack for Camel Racing",
+   "lat": 34.403706,
+   "lon": 38.198771
+  },
+  {
+   "name": "Radisson Blu Hotel Larnaca",
+   "lat": 34.932992,
+   "lon": 33.636716
+  },
+  {
+   "name": "Ramat Yishai",
+   "lat": 32.705166,
+   "lon": 35.166819
+  },
+  {
+   "name": "Ramtha",
+   "lat": 32.565921,
+   "lon": 36.008365
+  },
+  {
+   "name": "Raqqa",
+   "lat": 35.96029,
+   "lon": 39.015335
+  },
+  {
+   "name": "Rayak",
+   "lat": 33.853182,
+   "lon": 36.021607
+  },
+  {
+   "name": "Resul",
+   "lat": 36.881369,
+   "lon": 34.591633
+  },
+  {
+   "name": "Reyhanli",
+   "lat": 36.263975,
+   "lon": 36.567831
+  },
+  {
+   "name": "SAA 100th Regiment",
+   "lat": 33.380777,
+   "lon": 36.213524
+  },
+  {
+   "name": "SAA 121th Brigade",
+   "lat": 33.278919,
+   "lon": 36.082934
+  },
+  {
+   "name": "SAA 128th Brigade",
+   "lat": 33.971493,
+   "lon": 36.898243
+  },
+  {
+   "name": "SAA 155th Artillery Regiment",
+   "lat": 33.702711,
+   "lon": 36.526507
+  },
+  {
+   "name": "SAA 156th Brigade",
+   "lat": 33.667855,
+   "lon": 36.735378
+  },
+  {
+   "name": "SAA 158th Brigade",
+   "lat": 33.401255,
+   "lon": 36.272973
+  },
+  {
+   "name": "SAA 165th Brigade",
+   "lat": 33.283835,
+   "lon": 36.255758
+  },
+  {
+   "name": "SAA 171th Brigade%",
+   "lat": 34.699599,
+   "lon": 36.969931
+  },
+  {
+   "name": "SAA 1st Armoured Division",
+   "lat": 33.35276,
+   "lon": 36.296204
+  },
+  {
+   "name": "SAA 20th Brigade",
+   "lat": 33.77365,
+   "lon": 36.718297
+  },
+  {
+   "name": "SAA 312th Brigade%",
+   "lat": 34.588207,
+   "lon": 36.942638
+  },
+  {
+   "name": "SAA 4th Armoured Division",
+   "lat": 33.506039,
+   "lon": 36.201757
+  },
+  {
+   "name": "SAA 550th Brigade",
+   "lat": 34.61496,
+   "lon": 38.254372
+  },
+  {
+   "name": "SAA 65th Brigade",
+   "lat": 33.76674,
+   "lon": 36.547502
+  },
+  {
+   "name": "SAA 7th Division",
+   "lat": 33.456229,
+   "lon": 36.083628
+  },
+  {
+   "name": "SAA 89th Brigade",
+   "lat": 33.146138,
+   "lon": 36.284818
+  },
+  {
+   "name": "Sabanci Merkez Mosque",
+   "lat": 36.993257,
+   "lon": 35.331654
+  },
+  {
+   "name": "Saghir Ubasi",
+   "lat": 36.703065,
+   "lon": 36.780138
+  },
+  {
+   "name": "Sahinaga",
+   "lat": 36.802868,
+   "lon": 35.397671
+  },
+  {
+   "name": "Sahinbey",
+   "lat": 36.906744,
+   "lon": 37.203776
+  },
+  {
+   "name": "Sahmaran",
+   "lat": 36.968229,
+   "lon": 36.723932
+  },
+  {
+   "name": "Sahnaya",
+   "lat": 33.432227,
+   "lon": 36.237736
+  },
+  {
+   "name": "Saida",
+   "lat": 33.563094,
+   "lon": 35.377028
+  },
+  {
+   "name": "Sail Tower",
+   "lat": 32.817042,
+   "lon": 35.00315
+  },
+  {
+   "name": "Sakcagozu",
+   "lat": 37.173774,
+   "lon": 36.926656
+  },
+  {
+   "name": "Sakizlar",
+   "lat": 36.612321,
+   "lon": 37.560608
+  },
+  {
+   "name": "Salamiou",
+   "lat": 34.840032,
+   "lon": 32.689471
+  },
+  {
+   "name": "Sama Beirut",
+   "lat": 33.888244,
+   "lon": 35.508536
+  },
+  {
+   "name": "Samalik",
+   "lat": 36.783775,
+   "lon": 36.697058
+  },
+  {
+   "name": "Samandag",
+   "lat": 36.08188,
+   "lon": 35.981085
+  },
+  {
+   "name": "Samandoken",
+   "lat": 37.043377,
+   "lon": 37.849119
+  },
+  {
+   "name": "Sammezraasi",
+   "lat": 37.137895,
+   "lon": 37.288445
+  },
+  {
+   "name": "Sammy Ofer Stadium",
+   "lat": 32.780962,
+   "lon": 34.962645
+  },
+  {
+   "name": "Sandarah",
+   "lat": 36.595691,
+   "lon": 37.332194
+  },
+  {
+   "name": "Saraqib",
+   "lat": 35.861085,
+   "lon": 36.808029
+  },
+  {
+   "name": "Saraykoy",
+   "lat": 37.027937,
+   "lon": 37.9615
+  },
+  {
+   "name": "Saraymagara",
+   "lat": 37.258883,
+   "lon": 37.606442
+  },
+  {
+   "name": "Sarayova",
+   "lat": 37.105152,
+   "lon": 36.547282
+  },
+  {
+   "name": "Sarikavak",
+   "lat": 37.110256,
+   "lon": 34.684187
+  },
+  {
+   "name": "Sarikavak",
+   "lat": 36.580778,
+   "lon": 33.643836
+  },
+  {
+   "name": "Sarikaya",
+   "lat": 36.763788,
+   "lon": 34.11489
+  },
+  {
+   "name": "Sarilar",
+   "lat": 36.904461,
+   "lon": 34.305846
+  },
+  {
+   "name": "Sariseki",
+   "lat": 36.629934,
+   "lon": 36.220243
+  },
+  {
+   "name": "Sariveli",
+   "lat": 36.949223,
+   "lon": 34.726517
+  },
+  {
+   "name": "Sarmin",
+   "lat": 35.906478,
+   "lon": 36.725726
+  },
+  {
+   "name": "Saygecit",
+   "lat": 37.248791,
+   "lon": 35.625353
+  },
+  {
+   "name": "Sebil",
+   "lat": 37.129156,
+   "lon": 34.561949
+  },
+  {
+   "name": "Segmenli",
+   "lat": 37.313411,
+   "lon": 37.352048
+  },
+  {
+   "name": "Sekeroba",
+   "lat": 37.256767,
+   "lon": 36.774685
+  },
+  {
+   "name": "Selimiye Mosque",
+   "lat": 35.177614,
+   "lon": 33.364809
+  },
+  {
+   "name": "Selmincik",
+   "lat": 36.738551,
+   "lon": 37.495856
+  },
+  {
+   "name": "Senlikce",
+   "lat": 37.33117,
+   "lon": 37.698465
+  },
+  {
+   "name": "Serghaya",
+   "lat": 33.81185,
+   "lon": 36.161077
+  },
+  {
+   "name": "Serhatkoy",
+   "lat": 35.188275,
+   "lon": 33.092243
+  },
+  {
+   "name": "Serintepe",
+   "lat": 37.258805,
+   "lon": 37.201185
+  },
+  {
+   "name": "Set Zaynab",
+   "lat": 33.448837,
+   "lon": 36.338214
+  },
+  {
+   "name": "Sett Markho",
+   "lat": 35.589482,
+   "lon": 35.851695
+  },
+  {
+   "name": "Sevindi",
+   "lat": 36.794808,
+   "lon": 37.520126
+  },
+  {
+   "name": "Seyhmurat",
+   "lat": 36.861774,
+   "lon": 35.431366
+  },
+  {
+   "name": "Seyhomer",
+   "lat": 36.337904,
+   "lon": 33.302251
+  },
+  {
+   "name": "Seyrantepe",
+   "lat": 37.454829,
+   "lon": 37.117129
+  },
+  {
+   "name": "Shahba",
+   "lat": 32.858367,
+   "lon": 36.632505
+  },
+  {
+   "name": "Sharqiyah Mine",
+   "lat": 34.199641,
+   "lon": 38.014742
+  },
+  {
+   "name": "Shawah",
+   "lat": 36.608224,
+   "lon": 37.632466
+  },
+  {
+   "name": "Shaykh al Hadid",
+   "lat": 36.501225,
+   "lon": 36.600435
+  },
+  {
+   "name": "Shaykh Khurus",
+   "lat": 36.7326,
+   "lon": 36.88664
+  },
+  {
+   "name": "Shebaa",
+   "lat": 33.449565,
+   "lon": 36.398202
+  },
+  {
+   "name": "Shefar-Amr",
+   "lat": 32.804129,
+   "lon": 35.172103
+  },
+  {
+   "name": "Sheraton Grand Adana",
+   "lat": 36.996832,
+   "lon": 35.341257
+  },
+  {
+   "name": "Sichari",
+   "lat": 35.273444,
+   "lon": 33.386313
+  },
+  {
+   "name": "Silifke",
+   "lat": 36.389185,
+   "lon": 33.93216
+  },
+  {
+   "name": "Silsilah",
+   "lat": 36.688129,
+   "lon": 37.535015
+  },
+  {
+   "name": "Simou",
+   "lat": 34.941317,
+   "lon": 32.503857
+  },
+  {
+   "name": "Sinankoy",
+   "lat": 37.029533,
+   "lon": 37.579833
+  },
+  {
+   "name": "Sinta",
+   "lat": 35.15761,
+   "lon": 33.700548
+  },
+  {
+   "name": "Sirkenli",
+   "lat": 36.727657,
+   "lon": 35.400623
+  },
+  {
+   "name": "Skarinou",
+   "lat": 34.82139,
+   "lon": 33.357167
+  },
+  {
+   "name": "Sky Gate Beirut",
+   "lat": 33.889188,
+   "lon": 35.519098
+  },
+  {
+   "name": "Skylloura",
+   "lat": 35.23048,
+   "lon": 33.165247
+  },
+  {
+   "name": "Sogucak",
+   "lat": 36.966286,
+   "lon": 34.550467
+  },
+  {
+   "name": "Sogutlu",
+   "lat": 37.003632,
+   "lon": 37.72799
+  },
+  {
+   "name": "Sokun",
+   "lat": 36.340566,
+   "lon": 34.009935
+  },
+  {
+   "name": "Solonchak Sabhat al-Jabbul",
+   "lat": 36.044571,
+   "lon": 37.521323
+  },
+  {
+   "name": "Sorgun",
+   "lat": 36.871544,
+   "lon": 34.137512
+  },
+  {
+   "name": "Sotira",
+   "lat": 35.026689,
+   "lon": 33.950197
+  },
+  {
+   "name": "Sourasky Medical Center",
+   "lat": 32.082518,
+   "lon": 34.793214
+  },
+  {
+   "name": "Soylu",
+   "lat": 36.836327,
+   "lon": 37.909152
+  },
+  {
+   "name": "Spilia",
+   "lat": 34.966484,
+   "lon": 32.955302
+  },
+  {
+   "name": "Sqoubin",
+   "lat": 35.55866,
+   "lon": 35.829224
+  },
+  {
+   "name": "St. Sophia Church",
+   "lat": 35.14679,
+   "lon": 33.334231
+  },
+  {
+   "name": "Statos-Agios Photios",
+   "lat": 34.885322,
+   "lon": 32.621495
+  },
+  {
+   "name": "Stavrokonou",
+   "lat": 34.785345,
+   "lon": 32.617812
+  },
+  {
+   "name": "Strongylos",
+   "lat": 35.166652,
+   "lon": 33.639099
+  },
+  {
+   "name": "Stroumpi",
+   "lat": 34.883859,
+   "lon": 32.482008
+  },
+  {
+   "name": "Strovolos",
+   "lat": 35.132899,
+   "lon": 33.345497
+  },
+  {
+   "name": "Sucat",
+   "lat": 36.606607,
+   "lon": 33.368756
+  },
+  {
+   "name": "Sugozu",
+   "lat": 36.425063,
+   "lon": 32.447476
+  },
+  {
+   "name": "Sugozu",
+   "lat": 36.841458,
+   "lon": 35.860074
+  },
+  {
+   "name": "Sungutepe",
+   "lat": 36.7921,
+   "lon": 36.949757
+  },
+  {
+   "name": "Sutluce",
+   "lat": 35.253814,
+   "lon": 33.686959
+  },
+  {
+   "name": "Sutluce",
+   "lat": 36.838036,
+   "lon": 37.53802
+  },
+  {
+   "name": "SyADF 150th Regiment",
+   "lat": 33.251611,
+   "lon": 36.269702
+  },
+  {
+   "name": "SyADF 159th Regiment",
+   "lat": 33.177072,
+   "lon": 36.577899
+  },
+  {
+   "name": "SyADF 24th Brigade",
+   "lat": 33.336071,
+   "lon": 36.41818
+  },
+  {
+   "name": "Syrianochori",
+   "lat": 35.225105,
+   "lon": 32.940156
+  },
+  {
+   "name": "Taalabaya",
+   "lat": 33.814138,
+   "lon": 35.873182
+  },
+  {
+   "name": "Tabureli",
+   "lat": 36.65307,
+   "lon": 34.065555
+  },
+  {
+   "name": "Takanli",
+   "lat": 36.786934,
+   "lon": 34.415188
+  },
+  {
+   "name": "Tala",
+   "lat": 34.836133,
+   "lon": 32.430976
+  },
+  {
+   "name": "Tamra",
+   "lat": 32.854794,
+   "lon": 35.194876
+  },
+  {
+   "name": "Tarlaoren",
+   "lat": 37.054871,
+   "lon": 33.24477
+  },
+  {
+   "name": "Tartus",
+   "lat": 34.893779,
+   "lon": 35.892245
+  },
+  {
+   "name": "Taskale",
+   "lat": 37.142571,
+   "lon": 33.613728
+  },
+  {
+   "name": "Tasoluk",
+   "lat": 36.351799,
+   "lon": 33.129936
+  },
+  {
+   "name": "Tathimus",
+   "lat": 36.618344,
+   "lon": 37.376703
+  },
+  {
+   "name": "Tatlisu",
+   "lat": 35.373241,
+   "lon": 33.753563
+  },
+  {
+   "name": "Tavros",
+   "lat": 35.397795,
+   "lon": 34.076555
+  },
+  {
+   "name": "Tel Aviv",
+   "lat": 32.097989,
+   "lon": 34.846363
+  },
+  {
+   "name": "Tell Arn",
+   "lat": 36.124066,
+   "lon": 37.333972
+  },
+  {
+   "name": "Temple of Jupiter",
+   "lat": 34.007602,
+   "lon": 36.204283
+  },
+  {
+   "name": "Tepe",
+   "lat": 36.920878,
+   "lon": 34.292652
+  },
+  {
+   "name": "Terken",
+   "lat": 37.123642,
+   "lon": 37.006538
+  },
+  {
+   "name": "Terra",
+   "lat": 34.96647,
+   "lon": 32.424455
+  },
+  {
+   "name": "Tersefanou",
+   "lat": 34.854252,
+   "lon": 33.54674
+  },
+  {
+   "name": "Thaljah Sharqiyah",
+   "lat": 36.639419,
+   "lon": 37.501258
+  },
+  {
+   "name": "Theletra",
+   "lat": 34.912195,
+   "lon": 32.447295
+  },
+  {
+   "name": "Thermeia",
+   "lat": 35.321323,
+   "lon": 33.331778
+  },
+  {
+   "name": "Tiberias",
+   "lat": 32.790725,
+   "lon": 35.526414
+  },
+  {
+   "name": "Timi",
+   "lat": 34.731608,
+   "lon": 32.51607
+  },
+  {
+   "name": "Tokdemir",
+   "lat": 37.187372,
+   "lon": 37.581373
+  },
+  {
+   "name": "Topallar",
+   "lat": 37.329432,
+   "lon": 35.758293
+  },
+  {
+   "name": "Topallar",
+   "lat": 36.902973,
+   "lon": 36.789997
+  },
+  {
+   "name": "Toplamalar",
+   "lat": 37.082967,
+   "lon": 36.781609
+  },
+  {
+   "name": "Toreli",
+   "lat": 36.852596,
+   "lon": 37.327544
+  },
+  {
+   "name": "Toros",
+   "lat": 36.885424,
+   "lon": 34.11565
+  },
+  {
+   "name": "Tower 22",
+   "lat": 33.309249,
+   "lon": 38.697987
+  },
+  {
+   "name": "Tower of David",
+   "lat": 31.77565,
+   "lon": 35.227691
+  },
+  {
+   "name": "Trachoni",
+   "lat": 35.223382,
+   "lon": 33.479348
+  },
+  {
+   "name": "Trachypedoula",
+   "lat": 34.800995,
+   "lon": 32.678918
+  },
+  {
+   "name": "Tremetousia",
+   "lat": 35.084553,
+   "lon": 33.608585
+  },
+  {
+   "name": "Tremithousa",
+   "lat": 34.816938,
+   "lon": 32.447427
+  },
+  {
+   "name": "Trikomo",
+   "lat": 35.286368,
+   "lon": 33.891919
+  },
+  {
+   "name": "Trimithi",
+   "lat": 35.33254,
+   "lon": 33.262067
+  },
+  {
+   "name": "Tripoli",
+   "lat": 34.435775,
+   "lon": 35.83732
+  },
+  {
+   "name": "Tris Elies",
+   "lat": 34.931828,
+   "lon": 32.793529
+  },
+  {
+   "name": "Troulloi",
+   "lat": 35.032983,
+   "lon": 33.615891
+  },
+  {
+   "name": "Trypimeni",
+   "lat": 35.310068,
+   "lon": 33.634115
+  },
+  {
+   "name": "Tsada",
+   "lat": 34.839381,
+   "lon": 32.475236
+  },
+  {
+   "name": "Tsakistra",
+   "lat": 35.024518,
+   "lon": 32.72307
+  },
+  {
+   "name": "Tseri",
+   "lat": 35.072697,
+   "lon": 33.324669
+  },
+  {
+   "name": "Tuglu",
+   "lat": 37.18501,
+   "lon": 37.530467
+  },
+  {
+   "name": "Turkoglu",
+   "lat": 37.381755,
+   "lon": 36.850863
+  },
+  {
+   "name": "Turkyurdu",
+   "lat": 36.805096,
+   "lon": 37.896278
+  },
+  {
+   "name": "Turlu",
+   "lat": 37.069119,
+   "lon": 37.758916
+  },
+  {
+   "name": "Tyre",
+   "lat": 33.275537,
+   "lon": 35.215861
+  },
+  {
+   "name": "Ucgol",
+   "lat": 37.246078,
+   "lon": 37.687544
+  },
+  {
+   "name": "Ucgoze",
+   "lat": 37.205897,
+   "lon": 37.204607
+  },
+  {
+   "name": "Uckubbe",
+   "lat": 36.720596,
+   "lon": 37.571987
+  },
+  {
+   "name": "Uctepe",
+   "lat": 36.589235,
+   "lon": 34.236396
+  },
+  {
+   "name": "Ugruca",
+   "lat": 37.272408,
+   "lon": 37.467659
+  },
+  {
+   "name": "Ugurlar",
+   "lat": 36.769222,
+   "lon": 37.491592
+  },
+  {
+   "name": "Ugurtepe",
+   "lat": 36.952965,
+   "lon": 37.094978
+  },
+  {
+   "name": "Uksurli",
+   "lat": 36.616287,
+   "lon": 36.722915
+  },
+  {
+   "name": "Ulkerli",
+   "lat": 37.221104,
+   "lon": 37.240066
+  },
+  {
+   "name": "Umayyad Mosque",
+   "lat": 33.510527,
+   "lon": 36.305226
+  },
+  {
+   "name": "Umm al-Fahm",
+   "lat": 32.522954,
+   "lon": 35.15137
+  },
+  {
+   "name": "University of Haifa",
+   "lat": 32.76061,
+   "lon": 35.019732
+  },
+  {
+   "name": "Urunlu",
+   "lat": 36.841171,
+   "lon": 37.096645
+  },
+  {
+   "name": "Uzumlu",
+   "lat": 36.848347,
+   "lon": 34.340931
+  },
+  {
+   "name": "Uzunlu",
+   "lat": 36.768363,
+   "lon": 37.218396
+  },
+  {
+   "name": "Uzunsogut",
+   "lat": 37.399617,
+   "lon": 36.777723
+  },
+  {
+   "name": "Vasilia",
+   "lat": 35.351996,
+   "lon": 33.120077
+  },
+  {
+   "name": "Vassa",
+   "lat": 34.833676,
+   "lon": 32.791727
+  },
+  {
+   "name": "Vatili",
+   "lat": 35.133793,
+   "lon": 33.655731
+  },
+  {
+   "name": "Vavatsinia",
+   "lat": 34.893473,
+   "lon": 33.228932
+  },
+  {
+   "name": "Vitsada",
+   "lat": 35.24426,
+   "lon": 33.646537
+  },
+  {
+   "name": "Vrysoulles",
+   "lat": 35.072454,
+   "lon": 33.882568
+  },
+  {
+   "name": "Vyzakia",
+   "lat": 35.076357,
+   "lon": 33.013747
+  },
+  {
+   "name": "Western Garyiah",
+   "lat": 32.687917,
+   "lon": 36.225685
+  },
+  {
+   "name": "Xylofagou",
+   "lat": 34.977233,
+   "lon": 33.849197
+  },
+  {
+   "name": "Xylotymbou",
+   "lat": 35.013205,
+   "lon": 33.74393
+  },
+  {
+   "name": "Yagda",
+   "lat": 36.736355,
+   "lon": 34.050095
+  },
+  {
+   "name": "Yagmuralan",
+   "lat": 36.918324,
+   "lon": 37.750282
+  },
+  {
+   "name": "Yahsiler",
+   "lat": 36.792603,
+   "lon": 35.497196
+  },
+  {
+   "name": "Yalankoz",
+   "lat": 37.220356,
+   "lon": 37.40818
+  },
+  {
+   "name": "Yalnizcabag",
+   "lat": 36.654812,
+   "lon": 33.157897
+  },
+  {
+   "name": "Yamacoba",
+   "lat": 37.172424,
+   "lon": 37.08849
+  },
+  {
+   "name": "Yarka",
+   "lat": 32.955283,
+   "lon": 35.211219
+  },
+  {
+   "name": "Yarpuz",
+   "lat": 37.048961,
+   "lon": 36.430177
+  },
+  {
+   "name": "Yasarkoy",
+   "lat": 36.869736,
+   "lon": 37.941901
+  },
+  {
+   "name": "Yavca",
+   "lat": 37.018072,
+   "lon": 34.374299
+  },
+  {
+   "name": "Yavuzeli",
+   "lat": 37.317633,
+   "lon": 37.568507
+  },
+  {
+   "name": "Yazibaxe",
+   "lat": 36.654444,
+   "lon": 37.0475
+  },
+  {
+   "name": "Yedigoz",
+   "lat": 36.864841,
+   "lon": 36.844902
+  },
+  {
+   "name": "Yelliburun",
+   "lat": 37.023132,
+   "lon": 36.719299
+  },
+  {
+   "name": "Yemisli",
+   "lat": 36.653832,
+   "lon": 35.359867
+  },
+  {
+   "name": "Yeni Degirmen",
+   "lat": 36.769208,
+   "lon": 37.422717
+  },
+  {
+   "name": "Yeni Yapan",
+   "lat": 36.891629,
+   "lon": 37.78598
+  },
+  {
+   "name": "Yeniceli",
+   "lat": 36.979469,
+   "lon": 36.921654
+  },
+  {
+   "name": "Yenidam",
+   "lat": 36.953995,
+   "lon": 35.24638
+  },
+  {
+   "name": "Yeniguney",
+   "lat": 36.285,
+   "lon": 32.4675
+  },
+  {
+   "name": "Yenikoy",
+   "lat": 36.975548,
+   "lon": 34.497985
+  },
+  {
+   "name": "Yenikoy",
+   "lat": 36.816143,
+   "lon": 35.774937
+  },
+  {
+   "name": "Yeniyapan",
+   "lat": 36.865064,
+   "lon": 37.226831
+  },
+  {
+   "name": "Yeniyurt",
+   "lat": 36.63224,
+   "lon": 34.116905
+  },
+  {
+   "name": "Yeniyurt",
+   "lat": 36.885415,
+   "lon": 36.15048
+  },
+  {
+   "name": "Yeniyurt",
+   "lat": 37.37877,
+   "lon": 37.465119
+  },
+  {
+   "name": "Yerbag",
+   "lat": 36.602877,
+   "lon": 32.765024
+  },
+  {
+   "name": "Yeserti",
+   "lat": 36.851906,
+   "lon": 37.84684
+  },
+  {
+   "name": "Yesilbahce",
+   "lat": 37.170589,
+   "lon": 35.826191
+  },
+  {
+   "name": "Yesilirmak",
+   "lat": 35.167523,
+   "lon": 32.739489
+  },
+  {
+   "name": "Yesilkoy",
+   "lat": 36.849552,
+   "lon": 36.196766
+  },
+  {
+   "name": "Yesilkoy",
+   "lat": 36.675354,
+   "lon": 35.493233
+  },
+  {
+   "name": "Yesilova",
+   "lat": 36.998413,
+   "lon": 36.748756
+  },
+  {
+   "name": "Yesiltepe",
+   "lat": 36.845619,
+   "lon": 34.895405
+  },
+  {
+   "name": "Yesiltepe",
+   "lat": 36.916771,
+   "lon": 36.125946
+  },
+  {
+   "name": "Yigitler",
+   "lat": 37.326348,
+   "lon": 37.302661
+  },
+  {
+   "name": "Yiolou",
+   "lat": 34.92464,
+   "lon": 32.473288
+  },
+  {
+   "name": "Yokneam Illit",
+   "lat": 32.653497,
+   "lon": 35.102342
+  },
+  {
+   "name": "Yolgecen",
+   "lat": 36.966373,
+   "lon": 35.192333
+  },
+  {
+   "name": "Yoncaduzu",
+   "lat": 36.973328,
+   "lon": 36.210064
+  },
+  {
+   "name": "Yoreli",
+   "lat": 37.334347,
+   "lon": 37.595512
+  },
+  {
+   "name": "Ypsonas",
+   "lat": 34.688001,
+   "lon": 32.961246
+  },
+  {
+   "name": "Yuksekkoy",
+   "lat": 36.934128,
+   "lon": 35.046757
+  },
+  {
+   "name": "Yuksekoluk",
+   "lat": 36.973911,
+   "lon": 34.421415
+  },
+  {
+   "name": "Yunusoglu",
+   "lat": 36.953651,
+   "lon": 34.978336
+  },
+  {
+   "name": "Yuregir",
+   "lat": 36.98558,
+   "lon": 35.366488
+  },
+  {
+   "name": "Yuregir Hospital",
+   "lat": 37.008674,
+   "lon": 35.358075
+  },
+  {
+   "name": "Zahle",
+   "lat": 33.842402,
+   "lon": 35.925711
+  },
+  {
+   "name": "Zaidal",
+   "lat": 34.718672,
+   "lon": 36.773686
+  },
+  {
+   "name": "Zakyah",
+   "lat": 33.337249,
+   "lon": 36.165773
+  },
+  {
+   "name": "Zawghar",
+   "lat": 36.750781,
+   "lon": 37.806699
+  },
+  {
+   "name": "Zeytinbeli",
+   "lat": 36.811573,
+   "lon": 35.742145
+  },
+  {
+   "name": "Zeytinli",
+   "lat": 36.919494,
+   "lon": 37.389741
+  },
+  {
+   "name": "Zilif",
+   "lat": 36.617771,
+   "lon": 37.603051
+  },
+  {
+   "name": "Zincirli",
+   "lat": 37.103918,
+   "lon": 36.676734
+  },
+  {
+   "name": "Ziyarah",
+   "lat": 36.661574,
+   "lon": 37.621006
+  },
+  {
+   "name": "Zoopigi",
+   "lat": 34.862898,
+   "lon": 33.015171
+  },
+  {
+   "name": "Zuhrecik",
+   "lat": 36.891331,
+   "lon": 37.890701
+  },
+  {
+   "name": "Zygi",
+   "lat": 34.728997,
+   "lon": 33.338022
+  }
+ ]
+}

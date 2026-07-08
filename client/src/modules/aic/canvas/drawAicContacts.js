@@ -1,6 +1,6 @@
 /**
  * AIC contact rendering:
- *   - HAFU symbols (HOSTILE/UNKNOWN/NEUTRAL/FRIENDLY)
+ *   - HAFU symbols (HOSTILE/BOGEY/NEUTRAL/FRIENDLY)
  *   - Predicted Track Lines (PTL)
  *   - Dugout diamonds on the gold band for out-of-range hostiles
  *   - BRAA intercept overlay lines
@@ -10,18 +10,18 @@ import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
 import { DECLARATION } from '../../../store/aic.js'
 import { computeAicIntercept } from '../aicGeometry.js'
 
-const DECL_COLOR = {
+export const DECL_COLOR = {
   [DECLARATION.HOSTILE]:  '#FF4444',
-  [DECLARATION.UNKNOWN]:  '#FFCC00',
+  [DECLARATION.BOGEY]:  '#FFCC00',
   [DECLARATION.NEUTRAL]:  '#44CC44',
   [DECLARATION.FRIENDLY]: '#4488FF',
 }
 
 // Pixel radius for symSize 1-5. Default (3) → 9px.
-function symRadius(symSize) { return 3 + (symSize - 1) * 2 }
+export function symRadius(symSize) { return 3 + (symSize - 1) * 2 }
 
-function drawSymbol(ctx, x, y, declaration, S, colorOverride = null) {
-  const color = colorOverride ?? DECL_COLOR[declaration] ?? DECL_COLOR[DECLARATION.UNKNOWN]
+export function drawSymbol(ctx, x, y, declaration, S, colorOverride = null) {
+  const color = colorOverride ?? DECL_COLOR[declaration] ?? DECL_COLOR[DECLARATION.BOGEY]
   ctx.strokeStyle = color
   ctx.lineWidth   = 2
 
@@ -53,7 +53,7 @@ function drawSymbol(ctx, x, y, declaration, S, colorOverride = null) {
       ctx.stroke()
       break
     }
-    case DECLARATION.UNKNOWN:
+    case DECLARATION.BOGEY:
     default: {
       // Staple ⊓ — top bar + two legs pointing down
       ctx.beginPath()
@@ -69,7 +69,7 @@ function drawSymbol(ctx, x, y, declaration, S, colorOverride = null) {
   }
 }
 
-function drawPtl(ctx, x, y, unit, view, ptlSeconds, color) {
+export function drawPtl(ctx, x, y, unit, view, ptlSeconds, color) {
   if (!unit.speed || !unit.track) return
   const distNm = (unit.speed * ptlSeconds) / 1852
   if (distNm < 0.01) return
@@ -96,12 +96,12 @@ function drawDugout(ctx, view, units, getDecl, rangeNm, symSize) {
   const innerR = Math.max(0, (rangeNm - 10) * pixelsPerNm)
   const D      = Math.max(4, 3 + symSize * 1.2)  // diamond half-size
 
-  ctx.strokeStyle = DECL_COLOR[DECLARATION.HOSTILE]
-  ctx.lineWidth   = 1.5
+  ctx.lineWidth = 1.5
 
   for (const [id, unit] of Object.entries(units)) {
     if (!unit.position) continue
-    if (getDecl(id, unit) !== DECLARATION.HOSTILE) continue
+    const decl = getDecl(id, unit)
+    if (decl !== DECLARATION.HOSTILE && decl !== DECLARATION.BOGEY) continue
 
     const { x, y } = latLngToCanvas(unit.position.lat, unit.position.lng, view)
     const dx = x - cx, dy = y - cy
@@ -112,6 +112,7 @@ function drawDugout(ctx, view, units, getDecl, rangeNm, symSize) {
     const bx    = cx + Math.sin(angle) * innerR
     const by    = cy - Math.cos(angle) * innerR
 
+    ctx.strokeStyle = DECL_COLOR[decl]
     ctx.beginPath()
     ctx.moveTo(bx,     by - D)
     ctx.lineTo(bx + D, by)
@@ -206,6 +207,9 @@ function drawRbl(ctx, view, rbl, magvar) {
   ctx.fillText(label, midX, midY - 6)
 }
 
+// Ring color signals whether a BOGEY/HOSTILE contact is inside — green
+// (clear) or purple (violated), matching ABM's threat rings
+// (drawAbmBraa.js) so both scopes read the same way (2026-07-07).
 function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl) {
   if (!threatRings.size) return
   ctx.lineWidth   = 0.75
@@ -216,14 +220,15 @@ function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl) {
 
     const violated = Object.entries(units).some(([id, u]) => {
       if (id === unitId || !u.position) return false
-      if (getDecl(id, u) === DECLARATION.FRIENDLY) return false
+      const decl = getDecl(id, u)
+      if (decl !== DECLARATION.BOGEY && decl !== DECLARATION.HOSTILE) return false
       const nmPerDegLng = 60 * Math.cos(unit.position.lat * Math.PI / 180)
       const dN = (u.position.lat - unit.position.lat) * 60
       const dE = (u.position.lng - unit.position.lng) * nmPerDegLng
       return Math.hypot(dN, dE) <= threatRadius
     })
 
-    ctx.strokeStyle = violated ? 'rgba(255,68,68,0.7)' : 'rgba(255,180,0,0.55)'
+    ctx.strokeStyle = violated ? 'rgba(170,68,255,0.75)' : 'rgba(68,204,68,0.6)'
     const { x, y } = latLngToCanvas(unit.position.lat, unit.position.lng, view)
     ctx.beginPath()
     ctx.arc(x, y, threatRadius * view.pixelsPerNm, 0, Math.PI * 2)
@@ -253,7 +258,7 @@ function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize
     drawPtl(ctx, x, y, unit, view, ptlSeconds, '#888')
 
     // Same HAFU symbol, gray
-    drawSymbol(ctx, x, y, decl ?? DECLARATION.UNKNOWN, S, '#888')
+    drawSymbol(ctx, x, y, decl ?? DECLARATION.BOGEY, S, '#888')
   }
 
   ctx.restore()
@@ -262,9 +267,11 @@ function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize
 export function drawAicContacts(
   ctx, view, units, getDecl, ptlSeconds, symSize, braaList, rangeNm,
   rbl = null, magvar = 0,
-  threatRings = new Set(), threatRadius = 35,
+  threatRings = new Set(), threatRadius = 45,
   fadedContacts = {}, fadedNow = 0,
   findMarker = null,
+  centroidMarker = null,
+  axisLine = null,
 ) {
   const { width, height } = view
   const S = symRadius(symSize)
@@ -292,7 +299,7 @@ export function drawAicContacts(
     if (Math.hypot(x - cx, y - cy) > clipR) continue  // beyond inner ring — dugout only
 
     const decl  = getDecl(id, unit)
-    const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.UNKNOWN]
+    const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY]
 
     drawPtl(ctx, x, y, unit, view, ptlSeconds, color)
     drawSymbol(ctx, x, y, decl, S)
@@ -313,6 +320,49 @@ export function drawAicContacts(
     ctx.clip()
     ctx.fillStyle = '#00e000'
     ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
+    ctx.restore()
+  }
+
+  // .centroid debug marker — magenta X at the hostile-picture centroid used
+  // to derive the threat axis (see computePicture.js).
+  if (centroidMarker) {
+    const { x, y } = latLngToCanvas(centroidMarker.lat, centroidMarker.lng, view)
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, clipR, 0, Math.PI * 2)
+    ctx.clip()
+    ctx.strokeStyle = '#ff00ff'
+    ctx.lineWidth = 2
+    const r = 6
+    ctx.beginPath()
+    ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r)
+    ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // .axis debug line — cyan line through the dynamic threat axis (see
+  // _deriveThreatAxis in computePicture.js), origin marked with a dot.
+  // axisLine.axisBearing is TRUE; convert to magnetic for canvas (magnetic-
+  // north-up display), same as drawSector in drawAicLayers.js.
+  if (axisLine?.origin) {
+    const { x: ox, y: oy } = latLngToCanvas(axisLine.origin.lat, axisLine.origin.lng, view)
+    const mag = (axisLine.axisBearing - magvar + 360) % 360
+    const sin = Math.sin(mag * Math.PI / 180), cos = Math.cos(mag * Math.PI / 180)
+    const len = Math.max(width, height)
+
+    ctx.save()
+    ctx.strokeStyle = 'rgba(0,220,255,0.7)'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.moveTo(ox - sin * len, oy + cos * len)
+    ctx.lineTo(ox + sin * len, oy - cos * len)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    ctx.fillStyle = 'rgba(0,220,255,0.9)'
+    ctx.beginPath(); ctx.arc(ox, oy, 3, 0, Math.PI * 2); ctx.fill()
     ctx.restore()
   }
 

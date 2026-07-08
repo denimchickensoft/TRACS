@@ -1,0 +1,8800 @@
+{
+ "theatre": "Caucasus",
+ "towns": [
+  {
+   "name": "Aatsy",
+   "lat": 43.135637,
+   "lon": 40.731036
+  },
+  {
+   "name": "Abadzehskaya",
+   "lat": 44.393866,
+   "lon": 40.217713
+  },
+  {
+   "name": "Abanoeti",
+   "lat": 42.539051,
+   "lon": 43.024062
+  },
+  {
+   "name": "ABASHA",
+   "lat": 42.221963,
+   "lon": 42.211652
+  },
+  {
+   "name": "Abashispiri",
+   "lat": 42.207775,
+   "lon": 42.166122
+  },
+  {
+   "name": "Abastumani",
+   "lat": 42.396615,
+   "lon": 41.876711
+  },
+  {
+   "name": "Abedati",
+   "lat": 42.386144,
+   "lon": 42.278763
+  },
+  {
+   "name": "Abgara",
+   "lat": 43.190179,
+   "lon": 40.624511
+  },
+  {
+   "name": "Abgarhuk",
+   "lat": 43.115109,
+   "lon": 40.701987
+  },
+  {
+   "name": "ABINSK",
+   "lat": 44.870561,
+   "lon": 38.156475
+  },
+  {
+   "name": "Abisi",
+   "lat": 42.094465,
+   "lon": 43.763261
+  },
+  {
+   "name": "Abrau-Dyurso",
+   "lat": 44.701124,
+   "lon": 37.599438
+  },
+  {
+   "name": "Abzhakva",
+   "lat": 43.025609,
+   "lon": 41.068063
+  },
+  {
+   "name": "Achigvara",
+   "lat": 42.68059,
+   "lon": 41.628738
+  },
+  {
+   "name": "Achkatsa",
+   "lat": 43.147649,
+   "lon": 40.685803
+  },
+  {
+   "name": "Achkvistavi",
+   "lat": 41.829486,
+   "lon": 41.912643
+  },
+  {
+   "name": "Adagum",
+   "lat": 45.095386,
+   "lon": 37.722798
+  },
+  {
+   "name": "Adamiy",
+   "lat": 45.072339,
+   "lon": 39.49596
+  },
+  {
+   "name": "Aderbievka",
+   "lat": 44.60396,
+   "lon": 38.106226
+  },
+  {
+   "name": "ADLER",
+   "lat": 43.453776,
+   "lon": 39.915595
+  },
+  {
+   "name": "Adlia",
+   "lat": 41.616935,
+   "lon": 41.603396
+  },
+  {
+   "name": "Adygeysk",
+   "lat": 44.887801,
+   "lon": 39.187143
+  },
+  {
+   "name": "Adzhameti",
+   "lat": 42.190927,
+   "lon": 42.795745
+  },
+  {
+   "name": "Adzhapsha",
+   "lat": 43.095728,
+   "lon": 40.735466
+  },
+  {
+   "name": "Adzhazhv",
+   "lat": 42.803694,
+   "lon": 41.475439
+  },
+  {
+   "name": "Adzhimchigra",
+   "lat": 43.167841,
+   "lon": 40.614085
+  },
+  {
+   "name": "Adzhkhahara",
+   "lat": 43.206934,
+   "lon": 40.489845
+  },
+  {
+   "name": "Adzigezh",
+   "lat": 43.065018,
+   "lon": 40.951904
+  },
+  {
+   "name": "Adzlagara",
+   "lat": 43.148709,
+   "lon": 40.623547
+  },
+  {
+   "name": "Adzyubzha",
+   "lat": 42.838793,
+   "lon": 41.191593
+  },
+  {
+   "name": "Afipsip",
+   "lat": 44.995201,
+   "lon": 38.777506
+  },
+  {
+   "name": "Afipskiy",
+   "lat": 44.904156,
+   "lon": 38.844197
+  },
+  {
+   "name": "AGARA",
+   "lat": 42.044088,
+   "lon": 43.826962
+  },
+  {
+   "name": "Agaraki",
+   "lat": 43.201028,
+   "lon": 40.412177
+  },
+  {
+   "name": "Agayani",
+   "lat": 41.913671,
+   "lon": 44.546796
+  },
+  {
+   "name": "Agoy",
+   "lat": 44.14827,
+   "lon": 39.033715
+  },
+  {
+   "name": "Agronom",
+   "lat": 45.143214,
+   "lon": 39.189885
+  },
+  {
+   "name": "Aguy_Shapsug",
+   "lat": 44.183957,
+   "lon": 39.065643
+  },
+  {
+   "name": "Agvavera",
+   "lat": 42.733256,
+   "lon": 41.741064
+  },
+  {
+   "name": "Ahalbediseuli",
+   "lat": 42.382299,
+   "lon": 42.478211
+  },
+  {
+   "name": "Ahalhibula",
+   "lat": 42.435747,
+   "lon": 42.009298
+  },
+  {
+   "name": "Ahali-Abastumani",
+   "lat": 42.529007,
+   "lon": 41.81639
+  },
+  {
+   "name": "Ahali-Kindgi",
+   "lat": 42.797881,
+   "lon": 41.273547
+  },
+  {
+   "name": "Ahali-Sviri",
+   "lat": 42.161011,
+   "lon": 42.90309
+  },
+  {
+   "name": "Ahali-Terzhola",
+   "lat": 42.232184,
+   "lon": 42.976529
+  },
+  {
+   "name": "Ahalkahati",
+   "lat": 42.46856,
+   "lon": 41.733919
+  },
+  {
+   "name": "Ahalsheni",
+   "lat": 41.971235,
+   "lon": 42.443065
+  },
+  {
+   "name": "Ahalsheni",
+   "lat": 41.624355,
+   "lon": 41.709249
+  },
+  {
+   "name": "Ahalsheni",
+   "lat": 43.118808,
+   "lon": 41.020391
+  },
+  {
+   "name": "Ahalsheni",
+   "lat": 42.22938,
+   "lon": 43.768622
+  },
+  {
+   "name": "Ahalsopeli",
+   "lat": 42.251948,
+   "lon": 42.069669
+  },
+  {
+   "name": "Ahalsopeli",
+   "lat": 42.310765,
+   "lon": 42.949723
+  },
+  {
+   "name": "Ahalsopeli",
+   "lat": 41.579313,
+   "lon": 41.592645
+  },
+  {
+   "name": "Ahalsopeli",
+   "lat": 42.166163,
+   "lon": 42.39517
+  },
+  {
+   "name": "Ahalsopeli",
+   "lat": 42.054131,
+   "lon": 41.84141
+  },
+  {
+   "name": "Ahalsopeli",
+   "lat": 43.141474,
+   "lon": 40.553312
+  },
+  {
+   "name": "Ahmetovskaya",
+   "lat": 44.151458,
+   "lon": 41.050762
+  },
+  {
+   "name": "Ahrisi",
+   "lat": 42.113127,
+   "lon": 44.169207
+  },
+  {
+   "name": "Ahsay",
+   "lat": 42.957234,
+   "lon": 43.71721
+  },
+  {
+   "name": "Ahtanizovskaya",
+   "lat": 45.327959,
+   "lon": 37.10697
+  },
+  {
+   "name": "Ahtyrskiy",
+   "lat": 44.848464,
+   "lon": 38.30564
+  },
+  {
+   "name": "Ahuti",
+   "lat": 42.471687,
+   "lon": 42.171137
+  },
+  {
+   "name": "Akalamra",
+   "lat": 43.11171,
+   "lon": 40.775246
+  },
+  {
+   "name": "Akapa",
+   "lat": 43.037614,
+   "lon": 41.12388
+  },
+  {
+   "name": "Akhali-Samgori",
+   "lat": 41.5717,
+   "lon": 45.074511
+  },
+  {
+   "name": "Akvacha",
+   "lat": 43.114639,
+   "lon": 40.833294
+  },
+  {
+   "name": "Akvara",
+   "lat": 43.239058,
+   "lon": 40.387451
+  },
+  {
+   "name": "Al'piyskoe",
+   "lat": 43.290388,
+   "lon": 40.273733
+  },
+  {
+   "name": "ALAGIR",
+   "lat": 43.039424,
+   "lon": 44.22028
+  },
+  {
+   "name": "Alahadzy",
+   "lat": 43.221239,
+   "lon": 40.30687
+  },
+  {
+   "name": "Alambari",
+   "lat": 41.82798,
+   "lon": 41.873672
+  },
+  {
+   "name": "Alaverdi",
+   "lat": 42.052523,
+   "lon": 43.065241
+  },
+  {
+   "name": "Aleksandriyskaya",
+   "lat": 44.226368,
+   "lon": 43.341033
+  },
+  {
+   "name": "Aleksandrovskaya",
+   "lat": 43.485711,
+   "lon": 44.068899
+  },
+  {
+   "name": "Aleksandrovskiy",
+   "lat": 45.255475,
+   "lon": 40.053689
+  },
+  {
+   "name": "Aleksee-Tenginskaya",
+   "lat": 45.210939,
+   "lon": 40.179187
+  },
+  {
+   "name": "Algeti",
+   "lat": 41.444696,
+   "lon": 44.905321
+  },
+  {
+   "name": "Algyt",
+   "lat": 43.127564,
+   "lon": 40.557333
+  },
+  {
+   "name": "Ali-Berdukovskiy",
+   "lat": 43.988847,
+   "lon": 41.737681
+  },
+  {
+   "name": "Ali-Yurt",
+   "lat": 43.143623,
+   "lon": 44.855216
+  },
+  {
+   "name": "Alioni",
+   "lat": 42.284723,
+   "lon": 41.949045
+  },
+  {
+   "name": "Aloti",
+   "lat": 42.051855,
+   "lon": 44.950279
+  },
+  {
+   "name": "Altud",
+   "lat": 43.719412,
+   "lon": 43.869467
+  },
+  {
+   "name": "Amagleba",
+   "lat": 42.085251,
+   "lon": 42.627377
+  },
+  {
+   "name": "AMBROLAURI",
+   "lat": 42.530195,
+   "lon": 43.150121
+  },
+  {
+   "name": "Amsaisi",
+   "lat": 42.135288,
+   "lon": 43.169279
+  },
+  {
+   "name": "Amtkel",
+   "lat": 43.03602,
+   "lon": 41.317733
+  },
+  {
+   "name": "Amzara",
+   "lat": 43.092069,
+   "lon": 40.99182
+  },
+  {
+   "name": "Anaklia",
+   "lat": 42.395927,
+   "lon": 41.594732
+  },
+  {
+   "name": "ANAPA",
+   "lat": 44.932503,
+   "lon": 37.298006
+  },
+  {
+   "name": "Anapskaya",
+   "lat": 44.900888,
+   "lon": 37.38396
+  },
+  {
+   "name": "Anastasievskaya",
+   "lat": 45.220343,
+   "lon": 37.887568
+  },
+  {
+   "name": "Andreevskaya",
+   "lat": 45.320084,
+   "lon": 38.666237
+  },
+  {
+   "name": "Andreevskiy",
+   "lat": 44.228128,
+   "lon": 43.626096
+  },
+  {
+   "name": "ANDZHIEVSKIY",
+   "lat": 44.239664,
+   "lon": 43.084935
+  },
+  {
+   "name": "Angisa",
+   "lat": 41.631328,
+   "lon": 41.604173
+  },
+  {
+   "name": "Anhashtun",
+   "lat": 43.235568,
+   "lon": 40.493729
+  },
+  {
+   "name": "Anuhva",
+   "lat": 43.121339,
+   "lon": 40.810995
+  },
+  {
+   "name": "Aosyrhva",
+   "lat": 43.198313,
+   "lon": 40.7223
+  },
+  {
+   "name": "APSHERONSK",
+   "lat": 44.459654,
+   "lon": 39.729136
+  },
+  {
+   "name": "Aradu",
+   "lat": 42.779854,
+   "lon": 41.463354
+  },
+  {
+   "name": "Arakich",
+   "lat": 42.845023,
+   "lon": 41.248912
+  },
+  {
+   "name": "Arasadzyh",
+   "lat": 43.233581,
+   "lon": 40.322434
+  },
+  {
+   "name": "Arashenda",
+   "lat": 42.055347,
+   "lon": 44.026474
+  },
+  {
+   "name": "Argveta",
+   "lat": 42.142478,
+   "lon": 42.986815
+  },
+  {
+   "name": "Arhipo-Osipovka",
+   "lat": 44.376981,
+   "lon": 38.53067
+  },
+  {
+   "name": "Arhipovskoe",
+   "lat": 45.011892,
+   "lon": 39.852296
+  },
+  {
+   "name": "Arhonskaya",
+   "lat": 43.109215,
+   "lon": 44.514273
+  },
+  {
+   "name": "Arhva",
+   "lat": 43.226315,
+   "lon": 40.572106
+  },
+  {
+   "name": "Arhyz",
+   "lat": 43.565971,
+   "lon": 41.279307
+  },
+  {
+   "name": "Arik",
+   "lat": 43.581259,
+   "lon": 44.125132
+  },
+  {
+   "name": "Armyanskiy",
+   "lat": 44.863314,
+   "lon": 37.993278
+  },
+  {
+   "name": "Asfal'tovaya Gora",
+   "lat": 44.463265,
+   "lon": 39.445555
+  },
+  {
+   "name": "Ashe",
+   "lat": 43.9598,
+   "lon": 39.273025
+  },
+  {
+   "name": "Assokolay",
+   "lat": 44.845762,
+   "lon": 39.469337
+  },
+  {
+   "name": "Asureti",
+   "lat": 41.593966,
+   "lon": 44.671603
+  },
+  {
+   "name": "Atotsi",
+   "lat": 42.15269,
+   "lon": 43.747844
+  },
+  {
+   "name": "Atsydzhkva",
+   "lat": 43.202142,
+   "lon": 40.342933
+  },
+  {
+   "name": "Atydzta",
+   "lat": 43.210846,
+   "lon": 40.39267
+  },
+  {
+   "name": "Aualitsa",
+   "lat": 43.171207,
+   "lon": 40.665543
+  },
+  {
+   "name": "Aushiger",
+   "lat": 43.395553,
+   "lon": 43.735509
+  },
+  {
+   "name": "Avnevi",
+   "lat": 42.194477,
+   "lon": 43.876406
+  },
+  {
+   "name": "Azizkendi",
+   "lat": 41.421746,
+   "lon": 44.94543
+  },
+  {
+   "name": "Azovskaya",
+   "lat": 44.793619,
+   "lon": 38.616989
+  },
+  {
+   "name": "Babugent",
+   "lat": 43.275353,
+   "lon": 43.54533
+  },
+  {
+   "name": "Babushara",
+   "lat": 42.853206,
+   "lon": 41.116261
+  },
+  {
+   "name": "Bagazhiashta",
+   "lat": 42.918151,
+   "lon": 41.132147
+  },
+  {
+   "name": "Bagikyta",
+   "lat": 43.128318,
+   "lon": 40.696648
+  },
+  {
+   "name": "Baglan",
+   "lat": 42.830993,
+   "lon": 41.177605
+  },
+  {
+   "name": "Bagmarani",
+   "lat": 42.470354,
+   "lon": 41.960753
+  },
+  {
+   "name": "Bakinskaya",
+   "lat": 44.768913,
+   "lon": 39.281876
+  },
+  {
+   "name": "BAKSAN",
+   "lat": 43.68684,
+   "lon": 43.544814
+  },
+  {
+   "name": "Baksanenok",
+   "lat": 43.687349,
+   "lon": 43.656569
+  },
+  {
+   "name": "Balta",
+   "lat": 42.181644,
+   "lon": 43.72081
+  },
+  {
+   "name": "Bambora",
+   "lat": 43.101065,
+   "lon": 40.593551
+  },
+  {
+   "name": "Bamut",
+   "lat": 43.153786,
+   "lon": 45.199457
+  },
+  {
+   "name": "Bandza",
+   "lat": 42.348392,
+   "lon": 42.286405
+  },
+  {
+   "name": "Banodzha",
+   "lat": 42.287579,
+   "lon": 42.657884
+  },
+  {
+   "name": "Baranikovskiy",
+   "lat": 45.344972,
+   "lon": 38.014303
+  },
+  {
+   "name": "Baranovka",
+   "lat": 43.677734,
+   "lon": 39.708917
+  },
+  {
+   "name": "Bardubani",
+   "lat": 42.210034,
+   "lon": 42.886425
+  },
+  {
+   "name": "Barsuki",
+   "lat": 43.263814,
+   "lon": 44.810861
+  },
+  {
+   "name": "Barzikau",
+   "lat": 42.840858,
+   "lon": 44.311978
+  },
+  {
+   "name": "Bashi",
+   "lat": 42.566591,
+   "lon": 41.926095
+  },
+  {
+   "name": "Bataria",
+   "lat": 42.287102,
+   "lon": 42.014499
+  },
+  {
+   "name": "Bateh",
+   "lat": 43.85321,
+   "lon": 43.231378
+  },
+  {
+   "name": "BATUMI",
+   "lat": 41.654059,
+   "lon": 41.655372
+  },
+  {
+   "name": "Bazaleti",
+   "lat": 42.034984,
+   "lon": 43.206468
+  },
+  {
+   "name": "Bekeshevskaya",
+   "lat": 44.114902,
+   "lon": 42.433215
+  },
+  {
+   "name": "Bekmari",
+   "lat": 42.251183,
+   "lon": 43.81592
+  },
+  {
+   "name": "BELAYA RECHKA",
+   "lat": 43.43409,
+   "lon": 43.509509
+  },
+  {
+   "name": "Beloe",
+   "lat": 45.051372,
+   "lon": 39.647983
+  },
+  {
+   "name": "Belokamenskoe",
+   "lat": 43.883528,
+   "lon": 43.022891
+  },
+  {
+   "name": "BELORECHENSK",
+   "lat": 44.771687,
+   "lon": 39.875183
+  },
+  {
+   "name": "Belozernyy",
+   "lat": 45.0634,
+   "lon": 38.674394
+  },
+  {
+   "name": "Belyy",
+   "lat": 45.170924,
+   "lon": 37.268281
+  },
+  {
+   "name": "Belyy Ugol'",
+   "lat": 44.022682,
+   "lon": 42.805498
+  },
+  {
+   "name": "Berezovyy",
+   "lat": 45.15023,
+   "lon": 38.989015
+  },
+  {
+   "name": "Berula",
+   "lat": 42.237767,
+   "lon": 44.024776
+  },
+  {
+   "name": "Beshaluba",
+   "lat": 42.757691,
+   "lon": 41.515278
+  },
+  {
+   "name": "BESLAN",
+   "lat": 43.195476,
+   "lon": 44.531621
+  },
+  {
+   "name": "Besleney",
+   "lat": 44.245709,
+   "lon": 41.73914
+  },
+  {
+   "name": "Besstrashnaya",
+   "lat": 44.253809,
+   "lon": 41.142638
+  },
+  {
+   "name": "Betlemi",
+   "lat": 42.381164,
+   "lon": 42.203732
+  },
+  {
+   "name": "Bezengi",
+   "lat": 43.216814,
+   "lon": 43.286057
+  },
+  {
+   "name": "Bezymyannoe",
+   "lat": 44.553021,
+   "lon": 39.125341
+  },
+  {
+   "name": "Bgardvany",
+   "lat": 43.205393,
+   "lon": 40.595447
+  },
+  {
+   "name": "Bia",
+   "lat": 42.34497,
+   "lon": 41.920094
+  },
+  {
+   "name": "Birliki",
+   "lat": 41.487802,
+   "lon": 45.072609
+  },
+  {
+   "name": "Biteta",
+   "lat": 42.470286,
+   "lon": 43.696121
+  },
+  {
+   "name": "Blagoveschenskaya",
+   "lat": 45.057185,
+   "lon": 37.126383
+  },
+  {
+   "name": "Bnavisi",
+   "lat": 41.953044,
+   "lon": 44.063967
+  },
+  {
+   "name": "Bol.Raznokol",
+   "lat": 45.146444,
+   "lon": 37.460326
+  },
+  {
+   "name": "Bol'shesidorovskoe",
+   "lat": 45.036635,
+   "lon": 39.838694
+  },
+  {
+   "name": "Bol'shie Hutora",
+   "lat": 44.747716,
+   "lon": 37.59876
+  },
+  {
+   "name": "Bolgov",
+   "lat": 45.235017,
+   "lon": 39.885843
+  },
+  {
+   "name": "Bonchkovskiy",
+   "lat": 44.895977,
+   "lon": 38.755977
+  },
+  {
+   "name": "Borgustanskaya",
+   "lat": 44.054855,
+   "lon": 42.528751
+  },
+  {
+   "name": "Bori",
+   "lat": 42.057428,
+   "lon": 43.117675
+  },
+  {
+   "name": "Borisovka",
+   "lat": 44.757955,
+   "lon": 37.694273
+  },
+  {
+   "name": "Borodynovka",
+   "lat": 44.146297,
+   "lon": 43.133294
+  },
+  {
+   "name": "Bostana",
+   "lat": 42.550059,
+   "lon": 43.075697
+  },
+  {
+   "name": "Bratskiy",
+   "lat": 45.233923,
+   "lon": 39.95295
+  },
+  {
+   "name": "Bratskoye",
+   "lat": 43.654801,
+   "lon": 44.890888
+  },
+  {
+   "name": "Bredza",
+   "lat": 42.129362,
+   "lon": 43.745254
+  },
+  {
+   "name": "Brotsleti",
+   "lat": 42.179239,
+   "lon": 44.035211
+  },
+  {
+   "name": "Brut",
+   "lat": 43.269754,
+   "lon": 44.443816
+  },
+  {
+   "name": "Buknari",
+   "lat": 41.999917,
+   "lon": 42.167892
+  },
+  {
+   "name": "Bulitsku",
+   "lat": 42.353732,
+   "lon": 41.883748
+  },
+  {
+   "name": "BURON",
+   "lat": 42.795036,
+   "lon": 44.006793
+  },
+  {
+   "name": "Bykogorka",
+   "lat": 44.18287,
+   "lon": 42.944364
+  },
+  {
+   "name": "BYLYM",
+   "lat": 43.461933,
+   "lon": 43.040023
+  },
+  {
+   "name": "Bynthva",
+   "lat": 43.156061,
+   "lon": 40.739326
+  },
+  {
+   "name": "Bzheduhovskaya",
+   "lat": 44.841591,
+   "lon": 39.679353
+  },
+  {
+   "name": "Bzyb'",
+   "lat": 43.229864,
+   "lon": 40.360523
+  },
+  {
+   "name": "Bzybta 3-y km",
+   "lat": 43.269965,
+   "lon": 40.39421
+  },
+  {
+   "name": "Bzybta 5-y km",
+   "lat": 43.285386,
+   "lon": 40.395535
+  },
+  {
+   "name": "Caleti",
+   "lat": 42.168803,
+   "lon": 43.717894
+  },
+  {
+   "name": "Carman",
+   "lat": 43.10912,
+   "lon": 44.115426
+  },
+  {
+   "name": "Chabanlug",
+   "lat": 43.106712,
+   "lon": 40.797033
+  },
+  {
+   "name": "Chagan-Tskvishi",
+   "lat": 42.122079,
+   "lon": 42.41575
+  },
+  {
+   "name": "Chagani",
+   "lat": 42.227874,
+   "lon": 42.373545
+  },
+  {
+   "name": "Chaisubani",
+   "lat": 41.696688,
+   "lon": 41.781638
+  },
+  {
+   "name": "Chakva",
+   "lat": 41.72703,
+   "lon": 41.734648
+  },
+  {
+   "name": "Chakvindzhi",
+   "lat": 42.487273,
+   "lon": 41.979719
+  },
+  {
+   "name": "Chala",
+   "lat": 41.92941,
+   "lon": 42.04823
+  },
+  {
+   "name": "Chalatke",
+   "lat": 42.146661,
+   "lon": 43.025774
+  },
+  {
+   "name": "Chalovani",
+   "lat": 42.179914,
+   "lon": 43.504613
+  },
+  {
+   "name": "Chapaevskoe",
+   "lat": 44.286271,
+   "lon": 42.063673
+  },
+  {
+   "name": "Charebi",
+   "lat": 42.266892,
+   "lon": 44.113843
+  },
+  {
+   "name": "Chargali",
+   "lat": 42.329329,
+   "lon": 44.920772
+  },
+  {
+   "name": "Chasavali",
+   "lat": 42.527264,
+   "lon": 43.64595
+  },
+  {
+   "name": "Chegem 2-y",
+   "lat": 43.590681,
+   "lon": 43.599375
+  },
+  {
+   "name": "CHEGEM PERVYY",
+   "lat": 43.569862,
+   "lon": 43.581955
+  },
+  {
+   "name": "Chekon",
+   "lat": 45.109331,
+   "lon": 37.506382
+  },
+  {
+   "name": "Chemburka",
+   "lat": 44.931292,
+   "lon": 37.340168
+  },
+  {
+   "name": "Chemitokvadze",
+   "lat": 43.83955,
+   "lon": 39.41702
+  },
+  {
+   "name": "Chereshnya",
+   "lat": 43.44492,
+   "lon": 39.980335
+  },
+  {
+   "name": "CHERKESSK",
+   "lat": 44.22695,
+   "lon": 42.060347
+  },
+  {
+   "name": "Chermen",
+   "lat": 43.124973,
+   "lon": 44.707396
+  },
+  {
+   "name": "Chermen",
+   "lat": 43.148441,
+   "lon": 44.712624
+  },
+  {
+   "name": "Chernaya Rechka",
+   "lat": 43.609516,
+   "lon": 43.836128
+  },
+  {
+   "name": "Chernigovka",
+   "lat": 43.01493,
+   "lon": 41.164718
+  },
+  {
+   "name": "Chernigovskaya",
+   "lat": 44.703771,
+   "lon": 39.668488
+  },
+  {
+   "name": "Chernigovskoe",
+   "lat": 44.255092,
+   "lon": 39.760512
+  },
+  {
+   "name": "Chernomorskaya",
+   "lat": 44.702545,
+   "lon": 39.359728
+  },
+  {
+   "name": "Chernomorskiy",
+   "lat": 44.851048,
+   "lon": 38.49175
+  },
+  {
+   "name": "Chernyshov",
+   "lat": 45.053069,
+   "lon": 40.037395
+  },
+  {
+   "name": "CHIATURA",
+   "lat": 42.293616,
+   "lon": 43.270537
+  },
+  {
+   "name": "Chiha",
+   "lat": 42.348364,
+   "lon": 43.44436
+  },
+  {
+   "name": "Chihu",
+   "lat": 42.325806,
+   "lon": 41.889458
+  },
+  {
+   "name": "Chikola",
+   "lat": 43.188667,
+   "lon": 43.919901
+  },
+  {
+   "name": "Chiora",
+   "lat": 42.746269,
+   "lon": 43.553631
+  },
+  {
+   "name": "Chitatskari",
+   "lat": 42.472242,
+   "lon": 41.852826
+  },
+  {
+   "name": "Chkaduashi",
+   "lat": 42.599065,
+   "lon": 42.017694
+  },
+  {
+   "name": "Chkalovo",
+   "lat": 43.525346,
+   "lon": 44.861239
+  },
+  {
+   "name": "Chkhenishi",
+   "lat": 42.228963,
+   "lon": 42.314718
+  },
+  {
+   "name": "Chkhoria",
+   "lat": 42.605132,
+   "lon": 41.954171
+  },
+  {
+   "name": "Chkhortoli",
+   "lat": 42.761492,
+   "lon": 41.733044
+  },
+  {
+   "name": "Chkhuteli",
+   "lat": 42.649842,
+   "lon": 42.789429
+  },
+  {
+   "name": "Chkonagora",
+   "lat": 42.088123,
+   "lon": 42.140278
+  },
+  {
+   "name": "Chkvaleri",
+   "lat": 42.719689,
+   "lon": 42.088272
+  },
+  {
+   "name": "Chkvishi",
+   "lat": 42.124911,
+   "lon": 42.435224
+  },
+  {
+   "name": "Chlou",
+   "lat": 42.872872,
+   "lon": 41.493654
+  },
+  {
+   "name": "Chochkhati",
+   "lat": 42.034916,
+   "lon": 41.884302
+  },
+  {
+   "name": "Chognari",
+   "lat": 42.087419,
+   "lon": 42.284283
+  },
+  {
+   "name": "Chognari",
+   "lat": 42.220218,
+   "lon": 42.760049
+  },
+  {
+   "name": "Chordzho-Didi",
+   "lat": 42.562477,
+   "lon": 43.053728
+  },
+  {
+   "name": "Chorvila",
+   "lat": 42.284002,
+   "lon": 43.416914
+  },
+  {
+   "name": "Chuburhindzhi",
+   "lat": 42.582487,
+   "lon": 41.80666
+  },
+  {
+   "name": "Chukuli",
+   "lat": 42.811275,
+   "lon": 43.016349
+  },
+  {
+   "name": "Chuneshi",
+   "lat": 42.356359,
+   "lon": 42.56671
+  },
+  {
+   "name": "Chvele",
+   "lat": 42.681685,
+   "lon": 41.980907
+  },
+  {
+   "name": "Coban",
+   "lat": 42.917909,
+   "lon": 44.478096
+  },
+  {
+   "name": "Cobet",
+   "lat": 42.524742,
+   "lon": 43.769973
+  },
+  {
+   "name": "Dabadzveli",
+   "lat": 42.326223,
+   "lon": 42.92156
+  },
+  {
+   "name": "Dabla-Gomi",
+   "lat": 42.092557,
+   "lon": 42.383587
+  },
+  {
+   "name": "Dadikau",
+   "lat": 42.463106,
+   "lon": 43.755227
+  },
+  {
+   "name": "Dagestanskaya",
+   "lat": 44.37739,
+   "lon": 40.019213
+  },
+  {
+   "name": "Dagomys",
+   "lat": 43.665053,
+   "lon": 39.658538
+  },
+  {
+   "name": "Dahovskaya",
+   "lat": 44.231585,
+   "lon": 40.205041
+  },
+  {
+   "name": "Dalakova",
+   "lat": 43.240951,
+   "lon": 44.588774
+  },
+  {
+   "name": "Damanka",
+   "lat": 44.971429,
+   "lon": 37.786142
+  },
+  {
+   "name": "Dapnari",
+   "lat": 42.103547,
+   "lon": 42.334468
+  },
+  {
+   "name": "Darcheli",
+   "lat": 42.44061,
+   "lon": 41.691733
+  },
+  {
+   "name": "Darg-Koh",
+   "lat": 43.270288,
+   "lon": 44.36337
+  },
+  {
+   "name": "Darka",
+   "lat": 42.332744,
+   "lon": 43.555666
+  },
+  {
+   "name": "DATCHNOE",
+   "lat": 42.976949,
+   "lon": 44.670218
+  },
+  {
+   "name": "Dausuz",
+   "lat": 43.799532,
+   "lon": 41.550776
+  },
+  {
+   "name": "Davitiani",
+   "lat": 42.458197,
+   "lon": 41.780691
+  },
+  {
+   "name": "Dedalauri",
+   "lat": 42.354735,
+   "lon": 42.515552
+  },
+  {
+   "name": "Defanovka",
+   "lat": 44.432955,
+   "lon": 38.780654
+  },
+  {
+   "name": "Dehviri",
+   "lat": 42.624887,
+   "lon": 42.770402
+  },
+  {
+   "name": "Deisi",
+   "lat": 41.967611,
+   "lon": 43.351327
+  },
+  {
+   "name": "Derbentskaya",
+   "lat": 44.768096,
+   "lon": 38.498924
+  },
+  {
+   "name": "Derchi",
+   "lat": 42.468882,
+   "lon": 42.773539
+  },
+  {
+   "name": "Dgnorisa",
+   "lat": 42.469657,
+   "lon": 42.815037
+  },
+  {
+   "name": "Dgvaba",
+   "lat": 42.345038,
+   "lon": 41.733485
+  },
+  {
+   "name": "Didi-Chkoni",
+   "lat": 42.49458,
+   "lon": 42.312053
+  },
+  {
+   "name": "Didi-Dzhihaishi",
+   "lat": 42.235623,
+   "lon": 42.438275
+  },
+  {
+   "name": "Didi-Gantiadi",
+   "lat": 42.097633,
+   "lon": 43.182894
+  },
+  {
+   "name": "Didi-Gromi",
+   "lat": 42.159974,
+   "lon": 44.216156
+  },
+  {
+   "name": "Didi-Gupta",
+   "lat": 42.352565,
+   "lon": 43.902265
+  },
+  {
+   "name": "Didi-Horshi",
+   "lat": 42.341781,
+   "lon": 42.084974
+  },
+  {
+   "name": "Didi-Kuhi",
+   "lat": 42.292505,
+   "lon": 42.452544
+  },
+  {
+   "name": "Didi-Lilo",
+   "lat": 41.737,
+   "lon": 44.964292
+  },
+  {
+   "name": "Didi-Mughanlo",
+   "lat": 41.38966,
+   "lon": 44.95725
+  },
+  {
+   "name": "Didi-Nedzi",
+   "lat": 42.401566,
+   "lon": 41.698956
+  },
+  {
+   "name": "Didi-Nedzis-Kahati",
+   "lat": 42.426746,
+   "lon": 41.725656
+  },
+  {
+   "name": "Didi-Opeti",
+   "lat": 42.067712,
+   "lon": 42.370916
+  },
+  {
+   "name": "Didi-Plevi",
+   "lat": 42.073444,
+   "lon": 43.69801
+  },
+  {
+   "name": "Didi-Tsihiata",
+   "lat": 42.265642,
+   "lon": 43.777229
+  },
+  {
+   "name": "Didmukha",
+   "lat": 42.175856,
+   "lon": 43.880354
+  },
+  {
+   "name": "Didvela",
+   "lat": 42.128678,
+   "lon": 42.773856
+  },
+  {
+   "name": "Digomi",
+   "lat": 41.770418,
+   "lon": 44.741961
+  },
+  {
+   "name": "DIGORA",
+   "lat": 43.159497,
+   "lon": 44.161233
+  },
+  {
+   "name": "Dihashkho",
+   "lat": 42.070267,
+   "lon": 42.560686
+  },
+  {
+   "name": "Dihazurga",
+   "lat": 42.609395,
+   "lon": 41.858275
+  },
+  {
+   "name": "Dilikauri",
+   "lat": 42.156207,
+   "lon": 43.097258
+  },
+  {
+   "name": "Dimi",
+   "lat": 42.103108,
+   "lon": 42.81405
+  },
+  {
+   "name": "Dinskaya",
+   "lat": 45.216067,
+   "lon": 39.228527
+  },
+  {
+   "name": "Dirbi",
+   "lat": 42.113711,
+   "lon": 43.87498
+  },
+  {
+   "name": "Ditsi",
+   "lat": 42.209424,
+   "lon": 44.032437
+  },
+  {
+   "name": "Divnomorskoe",
+   "lat": 44.503462,
+   "lon": 38.132761
+  },
+  {
+   "name": "Dolgogusevskiy",
+   "lat": 44.813826,
+   "lon": 39.783494
+  },
+  {
+   "name": "Dolina",
+   "lat": 44.237984,
+   "lon": 42.933208
+  },
+  {
+   "name": "Dongaron",
+   "lat": 43.108707,
+   "lon": 44.720818
+  },
+  {
+   "name": "Doshake",
+   "lat": 42.522922,
+   "lon": 42.247888
+  },
+  {
+   "name": "Druzhba",
+   "lat": 44.202308,
+   "lon": 42.015159
+  },
+  {
+   "name": "Druzhelyubnyy",
+   "lat": 45.128403,
+   "lon": 39.157197
+  },
+  {
+   "name": "Druzhnyy",
+   "lat": 44.73377,
+   "lon": 39.770438
+  },
+  {
+   "name": "Dukmasov",
+   "lat": 45.00757,
+   "lon": 39.914292
+  },
+  {
+   "name": "Dur-Dur",
+   "lat": 43.122325,
+   "lon": 44.026365
+  },
+  {
+   "name": "Durgena",
+   "lat": 42.240344,
+   "lon": 41.939394
+  },
+  {
+   "name": "Duripsh",
+   "lat": 43.206697,
+   "lon": 40.624055
+  },
+  {
+   "name": "Dusheti",
+   "lat": 42.084899,
+   "lon": 44.689336
+  },
+  {
+   "name": "Dutshuni",
+   "lat": 42.014905,
+   "lon": 42.472516
+  },
+  {
+   "name": "Dzalisi",
+   "lat": 41.963611,
+   "lon": 44.605056
+  },
+  {
+   "name": "Dzari",
+   "lat": 42.292148,
+   "lon": 43.87288
+  },
+  {
+   "name": "Dzartsemi",
+   "lat": 42.301195,
+   "lon": 43.966521
+  },
+  {
+   "name": "Dzedzileti",
+   "lat": 42.422529,
+   "lon": 42.560392
+  },
+  {
+   "name": "Dzegvi",
+   "lat": 41.846163,
+   "lon": 44.604396
+  },
+  {
+   "name": "Dzevera",
+   "lat": 42.118587,
+   "lon": 44.052329
+  },
+  {
+   "name": "Dzhaga",
+   "lat": 43.954443,
+   "lon": 42.558665
+  },
+  {
+   "name": "Dzhagira",
+   "lat": 42.539297,
+   "lon": 42.056917
+  },
+  {
+   "name": "Dzhahunderi",
+   "lat": 42.799916,
+   "lon": 43.02238
+  },
+  {
+   "name": "Dzhalabeti",
+   "lat": 42.405402,
+   "lon": 43.651559
+  },
+  {
+   "name": "Dzhalaurta",
+   "lat": 42.248976,
+   "lon": 43.388858
+  },
+  {
+   "name": "Dzhambichi",
+   "lat": 45.089652,
+   "lon": 39.854614
+  },
+  {
+   "name": "Dzhapana",
+   "lat": 42.095931,
+   "lon": 42.193642
+  },
+  {
+   "name": "Dzhapshakari",
+   "lat": 42.409636,
+   "lon": 41.979744
+  },
+  {
+   "name": "Dzheguta",
+   "lat": 43.967182,
+   "lon": 42.043303
+  },
+  {
+   "name": "Dzherokay",
+   "lat": 44.99061,
+   "lon": 40.307349
+  },
+  {
+   "name": "Dzhgerda",
+   "lat": 42.91081,
+   "lon": 41.361978
+  },
+  {
+   "name": "Dzhgydyrhva",
+   "lat": 43.178246,
+   "lon": 40.703367
+  },
+  {
+   "name": "Dzhidzhihabl'",
+   "lat": 44.951191,
+   "lon": 39.408519
+  },
+  {
+   "name": "Dzhiginka",
+   "lat": 45.135915,
+   "lon": 37.340154
+  },
+  {
+   "name": "Dzhihaskari",
+   "lat": 42.511728,
+   "lon": 42.017798
+  },
+  {
+   "name": "Dzhimostaro",
+   "lat": 42.302029,
+   "lon": 42.707023
+  },
+  {
+   "name": "Dzhingirik",
+   "lat": 43.736185,
+   "lon": 41.886758
+  },
+  {
+   "name": "Dzhirhva",
+   "lat": 43.206313,
+   "lon": 40.548323
+  },
+  {
+   "name": "Dzholevi",
+   "lat": 42.373371,
+   "lon": 42.248034
+  },
+  {
+   "name": "Dzhriya",
+   "lat": 42.348672,
+   "lon": 43.582496
+  },
+  {
+   "name": "Dzhubga",
+   "lat": 44.325968,
+   "lon": 38.703843
+  },
+  {
+   "name": "Dzhukmur",
+   "lat": 42.746085,
+   "lon": 41.45059
+  },
+  {
+   "name": "Dzhumi",
+   "lat": 42.451885,
+   "lon": 41.873382
+  },
+  {
+   "name": "Dzhumiti 1-e",
+   "lat": 42.551824,
+   "lon": 42.104516
+  },
+  {
+   "name": "Dzhumiti 2-e",
+   "lat": 42.57858,
+   "lon": 42.134227
+  },
+  {
+   "name": "Dzhurukveti",
+   "lat": 42.076304,
+   "lon": 41.922513
+  },
+  {
+   "name": "DZHVARI",
+   "lat": 42.703382,
+   "lon": 42.042828
+  },
+  {
+   "name": "Dzhvarisa",
+   "lat": 42.383886,
+   "lon": 42.81221
+  },
+  {
+   "name": "Dziguri",
+   "lat": 42.238451,
+   "lon": 42.148827
+  },
+  {
+   "name": "Dziguta",
+   "lat": 43.00659,
+   "lon": 41.058366
+  },
+  {
+   "name": "Dziridzhumati",
+   "lat": 42.017218,
+   "lon": 41.972763
+  },
+  {
+   "name": "Dzirovani",
+   "lat": 42.351689,
+   "lon": 42.944612
+  },
+  {
+   "name": "Dzlevidzhvari",
+   "lat": 42.106787,
+   "lon": 43.929563
+  },
+  {
+   "name": "Dzmuisi",
+   "lat": 42.428631,
+   "lon": 42.914125
+  },
+  {
+   "name": "Dzuarikau",
+   "lat": 43.021167,
+   "lon": 44.406716
+  },
+  {
+   "name": "Dzuknuri",
+   "lat": 42.324671,
+   "lon": 42.884988
+  },
+  {
+   "name": "Dzuluhi",
+   "lat": 42.026843,
+   "lon": 42.617118
+  },
+  {
+   "name": "Dzveli-Hibula",
+   "lat": 42.451272,
+   "lon": 41.939322
+  },
+  {
+   "name": "Dzveli-Senaki",
+   "lat": 42.296082,
+   "lon": 42.129269
+  },
+  {
+   "name": "Edisa",
+   "lat": 42.538407,
+   "lon": 44.215896
+  },
+  {
+   "name": "Ekaterinogradskaya",
+   "lat": 43.766466,
+   "lon": 44.232838
+  },
+  {
+   "name": "Ekaterinovskiy",
+   "lat": 45.091212,
+   "lon": 38.487168
+  },
+  {
+   "name": "Ekazhevo",
+   "lat": 43.210327,
+   "lon": 44.823799
+  },
+  {
+   "name": "Ekonomicheskoe",
+   "lat": 44.993663,
+   "lon": 37.940817
+  },
+  {
+   "name": "El'brus",
+   "lat": 43.253522,
+   "lon": 42.644636
+  },
+  {
+   "name": "El'brusskiy",
+   "lat": 43.568403,
+   "lon": 42.134528
+  },
+  {
+   "name": "El'burgan",
+   "lat": 44.076878,
+   "lon": 41.79726
+  },
+  {
+   "name": "El'tarkach",
+   "lat": 43.982717,
+   "lon": 42.129497
+  },
+  {
+   "name": "Elbakita",
+   "lat": 42.428988,
+   "lon": 44.005024
+  },
+  {
+   "name": "Elenovskoe",
+   "lat": 45.102689,
+   "lon": 39.704562
+  },
+  {
+   "name": "Elhotovo",
+   "lat": 43.356191,
+   "lon": 44.210087
+  },
+  {
+   "name": "Elizavetinskaya",
+   "lat": 45.047901,
+   "lon": 38.795941
+  },
+  {
+   "name": "Enem",
+   "lat": 44.926601,
+   "lon": 38.903816
+  },
+  {
+   "name": "Energetik",
+   "lat": 44.071767,
+   "lon": 43.093184
+  },
+  {
+   "name": "Eredvi",
+   "lat": 42.246823,
+   "lon": 44.035496
+  },
+  {
+   "name": "Erge",
+   "lat": 41.562487,
+   "lon": 41.695039
+  },
+  {
+   "name": "Ergeta",
+   "lat": 42.385459,
+   "lon": 41.676872
+  },
+  {
+   "name": "Ergneti",
+   "lat": 42.198008,
+   "lon": 43.993198
+  },
+  {
+   "name": "Erik",
+   "lat": 44.586302,
+   "lon": 39.697324
+  },
+  {
+   "name": "Erivanskaya",
+   "lat": 44.727221,
+   "lon": 38.181969
+  },
+  {
+   "name": "Ertso",
+   "lat": 42.463195,
+   "lon": 43.778098
+  },
+  {
+   "name": "ESSENTUKI",
+   "lat": 44.043909,
+   "lon": 42.860779
+  },
+  {
+   "name": "Essentukskaya",
+   "lat": 44.029667,
+   "lon": 42.870161
+  },
+  {
+   "name": "Esto-Sadok",
+   "lat": 43.688264,
+   "lon": 40.25719
+  },
+  {
+   "name": "Estonka",
+   "lat": 42.887601,
+   "lon": 41.199704
+  },
+  {
+   "name": "Etoka",
+   "lat": 43.916666,
+   "lon": 43.055886
+  },
+  {
+   "name": "Etoko",
+   "lat": 43.948323,
+   "lon": 43.173746
+  },
+  {
+   "name": "Etseri",
+   "lat": 42.554075,
+   "lon": 42.307231
+  },
+  {
+   "name": "Etseri",
+   "lat": 42.259355,
+   "lon": 43.163529
+  },
+  {
+   "name": "Etseri",
+   "lat": 42.212272,
+   "lon": 42.927395
+  },
+  {
+   "name": "Evseevskiy",
+   "lat": 45.055579,
+   "lon": 38.136915
+  },
+  {
+   "name": "Ezhedughabl'",
+   "lat": 44.978179,
+   "lon": 39.704512
+  },
+  {
+   "name": "Fadeevo",
+   "lat": 45.06845,
+   "lon": 37.549202
+  },
+  {
+   "name": "Fadeevskiy",
+   "lat": 44.642871,
+   "lon": 39.8663
+  },
+  {
+   "name": "Fahrn",
+   "lat": 43.181612,
+   "lon": 44.497644
+  },
+  {
+   "name": "farm Krtsanisi",
+   "lat": 41.615412,
+   "lon": 44.908523
+  },
+  {
+   "name": "Fazannyy",
+   "lat": 44.039908,
+   "lon": 43.589867
+  },
+  {
+   "name": "Fedorovskaya",
+   "lat": 45.080625,
+   "lon": 38.461367
+  },
+  {
+   "name": "Feria",
+   "lat": 41.632954,
+   "lon": 41.657343
+  },
+  {
+   "name": "Fontalovskaya",
+   "lat": 45.365963,
+   "lon": 36.932416
+  },
+  {
+   "name": "Gagma-Boslevi",
+   "lat": 42.187975,
+   "lon": 43.175391
+  },
+  {
+   "name": "Gagma-Dvabzu",
+   "lat": 41.952223,
+   "lon": 42.074319
+  },
+  {
+   "name": "Gagma-Pirveli-Horga",
+   "lat": 42.26752,
+   "lon": 41.859143
+  },
+  {
+   "name": "Gagma-Sadzhidzhao",
+   "lat": 42.365068,
+   "lon": 42.038665
+  },
+  {
+   "name": "Gagma-Shua-Horga",
+   "lat": 42.259303,
+   "lon": 41.816329
+  },
+  {
+   "name": "Gagma-Zanati",
+   "lat": 42.224803,
+   "lon": 42.116445
+  },
+  {
+   "name": "Gagra",
+   "lat": 43.296491,
+   "lon": 40.249993
+  },
+  {
+   "name": "Gahomela",
+   "lat": 42.347325,
+   "lon": 42.191623
+  },
+  {
+   "name": "Galashki",
+   "lat": 43.084641,
+   "lon": 44.986559
+  },
+  {
+   "name": "GALI",
+   "lat": 42.624895,
+   "lon": 41.727731
+  },
+  {
+   "name": "Galiat",
+   "lat": 42.924405,
+   "lon": 43.849611
+  },
+  {
+   "name": "Gamardzhveba",
+   "lat": 41.651053,
+   "lon": 44.988995
+  },
+  {
+   "name": "Gamogma Kariata",
+   "lat": 42.274404,
+   "lon": 41.748423
+  },
+  {
+   "name": "Gamogma-Pirveli-Horga",
+   "lat": 42.288279,
+   "lon": 41.845307
+  },
+  {
+   "name": "Gamogma-Shua-Horga",
+   "lat": 42.269829,
+   "lon": 41.79575
+  },
+  {
+   "name": "Ganahleba",
+   "lat": 42.043143,
+   "lon": 42.199876
+  },
+  {
+   "name": "Ganahleba",
+   "lat": 42.92913,
+   "lon": 41.276155
+  },
+  {
+   "name": "Ganardzhiis-Muhuri",
+   "lat": 42.425698,
+   "lon": 41.627546
+  },
+  {
+   "name": "Gantiadi",
+   "lat": 43.393301,
+   "lon": 40.088996
+  },
+  {
+   "name": "Gantiadi",
+   "lat": 42.041995,
+   "lon": 42.389471
+  },
+  {
+   "name": "Garaha",
+   "lat": 42.51795,
+   "lon": 42.154883
+  },
+  {
+   "name": "Garbani",
+   "lat": 42.607571,
+   "lon": 44.583726
+  },
+  {
+   "name": "Gardabani",
+   "lat": 41.46164,
+   "lon": 45.092311
+  },
+  {
+   "name": "Garikula",
+   "lat": 41.88147,
+   "lon": 44.334464
+  },
+  {
+   "name": "Garkusha",
+   "lat": 45.321862,
+   "lon": 36.849719
+  },
+  {
+   "name": "Garp",
+   "lat": 43.237879,
+   "lon": 40.546746
+  },
+  {
+   "name": "Gatlukay",
+   "lat": 44.893152,
+   "lon": 39.232372
+  },
+  {
+   "name": "Gautskinari",
+   "lat": 42.128638,
+   "lon": 42.272212
+  },
+  {
+   "name": "Gaverdovskiy",
+   "lat": 44.615979,
+   "lon": 40.022495
+  },
+  {
+   "name": "Gay-Kodzor",
+   "lat": 44.855566,
+   "lon": 37.436302
+  },
+  {
+   "name": "Gayduk",
+   "lat": 44.787974,
+   "lon": 37.699085
+  },
+  {
+   "name": "Gebi",
+   "lat": 42.769923,
+   "lon": 43.506725
+  },
+  {
+   "name": "Gedzheti",
+   "lat": 42.300316,
+   "lon": 42.180255
+  },
+  {
+   "name": "Geguti",
+   "lat": 42.171259,
+   "lon": 42.674274
+  },
+  {
+   "name": "Gelati",
+   "lat": 42.29924,
+   "lon": 42.763434
+  },
+  {
+   "name": "GELENDZHIK",
+   "lat": 44.578432,
+   "lon": 38.01866
+  },
+  {
+   "name": "GEORGIEVSK",
+   "lat": 44.148896,
+   "lon": 43.458776
+  },
+  {
+   "name": "Georgievskaya",
+   "lat": 44.113588,
+   "lon": 43.480279
+  },
+  {
+   "name": "Georgievskoe",
+   "lat": 44.164187,
+   "lon": 39.251783
+  },
+  {
+   "name": "Germenchik",
+   "lat": 43.588735,
+   "lon": 43.766319
+  },
+  {
+   "name": "Gerpegezh",
+   "lat": 43.375311,
+   "lon": 43.654756
+  },
+  {
+   "name": "Gezati",
+   "lat": 42.222157,
+   "lon": 42.259945
+  },
+  {
+   "name": "Giaginskaya",
+   "lat": 44.872978,
+   "lon": 40.056178
+  },
+  {
+   "name": "Gimozgondzhili",
+   "lat": 42.261354,
+   "lon": 41.952437
+  },
+  {
+   "name": "Gizel",
+   "lat": 43.047232,
+   "lon": 44.567211
+  },
+  {
+   "name": "Gldani",
+   "lat": 41.823116,
+   "lon": 44.825815
+  },
+  {
+   "name": "Glebovskoe",
+   "lat": 44.711034,
+   "lon": 37.639464
+  },
+  {
+   "name": "Glola",
+   "lat": 42.703835,
+   "lon": 43.646352
+  },
+  {
+   "name": "Gocha-Dzhihaishi",
+   "lat": 42.259725,
+   "lon": 42.404511
+  },
+  {
+   "name": "Godogani",
+   "lat": 42.260281,
+   "lon": 42.781294
+  },
+  {
+   "name": "Gofitskoe",
+   "lat": 44.252679,
+   "lon": 40.973461
+  },
+  {
+   "name": "Gogni",
+   "lat": 42.277496,
+   "lon": 42.987314
+  },
+  {
+   "name": "Golaskuri",
+   "lat": 42.237078,
+   "lon": 41.979639
+  },
+  {
+   "name": "Golovinka",
+   "lat": 43.800018,
+   "lon": 39.460479
+  },
+  {
+   "name": "Golubeva Dacha",
+   "lat": 43.985387,
+   "lon": 39.231989
+  },
+  {
+   "name": "Golubitskaya",
+   "lat": 45.325805,
+   "lon": 37.273542
+  },
+  {
+   "name": "Gomi",
+   "lat": 41.88753,
+   "lon": 42.105644
+  },
+  {
+   "name": "Gomi",
+   "lat": 42.613091,
+   "lon": 43.534511
+  },
+  {
+   "name": "Gomi",
+   "lat": 42.020584,
+   "lon": 43.725902
+  },
+  {
+   "name": "Goncharka",
+   "lat": 44.809236,
+   "lon": 39.954964
+  },
+  {
+   "name": "Gonebiskari",
+   "lat": 41.902497,
+   "lon": 42.089475
+  },
+  {
+   "name": "Gonio",
+   "lat": 41.563835,
+   "lon": 41.573319
+  },
+  {
+   "name": "Goraberezhouli",
+   "lat": 42.004796,
+   "lon": 42.210148
+  },
+  {
+   "name": "Goresha",
+   "lat": 42.075887,
+   "lon": 43.257362
+  },
+  {
+   "name": "Gorgadzeebi",
+   "lat": 41.719152,
+   "lon": 41.779467
+  },
+  {
+   "name": "GORI",
+   "lat": 41.983833,
+   "lon": 44.110383
+  },
+  {
+   "name": "Gornyy",
+   "lat": 44.284635,
+   "lon": 39.276932
+  },
+  {
+   "name": "Gornyy",
+   "lat": 43.958726,
+   "lon": 42.858514
+  },
+  {
+   "name": "Gorovani",
+   "lat": 41.884935,
+   "lon": 44.670882
+  },
+  {
+   "name": "GORYACHEVODSKIY",
+   "lat": 44.02361,
+   "lon": 43.098525
+  },
+  {
+   "name": "Goryachiy Klyuch",
+   "lat": 44.631585,
+   "lon": 39.125779
+  },
+  {
+   "name": "Gostagaevskaya",
+   "lat": 45.022014,
+   "lon": 37.503797
+  },
+  {
+   "name": "Goyata",
+   "lat": 42.150563,
+   "lon": 44.16048
+  },
+  {
+   "name": "Goyth",
+   "lat": 44.248215,
+   "lon": 39.37245
+  },
+  {
+   "name": "Grazhdanskoe",
+   "lat": 44.223626,
+   "lon": 42.765001
+  },
+  {
+   "name": "Grebeshok",
+   "lat": 43.349031,
+   "lon": 40.158298
+  },
+  {
+   "name": "Grigalati",
+   "lat": 42.091739,
+   "lon": 43.397697
+  },
+  {
+   "name": "Grigolishi",
+   "lat": 42.538524,
+   "lon": 41.972442
+  },
+  {
+   "name": "Grigor'evskaya",
+   "lat": 44.772915,
+   "lon": 38.839703
+  },
+  {
+   "name": "Grozneft'",
+   "lat": 44.096137,
+   "lon": 39.100269
+  },
+  {
+   "name": "Groznyy",
+   "lat": 44.558225,
+   "lon": 40.13227
+  },
+  {
+   "name": "Gubistskali",
+   "lat": 42.30496,
+   "lon": 42.51944
+  },
+  {
+   "name": "Gubskaya",
+   "lat": 44.317053,
+   "lon": 40.626591
+  },
+  {
+   "name": "Gudauta",
+   "lat": 43.106705,
+   "lon": 40.635279
+  },
+  {
+   "name": "Gul'ripsh",
+   "lat": 42.92624,
+   "lon": 41.101427
+  },
+  {
+   "name": "Guluheti",
+   "lat": 42.240583,
+   "lon": 42.274605
+  },
+  {
+   "name": "Gumati",
+   "lat": 42.340711,
+   "lon": 42.678726
+  },
+  {
+   "name": "Gumista",
+   "lat": 43.027157,
+   "lon": 40.945511
+  },
+  {
+   "name": "Gundaeti",
+   "lat": 42.241907,
+   "lon": 43.328842
+  },
+  {
+   "name": "Gundelen",
+   "lat": 43.597443,
+   "lon": 43.180901
+  },
+  {
+   "name": "Gupagu",
+   "lat": 42.890107,
+   "lon": 41.593118
+  },
+  {
+   "name": "Gurianta",
+   "lat": 41.951175,
+   "lon": 41.931424
+  },
+  {
+   "name": "Guriyskaya",
+   "lat": 44.663547,
+   "lon": 39.614414
+  },
+  {
+   "name": "Gurna",
+   "lat": 42.40373,
+   "lon": 42.854106
+  },
+  {
+   "name": "Gusoyta",
+   "lat": 42.866307,
+   "lon": 44.066896
+  },
+  {
+   "name": "Gvandra",
+   "lat": 43.04678,
+   "lon": 40.908764
+  },
+  {
+   "name": "Gvankiti",
+   "lat": 42.168099,
+   "lon": 42.981755
+  },
+  {
+   "name": "Gverdzineti",
+   "lat": 41.934464,
+   "lon": 43.712739
+  },
+  {
+   "name": "Gverki",
+   "lat": 42.058676,
+   "lon": 43.195791
+  },
+  {
+   "name": "Gvimaroni",
+   "lat": 42.276655,
+   "lon": 41.96751
+  },
+  {
+   "name": "Gvishtibi",
+   "lat": 42.313702,
+   "lon": 42.570687
+  },
+  {
+   "name": "Gvleti",
+   "lat": 41.979952,
+   "lon": 43.971435
+  },
+  {
+   "name": "Gyuryul'deuk",
+   "lat": 43.98193,
+   "lon": 42.060924
+  },
+  {
+   "name": "h.im.Lenina",
+   "lat": 45.024109,
+   "lon": 39.21763
+  },
+  {
+   "name": "Habaz",
+   "lat": 43.730189,
+   "lon": 42.93183
+  },
+  {
+   "name": "Habez",
+   "lat": 44.042203,
+   "lon": 41.765924
+  },
+  {
+   "name": "Hachemziy",
+   "lat": 44.955574,
+   "lon": 40.318034
+  },
+  {
+   "name": "Hadyzhensk",
+   "lat": 44.427144,
+   "lon": 39.530325
+  },
+  {
+   "name": "Hadzhiko",
+   "lat": 44.008582,
+   "lon": 39.333321
+  },
+  {
+   "name": "Halipauri",
+   "lat": 42.345266,
+   "lon": 43.305217
+  },
+  {
+   "name": "Hamidiye",
+   "lat": 43.675286,
+   "lon": 44.377288
+  },
+  {
+   "name": "Hamiskuri",
+   "lat": 42.387923,
+   "lon": 41.809094
+  },
+  {
+   "name": "Hampalgomi",
+   "lat": 42.456412,
+   "lon": 43.736447
+  },
+  {
+   "name": "Hamyshki",
+   "lat": 44.100538,
+   "lon": 40.12913
+  },
+  {
+   "name": "Han'kov",
+   "lat": 45.16318,
+   "lon": 37.866697
+  },
+  {
+   "name": "Hani",
+   "lat": 41.956643,
+   "lon": 42.95765
+  },
+  {
+   "name": "Hanskaya",
+   "lat": 44.676366,
+   "lon": 39.960442
+  },
+  {
+   "name": "Hantski",
+   "lat": 42.578465,
+   "lon": 42.222137
+  },
+  {
+   "name": "Haristvala",
+   "lat": 42.41594,
+   "lon": 43.041115
+  },
+  {
+   "name": "HASAN'YA",
+   "lat": 43.438242,
+   "lon": 43.578239
+  },
+  {
+   "name": "Hasaut-Grecheskoe ",
+   "lat": 43.714868,
+   "lon": 41.668144
+  },
+  {
+   "name": "Hashmi",
+   "lat": 41.758709,
+   "lon": 45.189443
+  },
+  {
+   "name": "Hataldon",
+   "lat": 43.037818,
+   "lon": 44.359631
+  },
+  {
+   "name": "Hatazhukay",
+   "lat": 45.072561,
+   "lon": 40.182799
+  },
+  {
+   "name": "Hatukay",
+   "lat": 45.193082,
+   "lon": 39.661811
+  },
+  {
+   "name": "Heledi",
+   "lat": 42.794395,
+   "lon": 42.640247
+  },
+  {
+   "name": "Heltubani",
+   "lat": 42.051003,
+   "lon": 44.153117
+  },
+  {
+   "name": "Helvachauri",
+   "lat": 41.596451,
+   "lon": 41.668302
+  },
+  {
+   "name": "Heoba",
+   "lat": 41.970626,
+   "lon": 43.912736
+  },
+  {
+   "name": "Hetsera",
+   "lat": 42.431467,
+   "lon": 41.87932
+  },
+  {
+   "name": "Hevi",
+   "lat": 41.964098,
+   "lon": 42.278006
+  },
+  {
+   "name": "Hevsha",
+   "lat": 42.397988,
+   "lon": 44.683859
+  },
+  {
+   "name": "Hidari",
+   "lat": 42.018357,
+   "lon": 43.100231
+  },
+  {
+   "name": "Hidistavi",
+   "lat": 41.962817,
+   "lon": 42.192399
+  },
+  {
+   "name": "Hidistavi",
+   "lat": 41.959612,
+   "lon": 44.134644
+  },
+  {
+   "name": "Hidmagala",
+   "lat": 42.040528,
+   "lon": 41.789749
+  },
+  {
+   "name": "Hod",
+   "lat": 42.878956,
+   "lon": 44.011978
+  },
+  {
+   "name": "Hole",
+   "lat": 42.629201,
+   "lon": 41.834447
+  },
+  {
+   "name": "Holmskiy",
+   "lat": 44.844059,
+   "lon": 38.390536
+  },
+  {
+   "name": "Holodnaya Rechka",
+   "lat": 43.362803,
+   "lon": 40.132876
+  },
+  {
+   "name": "Honchiori",
+   "lat": 42.498535,
+   "lon": 43.036221
+  },
+  {
+   "name": "HONI",
+   "lat": 42.326943,
+   "lon": 42.412159
+  },
+  {
+   "name": "Horiti",
+   "lat": 42.074583,
+   "lon": 43.212767
+  },
+  {
+   "name": "HOSTA",
+   "lat": 43.515628,
+   "lon": 39.864624
+  },
+  {
+   "name": "Hotevi",
+   "lat": 42.467876,
+   "lon": 43.135786
+  },
+  {
+   "name": "Hreiti",
+   "lat": 42.348511,
+   "lon": 43.178584
+  },
+  {
+   "name": "Hresili",
+   "lat": 42.347693,
+   "lon": 42.890246
+  },
+  {
+   "name": "Hrialeti",
+   "lat": 42.008259,
+   "lon": 41.820575
+  },
+  {
+   "name": "Htsisi",
+   "lat": 41.982473,
+   "lon": 43.675254
+  },
+  {
+   "name": "Humalag",
+   "lat": 43.241187,
+   "lon": 44.478346
+  },
+  {
+   "name": "Humara",
+   "lat": 43.861423,
+   "lon": 41.912994
+  },
+  {
+   "name": "Humeni-Natopuri",
+   "lat": 42.624068,
+   "lon": 41.611103
+  },
+  {
+   "name": "Hundzhulouri",
+   "lat": 42.190578,
+   "lon": 42.306336
+  },
+  {
+   "name": "Hunevi",
+   "lat": 42.106239,
+   "lon": 43.362778
+  },
+  {
+   "name": "Hurikau",
+   "lat": 43.457393,
+   "lon": 44.459515
+  },
+  {
+   "name": "Hurzuk",
+   "lat": 43.432373,
+   "lon": 42.149492
+  },
+  {
+   "name": "Hushtosyrt",
+   "lat": 43.436177,
+   "lon": 43.236374
+  },
+  {
+   "name": "Husy-Kardonik",
+   "lat": 43.788087,
+   "lon": 41.572828
+  },
+  {
+   "name": "Hutsubani",
+   "lat": 41.814393,
+   "lon": 41.820341
+  },
+  {
+   "name": "Hvanchkara",
+   "lat": 42.564505,
+   "lon": 43.017793
+  },
+  {
+   "name": "Ianeti",
+   "lat": 42.18588,
+   "lon": 42.420261
+  },
+  {
+   "name": "Ianeuli",
+   "lat": 41.996073,
+   "lon": 42.284336
+  },
+  {
+   "name": "Igoeti",
+   "lat": 41.991304,
+   "lon": 44.413732
+  },
+  {
+   "name": "Ikoti",
+   "lat": 42.152918,
+   "lon": 44.495123
+  },
+  {
+   "name": "Il'ich",
+   "lat": 45.425374,
+   "lon": 36.769869
+  },
+  {
+   "name": "Il'ich",
+   "lat": 43.953727,
+   "lon": 41.527379
+  },
+  {
+   "name": "Il'ichevskoe",
+   "lat": 44.189752,
+   "lon": 42.146887
+  },
+  {
+   "name": "Il'skiy",
+   "lat": 44.84381,
+   "lon": 38.563777
+  },
+  {
+   "name": "im.Kosta Hetagurova ",
+   "lat": 43.806385,
+   "lon": 41.90259
+  },
+  {
+   "name": "im.Tel'mana",
+   "lat": 44.07525,
+   "lon": 42.855761
+  },
+  {
+   "name": "Imeretinskaya",
+   "lat": 44.687871,
+   "lon": 39.425248
+  },
+  {
+   "name": "Inarkiev",
+   "lat": 43.472488,
+   "lon": 44.543341
+  },
+  {
+   "name": "Inchkhuri",
+   "lat": 42.449647,
+   "lon": 42.398849
+  },
+  {
+   "name": "Industrial'nyy",
+   "lat": 45.097241,
+   "lon": 39.101407
+  },
+  {
+   "name": "Indyuk",
+   "lat": 44.224273,
+   "lon": 39.236887
+  },
+  {
+   "name": "Ingiri",
+   "lat": 42.495609,
+   "lon": 41.813885
+  },
+  {
+   "name": "Ingurges",
+   "lat": 42.672937,
+   "lon": 41.853299
+  },
+  {
+   "name": "Inkit",
+   "lat": 43.178272,
+   "lon": 40.29554
+  },
+  {
+   "name": "INOZEMTSEVO",
+   "lat": 44.099998,
+   "lon": 43.088585
+  },
+  {
+   "name": "Intabueti",
+   "lat": 41.974858,
+   "lon": 42.230582
+  },
+  {
+   "name": "Inzhi-Chishko",
+   "lat": 44.199712,
+   "lon": 41.716677
+  },
+  {
+   "name": "Inzhich-Chukun",
+   "lat": 44.047223,
+   "lon": 41.782859
+  },
+  {
+   "name": "Islamey",
+   "lat": 43.674212,
+   "lon": 43.451668
+  },
+  {
+   "name": "Ispravnaya",
+   "lat": 44.073144,
+   "lon": 41.608052
+  },
+  {
+   "name": "Isula",
+   "lat": 42.234284,
+   "lon": 42.066794
+  },
+  {
+   "name": "Isunderi",
+   "lat": 42.556323,
+   "lon": 42.653318
+  },
+  {
+   "name": "Ithvisi",
+   "lat": 42.299871,
+   "lon": 43.345725
+  },
+  {
+   "name": "Ivanov",
+   "lat": 45.114713,
+   "lon": 37.449495
+  },
+  {
+   "name": "Ivanovskaya",
+   "lat": 45.276018,
+   "lon": 38.459475
+  },
+  {
+   "name": "Izmaylovka",
+   "lat": 43.630299,
+   "lon": 39.824872
+  },
+  {
+   "name": "Izumrud",
+   "lat": 43.467734,
+   "lon": 39.956954
+  },
+  {
+   "name": "Jandari",
+   "lat": 41.447936,
+   "lon": 45.168489
+  },
+  {
+   "name": "JAVA",
+   "lat": 42.39692,
+   "lon": 43.926887
+  },
+  {
+   "name": "Kabardinka",
+   "lat": 44.65732,
+   "lon": 37.934694
+  },
+  {
+   "name": "Kabardinskaya",
+   "lat": 44.501303,
+   "lon": 39.490572
+  },
+  {
+   "name": "Kabehabl'",
+   "lat": 45.046603,
+   "lon": 40.180256
+  },
+  {
+   "name": "Kachaeti",
+   "lat": 42.475414,
+   "lon": 43.108621
+  },
+  {
+   "name": "Kadgaron",
+   "lat": 43.13426,
+   "lon": 44.327729
+  },
+  {
+   "name": "Kahati",
+   "lat": 42.491554,
+   "lon": 41.767683
+  },
+  {
+   "name": "Kahun",
+   "lat": 43.539108,
+   "lon": 43.881699
+  },
+  {
+   "name": "Kakuti",
+   "lat": 41.859621,
+   "lon": 41.975559
+  },
+  {
+   "name": "Kaladzhinskaya",
+   "lat": 44.307522,
+   "lon": 40.905076
+  },
+  {
+   "name": "Kaldahvara",
+   "lat": 43.223294,
+   "lon": 40.418047
+  },
+  {
+   "name": "Kalezh",
+   "lat": 44.009759,
+   "lon": 39.353566
+  },
+  {
+   "name": "Kalinina",
+   "lat": 44.503982,
+   "lon": 39.720655
+  },
+  {
+   "name": "Kalinino",
+   "lat": 45.097761,
+   "lon": 39.016695
+  },
+  {
+   "name": "Kalininskiy",
+   "lat": 45.207233,
+   "lon": 40.043834
+  },
+  {
+   "name": "Kalininskiy",
+   "lat": 43.728693,
+   "lon": 44.688696
+  },
+  {
+   "name": "Kalinovoe Ozero",
+   "lat": 43.615339,
+   "lon": 39.884288
+  },
+  {
+   "name": "Kaluzhskaya",
+   "lat": 44.763438,
+   "lon": 38.974839
+  },
+  {
+   "name": "Kamennomostskiy",
+   "lat": 44.30233,
+   "lon": 40.184071
+  },
+  {
+   "name": "Kamennomostskiy",
+   "lat": 43.750261,
+   "lon": 41.90782
+  },
+  {
+   "name": "Kamennomostskoe",
+   "lat": 43.735328,
+   "lon": 43.047845
+  },
+  {
+   "name": "Kamlyuko",
+   "lat": 43.778866,
+   "lon": 43.260087
+  },
+  {
+   "name": "Kangly",
+   "lat": 44.259543,
+   "lon": 43.029475
+  },
+  {
+   "name": "Kantyshevo",
+   "lat": 43.230063,
+   "lon": 44.631288
+  },
+  {
+   "name": "KARABULAK",
+   "lat": 43.308244,
+   "lon": 44.902324
+  },
+  {
+   "name": "Karachaevsk",
+   "lat": 43.770235,
+   "lon": 41.898619
+  },
+  {
+   "name": "Karadzhalari",
+   "lat": 41.622402,
+   "lon": 44.962092
+  },
+  {
+   "name": "Karagach",
+   "lat": 43.804645,
+   "lon": 43.776369
+  },
+  {
+   "name": "Karaleti",
+   "lat": 42.068062,
+   "lon": 44.091374
+  },
+  {
+   "name": "Karatagla",
+   "lat": 41.598333,
+   "lon": 44.97845
+  },
+  {
+   "name": "Karbi",
+   "lat": 42.19913,
+   "lon": 44.07568
+  },
+  {
+   "name": "Kardonikskaya",
+   "lat": 43.864866,
+   "lon": 41.716166
+  },
+  {
+   "name": "Kardzhin",
+   "lat": 43.275762,
+   "lon": 44.304301
+  },
+  {
+   "name": "KARELI",
+   "lat": 42.020888,
+   "lon": 43.892648
+  },
+  {
+   "name": "Karla Marksa",
+   "lat": 45.239177,
+   "lon": 39.05865
+  },
+  {
+   "name": "Karskiy",
+   "lat": 44.828921,
+   "lon": 38.509046
+  },
+  {
+   "name": "KARTSA",
+   "lat": 43.044612,
+   "lon": 44.729882
+  },
+  {
+   "name": "Kasagini",
+   "lat": 42.48934,
+   "lon": 43.728148
+  },
+  {
+   "name": "KASHHATAU",
+   "lat": 43.318498,
+   "lon": 43.607567
+  },
+  {
+   "name": "KASPI",
+   "lat": 41.924404,
+   "lon": 44.425303
+  },
+  {
+   "name": "Katshi",
+   "lat": 42.292364,
+   "lon": 43.206406
+  },
+  {
+   "name": "Kavkazskiy",
+   "lat": 44.26949,
+   "lon": 42.230278
+  },
+  {
+   "name": "Kavtishevi",
+   "lat": 41.856681,
+   "lon": 44.442001
+  },
+  {
+   "name": "Kazazov",
+   "lat": 44.905153,
+   "lon": 39.174224
+  },
+  {
+   "name": "KAZBEGI",
+   "lat": 42.659479,
+   "lon": 44.64108
+  },
+  {
+   "name": "Kekhvi",
+   "lat": 42.307566,
+   "lon": 43.940875
+  },
+  {
+   "name": "Kelasuri",
+   "lat": 43.024991,
+   "lon": 41.107288
+  },
+  {
+   "name": "Kelermesskaya",
+   "lat": 44.793224,
+   "lon": 40.128338
+  },
+  {
+   "name": "Kemal'pasha",
+   "lat": 41.468809,
+   "lon": 41.519062
+  },
+  {
+   "name": "KENZHE",
+   "lat": 43.499694,
+   "lon": 43.554187
+  },
+  {
+   "name": "Kerken",
+   "lat": 42.87696,
+   "lon": 41.454944
+  },
+  {
+   "name": "Keslerovo",
+   "lat": 45.065249,
+   "lon": 37.820617
+  },
+  {
+   "name": "Ketilari",
+   "lat": 42.146402,
+   "lon": 42.16971
+  },
+  {
+   "name": "KHASHURI",
+   "lat": 41.985651,
+   "lon": 43.60423
+  },
+  {
+   "name": "Khetagurov",
+   "lat": 42.21218,
+   "lon": 43.892906
+  },
+  {
+   "name": "Khora",
+   "lat": 43.083592,
+   "lon": 44.067681
+  },
+  {
+   "name": "Khovle",
+   "lat": 41.895157,
+   "lon": 44.239944
+  },
+  {
+   "name": "Khvani",
+   "lat": 42.198434,
+   "lon": 43.533608
+  },
+  {
+   "name": "Kichi-Balyk",
+   "lat": 43.792728,
+   "lon": 42.650712
+  },
+  {
+   "name": "Kichmalka",
+   "lat": 43.793482,
+   "lon": 42.941509
+  },
+  {
+   "name": "Kievskoe",
+   "lat": 45.039183,
+   "lon": 37.886756
+  },
+  {
+   "name": "Kievskoye",
+   "lat": 43.706989,
+   "lon": 44.649667
+  },
+  {
+   "name": "Kiketi",
+   "lat": 41.653426,
+   "lon": 44.650357
+  },
+  {
+   "name": "Kirilovka",
+   "lat": 44.771935,
+   "lon": 37.724488
+  },
+  {
+   "name": "Kirov",
+   "lat": 42.41534,
+   "lon": 41.661494
+  },
+  {
+   "name": "Kirovo",
+   "lat": 43.176702,
+   "lon": 44.404846
+  },
+  {
+   "name": "Kirpichnoe",
+   "lat": 44.168178,
+   "lon": 39.201378
+  },
+  {
+   "name": "Kirpichnyy",
+   "lat": 44.041877,
+   "lon": 42.82906
+  },
+  {
+   "name": "Kirtshi",
+   "lat": 42.483754,
+   "lon": 42.054947
+  },
+  {
+   "name": "Kishpek",
+   "lat": 43.649391,
+   "lon": 43.645297
+  },
+  {
+   "name": "KISLOVODSK",
+   "lat": 43.913866,
+   "lon": 42.72391
+  },
+  {
+   "name": "Kitsnisi",
+   "lat": 42.128901,
+   "lon": 44.091163
+  },
+  {
+   "name": "Kizil-Adzhlo",
+   "lat": 41.480203,
+   "lon": 44.767707
+  },
+  {
+   "name": "Kizlyar",
+   "lat": 43.706249,
+   "lon": 44.597507
+  },
+  {
+   "name": "Klarsi",
+   "lat": 42.353604,
+   "lon": 44.051562
+  },
+  {
+   "name": "Kldu",
+   "lat": 41.983296,
+   "lon": 43.856146
+  },
+  {
+   "name": "Kobu-Bashi",
+   "lat": 43.932621,
+   "lon": 41.313135
+  },
+  {
+   "name": "Kobuleti",
+   "lat": 41.805916,
+   "lon": 41.884158
+  },
+  {
+   "name": "KOBULETI",
+   "lat": 41.808106,
+   "lon": 41.780942
+  },
+  {
+   "name": "Kochara",
+   "lat": 42.853821,
+   "lon": 41.442319
+  },
+  {
+   "name": "Kochetinskiy",
+   "lat": 45.178268,
+   "lon": 39.238568
+  },
+  {
+   "name": "Koka",
+   "lat": 42.31773,
+   "lon": 42.829199
+  },
+  {
+   "name": "Koki",
+   "lat": 42.478988,
+   "lon": 41.705012
+  },
+  {
+   "name": "Kolagiri",
+   "lat": 41.472666,
+   "lon": 44.715622
+  },
+  {
+   "name": "Kolhida",
+   "lat": 43.248837,
+   "lon": 40.29492
+  },
+  {
+   "name": "Kolobani",
+   "lat": 42.203259,
+   "lon": 42.267792
+  },
+  {
+   "name": "Kolos",
+   "lat": 45.151407,
+   "lon": 38.345172
+  },
+  {
+   "name": "Kolosistyy",
+   "lat": 45.135919,
+   "lon": 38.896495
+  },
+  {
+   "name": "Komgaron",
+   "lat": 43.054635,
+   "lon": 44.873359
+  },
+  {
+   "name": "Kommayak",
+   "lat": 44.110647,
+   "lon": 43.858365
+  },
+  {
+   "name": "Komsomol'skiy",
+   "lat": 44.936557,
+   "lon": 39.70355
+  },
+  {
+   "name": "Komsomolets",
+   "lat": 44.02242,
+   "lon": 43.562616
+  },
+  {
+   "name": "Konchkati",
+   "lat": 41.983654,
+   "lon": 41.897403
+  },
+  {
+   "name": "Konchkati",
+   "lat": 42.010778,
+   "lon": 42.018563
+  },
+  {
+   "name": "Konstantinovskaya",
+   "lat": 44.049269,
+   "lon": 43.158315
+  },
+  {
+   "name": "Kontianeti",
+   "lat": 42.326672,
+   "lon": 42.166574
+  },
+  {
+   "name": "Kontuati",
+   "lat": 42.349493,
+   "lon": 42.418258
+  },
+  {
+   "name": "Kopanskiy",
+   "lat": 45.174892,
+   "lon": 38.803876
+  },
+  {
+   "name": "Korbouli",
+   "lat": 42.239897,
+   "lon": 43.467509
+  },
+  {
+   "name": "Koreti",
+   "lat": 42.301668,
+   "lon": 43.38074
+  },
+  {
+   "name": "Kornisi",
+   "lat": 42.273295,
+   "lon": 43.820488
+  },
+  {
+   "name": "Kortsheli",
+   "lat": 42.56106,
+   "lon": 41.946838
+  },
+  {
+   "name": "Korzhevskiy",
+   "lat": 45.223751,
+   "lon": 38.190642
+  },
+  {
+   "name": "Korzhevskiy",
+   "lat": 45.196991,
+   "lon": 37.716494
+  },
+  {
+   "name": "Kosh-Habl'",
+   "lat": 44.140522,
+   "lon": 41.848038
+  },
+  {
+   "name": "Kosovichi",
+   "lat": 45.090116,
+   "lon": 38.562291
+  },
+  {
+   "name": "Kotanto",
+   "lat": 42.435038,
+   "lon": 43.842742
+  },
+  {
+   "name": "Koydan",
+   "lat": 44.107503,
+   "lon": 42.158336
+  },
+  {
+   "name": "Kozet",
+   "lat": 44.99583,
+   "lon": 38.997301
+  },
+  {
+   "name": "Kraevsko-Armyanskoe",
+   "lat": 43.607677,
+   "lon": 39.824782
+  },
+  {
+   "name": "Krasn.Kurgan",
+   "lat": 43.946104,
+   "lon": 42.607477
+  },
+  {
+   "name": "Krasnaya Batareya",
+   "lat": 45.08956,
+   "lon": 37.786608
+  },
+  {
+   "name": "Krasnaya Polyana",
+   "lat": 43.682548,
+   "lon": 40.204334
+  },
+  {
+   "name": "Krasnaya Volya",
+   "lat": 43.562303,
+   "lon": 39.917862
+  },
+  {
+   "name": "KRASNODAR",
+   "lat": 45.053964,
+   "lon": 39.000128
+  },
+  {
+   "name": "Krasnodarskiy",
+   "lat": 45.157592,
+   "lon": 39.135852
+  },
+  {
+   "name": "Krasnogorskaya",
+   "lat": 43.942361,
+   "lon": 41.886798
+  },
+  {
+   "name": "Krasnogvardeyskoe",
+   "lat": 45.124528,
+   "lon": 39.575543
+  },
+  {
+   "name": "Krasnokumskoe",
+   "lat": 44.176715,
+   "lon": 43.484738
+  },
+  {
+   "name": "Krasnooktyabr'skiy",
+   "lat": 44.932096,
+   "lon": 38.368635
+  },
+  {
+   "name": "Krasnosel'skoe",
+   "lat": 45.292325,
+   "lon": 39.165057
+  },
+  {
+   "name": "Krasnovostochnyy",
+   "lat": 43.967766,
+   "lon": 42.295034
+  },
+  {
+   "name": "Krasnyy",
+   "lat": 44.981641,
+   "lon": 38.043088
+  },
+  {
+   "name": "Krasnyy Kurgan",
+   "lat": 45.016457,
+   "lon": 37.339404
+  },
+  {
+   "name": "Krasnyy Oktyabr'",
+   "lat": 45.195279,
+   "lon": 37.655732
+  },
+  {
+   "name": "Krasnyy Pahar'",
+   "lat": 44.202575,
+   "lon": 43.104153
+  },
+  {
+   "name": "Kremenchug-Konstantinovskiy",
+   "lat": 43.795032,
+   "lon": 43.648364
+  },
+  {
+   "name": "Krepostnaya",
+   "lat": 44.712451,
+   "lon": 38.678714
+  },
+  {
+   "name": "Krikuna",
+   "lat": 45.267052,
+   "lon": 38.212063
+  },
+  {
+   "name": "Krivenkovskoe",
+   "lat": 44.192196,
+   "lon": 39.23193
+  },
+  {
+   "name": "Krizhanovskiy",
+   "lat": 45.25093,
+   "lon": 38.164738
+  },
+  {
+   "name": "Kroyanskoe",
+   "lat": 44.095332,
+   "lon": 39.120379
+  },
+  {
+   "name": "KRYMSK",
+   "lat": 44.927837,
+   "lon": 38.01149
+  },
+  {
+   "name": "Ksovrisi",
+   "lat": 41.983403,
+   "lon": 44.525294
+  },
+  {
+   "name": "Kuba",
+   "lat": 43.861071,
+   "lon": 43.454167
+  },
+  {
+   "name": "Kuba-Taba",
+   "lat": 43.781922,
+   "lon": 43.44536
+  },
+  {
+   "name": "Kubanskaya",
+   "lat": 44.607766,
+   "lon": 39.710965
+  },
+  {
+   "name": "Kubanskiy",
+   "lat": 44.617741,
+   "lon": 39.773434
+  },
+  {
+   "name": "Kubina",
+   "lat": 44.064788,
+   "lon": 41.946525
+  },
+  {
+   "name": "Kuchugury",
+   "lat": 45.408297,
+   "lon": 36.957851
+  },
+  {
+   "name": "Kudepsta",
+   "lat": 43.500558,
+   "lon": 39.893815
+  },
+  {
+   "name": "Kuheshi",
+   "lat": 42.680133,
+   "lon": 42.113696
+  },
+  {
+   "name": "Kul'tubani",
+   "lat": 43.411775,
+   "lon": 40.018098
+  },
+  {
+   "name": "Kulashi",
+   "lat": 42.210505,
+   "lon": 42.34908
+  },
+  {
+   "name": "Kulevi",
+   "lat": 42.272143,
+   "lon": 41.658712
+  },
+  {
+   "name": "Kulishkari",
+   "lat": 42.513092,
+   "lon": 41.958707
+  },
+  {
+   "name": "Kumisi",
+   "lat": 41.615003,
+   "lon": 44.781197
+  },
+  {
+   "name": "Kumistavi",
+   "lat": 42.385156,
+   "lon": 42.587147
+  },
+  {
+   "name": "Kumuri",
+   "lat": 42.03576,
+   "lon": 42.465455
+  },
+  {
+   "name": "Kumysh",
+   "lat": 43.883288,
+   "lon": 41.895281
+  },
+  {
+   "name": "Kunchukohabl'",
+   "lat": 44.986007,
+   "lon": 39.473929
+  },
+  {
+   "name": "Kur.Bahmaro",
+   "lat": 41.848456,
+   "lon": 42.32786
+  },
+  {
+   "name": "Kur.Sairme",
+   "lat": 41.907942,
+   "lon": 42.743349
+  },
+  {
+   "name": "kur.Skuri",
+   "lat": 42.697552,
+   "lon": 42.161497
+  },
+  {
+   "name": "Kurchanskaya",
+   "lat": 45.226181,
+   "lon": 37.567587
+  },
+  {
+   "name": "Kurdzhinovo",
+   "lat": 44.003499,
+   "lon": 40.946645
+  },
+  {
+   "name": "Kurdzhinovo",
+   "lat": 43.955447,
+   "lon": 40.955449
+  },
+  {
+   "name": "Kurdzhipskaya",
+   "lat": 44.466941,
+   "lon": 40.052631
+  },
+  {
+   "name": "Kurinskaya",
+   "lat": 44.412581,
+   "lon": 39.41943
+  },
+  {
+   "name": "Kursebi",
+   "lat": 42.324736,
+   "lon": 42.782359
+  },
+  {
+   "name": "Kurta",
+   "lat": 42.283254,
+   "lon": 43.95629
+  },
+  {
+   "name": "Kurtat",
+   "lat": 43.071083,
+   "lon": 44.75184
+  },
+  {
+   "name": "Kurzu",
+   "lat": 42.586949,
+   "lon": 42.289336
+  },
+  {
+   "name": "Kushubauri",
+   "lat": 42.050474,
+   "lon": 42.439897
+  },
+  {
+   "name": "Kutais",
+   "lat": 44.526035,
+   "lon": 39.29798
+  },
+  {
+   "name": "KUTAISI",
+   "lat": 42.267086,
+   "lon": 42.696849
+  },
+  {
+   "name": "Kutaisskaya",
+   "lat": 44.648472,
+   "lon": 39.310268
+  },
+  {
+   "name": "Kutiri",
+   "lat": 42.266691,
+   "lon": 42.357876
+  },
+  {
+   "name": "Kutol",
+   "lat": 42.847172,
+   "lon": 41.384156
+  },
+  {
+   "name": "Kuzhorskaya",
+   "lat": 44.670893,
+   "lon": 40.302495
+  },
+  {
+   "name": "Kvabga",
+   "lat": 41.923119,
+   "lon": 42.401623
+  },
+  {
+   "name": "Kvahchiri",
+   "lat": 42.205749,
+   "lon": 42.738452
+  },
+  {
+   "name": "Kvahvreli",
+   "lat": 41.959105,
+   "lon": 44.218573
+  },
+  {
+   "name": "Kvaiti",
+   "lat": 42.425612,
+   "lon": 42.418926
+  },
+  {
+   "name": "Kvakude",
+   "lat": 42.0546,
+   "lon": 42.299292
+  },
+  {
+   "name": "Kvarhiti",
+   "lat": 42.080103,
+   "lon": 44.194531
+  },
+  {
+   "name": "Kvashkhieti",
+   "lat": 42.548421,
+   "lon": 43.384416
+  },
+  {
+   "name": "Kvatsihe",
+   "lat": 42.291298,
+   "lon": 43.146492
+  },
+  {
+   "name": "Kveda-Alisubani",
+   "lat": 42.241205,
+   "lon": 43.093737
+  },
+  {
+   "name": "Kveda-Bahvi",
+   "lat": 41.961494,
+   "lon": 42.091267
+  },
+  {
+   "name": "Kveda-Bzvani",
+   "lat": 42.076868,
+   "lon": 42.589309
+  },
+  {
+   "name": "Kveda-Chelovani",
+   "lat": 42.361088,
+   "lon": 43.275404
+  },
+  {
+   "name": "Kveda-Chkhorotsku",
+   "lat": 42.494847,
+   "lon": 42.101203
+  },
+  {
+   "name": "Kveda-Gora",
+   "lat": 42.072625,
+   "lon": 42.664264
+  },
+  {
+   "name": "Kveda-Gordi",
+   "lat": 42.44157,
+   "lon": 42.521019
+  },
+  {
+   "name": "Kveda-Gvirishi",
+   "lat": 42.579735,
+   "lon": 42.80077
+  },
+  {
+   "name": "Kveda-Ilemi",
+   "lat": 42.079259,
+   "lon": 43.128506
+  },
+  {
+   "name": "Kveda-Kinchkha",
+   "lat": 42.487021,
+   "lon": 42.561627
+  },
+  {
+   "name": "Kveda-Kvaliti",
+   "lat": 42.090228,
+   "lon": 42.983547
+  },
+  {
+   "name": "Kveda-Mesheti",
+   "lat": 42.21294,
+   "lon": 42.627
+  },
+  {
+   "name": "Kveda-Simoneti",
+   "lat": 42.224997,
+   "lon": 42.857157
+  },
+  {
+   "name": "Kveda-Tlugi",
+   "lat": 42.450272,
+   "lon": 43.131812
+  },
+  {
+   "name": "Kveda-Tsageri",
+   "lat": 42.636375,
+   "lon": 42.752565
+  },
+  {
+   "name": "Kveda-Zegani",
+   "lat": 42.053654,
+   "lon": 42.882304
+  },
+  {
+   "name": "Kvedo-Nasakirali",
+   "lat": 41.977199,
+   "lon": 42.061216
+  },
+  {
+   "name": "Kvemo-",
+   "lat": 42.534733,
+   "lon": 43.277237
+  },
+  {
+   "name": "Kvemo-Abasha",
+   "lat": 42.06781,
+   "lon": 42.332917
+  },
+  {
+   "name": "Kvemo-Aketi",
+   "lat": 42.018515,
+   "lon": 42.086106
+  },
+  {
+   "name": "Kvemo-Artsevi",
+   "lat": 42.13743,
+   "lon": 44.123166
+  },
+  {
+   "name": "Kvemo-Bargebi",
+   "lat": 42.550507,
+   "lon": 41.597211
+  },
+  {
+   "name": "Kvemo-Chala",
+   "lat": 42.029348,
+   "lon": 44.3942
+  },
+  {
+   "name": "Kvemo-Chibati",
+   "lat": 42.08484,
+   "lon": 41.984109
+  },
+  {
+   "name": "Kvemo-Gumurishi",
+   "lat": 42.695293,
+   "lon": 41.779772
+  },
+  {
+   "name": "Kvemo-Heti",
+   "lat": 42.036326,
+   "lon": 42.345654
+  },
+  {
+   "name": "Kvemo-Huntsi",
+   "lat": 42.386495,
+   "lon": 42.408388
+  },
+  {
+   "name": "Kvemo-Hvedureti",
+   "lat": 42.004504,
+   "lon": 43.933894
+  },
+  {
+   "name": "Kvemo-Khoshka",
+   "lat": 42.468209,
+   "lon": 44.057935
+  },
+  {
+   "name": "Kvemo-Korsevi",
+   "lat": 42.404016,
+   "lon": 43.870838
+  },
+  {
+   "name": "Kvemo-Linda",
+   "lat": 43.052983,
+   "lon": 41.084562
+  },
+  {
+   "name": "Kvemo-Mahisi",
+   "lat": 42.212282,
+   "lon": 44.2298
+  },
+  {
+   "name": "Kvemo-Makvaneti",
+   "lat": 41.899174,
+   "lon": 42.004806
+  },
+  {
+   "name": "Kvemo-Merheuli",
+   "lat": 42.953562,
+   "lon": 41.083145
+  },
+  {
+   "name": "Kvemo-Nagvazavo",
+   "lat": 42.369523,
+   "lon": 42.351584
+  },
+  {
+   "name": "Kvemo-Natanebi",
+   "lat": 41.940818,
+   "lon": 41.821619
+  },
+  {
+   "name": "Kvemo-Roka",
+   "lat": 42.546843,
+   "lon": 44.115709
+  },
+  {
+   "name": "Kvemo-Sba",
+   "lat": 42.569275,
+   "lon": 44.168972
+  },
+  {
+   "name": "Kvilishori",
+   "lat": 42.367595,
+   "lon": 42.633262
+  },
+  {
+   "name": "Kvishari",
+   "lat": 42.556177,
+   "lon": 42.944007
+  },
+  {
+   "name": "Kvishheti",
+   "lat": 41.968277,
+   "lon": 43.501974
+  },
+  {
+   "name": "Kvishona",
+   "lat": 42.483267,
+   "lon": 41.605369
+  },
+  {
+   "name": "Kvitiri",
+   "lat": 42.24029,
+   "lon": 42.627891
+  },
+  {
+   "name": "Kvomo-Hvtse",
+   "lat": 42.417978,
+   "lon": 43.956401
+  },
+  {
+   "name": "Kyzburun 1-y",
+   "lat": 43.64909,
+   "lon": 43.398417
+  },
+  {
+   "name": "Kyzburun 3-y",
+   "lat": 43.661503,
+   "lon": 43.539209
+  },
+  {
+   "name": "Kyzyl-Kala",
+   "lat": 43.916362,
+   "lon": 42.022165
+  },
+  {
+   "name": "Kyzyl-Oktyabr'skiy",
+   "lat": 43.821981,
+   "lon": 41.784413
+  },
+  {
+   "name": "Kyzyl-Pokun",
+   "lat": 43.931009,
+   "lon": 42.322452
+  },
+  {
+   "name": "Kyzyl-Urup",
+   "lat": 44.007355,
+   "lon": 41.222594
+  },
+  {
+   "name": "L'vovskoe",
+   "lat": 44.996451,
+   "lon": 38.629714
+  },
+  {
+   "name": "Labra",
+   "lat": 42.812025,
+   "lon": 41.394992
+  },
+  {
+   "name": "Lailashi",
+   "lat": 42.61117,
+   "lon": 42.859131
+  },
+  {
+   "name": "Laituri",
+   "lat": 41.91827,
+   "lon": 41.900378
+  },
+  {
+   "name": "Lamiskana",
+   "lat": 42.013894,
+   "lon": 44.490553
+  },
+  {
+   "name": "LANCHHUTI",
+   "lat": 42.089007,
+   "lon": 42.027661
+  },
+  {
+   "name": "Larchva",
+   "lat": 42.351435,
+   "lon": 41.835304
+  },
+  {
+   "name": "Lashkuta",
+   "lat": 43.561224,
+   "lon": 43.22016
+  },
+  {
+   "name": "Lats",
+   "lat": 42.830939,
+   "lon": 44.291897
+  },
+  {
+   "name": "LAZAREVSKOE",
+   "lat": 43.917274,
+   "lon": 39.326891
+  },
+  {
+   "name": "Lechinkay",
+   "lat": 43.564141,
+   "lon": 43.434332
+  },
+  {
+   "name": "Lechkop",
+   "lat": 43.006797,
+   "lon": 40.947857
+  },
+  {
+   "name": "Ledarsale",
+   "lat": 42.590914,
+   "lon": 42.179511
+  },
+  {
+   "name": "Ledgebe",
+   "lat": 42.48624,
+   "lon": 42.27669
+  },
+  {
+   "name": "Legogie-Nasadzhu",
+   "lat": 42.445929,
+   "lon": 42.182047
+  },
+  {
+   "name": "Legvani",
+   "lat": 41.96706,
+   "lon": 43.250167
+  },
+  {
+   "name": "Lehaindravo",
+   "lat": 42.354513,
+   "lon": 42.340358
+  },
+  {
+   "name": "Leharchile",
+   "lat": 42.644704,
+   "lon": 42.136081
+  },
+  {
+   "name": "Lekadzhaie",
+   "lat": 42.405106,
+   "lon": 42.292257
+  },
+  {
+   "name": "Lemikave",
+   "lat": 42.427247,
+   "lon": 42.241238
+  },
+  {
+   "name": "Leningori",
+   "lat": 42.131932,
+   "lon": 44.485444
+  },
+  {
+   "name": "Leninskiy",
+   "lat": 45.172744,
+   "lon": 38.234987
+  },
+  {
+   "name": "Leninskiy",
+   "lat": 44.19223,
+   "lon": 43.153106
+  },
+  {
+   "name": "Lentehi",
+   "lat": 42.790946,
+   "lon": 42.724648
+  },
+  {
+   "name": "Lepochkhue",
+   "lat": 42.330917,
+   "lon": 42.247525
+  },
+  {
+   "name": "LERMONTOV",
+   "lat": 44.108783,
+   "lon": 42.974445
+  },
+  {
+   "name": "Lesa",
+   "lat": 42.077277,
+   "lon": 41.963379
+  },
+  {
+   "name": "Leselidze",
+   "lat": 43.394992,
+   "lon": 40.031382
+  },
+  {
+   "name": "Lesken",
+   "lat": 43.277818,
+   "lon": 43.829816
+  },
+  {
+   "name": "Lesnoe",
+   "lat": 43.776488,
+   "lon": 43.893822
+  },
+  {
+   "name": "Leso-Kefar' ",
+   "lat": 43.788871,
+   "lon": 41.449272
+  },
+  {
+   "name": "Lesogorskaya",
+   "lat": 44.547683,
+   "lon": 39.53645
+  },
+  {
+   "name": "Letsurtsume",
+   "lat": 42.53336,
+   "lon": 42.1192
+  },
+  {
+   "name": "Levokumka",
+   "lat": 44.234481,
+   "lon": 43.139161
+  },
+  {
+   "name": "Lia",
+   "lat": 42.636237,
+   "lon": 41.988812
+  },
+  {
+   "name": "Lidzava",
+   "lat": 43.178993,
+   "lon": 40.363041
+  },
+  {
+   "name": "Liheti",
+   "lat": 42.608896,
+   "lon": 43.238178
+  },
+  {
+   "name": "Lilo",
+   "lat": 41.681176,
+   "lon": 44.97638
+  },
+  {
+   "name": "Lineynaya",
+   "lat": 44.594594,
+   "lon": 39.48762
+  },
+  {
+   "name": "Loo",
+   "lat": 43.705439,
+   "lon": 39.587153
+  },
+  {
+   "name": "Lunacharskiy",
+   "lat": 43.905269,
+   "lon": 42.690928
+  },
+  {
+   "name": "Lychee",
+   "lat": 42.155902,
+   "lon": 43.482475
+  },
+  {
+   "name": "Lysogorskaya",
+   "lat": 44.106014,
+   "lon": 43.281068
+  },
+  {
+   "name": "Machkhvareti",
+   "lat": 42.068987,
+   "lon": 42.008697
+  },
+  {
+   "name": "Maevskiy",
+   "lat": 45.172039,
+   "lon": 38.161598
+  },
+  {
+   "name": "Maglaki",
+   "lat": 42.261039,
+   "lon": 42.565289
+  },
+  {
+   "name": "Magraneti",
+   "lat": 41.933666,
+   "lon": 44.988583
+  },
+  {
+   "name": "Magri",
+   "lat": 44.022796,
+   "lon": 39.163094
+  },
+  {
+   "name": "Maharadze",
+   "lat": 41.935696,
+   "lon": 41.974045
+  },
+  {
+   "name": "Mahashi",
+   "lat": 42.606742,
+   "lon": 42.749978
+  },
+  {
+   "name": "Mahatauri",
+   "lat": 42.288011,
+   "lon": 43.463631
+  },
+  {
+   "name": "Mahindzhauri",
+   "lat": 41.673079,
+   "lon": 41.699531
+  },
+  {
+   "name": "Maidani",
+   "lat": 42.28409,
+   "lon": 42.312674
+  },
+  {
+   "name": "MAISKIY",
+   "lat": 43.641799,
+   "lon": 44.033974
+  },
+  {
+   "name": "Makatubani",
+   "lat": 42.124781,
+   "lon": 43.243436
+  },
+  {
+   "name": "Makopse",
+   "lat": 43.994893,
+   "lon": 39.213327
+  },
+  {
+   "name": "Mal.Zelenchuk",
+   "lat": 44.160376,
+   "lon": 41.864663
+  },
+  {
+   "name": "MALGOBEK",
+   "lat": 43.51859,
+   "lon": 44.599399
+  },
+  {
+   "name": "Malie Galashki",
+   "lat": 43.119389,
+   "lon": 44.991516
+  },
+  {
+   "name": "MALIY PASANAURI",
+   "lat": 42.352053,
+   "lon": 44.705106
+  },
+  {
+   "name": "Maliy Terk",
+   "lat": 42.910962,
+   "lon": 44.641989
+  },
+  {
+   "name": "Malka",
+   "lat": 43.800714,
+   "lon": 43.326704
+  },
+  {
+   "name": "Maloe Kantyshevo",
+   "lat": 43.215812,
+   "lon": 44.676116
+  },
+  {
+   "name": "Malokurgannyy",
+   "lat": 43.844057,
+   "lon": 41.906286
+  },
+  {
+   "name": "Malotenginskaya",
+   "lat": 44.28173,
+   "lon": 41.526014
+  },
+  {
+   "name": "Mamayka",
+   "lat": 43.635005,
+   "lon": 39.702864
+  },
+  {
+   "name": "Mamheg",
+   "lat": 45.014362,
+   "lon": 40.218094
+  },
+  {
+   "name": "Mandaeti",
+   "lat": 42.183777,
+   "lon": 43.33515
+  },
+  {
+   "name": "Manglisi",
+   "lat": 41.699392,
+   "lon": 44.373647
+  },
+  {
+   "name": "Mar'ina Roscha",
+   "lat": 44.622675,
+   "lon": 38.028581
+  },
+  {
+   "name": "Mar'inskaya",
+   "lat": 43.883397,
+   "lon": 43.485856
+  },
+  {
+   "name": "Mar'yanskaya",
+   "lat": 45.105603,
+   "lon": 38.639941
+  },
+  {
+   "name": "Marana",
+   "lat": 42.143492,
+   "lon": 44.060515
+  },
+  {
+   "name": "Marani",
+   "lat": 42.167287,
+   "lon": 42.279974
+  },
+  {
+   "name": "Marelisi",
+   "lat": 41.957941,
+   "lon": 43.275197
+  },
+  {
+   "name": "Marneuli",
+   "lat": 41.479596,
+   "lon": 44.808583
+  },
+  {
+   "name": "Martanskaya",
+   "lat": 44.762337,
+   "lon": 39.437253
+  },
+  {
+   "name": "Martkobi",
+   "lat": 41.787685,
+   "lon": 45.020138
+  },
+  {
+   "name": "Martotubani",
+   "lat": 42.129811,
+   "lon": 43.099587
+  },
+  {
+   "name": "MARTVILI",
+   "lat": 42.400702,
+   "lon": 42.368318
+  },
+  {
+   "name": "Maruha",
+   "lat": 43.765166,
+   "lon": 41.633133
+  },
+  {
+   "name": "Mathodzhi",
+   "lat": 42.387197,
+   "lon": 42.442078
+  },
+  {
+   "name": "MAYKOP",
+   "lat": 44.607053,
+   "lon": 40.096197
+  },
+  {
+   "name": "Mayramadag",
+   "lat": 43.022685,
+   "lon": 44.480014
+  },
+  {
+   "name": "Mayskiy",
+   "lat": 44.304185,
+   "lon": 42.414766
+  },
+  {
+   "name": "MAYSKIY",
+   "lat": 43.630769,
+   "lon": 44.066323
+  },
+  {
+   "name": "Mazandara",
+   "lat": 42.619401,
+   "lon": 42.045884
+  },
+  {
+   "name": "Mchadidzhvari",
+   "lat": 42.020135,
+   "lon": 44.596836
+  },
+  {
+   "name": "Mechkheturi",
+   "lat": 42.156947,
+   "lon": 43.357366
+  },
+  {
+   "name": "Medani",
+   "lat": 42.672074,
+   "lon": 42.13777
+  },
+  {
+   "name": "Mednogorskiy",
+   "lat": 43.915956,
+   "lon": 41.186234
+  },
+  {
+   "name": "Medzhinistskali",
+   "lat": 41.591304,
+   "lon": 41.634544
+  },
+  {
+   "name": "Medzhudispiri",
+   "lat": 42.130753,
+   "lon": 44.197309
+  },
+  {
+   "name": "Megvrekisi",
+   "lat": 42.182147,
+   "lon": 44.003578
+  },
+  {
+   "name": "Melauri",
+   "lat": 42.190643,
+   "lon": 42.38472
+  },
+  {
+   "name": "Meore Guripuli",
+   "lat": 42.293696,
+   "lon": 41.890921
+  },
+  {
+   "name": "Meore-Balda",
+   "lat": 42.49952,
+   "lon": 42.391396
+  },
+  {
+   "name": "Meore-Choga",
+   "lat": 42.553676,
+   "lon": 42.195803
+  },
+  {
+   "name": "Meore-Gudava",
+   "lat": 42.643386,
+   "lon": 41.544281
+  },
+  {
+   "name": "Meore-Mohashi",
+   "lat": 42.391827,
+   "lon": 42.155776
+  },
+  {
+   "name": "Meore-Obcha",
+   "lat": 42.107171,
+   "lon": 42.887676
+  },
+  {
+   "name": "Meore-Otobaya",
+   "lat": 42.454627,
+   "lon": 41.646351
+  },
+  {
+   "name": "Meore-Sviri",
+   "lat": 42.109908,
+   "lon": 42.927318
+  },
+  {
+   "name": "Meore-Tola",
+   "lat": 42.59057,
+   "lon": 43.004131
+  },
+  {
+   "name": "Merchanskoe",
+   "lat": 44.953938,
+   "lon": 38.12901
+  },
+  {
+   "name": "Merdzhevi",
+   "lat": 42.306727,
+   "lon": 43.431058
+  },
+  {
+   "name": "Mereti",
+   "lat": 42.225721,
+   "lon": 44.076519
+  },
+  {
+   "name": "Merheuli",
+   "lat": 42.987272,
+   "lon": 41.159733
+  },
+  {
+   "name": "Meria",
+   "lat": 41.944845,
+   "lon": 41.895503
+  },
+  {
+   "name": "Merkula",
+   "lat": 42.765603,
+   "lon": 41.478017
+  },
+  {
+   "name": "Messazhay",
+   "lat": 44.141813,
+   "lon": 39.118127
+  },
+  {
+   "name": "Mestia",
+   "lat": 43.0496,
+   "lon": 42.729598
+  },
+  {
+   "name": "Metekhi",
+   "lat": 41.92304,
+   "lon": 44.340959
+  },
+  {
+   "name": "Metekhi",
+   "lat": 41.942381,
+   "lon": 44.339043
+  },
+  {
+   "name": "Mezmay",
+   "lat": 44.201951,
+   "lon": 39.954704
+  },
+  {
+   "name": "Mgvimevi",
+   "lat": 42.324557,
+   "lon": 43.325751
+  },
+  {
+   "name": "Mhkhiani",
+   "lat": 42.198488,
+   "lon": 42.599261
+  },
+  {
+   "name": "Mihaylovka",
+   "lat": 44.22029,
+   "lon": 43.715318
+  },
+  {
+   "name": "Mihaylovskiy Pereval",
+   "lat": 44.515937,
+   "lon": 38.308302
+  },
+  {
+   "name": "Mihaylovskoe",
+   "lat": 45.01044,
+   "lon": 38.505502
+  },
+  {
+   "name": "Mikava",
+   "lat": 42.622078,
+   "lon": 42.105739
+  },
+  {
+   "name": "MINERAL'NYE VODY",
+   "lat": 44.201454,
+   "lon": 43.137392
+  },
+  {
+   "name": "Mingrel'skaya",
+   "lat": 45.014629,
+   "lon": 38.338356
+  },
+  {
+   "name": "Mirnyy",
+   "lat": 44.608512,
+   "lon": 39.008222
+  },
+  {
+   "name": "Misaktsieli",
+   "lat": 41.948382,
+   "lon": 44.73827
+  },
+  {
+   "name": "Mitsatsiteli",
+   "lat": 42.237341,
+   "lon": 42.53885
+  },
+  {
+   "name": "MIZUR",
+   "lat": 42.851027,
+   "lon": 44.056755
+  },
+  {
+   "name": "Modzvi",
+   "lat": 42.262543,
+   "lon": 43.423399
+  },
+  {
+   "name": "Mogiri",
+   "lat": 42.3747,
+   "lon": 41.72916
+  },
+  {
+   "name": "Mogukorovskiy",
+   "lat": 45.156215,
+   "lon": 38.198283
+  },
+  {
+   "name": "Mohashi",
+   "lat": 42.415311,
+   "lon": 42.190616
+  },
+  {
+   "name": "Mohisi",
+   "lat": 42.053041,
+   "lon": 43.7694
+  },
+  {
+   "name": "Mohva",
+   "lat": 42.406014,
+   "lon": 43.3311
+  },
+  {
+   "name": "Moidanahe",
+   "lat": 42.545104,
+   "lon": 42.138447
+  },
+  {
+   "name": "Moldavanskoe",
+   "lat": 44.946939,
+   "lon": 37.868979
+  },
+  {
+   "name": "Moldovka",
+   "lat": 43.454585,
+   "lon": 39.940029
+  },
+  {
+   "name": "Molodezhnyy",
+   "lat": 44.680002,
+   "lon": 39.675713
+  },
+  {
+   "name": "Mongiri",
+   "lat": 42.490006,
+   "lon": 42.152069
+  },
+  {
+   "name": "Morzoh",
+   "lat": 43.567536,
+   "lon": 43.840579
+  },
+  {
+   "name": "MOZDOK",
+   "lat": 43.752121,
+   "lon": 44.640819
+  },
+  {
+   "name": "Mtispiri",
+   "lat": 41.941767,
+   "lon": 42.157494
+  },
+  {
+   "name": "MTSKHETA",
+   "lat": 41.83687,
+   "lon": 44.696831
+  },
+  {
+   "name": "Mtsvane-Kontshi",
+   "lat": 41.689072,
+   "lon": 41.709726
+  },
+  {
+   "name": "Mughanlo",
+   "lat": 41.731105,
+   "lon": 45.160083
+  },
+  {
+   "name": "Mugudzyrhva",
+   "lat": 43.155409,
+   "lon": 40.515015
+  },
+  {
+   "name": "Muguti",
+   "lat": 42.426175,
+   "lon": 43.931004
+  },
+  {
+   "name": "Muhura",
+   "lat": 42.32665,
+   "lon": 43.087842
+  },
+  {
+   "name": "Muhuri",
+   "lat": 42.634638,
+   "lon": 42.176056
+  },
+  {
+   "name": "Muhuri",
+   "lat": 42.689556,
+   "lon": 41.697291
+  },
+  {
+   "name": "Mukhrani",
+   "lat": 41.936298,
+   "lon": 44.575647
+  },
+  {
+   "name": "Muzhava",
+   "lat": 42.713559,
+   "lon": 41.992057
+  },
+  {
+   "name": "Myshako",
+   "lat": 44.66714,
+   "lon": 37.759021
+  },
+  {
+   "name": "Myussera",
+   "lat": 43.155608,
+   "lon": 40.454065
+  },
+  {
+   "name": "Mzahva",
+   "lat": 43.13775,
+   "lon": 40.58429
+  },
+  {
+   "name": "Mziani",
+   "lat": 41.976759,
+   "lon": 42.151579
+  },
+  {
+   "name": "Nabahtevi",
+   "lat": 42.060954,
+   "lon": 43.666875
+  },
+  {
+   "name": "Nabakevi",
+   "lat": 42.503987,
+   "lon": 41.662352
+  },
+  {
+   "name": "Nabakevi",
+   "lat": 42.187277,
+   "lon": 43.770297
+  },
+  {
+   "name": "Nadaburi",
+   "lat": 42.126553,
+   "lon": 43.427983
+  },
+  {
+   "name": "Nadezhnaya",
+   "lat": 44.207001,
+   "lon": 41.404721
+  },
+  {
+   "name": "Naesakao",
+   "lat": 42.178447,
+   "lon": 42.209197
+  },
+  {
+   "name": "Nageberavo",
+   "lat": 42.332468,
+   "lon": 42.314506
+  },
+  {
+   "name": "Nagomari",
+   "lat": 41.990544,
+   "lon": 42.112949
+  },
+  {
+   "name": "Naguru",
+   "lat": 42.694093,
+   "lon": 42.097908
+  },
+  {
+   "name": "Nahahulevi",
+   "lat": 42.359411,
+   "lon": 42.43814
+  },
+  {
+   "name": "Nahshirgele",
+   "lat": 42.224265,
+   "lon": 42.824321
+  },
+  {
+   "name": "Nahunao",
+   "lat": 42.430549,
+   "lon": 42.323061
+  },
+  {
+   "name": "Nahurtsilavo",
+   "lat": 42.446389,
+   "lon": 42.263325
+  },
+  {
+   "name": "Nakipu",
+   "lat": 42.562322,
+   "lon": 42.07333
+  },
+  {
+   "name": "Nakuraleshi",
+   "lat": 42.552601,
+   "lon": 42.746391
+  },
+  {
+   "name": "NAL'CHIK",
+   "lat": 43.485073,
+   "lon": 43.623441
+  },
+  {
+   "name": "Nalepsao",
+   "lat": 42.43445,
+   "lon": 42.365644
+  },
+  {
+   "name": "Namikolavo",
+   "lat": 42.474821,
+   "lon": 42.329612
+  },
+  {
+   "name": "Namohvani",
+   "lat": 42.421347,
+   "lon": 42.697503
+  },
+  {
+   "name": "Naochi",
+   "lat": 42.776851,
+   "lon": 41.352702
+  },
+  {
+   "name": "Naposhtu",
+   "lat": 42.326551,
+   "lon": 41.933522
+  },
+  {
+   "name": "Narazeni",
+   "lat": 42.39398,
+   "lon": 41.913391
+  },
+  {
+   "name": "Nart",
+   "lat": 43.119502,
+   "lon": 44.429664
+  },
+  {
+   "name": "Nartan",
+   "lat": 43.511529,
+   "lon": 43.704153
+  },
+  {
+   "name": "NARTKALA",
+   "lat": 43.554316,
+   "lon": 43.853943
+  },
+  {
+   "name": "Nasperi",
+   "lat": 42.590925,
+   "lon": 42.770482
+  },
+  {
+   "name": "Natsatu",
+   "lat": 42.567541,
+   "lon": 41.979564
+  },
+  {
+   "name": "Natuhaevskaya",
+   "lat": 44.911294,
+   "lon": 37.567604
+  },
+  {
+   "name": "Navaginka",
+   "lat": 43.61813,
+   "lon": 39.745794
+  },
+  {
+   "name": "Navenahevi",
+   "lat": 42.25074,
+   "lon": 42.859437
+  },
+  {
+   "name": "Nazarlo",
+   "lat": 41.423063,
+   "lon": 45.111234
+  },
+  {
+   "name": "Nazran",
+   "lat": 43.226212,
+   "lon": 44.777861
+  },
+  {
+   "name": "Neberdzhaevskaya",
+   "lat": 44.828654,
+   "lon": 37.893678
+  },
+  {
+   "name": "Nebodziri",
+   "lat": 41.988354,
+   "lon": 43.370345
+  },
+  {
+   "name": "Nebug",
+   "lat": 44.171632,
+   "lon": 38.998327
+  },
+  {
+   "name": "Nedlati",
+   "lat": 42.21522,
+   "lon": 43.770585
+  },
+  {
+   "name": "Neftegorsk",
+   "lat": 44.366015,
+   "lon": 39.713219
+  },
+  {
+   "name": "Neftyanaya",
+   "lat": 44.377554,
+   "lon": 39.643419
+  },
+  {
+   "name": "Nekrasovskaya",
+   "lat": 45.148939,
+   "lon": 39.755071
+  },
+  {
+   "name": "Nergeeti",
+   "lat": 42.054518,
+   "lon": 42.823643
+  },
+  {
+   "name": "Neshukay",
+   "lat": 44.910399,
+   "lon": 39.41624
+  },
+  {
+   "name": "Nesterovskaya",
+   "lat": 43.239607,
+   "lon": 45.059246
+  },
+  {
+   "name": "Nezhinskiy",
+   "lat": 43.93193,
+   "lon": 42.685571
+  },
+  {
+   "name": "Nezlobnaya",
+   "lat": 44.118949,
+   "lon": 43.410519
+  },
+  {
+   "name": "Niabauri",
+   "lat": 41.868343,
+   "lon": 42.013388
+  },
+  {
+   "name": "NIGNIY PASANAURI",
+   "lat": 42.39543,
+   "lon": 44.64968
+  },
+  {
+   "name": "NIGNIY PASANAURI",
+   "lat": 42.327877,
+   "lon": 44.681794
+  },
+  {
+   "name": "Nigniy Unal",
+   "lat": 42.863339,
+   "lon": 44.151339
+  },
+  {
+   "name": "Nigniye Achaluki",
+   "lat": 43.402997,
+   "lon": 44.763903
+  },
+  {
+   "name": "Nigvzara",
+   "lat": 42.2136,
+   "lon": 43.465632
+  },
+  {
+   "name": "Nigvziani",
+   "lat": 42.067004,
+   "lon": 41.879237
+  },
+  {
+   "name": "Nikolaenko",
+   "lat": 44.409057,
+   "lon": 39.673508
+  },
+  {
+   "name": "Nikolaevskoe",
+   "lat": 44.122613,
+   "lon": 42.129337
+  },
+  {
+   "name": "Nikortsminda",
+   "lat": 42.464696,
+   "lon": 43.09763
+  },
+  {
+   "name": "Ninoshvili",
+   "lat": 42.042257,
+   "lon": 41.948968
+  },
+  {
+   "name": "Nizh. Armyanskoe Uschel'e",
+   "lat": 43.084525,
+   "lon": 40.794689
+  },
+  {
+   "name": "Nizh. Mtsara ",
+   "lat": 43.141038,
+   "lon": 40.76145
+  },
+  {
+   "name": "Nizh.- Pshap",
+   "lat": 42.88875,
+   "lon": 41.12554
+  },
+  {
+   "name": "Nizh.Arhyz",
+   "lat": 43.680448,
+   "lon": 41.458998
+  },
+  {
+   "name": "Nizh.Chegem",
+   "lat": 43.498349,
+   "lon": 43.296418
+  },
+  {
+   "name": "Nizh.Ermolovka",
+   "lat": 43.750379,
+   "lon": 41.510216
+  },
+  {
+   "name": "Nizh.Kurkuzhin",
+   "lat": 43.752549,
+   "lon": 43.362675
+  },
+  {
+   "name": "Nizh.Shilovka",
+   "lat": 43.463994,
+   "lon": 40.023461
+  },
+  {
+   "name": "Nizh.Teberda",
+   "lat": 43.638667,
+   "lon": 41.872969
+  },
+  {
+   "name": "Nizhne-Vysokoe",
+   "lat": 43.474346,
+   "lon": 39.972717
+  },
+  {
+   "name": "Nizhnebakanskiy ",
+   "lat": 44.868592,
+   "lon": 37.861945
+  },
+  {
+   "name": "Nizhnepodkumskiy",
+   "lat": 44.078935,
+   "lon": 43.21271
+  },
+  {
+   "name": "Nizhnezol'skiy",
+   "lat": 44.120358,
+   "lon": 43.639111
+  },
+  {
+   "name": "Nizhnyaya Gostagayka",
+   "lat": 45.040575,
+   "lon": 37.349826
+  },
+  {
+   "name": "Noga",
+   "lat": 42.474952,
+   "lon": 42.208261
+  },
+  {
+   "name": "Nogir",
+   "lat": 43.078872,
+   "lon": 44.63809
+  },
+  {
+   "name": "Nogkau",
+   "lat": 42.869024,
+   "lon": 44.044631
+  },
+  {
+   "name": "Norio",
+   "lat": 41.7905,
+   "lon": 44.979697
+  },
+  {
+   "name": "Nosiri",
+   "lat": 42.275005,
+   "lon": 42.139716
+  },
+  {
+   "name": "Nov.Dzheguta",
+   "lat": 43.996395,
+   "lon": 42.04876
+  },
+  {
+   "name": "Nov.Matsesta",
+   "lat": 43.560079,
+   "lon": 39.801623
+  },
+  {
+   "name": "Nov.Teberda ",
+   "lat": 43.673906,
+   "lon": 41.894978
+  },
+  {
+   "name": "Novaya Adygeya",
+   "lat": 45.028796,
+   "lon": 38.933988
+  },
+  {
+   "name": "Novaya Akvaskia",
+   "lat": 42.794629,
+   "lon": 41.540276
+  },
+  {
+   "name": "Noviy Batakoyurt",
+   "lat": 43.220011,
+   "lon": 44.498692
+  },
+  {
+   "name": "Noviy Redant",
+   "lat": 43.473166,
+   "lon": 44.812043
+  },
+  {
+   "name": "Novoalekseevskoe",
+   "lat": 44.957243,
+   "lon": 39.86067
+  },
+  {
+   "name": "Novoblagodarnoe",
+   "lat": 44.144876,
+   "lon": 42.8789
+  },
+  {
+   "name": "Novobzhegokay",
+   "lat": 44.934656,
+   "lon": 38.837614
+  },
+  {
+   "name": "Novodmitrievskaya",
+   "lat": 44.834141,
+   "lon": 38.877951
+  },
+  {
+   "name": "Novogeorgievskoe",
+   "lat": 43.763115,
+   "lon": 44.703801
+  },
+  {
+   "name": "Novoispravnenskoe",
+   "lat": 43.979804,
+   "lon": 41.542656
+  },
+  {
+   "name": "Novoivanovskoe",
+   "lat": 43.640512,
+   "lon": 43.95715
+  },
+  {
+   "name": "Novolabinskaya",
+   "lat": 45.114755,
+   "lon": 39.900432
+  },
+  {
+   "name": "Novomihaylovskiy",
+   "lat": 44.25843,
+   "lon": 38.85415
+  },
+  {
+   "name": "Novomyshastovskaya",
+   "lat": 45.201414,
+   "lon": 38.574925
+  },
+  {
+   "name": "Novoosetinskaya",
+   "lat": 43.705838,
+   "lon": 44.391716
+  },
+  {
+   "name": "NOVOPAVLOVSK",
+   "lat": 43.962533,
+   "lon": 43.641826
+  },
+  {
+   "name": "Novopoltavskoe",
+   "lat": 43.69051,
+   "lon": 43.971403
+  },
+  {
+   "name": "NOVOROSSIYSK",
+   "lat": 44.719335,
+   "lon": 37.751757
+  },
+  {
+   "name": "Novosevastopol'skoe",
+   "lat": 45.063035,
+   "lon": 39.704568
+  },
+  {
+   "name": "Novosrednenskoe",
+   "lat": 44.094686,
+   "lon": 43.823821
+  },
+  {
+   "name": "Novoterskiy",
+   "lat": 44.15012,
+   "lon": 43.092246
+  },
+  {
+   "name": "Novotitarovskaya",
+   "lat": 45.243806,
+   "lon": 38.981038
+  },
+  {
+   "name": "Novotroitskiy",
+   "lat": 45.031839,
+   "lon": 38.007409
+  },
+  {
+   "name": "Novoukrainskiy",
+   "lat": 44.897714,
+   "lon": 38.04794
+  },
+  {
+   "name": "Novovelichkovskaya",
+   "lat": 45.282561,
+   "lon": 38.846433
+  },
+  {
+   "name": "Novozavedennoe",
+   "lat": 44.265326,
+   "lon": 43.63952
+  },
+  {
+   "name": "Novye Polyany",
+   "lat": 44.302384,
+   "lon": 39.825372
+  },
+  {
+   "name": "Novyy",
+   "lat": 45.007971,
+   "lon": 38.979031
+  },
+  {
+   "name": "Novyy",
+   "lat": 44.151786,
+   "lon": 43.439254
+  },
+  {
+   "name": "Novyy",
+   "lat": 44.935888,
+   "lon": 40.16676
+  },
+  {
+   "name": "Novyy",
+   "lat": 44.72636,
+   "lon": 39.824853
+  },
+  {
+   "name": "Novyy Afon",
+   "lat": 43.090391,
+   "lon": 40.809345
+  },
+  {
+   "name": "Novyy Karachay ",
+   "lat": 43.819752,
+   "lon": 41.904403
+  },
+  {
+   "name": "Novyy Sad",
+   "lat": 44.907033,
+   "lon": 38.908686
+  },
+  {
+   "name": "Nowaya Sabiba",
+   "lat": 43.042338,
+   "lon": 44.533605
+  },
+  {
+   "name": "Obil'noe",
+   "lat": 44.24562,
+   "lon": 43.55782
+  },
+  {
+   "name": "Obudzhi",
+   "lat": 42.556017,
+   "lon": 42.015172
+  },
+  {
+   "name": "OCHAMCHIRA",
+   "lat": 42.722153,
+   "lon": 41.474646
+  },
+  {
+   "name": "Oche",
+   "lat": 42.524586,
+   "lon": 42.313209
+  },
+  {
+   "name": "Ochkhamuri",
+   "lat": 41.85672,
+   "lon": 41.833105
+  },
+  {
+   "name": "Ochkhomuri",
+   "lat": 42.471584,
+   "lon": 42.079849
+  },
+  {
+   "name": "Odishi",
+   "lat": 43.075147,
+   "lon": 41.0916
+  },
+  {
+   "name": "Odishi",
+   "lat": 42.526251,
+   "lon": 41.923614
+  },
+  {
+   "name": "Odzhola",
+   "lat": 42.388595,
+   "lon": 42.785896
+  },
+  {
+   "name": "Ohvamekari",
+   "lat": 42.369398,
+   "lon": 41.833464
+  },
+  {
+   "name": "Oireme",
+   "lat": 42.467632,
+   "lon": 41.808728
+  },
+  {
+   "name": "Okami",
+   "lat": 41.98329,
+   "lon": 44.474383
+  },
+  {
+   "name": "Oktomberi",
+   "lat": 42.208187,
+   "lon": 42.43087
+  },
+  {
+   "name": "Oktomberi",
+   "lat": 42.443933,
+   "lon": 41.743717
+  },
+  {
+   "name": "Oktomberi",
+   "lat": 43.030969,
+   "lon": 41.229984
+  },
+  {
+   "name": "Oktyabr'skaya",
+   "lat": 44.854025,
+   "lon": 39.61785
+  },
+  {
+   "name": "Oktyabr'skiy",
+   "lat": 44.849738,
+   "lon": 38.471831
+  },
+  {
+   "name": "Oktyabr'skiy",
+   "lat": 45.236696,
+   "lon": 38.290841
+  },
+  {
+   "name": "Oktyabr'skiy",
+   "lat": 44.253774,
+   "lon": 42.486886
+  },
+  {
+   "name": "Oktyabr'skiy",
+   "lat": 44.322918,
+   "lon": 39.339558
+  },
+  {
+   "name": "Oktyabr'skoe",
+   "lat": 43.889818,
+   "lon": 43.176085
+  },
+  {
+   "name": "Oktyabrskoe",
+   "lat": 43.053531,
+   "lon": 44.746773
+  },
+  {
+   "name": "Okumi",
+   "lat": 42.724566,
+   "lon": 41.754616
+  },
+  {
+   "name": "Okureshi",
+   "lat": 42.543283,
+   "lon": 42.672827
+  },
+  {
+   "name": "Ol'ginskiy",
+   "lat": 45.126611,
+   "lon": 38.359099
+  },
+  {
+   "name": "Olginskoe",
+   "lat": 43.161052,
+   "lon": 44.691985
+  },
+  {
+   "name": "Ondzhoheti",
+   "lat": 42.032045,
+   "lon": 42.507565
+  },
+  {
+   "name": "ONI",
+   "lat": 42.591213,
+   "lon": 43.449897
+  },
+  {
+   "name": "Opachkhapu",
+   "lat": 42.448393,
+   "lon": 41.903878
+  },
+  {
+   "name": "Opshkviti",
+   "lat": 42.147389,
+   "lon": 42.604859
+  },
+  {
+   "name": "Orbel'yanovka",
+   "lat": 44.23274,
+   "lon": 42.878746
+  },
+  {
+   "name": "Orbeli",
+   "lat": 42.636184,
+   "lon": 42.822917
+  },
+  {
+   "name": "Ordzhonikidze",
+   "lat": 42.008849,
+   "lon": 43.173219
+  },
+  {
+   "name": "Ordzhonikidze",
+   "lat": 42.640714,
+   "lon": 42.025758
+  },
+  {
+   "name": "Ordzhonikidzevskiy",
+   "lat": 43.844148,
+   "lon": 41.892512
+  },
+  {
+   "name": "Orel ",
+   "lat": 43.461316,
+   "lon": 39.920078
+  },
+  {
+   "name": "Orhvi",
+   "lat": 42.50622,
+   "lon": 42.801449
+  },
+  {
+   "name": "Orka",
+   "lat": 42.308786,
+   "lon": 42.246602
+  },
+  {
+   "name": "Orlovka",
+   "lat": 43.990864,
+   "lon": 43.777097
+  },
+  {
+   "name": "Orpiri",
+   "lat": 42.332106,
+   "lon": 42.81757
+  },
+  {
+   "name": "Orsantia",
+   "lat": 42.470203,
+   "lon": 41.669408
+  },
+  {
+   "name": "Ostrogorka",
+   "lat": 44.123258,
+   "lon": 42.979051
+  },
+  {
+   "name": "Ostrovskaya Shel'",
+   "lat": 44.278869,
+   "lon": 39.29155
+  },
+  {
+   "name": "Otarasheni",
+   "lat": 42.013074,
+   "lon": 44.086605
+  },
+  {
+   "name": "otd.N3 SKZNIISiV",
+   "lat": 45.1361,
+   "lon": 38.965099
+  },
+  {
+   "name": "Othara",
+   "lat": 43.228966,
+   "lon": 40.531859
+  },
+  {
+   "name": "Otradnoe",
+   "lat": 43.265661,
+   "lon": 40.288506
+  },
+  {
+   "name": "Otradnyy",
+   "lat": 44.874473,
+   "lon": 38.952471
+  },
+  {
+   "name": "OZURGETI",
+   "lat": 41.936007,
+   "lon": 42.018441
+  },
+  {
+   "name": "p.Hramzavodstroya",
+   "lat": 41.671265,
+   "lon": 44.916548
+  },
+  {
+   "name": "Pahulani",
+   "lat": 42.654425,
+   "lon": 41.989393
+  },
+  {
+   "name": "Panahes",
+   "lat": 44.987973,
+   "lon": 38.713089
+  },
+  {
+   "name": "Paraheti",
+   "lat": 42.553093,
+   "lon": 43.320122
+  },
+  {
+   "name": "Partonohori",
+   "lat": 42.651198,
+   "lon": 41.861593
+  },
+  {
+   "name": "Partshanakanevi",
+   "lat": 42.20722,
+   "lon": 42.557555
+  },
+  {
+   "name": "Partshnali",
+   "lat": 42.007781,
+   "lon": 43.124335
+  },
+  {
+   "name": "PASANAURI",
+   "lat": 42.354728,
+   "lon": 44.689155
+  },
+  {
+   "name": "PASHKOVSKIY",
+   "lat": 45.029117,
+   "lon": 39.094463
+  },
+  {
+   "name": "Patara-Dzhihaishi",
+   "lat": 42.284101,
+   "lon": 42.404035
+  },
+  {
+   "name": "Patara-Keleti",
+   "lat": 41.978368,
+   "lon": 43.74728
+  },
+  {
+   "name": "Patara-Medzhvrishevi",
+   "lat": 42.138801,
+   "lon": 44.215694
+  },
+  {
+   "name": "Patara-Oni",
+   "lat": 42.535801,
+   "lon": 42.981056
+  },
+  {
+   "name": "Patara-Poti",
+   "lat": 42.190478,
+   "lon": 41.731759
+  },
+  {
+   "name": "Patardzeuli",
+   "lat": 41.744385,
+   "lon": 45.248301
+  },
+  {
+   "name": "Patriketi",
+   "lat": 42.156221,
+   "lon": 42.656848
+  },
+  {
+   "name": "Pavlodolskaya",
+   "lat": 43.725429,
+   "lon": 44.47682
+  },
+  {
+   "name": "Pavlovskiy",
+   "lat": 45.078137,
+   "lon": 37.772047
+  },
+  {
+   "name": "Pavlovskoe",
+   "lat": 43.067519,
+   "lon": 41.114584
+  },
+  {
+   "name": "Pchegatlukay",
+   "lat": 44.888976,
+   "lon": 39.262451
+  },
+  {
+   "name": "Peredovaya",
+   "lat": 44.119929,
+   "lon": 41.476287
+  },
+  {
+   "name": "Pereta",
+   "lat": 42.062818,
+   "lon": 42.715368
+  },
+  {
+   "name": "Perevalka",
+   "lat": 44.05316,
+   "lon": 40.756944
+  },
+  {
+   "name": "Perevi",
+   "lat": 42.371801,
+   "lon": 43.598444
+  },
+  {
+   "name": "Perevisa",
+   "lat": 42.26037,
+   "lon": 43.294406
+  },
+  {
+   "name": "Persati",
+   "lat": 42.068078,
+   "lon": 42.788478
+  },
+  {
+   "name": "Perveli-Ohurey",
+   "lat": 42.736365,
+   "lon": 41.575883
+  },
+  {
+   "name": "Pervomayskiy",
+   "lat": 45.180051,
+   "lon": 38.305376
+  },
+  {
+   "name": "Pervomayskiy",
+   "lat": 44.897833,
+   "lon": 39.739162
+  },
+  {
+   "name": "Pervomayskiy",
+   "lat": 44.694004,
+   "lon": 39.306035
+  },
+  {
+   "name": "Pervomayskiy",
+   "lat": 44.408531,
+   "lon": 40.18612
+  },
+  {
+   "name": "Pervomayskoe",
+   "lat": 43.939875,
+   "lon": 42.48759
+  },
+  {
+   "name": "Pervorechenskoe",
+   "lat": 45.164385,
+   "lon": 39.308994
+  },
+  {
+   "name": "Phvenisi",
+   "lat": 42.157559,
+   "lon": 43.992365
+  },
+  {
+   "name": "Pirveli-Akvaga",
+   "lat": 42.602194,
+   "lon": 41.772756
+  },
+  {
+   "name": "Pirveli-Choga",
+   "lat": 42.574126,
+   "lon": 42.198176
+  },
+  {
+   "name": "Pirveli-Etseri",
+   "lat": 42.18307,
+   "lon": 42.158404
+  },
+  {
+   "name": "Pirveli-Gudava",
+   "lat": 42.662997,
+   "lon": 41.558282
+  },
+  {
+   "name": "Pirveli-Gurdzemi",
+   "lat": 42.469479,
+   "lon": 42.265483
+  },
+  {
+   "name": "Pirveli-Maisi",
+   "lat": 42.101253,
+   "lon": 43.085303
+  },
+  {
+   "name": "Pirveli-Obcha",
+   "lat": 42.097058,
+   "lon": 42.857916
+  },
+  {
+   "name": "Pirveli-Ontopo",
+   "lat": 42.250454,
+   "lon": 42.246871
+  },
+  {
+   "name": "Pirveli-Sviri",
+   "lat": 42.106504,
+   "lon": 42.960607
+  },
+  {
+   "name": "Pirveli-Tola",
+   "lat": 42.573555,
+   "lon": 42.984611
+  },
+  {
+   "name": "Pitsargali",
+   "lat": 42.533189,
+   "lon": 41.596891
+  },
+  {
+   "name": "Pitsunda",
+   "lat": 43.163846,
+   "lon": 40.338462
+  },
+  {
+   "name": "Planovskoye",
+   "lat": 43.403198,
+   "lon": 44.200263
+  },
+  {
+   "name": "Plastunka",
+   "lat": 43.671607,
+   "lon": 39.761316
+  },
+  {
+   "name": "Plastunovskaya",
+   "lat": 45.296667,
+   "lon": 39.265353
+  },
+  {
+   "name": "Plavi",
+   "lat": 42.167888,
+   "lon": 44.110547
+  },
+  {
+   "name": "Plavnenskiy",
+   "lat": 45.036542,
+   "lon": 37.930622
+  },
+  {
+   "name": "Pliyevo",
+   "lat": 43.283551,
+   "lon": 44.840391
+  },
+  {
+   "name": "Pobegaylovka",
+   "lat": 44.241492,
+   "lon": 43.014814
+  },
+  {
+   "name": "Podgornaya",
+   "lat": 44.20113,
+   "lon": 43.4271
+  },
+  {
+   "name": "Podgornaya",
+   "lat": 44.21494,
+   "lon": 41.283165
+  },
+  {
+   "name": "Podgornyy",
+   "lat": 44.692614,
+   "lon": 40.083808
+  },
+  {
+   "name": "Podkumok",
+   "lat": 43.970835,
+   "lon": 42.775149
+  },
+  {
+   "name": "Pokrovskiy",
+   "lat": 45.111818,
+   "lon": 38.415735
+  },
+  {
+   "name": "Pokvesh",
+   "lat": 42.797212,
+   "lon": 41.568194
+  },
+  {
+   "name": "Ponezhukay",
+   "lat": 44.891919,
+   "lon": 39.381016
+  },
+  {
+   "name": "POTI",
+   "lat": 42.157804,
+   "lon": 41.677693
+  },
+  {
+   "name": "Potsho",
+   "lat": 42.432617,
+   "lon": 42.167673
+  },
+  {
+   "name": "Pravokubanskiy",
+   "lat": 43.919953,
+   "lon": 41.883161
+  },
+  {
+   "name": "Pregradnaya",
+   "lat": 43.951487,
+   "lon": 41.184826
+  },
+  {
+   "name": "Preobrazhenskoe",
+   "lat": 45.087444,
+   "lon": 39.623111
+  },
+  {
+   "name": "Priblizhnaya",
+   "lat": 43.771987,
+   "lon": 44.123433
+  },
+  {
+   "name": "Prigorodnoe",
+   "lat": 44.238742,
+   "lon": 42.120034
+  },
+  {
+   "name": "Prigorodnyy",
+   "lat": 44.124347,
+   "lon": 39.118629
+  },
+  {
+   "name": "Prikubanskie hutora",
+   "lat": 45.161087,
+   "lon": 38.072122
+  },
+  {
+   "name": "Prikubanskiy",
+   "lat": 44.958409,
+   "lon": 39.027413
+  },
+  {
+   "name": "Primorskiy",
+   "lat": 45.264384,
+   "lon": 36.909279
+  },
+  {
+   "name": "Primorskoe",
+   "lat": 43.094709,
+   "lon": 40.704462
+  },
+  {
+   "name": "Prirechenskiy",
+   "lat": 44.755341,
+   "lon": 39.241202
+  },
+  {
+   "name": "Prirechnoe",
+   "lat": 43.803274,
+   "lon": 43.305037
+  },
+  {
+   "name": "Privol'noe",
+   "lat": 44.006071,
+   "lon": 42.941312
+  },
+  {
+   "name": "Progress",
+   "lat": 43.818331,
+   "lon": 43.335369
+  },
+  {
+   "name": "Progress",
+   "lat": 44.871644,
+   "lon": 40.1895
+  },
+  {
+   "name": "PROHLADNIY",
+   "lat": 43.756426,
+   "lon": 44.038869
+  },
+  {
+   "name": "Proletarskiy",
+   "lat": 44.619952,
+   "lon": 40.181767
+  },
+  {
+   "name": "Protichka",
+   "lat": 45.378976,
+   "lon": 38.070425
+  },
+  {
+   "name": "Psauch'e-Dahe",
+   "lat": 44.215163,
+   "lon": 41.87939
+  },
+  {
+   "name": "Psebay",
+   "lat": 44.138091,
+   "lon": 40.803699
+  },
+  {
+   "name": "Psekups",
+   "lat": 44.835444,
+   "lon": 39.207383
+  },
+  {
+   "name": "Psemen",
+   "lat": 43.983633,
+   "lon": 40.975741
+  },
+  {
+   "name": "Pseytuh",
+   "lat": 45.053705,
+   "lon": 38.70402
+  },
+  {
+   "name": "Pshada",
+   "lat": 44.474606,
+   "lon": 38.401898
+  },
+  {
+   "name": "Pshap",
+   "lat": 42.900098,
+   "lon": 41.10323
+  },
+  {
+   "name": "Pshehskaya",
+   "lat": 44.698485,
+   "lon": 39.790475
+  },
+  {
+   "name": "Pshicho",
+   "lat": 45.066198,
+   "lon": 40.173833
+  },
+  {
+   "name": "Pshizov",
+   "lat": 45.095471,
+   "lon": 40.104028
+  },
+  {
+   "name": "Psychoh",
+   "lat": 43.718672,
+   "lon": 43.525482
+  },
+  {
+   "name": "Psygansu",
+   "lat": 43.415515,
+   "lon": 43.789113
+  },
+  {
+   "name": "Psyhurey",
+   "lat": 43.83865,
+   "lon": 43.577387
+  },
+  {
+   "name": "Psynodaha",
+   "lat": 43.8618,
+   "lon": 43.244666
+  },
+  {
+   "name": "Psynshoko",
+   "lat": 43.758797,
+   "lon": 43.716771
+  },
+  {
+   "name": "Psyrtsha",
+   "lat": 43.08743,
+   "lon": 40.87918
+  },
+  {
+   "name": "Psyzh",
+   "lat": 44.241128,
+   "lon": 42.022016
+  },
+  {
+   "name": "Ptsa",
+   "lat": 42.08653,
+   "lon": 43.78634
+  },
+  {
+   "name": "PYATIGORSK",
+   "lat": 44.052891,
+   "lon": 43.048264
+  },
+  {
+   "name": "Pyatigorskiy",
+   "lat": 43.974984,
+   "lon": 43.26101
+  },
+  {
+   "name": "Pyatihatki",
+   "lat": 44.976064,
+   "lon": 37.304959
+  },
+  {
+   "name": "Raevskaya",
+   "lat": 44.835329,
+   "lon": 37.559541
+  },
+  {
+   "name": "Rassvet",
+   "lat": 44.898001,
+   "lon": 37.454519
+  },
+  {
+   "name": "Razdol'noe",
+   "lat": 43.592801,
+   "lon": 39.798031
+  },
+  {
+   "name": "Razdolnoe",
+   "lat": 43.698447,
+   "lon": 44.537709
+  },
+  {
+   "name": "Rechkhi",
+   "lat": 42.659807,
+   "lon": 41.747882
+  },
+  {
+   "name": "Redant 1st",
+   "lat": 42.96178,
+   "lon": 44.658172
+  },
+  {
+   "name": "Redant 2nd",
+   "lat": 42.988657,
+   "lon": 44.670222
+  },
+  {
+   "name": "Reha",
+   "lat": 42.037624,
+   "lon": 44.116712
+  },
+  {
+   "name": "Repo-Etseri",
+   "lat": 42.631793,
+   "lon": 41.658992
+  },
+  {
+   "name": "Rike",
+   "lat": 42.58884,
+   "lon": 41.890551
+  },
+  {
+   "name": "Rim-Gorskiy",
+   "lat": 43.958096,
+   "lon": 42.524108
+  },
+  {
+   "name": "Rioni",
+   "lat": 42.332956,
+   "lon": 42.714852
+  },
+  {
+   "name": "Rodinauli",
+   "lat": 42.15013,
+   "lon": 42.87133
+  },
+  {
+   "name": "Rodniki",
+   "lat": 44.740312,
+   "lon": 39.912532
+  },
+  {
+   "name": "Rodnikovyy",
+   "lat": 44.683532,
+   "lon": 39.999878
+  },
+  {
+   "name": "Rohi",
+   "lat": 42.107479,
+   "lon": 42.706407
+  },
+  {
+   "name": "Roschinskiy",
+   "lat": 44.383885,
+   "lon": 42.148785
+  },
+  {
+   "name": "Rtshilati",
+   "lat": 42.325175,
+   "lon": 43.1348
+  },
+  {
+   "name": "Ruhi",
+   "lat": 42.544316,
+   "lon": 41.847535
+  },
+  {
+   "name": "Ruisi",
+   "lat": 42.035966,
+   "lon": 43.964884
+  },
+  {
+   "name": "Russkaya Mamayka",
+   "lat": 43.650247,
+   "lon": 39.714431
+  },
+  {
+   "name": "Russkoe",
+   "lat": 44.96194,
+   "lon": 37.836869
+  },
+  {
+   "name": "Russkoye",
+   "lat": 43.835069,
+   "lon": 44.579918
+  },
+  {
+   "name": "RUSTAVI",
+   "lat": 41.559705,
+   "lon": 44.986424
+  },
+  {
+   "name": "Ryazanskaya",
+   "lat": 44.96199,
+   "lon": 39.578809
+  },
+  {
+   "name": "Sabazho",
+   "lat": 42.22272,
+   "lon": 41.798622
+  },
+  {
+   "name": "Sabe",
+   "lat": 42.046961,
+   "lon": 43.251094
+  },
+  {
+   "name": "Saberio",
+   "lat": 42.64592,
+   "lon": 41.907494
+  },
+  {
+   "name": "Sabuliskerio",
+   "lat": 42.675257,
+   "lon": 41.675785
+  },
+  {
+   "name": "SACHHERE",
+   "lat": 42.342501,
+   "lon": 43.404049
+  },
+  {
+   "name": "Sachino",
+   "lat": 42.64729,
+   "lon": 42.083729
+  },
+  {
+   "name": "Sachochuo",
+   "lat": 42.209857,
+   "lon": 41.766596
+  },
+  {
+   "name": "Sadmeli",
+   "lat": 42.540139,
+   "lon": 43.114993
+  },
+  {
+   "name": "SADON",
+   "lat": 42.852012,
+   "lon": 43.995197
+  },
+  {
+   "name": "Sadovoe",
+   "lat": 45.003356,
+   "lon": 39.693078
+  },
+  {
+   "name": "Sadovoe",
+   "lat": 44.332447,
+   "lon": 42.038087
+  },
+  {
+   "name": "Sadovoe",
+   "lat": 44.018527,
+   "lon": 42.972176
+  },
+  {
+   "name": "Sadovyy",
+   "lat": 45.319973,
+   "lon": 38.053711
+  },
+  {
+   "name": "Sadovyy",
+   "lat": 44.227462,
+   "lon": 43.195699
+  },
+  {
+   "name": "Sadovyy",
+   "lat": 45.01819,
+   "lon": 37.74799
+  },
+  {
+   "name": "Sadyhly",
+   "lat": 41.37492,
+   "lon": 45.144642
+  },
+  {
+   "name": "Saeliavo",
+   "lat": 42.437401,
+   "lon": 42.387708
+  },
+  {
+   "name": "Sagarejo",
+   "lat": 41.728389,
+   "lon": 45.332577
+  },
+  {
+   "name": "Saguramo",
+   "lat": 41.898619,
+   "lon": 44.760362
+  },
+  {
+   "name": "Sagvamichavo",
+   "lat": 42.228483,
+   "lon": 41.827094
+  },
+  {
+   "name": "Sagvichio",
+   "lat": 42.213265,
+   "lon": 41.874584
+  },
+  {
+   "name": "Sairhe",
+   "lat": 42.313435,
+   "lon": 43.408683
+  },
+  {
+   "name": "Sakasheti",
+   "lat": 42.093926,
+   "lon": 43.970841
+  },
+  {
+   "name": "Saketsia",
+   "lat": 42.529619,
+   "lon": 43.087889
+  },
+  {
+   "name": "Sakire",
+   "lat": 42.37859,
+   "lon": 43.910177
+  },
+  {
+   "name": "Sakraula",
+   "lat": 42.031286,
+   "lon": 42.984628
+  },
+  {
+   "name": "Sakulia",
+   "lat": 42.134432,
+   "lon": 42.561555
+  },
+  {
+   "name": "Sal'me",
+   "lat": 43.427666,
+   "lon": 40.024911
+  },
+  {
+   "name": "Salhino",
+   "lat": 43.486466,
+   "lon": 40.054114
+  },
+  {
+   "name": "Salhino",
+   "lat": 42.515468,
+   "lon": 42.34197
+  },
+  {
+   "name": "Salieti",
+   "lat": 42.271758,
+   "lon": 43.20906
+  },
+  {
+   "name": "Salominao",
+   "lat": 42.088135,
+   "lon": 42.719745
+  },
+  {
+   "name": "Samelalio",
+   "lat": 42.707453,
+   "lon": 41.749466
+  },
+  {
+   "name": "Samikao",
+   "lat": 42.26355,
+   "lon": 42.296038
+  },
+  {
+   "name": "SAMTREDIA",
+   "lat": 42.174739,
+   "lon": 42.336138
+  },
+  {
+   "name": "Samtskaro",
+   "lat": 42.200998,
+   "lon": 43.833958
+  },
+  {
+   "name": "San.Im.Lenina",
+   "lat": 42.926139,
+   "lon": 41.115398
+  },
+  {
+   "name": "Saodishario",
+   "lat": 42.246902,
+   "lon": 42.114695
+  },
+  {
+   "name": "Saprasia",
+   "lat": 42.037612,
+   "lon": 42.645146
+  },
+  {
+   "name": "Sarakoni",
+   "lat": 42.503838,
+   "lon": 42.05883
+  },
+  {
+   "name": "Saratovskaya",
+   "lat": 44.711278,
+   "lon": 39.218458
+  },
+  {
+   "name": "Saratovskiy",
+   "lat": 45.212657,
+   "lon": 39.980321
+  },
+  {
+   "name": "Saratovskiy",
+   "lat": 45.101815,
+   "lon": 39.7628
+  },
+  {
+   "name": "Sareki",
+   "lat": 42.330518,
+   "lon": 43.359819
+  },
+  {
+   "name": "Sarmakovo",
+   "lat": 43.741446,
+   "lon": 43.19664
+  },
+  {
+   "name": "Sartichala",
+   "lat": 41.709697,
+   "lon": 45.171715
+  },
+  {
+   "name": "Sary-Tyuz",
+   "lat": 43.90206,
+   "lon": 41.893315
+  },
+  {
+   "name": "Sasashi",
+   "lat": 42.80032,
+   "lon": 42.978569
+  },
+  {
+   "name": "Sashamugio",
+   "lat": 42.580189,
+   "lon": 41.658063
+  },
+  {
+   "name": "Satemo",
+   "lat": 42.111461,
+   "lon": 44.109531
+  },
+  {
+   "name": "Satihari",
+   "lat": 42.256968,
+   "lon": 44.085042
+  },
+  {
+   "name": "Satkebuchao",
+   "lat": 42.402993,
+   "lon": 42.058518
+  },
+  {
+   "name": "Satsihuri",
+   "lat": 42.118858,
+   "lon": 43.731642
+  },
+  {
+   "name": "Saukdere",
+   "lat": 44.903911,
+   "lon": 37.88575
+  },
+  {
+   "name": "Savane",
+   "lat": 42.31546,
+   "lon": 43.46728
+  },
+  {
+   "name": "Savanisubani",
+   "lat": 41.987763,
+   "lon": 43.524168
+  },
+  {
+   "name": "Sazano",
+   "lat": 42.218143,
+   "lon": 43.062941
+  },
+  {
+   "name": "Schastlivoe",
+   "lat": 44.164789,
+   "lon": 42.271165
+  },
+  {
+   "name": "Semisvodnyy",
+   "lat": 45.300754,
+   "lon": 37.969587
+  },
+  {
+   "name": "SENAKI",
+   "lat": 42.285411,
+   "lon": 42.045822
+  },
+  {
+   "name": "Sennoy",
+   "lat": 45.294518,
+   "lon": 36.98945
+  },
+  {
+   "name": "Sepieti",
+   "lat": 42.281965,
+   "lon": 42.243453
+  },
+  {
+   "name": "Sergieti",
+   "lat": 42.391498,
+   "lon": 42.323468
+  },
+  {
+   "name": "Sett. Chapaeva",
+   "lat": 43.54424,
+   "lon": 44.659527
+  },
+  {
+   "name": "Sett. Sheripova",
+   "lat": 43.542711,
+   "lon": 44.617595
+  },
+  {
+   "name": "settlement workers",
+   "lat": 41.871657,
+   "lon": 44.723509
+  },
+  {
+   "name": "settlement workers",
+   "lat": 42.098091,
+   "lon": 44.177467
+  },
+  {
+   "name": "Seva",
+   "lat": 42.555444,
+   "lon": 43.351597
+  },
+  {
+   "name": "Sevastopol'skaya",
+   "lat": 44.354847,
+   "lon": 40.303966
+  },
+  {
+   "name": "Severnyy",
+   "lat": 44.658857,
+   "lon": 40.117073
+  },
+  {
+   "name": "Severo-Vostochnye Sady",
+   "lat": 44.63528,
+   "lon": 40.131508
+  },
+  {
+   "name": "Severskaya",
+   "lat": 44.85415,
+   "lon": 38.67856
+  },
+  {
+   "name": "Shahe",
+   "lat": 43.789565,
+   "lon": 39.474887
+  },
+  {
+   "name": "Shalushka",
+   "lat": 43.530601,
+   "lon": 43.56847
+  },
+  {
+   "name": "Shamgona",
+   "lat": 42.521753,
+   "lon": 41.769134
+  },
+  {
+   "name": "Shardakovo",
+   "lat": 43.879279,
+   "lon": 43.102586
+  },
+  {
+   "name": "Shaumyan",
+   "lat": 44.323123,
+   "lon": 39.290108
+  },
+  {
+   "name": "Shaumyanovka",
+   "lat": 42.909981,
+   "lon": 41.190234
+  },
+  {
+   "name": "Shaumyanskiy",
+   "lat": 44.163229,
+   "lon": 43.539348
+  },
+  {
+   "name": "Shaved",
+   "lat": 42.077063,
+   "lon": 43.610677
+  },
+  {
+   "name": "Shedok",
+   "lat": 44.221288,
+   "lon": 40.837051
+  },
+  {
+   "name": "Shendzhiy",
+   "lat": 44.887778,
+   "lon": 39.060568
+  },
+  {
+   "name": "Shepsi",
+   "lat": 44.038265,
+   "lon": 39.14168
+  },
+  {
+   "name": "Shevchenko",
+   "lat": 44.899509,
+   "lon": 39.516976
+  },
+  {
+   "name": "Shindisi",
+   "lat": 42.12967,
+   "lon": 44.009758
+  },
+  {
+   "name": "Shirokaya Balka",
+   "lat": 44.48708,
+   "lon": 39.412907
+  },
+  {
+   "name": "Shirvanskaya",
+   "lat": 44.380256,
+   "lon": 39.807018
+  },
+  {
+   "name": "Shithala",
+   "lat": 43.555555,
+   "lon": 43.798022
+  },
+  {
+   "name": "Shitskvara",
+   "lat": 43.070784,
+   "lon": 40.927797
+  },
+  {
+   "name": "Shkol'noe",
+   "lat": 44.916928,
+   "lon": 39.856176
+  },
+  {
+   "name": "Shkol'nyy",
+   "lat": 45.034098,
+   "lon": 37.615478
+  },
+  {
+   "name": "Shomaheti",
+   "lat": 42.214857,
+   "lon": 43.428888
+  },
+  {
+   "name": "Shovgenovskiy",
+   "lat": 45.021933,
+   "lon": 40.235745
+  },
+  {
+   "name": "Shroma",
+   "lat": 42.522152,
+   "lon": 43.061884
+  },
+  {
+   "name": "Shroma",
+   "lat": 43.08272,
+   "lon": 41.035309
+  },
+  {
+   "name": "Shromiskari",
+   "lat": 42.358092,
+   "lon": 42.116093
+  },
+  {
+   "name": "Shrosha",
+   "lat": 42.11504,
+   "lon": 43.179695
+  },
+  {
+   "name": "Shturbino",
+   "lat": 45.054728,
+   "lon": 39.912252
+  },
+  {
+   "name": "Shua-Bashi",
+   "lat": 42.143434,
+   "lon": 42.493907
+  },
+  {
+   "name": "Shua-Gezruli",
+   "lat": 42.153417,
+   "lon": 43.219613
+  },
+  {
+   "name": "Shua-Gubi",
+   "lat": 42.261628,
+   "lon": 42.466473
+  },
+  {
+   "name": "Shua-Nosiri",
+   "lat": 42.280291,
+   "lon": 42.094655
+  },
+  {
+   "name": "Shua-shvava",
+   "lat": 42.501499,
+   "lon": 43.221855
+  },
+  {
+   "name": "Shua-Tshviri",
+   "lat": 42.372013,
+   "lon": 44.184655
+  },
+  {
+   "name": "Shuamta",
+   "lat": 42.097609,
+   "lon": 42.451121
+  },
+  {
+   "name": "Shuntuk",
+   "lat": 44.455608,
+   "lon": 40.164758
+  },
+  {
+   "name": "Sida",
+   "lat": 42.570767,
+   "lon": 41.712233
+  },
+  {
+   "name": "Siktarva",
+   "lat": 42.192302,
+   "lon": 42.940934
+  },
+  {
+   "name": "Simoneti",
+   "lat": 42.238107,
+   "lon": 42.912135
+  },
+  {
+   "name": "Sinegorsk",
+   "lat": 44.775835,
+   "lon": 38.338404
+  },
+  {
+   "name": "Sioni",
+   "lat": 41.990655,
+   "lon": 45.028461
+  },
+  {
+   "name": "Skindori",
+   "lat": 42.242029,
+   "lon": 43.249227
+  },
+  {
+   "name": "Skra",
+   "lat": 41.997101,
+   "lon": 44.011659
+  },
+  {
+   "name": "Skura",
+   "lat": 41.866696,
+   "lon": 41.925186
+  },
+  {
+   "name": "Skurdi",
+   "lat": 42.476765,
+   "lon": 42.368497
+  },
+  {
+   "name": "SLAVYANSK-NA-KUBANI",
+   "lat": 45.253951,
+   "lon": 38.123431
+  },
+  {
+   "name": "Smolenskaya",
+   "lat": 44.786688,
+   "lon": 38.800768
+  },
+  {
+   "name": "SOCHI",
+   "lat": 43.604619,
+   "lon": 39.721483
+  },
+  {
+   "name": "Sochkheti",
+   "lat": 42.395196,
+   "lon": 42.910288
+  },
+  {
+   "name": "Soglasnyy",
+   "lat": 45.237391,
+   "lon": 39.975613
+  },
+  {
+   "name": "Soldato-Aleksandrovskoe",
+   "lat": 44.266128,
+   "lon": 43.758362
+  },
+  {
+   "name": "Soldatskaya",
+   "lat": 43.81231,
+   "lon": 43.823078
+  },
+  {
+   "name": "Solenoe",
+   "lat": 44.044307,
+   "lon": 40.87296
+  },
+  {
+   "name": "Soloniki",
+   "lat": 43.884949,
+   "lon": 39.378103
+  },
+  {
+   "name": "Sormoni",
+   "lat": 42.320448,
+   "lon": 42.736131
+  },
+  {
+   "name": "Sovhoznoe",
+   "lat": 43.803855,
+   "lon": 43.147584
+  },
+  {
+   "name": "Sovhoznyy",
+   "lat": 44.543971,
+   "lon": 40.152743
+  },
+  {
+   "name": "Sovhoznyy",
+   "lat": 45.29797,
+   "lon": 38.106763
+  },
+  {
+   "name": "Spatagori",
+   "lat": 42.612449,
+   "lon": 42.820431
+  },
+  {
+   "name": "Speti",
+   "lat": 42.322001,
+   "lon": 43.523397
+  },
+  {
+   "name": "Spokoynaya",
+   "lat": 44.259312,
+   "lon": 41.390173
+  },
+  {
+   "name": "Sredniye Achaluki",
+   "lat": 43.371071,
+   "lon": 44.731465
+  },
+  {
+   "name": "Stantsionnyy",
+   "lat": 44.438859,
+   "lon": 39.474111
+  },
+  {
+   "name": "Star.Cherek",
+   "lat": 43.474391,
+   "lon": 43.858173
+  },
+  {
+   "name": "Star.Matsesta",
+   "lat": 43.582022,
+   "lon": 39.802334
+  },
+  {
+   "name": "Stariy Bataksyurt",
+   "lat": 43.377826,
+   "lon": 44.53976
+  },
+  {
+   "name": "Stariy Malgobek",
+   "lat": 43.54755,
+   "lon": 44.576478
+  },
+  {
+   "name": "Stariye Kvemo-Korsevi",
+   "lat": 42.411866,
+   "lon": 43.873899
+  },
+  {
+   "name": "Starobzhegokay",
+   "lat": 45.037835,
+   "lon": 38.890909
+  },
+  {
+   "name": "Starokorsunskaya",
+   "lat": 45.056256,
+   "lon": 39.314748
+  },
+  {
+   "name": "Staropavlovskaya",
+   "lat": 43.846862,
+   "lon": 43.635628
+  },
+  {
+   "name": "Starotitarovskaya",
+   "lat": 45.219384,
+   "lon": 37.161638
+  },
+  {
+   "name": "State Farm Samgori",
+   "lat": 41.597409,
+   "lon": 45.028851
+  },
+  {
+   "name": "Stavd-Durta",
+   "lat": 43.362683,
+   "lon": 44.056242
+  },
+  {
+   "name": "Stavropol'skaya",
+   "lat": 44.718327,
+   "lon": 38.825185
+  },
+  {
+   "name": "Stoderevskaya",
+   "lat": 43.725108,
+   "lon": 44.841465
+  },
+  {
+   "name": "Storozhevaya",
+   "lat": 43.883112,
+   "lon": 41.453295
+  },
+  {
+   "name": "Strelka",
+   "lat": 45.204296,
+   "lon": 37.28691
+  },
+  {
+   "name": "Sudzhuna",
+   "lat": 42.20096,
+   "lon": 42.146446
+  },
+  {
+   "name": "Suhcha",
+   "lat": 42.417076,
+   "lon": 42.468544
+  },
+  {
+   "name": "Suhotskoe",
+   "lat": 43.67834,
+   "lon": 44.440575
+  },
+  {
+   "name": "Suhoy Kut",
+   "lat": 45.127745,
+   "lon": 40.207372
+  },
+  {
+   "name": "Sukaantubani",
+   "lat": 41.966189,
+   "lon": 43.782483
+  },
+  {
+   "name": "SUKHUMI",
+   "lat": 43.010963,
+   "lon": 40.9994
+  },
+  {
+   "name": "Sukko",
+   "lat": 44.798695,
+   "lon": 37.420789
+  },
+  {
+   "name": "Sulori",
+   "lat": 42.025049,
+   "lon": 42.577617
+  },
+  {
+   "name": "Sunzha",
+   "lat": 43.057253,
+   "lon": 44.825846
+  },
+  {
+   "name": "Supovskiy",
+   "lat": 44.902356,
+   "lon": 38.942116
+  },
+  {
+   "name": "Supseh",
+   "lat": 44.861146,
+   "lon": 37.36434
+  },
+  {
+   "name": "Surami",
+   "lat": 42.023579,
+   "lon": 43.551661
+  },
+  {
+   "name": "Surkhakhi",
+   "lat": 43.18787,
+   "lon": 44.905782
+  },
+  {
+   "name": "Surmushi",
+   "lat": 42.592088,
+   "lon": 42.878475
+  },
+  {
+   "name": "Suvorov-Cherkesskiy",
+   "lat": 45.069861,
+   "lon": 37.271582
+  },
+  {
+   "name": "Suvorovskaya",
+   "lat": 44.187846,
+   "lon": 42.658805
+  },
+  {
+   "name": "Suvorovskoe",
+   "lat": 45.286566,
+   "lon": 39.460538
+  },
+  {
+   "name": "Suzdal'skaya",
+   "lat": 44.766994,
+   "lon": 39.368694
+  },
+  {
+   "name": "Sveneti",
+   "lat": 42.027015,
+   "lon": 44.147642
+  },
+  {
+   "name": "Sveri",
+   "lat": 42.226188,
+   "lon": 43.30356
+  },
+  {
+   "name": "Svetlovodskoe",
+   "lat": 43.896544,
+   "lon": 43.180565
+  },
+  {
+   "name": "Svetlyy Put' Lenina",
+   "lat": 45.208583,
+   "lon": 37.656995
+  },
+  {
+   "name": "svh.Ahalsopeli",
+   "lat": 42.249177,
+   "lon": 41.857919
+  },
+  {
+   "name": "svh.Didi-Chkonskiy",
+   "lat": 42.539708,
+   "lon": 42.290066
+  },
+  {
+   "name": "svh.Horshi",
+   "lat": 42.341095,
+   "lon": 42.03508
+  },
+  {
+   "name": "svh.Kohora",
+   "lat": 42.659065,
+   "lon": 41.708095
+  },
+  {
+   "name": "svh.Nasakirali",
+   "lat": 41.970377,
+   "lon": 42.020224
+  },
+  {
+   "name": "svh.Tagrskiy",
+   "lat": 43.199276,
+   "lon": 40.284213
+  },
+  {
+   "name": "Svoboda",
+   "lat": 44.155825,
+   "lon": 42.76821
+  },
+  {
+   "name": "SVOBODY",
+   "lat": 44.025747,
+   "lon": 43.044756
+  },
+  {
+   "name": "Synyrhva",
+   "lat": 43.192922,
+   "lon": 40.552701
+  },
+  {
+   "name": "Tabachnyy",
+   "lat": 44.556422,
+   "lon": 40.091093
+  },
+  {
+   "name": "Tabagrebi",
+   "lat": 42.328721,
+   "lon": 43.27594
+  },
+  {
+   "name": "Tabakhmela",
+   "lat": 41.653487,
+   "lon": 44.754861
+  },
+  {
+   "name": "Tabakini",
+   "lat": 42.065905,
+   "lon": 43.036069
+  },
+  {
+   "name": "Tabori",
+   "lat": 42.60599,
+   "lon": 42.89241
+  },
+  {
+   "name": "Tagiloni",
+   "lat": 42.547563,
+   "lon": 41.772461
+  },
+  {
+   "name": "Tahtamukay",
+   "lat": 44.922632,
+   "lon": 38.994206
+  },
+  {
+   "name": "Tallyk",
+   "lat": 44.153193,
+   "lon": 42.343567
+  },
+  {
+   "name": "Tamakoni",
+   "lat": 42.458194,
+   "lon": 42.305573
+  },
+  {
+   "name": "Taman'",
+   "lat": 45.21108,
+   "lon": 36.712001
+  },
+  {
+   "name": "Tamanskiy",
+   "lat": 45.15018,
+   "lon": 36.782611
+  },
+  {
+   "name": "Tambukan",
+   "lat": 43.932197,
+   "lon": 43.142965
+  },
+  {
+   "name": "Tarskoye",
+   "lat": 42.966945,
+   "lon": 44.77635
+  },
+  {
+   "name": "Tashly-Tala",
+   "lat": 43.146908,
+   "lon": 43.697247
+  },
+  {
+   "name": "Tavasa",
+   "lat": 42.275571,
+   "lon": 43.082456
+  },
+  {
+   "name": "Tavisupleba",
+   "lat": 43.041709,
+   "lon": 41.016536
+  },
+  {
+   "name": "Taya",
+   "lat": 42.610109,
+   "lon": 42.213082
+  },
+  {
+   "name": "TBILISI",
+   "lat": 41.736457,
+   "lon": 44.825608
+  },
+  {
+   "name": "Teberda",
+   "lat": 43.452155,
+   "lon": 41.739692
+  },
+  {
+   "name": "Tedeleti",
+   "lat": 42.415927,
+   "lon": 43.608474
+  },
+  {
+   "name": "Teklati",
+   "lat": 42.253536,
+   "lon": 42.00919
+  },
+  {
+   "name": "Telepa",
+   "lat": 42.199325,
+   "lon": 43.013716
+  },
+  {
+   "name": "Telmani",
+   "lat": 42.041496,
+   "lon": 42.055072
+  },
+  {
+   "name": "TEMRYUK",
+   "lat": 45.261076,
+   "lon": 37.432072
+  },
+  {
+   "name": "Tenginka",
+   "lat": 44.328982,
+   "lon": 38.783412
+  },
+  {
+   "name": "Tenginskaya",
+   "lat": 45.100953,
+   "lon": 40.008266
+  },
+  {
+   "name": "TEREK",
+   "lat": 43.48238,
+   "lon": 44.141438
+  },
+  {
+   "name": "Terekskoe",
+   "lat": 43.673364,
+   "lon": 44.297188
+  },
+  {
+   "name": "Tereze",
+   "lat": 43.934122,
+   "lon": 42.44649
+  },
+  {
+   "name": "Terk",
+   "lat": 42.931648,
+   "lon": 44.661428
+  },
+  {
+   "name": "Terzhola",
+   "lat": 42.195788,
+   "lon": 42.983178
+  },
+  {
+   "name": "TETRA-Tskaro",
+   "lat": 41.54735,
+   "lon": 44.468209
+  },
+  {
+   "name": "Teuchezhkhabl'",
+   "lat": 44.931656,
+   "lon": 39.562499
+  },
+  {
+   "name": "Thilnari",
+   "lat": 41.569953,
+   "lon": 41.647305
+  },
+  {
+   "name": "Thina",
+   "lat": 42.881268,
+   "lon": 41.544684
+  },
+  {
+   "name": "Thmelari",
+   "lat": 42.145418,
+   "lon": 42.263166
+  },
+  {
+   "name": "Tianeti",
+   "lat": 42.109786,
+   "lon": 44.965735
+  },
+  {
+   "name": "Tib",
+   "lat": 42.673957,
+   "lon": 43.909848
+  },
+  {
+   "name": "Tihovskiy",
+   "lat": 45.194706,
+   "lon": 38.218835
+  },
+  {
+   "name": "Tinihidi",
+   "lat": 41.992653,
+   "lon": 44.084712
+  },
+  {
+   "name": "Tkachiri",
+   "lat": 42.142229,
+   "lon": 42.632747
+  },
+  {
+   "name": "Tkaya",
+   "lat": 42.622523,
+   "lon": 41.928621
+  },
+  {
+   "name": "Tkelvani",
+   "lat": 42.047842,
+   "lon": 42.551287
+  },
+  {
+   "name": "TKIBULI",
+   "lat": 42.352385,
+   "lon": 42.997191
+  },
+  {
+   "name": "Tklapivake",
+   "lat": 42.172575,
+   "lon": 43.068294
+  },
+  {
+   "name": "Tkotsa",
+   "lat": 42.093459,
+   "lon": 43.702879
+  },
+  {
+   "name": "TKVARCHELI",
+   "lat": 42.853781,
+   "lon": 41.674307
+  },
+  {
+   "name": "Tkviavi",
+   "lat": 42.158148,
+   "lon": 44.068454
+  },
+  {
+   "name": "Tkviri",
+   "lat": 42.169336,
+   "lon": 42.246736
+  },
+  {
+   "name": "Tlyustenhabl'",
+   "lat": 44.980442,
+   "lon": 39.092968
+  },
+  {
+   "name": "Tolebi",
+   "lat": 42.074187,
+   "lon": 42.2404
+  },
+  {
+   "name": "Travlev",
+   "lat": 44.370687,
+   "lon": 39.537629
+  },
+  {
+   "name": "Troickaya",
+   "lat": 43.305363,
+   "lon": 45.010858
+  },
+  {
+   "name": "Troitskiy",
+   "lat": 45.146496,
+   "lon": 38.133592
+  },
+  {
+   "name": "Trudobelikovskiy",
+   "lat": 45.285178,
+   "lon": 38.142705
+  },
+  {
+   "name": "Tsagera",
+   "lat": 42.779645,
+   "lon": 41.422951
+  },
+  {
+   "name": "Tsagvli",
+   "lat": 42.120081,
+   "lon": 43.698204
+  },
+  {
+   "name": "Tsahi",
+   "lat": 42.52603,
+   "lon": 42.922673
+  },
+  {
+   "name": "Tsaishi",
+   "lat": 42.431382,
+   "lon": 41.803488
+  },
+  {
+   "name": "Tsalendzhiha",
+   "lat": 42.619409,
+   "lon": 42.0709
+  },
+  {
+   "name": "Tsalkoti",
+   "lat": 43.407001,
+   "lon": 40.05262
+  },
+  {
+   "name": "Tsatshvi",
+   "lat": 42.414906,
+   "lon": 41.789573
+  },
+  {
+   "name": "Tsebel'da",
+   "lat": 43.022159,
+   "lon": 41.269029
+  },
+  {
+   "name": "Tsedisi",
+   "lat": 42.532887,
+   "lon": 43.548207
+  },
+  {
+   "name": "Tsereteli",
+   "lat": 41.449287,
+   "lon": 44.822309
+  },
+  {
+   "name": "Tsesi",
+   "lat": 42.542767,
+   "lon": 43.196616
+  },
+  {
+   "name": "TSHALTUBO",
+   "lat": 42.323088,
+   "lon": 42.61466
+  },
+  {
+   "name": "Tshami",
+   "lat": 42.291453,
+   "lon": 43.51057
+  },
+  {
+   "name": "Tshemlishidi",
+   "lat": 41.921541,
+   "lon": 42.071692
+  },
+  {
+   "name": "Tshenis-Tskali",
+   "lat": 42.796462,
+   "lon": 41.419871
+  },
+  {
+   "name": "Tshentaro",
+   "lat": 42.147873,
+   "lon": 42.837507
+  },
+  {
+   "name": "Tshetisdzhvari",
+   "lat": 42.105024,
+   "lon": 43.651165
+  },
+  {
+   "name": "Tshmori",
+   "lat": 42.536955,
+   "lon": 43.478057
+  },
+  {
+   "name": "Tshunkuri",
+   "lat": 42.396804,
+   "lon": 42.570436
+  },
+  {
+   "name": "Tsiara",
+   "lat": 42.35342,
+   "lon": 44.022577
+  },
+  {
+   "name": "Tsibanobalka",
+   "lat": 44.982008,
+   "lon": 37.342091
+  },
+  {
+   "name": "Tsihisdziri",
+   "lat": 41.772133,
+   "lon": 41.762802
+  },
+  {
+   "name": "Tsintskaro",
+   "lat": 41.541691,
+   "lon": 44.617983
+  },
+  {
+   "name": "Tsipa",
+   "lat": 42.046461,
+   "lon": 42.949247
+  },
+  {
+   "name": "Tsipa",
+   "lat": 42.009347,
+   "lon": 43.451125
+  },
+  {
+   "name": "Tsiperchi",
+   "lat": 42.603636,
+   "lon": 42.695129
+  },
+  {
+   "name": "Tsipnagvara",
+   "lat": 41.955727,
+   "lon": 42.224549
+  },
+  {
+   "name": "Tsipnara",
+   "lat": 42.02401,
+   "lon": 42.293819
+  },
+  {
+   "name": "Tskalaporeti",
+   "lat": 42.031419,
+   "lon": 43.078673
+  },
+  {
+   "name": "Tskalshavi",
+   "lat": 42.219307,
+   "lon": 43.341725
+  },
+  {
+   "name": "Tskaltashua",
+   "lat": 42.022671,
+   "lon": 42.828904
+  },
+  {
+   "name": "Tskaltsminda",
+   "lat": 42.011212,
+   "lon": 41.778545
+  },
+  {
+   "name": "Tskavroka",
+   "lat": 41.859784,
+   "lon": 41.888202
+  },
+  {
+   "name": "Tskemi",
+   "lat": 42.269262,
+   "lon": 42.174364
+  },
+  {
+   "name": "TSKHINVALI",
+   "lat": 42.230304,
+   "lon": 43.970695
+  },
+  {
+   "name": "Tskhvarichamia",
+   "lat": 41.880083,
+   "lon": 44.91367
+  },
+  {
+   "name": "Tskneti",
+   "lat": 41.691738,
+   "lon": 44.698812
+  },
+  {
+   "name": "Tsknori",
+   "lat": 42.402082,
+   "lon": 42.890375
+  },
+  {
+   "name": "Tskrysh",
+   "lat": 42.782967,
+   "lon": 41.373482
+  },
+  {
+   "name": "Tsotshnara",
+   "lat": 42.050883,
+   "lon": 43.579242
+  },
+  {
+   "name": "Tsru",
+   "lat": 42.383653,
+   "lon": 44.022967
+  },
+  {
+   "name": "Tsutshvati",
+   "lat": 42.289077,
+   "lon": 42.860776
+  },
+  {
+   "name": "Tsvane",
+   "lat": 42.370055,
+   "lon": 41.654112
+  },
+  {
+   "name": "Tsveri",
+   "lat": 42.074543,
+   "lon": 43.886696
+  },
+  {
+   "name": "Tsvirmi",
+   "lat": 43.017141,
+   "lon": 42.801118
+  },
+  {
+   "name": "TUAPSE",
+   "lat": 44.114132,
+   "lon": 39.068294
+  },
+  {
+   "name": "Tul'skiy",
+   "lat": 44.513927,
+   "lon": 40.170579
+  },
+  {
+   "name": "Tushurebi",
+   "lat": 42.122766,
+   "lon": 44.912051
+  },
+  {
+   "name": "Tuzi",
+   "lat": 42.272471,
+   "lon": 43.110811
+  },
+  {
+   "name": "Tvalueti",
+   "lat": 42.227705,
+   "lon": 43.268895
+  },
+  {
+   "name": "Tvanaarhu",
+   "lat": 43.197101,
+   "lon": 40.652253
+  },
+  {
+   "name": "Tverskaya",
+   "lat": 44.604805,
+   "lon": 39.610687
+  },
+  {
+   "name": "Tvishi",
+   "lat": 42.515837,
+   "lon": 42.788506
+  },
+  {
+   "name": "Tvrini",
+   "lat": 42.073237,
+   "lon": 43.072609
+  },
+  {
+   "name": "TYRNYAUZ",
+   "lat": 43.391341,
+   "lon": 42.921969
+  },
+  {
+   "name": "Tyumenskiy",
+   "lat": 44.182244,
+   "lon": 38.972674
+  },
+  {
+   "name": "Uazabaa",
+   "lat": 43.054593,
+   "lon": 40.976749
+  },
+  {
+   "name": "Ubinskaya",
+   "lat": 44.737,
+   "lon": 38.541069
+  },
+  {
+   "name": "Ubisi",
+   "lat": 42.098775,
+   "lon": 43.226444
+  },
+  {
+   "name": "Uchashona",
+   "lat": 42.493247,
+   "lon": 41.924453
+  },
+  {
+   "name": "Uchkeken",
+   "lat": 43.943106,
+   "lon": 42.514172
+  },
+  {
+   "name": "Uchkulan",
+   "lat": 43.45518,
+   "lon": 42.087454
+  },
+  {
+   "name": "UDARNYY",
+   "lat": 44.35155,
+   "lon": 42.502748
+  },
+  {
+   "name": "Udobnaya",
+   "lat": 44.214925,
+   "lon": 41.562212
+  },
+  {
+   "name": "Uhuti",
+   "lat": 42.040771,
+   "lon": 42.683152
+  },
+  {
+   "name": "Ukanava",
+   "lat": 41.934585,
+   "lon": 42.18621
+  },
+  {
+   "name": "Ukrainskiy",
+   "lat": 45.25404,
+   "lon": 39.354076
+  },
+  {
+   "name": "Ul'yanovka",
+   "lat": 44.303471,
+   "lon": 42.927167
+  },
+  {
+   "name": "Uluria",
+   "lat": 42.5858,
+   "lon": 42.113808
+  },
+  {
+   "name": "Ulyanovka",
+   "lat": 41.389915,
+   "lon": 45.118498
+  },
+  {
+   "name": "Ulyap",
+   "lat": 45.055071,
+   "lon": 39.950905
+  },
+  {
+   "name": "Ureki",
+   "lat": 41.994268,
+   "lon": 41.778543
+  },
+  {
+   "name": "Urozhaynyy",
+   "lat": 44.116948,
+   "lon": 42.762639
+  },
+  {
+   "name": "Ursdon",
+   "lat": 43.095719,
+   "lon": 44.08543
+  },
+  {
+   "name": "Urta",
+   "lat": 42.430754,
+   "lon": 41.841157
+  },
+  {
+   "name": "Uruhskaya",
+   "lat": 44.153716,
+   "lon": 43.669649
+  },
+  {
+   "name": "Urup",
+   "lat": 43.84697,
+   "lon": 41.152495
+  },
+  {
+   "name": "Urvan'",
+   "lat": 43.490777,
+   "lon": 43.76437
+  },
+  {
+   "name": "Urvani",
+   "lat": 42.642964,
+   "lon": 43.282974
+  },
+  {
+   "name": "Usahelo",
+   "lat": 42.597293,
+   "lon": 42.828361
+  },
+  {
+   "name": "Usahelo",
+   "lat": 42.232442,
+   "lon": 43.371765
+  },
+  {
+   "name": "UST'-DZHEGUTA",
+   "lat": 44.080182,
+   "lon": 41.969081
+  },
+  {
+   "name": "UST'-LABINSK",
+   "lat": 45.221626,
+   "lon": 39.683478
+  },
+  {
+   "name": "Utash",
+   "lat": 45.097694,
+   "lon": 37.319662
+  },
+  {
+   "name": "Utsera",
+   "lat": 42.633276,
+   "lon": 43.538861
+  },
+  {
+   "name": "Uvarovskoye",
+   "lat": 43.81501,
+   "lon": 44.427222
+  },
+  {
+   "name": "Vaca",
+   "lat": 42.043164,
+   "lon": 43.713762
+  },
+  {
+   "name": "Vachevi",
+   "lat": 42.319197,
+   "lon": 43.198124
+  },
+  {
+   "name": "Vakidzhvari",
+   "lat": 41.915906,
+   "lon": 42.14149
+  },
+  {
+   "name": "Vani",
+   "lat": 41.986843,
+   "lon": 43.203182
+  },
+  {
+   "name": "Vani",
+   "lat": 42.04817,
+   "lon": 42.149633
+  },
+  {
+   "name": "Varcha",
+   "lat": 42.841492,
+   "lon": 41.138267
+  },
+  {
+   "name": "Vardane",
+   "lat": 43.734603,
+   "lon": 39.553328
+  },
+  {
+   "name": "Varenikovskaya",
+   "lat": 45.120464,
+   "lon": 37.634587
+  },
+  {
+   "name": "Variani",
+   "lat": 42.076311,
+   "lon": 44.033619
+  },
+  {
+   "name": "Varnavinskoe",
+   "lat": 44.995514,
+   "lon": 38.192444
+  },
+  {
+   "name": "Vartsihe",
+   "lat": 42.144134,
+   "lon": 42.718334
+  },
+  {
+   "name": "Varvarovka",
+   "lat": 44.834052,
+   "lon": 37.372957
+  },
+  {
+   "name": "Vasil'evskiy",
+   "lat": 45.091406,
+   "lon": 38.531103
+  },
+  {
+   "name": "Vasyurinskaya",
+   "lat": 45.117847,
+   "lon": 39.420083
+  },
+  {
+   "name": "Vazhnoe",
+   "lat": 43.992853,
+   "lon": 41.940704
+  },
+  {
+   "name": "Vaziani",
+   "lat": 41.693761,
+   "lon": 45.053892
+  },
+  {
+   "name": "Vedreba",
+   "lat": 41.985291,
+   "lon": 43.821404
+  },
+  {
+   "name": "Velikovechnoe",
+   "lat": 44.936567,
+   "lon": 39.749784
+  },
+  {
+   "name": "Verevkin",
+   "lat": 45.22031,
+   "lon": 40.354313
+  },
+  {
+   "name": "Verh.- Pshap",
+   "lat": 42.89173,
+   "lon": 41.155013
+  },
+  {
+   "name": "Verh.Akbash",
+   "lat": 43.474962,
+   "lon": 44.235607
+  },
+  {
+   "name": "Verh.Baksan",
+   "lat": 43.309417,
+   "lon": 42.75028
+  },
+  {
+   "name": "Verh.Balkariya",
+   "lat": 43.131049,
+   "lon": 43.456872
+  },
+  {
+   "name": "Verh.Chegem",
+   "lat": 43.240698,
+   "lon": 43.134321
+  },
+  {
+   "name": "Verh.Kurkuzhin",
+   "lat": 43.705952,
+   "lon": 43.296825
+  },
+  {
+   "name": "Verh.Mara",
+   "lat": 43.771537,
+   "lon": 42.136894
+  },
+  {
+   "name": "Verh.Teberda",
+   "lat": 43.538315,
+   "lon": 41.782876
+  },
+  {
+   "name": "Verh.ZHemtala",
+   "lat": 43.236728,
+   "lon": 43.669495
+  },
+  {
+   "name": "Verhne-Armyanskoe Loo",
+   "lat": 43.739337,
+   "lon": 39.617997
+  },
+  {
+   "name": "Verhne-Imeretinskaya Buhta",
+   "lat": 43.417052,
+   "lon": 39.975434
+  },
+  {
+   "name": "Verhne-Nikolaevskoe",
+   "lat": 43.529614,
+   "lon": 39.92952
+  },
+  {
+   "name": "Verhne-Veseloe",
+   "lat": 43.426208,
+   "lon": 39.979875
+  },
+  {
+   "name": "Verhnebakanskiy ",
+   "lat": 44.843629,
+   "lon": 37.660287
+  },
+  {
+   "name": "Verhniy Komgaron",
+   "lat": 43.056066,
+   "lon": 44.907189
+  },
+  {
+   "name": "Verhniy Kurpie",
+   "lat": 43.481149,
+   "lon": 44.372481
+  },
+  {
+   "name": "Verhniy Tsey",
+   "lat": 42.803812,
+   "lon": 43.93914
+  },
+  {
+   "name": "Verhniy Zaramag",
+   "lat": 42.699861,
+   "lon": 43.961273
+  },
+  {
+   "name": "VERHNIY ZGID",
+   "lat": 42.871325,
+   "lon": 43.960613
+  },
+  {
+   "name": "Verhniye Achaluki",
+   "lat": 43.350538,
+   "lon": 44.69902
+  },
+  {
+   "name": "Verhnyaya Eshera",
+   "lat": 43.07586,
+   "lon": 40.892093
+  },
+  {
+   "name": "Verhnyaya-Mtsara",
+   "lat": 43.16905,
+   "lon": 40.766431
+  },
+  {
+   "name": "Vertkvichala",
+   "lat": 42.105803,
+   "lon": 43.304873
+  },
+  {
+   "name": "Veseloe",
+   "lat": 43.412545,
+   "lon": 40.00276
+  },
+  {
+   "name": "Veselovka",
+   "lat": 45.130495,
+   "lon": 36.900949
+  },
+  {
+   "name": "Veselovskoye",
+   "lat": 43.771709,
+   "lon": 44.727163
+  },
+  {
+   "name": "Veselyy",
+   "lat": 44.676962,
+   "lon": 39.936165
+  },
+  {
+   "name": "Vestnik",
+   "lat": 45.102251,
+   "lon": 37.452285
+  },
+  {
+   "name": "Vinogradnoye",
+   "lat": 43.699684,
+   "lon": 44.49281
+  },
+  {
+   "name": "Vinogradnyy",
+   "lat": 45.194969,
+   "lon": 36.898478
+  },
+  {
+   "name": "Vinogradnyy",
+   "lat": 45.058888,
+   "lon": 37.327405
+  },
+  {
+   "name": "Vinogradnyy",
+   "lat": 44.980235,
+   "lon": 37.912105
+  },
+  {
+   "name": "Vinsady",
+   "lat": 44.080854,
+   "lon": 42.959745
+  },
+  {
+   "name": "Vishnevka",
+   "lat": 44.010679,
+   "lon": 39.186179
+  },
+  {
+   "name": "Vityazevo",
+   "lat": 44.998498,
+   "lon": 37.272707
+  },
+  {
+   "name": "VLADIKAVKAZ",
+   "lat": 43.029636,
+   "lon": 44.679665
+  },
+  {
+   "name": "Vladimirovka",
+   "lat": 42.893409,
+   "lon": 41.233317
+  },
+  {
+   "name": "Vladimirovka",
+   "lat": 44.792068,
+   "lon": 37.675603
+  },
+  {
+   "name": "Vochepshiy",
+   "lat": 44.876265,
+   "lon": 39.284439
+  },
+  {
+   "name": "Vodorazdel'nyy",
+   "lat": 44.253379,
+   "lon": 42.343575
+  },
+  {
+   "name": "Volkonka",
+   "lat": 43.869753,
+   "lon": 39.394933
+  },
+  {
+   "name": "Volkovka",
+   "lat": 43.697214,
+   "lon": 39.66599
+  },
+  {
+   "name": "Volna Revolyutsii",
+   "lat": 45.33578,
+   "lon": 36.94507
+  },
+  {
+   "name": "Voronezhskaya",
+   "lat": 45.212918,
+   "lon": 39.5618
+  },
+  {
+   "name": "Vorontsovka",
+   "lat": 43.620869,
+   "lon": 39.918245
+  },
+  {
+   "name": "Vorontsovskaya",
+   "lat": 45.221638,
+   "lon": 38.73637
+  },
+  {
+   "name": "Vorovskolesskaya",
+   "lat": 44.379548,
+   "lon": 42.404731
+  },
+  {
+   "name": "Voskresenskiy",
+   "lat": 44.967396,
+   "lon": 37.326592
+  },
+  {
+   "name": "Vozdvizhenskaya",
+   "lat": 45.129818,
+   "lon": 40.14253
+  },
+  {
+   "name": "Voznesenskaya",
+   "lat": 43.544554,
+   "lon": 44.749833
+  },
+  {
+   "name": "Vozrozhdenie",
+   "lat": 44.54925,
+   "lon": 38.217419
+  },
+  {
+   "name": "Vpered",
+   "lat": 44.550175,
+   "lon": 39.705213
+  },
+  {
+   "name": "Vyshesteblievskaya",
+   "lat": 45.197182,
+   "lon": 36.997904
+  },
+  {
+   "name": "Vysotnyy",
+   "lat": 44.956537,
+   "lon": 39.680462
+  },
+  {
+   "name": "Yablonovskiy",
+   "lat": 44.986937,
+   "lon": 38.944217
+  },
+  {
+   "name": "Yandyrka",
+   "lat": 43.273597,
+   "lon": 44.916689
+  },
+  {
+   "name": "Yanikoy",
+   "lat": 43.544208,
+   "lon": 43.507782
+  },
+  {
+   "name": "Yantarnoe",
+   "lat": 43.762016,
+   "lon": 43.881024
+  },
+  {
+   "name": "Yasnaya Polyana",
+   "lat": 44.026131,
+   "lon": 42.751359
+  },
+  {
+   "name": "Yrogainoe",
+   "lat": 43.702547,
+   "lon": 44.216846
+  },
+  {
+   "name": "YUGNIY",
+   "lat": 42.96596,
+   "lon": 44.689516
+  },
+  {
+   "name": "Yugnoye",
+   "lat": 43.517917,
+   "lon": 44.743613
+  },
+  {
+   "name": "Yurovka",
+   "lat": 45.116079,
+   "lon": 37.41279
+  },
+  {
+   "name": "Yutsa",
+   "lat": 43.967055,
+   "lon": 43.011684
+  },
+  {
+   "name": "Yuzhnyy",
+   "lat": 45.033052,
+   "lon": 38.079312
+  },
+  {
+   "name": "Yuzhnyy",
+   "lat": 44.730125,
+   "lon": 39.864296
+  },
+  {
+   "name": "Yuzhnyy",
+   "lat": 45.148146,
+   "lon": 39.027375
+  },
+  {
+   "name": "Zaarnadzeebi",
+   "lat": 42.256196,
+   "lon": 43.012686
+  },
+  {
+   "name": "ZAGES",
+   "lat": 41.825864,
+   "lon": 44.757579
+  },
+  {
+   "name": "Zagorskiy",
+   "lat": 44.258175,
+   "lon": 43.124187
+  },
+  {
+   "name": "Zakavkazskiy Partizan",
+   "lat": 44.116442,
+   "lon": 43.838405
+  },
+  {
+   "name": "Zalukodes",
+   "lat": 43.836692,
+   "lon": 43.154045
+  },
+  {
+   "name": "ZALUKOKOAZHE",
+   "lat": 43.902365,
+   "lon": 43.218663
+  },
+  {
+   "name": "Zamankul",
+   "lat": 43.349395,
+   "lon": 44.405192
+  },
+  {
+   "name": "Zaporozhskaya",
+   "lat": 45.380489,
+   "lon": 36.863126
+  },
+  {
+   "name": "Zaragizh",
+   "lat": 43.331056,
+   "lon": 43.707394
+  },
+  {
+   "name": "Zaragula",
+   "lat": 42.627553,
+   "lon": 42.712001
+  },
+  {
+   "name": "Zarati",
+   "lat": 42.355384,
+   "lon": 42.723736
+  },
+  {
+   "name": "Zarechnoe",
+   "lat": 43.937403,
+   "lon": 43.856933
+  },
+  {
+   "name": "Zarechnyy",
+   "lat": 44.757202,
+   "lon": 39.826973
+  },
+  {
+   "name": "Zarevo",
+   "lat": 45.002707,
+   "lon": 40.081195
+  },
+  {
+   "name": "Zarozhdenie",
+   "lat": 45.159335,
+   "lon": 39.231552
+  },
+  {
+   "name": "Zartsupa",
+   "lat": 42.493699,
+   "lon": 41.644697
+  },
+  {
+   "name": "ZAVODSKOY",
+   "lat": 43.098096,
+   "lon": 44.654284
+  },
+  {
+   "name": "Zayukovo",
+   "lat": 43.620891,
+   "lon": 43.316939
+  },
+  {
+   "name": "Zeda-Bahvi",
+   "lat": 41.947222,
+   "lon": 42.111167
+  },
+  {
+   "name": "Zeda-Beretisa",
+   "lat": 42.195126,
+   "lon": 43.402533
+  },
+  {
+   "name": "Zeda-Dagva",
+   "lat": 41.754863,
+   "lon": 41.807808
+  },
+  {
+   "name": "Zeda-Dimi",
+   "lat": 42.073116,
+   "lon": 42.839455
+  },
+  {
+   "name": "Zeda-Dzimiti",
+   "lat": 42.013334,
+   "lon": 42.06255
+  },
+  {
+   "name": "Zeda-Etseri",
+   "lat": 42.081659,
+   "lon": 42.417598
+  },
+  {
+   "name": "Zeda-Etseri",
+   "lat": 42.585548,
+   "lon": 41.920678
+  },
+  {
+   "name": "Zeda-Gora",
+   "lat": 42.059853,
+   "lon": 42.690921
+  },
+  {
+   "name": "Zeda-Gordi",
+   "lat": 42.456377,
+   "lon": 42.522623
+  },
+  {
+   "name": "Zeda-Kveda",
+   "lat": 42.341887,
+   "lon": 43.48878
+  },
+  {
+   "name": "Zeda-Lia",
+   "lat": 42.676335,
+   "lon": 42.023392
+  },
+  {
+   "name": "Zeda-Mesheti",
+   "lat": 42.222265,
+   "lon": 42.656102
+  },
+  {
+   "name": "Zeda-Mukedi",
+   "lat": 42.067746,
+   "lon": 42.468248
+  },
+  {
+   "name": "Zeda-Sairme",
+   "lat": 42.564224,
+   "lon": 42.882795
+  },
+  {
+   "name": "Zeda-Sameba",
+   "lat": 41.791274,
+   "lon": 41.859312
+  },
+  {
+   "name": "Zeda-Shavra",
+   "lat": 42.503286,
+   "lon": 42.990015
+  },
+  {
+   "name": "Zeda-Tsihesulori",
+   "lat": 42.08789,
+   "lon": 42.50513
+  },
+  {
+   "name": "Zeda-Vani",
+   "lat": 42.066098,
+   "lon": 42.519928
+  },
+  {
+   "name": "Zeda-Zegani",
+   "lat": 42.038936,
+   "lon": 42.921891
+  },
+  {
+   "name": "Zedubani",
+   "lat": 41.962796,
+   "lon": 43.310404
+  },
+  {
+   "name": "Zegduleti",
+   "lat": 42.053744,
+   "lon": 44.222579
+  },
+  {
+   "name": "Zeindari",
+   "lat": 42.093768,
+   "lon": 42.674916
+  },
+  {
+   "name": "Zelenchukskaya",
+   "lat": 43.858968,
+   "lon": 41.582415
+  },
+  {
+   "name": "Zemo-",
+   "lat": 42.522736,
+   "lon": 43.301035
+  },
+  {
+   "name": "Zemo-Aketi",
+   "lat": 42.046732,
+   "lon": 42.099893
+  },
+  {
+   "name": "Zemo-Azhara",
+   "lat": 43.111753,
+   "lon": 41.749381
+  },
+  {
+   "name": "Zemo-Dodoti",
+   "lat": 42.270493,
+   "lon": 43.888601
+  },
+  {
+   "name": "Zemo-Gumurishi",
+   "lat": 42.710482,
+   "lon": 41.788429
+  },
+  {
+   "name": "Zemo-Huntsi",
+   "lat": 42.407792,
+   "lon": 42.426617
+  },
+  {
+   "name": "Zemo-Khandaki",
+   "lat": 41.901323,
+   "lon": 44.313301
+  },
+  {
+   "name": "Zemo-Machara",
+   "lat": 43.007251,
+   "lon": 41.185583
+  },
+  {
+   "name": "Zemo-Natanebi",
+   "lat": 41.963,
+   "lon": 41.870221
+  },
+  {
+   "name": "Zemo-Nikozi",
+   "lat": 42.198215,
+   "lon": 43.959361
+  },
+  {
+   "name": "Zemo-Partshma",
+   "lat": 42.036261,
+   "lon": 42.247299
+  },
+  {
+   "name": "Zemo-Roka",
+   "lat": 42.578612,
+   "lon": 44.119959
+  },
+  {
+   "name": "Zemo-Shuhuti",
+   "lat": 42.081785,
+   "lon": 42.093085
+  },
+  {
+   "name": "Zemo-ZHoshkha",
+   "lat": 42.586561,
+   "lon": 42.952919
+  },
+  {
+   "name": "Zeni",
+   "lat": 42.520439,
+   "lon": 41.713372
+  },
+  {
+   "name": "Zeni",
+   "lat": 42.384638,
+   "lon": 41.968533
+  },
+  {
+   "name": "Zeni",
+   "lat": 42.617798,
+   "lon": 41.882572
+  },
+  {
+   "name": "Zeni",
+   "lat": 42.565132,
+   "lon": 41.819593
+  },
+  {
+   "name": "Zeni",
+   "lat": 42.312676,
+   "lon": 41.922268
+  },
+  {
+   "name": "Zerti",
+   "lat": 42.105513,
+   "lon": 44.22061
+  },
+  {
+   "name": "ZESTAFONI",
+   "lat": 42.111455,
+   "lon": 43.037536
+  },
+  {
+   "name": "Zeyuko",
+   "lat": 44.118806,
+   "lon": 41.82653
+  },
+  {
+   "name": "ZHanhoteko",
+   "lat": 43.560102,
+   "lon": 43.207769
+  },
+  {
+   "name": "ZHeleznodorozhnyy",
+   "lat": 44.28384,
+   "lon": 43.730236
+  },
+  {
+   "name": "ZHELEZNOVODSK",
+   "lat": 44.141803,
+   "lon": 43.023059
+  },
+  {
+   "name": "Zheleznovodskiy",
+   "lat": 44.155908,
+   "lon": 42.989749
+  },
+  {
+   "name": "ZHeleznyy",
+   "lat": 45.299309,
+   "lon": 39.553831
+  },
+  {
+   "name": "ZHemtala",
+   "lat": 43.285507,
+   "lon": 43.651954
+  },
+  {
+   "name": "Zhinvali",
+   "lat": 42.145771,
+   "lon": 44.772532
+  },
+  {
+   "name": "Zhinvali",
+   "lat": 42.109544,
+   "lon": 44.765639
+  },
+  {
+   "name": "ZHoneti",
+   "lat": 42.370197,
+   "lon": 42.703253
+  },
+  {
+   "name": "Zilga",
+   "lat": 43.239199,
+   "lon": 44.522993
+  },
+  {
+   "name": "Zmeyka",
+   "lat": 44.141831,
+   "lon": 43.116065
+  },
+  {
+   "name": "Zmeyskaya",
+   "lat": 43.344694,
+   "lon": 44.1491
+  },
+  {
+   "name": "Znamenka",
+   "lat": 44.146904,
+   "lon": 42.058306
+  },
+  {
+   "name": "Znamenskiy",
+   "lat": 45.060774,
+   "lon": 39.142515
+  },
+  {
+   "name": "Zogishi",
+   "lat": 42.554181,
+   "lon": 42.84133
+  },
+  {
+   "name": "Zol'skaya",
+   "lat": 43.905414,
+   "lon": 43.299699
+  },
+  {
+   "name": "Zol'skoe",
+   "lat": 43.84253,
+   "lon": 43.202659
+  },
+  {
+   "name": "Zolotushka",
+   "lat": 44.048106,
+   "lon": 42.968682
+  },
+  {
+   "name": "Zomleti",
+   "lat": 42.035595,
+   "lon": 42.138993
+  },
+  {
+   "name": "Zoti",
+   "lat": 41.893183,
+   "lon": 42.444286
+  },
+  {
+   "name": "Zovreti",
+   "lat": 42.180543,
+   "lon": 43.040004
+  },
+  {
+   "name": "Zubi",
+   "lat": 42.571365,
+   "lon": 42.66929
+  },
+  {
+   "name": "Zubi",
+   "lat": 42.397134,
+   "lon": 42.013864
+  },
+  {
+   "name": "ZUGDIDI",
+   "lat": 42.516379,
+   "lon": 41.879016
+  },
+  {
+   "name": "Zvare",
+   "lat": 41.982828,
+   "lon": 43.415672
+  }
+ ]
+}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useFpeStore }          from '../../store/fpe.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../store/strips.js'
+import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import './FPE.css'
 
 // ── Draggable panel ───────────────────────────────────────────────────────────
@@ -154,6 +155,7 @@ export function FPE({ scope = null }) {
 
   function handleDelete() {
     remove(aid)
+    sendWebrtcEvent('FLIGHT_PLAN_DELETE', { aid })
     closeFpe()
   }
 
@@ -167,13 +169,18 @@ export function FPE({ scope = null }) {
     if (plans[normalizedAid]) {
       amend(normalizedAid, { typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk })
       setHighlight(normalizedAid, STRIP_HIGHLIGHT.AMENDED)
+      // Broadcast the resolved plan (not the raw form fields) so every peer
+      // converges on the same object rather than each applying its own patch.
+      sendWebrtcEvent('FLIGHT_PLAN_AMEND', useFlightPlansStore.getState().plans[normalizedAid])
     } else {
       add({ aid: normalizedAid, typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk,
             ...(unitId ? { unitId } : {}) })
       addStrip(normalizedAid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: unitId ?? null })
+      // Broadcast the resolved plan so receivers reuse this instance's
+      // generated CID/BCN instead of minting their own via fps.add().
+      sendWebrtcEvent('FLIGHT_PLAN_CREATE', useFlightPlansStore.getState().plans[normalizedAid])
     }
 
-    // TODO: broadcast via WebRTC (FLIGHT_PLAN_CREATE / FLIGHT_PLAN_AMEND)
     closeFpe()
   }
 

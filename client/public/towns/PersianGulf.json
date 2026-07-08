@@ -1,0 +1,1930 @@
+{
+ "theatre": "PersianGulf",
+ "towns": [
+  {
+   "name": " Palm Jebel Ali",
+   "lat": 25.009022,
+   "lon": 54.987897
+  },
+  {
+   "name": "`Aqqah",
+   "lat": 25.499746,
+   "lon": 56.357323
+  },
+  {
+   "name": "A Treef",
+   "lat": 24.37,
+   "lon": 56.71
+  },
+  {
+   "name": "Ab Pakhsh",
+   "lat": 29.360784,
+   "lon": 51.071375
+  },
+  {
+   "name": "Abu Dhabi",
+   "lat": 24.474796,
+   "lon": 54.370576
+  },
+  {
+   "name": "Abu Dhabi Industrial Area",
+   "lat": 24.286298,
+   "lon": 54.466256
+  },
+  {
+   "name": "Abu Hail",
+   "lat": 25.285615,
+   "lon": 55.329179
+  },
+  {
+   "name": "Abu Musa",
+   "lat": 25.885745,
+   "lon": 55.037629
+  },
+  {
+   "name": "Abu Musa Island",
+   "lat": 25.871497,
+   "lon": 55.031741
+  },
+  {
+   "name": "Ahram",
+   "lat": 28.883028,
+   "lon": 51.274202
+  },
+  {
+   "name": "Ajman",
+   "lat": 25.393656,
+   "lon": 55.445143
+  },
+  {
+   "name": "Al Afifah",
+   "lat": 24.41,
+   "lon": 56.7
+  },
+  {
+   "name": "Al Ain",
+   "lat": 24.2227,
+   "lon": 55.692779
+  },
+  {
+   "name": "Al Ashqar",
+   "lat": 24.309377,
+   "lon": 56.132881
+  },
+  {
+   "name": "Al Awir",
+   "lat": 25.17043,
+   "lon": 55.546354
+  },
+  {
+   "name": "Al Bahia",
+   "lat": 24.572522,
+   "lon": 54.650999
+  },
+  {
+   "name": "Al Barsha",
+   "lat": 25.095399,
+   "lon": 55.206466
+  },
+  {
+   "name": "Al Bateen",
+   "lat": 24.446453,
+   "lon": 54.352998
+  },
+  {
+   "name": "Al Bulaydah",
+   "lat": 24.84,
+   "lon": 56.41
+  },
+  {
+   "name": "Al Buraimi",
+   "lat": 24.261588,
+   "lon": 55.792935
+  },
+  {
+   "name": "Al Burayk",
+   "lat": 24.399949,
+   "lon": 56.669999
+  },
+  {
+   "name": "Al Darai",
+   "lat": 26.15,
+   "lon": 56.26
+  },
+  {
+   "name": "Al Dhaid",
+   "lat": 25.284179,
+   "lon": 55.879651
+  },
+  {
+   "name": "Al Falah New Community",
+   "lat": 24.442883,
+   "lon": 54.726928
+  },
+  {
+   "name": "Al Fiduk",
+   "lat": 26.03,
+   "lon": 56.36
+  },
+  {
+   "name": "Al Garhoud",
+   "lat": 25.241767,
+   "lon": 55.350073
+  },
+  {
+   "name": "Al Ghashbah",
+   "lat": 24.39,
+   "lon": 56.69
+  },
+  {
+   "name": "Al Hadd",
+   "lat": 24.49,
+   "lon": 56.59
+  },
+  {
+   "name": "Al Hamiliyah",
+   "lat": 24.729932,
+   "lon": 56.459993
+  },
+  {
+   "name": "Al Haqt",
+   "lat": 26.123078,
+   "lon": 56.250251
+  },
+  {
+   "name": "Al Hawayah",
+   "lat": 25.372171,
+   "lon": 56.345103
+  },
+  {
+   "name": "Al Hayer",
+   "lat": 24.584657,
+   "lon": 55.762584
+  },
+  {
+   "name": "Al Hayl",
+   "lat": 25.091823,
+   "lon": 56.246812
+  },
+  {
+   "name": "Al Hillah",
+   "lat": 26.101415,
+   "lon": 56.139522
+  },
+  {
+   "name": "Al Hubayl",
+   "lat": 26.1,
+   "lon": 56.24
+  },
+  {
+   "name": "Al Hudaiba",
+   "lat": 25.239402,
+   "lon": 55.274196
+  },
+  {
+   "name": "Al Hutain",
+   "lat": 25.361035,
+   "lon": 56.344583
+  },
+  {
+   "name": "Al Ima",
+   "lat": 25.942633,
+   "lon": 56.422684
+  },
+  {
+   "name": "Al Jadi",
+   "lat": 26.16,
+   "lon": 56.17
+  },
+  {
+   "name": "Al Jari",
+   "lat": 26.216764,
+   "lon": 56.185602
+  },
+  {
+   "name": "Al Jowar",
+   "lat": 26.07,
+   "lon": 56.22
+  },
+  {
+   "name": "Al Karsha",
+   "lat": 25.656732,
+   "lon": 56.26752
+  },
+  {
+   "name": "Al Kasir",
+   "lat": 24.47463,
+   "lon": 54.32016
+  },
+  {
+   "name": "Al Khadhrawain",
+   "lat": 24.85,
+   "lon": 56.4
+  },
+  {
+   "name": "Al Khan",
+   "lat": 24.225589,
+   "lon": 56.326442
+  },
+  {
+   "name": "Al Khatim",
+   "lat": 24.212594,
+   "lon": 55.004704
+  },
+  {
+   "name": "Al Khazna",
+   "lat": 24.172745,
+   "lon": 55.118734
+  },
+  {
+   "name": "Al Khrair",
+   "lat": 24.150677,
+   "lon": 55.825251
+  },
+  {
+   "name": "Al Khubayn",
+   "lat": 24.32358,
+   "lon": 56.100938
+  },
+  {
+   "name": "Al Khywayriyyah",
+   "lat": 24.45,
+   "lon": 56.63
+  },
+  {
+   "name": "Al Liwa",
+   "lat": 24.54,
+   "lon": 56.57
+  },
+  {
+   "name": "Al Mabrak",
+   "lat": 26.15,
+   "lon": 56.31
+  },
+  {
+   "name": "Al Madam",
+   "lat": 24.976101,
+   "lon": 55.789605
+  },
+  {
+   "name": "Al Mafreq Industrial Area",
+   "lat": 24.272547,
+   "lon": 54.591075
+  },
+  {
+   "name": "Al Majaz",
+   "lat": 25.330634,
+   "lon": 55.384092
+  },
+  {
+   "name": "Al Makhamarah",
+   "lat": 24.622574,
+   "lon": 56.523492
+  },
+  {
+   "name": "Al Maksuriyah",
+   "lat": 25.938574,
+   "lon": 56.421403
+  },
+  {
+   "name": "Al Mamzar",
+   "lat": 25.303968,
+   "lon": 55.342519
+  },
+  {
+   "name": "Al Manara",
+   "lat": 25.145203,
+   "lon": 55.214933
+  },
+  {
+   "name": "Al Mankhool",
+   "lat": 25.250062,
+   "lon": 55.294734
+  },
+  {
+   "name": "Al Maqta",
+   "lat": 24.406182,
+   "lon": 54.502626
+  },
+  {
+   "name": "Al Marqadh",
+   "lat": 25.169438,
+   "lon": 55.289759
+  },
+  {
+   "name": "Al Masharta",
+   "lat": 26.15,
+   "lon": 56.28
+  },
+  {
+   "name": "Al Mina",
+   "lat": 24.519893,
+   "lon": 54.370686
+  },
+  {
+   "name": "Al Muqatra",
+   "lat": 24.215471,
+   "lon": 54.462245
+  },
+  {
+   "name": "Al Mushrif",
+   "lat": 24.432836,
+   "lon": 54.394401
+  },
+  {
+   "name": "Al Muzoun",
+   "lat": 24.411611,
+   "lon": 54.430731
+  },
+  {
+   "name": "Al Qadisa",
+   "lat": 25.337383,
+   "lon": 56.346792
+  },
+  {
+   "name": "Al Quoz",
+   "lat": 25.16907,
+   "lon": 55.253398
+  },
+  {
+   "name": "Al Qurm",
+   "lat": 24.422772,
+   "lon": 54.39333
+  },
+  {
+   "name": "Al Raffa",
+   "lat": 25.255162,
+   "lon": 55.28847
+  },
+  {
+   "name": "Al Rahba",
+   "lat": 24.6222,
+   "lon": 54.705903
+  },
+  {
+   "name": "Al Rawdah",
+   "lat": 24.421667,
+   "lon": 54.437131
+  },
+  {
+   "name": "Al Reef",
+   "lat": 24.454224,
+   "lon": 54.670993
+  },
+  {
+   "name": "Al Rigga",
+   "lat": 25.25906,
+   "lon": 55.320567
+  },
+  {
+   "name": "Al Sa'adah",
+   "lat": 24.437465,
+   "lon": 54.425519
+  },
+  {
+   "name": "Al Salamat",
+   "lat": 24.214094,
+   "lon": 55.591883
+  },
+  {
+   "name": "Al Samkha",
+   "lat": 24.690096,
+   "lon": 54.758042
+  },
+  {
+   "name": "Al Shamkha",
+   "lat": 24.381746,
+   "lon": 54.709066
+  },
+  {
+   "name": "Al Sharia",
+   "lat": 24.628021,
+   "lon": 54.781774
+  },
+  {
+   "name": "Al Shawamekh",
+   "lat": 24.346064,
+   "lon": 54.665524
+  },
+  {
+   "name": "Al Shinas",
+   "lat": 24.740188,
+   "lon": 56.467926
+  },
+  {
+   "name": "Al Shuwara",
+   "lat": 26.15,
+   "lon": 56.29
+  },
+  {
+   "name": "Al Umani",
+   "lat": 24.759906,
+   "lon": 56.45993
+  },
+  {
+   "name": "Al Usayli",
+   "lat": 25.62676,
+   "lon": 56.008144
+  },
+  {
+   "name": "Al Uthrat",
+   "lat": 24.353779,
+   "lon": 56.050471
+  },
+  {
+   "name": "Al Uwaynat",
+   "lat": 24.27,
+   "lon": 56.81
+  },
+  {
+   "name": "Al Wadiyat",
+   "lat": 24.80018,
+   "lon": 56.450043
+  },
+  {
+   "name": "Al Wasl",
+   "lat": 25.197181,
+   "lon": 55.254978
+  },
+  {
+   "name": "Al Wathba",
+   "lat": 24.201053,
+   "lon": 54.722964
+  },
+  {
+   "name": "Al Yahar North",
+   "lat": 24.241616,
+   "lon": 55.557785
+  },
+  {
+   "name": "Al Yahar South",
+   "lat": 24.20204,
+   "lon": 55.534305
+  },
+  {
+   "name": "Aliabad",
+   "lat": 28.789843,
+   "lon": 51.05541
+  },
+  {
+   "name": "An Naqdah",
+   "lat": 24.5,
+   "lon": 56.59
+  },
+  {
+   "name": "Aqr",
+   "lat": 24.81,
+   "lon": 56.44
+  },
+  {
+   "name": "Ar Rajmi",
+   "lat": 24.64,
+   "lon": 56.29
+  },
+  {
+   "name": "Ar Ramlah",
+   "lat": 25.508331,
+   "lon": 55.587911
+  },
+  {
+   "name": "Ar Rawdah",
+   "lat": 25.86,
+   "lon": 56.3
+  },
+  {
+   "name": "Arabian Ranches",
+   "lat": 25.051751,
+   "lon": 55.265756
+  },
+  {
+   "name": "Arsanjan",
+   "lat": 29.914968,
+   "lon": 53.308976
+  },
+  {
+   "name": "As Salamah",
+   "lat": 25.493873,
+   "lon": 55.591668
+  },
+  {
+   "name": "As Sifah",
+   "lat": 24.83,
+   "lon": 56.43
+  },
+  {
+   "name": "As Sudiyah",
+   "lat": 24.553249,
+   "lon": 56.152529
+  },
+  {
+   "name": "Ash Sharjah",
+   "lat": 24.53,
+   "lon": 56.28
+  },
+  {
+   "name": "Ash Shishah",
+   "lat": 26.260724,
+   "lon": 56.39323
+  },
+  {
+   "name": "Asrar Bani Sad",
+   "lat": 24.59,
+   "lon": 56.55
+  },
+  {
+   "name": "Aswad",
+   "lat": 24.87,
+   "lon": 56.33
+  },
+  {
+   "name": "At Tarayf",
+   "lat": 24.3886,
+   "lon": 56.708776
+  },
+  {
+   "name": "Aviz",
+   "lat": 28.916223,
+   "lon": 52.057212
+  },
+  {
+   "name": "Baghoo",
+   "lat": 27.311286,
+   "lon": 56.44123
+  },
+  {
+   "name": "Baharestan",
+   "lat": 26.936736,
+   "lon": 56.25913
+  },
+  {
+   "name": "Bahjat al Anzar",
+   "lat": 24.320845,
+   "lon": 56.760297
+  },
+  {
+   "name": "Bandar Abbas",
+   "lat": 27.178121,
+   "lon": 56.276645
+  },
+  {
+   "name": "Bandar e Pol",
+   "lat": 27.008738,
+   "lon": 55.739849
+  },
+  {
+   "name": "Bandar Khamir",
+   "lat": 26.951638,
+   "lon": 55.587708
+  },
+  {
+   "name": "Bandar Shenas",
+   "lat": 26.517778,
+   "lon": 54.784529
+  },
+  {
+   "name": "Bandar-e Lengeh",
+   "lat": 26.557134,
+   "lon": 54.881714
+  },
+  {
+   "name": "Bandar-e-Doulab",
+   "lat": 26.676472,
+   "lon": 55.460577
+  },
+  {
+   "name": "Bani Jabir",
+   "lat": 24.776926,
+   "lon": 56.449487
+  },
+  {
+   "name": "Baniyas City",
+   "lat": 24.302115,
+   "lon": 54.636742
+  },
+  {
+   "name": "Basa'idu",
+   "lat": 26.640952,
+   "lon": 55.283018
+  },
+  {
+   "name": "Bastak",
+   "lat": 27.105005,
+   "lon": 54.455254
+  },
+  {
+   "name": "Bat",
+   "lat": 24.52,
+   "lon": 56.28
+  },
+  {
+   "name": "Bayah",
+   "lat": 25.67,
+   "lon": 56.26
+  },
+  {
+   "name": "Bayda",
+   "lat": 24.364497,
+   "lon": 56.408018
+  },
+  {
+   "name": "Bayt ash Shaykh",
+   "lat": 26.07,
+   "lon": 56.21
+  },
+  {
+   "name": "Berentin",
+   "lat": 27.293682,
+   "lon": 57.25266
+  },
+  {
+   "name": "Berkeh Lary",
+   "lat": 27.211954,
+   "lon": 54.716274
+  },
+  {
+   "name": "Bikah",
+   "lat": 27.354812,
+   "lon": 57.180416
+  },
+  {
+   "name": "Birkat Khaldiyah",
+   "lat": 26.04,
+   "lon": 56.36
+  },
+  {
+   "name": "Borazjan",
+   "lat": 29.266143,
+   "lon": 51.21206
+  },
+  {
+   "name": "Bostanu",
+   "lat": 27.080847,
+   "lon": 55.996042
+  },
+  {
+   "name": "Bu Baqarah",
+   "lat": 24.879549,
+   "lon": 56.408535
+  },
+  {
+   "name": "Bukha",
+   "lat": 26.14,
+   "lon": 56.15
+  },
+  {
+   "name": "Bur Dubai",
+   "lat": 25.262134,
+   "lon": 55.297289
+  },
+  {
+   "name": "Chah Benard",
+   "lat": 27.247221,
+   "lon": 54.624649
+  },
+  {
+   "name": "Chah Dezdan",
+   "lat": 27.209354,
+   "lon": 54.745048
+  },
+  {
+   "name": "Chahchekor",
+   "lat": 27.278383,
+   "lon": 56.346864
+  },
+  {
+   "name": "Chahestan",
+   "lat": 27.519748,
+   "lon": 56.752911
+  },
+  {
+   "name": "Chahu",
+   "lat": 27.242365,
+   "lon": 56.066446
+  },
+  {
+   "name": "Chahu Gharbi",
+   "lat": 26.68383,
+   "lon": 55.482802
+  },
+  {
+   "name": "Chahu Sharghi",
+   "lat": 26.691591,
+   "lon": 55.508721
+  },
+  {
+   "name": "Chamerdan",
+   "lat": 27.247713,
+   "lon": 55.977965
+  },
+  {
+   "name": "Choghadak",
+   "lat": 28.985545,
+   "lon": 51.032761
+  },
+  {
+   "name": "Dabbagh",
+   "lat": 24.54,
+   "lon": 56.56
+  },
+  {
+   "name": "Dadna",
+   "lat": 25.522473,
+   "lon": 56.357902
+  },
+  {
+   "name": "Dalaki",
+   "lat": 29.430861,
+   "lon": 51.295021
+  },
+  {
+   "name": "Darab",
+   "lat": 28.753194,
+   "lon": 54.548149
+  },
+  {
+   "name": "Dargahan",
+   "lat": 26.9674,
+   "lon": 56.078113
+  },
+  {
+   "name": "Dashte Jayhun",
+   "lat": 27.276316,
+   "lon": 55.079159
+  },
+  {
+   "name": "Dayrestan",
+   "lat": 26.745164,
+   "lon": 55.934918
+  },
+  {
+   "name": "Deh-e Now",
+   "lat": 27.34768,
+   "lon": 56.544424
+  },
+  {
+   "name": "Dehbarez",
+   "lat": 27.447061,
+   "lon": 57.190751
+  },
+  {
+   "name": "Dehong",
+   "lat": 27.310218,
+   "lon": 54.655915
+  },
+  {
+   "name": "Dehtal",
+   "lat": 27.210763,
+   "lon": 54.785315
+  },
+  {
+   "name": "Delvar",
+   "lat": 28.762873,
+   "lon": 51.071923
+  },
+  {
+   "name": "Demilu",
+   "lat": 27.182336,
+   "lon": 55.832653
+  },
+  {
+   "name": "Dib Dibba",
+   "lat": 26.2,
+   "lon": 56.26
+  },
+  {
+   "name": "Diba al Bayah",
+   "lat": 25.640977,
+   "lon": 56.267373
+  },
+  {
+   "name": "Dibba al Fujairah",
+   "lat": 25.588498,
+   "lon": 56.2642
+  },
+  {
+   "name": "Dibba Al-Hisn",
+   "lat": 25.614408,
+   "lon": 56.26741
+  },
+  {
+   "name": "Din ar Rukayb",
+   "lat": 26.05,
+   "lon": 56.3
+  },
+  {
+   "name": "Downtown Burj Khalifa",
+   "lat": 25.193372,
+   "lon": 55.276023
+  },
+  {
+   "name": "Dubai",
+   "lat": 25.268352,
+   "lon": 55.296196
+  },
+  {
+   "name": "Dubai Investments Park",
+   "lat": 24.981667,
+   "lon": 55.179209
+  },
+  {
+   "name": "Eelood",
+   "lat": 27.217003,
+   "lon": 54.673731
+  },
+  {
+   "name": "EMAL Industrial City",
+   "lat": 24.791622,
+   "lon": 54.72142
+  },
+  {
+   "name": "Emamshahr",
+   "lat": 28.44667,
+   "lon": 53.152544
+  },
+  {
+   "name": "Emirates Hills",
+   "lat": 25.068473,
+   "lon": 55.171652
+  },
+  {
+   "name": "Evaz",
+   "lat": 27.762532,
+   "lon": 54.00515
+  },
+  {
+   "name": "Falaj al Qabail",
+   "lat": 24.43,
+   "lon": 56.61
+  },
+  {
+   "name": "Falara",
+   "lat": 24.749915,
+   "lon": 56.47003
+  },
+  {
+   "name": "Farashband",
+   "lat": 28.855378,
+   "lon": 52.094644
+  },
+  {
+   "name": "Fareghan",
+   "lat": 28.007798,
+   "lon": 56.255127
+  },
+  {
+   "name": "Farfarah",
+   "lat": 24.72,
+   "lon": 56.46
+  },
+  {
+   "name": "Fasa",
+   "lat": 28.936639,
+   "lon": 53.651068
+  },
+  {
+   "name": "Fawhfallam",
+   "lat": 26.109031,
+   "lon": 56.150113
+  },
+  {
+   "name": "Fin",
+   "lat": 27.627471,
+   "lon": 55.902724
+  },
+  {
+   "name": "Fiqa",
+   "lat": 24.716533,
+   "lon": 55.621624
+  },
+  {
+   "name": "Firuzabad",
+   "lat": 28.845604,
+   "lon": 52.572724
+  },
+  {
+   "name": "Fudgha",
+   "lat": 26.120061,
+   "lon": 56.129647
+  },
+  {
+   "name": "Fujairah",
+   "lat": 25.125387,
+   "lon": 56.34368
+  },
+  {
+   "name": "Gachin Bala",
+   "lat": 27.125532,
+   "lon": 55.872022
+  },
+  {
+   "name": "Gachin Paeen",
+   "lat": 27.09041,
+   "lon": 55.891007
+  },
+  {
+   "name": "Gavmiri",
+   "lat": 26.890173,
+   "lon": 55.316569
+  },
+  {
+   "name": "Gerash",
+   "lat": 27.670884,
+   "lon": 54.139243
+  },
+  {
+   "name": "Ghadfan",
+   "lat": 24.47,
+   "lon": 56.6
+  },
+  {
+   "name": "Ghalat e Bala",
+   "lat": 27.319302,
+   "lon": 56.099257
+  },
+  {
+   "name": "Ghamtha",
+   "lat": 26.11,
+   "lon": 56.13
+  },
+  {
+   "name": "Ghantoot",
+   "lat": 24.84871,
+   "lon": 54.83134
+  },
+  {
+   "name": "Gharbiyah",
+   "lat": 25.610141,
+   "lon": 56.250002
+  },
+  {
+   "name": "Ghassah",
+   "lat": 26.240422,
+   "lon": 56.318323
+  },
+  {
+   "name": "Ghazi Castle",
+   "lat": 27.455,
+   "lon": 56.564467
+  },
+  {
+   "name": "Ghubn Hamad",
+   "lat": 26.08,
+   "lon": 56.29
+  },
+  {
+   "name": "Ghubrat ar Ras",
+   "lat": 26.16,
+   "lon": 56.25
+  },
+  {
+   "name": "Ghuzayyil",
+   "lat": 24.48,
+   "lon": 56.6
+  },
+  {
+   "name": "Giahdan",
+   "lat": 26.923002,
+   "lon": 56.069731
+  },
+  {
+   "name": "Gori",
+   "lat": 26.632805,
+   "lon": 55.365481
+  },
+  {
+   "name": "Gowdegaz",
+   "lat": 27.300118,
+   "lon": 54.496949
+  },
+  {
+   "name": "Greater Tunb",
+   "lat": 26.263735,
+   "lon": 55.304914
+  },
+  {
+   "name": "Guran",
+   "lat": 26.725618,
+   "lon": 55.617993
+  },
+  {
+   "name": "Hadhf",
+   "lat": 24.789995,
+   "lon": 56.01001
+  },
+  {
+   "name": "Hadirah",
+   "lat": 24.38,
+   "lon": 56.74
+  },
+  {
+   "name": "Hajiabad",
+   "lat": 28.359072,
+   "lon": 54.42067
+  },
+  {
+   "name": "Hajji Khademi",
+   "lat": 27.230324,
+   "lon": 57.04388
+  },
+  {
+   "name": "Hamiri",
+   "lat": 26.944973,
+   "lon": 56.202666
+  },
+  {
+   "name": "Hansi",
+   "lat": 24.221653,
+   "lon": 56.349073
+  },
+  {
+   "name": "Haqil",
+   "lat": 25.445791,
+   "lon": 56.358072
+  },
+  {
+   "name": "Harat ash Shaykh",
+   "lat": 24.5,
+   "lon": 56.58
+  },
+  {
+   "name": "Harf Ghabi",
+   "lat": 26.230105,
+   "lon": 56.210382
+  },
+  {
+   "name": "Hashtbandi",
+   "lat": 26.813131,
+   "lon": 57.832783
+  },
+  {
+   "name": "Hatta",
+   "lat": 24.809872,
+   "lon": 56.114054
+  },
+  {
+   "name": "Hayr Salam",
+   "lat": 26.08,
+   "lon": 56.33
+  },
+  {
+   "name": "Hillat Jan Muhammad Khan",
+   "lat": 24.619982,
+   "lon": 56.520001
+  },
+  {
+   "name": "Hormoz",
+   "lat": 27.095503,
+   "lon": 56.452739
+  },
+  {
+   "name": "Humaydah",
+   "lat": 24.571042,
+   "lon": 56.3875
+  },
+  {
+   "name": "Humayrah",
+   "lat": 24.690031,
+   "lon": 56.469996
+  },
+  {
+   "name": "Ij",
+   "lat": 29.020374,
+   "lon": 54.247745
+  },
+  {
+   "name": "Iran",
+   "lat": 27.697861,
+   "lon": 55.847496
+  },
+  {
+   "name": "Jaeinak",
+   "lat": 28.786242,
+   "lon": 51.069132
+  },
+  {
+   "name": "Jahrom",
+   "lat": 28.496176,
+   "lon": 53.559337
+  },
+  {
+   "name": "Jask",
+   "lat": 25.643616,
+   "lon": 57.774564
+  },
+  {
+   "name": "Jebel Ali Port",
+   "lat": 24.974838,
+   "lon": 55.070788
+  },
+  {
+   "name": "Jenah",
+   "lat": 27.017683,
+   "lon": 54.282941
+  },
+  {
+   "name": "Jumeirah",
+   "lat": 25.218588,
+   "lon": 55.254966
+  },
+  {
+   "name": "Juyom",
+   "lat": 28.252947,
+   "lon": 53.982912
+  },
+  {
+   "name": "Kabir",
+   "lat": 25.432204,
+   "lon": 55.705133
+  },
+  {
+   "name": "Kaboli",
+   "lat": 26.951816,
+   "lon": 56.209809
+  },
+  {
+   "name": "Kanakh",
+   "lat": 26.899358,
+   "lon": 55.389228
+  },
+  {
+   "name": "Kang",
+   "lat": 26.596327,
+   "lon": 54.936964
+  },
+  {
+   "name": "Kavarzin",
+   "lat": 26.796507,
+   "lon": 55.831578
+  },
+  {
+   "name": "Kerman",
+   "lat": 30.323533,
+   "lon": 57.023611
+  },
+  {
+   "name": "Keshar e Bala",
+   "lat": 27.267073,
+   "lon": 55.955476
+  },
+  {
+   "name": "Keshar e Paeen",
+   "lat": 27.23086,
+   "lon": 55.906989
+  },
+  {
+   "name": "Khalba",
+   "lat": 25.051499,
+   "lon": 56.352167
+  },
+  {
+   "name": "Khalifa City",
+   "lat": 24.419081,
+   "lon": 54.576085
+  },
+  {
+   "name": "Khasab",
+   "lat": 26.180182,
+   "lon": 56.249618
+  },
+  {
+   "name": "Khatam Malahah",
+   "lat": 24.97,
+   "lon": 56.37
+  },
+  {
+   "name": "Khesht",
+   "lat": 29.567944,
+   "lon": 51.339531
+  },
+  {
+   "name": "Khoerde",
+   "lat": 27.781969,
+   "lon": 54.420895
+  },
+  {
+   "name": "Khonj",
+   "lat": 27.889926,
+   "lon": 53.436782
+  },
+  {
+   "name": "Khur",
+   "lat": 27.645907,
+   "lon": 54.345362
+  },
+  {
+   "name": "Kizad",
+   "lat": 24.707434,
+   "lon": 54.811143
+  },
+  {
+   "name": "Konar Siah",
+   "lat": 26.661945,
+   "lon": 55.433527
+  },
+  {
+   "name": "Konartakhteh",
+   "lat": 29.532781,
+   "lon": 51.39608
+  },
+  {
+   "name": "Konaru",
+   "lat": 27.310582,
+   "lon": 56.135679
+  },
+  {
+   "name": "Kookherd",
+   "lat": 27.08897,
+   "lon": 54.493979
+  },
+  {
+   "name": "Kormon",
+   "lat": 27.432573,
+   "lon": 56.874832
+  },
+  {
+   "name": "Kousha",
+   "lat": 26.857848,
+   "lon": 56.017255
+  },
+  {
+   "name": "Kuvei",
+   "lat": 26.946337,
+   "lon": 56.005579
+  },
+  {
+   "name": "Lahbab",
+   "lat": 25.041542,
+   "lon": 55.592377
+  },
+  {
+   "name": "Lar",
+   "lat": 27.661306,
+   "lon": 54.323267
+  },
+  {
+   "name": "Larak Island",
+   "lat": 26.883481,
+   "lon": 56.388735
+  },
+  {
+   "name": "Latifi",
+   "lat": 27.690078,
+   "lon": 54.38714
+  },
+  {
+   "name": "Lekfayir",
+   "lat": 26.04,
+   "lon": 56.35
+  },
+  {
+   "name": "Liwa",
+   "lat": 24.518034,
+   "lon": 56.561109
+  },
+  {
+   "name": "Luwayb",
+   "lat": 25.770222,
+   "lon": 56.226061
+  },
+  {
+   "name": "Magan",
+   "lat": 24.42,
+   "lon": 56.58
+  },
+  {
+   "name": "Majaz al Kubra",
+   "lat": 24.24,
+   "lon": 56.84
+  },
+  {
+   "name": "Majhal",
+   "lat": 24.47,
+   "lon": 56.33
+  },
+  {
+   "name": "Margham",
+   "lat": 24.899518,
+   "lon": 55.625454
+  },
+  {
+   "name": "Maritime City",
+   "lat": 25.267084,
+   "lon": 55.268159
+  },
+  {
+   "name": "Marvdasht",
+   "lat": 29.876291,
+   "lon": 52.80629
+  },
+  {
+   "name": "Masafi",
+   "lat": 25.300995,
+   "lon": 56.161498
+  },
+  {
+   "name": "Masdar City",
+   "lat": 24.427375,
+   "lon": 54.625464
+  },
+  {
+   "name": "Masiri",
+   "lat": 30.244395,
+   "lon": 51.524174
+  },
+  {
+   "name": "Merdonu",
+   "lat": 27.3225,
+   "lon": 54.474428
+  },
+  {
+   "name": "Miandeh",
+   "lat": 28.716296,
+   "lon": 53.85543
+  },
+  {
+   "name": "Minab",
+   "lat": 27.138592,
+   "lon": 57.072786
+  },
+  {
+   "name": "Mobarakabad",
+   "lat": 28.359589,
+   "lon": 53.328186
+  },
+  {
+   "name": "Mogh Ahmad Paeen",
+   "lat": 27.155902,
+   "lon": 55.882218
+  },
+  {
+   "name": "Mohammed bin Zayed City",
+   "lat": 24.334233,
+   "lon": 54.552368
+  },
+  {
+   "name": "Moradi",
+   "lat": 26.636508,
+   "lon": 55.345794
+  },
+  {
+   "name": "Mukhaylif",
+   "lat": 24.52,
+   "lon": 56.57
+  },
+  {
+   "name": "Murbah",
+   "lat": 25.282317,
+   "lon": 56.363613
+  },
+  {
+   "name": "Murqquab",
+   "lat": 24.820809,
+   "lon": 55.58654
+  },
+  {
+   "name": "Musaffah Industrial Area",
+   "lat": 24.348649,
+   "lon": 54.491514
+  },
+  {
+   "name": "Muslaf",
+   "lat": 24.7,
+   "lon": 56.29
+  },
+  {
+   "name": "Muzeira",
+   "lat": 24.839201,
+   "lon": 56.035361
+  },
+  {
+   "name": "Nahel",
+   "lat": 24.533336,
+   "lon": 55.559137
+  },
+  {
+   "name": "Naif",
+   "lat": 25.272292,
+   "lon": 55.311253
+  },
+  {
+   "name": "Najafshahr",
+   "lat": 29.389703,
+   "lon": 55.720301
+  },
+  {
+   "name": "Nazwa",
+   "lat": 25.0053,
+   "lon": 55.661728
+  },
+  {
+   "name": "New Madha",
+   "lat": 25.284452,
+   "lon": 56.332977
+  },
+  {
+   "name": "Niad",
+   "lat": 26.1,
+   "lon": 56.33
+  },
+  {
+   "name": "Now Bandegan",
+   "lat": 28.85456,
+   "lon": 53.825902
+  },
+  {
+   "name": "Nudan",
+   "lat": 29.801949,
+   "lon": 51.693599
+  },
+  {
+   "name": "Nurabad Mamasani",
+   "lat": 30.115407,
+   "lon": 51.522963
+  },
+  {
+   "name": "Oman",
+   "lat": 26.128194,
+   "lon": 56.245636
+  },
+  {
+   "name": "Oud Metha",
+   "lat": 25.240796,
+   "lon": 55.309122
+  },
+  {
+   "name": "Pa Tall-e Isin",
+   "lat": 27.301953,
+   "lon": 56.239318
+  },
+  {
+   "name": "Paiposht",
+   "lat": 26.879825,
+   "lon": 55.928558
+  },
+  {
+   "name": "Palm Jumeirah",
+   "lat": 25.120103,
+   "lon": 55.129655
+  },
+  {
+   "name": "Patil Posht-e Banu Band",
+   "lat": 27.298063,
+   "lon": 56.180439
+  },
+  {
+   "name": "Port Saeed",
+   "lat": 25.245766,
+   "lon": 55.333673
+  },
+  {
+   "name": "Qaemiyeh",
+   "lat": 29.851002,
+   "lon": 51.581912
+  },
+  {
+   "name": "Qarat az Zingi",
+   "lat": 26.13852,
+   "lon": 56.216353
+  },
+  {
+   "name": "Qeshm Island",
+   "lat": 26.818904,
+   "lon": 55.901246
+  },
+  {
+   "name": "Qir",
+   "lat": 28.482802,
+   "lon": 53.035756
+  },
+  {
+   "name": "Qotbabad",
+   "lat": 28.639302,
+   "lon": 53.637805
+  },
+  {
+   "name": "Rajaei Port",
+   "lat": 27.102766,
+   "lon": 56.060752
+  },
+  {
+   "name": "Ramkan",
+   "lat": 26.867639,
+   "lon": 56.043939
+  },
+  {
+   "name": "Ras al Khaimah",
+   "lat": 25.761937,
+   "lon": 55.935012
+  },
+  {
+   "name": "Ras al Salam",
+   "lat": 26.03,
+   "lon": 56.35
+  },
+  {
+   "name": "Ras Salti Ali",
+   "lat": 26.213012,
+   "lon": 56.233535
+  },
+  {
+   "name": "Rawdat al Reef",
+   "lat": 24.50845,
+   "lon": 54.718527
+  },
+  {
+   "name": "Rayy",
+   "lat": 24.65,
+   "lon": 56.11
+  },
+  {
+   "name": "Rekab al Shib",
+   "lat": 26.13,
+   "lon": 56.2
+  },
+  {
+   "name": "Rul Dadna",
+   "lat": 25.554184,
+   "lon": 56.345325
+  },
+  {
+   "name": "Saadabad",
+   "lat": 29.384835,
+   "lon": 51.116629
+  },
+  {
+   "name": "Saadat Shahr",
+   "lat": 30.079995,
+   "lon": 53.136456
+  },
+  {
+   "name": "Saadiyat Beach",
+   "lat": 24.543537,
+   "lon": 54.435444
+  },
+  {
+   "name": "Sabakh",
+   "lat": 24.527897,
+   "lon": 56.468961
+  },
+  {
+   "name": "Sahil Harmul",
+   "lat": 24.53,
+   "lon": 56.6
+  },
+  {
+   "name": "Sal al Ala",
+   "lat": 26.050206,
+   "lon": 56.374287
+  },
+  {
+   "name": "Salakh",
+   "lat": 26.691055,
+   "lon": 55.70854
+  },
+  {
+   "name": "Salhad",
+   "lat": 25.86,
+   "lon": 56.22
+  },
+  {
+   "name": "Salib",
+   "lat": 26.369819,
+   "lon": 56.359555
+  },
+  {
+   "name": "Sallan",
+   "lat": 24.394327,
+   "lon": 56.726862
+  },
+  {
+   "name": "Sargap",
+   "lat": 27.247097,
+   "lon": 55.931328
+  },
+  {
+   "name": "Sarhez",
+   "lat": 27.580306,
+   "lon": 56.09899
+  },
+  {
+   "name": "Sarkhun",
+   "lat": 27.402982,
+   "lon": 56.412849
+  },
+  {
+   "name": "Sarriq-e Meyguni",
+   "lat": 27.300313,
+   "lon": 56.276998
+  },
+  {
+   "name": "Sawt",
+   "lat": 25.66,
+   "lon": 56.26
+  },
+  {
+   "name": "Sayeh Khvosh",
+   "lat": 26.830745,
+   "lon": 55.373321
+  },
+  {
+   "name": "Sayh al Asfal",
+   "lat": 26.079096,
+   "lon": 56.34
+  },
+  {
+   "name": "Seerik",
+   "lat": 26.518435,
+   "lon": 57.104636
+  },
+  {
+   "name": "Senderk",
+   "lat": 26.593623,
+   "lon": 57.863963
+  },
+  {
+   "name": "Shabankareh",
+   "lat": 29.469683,
+   "lon": 50.990973
+  },
+  {
+   "name": "Shahr-e ghadim",
+   "lat": 27.680462,
+   "lon": 54.339229
+  },
+  {
+   "name": "Shahr-e jadid",
+   "lat": 27.649446,
+   "lon": 54.318973
+  },
+  {
+   "name": "Shakhbout City",
+   "lat": 24.364088,
+   "lon": 54.632717
+  },
+  {
+   "name": "Shaqu",
+   "lat": 27.23647,
+   "lon": 56.361992
+  },
+  {
+   "name": "Sharjah",
+   "lat": 25.350866,
+   "lon": 55.384186
+  },
+  {
+   "name": "Sharm",
+   "lat": 25.469538,
+   "lon": 56.353863
+  },
+  {
+   "name": "Sharyat Ayqal",
+   "lat": 26.081123,
+   "lon": 56.341464
+  },
+  {
+   "name": "Sheshdeh",
+   "lat": 28.948635,
+   "lon": 53.995505
+  },
+  {
+   "name": "Shiraz",
+   "lat": 29.559969,
+   "lon": 52.618058
+  },
+  {
+   "name": "Shufra",
+   "lat": 26.18,
+   "lon": 56.26
+  },
+  {
+   "name": "Sihlat",
+   "lat": 24.336032,
+   "lon": 56.498075
+  },
+  {
+   "name": "Sima",
+   "lat": 26.059458,
+   "lon": 56.310949
+  },
+  {
+   "name": "Simah",
+   "lat": 26.06153,
+   "lon": 56.309655
+  },
+  {
+   "name": "Sir Abu Ny'air",
+   "lat": 25.226516,
+   "lon": 54.217534
+  },
+  {
+   "name": "Sir Abu Ny'air Island",
+   "lat": 25.234987,
+   "lon": 54.215139
+  },
+  {
+   "name": "Siri Island",
+   "lat": 25.911203,
+   "lon": 54.529233
+  },
+  {
+   "name": "Sistan",
+   "lat": 26.940766,
+   "lon": 56.257473
+  },
+  {
+   "name": "Sohar",
+   "lat": 24.344558,
+   "lon": 56.742477
+  },
+  {
+   "name": "Subakh",
+   "lat": 24.72,
+   "lon": 56.18
+  },
+  {
+   "name": "Suhaylah",
+   "lat": 24.27,
+   "lon": 56.37
+  },
+  {
+   "name": "Sur al Mazari",
+   "lat": 24.639898,
+   "lon": 56.519994
+  },
+  {
+   "name": "Sur Khusaybi",
+   "lat": 24.66,
+   "lon": 56.51
+  },
+  {
+   "name": "Suza",
+   "lat": 26.777574,
+   "lon": 56.063126
+  },
+  {
+   "name": "Sweihan",
+   "lat": 24.488015,
+   "lon": 55.34326
+  },
+  {
+   "name": "Tabl",
+   "lat": 26.755208,
+   "lon": 55.726098
+  },
+  {
+   "name": "Takht",
+   "lat": 27.493904,
+   "lon": 56.656532
+  },
+  {
+   "name": "Tang-e Dalan",
+   "lat": 27.333724,
+   "lon": 55.093729
+  },
+  {
+   "name": "Tawj",
+   "lat": 26.179087,
+   "lon": 56.21903
+  },
+  {
+   "name": "Tazeyan-e Zir",
+   "lat": 27.291694,
+   "lon": 56.153102
+  },
+  {
+   "name": "The World Islands",
+   "lat": 25.224572,
+   "lon": 55.164474
+  },
+  {
+   "name": "Tirour",
+   "lat": 27.324834,
+   "lon": 56.965962
+  },
+  {
+   "name": "Todruyeh",
+   "lat": 27.30458,
+   "lon": 54.708803
+  },
+  {
+   "name": "Tola Industrial City",
+   "lat": 26.968887,
+   "lon": 56.179724
+  },
+  {
+   "name": "Tomban",
+   "lat": 26.769382,
+   "lon": 55.864493
+  },
+  {
+   "name": "Tourian",
+   "lat": 26.880562,
+   "lon": 56.030528
+  },
+  {
+   "name": "Towla",
+   "lat": 26.972305,
+   "lon": 56.223269
+  },
+  {
+   "name": "Turayf",
+   "lat": 24.67,
+   "lon": 56.48
+  },
+  {
+   "name": "Umm al Nar",
+   "lat": 24.434628,
+   "lon": 54.500575
+  },
+  {
+   "name": "Umm Al Quwain",
+   "lat": 25.552043,
+   "lon": 55.547498
+  },
+  {
+   "name": "Umm Ramool",
+   "lat": 25.232361,
+   "lon": 55.366826
+  },
+  {
+   "name": "Umm Suqeim 3",
+   "lat": 25.138722,
+   "lon": 55.195982
+  },
+  {
+   "name": "Umm Suqueim 1",
+   "lat": 25.165045,
+   "lon": 55.217017
+  },
+  {
+   "name": "United Arab Emirates",
+   "lat": 24.871963,
+   "lon": 55.255096
+  },
+  {
+   "name": "Vahdatiyeh",
+   "lat": 29.482557,
+   "lon": 51.243308
+  },
+  {
+   "name": "Waab al Lif",
+   "lat": 26.1,
+   "lon": 56.15
+  },
+  {
+   "name": "Wab al Sebil",
+   "lat": 26.05,
+   "lon": 56.33
+  },
+  {
+   "name": "Wab Mubarak",
+   "lat": 26.2,
+   "lon": 56.22
+  },
+  {
+   "name": "Wad Wid",
+   "lat": 25.625149,
+   "lon": 56.013964
+  },
+  {
+   "name": "Yal Burayk",
+   "lat": 24.012293,
+   "lon": 57.035907
+  },
+  {
+   "name": "Yas Island",
+   "lat": 24.490761,
+   "lon": 54.612231
+  },
+  {
+   "name": "Zabyat",
+   "lat": 24.35,
+   "lon": 56.37
+  },
+  {
+   "name": "Zahedshahr",
+   "lat": 28.748435,
+   "lon": 53.804106
+  },
+  {
+   "name": "Zayed Military City",
+   "lat": 24.503534,
+   "lon": 54.872741
+  },
+  {
+   "name": "Zaymi",
+   "lat": 24.45,
+   "lon": 56.28
+  },
+  {
+   "name": "Ziaratali",
+   "lat": 27.739415,
+   "lon": 57.219915
+  },
+  {
+   "name": "Zirang",
+   "lat": 26.854199,
+   "lon": 56.061282
+  }
+ ]
+}

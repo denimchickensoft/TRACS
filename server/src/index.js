@@ -104,6 +104,17 @@ app.get('/api/navdata/mva',         navdata.handleMva)
 app.get('/api/navdata/geo',         navdata.handleGeo)
 app.get('/api/navdata/palettes',    navdata.handlePalettes)
 
+// GET /api/elevation?lat=&lng= — point terrain elevation (metres MSL) from the
+// same SRTM-backed DB used internally for per-unit AGL (server/src/elevation.js).
+app.get('/api/elevation', (req, res) => {
+  const lat = parseFloat(req.query.lat)
+  const lng = parseFloat(req.query.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({ error: 'lat/lng required' })
+  }
+  res.json({ elevationM: elevation.getElevation(lat, lng) })
+})
+
 // GET /api/airports/polygons/:theatre — airport surface polygon GeoJSON for ASDE-X
 app.get('/api/airports/polygons/:theatre', (req, res) => {
   const { theatre } = req.params

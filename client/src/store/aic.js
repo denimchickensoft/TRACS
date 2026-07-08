@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export const DECLARATION = {
   HOSTILE:  'HOSTILE',
-  UNKNOWN:  'UNKNOWN',
+  BOGEY:    'BOGEY',
   NEUTRAL:  'NEUTRAL',
   FRIENDLY: 'FRIENDLY',
 }
@@ -27,16 +27,26 @@ export function applyAicRoe(roe) {
   useAicStore.getState()._applyRoe(roe)
 }
 
+export function applyAicAutoClassify(enabled) {
+  useAicStore.getState()._applyAutoClassify(enabled)
+}
+
 export function applyAicStateDump(payload) {
   const patch = {}
   if (payload.declarations) patch.declarations = payload.declarations
   if (payload.roe !== undefined) patch.roe = payload.roe
+  if (payload.autoClassify !== undefined) patch.autoClassify = payload.autoClassify
   useAicStore.setState(patch)
+}
+
+export function applyAicDeclarationsReset() {
+  useAicStore.setState({ declarations: {}, autoClassify: false })
 }
 
 export const useAicStore = create((set, get) => ({
   declarations:       {},    // { [unitId]: DECLARATION }
   roe:                null,  // ROE_STATE | null
+  autoClassify:       false, // .autoclass (2026-07-08) — see setAutoClassify below
   braaList:           [],    // [{ id, fighterId, bogeyId }] — local, not synced
   pendingBraaFighter: null,  // unitId awaiting second Ctrl+click
 
@@ -45,9 +55,28 @@ export const useAicStore = create((set, get) => ({
     _broadcastFn?.('DECLARATION_SET', { unitId, classification })
   },
 
+  // .class (no args) — return every explicit declaration to its fog-of-war
+  // default (2026-07-07), and turn off autoclassification (2026-07-08).
+  // Broadcast as one bulk event rather than N individual DECLARATION_SET
+  // messages.
+  resetDeclarations: () => {
+    set({ declarations: {}, autoClassify: false })
+    _broadcastFn?.('DECLARATIONS_RESET', {})
+  },
+
   setRoe: (roe) => {
     set({ roe })
     _broadcastFn?.('ROE_SET', { roe })
+  },
+
+  // .autoclass (2026-07-08) — when on, every unit is classified to its TRUE
+  // (coalition-based) declaration as it becomes visible; the bulk apply for
+  // units already visible at toggle-on time happens in AicScope (it needs
+  // live unit data the store doesn't hold). Toggling off does not revert
+  // existing declarations, it just stops future auto-declaration.
+  setAutoClassify: (enabled) => {
+    set({ autoClassify: enabled })
+    _broadcastFn?.('AUTOCLASS_SET', { enabled })
   },
 
   addBraaPair: (fighterId, bogeyId) => {
@@ -78,14 +107,13 @@ export const useAicStore = create((set, get) => ({
 
   _applyRoe: (roe) => set({ roe }),
 
+  _applyAutoClassify: (enabled) => set({ autoClassify: enabled }),
+
   getEffectiveDeclaration: (unitId, unit, myCoalitionNum) => {
     const explicit = get().declarations[String(unitId)]
     if (explicit !== undefined) return explicit
-    const c = unit.coalition
-    if (c === myCoalitionNum) return DECLARATION.FRIENDLY
-    if (c === 0) return DECLARATION.NEUTRAL
-    return DECLARATION.HOSTILE
+    return unit.coalition === myCoalitionNum ? DECLARATION.FRIENDLY : DECLARATION.BOGEY
   },
 
-  reset: () => set({ declarations: {}, roe: null, braaList: [], pendingBraaFighter: null }),
+  reset: () => set({ declarations: {}, roe: null, autoClassify: false, braaList: [], pendingBraaFighter: null }),
 }))

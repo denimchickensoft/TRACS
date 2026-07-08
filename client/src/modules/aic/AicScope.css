@@ -45,17 +45,12 @@
   text-transform: uppercase;
 }
 
-.aic-readout-line1 {
-  display:     flex;
-  gap:         2em;
-  white-space: nowrap;
-}
-
-.aic-readout-line2 {
-  display:     flex;
-  gap:         2em;
-  margin-top:  2px;
-  white-space: nowrap;
+.aic-readout-grid {
+  display:               grid;
+  grid-template-columns: repeat(3, max-content);
+  column-gap:            1.5em;
+  row-gap:               2px;
+  white-space:           nowrap;
 }
 
 .aic-readout-flags,
@@ -126,10 +121,6 @@
 .aic-picture-group {
   color:          #BFA100;
   letter-spacing: 0.02em;
-}
-
-.aic-picture-group--followon {
-  color: rgba(191,161,0,0.6);
 }
 
 .aic-picture-more {

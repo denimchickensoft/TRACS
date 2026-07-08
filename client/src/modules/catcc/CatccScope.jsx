@@ -185,8 +185,9 @@ export default function CatccScope() {
       width:  w,
       height: h,
       magvar: dcsMagvarRef.current,
+      theatre,
     }
-  }, []) // stable — all changing values read from refs/store
+  }, [theatre]) // all other changing values read from refs/store
 
   // ── Sync canvas pixel dimensions to the container's current size ───
   const syncCanvasSize = useCallback(() => {
@@ -204,13 +205,21 @@ export default function CatccScope() {
     return resized
   }, [])
 
+  // windowSettings is undefined until initWindow's effect runs, and the
+  // component returns null before that — so canvasAreaRef.current is null
+  // on that first render. syncCanvasSize/buildView are intentionally stable
+  // (read from refs), so without this flag as a dep, the effects below would
+  // fire exactly once on that null render and never re-arm once the canvas
+  // actually mounts, leaving it stuck at the browser's default 300×150 size.
+  const hasWindowSettings = !!windowSettings
+
   // ── Size canvases synchronously before paint so the mount-time "rebuild
   //    view" effect below never sees the browser's default 300×150 canvas
   //    size — the ResizeObserver's own first callback fires too late (after
   //    that effect) to prevent a warped initial render ──────────────────
   useLayoutEffect(() => {
     syncCanvasSize()
-  }, [syncCanvasSize])
+  }, [syncCanvasSize, hasWindowSettings])
 
   // ── Resize observer — sets canvas sizes first, then builds view so that
   //    buildView's canvas.width read and every draw function's ctx.canvas.width
@@ -223,7 +232,7 @@ export default function CatccScope() {
     })
     ro.observe(container)
     return () => ro.disconnect()
-  }, [syncCanvasSize]) // eslint-disable-line
+  }, [syncCanvasSize, hasWindowSettings]) // eslint-disable-line
 
   // Rebuild view when carrier position, zoom, or magvar changes
   useEffect(() => {
@@ -470,6 +479,14 @@ export default function CatccScope() {
     displayStore.updateWindow(WINDOW_ID, { rangeNm: newRange })
   }, [windowSettings, displayStore, wheelDir])
 
+  // Attach wheel listener as non-passive so preventDefault() works
+  useEffect(() => {
+    const el = interactiveRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
+
   if (!windowSettings) return null
 
   const bkgGray = Math.round((windowSettings.briteBkg ?? 0) / 100 * 160)
@@ -489,7 +506,6 @@ export default function CatccScope() {
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
           onMouseLeave={() => setMomsReadout('')}
-          onWheel={handleWheel}
           onKeyDown={handleKeyDown}
           onContextMenu={(e) => e.preventDefault()}
         />

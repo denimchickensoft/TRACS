@@ -7,7 +7,8 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../store/strips.js'
 import { useSessionStore } from '../store/session.js'
 import { useControllersStore } from '../store/controllers.js'
 import { applyStatusBoardUpdate } from '../store/statusBoard.js'
-import { applyAicDeclaration, applyAicRoe } from '../store/aic.js'
+import { applyAicDeclaration, applyAicRoe, applyAicDeclarationsReset, applyAicAutoClassify } from '../store/aic.js'
+import { applyAbmDeclaration, applyAbmDeclarationsReset, applyAbmAutoClassify } from '../store/abm.js'
 
 function getMyControllerId() {
   const positionName = useSessionStore.getState().positionName
@@ -33,6 +34,7 @@ export function handleModuleMessage(msg) {
   if (module === 'ATC')   handleAtc(type, payload)
   if (module === 'CATCC') handleCatcc(type, payload)
   if (module === 'AIC')   handleAic(type, payload)
+  if (module === 'ABM')   handleAbm(type, payload)
 }
 
 // ── Shared track/handoff/point-out handler (ATC + CATCC) ─────────────────────
@@ -165,8 +167,30 @@ function handleAic(type, payload) {
     case 'DECLARATION_SET':
       applyAicDeclaration(payload.unitId, payload.classification)
       break
+    case 'DECLARATIONS_RESET':
+      applyAicDeclarationsReset()
+      break
     case 'ROE_SET':
       applyAicRoe(payload.roe)
+      break
+    case 'AUTOCLASS_SET':
+      applyAicAutoClassify(payload.enabled)
+      break
+  }
+}
+
+// ABM keeps its own independent declaration state — NOT synced with AIC's
+// (deferred cross-module sharing decision, see abm-spec.md §1.2).
+function handleAbm(type, payload) {
+  switch (type) {
+    case 'DECLARATION_SET':
+      applyAbmDeclaration(payload.unitId, payload.classification)
+      break
+    case 'DECLARATIONS_RESET':
+      applyAbmDeclarationsReset()
+      break
+    case 'AUTOCLASS_SET':
+      applyAbmAutoClassify(payload.enabled)
       break
   }
 }

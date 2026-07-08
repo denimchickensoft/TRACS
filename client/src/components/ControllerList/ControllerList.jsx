@@ -85,7 +85,18 @@ function resolveFacilityName(facilityId, icaoMap, units) {
 }
 
 // ── Build sorted groups from registry + peers ─────────────────────────────────
-function buildGroups(registry, peers, airbases, myFacilityId, units, icaoMap) {
+//
+// Viewer-relative module ordering (see abm-spec.md / session decision 2026-07-05):
+// Pairs are FACILITY = [ATC, CATCC] and TACTICAL = [ABM, AIC]. Your own pair
+// always renders first — your own module first (self position/facility pinned
+// to the top of it), then its sibling in that pair. The OTHER pair follows in
+// a fixed default order: TACTICAL defaults to ABM→AIC, FACILITY defaults to
+// CATCC→ATC. This reproduces all four viewer cases:
+//   ATC   → ATC, CATCC, ABM, AIC
+//   CATCC → CATCC, ATC, ABM, AIC
+//   AIC   → AIC, ABM, CATCC, ATC
+//   ABM   → ABM, AIC, CATCC, ATC
+function buildGroups(registry, peers, airbases, myFacilityId, myPositionName, activeModule, units, icaoMap) {
   const rawAirbases = Object.values(airbases?.airbases ?? airbases ?? {})
   const coords      = buildFacilityCoords(rawAirbases, icaoMap, units)
   const myCoords    = coords[myFacilityId] ?? null
@@ -110,36 +121,72 @@ function buildGroups(registry, peers, airbases, myFacilityId, units, icaoMap) {
     facilityMap[e.facility].push(e)
   }
 
-  // AIC entries always go in the flat AIC section, even if own facility.
-  const ownGroup        = facilityMap[myFacilityId] && !facilityMap[myFacilityId].every((e) => e.suffix === 'AIC')
-    ? { facilityId: myFacilityId, entries: facilityMap[myFacilityId] }
-    : null
-  const proximityGroups = []
-  const otherEntries    = []
-  const aicEntries      = []
+  const aicEntries   = []
+  const abmEntries   = []
+  const catccGroups  = []
+  const atcGroups    = []
+  const otherEntries = [] // CTR — kept as its own trailing section, unchanged from before
 
   for (const [facId, entries] of Object.entries(facilityMap)) {
     if (entries.every((e) => e.suffix === 'AIC')) {
       aicEntries.push(...entries)
-    } else if (facId === myFacilityId) {
-      continue
+    } else if (entries.every((e) => e.suffix === 'ABM')) {
+      abmEntries.push(...entries)
     } else if (entries.every((e) => e.suffix === 'CTR')) {
       otherEntries.push(...entries)
+    } else if (Object.values(CARRIER_TYPES).some((ct) => ct.facilityId === facId)) {
+      catccGroups.push({ facilityId: facId, entries })
     } else {
-      proximityGroups.push({ facilityId: facId, entries })
+      atcGroups.push({ facilityId: facId, entries })
     }
   }
 
-  proximityGroups.sort((a, b) => {
-    const da = haversine(myCoords, coords[a.facilityId])
-    const db = haversine(myCoords, coords[b.facilityId])
-    if (da === null && db === null) return a.facilityId.localeCompare(b.facilityId)
-    if (da === null) return 1
-    if (db === null) return -1
-    return da - db
-  })
+  // Move the viewer's own position to the front of an entries array (own
+  // facility group, or own flat AIC/ABM bucket) — "self always top" (§ decision).
+  function pinSelfFirst(entries) {
+    if (!myPositionName) return entries
+    const idx = entries.findIndex((e) => e.positionName === myPositionName)
+    if (idx <= 0) return entries
+    const copy = [...entries]
+    const [self] = copy.splice(idx, 1)
+    copy.unshift(self)
+    return copy
+  }
 
-  return { ownGroup, proximityGroups, aicEntries, otherEntries }
+  // Own facility floats to the top of its module's group list (ahead of
+  // proximity order); every other facility is proximity-sorted as before.
+  function sortFacilityGroups(groupList) {
+    return [...groupList]
+      .sort((a, b) => {
+        const aOwn = a.facilityId === myFacilityId
+        const bOwn = b.facilityId === myFacilityId
+        if (aOwn && !bOwn) return -1
+        if (bOwn && !aOwn) return 1
+        const da = haversine(myCoords, coords[a.facilityId])
+        const db = haversine(myCoords, coords[b.facilityId])
+        if (da === null && db === null) return a.facilityId.localeCompare(b.facilityId)
+        if (da === null) return 1
+        if (db === null) return -1
+        return da - db
+      })
+      .map((g) => g.facilityId === myFacilityId ? { ...g, entries: pinSelfFirst(g.entries) } : g)
+  }
+
+  const sections = {
+    ATC:   sortFacilityGroups(atcGroups),
+    CATCC: sortFacilityGroups(catccGroups),
+    AIC:   activeModule === 'AIC' ? pinSelfFirst(aicEntries) : aicEntries,
+    ABM:   activeModule === 'ABM' ? pinSelfFirst(abmEntries) : abmEntries,
+  }
+
+  let moduleOrder
+  if (activeModule === 'ATC')        moduleOrder = ['ATC', 'CATCC', 'ABM', 'AIC']
+  else if (activeModule === 'CATCC') moduleOrder = ['CATCC', 'ATC', 'ABM', 'AIC']
+  else if (activeModule === 'AIC')   moduleOrder = ['AIC', 'ABM', 'CATCC', 'ATC']
+  else if (activeModule === 'ABM')   moduleOrder = ['ABM', 'AIC', 'CATCC', 'ATC']
+  else                                moduleOrder = ['ABM', 'AIC', 'CATCC', 'ATC'] // no active module yet
+
+  return { sections, moduleOrder, myFacilityId, otherEntries }
 }
 
 // ── Directional resize handler factory ────────────────────────────────────────
@@ -200,6 +247,7 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   const storeFacilityId     = useSessionStore((s) => s.facilityId)
   const storeFacilityName   = useSessionStore((s) => s.facilityName)
   const activeModule        = useSessionStore((s) => s.activeModule)
+  const myPositionName      = useSessionStore((s) => s.positionName)
   const units               = useUnitsStore((s) => s.units)
 
   // Standalone popup mode: facility identity passed as props (URL params) so the
@@ -327,13 +375,13 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   }, [standalone])
 
   const groups = useMemo(
-    () => buildGroups(registry, peers, airbases, myFacilityId, units, icaoMap),
-    [registry, peers, airbases, myFacilityId, units, icaoMap]
+    () => buildGroups(registry, peers, airbases, myFacilityId, myPositionName, activeModule, units, icaoMap),
+    [registry, peers, airbases, myFacilityId, myPositionName, activeModule, units, icaoMap]
   )
 
   if (!visible) return null
 
-  const { ownGroup, proximityGroups, aicEntries, otherEntries } = groups
+  const { sections, moduleOrder, otherEntries } = groups
 
   function toggleCollapse(id) {
     setCollapsed((c) => ({ ...c, [id]: !c[id] }))
@@ -397,9 +445,35 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
     )
   }
 
-  const aicCollapsed   = collapsed['__AIC__']   ?? false
   const otherCollapsed = collapsed['__OTHER__'] ?? false
-  const hasAny = ownGroup || proximityGroups.length > 0 || aicEntries.length > 0 || otherEntries.length > 0
+  const hasAny = Object.values(sections).some((s) => s.length > 0) || otherEntries.length > 0
+
+  function renderFlatModuleGroup(key, entries) {
+    if (!entries.length) return null
+    const isCollapsed = collapsed[`__${key}__`] ?? false
+    return (
+      <div key={key} className="cl-group">
+        <div className="cl-group-header" onClick={() => toggleCollapse(`__${key}__`)}>
+          <span className="cl-chevron">{isCollapsed ? '▶' : '▼'}</span>
+          <span className="cl-facility-label">{key}</span>
+        </div>
+        {!isCollapsed && (
+          <div className="cl-group-entries">
+            {entries.map((e) => renderOtherEntry(e))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  function renderModuleSection(key) {
+    if (key === 'ATC' || key === 'CATCC') {
+      return sections[key].map((g) =>
+        renderGroup(g, g.facilityId === myFacilityId ? (myFacilityName || null) : undefined)
+      )
+    }
+    return renderFlatModuleGroup(key, sections[key])
+  }
 
   const overlayStyle = standalone ? undefined : {
     ...(pos.docked       ? { right:  (pos.rightGap  ?? 0) + rightInset } : { left:   pos.x ?? 0 }),
@@ -459,22 +533,7 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
           <div className="cl-empty">No controllers online</div>
         )}
 
-        {ownGroup && renderGroup(ownGroup, myFacilityName || null)}
-        {proximityGroups.map((g) => renderGroup(g))}
-
-        {aicEntries.length > 0 && (
-          <div className="cl-group">
-            <div className="cl-group-header" onClick={() => toggleCollapse('__AIC__')}>
-              <span className="cl-chevron">{aicCollapsed ? '▶' : '▼'}</span>
-              <span className="cl-facility-label">AIC</span>
-            </div>
-            {!aicCollapsed && (
-              <div className="cl-group-entries">
-                {aicEntries.map((e) => renderOtherEntry(e))}
-              </div>
-            )}
-          </div>
-        )}
+        {moduleOrder.map((key) => renderModuleSection(key))}
 
         {otherEntries.length > 0 && (
           <div className="cl-group">

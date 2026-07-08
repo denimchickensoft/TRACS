@@ -9,6 +9,7 @@ import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard, SB_NATURAL_WIDTH } from './modules/catcc/StatusBoard'
 import AicScope          from './modules/aic/AicScope'
 import { BraaList, BRAA_NATURAL_WIDTH } from './modules/aic/BraaList'
+import AbmScope          from './modules/abm/AbmScope'
 import { StripBay }      from './components/StripBay/StripBay'
 import { Par }           from './components/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
@@ -234,6 +235,7 @@ export function App() {
   const hasAtc   = activeModule === MODULE.ATC
   const hasCatcc = activeModule === MODULE.CATCC
   const hasAic   = activeModule === MODULE.AIC
+  const hasAbm   = activeModule === MODULE.ABM
 
   // Right inset = width consumed by the right panel + the 18px tab strip.
   // Floating windows are clamped so they cannot overlap this area.
@@ -622,7 +624,15 @@ export function App() {
           </div>
         )}
 
-        {!hasAtc && !hasCatcc && !hasAic && (
+        {hasAbm && (
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
+              <AbmScope />
+            </div>
+          </div>
+        )}
+
+        {!hasAtc && !hasCatcc && !hasAic && !hasAbm && (
           <div style={{ color: '#333', fontFamily: 'Roboto Mono, monospace', padding: '40px', fontSize: '0.8rem' }}>
             No active display module.
           </div>

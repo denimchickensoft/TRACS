@@ -1,0 +1,395 @@
+{
+ "theatre": "MarianaIslands",
+ "towns": [
+  {
+   "name": " Astumbo",
+   "lat": 13.554951,
+   "lon": 144.842729
+  },
+  {
+   "name": "Adacao",
+   "lat": 13.49089,
+   "lon": 144.852597
+  },
+  {
+   "name": "Afami",
+   "lat": 13.456341,
+   "lon": 144.762765
+  },
+  {
+   "name": "Agat",
+   "lat": 13.382019,
+   "lon": 144.659212
+  },
+  {
+   "name": "Agrihan",
+   "lat": 18.777497,
+   "lon": 145.668549
+  },
+  {
+   "name": "Aguijan",
+   "lat": 14.852365,
+   "lon": 145.558622
+  },
+  {
+   "name": "Alamagan",
+   "lat": 17.599291,
+   "lon": 145.832708
+  },
+  {
+   "name": "Anatahan",
+   "lat": 16.354454,
+   "lon": 145.680686
+  },
+  {
+   "name": "Anigua",
+   "lat": 13.477348,
+   "lon": 144.737995
+  },
+  {
+   "name": "Apra Heights",
+   "lat": 13.402864,
+   "lon": 144.684931
+  },
+  {
+   "name": "Apurguan",
+   "lat": 13.484178,
+   "lon": 144.775571
+  },
+  {
+   "name": "Asan",
+   "lat": 13.472373,
+   "lon": 144.71832
+  },
+  {
+   "name": "Asbeco",
+   "lat": 13.46634,
+   "lon": 144.837012
+  },
+  {
+   "name": "Asmisen",
+   "lat": 13.40003,
+   "lon": 144.773871
+  },
+  {
+   "name": "Aspengo",
+   "lat": 13.464835,
+   "lon": 144.798828
+  },
+  {
+   "name": "Asuncion",
+   "lat": 19.691475,
+   "lon": 145.406452
+  },
+  {
+   "name": "Barrigada",
+   "lat": 13.465346,
+   "lon": 144.797922
+  },
+  {
+   "name": "Bird Island",
+   "lat": 15.257401,
+   "lon": 145.813291
+  },
+  {
+   "name": "Camp Dealy",
+   "lat": 13.353269,
+   "lon": 144.7662
+  },
+  {
+   "name": "Cerain",
+   "lat": 13.387143,
+   "lon": 144.673645
+  },
+  {
+   "name": "Chalan Kiya",
+   "lat": 15.165205,
+   "lon": 145.720938
+  },
+  {
+   "name": "Chalan Pago",
+   "lat": 13.442564,
+   "lon": 144.768438
+  },
+  {
+   "name": "Corten Torres",
+   "lat": 13.44124,
+   "lon": 144.805211
+  },
+  {
+   "name": "Dandan",
+   "lat": 15.133948,
+   "lon": 145.735471
+  },
+  {
+   "name": "Diidedo",
+   "lat": 13.526543,
+   "lon": 144.845629
+  },
+  {
+   "name": "Farallon de Pajaros",
+   "lat": 20.543983,
+   "lon": 144.893275
+  },
+  {
+   "name": "Faralon de Medinilla",
+   "lat": 16.019837,
+   "lon": 146.059475
+  },
+  {
+   "name": "Garapan",
+   "lat": 15.206861,
+   "lon": 145.721351
+  },
+  {
+   "name": "Gayinero",
+   "lat": 13.528355,
+   "lon": 144.900124
+  },
+  {
+   "name": "Guam",
+   "lat": 13.506871,
+   "lon": 144.824237
+  },
+  {
+   "name": "Guguan",
+   "lat": 17.310877,
+   "lon": 145.840848
+  },
+  {
+   "name": "Hagatna",
+   "lat": 13.475871,
+   "lon": 144.750834
+  },
+  {
+   "name": "Hagatna Heights",
+   "lat": 13.464819,
+   "lon": 144.750032
+  },
+  {
+   "name": "Inarajan",
+   "lat": 13.274048,
+   "lon": 144.746742
+  },
+  {
+   "name": "Ipapao",
+   "lat": 13.524362,
+   "lon": 144.858491
+  },
+  {
+   "name": "Kagman I",
+   "lat": 15.181232,
+   "lon": 145.773957
+  },
+  {
+   "name": "Kagman II",
+   "lat": 15.176568,
+   "lon": 145.778018
+  },
+  {
+   "name": "Kagman III",
+   "lat": 15.169898,
+   "lon": 145.779899
+  },
+  {
+   "name": "Koblerville",
+   "lat": 15.122667,
+   "lon": 145.703809
+  },
+  {
+   "name": "Ladai",
+   "lat": 13.365377,
+   "lon": 144.657204
+  },
+  {
+   "name": "Lockwood Terrace",
+   "lat": 13.432602,
+   "lon": 144.649979
+  },
+  {
+   "name": "Lupog",
+   "lat": 13.54804,
+   "lon": 144.91359
+  },
+  {
+   "name": "Macheche",
+   "lat": 13.503018,
+   "lon": 144.833579
+  },
+  {
+   "name": "Malojloj",
+   "lat": 13.308378,
+   "lon": 144.761342
+  },
+  {
+   "name": "Mapas",
+   "lat": 13.473612,
+   "lon": 144.774622
+  },
+  {
+   "name": "Matansa",
+   "lat": 15.251512,
+   "lon": 145.783177
+  },
+  {
+   "name": "Maug",
+   "lat": 20.022282,
+   "lon": 145.221651
+  },
+  {
+   "name": "North Tipalo",
+   "lat": 13.420384,
+   "lon": 144.644657
+  },
+  {
+   "name": "Pagan",
+   "lat": 18.104093,
+   "lon": 145.762216
+  },
+  {
+   "name": "Papago",
+   "lat": 15.179258,
+   "lon": 145.752613
+  },
+  {
+   "name": "Peca",
+   "lat": 13.280913,
+   "lon": 144.752703
+  },
+  {
+   "name": "Pigua",
+   "lat": 13.270406,
+   "lon": 144.671605
+  },
+  {
+   "name": "Piti",
+   "lat": 13.463047,
+   "lon": 144.692784
+  },
+  {
+   "name": "Puerto Rico",
+   "lat": 15.223099,
+   "lon": 145.735812
+  },
+  {
+   "name": "Puetto",
+   "lat": 14.968777,
+   "lon": 145.631754
+  },
+  {
+   "name": "Rota",
+   "lat": 14.161794,
+   "lon": 145.217911
+  },
+  {
+   "name": "Saipan",
+   "lat": 15.197839,
+   "lon": 145.748413
+  },
+  {
+   "name": "San Antonio",
+   "lat": 15.133342,
+   "lon": 145.696097
+  },
+  {
+   "name": "San Jose",
+   "lat": 14.965154,
+   "lon": 145.628466
+  },
+  {
+   "name": "San Jose",
+   "lat": 15.167064,
+   "lon": 145.710962
+  },
+  {
+   "name": "San Roque",
+   "lat": 15.248449,
+   "lon": 145.776229
+  },
+  {
+   "name": "San Vicente",
+   "lat": 15.154882,
+   "lon": 145.739831
+  },
+  {
+   "name": "Santa Rita",
+   "lat": 13.393936,
+   "lon": 144.662313
+  },
+  {
+   "name": "Sarigan",
+   "lat": 16.703615,
+   "lon": 145.778235
+  },
+  {
+   "name": "Sinapalo",
+   "lat": 14.166285,
+   "lon": 145.23398
+  },
+  {
+   "name": "Songsong",
+   "lat": 14.139157,
+   "lon": 145.139697
+  },
+  {
+   "name": "Susupe",
+   "lat": 15.152792,
+   "lon": 145.706059
+  },
+  {
+   "name": "Talofofo",
+   "lat": 13.354023,
+   "lon": 144.756934
+  },
+  {
+   "name": "Tanapag",
+   "lat": 15.234217,
+   "lon": 145.747291
+  },
+  {
+   "name": "Tepungan",
+   "lat": 13.467035,
+   "lon": 144.699033
+  },
+  {
+   "name": "Tinian",
+   "lat": 15.025455,
+   "lon": 145.625337
+  },
+  {
+   "name": "Toto",
+   "lat": 13.466524,
+   "lon": 144.784103
+  },
+  {
+   "name": "Tres Reyes",
+   "lat": 13.404876,
+   "lon": 144.775087
+  },
+  {
+   "name": "Tuchok",
+   "lat": 14.136584,
+   "lon": 145.154358
+  },
+  {
+   "name": "Tumon",
+   "lat": 13.505412,
+   "lon": 144.812314
+  },
+  {
+   "name": "Umatac",
+   "lat": 13.298629,
+   "lon": 144.66559
+  },
+  {
+   "name": "Yigo",
+   "lat": 13.539023,
+   "lon": 144.884101
+  },
+  {
+   "name": "Yona",
+   "lat": 13.410619,
+   "lon": 144.775485
+  }
+ ]
+}

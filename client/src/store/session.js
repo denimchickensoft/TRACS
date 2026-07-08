@@ -5,6 +5,7 @@ export const MODULE = {
   ATC:   'ATC',
   CATCC: 'CATCC',
   AIC:   'AIC',
+  ABM:   'ABM',
 }
 
 export const POSITION_MODE = {
@@ -26,7 +27,7 @@ export const useSessionStore = create((set) => ({
   signOnTime: null,
 
   // Facility
-  facilityType: null,      // 'land' | 'carrier' | 'fir' | 'aic'
+  facilityType: null,      // 'land' | 'carrier' | 'fir' | 'aic' | 'abm'
   facilityId: '',
   facilityDcsName: '',
   facilityName: '',

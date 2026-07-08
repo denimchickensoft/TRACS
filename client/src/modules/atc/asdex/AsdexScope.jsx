@@ -134,14 +134,17 @@ export default function AsdexScope() {
     centerLngRef.current = lng
   }, []) // eslint-disable-line
 
-  // Re-center when facility changes or a better position becomes available (centerlines load)
+  // Re-center when facility changes or a better position becomes available (centerlines load).
+  // Keyed on the primitive lat/lng (not the facilityLatLng object) — that memo returns a new
+  // object reference every time `airbases` refreshes (Olympus polls it every 30s), which would
+  // otherwise re-fire this effect and snap a manually-panned view back to the facility center.
   useEffect(() => {
     if (!facilityLatLng || !windowSettings) return
     displayStore.updateWindow(ASDEX_WINDOW_ID, {
       centerLat: facilityLatLng.lat,
       centerLng: facilityLatLng.lng,
     })
-  }, [facilityLatLng]) // eslint-disable-line
+  }, [facilityLatLng?.lat, facilityLatLng?.lng]) // eslint-disable-line
 
   // Sync center refs from display window (after pan commits, or on init)
   useEffect(() => {
@@ -222,9 +225,15 @@ export default function AsdexScope() {
       rangeNm,
       pixelsPerNm: rangeToPixelsPerNm(rangeNm, rawW, rawH),
       width: rawW, height: rawH,
+      theatre,
     }
-  }, [])
+  }, [theatre])
 
+  // windowSettings is undefined (and the component returns null before the
+  // canvas mounts) on the first render of a cold load — canvasAreaRef.current
+  // is null then, so without this dep the observer would attach to nothing
+  // and never re-attach once the canvas actually mounts.
+  const hasWindowSettings = !!windowSettings
   useEffect(() => {
     const container = canvasAreaRef.current
     if (!container) return
@@ -234,7 +243,7 @@ export default function AsdexScope() {
     })
     ro.observe(container)
     return () => ro.disconnect()
-  }, []) // eslint-disable-line
+  }, [hasWindowSettings]) // eslint-disable-line
 
   useEffect(() => { setView(buildView()) }, [windowSettings?.rangeNm, windowSettings?.centerLat, windowSettings?.centerLng]) // eslint-disable-line
   useEffect(() => { viewRef.current = view }, [view])

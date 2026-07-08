@@ -1,0 +1,113 @@
+.abm-scope {
+  display:        flex;
+  width:           100%;
+  height:          100%;
+  background:      #000;
+  overflow:        hidden;
+  user-select:     none;
+}
+
+.abm-canvas-area {
+  position:   relative;
+  flex:       1;
+  min-width:  0;
+  min-height: 0;
+  overflow:   hidden;
+}
+
+.abm-layer {
+  position: absolute;
+  top:      0;
+  left:     0;
+  display:  block;
+}
+
+.abm-interactive {
+  cursor:  default;
+  outline: none;
+}
+
+.abm-warn {
+  position:    absolute;
+  top:         50%;
+  left:        50%;
+  transform:   translate(-50%, -50%) translateY(-60px);
+  font-family: 'Roboto Mono', monospace;
+  font-size:   0.65rem;
+  letter-spacing: 0.12em;
+  color:       rgba(255,68,68,0.7);
+  pointer-events: none;
+}
+
+/* ── Cursor position readout (.coords) ───────────────────────────────────────── */
+.abm-coords-box {
+  position:       absolute;
+  bottom:         36px;
+  right:          36px;
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-end;
+  gap:            2px;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  color:          #aaa;
+  text-align:     right;
+  pointer-events: none;
+}
+
+.abm-coords-box > div {
+  text-align: right;
+}
+
+/* ── Command entry ───────────────────────────────────────────────────────────── */
+/* Compass rose reach into this corner is capped at LABEL_GAP+fontPx (~24px
+   bottom) and LABEL_GAP+labelWidth (~32px left) — those caps come from
+   drawCompassRose's fixed-pixel constants (TICK_LEN/LABEL_GAP) and always
+   include the straight-down/due-west ticks, so they hold at any window
+   size/aspect ratio, not just the one this was tuned against. */
+.abm-cmd-feedback {
+  position:       absolute;
+  bottom:         50px;
+  left:           40px;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  color:          #FFD700;
+  pointer-events: none;
+}
+
+.abm-cmd-area {
+  position:    absolute;
+  bottom:      32px;
+  left:        40px;
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  font-family: 'Roboto Mono', monospace;
+  font-size:   0.7rem;
+  color:       #aaa;
+  pointer-events: none;
+}
+
+.abm-cmd-prompt {
+  color: #555;
+}
+
+.abm-cmd-preview {
+  color: #ccc;
+  min-width: 4ch;
+}
+
+.abm-cmd-fkey {
+  color:       #FFD700;
+  font-weight: bold;
+}
+
+.abm-cmd-cursor {
+  color:     #888;
+  animation: abm-blink 1s step-end infinite;
+}
+
+@keyframes abm-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}

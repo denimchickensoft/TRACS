@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useAicStore }  from '../../store/aic.js'
+import { useAtcStore }  from '../../store/atc.js'
 import { useUnitsStore } from '../../store/units.js'
 import { useSessionStore } from '../../store/session.js'
 import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
@@ -21,7 +22,7 @@ function speedFlags(unit) {
 
 const DECL_COLOR = {
   [DECLARATION.HOSTILE]:  '#FF4444',
-  [DECLARATION.UNKNOWN]:  '#FFCC00',
+  [DECLARATION.BOGEY]:    '#FFCC00',
   [DECLARATION.NEUTRAL]:  '#44CC44',
   [DECLARATION.FRIENDLY]: '#4488FF',
 }
@@ -91,7 +92,10 @@ function shortType(unit) {
 
 function resolveDisplay(unit, isFriendly) {
   if (!unit) return '?'
-  if (isFriendly) return unit.callsign || unit.unitName || shortType(unit)
+  if (isFriendly) {
+    const override = useAtcStore.getState().callsignOverrides[String(unit.id)]
+    return override || unit.callsign || unit.unitName || shortType(unit)
+  }
   return shortType(unit)
 }
 
@@ -196,7 +200,11 @@ export function BraaList({ docked = true, width, onResize, onUndock, onHide, onS
         )}
 
         {rows.map(row => (
-          <div key={row.id} className="braa-row">
+          <div
+            key={row.id}
+            className="braa-row"
+            onClick={(e) => { if (e.shiftKey) removeBraaPair(row.id) }}
+          >
             <div className="braa-row-header">
               <span className="braa-callsign" style={{ color: DECL_COLOR[row.fighterDecl] ?? '#aaa' }}>{row.fighterLabel}</span>
               <span className="braa-arrow">→</span>

@@ -368,6 +368,12 @@ export function setProjectionParams(data) {
   _projectionParams = data
 }
 
+// Raw per-theatre TM params (central_meridian, false_easting, false_northing,
+// scale_factor), or null for theatres not in projection_params.json.
+export function getProjectionParams(theatre) {
+  return _projectionParams?.[theatre] ?? null
+}
+
 // Returns convergence in degrees. Add to IGRF to get the DCS-equivalent magvar.
 export function theatreConvergence(theatre, latDeg, lngDeg) {
   const centralMeridian =

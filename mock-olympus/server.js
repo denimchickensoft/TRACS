@@ -123,6 +123,8 @@ const unitDefs = [
     contacts: [
       { ID: 5, detectionMethod: 4 },
       { ID: 6, detectionMethod: 4 },
+      { ID: 13, detectionMethod: 4 },
+      { ID: 14, detectionMethod: 4 },
     ],
   },
   {
@@ -167,6 +169,25 @@ const unitDefs = [
     id: 11, unitName: 'HAWKEYE', name: 'E-2C', category: 'Aircraft',
     coalition: 2, lat: 41.55, lng: 39.94, alt: 7620,
     hdg: Math.PI / 2, spd: 270, contacts: [],
+  },
+
+  // ── Ground/naval units — ABM Phase 5 (surface threat awareness) test fixtures ──
+  {
+    id: 12, unitName: 'Abrams 1', name: 'M-1 Abrams', category: 'GroundUnit',
+    coalition: 2, lat: 42.55, lng: 43.05, alt: 0,
+    hdg: 0, spd: 0, contacts: [],
+  },
+  // Red — acquisition-range-only (radar), only visible because unit 3 has it in contacts
+  {
+    id: 13, unitName: 'Kub Radar', name: 'Kub 1S91 str', category: 'GroundUnit',
+    coalition: 1, lat: 42.68, lng: 43.75, alt: 0,
+    hdg: 0, spd: 0, contacts: [],
+  },
+  // Red — engagement-range-only (launcher), same detection as above
+  {
+    id: 14, unitName: 'Kub Launcher', name: 'Kub 2P25 ln', category: 'GroundUnit',
+    coalition: 1, lat: 42.685, lng: 43.755, alt: 0,
+    hdg: 0, spd: 0, contacts: [],
   },
 ]
 
