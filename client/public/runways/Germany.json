@@ -1,1 +1,3390 @@
-{"theatre":"Germany","airbases":[{"airbase":"Wittstock","runways":[{"elevation_ft":221.58368,"end2":{"lon":12.540153,"lat":53.20516},"lat":53.202366,"course_true_deg":98.355018,"name":26,"length_ft":7830.6081,"lon":12.522974,"end1":{"lon":12.505798,"lat":53.199571},"width_ft":196.8504,"course_raw":1.7166189}]},{"airbase":"Altes Lager","runways":[{"elevation_ft":311.6801,"end2":{"lon":12.966533,"lat":51.996643},"lat":51.995486,"course_true_deg":-102.54692,"name":10,"length_ft":7837.6857,"lon":12.983764,"end1":{"lon":13.000995,"lat":51.994327},"width_ft":196.8504,"course_raw":-1.7897813}]},{"airbase":"Barth","runways":[{"elevation_ft":20.543542,"end2":{"lon":12.702196,"lat":54.338229},"lat":54.338193,"course_true_deg":-97.226534,"name":27,"length_ft":3211.5138,"lon":12.709697,"end1":{"lon":12.717198,"lat":54.338156},"width_ft":65.6168,"course_raw":-1.6969231}]},{"airbase":"Zerbst","runways":[{"elevation_ft":249.99011,"end2":{"lon":12.128244,"lat":51.994948},"lat":51.999629,"course_true_deg":-71.673669,"name":7,"length_ft":8019.0874,"lon":12.14426,"end1":{"lon":12.16028,"lat":52.004307},"width_ft":147.6378,"course_raw":-1.2509415}]},{"airbase":"Bremen","runways":[{"elevation_ft":40.723528,"end2":{"lon":8.7747217,"lat":53.046655},"lat":53.046942,"course_true_deg":-97.809887,"name":9,"length_ft":6013.1662,"lon":8.7882725,"end1":{"lon":8.8018237,"lat":53.047227},"width_ft":196.8504,"course_raw":-1.7071046}]},{"airbase":"Briest","runways":[{"elevation_ft":115.16713,"end2":{"lon":12.470822,"lat":52.440774},"lat":52.437638,"course_true_deg":100.11286,"name":25,"length_ft":7906.6322,"lon":12.453931,"end1":{"lon":12.437043,"lat":52.434499},"width_ft":196.8504,"course_raw":1.7472991}]},{"airbase":"Buckeburg","runways":[{"elevation_ft":192.54411,"end2":{"lon":9.071432,"lat":52.276973},"lat":52.278579,"course_true_deg":-87.009636,"name":8,"length_ft":5470.4575,"lon":9.0832675,"end1":{"lon":9.0951041,"lat":52.280184},"width_ft":147.6378,"course_raw":-1.5186046}]},{"airbase":"Celle","runways":[{"elevation_ft":126.27139,"end2":{"lon":10.039323,"lat":52.592912},"lat":52.591416,"course_true_deg":90.547449,"name":26,"length_ft":6803.1317,"lon":10.024321,"end1":{"lon":10.009319,"lat":52.589918},"width_ft":147.6378,"course_raw":1.5803511}]},{"airbase":"Cochstedt","runways":[{"elevation_ft":569.04957,"end2":{"lon":11.400601,"lat":51.853514},"lat":51.855915,"course_true_deg":-84.967628,"name":8,"length_ft":8075.3375,"lon":11.417947,"end1":{"lon":11.435295,"lat":51.858314},"width_ft":213.2546,"course_raw":-1.4829649}]},{"airbase":"Damgarten","runways":[{"elevation_ft":26.399884,"end2":{"lon":12.427119,"lat":54.260672},"lat":54.264011,"course_true_deg":-78.520285,"name":7,"length_ft":7732.8181,"lon":12.444217,"end1":{"lon":12.461317,"lat":54.267347},"width_ft":147.6378,"course_raw":-1.3704375}]},{"airbase":"Fassberg","runways":[{"elevation_ft":253.99524,"end2":{"lon":10.166496,"lat":52.918969},"lat":52.919426,"course_true_deg":-96.312245,"name":9,"length_ft":8145.4695,"lon":10.184824,"end1":{"lon":10.203153,"lat":52.91988},"width_ft":213.2546,"course_raw":-1.6809658}]},{"airbase":"Finow","runways":[{"elevation_ft":111.40711,"end2":{"lon":13.711914,"lat":52.825214},"lat":52.82714,"course_true_deg":74.080874,"name":28,"length_ft":8047.9366,"lon":13.694045,"end1":{"lon":13.676176,"lat":52.829064},"width_ft":147.6378,"course_raw":1.2929552}]},{"airbase":"Garz","runways":[{"elevation_ft":66.146684,"end2":{"lon":14.167883,"lat":53.876145},"lat":53.878503,"course_true_deg":68.916254,"name":28,"length_ft":6437.6713,"lon":14.153541,"end1":{"lon":14.139198,"lat":53.880859},"width_ft":147.6378,"course_raw":1.2028155}]},{"airbase":"Gatow","runways":[{"elevation_ft":136.48002,"end2":{"lon":13.150907,"lat":52.47686},"lat":52.475349,"course_true_deg":94.695327,"name":26,"length_ft":5834.1501,"lon":13.138099,"end1":{"lon":13.125292,"lat":52.473836},"width_ft":213.2546,"course_raw":1.6527452}]},{"airbase":"Templin","runways":[{"elevation_ft":241.98047,"end2":{"lon":13.568097,"lat":53.032299},"lat":53.031999,"course_true_deg":85.158006,"name":27,"length_ft":11263.437,"lon":13.542583,"end1":{"lon":13.51707,"lat":53.031693},"width_ft":213.2546,"course_raw":1.4862876},{"elevation_ft":241.98047,"end2":{"lon":13.50498,"lat":53.000324},"lat":53.01522,"course_true_deg":-20.453237,"name":9,"length_ft":11263.437,"lon":13.511347,"end1":{"lon":13.517718,"lat":53.030116},"width_ft":213.2546,"course_raw":-0.35697633}]},{"airbase":"Gutersloh","runways":[{"elevation_ft":213.25483,"end2":{"lon":8.2908236,"lat":51.922881},"lat":51.922807,"course_true_deg":-100.57718,"name":9,"length_ft":6031.1611,"lon":8.3040647,"end1":{"lon":8.317306,"lat":51.922732},"width_ft":196.8504,"course_raw":-1.7554029}]},{"airbase":"Hamburg","runways":[{"elevation_ft":72.790071,"end2":{"lon":9.9983171,"lat":53.635297},"lat":53.626844,"course_true_deg":121.02057,"name":23,"length_ft":9678.1023,"lon":9.9813224,"end1":{"lon":9.9643346,"lat":53.618388},"width_ft":213.2546,"course_raw":2.1122074},{"elevation_ft":72.790071,"end2":{"lon":9.9968052,"lat":53.629478},"lat":53.641185,"course_true_deg":18.379421,"name":5,"length_ft":9678.1023,"lon":9.9866462,"end1":{"lon":9.9764811,"lat":53.652891},"width_ft":213.2546,"course_raw":0.32078141}]},{"airbase":"Hamburg Finkenwerder","runways":[{"elevation_ft":10.384402,"end2":{"lon":9.8224197,"lat":53.529204},"lat":53.534149,"course_true_deg":-60.631309,"name":5,"length_ft":5852.1759,"lon":9.8328953,"end1":{"lon":9.8433734,"lat":53.539094},"width_ft":147.6378,"course_raw":-1.058216}]},{"airbase":"Hannover","runways":[{"elevation_ft":167.91646,"end2":{"lon":9.7104401,"lat":52.454037},"lat":52.454479,"course_true_deg":78.511153,"name":27,"length_ft":7501.4348,"lon":9.6937529,"end1":{"lon":9.6770657,"lat":52.45492},"width_ft":213.2546,"course_raw":1.3702781},{"elevation_ft":167.91646,"end2":{"lon":9.6963801,"lat":52.467003},"lat":52.467444,"course_true_deg":78.509398,"name":9,"length_ft":7501.4348,"lon":9.679688,"end1":{"lon":9.6629959,"lat":52.467883},"width_ft":213.2546,"course_raw":1.3702475}]},{"airbase":"Laage","runways":[{"elevation_ft":114.82951,"end2":{"lon":12.260779,"lat":53.919546},"lat":53.918052,"course_true_deg":-104.81258,"name":10,"length_ft":8131.1118,"lon":12.2794,"end1":{"lon":12.29802,"lat":53.916556},"width_ft":213.2546,"course_raw":-1.8293246}]},{"airbase":"Larz","runways":[{"elevation_ft":207.47394,"end2":{"lon":12.735717,"lat":53.303641},"lat":53.306376,"course_true_deg":-81.45631,"name":8,"length_ft":7652.9005,"lon":12.752547,"end1":{"lon":12.769379,"lat":53.309109},"width_ft":147.6378,"course_raw":-1.4216808}]},{"airbase":"Mahlwinkel","runways":[{"elevation_ft":142.6863,"end2":{"lon":11.844445,"lat":52.388221},"lat":52.388279,"course_true_deg":82.415856,"name":27,"length_ft":8077.7685,"lon":11.826442,"end1":{"lon":11.808439,"lat":52.388334},"width_ft":196.8504,"course_raw":1.438428}]},{"airbase":"Neubrandenburg","runways":[{"elevation_ft":177.16554,"end2":{"lon":13.290632,"lat":53.601913},"lat":53.602225,"course_true_deg":-94.276186,"name":9,"length_ft":6743.3661,"lon":13.306104,"end1":{"lon":13.321576,"lat":53.602534},"width_ft":213.2546,"course_raw":-1.6454298}]},{"airbase":"Neuruppin","runways":[{"elevation_ft":147.63794,"end2":{"lon":12.769521,"lat":52.942577},"lat":52.941057,"course_true_deg":-104.81698,"name":10,"length_ft":7772.2883,"lon":12.786901,"end1":{"lon":12.80428,"lat":52.939534},"width_ft":213.2546,"course_raw":-1.8294014}]},{"airbase":"Peenemunde","runways":[{"elevation_ft":22.965903,"end2":{"lon":13.761182,"lat":54.166293},"lat":54.1587,"course_true_deg":-142.01495,"name":13,"length_ft":7709.0961,"lon":13.773616,"end1":{"lon":13.786045,"lat":54.151106},"width_ft":213.2546,"course_raw":-2.4786284}]},{"airbase":"Schonefeld","runways":[{"elevation_ft":146.08017,"end2":{"lon":13.553568,"lat":52.388786},"lat":52.384226,"course_true_deg":105.28017,"name":25,"length_ft":9232.2109,"lon":13.534355,"end1":{"lon":13.515145,"lat":52.379663},"width_ft":213.2546,"course_raw":1.8374857},{"elevation_ft":146.08017,"end2":{"lon":13.525179,"lat":52.377223},"lat":52.372654,"course_true_deg":105.30769,"name":7,"length_ft":9232.2109,"lon":13.505977,"end1":{"lon":13.48678,"lat":52.368081},"width_ft":213.2546,"course_raw":1.837966}]},{"airbase":"Stendal","runways":[{"elevation_ft":122.09567,"end2":{"lon":11.806004,"lat":52.627829},"lat":52.629081,"course_true_deg":-88.873076,"name":8,"length_ft":6250.3891,"lon":11.819859,"end1":{"lon":11.833715,"lat":52.630332},"width_ft":213.2546,"course_raw":-1.5511278}]},{"airbase":"Tegel","runways":[{"elevation_ft":115.60757,"end2":{"lon":13.309894,"lat":52.560112},"lat":52.55843,"course_true_deg":93.08942,"name":26,"length_ft":7687.4158,"lon":13.292892,"end1":{"lon":13.275892,"lat":52.556747},"width_ft":196.8504,"course_raw":1.6247169},{"elevation_ft":115.60757,"end2":{"lon":13.305037,"lat":52.561497},"lat":52.559815,"course_true_deg":93.08871,"name":8,"length_ft":7687.4158,"lon":13.288034,"end1":{"lon":13.271033,"lat":52.558131},"width_ft":196.8504,"course_raw":1.6247045}]},{"airbase":"Tempelhof","runways":[{"elevation_ft":154.19963,"end2":{"lon":13.38974,"lat":52.470734},"lat":52.471066,"course_true_deg":-93.906761,"name":9,"length_ft":6517.2569,"lon":13.404304,"end1":{"lon":13.418869,"lat":52.471396},"width_ft":213.2546,"course_raw":-1.6389822},{"elevation_ft":154.19963,"end2":{"lon":13.389119,"lat":52.47437},"lat":52.475003,"course_true_deg":-91.959447,"name":27,"length_ft":6517.2569,"lon":13.403657,"end1":{"lon":13.418196,"lat":52.475636},"width_ft":213.2546,"course_raw":-1.6049951}]},{"airbase":"Tutow","runways":[{"elevation_ft":6.5616839,"end2":{"lon":13.216083,"lat":53.931348},"lat":53.921793,"course_true_deg":-175.88891,"name":17,"length_ft":7114.9052,"lon":13.219059,"end1":{"lon":13.222033,"lat":53.912238},"width_ft":196.8504,"course_raw":-3.0698407}]},{"airbase":"Werneuchen","runways":[{"elevation_ft":258.52447,"end2":{"lon":13.75116,"lat":52.630716},"lat":52.631801,"course_true_deg":-89.989948,"name":8,"length_ft":7894.6238,"lon":13.768795,"end1":{"lon":13.78643,"lat":52.632884},"width_ft":196.8504,"course_raw":-1.5706209}]},{"airbase":"Wunstorf","runways":[{"elevation_ft":165.6745,"end2":{"lon":9.4402387,"lat":52.45852},"lat":52.457325,"course_true_deg":89.26155,"name":26,"length_ft":5962.4041,"lon":9.4271107,"end1":{"lon":9.4139836,"lat":52.456128},"width_ft":147.6378,"course_raw":1.5579079},{"elevation_ft":165.6745,"end2":{"lon":9.4384414,"lat":52.4588},"lat":52.451551,"course_true_deg":144.18053,"name":8,"length_ft":5962.4041,"lon":9.4324977,"end1":{"lon":9.4265558,"lat":52.444301},"width_ft":147.6378,"course_raw":2.5164249}]},{"airbase":"Bornholm","runways":[{"elevation_ft":49.21265,"end2":{"lon":14.744954,"lat":55.066931},"lat":55.063383,"course_true_deg":-118.86099,"name":11,"length_ft":6448.8547,"lon":14.759014,"end1":{"lon":14.773072,"lat":55.059834},"width_ft":213.2546,"course_raw":-2.0745156}]},{"airbase":"Brand","runways":[{"elevation_ft":164.04214,"end2":{"lon":13.763023,"lat":52.035998},"lat":52.036838,"course_true_deg":79.586826,"name":27,"length_ft":7513.1164,"lon":13.746437,"end1":{"lon":13.72985,"lat":52.037675},"width_ft":147.6378,"course_raw":1.3890522}]},{"airbase":"Brandis","runways":[{"elevation_ft":508.67192,"end2":{"lon":12.669952,"lat":51.330589},"lat":51.328329,"course_true_deg":98.353269,"name":26,"length_ft":6447.5847,"lon":12.656378,"end1":{"lon":12.642805,"lat":51.326068},"width_ft":196.8504,"course_raw":1.7165884}]},{"airbase":"Chojna","runways":[{"elevation_ft":176.33061,"end2":{"lon":14.43827,"lat":52.939237},"lat":52.939562,"course_true_deg":82.856574,"name":27,"length_ft":7203.0145,"lon":14.421984,"end1":{"lon":14.405697,"lat":52.939884},"width_ft":147.6378,"course_raw":1.44612}]},{"airbase":"Cologne","runways":[{"elevation_ft":235.98997,"end2":{"lon":7.1335195,"lat":50.877614},"lat":50.867921,"course_true_deg":-148.36305,"name":14,"length_ft":9700.743,"lon":7.1475442,"end1":{"lon":7.161563,"lat":50.858226},"width_ft":213.2546,"course_raw":-2.5894237},{"elevation_ft":235.98997,"end2":{"lon":7.121055,"lat":50.85932},"lat":50.864981,"course_true_deg":-75.326734,"name":32,"length_ft":9700.743,"lon":7.1397941,"end1":{"lon":7.1585384,"lat":50.870639},"width_ft":213.2546,"course_raw":-1.3146995},{"elevation_ft":235.98997,"end2":{"lon":7.1191983,"lat":50.872205},"lat":50.86486,"course_true_deg":-148.34474,"name":7,"length_ft":7353.9324,"lon":7.129835,"end1":{"lon":7.1404682,"lat":50.857515},"width_ft":213.2546,"course_raw":-2.5891042}]},{"airbase":"Dusseldorf","runways":[{"elevation_ft":121.1301,"end2":{"lon":6.7561056,"lat":51.281425},"lat":51.286957,"course_true_deg":-63.95031,"name":5,"length_ft":6749.239,"lon":6.767706,"end1":{"lon":6.7793095,"lat":51.292487},"width_ft":213.2546,"course_raw":-1.1161435}]},{"airbase":"Falkenberg","runways":[{"elevation_ft":284.53765,"end2":{"lon":13.236372,"lat":51.548732},"lat":51.546467,"course_true_deg":94.062647,"name":26,"length_ft":9400.6727,"lon":13.216107,"end1":{"lon":13.195845,"lat":51.544198},"width_ft":213.2546,"course_raw":1.6417029}]},{"airbase":"Heidelberg","runways":[{"elevation_ft":346.23856,"end2":{"lon":8.6589148,"lat":49.394246},"lat":49.393511,"course_true_deg":90.003554,"name":26,"length_ft":3303.6008,"lon":8.6521377,"end1":{"lon":8.6453608,"lat":49.392775},"width_ft":147.6378,"course_raw":1.5708584}]},{"airbase":"Kastrup","runways":[{"elevation_ft":25.430244,"end2":{"lon":12.66487,"lat":55.614612},"lat":55.619241,"course_true_deg":49.910508,"name":30,"length_ft":6196.1523,"lon":12.652365,"end1":{"lon":12.639858,"lat":55.623869},"width_ft":213.2546,"course_raw":0.87110269},{"elevation_ft":25.430244,"end2":{"lon":12.640608,"lat":55.607955},"lat":55.614315,"course_true_deg":-48.139026,"name":12,"length_ft":6196.1523,"lon":12.650455,"end1":{"lon":12.660305,"lat":55.620674},"width_ft":213.2546,"course_raw":-0.84018451},{"elevation_ft":25.430244,"end2":{"lon":12.603341,"lat":55.592066},"lat":55.6026,"course_true_deg":-48.128016,"name":4,"length_ft":10256.534,"lon":12.619621,"end1":{"lon":12.63591,"lat":55.613131},"width_ft":213.2546,"course_raw":-0.83999234}]},{"airbase":"Kiel","runways":[{"elevation_ft":52.975108,"end2":{"lon":10.136043,"lat":54.378831},"lat":54.379501,"course_true_deg":-91.302438,"name":8,"length_ft":3736.3561,"lon":10.144681,"end1":{"lon":10.153318,"lat":54.380169},"width_ft":147.6378,"course_raw":-1.5935282}]},{"airbase":"Landstuhl","runways":[{"elevation_ft":1181.6128,"end2":{"lon":7.5363869,"lat":49.403065},"lat":49.403076,"course_true_deg":65.483168,"name":31,"length_ft":33.355083,"lon":7.5363198,"end1":{"lon":7.5362527,"lat":49.403087},"width_ft":147.6378,"course_raw":1.1428969}]},{"airbase":"Mainz Finthen","runways":[{"elevation_ft":721.7855,"end2":{"lon":8.1415556,"lat":49.968001},"lat":49.969133,"course_true_deg":-84.39881,"name":8,"length_ft":3119.8007,"lon":8.147878,"end1":{"lon":8.1542009,"lat":49.970264},"width_ft":147.6378,"course_raw":-1.4730371}]},{"airbase":"Sturup","runways":[{"elevation_ft":217.06504,"end2":{"lon":13.373951,"lat":55.547876},"lat":55.535659,"course_true_deg":-179.80297,"name":17,"length_ft":9004.4464,"lon":13.376404,"end1":{"lon":13.378856,"lat":55.523442},"width_ft":213.2546,"course_raw":-3.1381538}]},{"airbase":"Marxwalde","runways":[{"elevation_ft":49.212653,"end2":{"lon":14.259003,"lat":52.613908},"lat":52.612976,"course_true_deg":90.000003,"name":26,"length_ft":7280.2865,"lon":14.24273,"end1":{"lon":14.226458,"lat":52.612043},"width_ft":147.6378,"course_raw":1.5707964}]},{"airbase":"Nordholz","runways":[{"elevation_ft":39.370121,"end2":{"lon":8.675669,"lat":53.769637},"lat":53.767587,"course_true_deg":91.404228,"name":26,"length_ft":7627.9882,"lon":8.6585184,"end1":{"lon":8.6413699,"lat":53.765534},"width_ft":213.2546,"course_raw":1.5953047}]},{"airbase":"Norvenich","runways":[{"elevation_ft":295.9265,"end2":{"lon":6.6432704,"lat":50.827095},"lat":50.831274,"course_true_deg":-77.996102,"name":7,"length_ft":7829.2953,"lon":6.6586471,"end1":{"lon":6.674027,"lat":50.835451},"width_ft":147.6378,"course_raw":-1.3612888}]},{"airbase":"Oranienburg","runways":[{"elevation_ft":108.26805,"end2":{"lon":13.223092,"lat":52.71546},"lat":52.724895,"course_true_deg":15.645498,"name":34,"length_ft":7444.8884,"lon":13.216861,"end1":{"lon":13.210628,"lat":52.73433},"width_ft":147.6378,"course_raw":0.27306545}]},{"airbase":"Szczecin-Goleniow","runways":[{"elevation_ft":98.4253,"end2":{"lon":14.913282,"lat":53.57907},"lat":53.584757,"course_true_deg":44.162207,"name":31,"length_ft":6350.1659,"lon":14.90226,"end1":{"lon":14.891235,"lat":53.590443},"width_ft":213.2546,"course_raw":0.77077591}]},{"airbase":"Obermehler Schlotheim","runways":[{"elevation_ft":889.20826,"end2":{"lon":10.644082,"lat":51.265649},"lat":51.267735,"course_true_deg":62.161791,"name":29,"length_ft":4539.9244,"lon":10.634806,"end1":{"lon":10.62553,"lat":51.269821},"width_ft":147.6378,"course_raw":1.0849279}]},{"airbase":"Adelsheim","runways":[{"elevation_ft":1199.4553,"end2":{"lon":9.4278657,"lat":49.363387},"lat":49.36917,"course_true_deg":-63.014417,"name":5,"length_ft":7271.8185,"lon":9.4401372,"end1":{"lon":9.4524117,"lat":49.374952},"width_ft":147.6378,"course_raw":-1.0998091}]},{"airbase":"H FRG 01","runways":{}},{"airbase":"H FRG 02","runways":{}},{"airbase":"H FRG 03","runways":{}},{"airbase":"H FRG 04","runways":{}},{"airbase":"H FRG 05","runways":{}},{"airbase":"H FRG 06","runways":{}},{"airbase":"H FRG 07","runways":{}},{"airbase":"H FRG 08","runways":{}},{"airbase":"H FRG 09","runways":{}},{"airbase":"H FRG 10","runways":{}},{"airbase":"H FRG 12","runways":{}},{"airbase":"H FRG 13","runways":{}},{"airbase":"H FRG 14","runways":{}},{"airbase":"H GDR 01","runways":{}},{"airbase":"H GDR 02","runways":{}},{"airbase":"H GDR 03","runways":{}},{"airbase":"H GDR 04","runways":{}},{"airbase":"H GDR 05","runways":{}},{"airbase":"H GDR 06","runways":{}},{"airbase":"H GDR 07","runways":{}},{"airbase":"H GDR 08","runways":{}},{"airbase":"H GDR 09","runways":{}},{"airbase":"H GDR 10","runways":{}},{"airbase":"H GDR 11","runways":{}},{"airbase":"H FRG 15","runways":{}},{"airbase":"Revinge","runways":[{"elevation_ft":57.679795,"end2":{"lon":13.442661,"lat":55.72635},"lat":55.728818,"course_true_deg":67.816231,"name":29,"length_ft":6585.9763,"lon":13.427335,"end1":{"lon":13.412007,"lat":55.731283},"width_ft":65.6168,"course_raw":1.1836165}]},{"airbase":"Gross Mohrdorf","runways":[{"elevation_ft":9.8425302,"end2":{"lon":12.897799,"lat":54.389164},"lat":54.383196,"course_true_deg":-131.80284,"name":13,"length_ft":7583.5359,"lon":12.912291,"end1":{"lon":12.926779,"lat":54.377226},"width_ft":196.8504,"course_raw":-2.3003936}]},{"airbase":"Lubeck","runways":[{"elevation_ft":74.655543,"end2":{"lon":10.701917,"lat":53.802003},"lat":53.804876,"course_true_deg":-80.36779,"name":7,"length_ft":6837.0879,"lon":10.716883,"end1":{"lon":10.731851,"lat":53.807747},"width_ft":164.042,"course_raw":-1.4026825}]},{"airbase":"Kothen","runways":[{"elevation_ft":284.26289,"end2":{"lon":11.979084,"lat":51.721667},"lat":51.721377,"course_true_deg":84.410087,"name":28,"length_ft":7991.9917,"lon":11.961542,"end1":{"lon":11.944,"lat":51.721085},"width_ft":147.6378,"course_raw":1.4732339}]},{"airbase":"Dessau","runways":[{"elevation_ft":195.47417,"end2":{"lon":12.176992,"lat":51.831865},"lat":51.831724,"course_true_deg":-97.763196,"name":9,"length_ft":7309.2405,"lon":12.193083,"end1":{"lon":12.209175,"lat":51.83158},"width_ft":213.2546,"course_raw":-1.7062896}]},{"airbase":"Parchim","runways":[{"elevation_ft":170.60386,"end2":{"lon":11.769445,"lat":53.42306},"lat":53.427856,"course_true_deg":-72.332373,"name":7,"length_ft":8292.1989,"lon":11.786589,"end1":{"lon":11.803737,"lat":53.43265},"width_ft":196.8504,"course_raw":-1.2624381}]},{"airbase":"H GDR 12","runways":{}},{"airbase":"Uetersen","runways":[{"elevation_ft":22.9659,"end2":{"lon":9.7121167,"lat":53.646211},"lat":53.646507,"course_true_deg":77.338211,"name":27,"length_ft":3536.631,"lon":9.7040336,"end1":{"lon":9.6959506,"lat":53.646803},"width_ft":147.6378,"course_raw":1.3498064}]},{"airbase":"Tagra","runways":[{"elevation_ft":114.51167,"end2":{"lon":13.722299,"lat":55.595084},"lat":55.600852,"course_true_deg":32.713048,"name":33,"length_ft":5413.9923,"lon":13.714128,"end1":{"lon":13.705954,"lat":55.60662},"width_ft":147.6378,"course_raw":0.57095039}]},{"airbase":"Luneburg","runways":[{"elevation_ft":148.04803,"end2":{"lon":10.463776,"lat":53.249291},"lat":53.248542,"course_true_deg":97.916697,"name":26,"length_ft":1949.353,"lon":10.459531,"end1":{"lon":10.455285,"lat":53.247793},"width_ft":65.6168,"course_raw":1.7089688}]},{"airbase":"Northeim","runways":[{"elevation_ft":49.084505,"end2":{"lon":11.243701,"lat":52.984872},"lat":52.984329,"course_true_deg":89.95213,"name":27,"length_ft":2945.1701,"lon":11.237111,"end1":{"lon":11.230522,"lat":52.983786},"width_ft":65.6168,"course_raw":1.5699608}]},{"airbase":"H GDR 13","runways":{}},{"airbase":"H GDR 14","runways":{}},{"airbase":"H GDR 15","runways":{}},{"airbase":"H GDR 16","runways":{}},{"airbase":"H GDR 17","runways":{}},{"airbase":"H FRG 16","runways":{}},{"airbase":"H FRG 17","runways":{}},{"airbase":"H FRG 18","runways":{}},{"airbase":"H FRG 19","runways":{}},{"airbase":"H FRG 11","runways":{}},{"airbase":"Sperenberg","runways":[{"elevation_ft":185.17582,"end2":{"lon":13.288054,"lat":52.137687},"lat":52.136914,"course_true_deg":-100.1101,"name":9,"length_ft":8084.858,"lon":13.305952,"end1":{"lon":13.32385,"lat":52.136138},"width_ft":196.8504,"course_raw":-1.7472508}]},{"airbase":"Uelzen","runways":[{"elevation_ft":248.99699,"end2":{"lon":10.472297,"lat":52.983902},"lat":52.983622,"course_true_deg":84.957397,"name":27,"length_ft":3469.5896,"lon":10.464482,"end1":{"lon":10.456667,"lat":52.983341},"width_ft":65.6168,"course_raw":1.4827863}]},{"airbase":"Dedelow","runways":[{"elevation_ft":175.71596,"end2":{"lon":13.777037,"lat":53.355973},"lat":53.35552,"course_true_deg":-101.17952,"name":10,"length_ft":3533.9845,"lon":13.785071,"end1":{"lon":13.793105,"lat":53.355068},"width_ft":147.6378,"course_raw":-1.7659158}]},{"airbase":"Kammermark","runways":[{"elevation_ft":286.68577,"end2":{"lon":12.157156,"lat":53.194982},"lat":53.195961,"course_true_deg":-85.4014,"name":8,"length_ft":3540.9675,"lon":12.165032,"end1":{"lon":12.172908,"lat":53.196939},"width_ft":147.6378,"course_raw":-1.4905356}]},{"airbase":"Weser Wumme","runways":[{"elevation_ft":81.892392,"end2":{"lon":9.2078763,"lat":53.060933},"lat":53.056097,"course_true_deg":173.60458,"name":19,"length_ft":3562.0655,"lon":9.2083084,"end1":{"lon":9.2087402,"lat":53.051261},"width_ft":147.6378,"course_raw":3.0299716}]},{"airbase":"Braunschweig","runways":[{"elevation_ft":273.04923,"end2":{"lon":10.56376,"lat":52.319626},"lat":52.319083,"course_true_deg":86.859932,"name":26,"length_ft":4441.5437,"lon":10.55393,"end1":{"lon":10.544101,"lat":52.318538},"width_ft":196.8504,"course_raw":1.5159918}]},{"airbase":"Wismar","runways":[{"elevation_ft":32.205752,"end2":{"lon":11.498006,"lat":53.914025},"lat":53.914448,"course_true_deg":-88.542713,"name":9,"length_ft":1947.1932,"lon":11.502444,"end1":{"lon":11.506883,"lat":53.91487},"width_ft":65.6168,"course_raw":-1.5453619}]},{"airbase":"Waren Vielist","runways":[{"elevation_ft":261.46146,"end2":{"lon":12.6585,"lat":53.568215},"lat":53.565922,"course_true_deg":122.80765,"name":24,"length_ft":2638.9914,"lon":12.653834,"end1":{"lon":12.649169,"lat":53.563629},"width_ft":65.6168,"course_raw":2.1433978}]},{"airbase":"Bienenfarm","runways":[{"elevation_ft":98.486444,"end2":{"lon":12.752789,"lat":52.656559},"lat":52.658628,"course_true_deg":52.442353,"name":30,"length_ft":2945.135,"lon":12.747121,"end1":{"lon":12.741453,"lat":52.660697},"width_ft":65.6168,"course_raw":0.91529173}]},{"airbase":"Pinnow","runways":[{"elevation_ft":149.03963,"end2":{"lon":11.564695,"lat":53.621279},"lat":53.616542,"course_true_deg":161.35381,"name":20,"length_ft":3539.5762,"lon":11.563142,"end1":{"lon":11.56159,"lat":53.611806},"width_ft":147.6378,"course_raw":2.8161552}]},{"airbase":"Gardelegen","runways":[{"elevation_ft":183.02248,"end2":{"lon":11.357626,"lat":52.527975},"lat":52.529523,"course_true_deg":63.603452,"name":29,"length_ft":3539.1036,"lon":11.350135,"end1":{"lon":11.342644,"lat":52.53107},"width_ft":147.6378,"course_raw":1.1100897}]},{"airbase":"Glindbruchkippe","runways":[{"elevation_ft":158.88216,"end2":{"lon":10.172593,"lat":52.324256},"lat":52.323828,"course_true_deg":-103.67164,"name":10,"length_ft":3556.0973,"lon":10.180462,"end1":{"lon":10.188331,"lat":52.3234},"width_ft":147.6378,"course_raw":-1.8094114}]},{"airbase":"Ummern","runways":[{"elevation_ft":218.61335,"end2":{"lon":10.414616,"lat":52.61895},"lat":52.620466,"course_true_deg":46.854452,"name":31,"length_ft":1956.8855,"lon":10.411016,"end1":{"lon":10.407416,"lat":52.621983},"width_ft":65.6168,"course_raw":0.81776446}]},{"airbase":"Hildesheim","runways":[{"elevation_ft":321.52265,"end2":{"lon":9.9540536,"lat":52.181189},"lat":52.179792,"course_true_deg":96.605649,"name":25,"length_ft":3872.0796,"lon":9.9457898,"end1":{"lon":9.9375265,"lat":52.178395},"width_ft":147.6378,"course_raw":1.6860867}]},{"airbase":"Verden-Scharnhorst","runways":[{"elevation_ft":146.9859,"end2":{"lon":9.2770813,"lat":52.967284},"lat":52.965761,"course_true_deg":-134.87038,"name":13,"length_ft":1931.1905,"lon":9.2806232,"end1":{"lon":9.2841649,"lat":52.964237},"width_ft":65.6168,"course_raw":-2.3539321}]},{"airbase":"Rinteln","runways":[{"elevation_ft":174.09535,"end2":{"lon":9.0488973,"lat":52.175679},"lat":52.174688,"course_true_deg":-121.34876,"name":12,"length_ft":1957.3252,"lon":9.052913,"end1":{"lon":9.0569286,"lat":52.173698},"width_ft":65.6168,"course_raw":-2.1179354}]},{"airbase":"Holzdorf","runways":[{"elevation_ft":245.29398,"end2":{"lon":13.188893,"lat":51.767089},"lat":51.767796,"course_true_deg":80.443434,"name":27,"length_ft":8730.9104,"lon":13.169713,"end1":{"lon":13.150533,"lat":51.768499},"width_ft":147.6378,"course_raw":1.4040028}]},{"airbase":"H Med GDR 01","runways":{}},{"airbase":"H Med GDR 02","runways":{}},{"airbase":"H Med GDR 03","runways":{}},{"airbase":"H GDR 33","runways":{}},{"airbase":"Airracing Koblenz","runways":[{"elevation_ft":1056.4315,"end2":{"lon":7.83393,"lat":50.288971},"lat":50.292048,"course_true_deg":26.281089,"name":33,"length_ft":2821.7134,"lon":7.8303783,"end1":{"lon":7.8268261,"lat":50.295124},"width_ft":65.6168,"course_raw":0.45869154}]},{"airbase":"H GDR 34","runways":{}},{"airbase":"Perwenitz","runways":[{"elevation_ft":134.80206,"end2":{"lon":13.005257,"lat":52.665165},"lat":52.675639,"course_true_deg":-11.958039,"name":1,"length_ft":7708.4409,"lon":13.006942,"end1":{"lon":13.008628,"lat":52.686112},"width_ft":147.6378,"course_raw":-0.20870715}]},{"airbase":"H Med GDR 08","runways":{}},{"airbase":"H Med GDR 09","runways":{}},{"airbase":"H Med GDR 10","runways":{}},{"airbase":"H Med FRG 01","runways":{}},{"airbase":"H Med FRG 02","runways":{}},{"airbase":"Sittensen","runways":[{"elevation_ft":125.19067,"end2":{"lon":9.5761644,"lat":53.318057},"lat":53.320957,"course_true_deg":-63.562417,"name":6,"length_ft":3658.2988,"lon":9.5829179,"end1":{"lon":9.5896724,"lat":53.323856},"width_ft":147.6378,"course_raw":-1.1093735}]},{"airbase":"H Med FRG 04","runways":{}},{"airbase":"H Med FRG 06","runways":{}},{"airbase":"Sprendlingen","runways":[{"elevation_ft":413.36176,"end2":{"lon":7.9652041,"lat":49.865362},"lat":49.87099,"course_true_deg":21.198686,"name":33,"length_ft":4854.1942,"lon":7.9599224,"end1":{"lon":7.9546393,"lat":49.876618},"width_ft":147.6378,"course_raw":0.36998686}]},{"airbase":"Thurland","runways":[{"elevation_ft":282.23857,"end2":{"lon":12.208347,"lat":51.686532},"lat":51.696381,"course_true_deg":-13.759024,"name":36,"length_ft":7272.2254,"lon":12.210249,"end1":{"lon":12.212151,"lat":51.706231},"width_ft":147.6378,"course_raw":-0.24014027}]},{"airbase":"Zollschen","runways":[{"elevation_ft":397.58719,"end2":{"lon":12.091621,"lat":51.261691},"lat":51.266365,"course_true_deg":-55.298922,"name":5,"length_ft":5153.9253,"lon":12.099991,"end1":{"lon":12.108363,"lat":51.271037},"width_ft":65.6168,"course_raw":-0.96514827}]},{"airbase":"H Med FRG 11","runways":{}},{"airbase":"Hasselfelde","runways":[{"elevation_ft":1618.8574,"end2":{"lon":10.885961,"lat":51.70574},"lat":51.705392,"course_true_deg":86.423668,"name":27,"length_ft":3325.045,"lon":10.878693,"end1":{"lon":10.871425,"lat":51.705045},"width_ft":147.6378,"course_raw":1.5083776}]},{"airbase":"Grosse Wiese","runways":[{"elevation_ft":277.8341,"end2":{"lon":10.576165,"lat":52.137857},"lat":52.136877,"course_true_deg":98.21101,"name":26,"length_ft":2536.2523,"lon":10.570782,"end1":{"lon":10.565401,"lat":52.135897},"width_ft":65.6168,"course_raw":1.7141055}]},{"airbase":"H GDR 18","runways":{}},{"airbase":"H FRG 20","runways":{}},{"airbase":"H Med FRG 12","runways":{}},{"airbase":"H GDR 19","runways":{}},{"airbase":"H GDR 30","runways":{}},{"airbase":"H Med GDR 11","runways":{}},{"airbase":"H FRG 21","runways":{}},{"airbase":"H FRG 50","runways":{}},{"airbase":"H FRG 23","runways":{}},{"airbase":"H FRG 39","runways":{}},{"airbase":"H GDR 21","runways":{}},{"airbase":"H GDR 22","runways":{}},{"airbase":"Fritzlar","runways":[{"elevation_ft":551.51889,"end2":{"lon":9.2913268,"lat":51.112731},"lat":51.11461,"course_true_deg":52.308532,"name":30,"length_ft":2894.47,"lon":9.2858351,"end1":{"lon":9.2803431,"lat":51.116488},"width_ft":147.6378,"course_raw":0.91295612}]},{"airbase":"Hahn","runways":[{"elevation_ft":1621.1844,"end2":{"lon":7.2719818,"lat":49.956628},"lat":49.948452,"course_true_deg":136.89053,"name":21,"length_ft":7157.3928,"lon":7.2639052,"end1":{"lon":7.2558312,"lat":49.940276},"width_ft":213.2546,"course_raw":2.3891904}]},{"airbase":"Sembach","runways":[{"elevation_ft":1021.7672,"end2":{"lon":7.8780355,"lat":49.510878},"lat":49.506152,"course_true_deg":106.33614,"name":25,"length_ft":7840.9561,"lon":7.8634127,"end1":{"lon":7.8487931,"lat":49.501424},"width_ft":196.8504,"course_raw":1.8559158}]},{"airbase":"Allstedt","runways":[{"elevation_ft":929.50559,"end2":{"lon":11.463021,"lat":51.384066},"lat":51.380584,"course_true_deg":101.10439,"name":25,"length_ft":8014.8438,"lon":11.446474,"end1":{"lon":11.429929,"lat":51.377099},"width_ft":147.6378,"course_raw":1.7646044}]},{"airbase":"Zweibrucken","runways":[{"elevation_ft":1083.3974,"end2":{"lon":7.3927654,"lat":49.200347},"lat":49.209551,"course_true_deg":-40.359523,"name":3,"length_ft":7843.5713,"lon":7.4008669,"end1":{"lon":7.4089713,"lat":49.218754},"width_ft":213.2546,"course_raw":-0.70440656}]},{"airbase":"Giebelstadt","runways":[{"elevation_ft":952.78896,"end2":{"lon":9.9527611,"lat":49.646251},"lat":49.647901,"course_true_deg":-86.475843,"name":8,"length_ft":5842.7419,"lon":9.9647335,"end1":{"lon":9.9767069,"lat":49.64955},"width_ft":213.2546,"course_raw":-1.5092882}]},{"airbase":"Schweinfurt","runways":[{"elevation_ft":753.10497,"end2":{"lon":10.173946,"lat":50.049158},"lat":50.048852,"course_true_deg":87.99541,"name":27,"length_ft":2034.1352,"lon":10.169674,"end1":{"lon":10.165402,"lat":50.048547},"width_ft":147.6378,"course_raw":1.5358096}]},{"airbase":"Haina","runways":[{"elevation_ft":1017.0614,"end2":{"lon":10.494375,"lat":50.989237},"lat":50.991663,"course_true_deg":67.24326,"name":28,"length_ft":7091.1304,"lon":10.47957,"end1":{"lon":10.464763,"lat":50.994086},"width_ft":147.6378,"course_raw":1.1736163}]},{"airbase":"Spangdahlem","runways":[{"elevation_ft":984.253,"end2":{"lon":6.7133557,"lat":49.986076},"lat":49.976572,"course_true_deg":124.37076,"name":23,"length_ft":9861.332,"lon":6.6988271,"end1":{"lon":6.6843044,"lat":49.967067},"width_ft":147.6378,"course_raw":2.1706793}]},{"airbase":"Frankfurt","runways":[{"elevation_ft":328.08435,"end2":{"lon":8.5940707,"lat":50.046834},"lat":50.040431,"course_true_deg":100.80683,"name":25,"length_ft":13537.957,"lon":8.5673205,"end1":{"lon":8.5405785,"lat":50.034023},"width_ft":213.2546,"course_raw":1.7594111},{"elevation_ft":328.08435,"end2":{"lon":8.587837,"lat":50.040311},"lat":50.03391,"course_true_deg":100.79942,"name":7,"length_ft":13537.957,"lon":8.5610908,"end1":{"lon":8.5343529,"lat":50.027502},"width_ft":213.2546,"course_raw":1.7592818}]},{"airbase":"Bindersleben","runways":[{"elevation_ft":1012.4977,"end2":{"lon":10.976071,"lat":50.978389},"lat":50.979473,"course_true_deg":75.057085,"name":28,"length_ft":6417.818,"lon":10.962329,"end1":{"lon":10.948587,"lat":50.980554},"width_ft":147.6378,"course_raw":1.3099933}]},{"airbase":"Ramstein","runways":[{"elevation_ft":804.80002,"end2":{"lon":7.6156176,"lat":49.437549},"lat":49.436899,"course_true_deg":83.41404,"name":27,"length_ft":7493.6773,"lon":7.6000774,"end1":{"lon":7.5845381,"lat":49.436248},"width_ft":213.2546,"course_raw":1.4558496}]},{"airbase":"Fulda","runways":[{"elevation_ft":936.96087,"end2":{"lon":9.6470199,"lat":50.540217},"lat":50.539911,"course_true_deg":88.004071,"name":27,"length_ft":1889.8852,"lon":9.6430154,"end1":{"lon":9.6390111,"lat":50.539606},"width_ft":147.6378,"course_raw":1.5359608}]},{"airbase":"Mendig","runways":[{"elevation_ft":600.56198,"end2":{"lon":7.3264082,"lat":50.367845},"lat":50.366013,"course_true_deg":94.26034,"name":26,"length_ft":5265.123,"lon":7.3156292,"end1":{"lon":7.3048512,"lat":50.36418},"width_ft":147.6378,"course_raw":1.6451533}]},{"airbase":"Merseburg","runways":[{"elevation_ft":339.5752,"end2":{"lon":11.933058,"lat":51.361291},"lat":51.363973,"course_true_deg":-82.918544,"name":8,"length_ft":8026.2843,"lon":11.950009,"end1":{"lon":11.966962,"lat":51.366652},"width_ft":164.042,"course_raw":-1.4472016}]},{"airbase":"Wiesbaden","runways":[{"elevation_ft":452.52964,"end2":{"lon":8.3114486,"lat":50.047097},"lat":50.049819,"course_true_deg":-83.12427,"name":8,"length_ft":6996.8839,"lon":8.3255738,"end1":{"lon":8.3397008,"lat":50.05254},"width_ft":147.6378,"course_raw":-1.4507922}]},{"airbase":"Schkeuditz","runways":[{"elevation_ft":421.08437,"end2":{"lon":12.244137,"lat":51.412086},"lat":51.415024,"course_true_deg":67.660025,"name":29,"length_ft":8075.5602,"lon":12.227159,"end1":{"lon":12.210179,"lat":51.417959},"width_ft":213.2546,"course_raw":1.1808902}]},{"airbase":"H Med GDR 12","runways":{}},{"airbase":"H Med GDR 13","runways":{}},{"airbase":"H Med GDR 14","runways":{}},{"airbase":"H Med GDR 16","runways":{}},{"airbase":"H GDR 24","runways":{}},{"airbase":"H Med FRG 13","runways":{}},{"airbase":"H Med FRG 14","runways":{}},{"airbase":"H Med FRG 15","runways":{}},{"airbase":"H Med FRG 16","runways":{}},{"airbase":"H Med FRG 17","runways":{}},{"airbase":"H FRG 25","runways":{}},{"airbase":"H Radar GDR 01","runways":{}},{"airbase":"H Radar GDR 02","runways":{}},{"airbase":"H Radar GDR 03","runways":{}},{"airbase":"H Radar GDR 04","runways":{}},{"airbase":"H Radar GDR 05","runways":{}},{"airbase":"H Radar GDR 06","runways":{}},{"airbase":"H Radar GDR 07","runways":{}},{"airbase":"Bitburg","runways":[{"elevation_ft":1208.0774,"end2":{"lon":6.5771852,"lat":49.950561},"lat":49.944659,"course_true_deg":113.97799,"name":24,"length_ft":7582.014,"lon":6.5641831,"end1":{"lon":6.5511844,"lat":49.938756},"width_ft":213.2546,"course_raw":1.9892912}]},{"airbase":"Airracing Lubeck","runways":[{"elevation_ft":27.887168,"end2":{"lon":10.769126,"lat":53.708133},"lat":53.711666,"course_true_deg":14.910633,"name":35,"length_ft":2821.8296,"lon":10.766574,"end1":{"lon":10.764022,"lat":53.715199},"width_ft":65.6168,"course_raw":0.26023963}]},{"airbase":"H FRG 27","runways":{}},{"airbase":"Airracing Frankfurt","runways":[{"elevation_ft":273.22677,"end2":{"lon":8.0933325,"lat":50.00656},"lat":50.008207,"course_true_deg":-74.472087,"name":7,"length_ft":2821.7857,"lon":8.0986934,"end1":{"lon":8.1040547,"lat":50.009853},"width_ft":65.6168,"course_raw":-1.2997831}]},{"airbase":"H Med FRG 21","runways":{}},{"airbase":"H FRG 30","runways":{}},{"airbase":"H FRG 31","runways":{}},{"airbase":"H FRG 32","runways":{}},{"airbase":"H FRG 34","runways":{}},{"airbase":"H FRG 51","runways":{}},{"airbase":"H FRG 38","runways":{}},{"airbase":"H FRG 48","runways":{}},{"airbase":"H FRG 49","runways":{}},{"airbase":"H Med FRG 24","runways":{}},{"airbase":"H Radar FRG 02","runways":{}},{"airbase":"H Med FRG 26","runways":{}},{"airbase":"H GDR 25","runways":{}},{"airbase":"H GDR 26","runways":{}},{"airbase":"H GDR 31","runways":{}},{"airbase":"H GDR 32","runways":{}},{"airbase":"H Med FRG 27","runways":{}},{"airbase":"Pferdsfeld","runways":[{"elevation_ft":1312.5016,"end2":{"lon":7.5887894,"lat":49.854367},"lat":49.855128,"course_true_deg":-96.093679,"name":9,"length_ft":7613.5577,"lon":7.6047058,"end1":{"lon":7.6206231,"lat":49.855888},"width_ft":196.8504,"course_raw":-1.6771511}]},{"airbase":"H Med FRG 29","runways":{}},{"airbase":"H FRG 40","runways":{}},{"airbase":"Buchel","runways":[{"elevation_ft":1508.8791,"end2":{"lon":7.0556156,"lat":50.16467},"lat":50.174095,"course_true_deg":-40.089512,"name":3,"length_ft":7980.6914,"lon":7.0638492,"end1":{"lon":7.0720859,"lat":50.18352},"width_ft":147.6378,"course_raw":-0.69969398}]},{"airbase":"Leipzig Mockau","runways":[{"elevation_ft":415.3444,"end2":{"lon":12.417329,"lat":51.396799},"lat":51.393782,"course_true_deg":110.72175,"name":25,"length_ft":4796.4199,"lon":12.408046,"end1":{"lon":12.398764,"lat":51.390764},"width_ft":196.8504,"course_raw":1.9324591}]},{"airbase":"H FRG 43","runways":{}},{"airbase":"H FRG 44","runways":{}},{"airbase":"H FRG 45","runways":{}},{"airbase":"H FRG 46","runways":{}},{"airbase":"H FRG 47","runways":{}},{"airbase":"Bad Durkheim","runways":[{"elevation_ft":347.76939,"end2":{"lon":8.1906336,"lat":49.472002},"lat":49.472683,"course_true_deg":-86.147339,"name":8,"length_ft":2127.1003,"lon":8.1949362,"end1":{"lon":8.1992388,"lat":49.473364},"width_ft":65.6168,"course_raw":-1.5035547}]},{"airbase":"Gelnhausen","runways":[{"elevation_ft":416.81832,"end2":{"lon":9.1595587,"lat":50.19555},"lat":50.196331,"course_true_deg":-89.853208,"name":9,"length_ft":3561.9786,"lon":9.1669988,"end1":{"lon":9.1744391,"lat":50.197113},"width_ft":147.6378,"course_raw":-1.5682343}]},{"airbase":"Herrenteich","runways":[{"elevation_ft":304.63498,"end2":{"lon":8.4860271,"lat":49.340442},"lat":49.343501,"course_true_deg":-48.815215,"name":6,"length_ft":2910.1758,"lon":8.4898525,"end1":{"lon":8.4936783,"lat":49.346559},"width_ft":65.6168,"course_raw":-0.85198623}]},{"airbase":"Hockenheim","runways":[{"elevation_ft":322.50686,"end2":{"lon":8.5309968,"lat":49.322275},"lat":49.325263,"course_true_deg":28.084423,"name":33,"length_ft":2778.9137,"lon":8.5274758,"end1":{"lon":8.5239544,"lat":49.32825},"width_ft":65.6168,"course_raw":0.49016565}]},{"airbase":"Langenselbold","runways":[{"elevation_ft":404.10689,"end2":{"lon":9.0684166,"lat":50.176808},"lat":50.174621,"course_true_deg":114.36377,"name":24,"length_ft":2910.3452,"lon":9.0632873,"end1":{"lon":9.0581585,"lat":50.172434},"width_ft":65.6168,"course_raw":1.9960244}]},{"airbase":"Walldorf","runways":[{"elevation_ft":363.30495,"end2":{"lon":8.661456,"lat":49.300125},"lat":49.303708,"course_true_deg":-9.2998396,"name":1,"length_ft":2639.267,"lon":8.6614448,"end1":{"lon":8.6614336,"lat":49.307291},"width_ft":65.6168,"course_raw":-0.16231282}]},{"airbase":"Ober-Morlen","runways":[{"elevation_ft":715.50086,"end2":{"lon":8.7163663,"lat":50.364851},"lat":50.362445,"course_true_deg":122.659,"name":24,"length_ft":2638.9726,"lon":8.7122154,"end1":{"lon":8.7080649,"lat":50.360039},"width_ft":65.6168,"course_raw":2.1408033}]},{"airbase":"Pottschutthohe","runways":[{"elevation_ft":1099.0354,"end2":{"lon":7.485729,"lat":49.262713},"lat":49.26447,"course_true_deg":-58.825708,"name":6,"length_ft":1957.0657,"lon":7.4887635,"end1":{"lon":7.4917983,"lat":49.266226},"width_ft":65.6168,"course_raw":-1.0267023}]},{"airbase":"Worms","runways":[{"elevation_ft":273.06387,"end2":{"lon":8.3689891,"lat":49.607617},"lat":49.606503,"course_true_deg":105.92246,"name":25,"length_ft":1899.275,"lon":8.3654126,"end1":{"lon":8.3618363,"lat":49.605389},"width_ft":65.6168,"course_raw":1.8486956}]},{"airbase":"H Radar GDR 09","runways":{}},{"airbase":"H Radar GDR 08","runways":{}},{"airbase":"H FRG 41","runways":{}},{"airbase":"H FRG 42","runways":{}}]}
+{
+  "theatre": "Germany",
+  "airbases": [
+    {
+      "airbase": "Wittstock",
+      "runways": [
+        {
+          "elevation_ft": 221.58368,
+          "end2": {
+            "lon": 12.540153,
+            "lat": 53.20516
+          },
+          "lat": 53.202366,
+          "course_true_deg": 98.355018,
+          "name": 26,
+          "length_ft": 7830.6081,
+          "lon": 12.522974,
+          "end1": {
+            "lon": 12.505798,
+            "lat": 53.199571
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.7166189
+        }
+      ]
+    },
+    {
+      "airbase": "Altes Lager",
+      "runways": [
+        {
+          "elevation_ft": 311.6801,
+          "end2": {
+            "lon": 12.966533,
+            "lat": 51.996643
+          },
+          "lat": 51.995486,
+          "course_true_deg": -102.54692,
+          "name": 10,
+          "length_ft": 7837.6857,
+          "lon": 12.983764,
+          "end1": {
+            "lon": 13.000995,
+            "lat": 51.994327
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.7897813
+        }
+      ]
+    },
+    {
+      "airbase": "Barth",
+      "runways": [
+        {
+          "elevation_ft": 20.543542,
+          "end2": {
+            "lon": 12.702196,
+            "lat": 54.338229
+          },
+          "lat": 54.338193,
+          "course_true_deg": -97.226534,
+          "name": 27,
+          "length_ft": 3211.5138,
+          "lon": 12.709697,
+          "end1": {
+            "lon": 12.717198,
+            "lat": 54.338156
+          },
+          "width_ft": 65.6168,
+          "course_raw": -1.6969231
+        }
+      ]
+    },
+    {
+      "airbase": "Zerbst",
+      "runways": [
+        {
+          "elevation_ft": 249.99011,
+          "end2": {
+            "lon": 12.128244,
+            "lat": 51.994948
+          },
+          "lat": 51.999629,
+          "course_true_deg": -71.673669,
+          "name": 7,
+          "length_ft": 8019.0874,
+          "lon": 12.14426,
+          "end1": {
+            "lon": 12.16028,
+            "lat": 52.004307
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.2509415
+        }
+      ]
+    },
+    {
+      "airbase": "Bremen",
+      "runways": [
+        {
+          "elevation_ft": 40.723528,
+          "end2": {
+            "lon": 8.7747217,
+            "lat": 53.046655
+          },
+          "lat": 53.046942,
+          "course_true_deg": -97.809887,
+          "name": 9,
+          "length_ft": 6013.1662,
+          "lon": 8.7882725,
+          "end1": {
+            "lon": 8.8018237,
+            "lat": 53.047227
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.7071046
+        }
+      ]
+    },
+    {
+      "airbase": "Briest",
+      "runways": [
+        {
+          "elevation_ft": 115.16713,
+          "end2": {
+            "lon": 12.470822,
+            "lat": 52.440774
+          },
+          "lat": 52.437638,
+          "course_true_deg": 100.11286,
+          "name": 25,
+          "length_ft": 7906.6322,
+          "lon": 12.453931,
+          "end1": {
+            "lon": 12.437043,
+            "lat": 52.434499
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.7472991
+        }
+      ]
+    },
+    {
+      "airbase": "Buckeburg",
+      "runways": [
+        {
+          "elevation_ft": 192.54411,
+          "end2": {
+            "lon": 9.071432,
+            "lat": 52.276973
+          },
+          "lat": 52.278579,
+          "course_true_deg": -87.009636,
+          "name": 8,
+          "length_ft": 5470.4575,
+          "lon": 9.0832675,
+          "end1": {
+            "lon": 9.0951041,
+            "lat": 52.280184
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.5186046
+        }
+      ]
+    },
+    {
+      "airbase": "Celle",
+      "runways": [
+        {
+          "elevation_ft": 126.27139,
+          "end2": {
+            "lon": 10.039323,
+            "lat": 52.592912
+          },
+          "lat": 52.591416,
+          "course_true_deg": 90.547449,
+          "name": 26,
+          "length_ft": 6803.1317,
+          "lon": 10.024321,
+          "end1": {
+            "lon": 10.009319,
+            "lat": 52.589918
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.5803511
+        }
+      ]
+    },
+    {
+      "airbase": "Cochstedt",
+      "runways": [
+        {
+          "elevation_ft": 569.04957,
+          "end2": {
+            "lon": 11.400601,
+            "lat": 51.853514
+          },
+          "lat": 51.855915,
+          "course_true_deg": -84.967628,
+          "name": 8,
+          "length_ft": 8075.3375,
+          "lon": 11.417947,
+          "end1": {
+            "lon": 11.435295,
+            "lat": 51.858314
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.4829649
+        }
+      ]
+    },
+    {
+      "airbase": "Damgarten",
+      "runways": [
+        {
+          "elevation_ft": 26.399884,
+          "end2": {
+            "lon": 12.427119,
+            "lat": 54.260672
+          },
+          "lat": 54.264011,
+          "course_true_deg": -78.520285,
+          "name": 7,
+          "length_ft": 7732.8181,
+          "lon": 12.444217,
+          "end1": {
+            "lon": 12.461317,
+            "lat": 54.267347
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.3704375
+        }
+      ]
+    },
+    {
+      "airbase": "Fassberg",
+      "runways": [
+        {
+          "elevation_ft": 253.99524,
+          "end2": {
+            "lon": 10.166496,
+            "lat": 52.918969
+          },
+          "lat": 52.919426,
+          "course_true_deg": -96.312245,
+          "name": 9,
+          "length_ft": 8145.4695,
+          "lon": 10.184824,
+          "end1": {
+            "lon": 10.203153,
+            "lat": 52.91988
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.6809658
+        }
+      ]
+    },
+    {
+      "airbase": "Finow",
+      "runways": [
+        {
+          "elevation_ft": 111.40711,
+          "end2": {
+            "lon": 13.711914,
+            "lat": 52.825214
+          },
+          "lat": 52.82714,
+          "course_true_deg": 74.080874,
+          "name": 28,
+          "length_ft": 8047.9366,
+          "lon": 13.694045,
+          "end1": {
+            "lon": 13.676176,
+            "lat": 52.829064
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.2929552
+        }
+      ]
+    },
+    {
+      "airbase": "Garz",
+      "runways": [
+        {
+          "elevation_ft": 66.146684,
+          "end2": {
+            "lon": 14.167883,
+            "lat": 53.876145
+          },
+          "lat": 53.878503,
+          "course_true_deg": 68.916254,
+          "name": 28,
+          "length_ft": 6437.6713,
+          "lon": 14.153541,
+          "end1": {
+            "lon": 14.139198,
+            "lat": 53.880859
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.2028155
+        }
+      ]
+    },
+    {
+      "airbase": "Gatow",
+      "runways": [
+        {
+          "elevation_ft": 136.48002,
+          "end2": {
+            "lon": 13.150907,
+            "lat": 52.47686
+          },
+          "lat": 52.475349,
+          "course_true_deg": 94.695327,
+          "name": 26,
+          "length_ft": 5834.1501,
+          "lon": 13.138099,
+          "end1": {
+            "lon": 13.125292,
+            "lat": 52.473836
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.6527452
+        }
+      ]
+    },
+    {
+      "airbase": "Templin",
+      "runways": [
+        {
+          "elevation_ft": 241.98047,
+          "end2": {
+            "lon": 13.568097,
+            "lat": 53.032299
+          },
+          "lat": 53.031999,
+          "course_true_deg": 85.158006,
+          "name": 27,
+          "length_ft": 11263.437,
+          "lon": 13.542583,
+          "end1": {
+            "lon": 13.51707,
+            "lat": 53.031693
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.4862876
+        },
+        {
+          "elevation_ft": 241.98047,
+          "end2": {
+            "lon": 13.50498,
+            "lat": 53.000324
+          },
+          "lat": 53.01522,
+          "course_true_deg": -20.453237,
+          "name": 9,
+          "length_ft": 11263.437,
+          "lon": 13.511347,
+          "end1": {
+            "lon": 13.517718,
+            "lat": 53.030116
+          },
+          "width_ft": 213.2546,
+          "course_raw": -0.35697633
+        }
+      ]
+    },
+    {
+      "airbase": "Gutersloh",
+      "runways": [
+        {
+          "elevation_ft": 213.25483,
+          "end2": {
+            "lon": 8.2908236,
+            "lat": 51.922881
+          },
+          "lat": 51.922807,
+          "course_true_deg": -100.57718,
+          "name": 9,
+          "length_ft": 6031.1611,
+          "lon": 8.3040647,
+          "end1": {
+            "lon": 8.317306,
+            "lat": 51.922732
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.7554029
+        }
+      ]
+    },
+    {
+      "airbase": "Hamburg",
+      "runways": [
+        {
+          "elevation_ft": 72.790071,
+          "end2": {
+            "lon": 9.9983171,
+            "lat": 53.635297
+          },
+          "lat": 53.626844,
+          "course_true_deg": 121.02057,
+          "name": 23,
+          "length_ft": 9678.1023,
+          "lon": 9.9813224,
+          "end1": {
+            "lon": 9.9643346,
+            "lat": 53.618388
+          },
+          "width_ft": 213.2546,
+          "course_raw": 2.1122074
+        },
+        {
+          "elevation_ft": 72.790071,
+          "end2": {
+            "lon": 9.9968052,
+            "lat": 53.629478
+          },
+          "lat": 53.641185,
+          "course_true_deg": 18.379421,
+          "name": 5,
+          "length_ft": 9678.1023,
+          "lon": 9.9866462,
+          "end1": {
+            "lon": 9.9764811,
+            "lat": 53.652891
+          },
+          "width_ft": 213.2546,
+          "course_raw": 0.32078141
+        }
+      ]
+    },
+    {
+      "airbase": "Hamburg Finkenwerder",
+      "runways": [
+        {
+          "elevation_ft": 10.384402,
+          "end2": {
+            "lon": 9.8224197,
+            "lat": 53.529204
+          },
+          "lat": 53.534149,
+          "course_true_deg": -60.631309,
+          "name": 5,
+          "length_ft": 5852.1759,
+          "lon": 9.8328953,
+          "end1": {
+            "lon": 9.8433734,
+            "lat": 53.539094
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.058216
+        }
+      ]
+    },
+    {
+      "airbase": "Hannover",
+      "runways": [
+        {
+          "elevation_ft": 167.91646,
+          "end2": {
+            "lon": 9.7104401,
+            "lat": 52.454037
+          },
+          "lat": 52.454479,
+          "course_true_deg": 78.511153,
+          "name": 27,
+          "length_ft": 7501.4348,
+          "lon": 9.6937529,
+          "end1": {
+            "lon": 9.6770657,
+            "lat": 52.45492
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.3702781
+        },
+        {
+          "elevation_ft": 167.91646,
+          "end2": {
+            "lon": 9.6963801,
+            "lat": 52.467003
+          },
+          "lat": 52.467444,
+          "course_true_deg": 78.509398,
+          "name": 9,
+          "length_ft": 7501.4348,
+          "lon": 9.679688,
+          "end1": {
+            "lon": 9.6629959,
+            "lat": 52.467883
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.3702475
+        }
+      ]
+    },
+    {
+      "airbase": "Laage",
+      "runways": [
+        {
+          "elevation_ft": 114.82951,
+          "end2": {
+            "lon": 12.260779,
+            "lat": 53.919546
+          },
+          "lat": 53.918052,
+          "course_true_deg": -104.81258,
+          "name": 10,
+          "length_ft": 8131.1118,
+          "lon": 12.2794,
+          "end1": {
+            "lon": 12.29802,
+            "lat": 53.916556
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.8293246
+        }
+      ]
+    },
+    {
+      "airbase": "Larz",
+      "runways": [
+        {
+          "elevation_ft": 207.47394,
+          "end2": {
+            "lon": 12.735717,
+            "lat": 53.303641
+          },
+          "lat": 53.306376,
+          "course_true_deg": -81.45631,
+          "name": 8,
+          "length_ft": 7652.9005,
+          "lon": 12.752547,
+          "end1": {
+            "lon": 12.769379,
+            "lat": 53.309109
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.4216808
+        }
+      ]
+    },
+    {
+      "airbase": "Mahlwinkel",
+      "runways": [
+        {
+          "elevation_ft": 142.6863,
+          "end2": {
+            "lon": 11.844445,
+            "lat": 52.388221
+          },
+          "lat": 52.388279,
+          "course_true_deg": 82.415856,
+          "name": 27,
+          "length_ft": 8077.7685,
+          "lon": 11.826442,
+          "end1": {
+            "lon": 11.808439,
+            "lat": 52.388334
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.438428
+        }
+      ]
+    },
+    {
+      "airbase": "Neubrandenburg",
+      "runways": [
+        {
+          "elevation_ft": 177.16554,
+          "end2": {
+            "lon": 13.290632,
+            "lat": 53.601913
+          },
+          "lat": 53.602225,
+          "course_true_deg": -94.276186,
+          "name": 9,
+          "length_ft": 6743.3661,
+          "lon": 13.306104,
+          "end1": {
+            "lon": 13.321576,
+            "lat": 53.602534
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.6454298
+        }
+      ]
+    },
+    {
+      "airbase": "Neuruppin",
+      "runways": [
+        {
+          "elevation_ft": 147.63794,
+          "end2": {
+            "lon": 12.769521,
+            "lat": 52.942577
+          },
+          "lat": 52.941057,
+          "course_true_deg": -104.81698,
+          "name": 10,
+          "length_ft": 7772.2883,
+          "lon": 12.786901,
+          "end1": {
+            "lon": 12.80428,
+            "lat": 52.939534
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.8294014
+        }
+      ]
+    },
+    {
+      "airbase": "Peenemunde",
+      "runways": [
+        {
+          "elevation_ft": 22.965903,
+          "end2": {
+            "lon": 13.761182,
+            "lat": 54.166293
+          },
+          "lat": 54.1587,
+          "course_true_deg": -142.01495,
+          "name": 13,
+          "length_ft": 7709.0961,
+          "lon": 13.773616,
+          "end1": {
+            "lon": 13.786045,
+            "lat": 54.151106
+          },
+          "width_ft": 213.2546,
+          "course_raw": -2.4786284
+        }
+      ]
+    },
+    {
+      "airbase": "Schonefeld",
+      "runways": [
+        {
+          "elevation_ft": 146.08017,
+          "end2": {
+            "lon": 13.553568,
+            "lat": 52.388786
+          },
+          "lat": 52.384226,
+          "course_true_deg": 105.28017,
+          "name": 25,
+          "length_ft": 9232.2109,
+          "lon": 13.534355,
+          "end1": {
+            "lon": 13.515145,
+            "lat": 52.379663
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.8374857
+        },
+        {
+          "elevation_ft": 146.08017,
+          "end2": {
+            "lon": 13.525179,
+            "lat": 52.377223
+          },
+          "lat": 52.372654,
+          "course_true_deg": 105.30769,
+          "name": 7,
+          "length_ft": 9232.2109,
+          "lon": 13.505977,
+          "end1": {
+            "lon": 13.48678,
+            "lat": 52.368081
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.837966
+        }
+      ]
+    },
+    {
+      "airbase": "Stendal",
+      "runways": [
+        {
+          "elevation_ft": 122.09567,
+          "end2": {
+            "lon": 11.806004,
+            "lat": 52.627829
+          },
+          "lat": 52.629081,
+          "course_true_deg": -88.873076,
+          "name": 8,
+          "length_ft": 6250.3891,
+          "lon": 11.819859,
+          "end1": {
+            "lon": 11.833715,
+            "lat": 52.630332
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.5511278
+        }
+      ]
+    },
+    {
+      "airbase": "Tegel",
+      "runways": [
+        {
+          "elevation_ft": 115.60757,
+          "end2": {
+            "lon": 13.309894,
+            "lat": 52.560112
+          },
+          "lat": 52.55843,
+          "course_true_deg": 93.08942,
+          "name": 26,
+          "length_ft": 7687.4158,
+          "lon": 13.292892,
+          "end1": {
+            "lon": 13.275892,
+            "lat": 52.556747
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.6247169
+        },
+        {
+          "elevation_ft": 115.60757,
+          "end2": {
+            "lon": 13.305037,
+            "lat": 52.561497
+          },
+          "lat": 52.559815,
+          "course_true_deg": 93.08871,
+          "name": 8,
+          "length_ft": 7687.4158,
+          "lon": 13.288034,
+          "end1": {
+            "lon": 13.271033,
+            "lat": 52.558131
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.6247045
+        }
+      ]
+    },
+    {
+      "airbase": "Tempelhof",
+      "runways": [
+        {
+          "elevation_ft": 154.19963,
+          "end2": {
+            "lon": 13.38974,
+            "lat": 52.470734
+          },
+          "lat": 52.471066,
+          "course_true_deg": -93.906761,
+          "name": 9,
+          "length_ft": 6517.2569,
+          "lon": 13.404304,
+          "end1": {
+            "lon": 13.418869,
+            "lat": 52.471396
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.6389822
+        },
+        {
+          "elevation_ft": 154.19963,
+          "end2": {
+            "lon": 13.389119,
+            "lat": 52.47437
+          },
+          "lat": 52.475003,
+          "course_true_deg": -91.959447,
+          "name": 27,
+          "length_ft": 6517.2569,
+          "lon": 13.403657,
+          "end1": {
+            "lon": 13.418196,
+            "lat": 52.475636
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.6049951
+        }
+      ]
+    },
+    {
+      "airbase": "Tutow",
+      "runways": [
+        {
+          "elevation_ft": 6.5616839,
+          "end2": {
+            "lon": 13.216083,
+            "lat": 53.931348
+          },
+          "lat": 53.921793,
+          "course_true_deg": -175.88891,
+          "name": 17,
+          "length_ft": 7114.9052,
+          "lon": 13.219059,
+          "end1": {
+            "lon": 13.222033,
+            "lat": 53.912238
+          },
+          "width_ft": 196.8504,
+          "course_raw": -3.0698407
+        }
+      ]
+    },
+    {
+      "airbase": "Werneuchen",
+      "runways": [
+        {
+          "elevation_ft": 258.52447,
+          "end2": {
+            "lon": 13.75116,
+            "lat": 52.630716
+          },
+          "lat": 52.631801,
+          "course_true_deg": -89.989948,
+          "name": 8,
+          "length_ft": 7894.6238,
+          "lon": 13.768795,
+          "end1": {
+            "lon": 13.78643,
+            "lat": 52.632884
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.5706209
+        }
+      ]
+    },
+    {
+      "airbase": "Wunstorf",
+      "runways": [
+        {
+          "elevation_ft": 165.6745,
+          "end2": {
+            "lon": 9.4402387,
+            "lat": 52.45852
+          },
+          "lat": 52.457325,
+          "course_true_deg": 89.26155,
+          "name": 26,
+          "length_ft": 5962.4041,
+          "lon": 9.4271107,
+          "end1": {
+            "lon": 9.4139836,
+            "lat": 52.456128
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.5579079
+        },
+        {
+          "elevation_ft": 165.6745,
+          "end2": {
+            "lon": 9.4384414,
+            "lat": 52.4588
+          },
+          "lat": 52.451551,
+          "course_true_deg": 144.18053,
+          "name": 8,
+          "length_ft": 5962.4041,
+          "lon": 9.4324977,
+          "end1": {
+            "lon": 9.4265558,
+            "lat": 52.444301
+          },
+          "width_ft": 147.6378,
+          "course_raw": 2.5164249
+        }
+      ]
+    },
+    {
+      "airbase": "Bornholm",
+      "runways": [
+        {
+          "elevation_ft": 49.21265,
+          "end2": {
+            "lon": 14.744954,
+            "lat": 55.066931
+          },
+          "lat": 55.063383,
+          "course_true_deg": -118.86099,
+          "name": 11,
+          "length_ft": 6448.8547,
+          "lon": 14.759014,
+          "end1": {
+            "lon": 14.773072,
+            "lat": 55.059834
+          },
+          "width_ft": 213.2546,
+          "course_raw": -2.0745156
+        }
+      ]
+    },
+    {
+      "airbase": "Brand",
+      "runways": [
+        {
+          "elevation_ft": 164.04214,
+          "end2": {
+            "lon": 13.763023,
+            "lat": 52.035998
+          },
+          "lat": 52.036838,
+          "course_true_deg": 79.586826,
+          "name": 27,
+          "length_ft": 7513.1164,
+          "lon": 13.746437,
+          "end1": {
+            "lon": 13.72985,
+            "lat": 52.037675
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.3890522
+        }
+      ]
+    },
+    {
+      "airbase": "Brandis",
+      "runways": [
+        {
+          "elevation_ft": 508.67192,
+          "end2": {
+            "lon": 12.669952,
+            "lat": 51.330589
+          },
+          "lat": 51.328329,
+          "course_true_deg": 98.353269,
+          "name": 26,
+          "length_ft": 6447.5847,
+          "lon": 12.656378,
+          "end1": {
+            "lon": 12.642805,
+            "lat": 51.326068
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.7165884
+        }
+      ]
+    },
+    {
+      "airbase": "Chojna",
+      "runways": [
+        {
+          "elevation_ft": 176.33061,
+          "end2": {
+            "lon": 14.43827,
+            "lat": 52.939237
+          },
+          "lat": 52.939562,
+          "course_true_deg": 82.856574,
+          "name": 27,
+          "length_ft": 7203.0145,
+          "lon": 14.421984,
+          "end1": {
+            "lon": 14.405697,
+            "lat": 52.939884
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.44612
+        }
+      ]
+    },
+    {
+      "airbase": "Cologne",
+      "runways": [
+        {
+          "elevation_ft": 235.98997,
+          "end2": {
+            "lon": 7.1335195,
+            "lat": 50.877614
+          },
+          "lat": 50.867921,
+          "course_true_deg": -148.36305,
+          "name": 14,
+          "length_ft": 9700.743,
+          "lon": 7.1475442,
+          "end1": {
+            "lon": 7.161563,
+            "lat": 50.858226
+          },
+          "width_ft": 213.2546,
+          "course_raw": -2.5894237
+        },
+        {
+          "elevation_ft": 235.98997,
+          "end2": {
+            "lon": 7.121055,
+            "lat": 50.85932
+          },
+          "lat": 50.864981,
+          "course_true_deg": -75.326734,
+          "name": 32,
+          "length_ft": 9700.743,
+          "lon": 7.1397941,
+          "end1": {
+            "lon": 7.1585384,
+            "lat": 50.870639
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.3146995
+        },
+        {
+          "elevation_ft": 235.98997,
+          "end2": {
+            "lon": 7.1191983,
+            "lat": 50.872205
+          },
+          "lat": 50.86486,
+          "course_true_deg": -148.34474,
+          "name": 7,
+          "length_ft": 7353.9324,
+          "lon": 7.129835,
+          "end1": {
+            "lon": 7.1404682,
+            "lat": 50.857515
+          },
+          "width_ft": 213.2546,
+          "course_raw": -2.5891042
+        }
+      ]
+    },
+    {
+      "airbase": "Dusseldorf",
+      "runways": [
+        {
+          "elevation_ft": 121.1301,
+          "end2": {
+            "lon": 6.7561056,
+            "lat": 51.281425
+          },
+          "lat": 51.286957,
+          "course_true_deg": -63.95031,
+          "name": 5,
+          "length_ft": 6749.239,
+          "lon": 6.767706,
+          "end1": {
+            "lon": 6.7793095,
+            "lat": 51.292487
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.1161435
+        }
+      ]
+    },
+    {
+      "airbase": "Falkenberg",
+      "runways": [
+        {
+          "elevation_ft": 284.53765,
+          "end2": {
+            "lon": 13.236372,
+            "lat": 51.548732
+          },
+          "lat": 51.546467,
+          "course_true_deg": 94.062647,
+          "name": 26,
+          "length_ft": 9400.6727,
+          "lon": 13.216107,
+          "end1": {
+            "lon": 13.195845,
+            "lat": 51.544198
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.6417029
+        }
+      ]
+    },
+    {
+      "airbase": "Heidelberg",
+      "runways": [
+        {
+          "elevation_ft": 346.23856,
+          "end2": {
+            "lon": 8.6589148,
+            "lat": 49.394246
+          },
+          "lat": 49.393511,
+          "course_true_deg": 90.003554,
+          "name": 26,
+          "length_ft": 3303.6008,
+          "lon": 8.6521377,
+          "end1": {
+            "lon": 8.6453608,
+            "lat": 49.392775
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.5708584
+        }
+      ]
+    },
+    {
+      "airbase": "Kastrup",
+      "runways": [
+        {
+          "elevation_ft": 25.430244,
+          "end2": {
+            "lon": 12.66487,
+            "lat": 55.614612
+          },
+          "lat": 55.619241,
+          "course_true_deg": 49.910508,
+          "name": 30,
+          "length_ft": 6196.1523,
+          "lon": 12.652365,
+          "end1": {
+            "lon": 12.639858,
+            "lat": 55.623869
+          },
+          "width_ft": 213.2546,
+          "course_raw": 0.87110269
+        },
+        {
+          "elevation_ft": 25.430244,
+          "end2": {
+            "lon": 12.640608,
+            "lat": 55.607955
+          },
+          "lat": 55.614315,
+          "course_true_deg": -48.139026,
+          "name": 12,
+          "length_ft": 6196.1523,
+          "lon": 12.650455,
+          "end1": {
+            "lon": 12.660305,
+            "lat": 55.620674
+          },
+          "width_ft": 213.2546,
+          "course_raw": -0.84018451
+        },
+        {
+          "elevation_ft": 25.430244,
+          "end2": {
+            "lon": 12.603341,
+            "lat": 55.592066
+          },
+          "lat": 55.6026,
+          "course_true_deg": -48.128016,
+          "name": 4,
+          "length_ft": 10256.534,
+          "lon": 12.619621,
+          "end1": {
+            "lon": 12.63591,
+            "lat": 55.613131
+          },
+          "width_ft": 213.2546,
+          "course_raw": -0.83999234
+        }
+      ]
+    },
+    {
+      "airbase": "Kiel",
+      "runways": [
+        {
+          "elevation_ft": 52.975108,
+          "end2": {
+            "lon": 10.136043,
+            "lat": 54.378831
+          },
+          "lat": 54.379501,
+          "course_true_deg": -91.302438,
+          "name": 8,
+          "length_ft": 3736.3561,
+          "lon": 10.144681,
+          "end1": {
+            "lon": 10.153318,
+            "lat": 54.380169
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.5935282
+        }
+      ]
+    },
+    {
+      "airbase": "Landstuhl",
+      "runways": [
+        {
+          "elevation_ft": 1181.6128,
+          "end2": {
+            "lon": 7.5363869,
+            "lat": 49.403065
+          },
+          "lat": 49.403076,
+          "course_true_deg": 65.483168,
+          "name": 31,
+          "length_ft": 33.355083,
+          "lon": 7.5363198,
+          "end1": {
+            "lon": 7.5362527,
+            "lat": 49.403087
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.1428969
+        }
+      ]
+    },
+    {
+      "airbase": "Mainz Finthen",
+      "runways": [
+        {
+          "elevation_ft": 721.7855,
+          "end2": {
+            "lon": 8.1415556,
+            "lat": 49.968001
+          },
+          "lat": 49.969133,
+          "course_true_deg": -84.39881,
+          "name": 8,
+          "length_ft": 3119.8007,
+          "lon": 8.147878,
+          "end1": {
+            "lon": 8.1542009,
+            "lat": 49.970264
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.4730371
+        }
+      ]
+    },
+    {
+      "airbase": "Sturup",
+      "runways": [
+        {
+          "elevation_ft": 217.06504,
+          "end2": {
+            "lon": 13.373951,
+            "lat": 55.547876
+          },
+          "lat": 55.535659,
+          "course_true_deg": -179.80297,
+          "name": 17,
+          "length_ft": 9004.4464,
+          "lon": 13.376404,
+          "end1": {
+            "lon": 13.378856,
+            "lat": 55.523442
+          },
+          "width_ft": 213.2546,
+          "course_raw": -3.1381538
+        }
+      ]
+    },
+    {
+      "airbase": "Marxwalde",
+      "runways": [
+        {
+          "elevation_ft": 49.212653,
+          "end2": {
+            "lon": 14.259003,
+            "lat": 52.613908
+          },
+          "lat": 52.612976,
+          "course_true_deg": 90.000003,
+          "name": 26,
+          "length_ft": 7280.2865,
+          "lon": 14.24273,
+          "end1": {
+            "lon": 14.226458,
+            "lat": 52.612043
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.5707964
+        }
+      ]
+    },
+    {
+      "airbase": "Nordholz",
+      "runways": [
+        {
+          "elevation_ft": 39.370121,
+          "end2": {
+            "lon": 8.675669,
+            "lat": 53.769637
+          },
+          "lat": 53.767587,
+          "course_true_deg": 91.404228,
+          "name": 26,
+          "length_ft": 7627.9882,
+          "lon": 8.6585184,
+          "end1": {
+            "lon": 8.6413699,
+            "lat": 53.765534
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.5953047
+        }
+      ]
+    },
+    {
+      "airbase": "Norvenich",
+      "runways": [
+        {
+          "elevation_ft": 295.9265,
+          "end2": {
+            "lon": 6.6432704,
+            "lat": 50.827095
+          },
+          "lat": 50.831274,
+          "course_true_deg": -77.996102,
+          "name": 7,
+          "length_ft": 7829.2953,
+          "lon": 6.6586471,
+          "end1": {
+            "lon": 6.674027,
+            "lat": 50.835451
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.3612888
+        }
+      ]
+    },
+    {
+      "airbase": "Oranienburg",
+      "runways": [
+        {
+          "elevation_ft": 108.26805,
+          "end2": {
+            "lon": 13.223092,
+            "lat": 52.71546
+          },
+          "lat": 52.724895,
+          "course_true_deg": 15.645498,
+          "name": 34,
+          "length_ft": 7444.8884,
+          "lon": 13.216861,
+          "end1": {
+            "lon": 13.210628,
+            "lat": 52.73433
+          },
+          "width_ft": 147.6378,
+          "course_raw": 0.27306545
+        }
+      ]
+    },
+    {
+      "airbase": "Szczecin-Goleniow",
+      "runways": [
+        {
+          "elevation_ft": 98.4253,
+          "end2": {
+            "lon": 14.913282,
+            "lat": 53.57907
+          },
+          "lat": 53.584757,
+          "course_true_deg": 44.162207,
+          "name": 31,
+          "length_ft": 6350.1659,
+          "lon": 14.90226,
+          "end1": {
+            "lon": 14.891235,
+            "lat": 53.590443
+          },
+          "width_ft": 213.2546,
+          "course_raw": 0.77077591
+        }
+      ]
+    },
+    {
+      "airbase": "Obermehler Schlotheim",
+      "runways": [
+        {
+          "elevation_ft": 889.20826,
+          "end2": {
+            "lon": 10.644082,
+            "lat": 51.265649
+          },
+          "lat": 51.267735,
+          "course_true_deg": 62.161791,
+          "name": 29,
+          "length_ft": 4539.9244,
+          "lon": 10.634806,
+          "end1": {
+            "lon": 10.62553,
+            "lat": 51.269821
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.0849279
+        }
+      ]
+    },
+    {
+      "airbase": "Adelsheim",
+      "runways": [
+        {
+          "elevation_ft": 1199.4553,
+          "end2": {
+            "lon": 9.4278657,
+            "lat": 49.363387
+          },
+          "lat": 49.36917,
+          "course_true_deg": -63.014417,
+          "name": 5,
+          "length_ft": 7271.8185,
+          "lon": 9.4401372,
+          "end1": {
+            "lon": 9.4524117,
+            "lat": 49.374952
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.0998091
+        }
+      ]
+    },
+    {
+      "airbase": "H FRG 01",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 02",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 03",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 04",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 05",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 06",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 07",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 08",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 09",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 10",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 12",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 13",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 14",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 01",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 02",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 03",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 04",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 05",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 06",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 07",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 08",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 09",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 10",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 11",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 15",
+      "runways": {}
+    },
+    {
+      "airbase": "Revinge",
+      "runways": [
+        {
+          "elevation_ft": 57.679795,
+          "end2": {
+            "lon": 13.442661,
+            "lat": 55.72635
+          },
+          "lat": 55.728818,
+          "course_true_deg": 67.816231,
+          "name": 29,
+          "length_ft": 6585.9763,
+          "lon": 13.427335,
+          "end1": {
+            "lon": 13.412007,
+            "lat": 55.731283
+          },
+          "width_ft": 65.6168,
+          "course_raw": 1.1836165
+        }
+      ]
+    },
+    {
+      "airbase": "Gross Mohrdorf",
+      "runways": [
+        {
+          "elevation_ft": 9.8425302,
+          "end2": {
+            "lon": 12.897799,
+            "lat": 54.389164
+          },
+          "lat": 54.383196,
+          "course_true_deg": -131.80284,
+          "name": 13,
+          "length_ft": 7583.5359,
+          "lon": 12.912291,
+          "end1": {
+            "lon": 12.926779,
+            "lat": 54.377226
+          },
+          "width_ft": 196.8504,
+          "course_raw": -2.3003936
+        }
+      ]
+    },
+    {
+      "airbase": "Lubeck",
+      "runways": [
+        {
+          "elevation_ft": 74.655543,
+          "end2": {
+            "lon": 10.701917,
+            "lat": 53.802003
+          },
+          "lat": 53.804876,
+          "course_true_deg": -80.36779,
+          "name": 7,
+          "length_ft": 6837.0879,
+          "lon": 10.716883,
+          "end1": {
+            "lon": 10.731851,
+            "lat": 53.807747
+          },
+          "width_ft": 164.042,
+          "course_raw": -1.4026825
+        }
+      ]
+    },
+    {
+      "airbase": "Kothen",
+      "runways": [
+        {
+          "elevation_ft": 284.26289,
+          "end2": {
+            "lon": 11.979084,
+            "lat": 51.721667
+          },
+          "lat": 51.721377,
+          "course_true_deg": 84.410087,
+          "name": 28,
+          "length_ft": 7991.9917,
+          "lon": 11.961542,
+          "end1": {
+            "lon": 11.944,
+            "lat": 51.721085
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.4732339
+        }
+      ]
+    },
+    {
+      "airbase": "Dessau",
+      "runways": [
+        {
+          "elevation_ft": 195.47417,
+          "end2": {
+            "lon": 12.176992,
+            "lat": 51.831865
+          },
+          "lat": 51.831724,
+          "course_true_deg": -97.763196,
+          "name": 9,
+          "length_ft": 7309.2405,
+          "lon": 12.193083,
+          "end1": {
+            "lon": 12.209175,
+            "lat": 51.83158
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.7062896
+        }
+      ]
+    },
+    {
+      "airbase": "Parchim",
+      "runways": [
+        {
+          "elevation_ft": 170.60386,
+          "end2": {
+            "lon": 11.769445,
+            "lat": 53.42306
+          },
+          "lat": 53.427856,
+          "course_true_deg": -72.332373,
+          "name": 7,
+          "length_ft": 8292.1989,
+          "lon": 11.786589,
+          "end1": {
+            "lon": 11.803737,
+            "lat": 53.43265
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.2624381
+        }
+      ]
+    },
+    {
+      "airbase": "H GDR 12",
+      "runways": {}
+    },
+    {
+      "airbase": "Uetersen",
+      "runways": [
+        {
+          "elevation_ft": 22.9659,
+          "end2": {
+            "lon": 9.7121167,
+            "lat": 53.646211
+          },
+          "lat": 53.646507,
+          "course_true_deg": 77.338211,
+          "name": 27,
+          "length_ft": 3536.631,
+          "lon": 9.7040336,
+          "end1": {
+            "lon": 9.6959506,
+            "lat": 53.646803
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.3498064
+        }
+      ]
+    },
+    {
+      "airbase": "Tagra",
+      "runways": [
+        {
+          "elevation_ft": 114.51167,
+          "end2": {
+            "lon": 13.722299,
+            "lat": 55.595084
+          },
+          "lat": 55.600852,
+          "course_true_deg": 32.713048,
+          "name": 33,
+          "length_ft": 5413.9923,
+          "lon": 13.714128,
+          "end1": {
+            "lon": 13.705954,
+            "lat": 55.60662
+          },
+          "width_ft": 147.6378,
+          "course_raw": 0.57095039
+        }
+      ]
+    },
+    {
+      "airbase": "Luneburg",
+      "runways": [
+        {
+          "elevation_ft": 148.04803,
+          "end2": {
+            "lon": 10.463776,
+            "lat": 53.249291
+          },
+          "lat": 53.248542,
+          "course_true_deg": 97.916697,
+          "name": 26,
+          "length_ft": 1949.353,
+          "lon": 10.459531,
+          "end1": {
+            "lon": 10.455285,
+            "lat": 53.247793
+          },
+          "width_ft": 65.6168,
+          "course_raw": 1.7089688
+        }
+      ]
+    },
+    {
+      "airbase": "Northeim",
+      "runways": [
+        {
+          "elevation_ft": 49.084505,
+          "end2": {
+            "lon": 11.243701,
+            "lat": 52.984872
+          },
+          "lat": 52.984329,
+          "course_true_deg": 89.95213,
+          "name": 27,
+          "length_ft": 2945.1701,
+          "lon": 11.237111,
+          "end1": {
+            "lon": 11.230522,
+            "lat": 52.983786
+          },
+          "width_ft": 65.6168,
+          "course_raw": 1.5699608
+        }
+      ]
+    },
+    {
+      "airbase": "H GDR 13",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 14",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 15",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 16",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 17",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 16",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 17",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 18",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 19",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 11",
+      "runways": {}
+    },
+    {
+      "airbase": "Sperenberg",
+      "runways": [
+        {
+          "elevation_ft": 185.17582,
+          "end2": {
+            "lon": 13.288054,
+            "lat": 52.137687
+          },
+          "lat": 52.136914,
+          "course_true_deg": -100.1101,
+          "name": 9,
+          "length_ft": 8084.858,
+          "lon": 13.305952,
+          "end1": {
+            "lon": 13.32385,
+            "lat": 52.136138
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.7472508
+        }
+      ]
+    },
+    {
+      "airbase": "Uelzen",
+      "runways": [
+        {
+          "elevation_ft": 248.99699,
+          "end2": {
+            "lon": 10.472297,
+            "lat": 52.983902
+          },
+          "lat": 52.983622,
+          "course_true_deg": 84.957397,
+          "name": 27,
+          "length_ft": 3469.5896,
+          "lon": 10.464482,
+          "end1": {
+            "lon": 10.456667,
+            "lat": 52.983341
+          },
+          "width_ft": 65.6168,
+          "course_raw": 1.4827863
+        }
+      ]
+    },
+    {
+      "airbase": "Dedelow",
+      "runways": [
+        {
+          "elevation_ft": 175.71596,
+          "end2": {
+            "lon": 13.777037,
+            "lat": 53.355973
+          },
+          "lat": 53.35552,
+          "course_true_deg": -101.17952,
+          "name": 10,
+          "length_ft": 3533.9845,
+          "lon": 13.785071,
+          "end1": {
+            "lon": 13.793105,
+            "lat": 53.355068
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.7659158
+        }
+      ]
+    },
+    {
+      "airbase": "Kammermark",
+      "runways": [
+        {
+          "elevation_ft": 286.68577,
+          "end2": {
+            "lon": 12.157156,
+            "lat": 53.194982
+          },
+          "lat": 53.195961,
+          "course_true_deg": -85.4014,
+          "name": 8,
+          "length_ft": 3540.9675,
+          "lon": 12.165032,
+          "end1": {
+            "lon": 12.172908,
+            "lat": 53.196939
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.4905356
+        }
+      ]
+    },
+    {
+      "airbase": "Weser Wumme",
+      "runways": [
+        {
+          "elevation_ft": 81.892392,
+          "end2": {
+            "lon": 9.2078763,
+            "lat": 53.060933
+          },
+          "lat": 53.056097,
+          "course_true_deg": 173.60458,
+          "name": 19,
+          "length_ft": 3562.0655,
+          "lon": 9.2083084,
+          "end1": {
+            "lon": 9.2087402,
+            "lat": 53.051261
+          },
+          "width_ft": 147.6378,
+          "course_raw": 3.0299716
+        }
+      ]
+    },
+    {
+      "airbase": "Braunschweig",
+      "runways": [
+        {
+          "elevation_ft": 273.04923,
+          "end2": {
+            "lon": 10.56376,
+            "lat": 52.319626
+          },
+          "lat": 52.319083,
+          "course_true_deg": 86.859932,
+          "name": 26,
+          "length_ft": 4441.5437,
+          "lon": 10.55393,
+          "end1": {
+            "lon": 10.544101,
+            "lat": 52.318538
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.5159918
+        }
+      ]
+    },
+    {
+      "airbase": "Wismar",
+      "runways": [
+        {
+          "elevation_ft": 32.205752,
+          "end2": {
+            "lon": 11.498006,
+            "lat": 53.914025
+          },
+          "lat": 53.914448,
+          "course_true_deg": -88.542713,
+          "name": 9,
+          "length_ft": 1947.1932,
+          "lon": 11.502444,
+          "end1": {
+            "lon": 11.506883,
+            "lat": 53.91487
+          },
+          "width_ft": 65.6168,
+          "course_raw": -1.5453619
+        }
+      ]
+    },
+    {
+      "airbase": "Waren Vielist",
+      "runways": [
+        {
+          "elevation_ft": 261.46146,
+          "end2": {
+            "lon": 12.6585,
+            "lat": 53.568215
+          },
+          "lat": 53.565922,
+          "course_true_deg": 122.80765,
+          "name": 24,
+          "length_ft": 2638.9914,
+          "lon": 12.653834,
+          "end1": {
+            "lon": 12.649169,
+            "lat": 53.563629
+          },
+          "width_ft": 65.6168,
+          "course_raw": 2.1433978
+        }
+      ]
+    },
+    {
+      "airbase": "Bienenfarm",
+      "runways": [
+        {
+          "elevation_ft": 98.486444,
+          "end2": {
+            "lon": 12.752789,
+            "lat": 52.656559
+          },
+          "lat": 52.658628,
+          "course_true_deg": 52.442353,
+          "name": 30,
+          "length_ft": 2945.135,
+          "lon": 12.747121,
+          "end1": {
+            "lon": 12.741453,
+            "lat": 52.660697
+          },
+          "width_ft": 65.6168,
+          "course_raw": 0.91529173
+        }
+      ]
+    },
+    {
+      "airbase": "Pinnow",
+      "runways": [
+        {
+          "elevation_ft": 149.03963,
+          "end2": {
+            "lon": 11.564695,
+            "lat": 53.621279
+          },
+          "lat": 53.616542,
+          "course_true_deg": 161.35381,
+          "name": 20,
+          "length_ft": 3539.5762,
+          "lon": 11.563142,
+          "end1": {
+            "lon": 11.56159,
+            "lat": 53.611806
+          },
+          "width_ft": 147.6378,
+          "course_raw": 2.8161552
+        }
+      ]
+    },
+    {
+      "airbase": "Gardelegen",
+      "runways": [
+        {
+          "elevation_ft": 183.02248,
+          "end2": {
+            "lon": 11.357626,
+            "lat": 52.527975
+          },
+          "lat": 52.529523,
+          "course_true_deg": 63.603452,
+          "name": 29,
+          "length_ft": 3539.1036,
+          "lon": 11.350135,
+          "end1": {
+            "lon": 11.342644,
+            "lat": 52.53107
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.1100897
+        }
+      ]
+    },
+    {
+      "airbase": "Glindbruchkippe",
+      "runways": [
+        {
+          "elevation_ft": 158.88216,
+          "end2": {
+            "lon": 10.172593,
+            "lat": 52.324256
+          },
+          "lat": 52.323828,
+          "course_true_deg": -103.67164,
+          "name": 10,
+          "length_ft": 3556.0973,
+          "lon": 10.180462,
+          "end1": {
+            "lon": 10.188331,
+            "lat": 52.3234
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.8094114
+        }
+      ]
+    },
+    {
+      "airbase": "Ummern",
+      "runways": [
+        {
+          "elevation_ft": 218.61335,
+          "end2": {
+            "lon": 10.414616,
+            "lat": 52.61895
+          },
+          "lat": 52.620466,
+          "course_true_deg": 46.854452,
+          "name": 31,
+          "length_ft": 1956.8855,
+          "lon": 10.411016,
+          "end1": {
+            "lon": 10.407416,
+            "lat": 52.621983
+          },
+          "width_ft": 65.6168,
+          "course_raw": 0.81776446
+        }
+      ]
+    },
+    {
+      "airbase": "Hildesheim",
+      "runways": [
+        {
+          "elevation_ft": 321.52265,
+          "end2": {
+            "lon": 9.9540536,
+            "lat": 52.181189
+          },
+          "lat": 52.179792,
+          "course_true_deg": 96.605649,
+          "name": 25,
+          "length_ft": 3872.0796,
+          "lon": 9.9457898,
+          "end1": {
+            "lon": 9.9375265,
+            "lat": 52.178395
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.6860867
+        }
+      ]
+    },
+    {
+      "airbase": "Verden-Scharnhorst",
+      "runways": [
+        {
+          "elevation_ft": 146.9859,
+          "end2": {
+            "lon": 9.2770813,
+            "lat": 52.967284
+          },
+          "lat": 52.965761,
+          "course_true_deg": -134.87038,
+          "name": 13,
+          "length_ft": 1931.1905,
+          "lon": 9.2806232,
+          "end1": {
+            "lon": 9.2841649,
+            "lat": 52.964237
+          },
+          "width_ft": 65.6168,
+          "course_raw": -2.3539321
+        }
+      ]
+    },
+    {
+      "airbase": "Rinteln",
+      "runways": [
+        {
+          "elevation_ft": 174.09535,
+          "end2": {
+            "lon": 9.0488973,
+            "lat": 52.175679
+          },
+          "lat": 52.174688,
+          "course_true_deg": -121.34876,
+          "name": 12,
+          "length_ft": 1957.3252,
+          "lon": 9.052913,
+          "end1": {
+            "lon": 9.0569286,
+            "lat": 52.173698
+          },
+          "width_ft": 65.6168,
+          "course_raw": -2.1179354
+        }
+      ]
+    },
+    {
+      "airbase": "Holzdorf",
+      "runways": [
+        {
+          "elevation_ft": 245.29398,
+          "end2": {
+            "lon": 13.188893,
+            "lat": 51.767089
+          },
+          "lat": 51.767796,
+          "course_true_deg": 80.443434,
+          "name": 27,
+          "length_ft": 8730.9104,
+          "lon": 13.169713,
+          "end1": {
+            "lon": 13.150533,
+            "lat": 51.768499
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.4040028
+        }
+      ]
+    },
+    {
+      "airbase": "H Med GDR 01",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 02",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 03",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 33",
+      "runways": {}
+    },
+    {
+      "airbase": "Airracing Koblenz",
+      "runways": [
+        {
+          "elevation_ft": 1056.4315,
+          "end2": {
+            "lon": 7.83393,
+            "lat": 50.288971
+          },
+          "lat": 50.292048,
+          "course_true_deg": 26.281089,
+          "name": 33,
+          "length_ft": 2821.7134,
+          "lon": 7.8303783,
+          "end1": {
+            "lon": 7.8268261,
+            "lat": 50.295124
+          },
+          "width_ft": 65.6168,
+          "course_raw": 0.45869154
+        }
+      ]
+    },
+    {
+      "airbase": "H GDR 34",
+      "runways": {}
+    },
+    {
+      "airbase": "Perwenitz",
+      "runways": [
+        {
+          "elevation_ft": 134.80206,
+          "end2": {
+            "lon": 13.005257,
+            "lat": 52.665165
+          },
+          "lat": 52.675639,
+          "course_true_deg": -11.958039,
+          "name": 1,
+          "length_ft": 7708.4409,
+          "lon": 13.006942,
+          "end1": {
+            "lon": 13.008628,
+            "lat": 52.686112
+          },
+          "width_ft": 147.6378,
+          "course_raw": -0.20870715
+        }
+      ]
+    },
+    {
+      "airbase": "H Med GDR 08",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 09",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 10",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 01",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 02",
+      "runways": {}
+    },
+    {
+      "airbase": "Sittensen",
+      "runways": [
+        {
+          "elevation_ft": 125.19067,
+          "end2": {
+            "lon": 9.5761644,
+            "lat": 53.318057
+          },
+          "lat": 53.320957,
+          "course_true_deg": -63.562417,
+          "name": 6,
+          "length_ft": 3658.2988,
+          "lon": 9.5829179,
+          "end1": {
+            "lon": 9.5896724,
+            "lat": 53.323856
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.1093735
+        }
+      ]
+    },
+    {
+      "airbase": "H Med FRG 04",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 06",
+      "runways": {}
+    },
+    {
+      "airbase": "Sprendlingen",
+      "runways": [
+        {
+          "elevation_ft": 413.36176,
+          "end2": {
+            "lon": 7.9652041,
+            "lat": 49.865362
+          },
+          "lat": 49.87099,
+          "course_true_deg": 21.198686,
+          "name": 33,
+          "length_ft": 4854.1942,
+          "lon": 7.9599224,
+          "end1": {
+            "lon": 7.9546393,
+            "lat": 49.876618
+          },
+          "width_ft": 147.6378,
+          "course_raw": 0.36998686
+        }
+      ]
+    },
+    {
+      "airbase": "Thurland",
+      "runways": [
+        {
+          "elevation_ft": 282.23857,
+          "end2": {
+            "lon": 12.208347,
+            "lat": 51.686532
+          },
+          "lat": 51.696381,
+          "course_true_deg": -13.759024,
+          "name": 36,
+          "length_ft": 7272.2254,
+          "lon": 12.210249,
+          "end1": {
+            "lon": 12.212151,
+            "lat": 51.706231
+          },
+          "width_ft": 147.6378,
+          "course_raw": -0.24014027
+        }
+      ]
+    },
+    {
+      "airbase": "Zollschen",
+      "runways": [
+        {
+          "elevation_ft": 397.58719,
+          "end2": {
+            "lon": 12.091621,
+            "lat": 51.261691
+          },
+          "lat": 51.266365,
+          "course_true_deg": -55.298922,
+          "name": 5,
+          "length_ft": 5153.9253,
+          "lon": 12.099991,
+          "end1": {
+            "lon": 12.108363,
+            "lat": 51.271037
+          },
+          "width_ft": 65.6168,
+          "course_raw": -0.96514827
+        }
+      ]
+    },
+    {
+      "airbase": "H Med FRG 11",
+      "runways": {}
+    },
+    {
+      "airbase": "Hasselfelde",
+      "runways": [
+        {
+          "elevation_ft": 1618.8574,
+          "end2": {
+            "lon": 10.885961,
+            "lat": 51.70574
+          },
+          "lat": 51.705392,
+          "course_true_deg": 86.423668,
+          "name": 27,
+          "length_ft": 3325.045,
+          "lon": 10.878693,
+          "end1": {
+            "lon": 10.871425,
+            "lat": 51.705045
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.5083776
+        }
+      ]
+    },
+    {
+      "airbase": "Grosse Wiese",
+      "runways": [
+        {
+          "elevation_ft": 277.8341,
+          "end2": {
+            "lon": 10.576165,
+            "lat": 52.137857
+          },
+          "lat": 52.136877,
+          "course_true_deg": 98.21101,
+          "name": 26,
+          "length_ft": 2536.2523,
+          "lon": 10.570782,
+          "end1": {
+            "lon": 10.565401,
+            "lat": 52.135897
+          },
+          "width_ft": 65.6168,
+          "course_raw": 1.7141055
+        }
+      ]
+    },
+    {
+      "airbase": "H GDR 18",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 20",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 12",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 19",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 30",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 11",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 21",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 50",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 23",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 39",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 21",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 22",
+      "runways": {}
+    },
+    {
+      "airbase": "Fritzlar",
+      "runways": [
+        {
+          "elevation_ft": 551.51889,
+          "end2": {
+            "lon": 9.2913268,
+            "lat": 51.112731
+          },
+          "lat": 51.11461,
+          "course_true_deg": 52.308532,
+          "name": 30,
+          "length_ft": 2894.47,
+          "lon": 9.2858351,
+          "end1": {
+            "lon": 9.2803431,
+            "lat": 51.116488
+          },
+          "width_ft": 147.6378,
+          "course_raw": 0.91295612
+        }
+      ]
+    },
+    {
+      "airbase": "Hahn",
+      "runways": [
+        {
+          "elevation_ft": 1621.1844,
+          "end2": {
+            "lon": 7.2719818,
+            "lat": 49.956628
+          },
+          "lat": 49.948452,
+          "course_true_deg": 136.89053,
+          "name": 21,
+          "length_ft": 7157.3928,
+          "lon": 7.2639052,
+          "end1": {
+            "lon": 7.2558312,
+            "lat": 49.940276
+          },
+          "width_ft": 213.2546,
+          "course_raw": 2.3891904
+        }
+      ]
+    },
+    {
+      "airbase": "Sembach",
+      "runways": [
+        {
+          "elevation_ft": 1021.7672,
+          "end2": {
+            "lon": 7.8780355,
+            "lat": 49.510878
+          },
+          "lat": 49.506152,
+          "course_true_deg": 106.33614,
+          "name": 25,
+          "length_ft": 7840.9561,
+          "lon": 7.8634127,
+          "end1": {
+            "lon": 7.8487931,
+            "lat": 49.501424
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.8559158
+        }
+      ]
+    },
+    {
+      "airbase": "Allstedt",
+      "runways": [
+        {
+          "elevation_ft": 929.50559,
+          "end2": {
+            "lon": 11.463021,
+            "lat": 51.384066
+          },
+          "lat": 51.380584,
+          "course_true_deg": 101.10439,
+          "name": 25,
+          "length_ft": 8014.8438,
+          "lon": 11.446474,
+          "end1": {
+            "lon": 11.429929,
+            "lat": 51.377099
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.7646044
+        }
+      ]
+    },
+    {
+      "airbase": "Zweibrucken",
+      "runways": [
+        {
+          "elevation_ft": 1083.3974,
+          "end2": {
+            "lon": 7.3927654,
+            "lat": 49.200347
+          },
+          "lat": 49.209551,
+          "course_true_deg": -40.359523,
+          "name": 3,
+          "length_ft": 7843.5713,
+          "lon": 7.4008669,
+          "end1": {
+            "lon": 7.4089713,
+            "lat": 49.218754
+          },
+          "width_ft": 213.2546,
+          "course_raw": -0.70440656
+        }
+      ]
+    },
+    {
+      "airbase": "Giebelstadt",
+      "runways": [
+        {
+          "elevation_ft": 952.78896,
+          "end2": {
+            "lon": 9.9527611,
+            "lat": 49.646251
+          },
+          "lat": 49.647901,
+          "course_true_deg": -86.475843,
+          "name": 8,
+          "length_ft": 5842.7419,
+          "lon": 9.9647335,
+          "end1": {
+            "lon": 9.9767069,
+            "lat": 49.64955
+          },
+          "width_ft": 213.2546,
+          "course_raw": -1.5092882
+        }
+      ]
+    },
+    {
+      "airbase": "Schweinfurt",
+      "runways": [
+        {
+          "elevation_ft": 753.10497,
+          "end2": {
+            "lon": 10.173946,
+            "lat": 50.049158
+          },
+          "lat": 50.048852,
+          "course_true_deg": 87.99541,
+          "name": 27,
+          "length_ft": 2034.1352,
+          "lon": 10.169674,
+          "end1": {
+            "lon": 10.165402,
+            "lat": 50.048547
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.5358096
+        }
+      ]
+    },
+    {
+      "airbase": "Haina",
+      "runways": [
+        {
+          "elevation_ft": 1017.0614,
+          "end2": {
+            "lon": 10.494375,
+            "lat": 50.989237
+          },
+          "lat": 50.991663,
+          "course_true_deg": 67.24326,
+          "name": 28,
+          "length_ft": 7091.1304,
+          "lon": 10.47957,
+          "end1": {
+            "lon": 10.464763,
+            "lat": 50.994086
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.1736163
+        }
+      ]
+    },
+    {
+      "airbase": "Spangdahlem",
+      "runways": [
+        {
+          "elevation_ft": 984.253,
+          "end2": {
+            "lon": 6.7133557,
+            "lat": 49.986076
+          },
+          "lat": 49.976572,
+          "course_true_deg": 124.37076,
+          "name": 23,
+          "length_ft": 9861.332,
+          "lon": 6.6988271,
+          "end1": {
+            "lon": 6.6843044,
+            "lat": 49.967067
+          },
+          "width_ft": 147.6378,
+          "course_raw": 2.1706793
+        }
+      ]
+    },
+    {
+      "airbase": "Frankfurt",
+      "runways": [
+        {
+          "elevation_ft": 328.08435,
+          "end2": {
+            "lon": 8.5940707,
+            "lat": 50.046834
+          },
+          "lat": 50.040431,
+          "course_true_deg": 100.80683,
+          "name": 25,
+          "length_ft": 13537.957,
+          "lon": 8.5673205,
+          "end1": {
+            "lon": 8.5405785,
+            "lat": 50.034023
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.7594111
+        },
+        {
+          "elevation_ft": 328.08435,
+          "end2": {
+            "lon": 8.587837,
+            "lat": 50.040311
+          },
+          "lat": 50.03391,
+          "course_true_deg": 100.79942,
+          "name": 7,
+          "length_ft": 13537.957,
+          "lon": 8.5610908,
+          "end1": {
+            "lon": 8.5343529,
+            "lat": 50.027502
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.7592818
+        }
+      ]
+    },
+    {
+      "airbase": "Bindersleben",
+      "runways": [
+        {
+          "elevation_ft": 1012.4977,
+          "end2": {
+            "lon": 10.976071,
+            "lat": 50.978389
+          },
+          "lat": 50.979473,
+          "course_true_deg": 75.057085,
+          "name": 28,
+          "length_ft": 6417.818,
+          "lon": 10.962329,
+          "end1": {
+            "lon": 10.948587,
+            "lat": 50.980554
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.3099933
+        }
+      ]
+    },
+    {
+      "airbase": "Ramstein",
+      "runways": [
+        {
+          "elevation_ft": 804.80002,
+          "end2": {
+            "lon": 7.6156176,
+            "lat": 49.437549
+          },
+          "lat": 49.436899,
+          "course_true_deg": 83.41404,
+          "name": 27,
+          "length_ft": 7493.6773,
+          "lon": 7.6000774,
+          "end1": {
+            "lon": 7.5845381,
+            "lat": 49.436248
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.4558496
+        }
+      ]
+    },
+    {
+      "airbase": "Fulda",
+      "runways": [
+        {
+          "elevation_ft": 936.96087,
+          "end2": {
+            "lon": 9.6470199,
+            "lat": 50.540217
+          },
+          "lat": 50.539911,
+          "course_true_deg": 88.004071,
+          "name": 27,
+          "length_ft": 1889.8852,
+          "lon": 9.6430154,
+          "end1": {
+            "lon": 9.6390111,
+            "lat": 50.539606
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.5359608
+        }
+      ]
+    },
+    {
+      "airbase": "Mendig",
+      "runways": [
+        {
+          "elevation_ft": 600.56198,
+          "end2": {
+            "lon": 7.3264082,
+            "lat": 50.367845
+          },
+          "lat": 50.366013,
+          "course_true_deg": 94.26034,
+          "name": 26,
+          "length_ft": 5265.123,
+          "lon": 7.3156292,
+          "end1": {
+            "lon": 7.3048512,
+            "lat": 50.36418
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.6451533
+        }
+      ]
+    },
+    {
+      "airbase": "Merseburg",
+      "runways": [
+        {
+          "elevation_ft": 339.5752,
+          "end2": {
+            "lon": 11.933058,
+            "lat": 51.361291
+          },
+          "lat": 51.363973,
+          "course_true_deg": -82.918544,
+          "name": 8,
+          "length_ft": 8026.2843,
+          "lon": 11.950009,
+          "end1": {
+            "lon": 11.966962,
+            "lat": 51.366652
+          },
+          "width_ft": 164.042,
+          "course_raw": -1.4472016
+        }
+      ]
+    },
+    {
+      "airbase": "Wiesbaden",
+      "runways": [
+        {
+          "elevation_ft": 452.52964,
+          "end2": {
+            "lon": 8.3114486,
+            "lat": 50.047097
+          },
+          "lat": 50.049819,
+          "course_true_deg": -83.12427,
+          "name": 8,
+          "length_ft": 6996.8839,
+          "lon": 8.3255738,
+          "end1": {
+            "lon": 8.3397008,
+            "lat": 50.05254
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.4507922
+        }
+      ]
+    },
+    {
+      "airbase": "Schkeuditz",
+      "runways": [
+        {
+          "elevation_ft": 421.08437,
+          "end2": {
+            "lon": 12.244137,
+            "lat": 51.412086
+          },
+          "lat": 51.415024,
+          "course_true_deg": 67.660025,
+          "name": 29,
+          "length_ft": 8075.5602,
+          "lon": 12.227159,
+          "end1": {
+            "lon": 12.210179,
+            "lat": 51.417959
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.1808902
+        }
+      ]
+    },
+    {
+      "airbase": "H Med GDR 12",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 13",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 14",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med GDR 16",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 24",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 13",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 14",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 15",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 16",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 17",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 25",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 01",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 02",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 03",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 04",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 05",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 06",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 07",
+      "runways": {}
+    },
+    {
+      "airbase": "Bitburg",
+      "runways": [
+        {
+          "elevation_ft": 1208.0774,
+          "end2": {
+            "lon": 6.5771852,
+            "lat": 49.950561
+          },
+          "lat": 49.944659,
+          "course_true_deg": 113.97799,
+          "name": 24,
+          "length_ft": 7582.014,
+          "lon": 6.5641831,
+          "end1": {
+            "lon": 6.5511844,
+            "lat": 49.938756
+          },
+          "width_ft": 213.2546,
+          "course_raw": 1.9892912
+        }
+      ]
+    },
+    {
+      "airbase": "Airracing Lubeck",
+      "runways": [
+        {
+          "elevation_ft": 27.887168,
+          "end2": {
+            "lon": 10.769126,
+            "lat": 53.708133
+          },
+          "lat": 53.711666,
+          "course_true_deg": 14.910633,
+          "name": 35,
+          "length_ft": 2821.8296,
+          "lon": 10.766574,
+          "end1": {
+            "lon": 10.764022,
+            "lat": 53.715199
+          },
+          "width_ft": 65.6168,
+          "course_raw": 0.26023963
+        }
+      ]
+    },
+    {
+      "airbase": "H FRG 27",
+      "runways": {}
+    },
+    {
+      "airbase": "Airracing Frankfurt",
+      "runways": [
+        {
+          "elevation_ft": 273.22677,
+          "end2": {
+            "lon": 8.0933325,
+            "lat": 50.00656
+          },
+          "lat": 50.008207,
+          "course_true_deg": -74.472087,
+          "name": 7,
+          "length_ft": 2821.7857,
+          "lon": 8.0986934,
+          "end1": {
+            "lon": 8.1040547,
+            "lat": 50.009853
+          },
+          "width_ft": 65.6168,
+          "course_raw": -1.2997831
+        }
+      ]
+    },
+    {
+      "airbase": "H Med FRG 21",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 30",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 31",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 32",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 34",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 51",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 38",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 48",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 49",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 24",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar FRG 02",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 26",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 25",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 26",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 31",
+      "runways": {}
+    },
+    {
+      "airbase": "H GDR 32",
+      "runways": {}
+    },
+    {
+      "airbase": "H Med FRG 27",
+      "runways": {}
+    },
+    {
+      "airbase": "Pferdsfeld",
+      "runways": [
+        {
+          "elevation_ft": 1312.5016,
+          "end2": {
+            "lon": 7.5887894,
+            "lat": 49.854367
+          },
+          "lat": 49.855128,
+          "course_true_deg": -96.093679,
+          "name": 9,
+          "length_ft": 7613.5577,
+          "lon": 7.6047058,
+          "end1": {
+            "lon": 7.6206231,
+            "lat": 49.855888
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.6771511
+        }
+      ]
+    },
+    {
+      "airbase": "H Med FRG 29",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 40",
+      "runways": {}
+    },
+    {
+      "airbase": "Buchel",
+      "runways": [
+        {
+          "elevation_ft": 1508.8791,
+          "end2": {
+            "lon": 7.0556156,
+            "lat": 50.16467
+          },
+          "lat": 50.174095,
+          "course_true_deg": -40.089512,
+          "name": 3,
+          "length_ft": 7980.6914,
+          "lon": 7.0638492,
+          "end1": {
+            "lon": 7.0720859,
+            "lat": 50.18352
+          },
+          "width_ft": 147.6378,
+          "course_raw": -0.69969398
+        }
+      ]
+    },
+    {
+      "airbase": "Leipzig Mockau",
+      "runways": [
+        {
+          "elevation_ft": 415.3444,
+          "end2": {
+            "lon": 12.417329,
+            "lat": 51.396799
+          },
+          "lat": 51.393782,
+          "course_true_deg": 110.72175,
+          "name": 25,
+          "length_ft": 4796.4199,
+          "lon": 12.408046,
+          "end1": {
+            "lon": 12.398764,
+            "lat": 51.390764
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.9324591
+        }
+      ]
+    },
+    {
+      "airbase": "H FRG 43",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 44",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 45",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 46",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 47",
+      "runways": {}
+    },
+    {
+      "airbase": "Bad Durkheim",
+      "runways": [
+        {
+          "elevation_ft": 347.76939,
+          "end2": {
+            "lon": 8.1906336,
+            "lat": 49.472002
+          },
+          "lat": 49.472683,
+          "course_true_deg": -86.147339,
+          "name": 8,
+          "length_ft": 2127.1003,
+          "lon": 8.1949362,
+          "end1": {
+            "lon": 8.1992388,
+            "lat": 49.473364
+          },
+          "width_ft": 65.6168,
+          "course_raw": -1.5035547
+        }
+      ]
+    },
+    {
+      "airbase": "Gelnhausen",
+      "runways": [
+        {
+          "elevation_ft": 416.81832,
+          "end2": {
+            "lon": 9.1595587,
+            "lat": 50.19555
+          },
+          "lat": 50.196331,
+          "course_true_deg": -89.853208,
+          "name": 9,
+          "length_ft": 3561.9786,
+          "lon": 9.1669988,
+          "end1": {
+            "lon": 9.1744391,
+            "lat": 50.197113
+          },
+          "width_ft": 147.6378,
+          "course_raw": -1.5682343
+        }
+      ]
+    },
+    {
+      "airbase": "Herrenteich",
+      "runways": [
+        {
+          "elevation_ft": 304.63498,
+          "end2": {
+            "lon": 8.4860271,
+            "lat": 49.340442
+          },
+          "lat": 49.343501,
+          "course_true_deg": -48.815215,
+          "name": 6,
+          "length_ft": 2910.1758,
+          "lon": 8.4898525,
+          "end1": {
+            "lon": 8.4936783,
+            "lat": 49.346559
+          },
+          "width_ft": 65.6168,
+          "course_raw": -0.85198623
+        }
+      ]
+    },
+    {
+      "airbase": "Hockenheim",
+      "runways": [
+        {
+          "elevation_ft": 322.50686,
+          "end2": {
+            "lon": 8.5309968,
+            "lat": 49.322275
+          },
+          "lat": 49.325263,
+          "course_true_deg": 28.084423,
+          "name": 33,
+          "length_ft": 2778.9137,
+          "lon": 8.5274758,
+          "end1": {
+            "lon": 8.5239544,
+            "lat": 49.32825
+          },
+          "width_ft": 65.6168,
+          "course_raw": 0.49016565
+        }
+      ]
+    },
+    {
+      "airbase": "Langenselbold",
+      "runways": [
+        {
+          "elevation_ft": 404.10689,
+          "end2": {
+            "lon": 9.0684166,
+            "lat": 50.176808
+          },
+          "lat": 50.174621,
+          "course_true_deg": 114.36377,
+          "name": 24,
+          "length_ft": 2910.3452,
+          "lon": 9.0632873,
+          "end1": {
+            "lon": 9.0581585,
+            "lat": 50.172434
+          },
+          "width_ft": 65.6168,
+          "course_raw": 1.9960244
+        }
+      ]
+    },
+    {
+      "airbase": "Walldorf",
+      "runways": [
+        {
+          "elevation_ft": 363.30495,
+          "end2": {
+            "lon": 8.661456,
+            "lat": 49.300125
+          },
+          "lat": 49.303708,
+          "course_true_deg": -9.2998396,
+          "name": 1,
+          "length_ft": 2639.267,
+          "lon": 8.6614448,
+          "end1": {
+            "lon": 8.6614336,
+            "lat": 49.307291
+          },
+          "width_ft": 65.6168,
+          "course_raw": -0.16231282
+        }
+      ]
+    },
+    {
+      "airbase": "Ober-Morlen",
+      "runways": [
+        {
+          "elevation_ft": 715.50086,
+          "end2": {
+            "lon": 8.7163663,
+            "lat": 50.364851
+          },
+          "lat": 50.362445,
+          "course_true_deg": 122.659,
+          "name": 24,
+          "length_ft": 2638.9726,
+          "lon": 8.7122154,
+          "end1": {
+            "lon": 8.7080649,
+            "lat": 50.360039
+          },
+          "width_ft": 65.6168,
+          "course_raw": 2.1408033
+        }
+      ]
+    },
+    {
+      "airbase": "Pottschutthohe",
+      "runways": [
+        {
+          "elevation_ft": 1099.0354,
+          "end2": {
+            "lon": 7.485729,
+            "lat": 49.262713
+          },
+          "lat": 49.26447,
+          "course_true_deg": -58.825708,
+          "name": 6,
+          "length_ft": 1957.0657,
+          "lon": 7.4887635,
+          "end1": {
+            "lon": 7.4917983,
+            "lat": 49.266226
+          },
+          "width_ft": 65.6168,
+          "course_raw": -1.0267023
+        }
+      ]
+    },
+    {
+      "airbase": "Worms",
+      "runways": [
+        {
+          "elevation_ft": 273.06387,
+          "end2": {
+            "lon": 8.3689891,
+            "lat": 49.607617
+          },
+          "lat": 49.606503,
+          "course_true_deg": 105.92246,
+          "name": 25,
+          "length_ft": 1899.275,
+          "lon": 8.3654126,
+          "end1": {
+            "lon": 8.3618363,
+            "lat": 49.605389
+          },
+          "width_ft": 65.6168,
+          "course_raw": 1.8486956
+        }
+      ]
+    },
+    {
+      "airbase": "H Radar GDR 09",
+      "runways": {}
+    },
+    {
+      "airbase": "H Radar GDR 08",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 41",
+      "runways": {}
+    },
+    {
+      "airbase": "H FRG 42",
+      "runways": {}
+    }
+  ]
+}

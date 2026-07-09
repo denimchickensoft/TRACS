@@ -39,6 +39,48 @@
   pointer-events: none;
 }
 
+/* ── Cursor-proximity unit readout (top-left) ────────────────────────────────── */
+/* Mirrors the command preview area's position/type scale (bottom:32/left:40,
+   0.7rem Roboto Mono) but anchored to the opposite corner. */
+.abm-readout-box {
+  position:       absolute;
+  top:            32px;
+  left:           40px;
+  max-width:      260px;
+  display:        flex;
+  flex-direction: column;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  color:          #aaa;
+  white-space:    normal;
+  word-wrap:      break-word;
+  pointer-events: none;
+}
+
+.abm-readout-entry {
+  display:        flex;
+  flex-direction: column;
+}
+
+.abm-readout-index {
+  color:         #666;
+  margin-bottom: 2px;
+}
+
+/* Fade in/out over the whole READOUT_CYCLE_MS phase (3s, kept in sync with
+   the JS interval in AbmScope.jsx) — only applied when cycling through 2+
+   objects; a single hit is shown steadily at opacity 1 instead. */
+.abm-readout-fade {
+  animation: abm-readout-fade 3s ease-in-out;
+}
+
+@keyframes abm-readout-fade {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ── Cursor position readout (.coords) ───────────────────────────────────────── */
 .abm-coords-box {
   position:       absolute;

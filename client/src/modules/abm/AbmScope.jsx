@@ -46,6 +46,8 @@ const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts, same floor A
 const MAX_HISTORY   = 5
 const HISTORY_RATE_MS = 4500  // capture cadence; not user-configurable (no command requested)
 const ALT_TOGGLE_MS   = 2000  // datablock line-2 speed/type alternation rate
+const READOUT_RADIUS_PX = 10    // cursor-proximity radius for the unit readout box
+const READOUT_CYCLE_MS  = 3000  // per-object fade in/out phase when >1 unit is under the cursor
 
 const F_KEY_DECL = {
   F1: DECLARATION.HOSTILE,
@@ -192,6 +194,61 @@ function resolveCallsignDisplay(unit) {
   return override || unit?.callsign || unit?.unitName || unit?.name || '?'
 }
 
+const METERS_PER_NM = 1852
+function formatNmRange(meters, suffix) {
+  return `${Math.round(meters / METERS_PER_NM)} NM ${suffix}`
+}
+
+// Cursor-proximity readout field list — pulled from the ground/navy unit
+// databases (client/public/units/{ground,navy}unitdatabase.json), same
+// dbEntry shape drawAbmGroundContacts.js keys off of (unit.name lookup).
+// Empty string/null/0 fields are dropped per spec — a 0 acq/eng range means
+// "no ring drawn" (see drawAbmGroundContacts.js), not "range is zero". No
+// labels on the lines themselves — the acq/eng lines carry their own
+// "acquisition"/"engagement" suffix instead (2026-07-09 direction).
+function buildReadoutFields(dbEntry) {
+  if (!dbEntry) return []
+  const fields = [
+    dbEntry.label,
+    dbEntry.type,
+    dbEntry.acquisitionRange > 0 ? formatNmRange(dbEntry.acquisitionRange, 'acquisition') : null,
+    dbEntry.engagementRange  > 0 ? formatNmRange(dbEntry.engagementRange,  'engagement')  : null,
+    dbEntry.description,
+  ]
+  return fields.filter(v => v !== undefined && v !== null && v !== '')
+}
+
+// Perpendicular distance from (px,py) to the segment (x1,y1)-(x2,y2), clamped
+// to the segment itself (not the infinite line) — used to hit-test the
+// cursor against runway centerlines for the airport readout below.
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1)
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq
+  t = Math.max(0, Math.min(1, t))
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+}
+
+// Standard aviation padding: single-digit runway numbers get a leading zero
+// (e.g. "4" → "04"), the L/C/R parallel suffix (already resolved by
+// useRunwaysStore) passes through unchanged.
+function padRunwayName(name) {
+  const m = String(name).match(/^(\d+)([A-Za-z]?)$/)
+  if (!m) return String(name)
+  return `${m[1].padStart(2, '0')}${m[2].toUpperCase()}`
+}
+
+// Airport readout field list — DCS airbase name (line 1, every airport has
+// one), ICAO (line 2, dropped if this airbase has no icaoMapping.json
+// entry — not every airbase does), and every runway designator at the
+// airport (line 3, physical strips comma-separated, each strip's reciprocal
+// pair slash-joined — e.g. "04/22, 09L/27R").
+function buildAirportFields(airport) {
+  const fields = [airport.airbase, airport.icao, airport.designators.join(', ')]
+  return fields.filter(v => v !== undefined && v !== null && v !== '')
+}
+
 // Phase 2 — real canvas + rAF PPI: pan (right-click drag), zoom (scroll),
 // range rings (toggle + anchor via .rr command), bullseye marker, command
 // preview area. Phase 3 adds the §4 navdata layers (geo/relief/holdings/
@@ -313,6 +370,16 @@ export default function AbmScope() {
     ]).then(([ground, navy]) => setGroundUnitDb({ ...ground, ...navy }))
   }, [])
 
+  // Real ICAO codes only (client/public/icaoMapping.json) — fetched
+  // separately from useRunwaysStore's internal copy so the airport readout
+  // (below) can tell a genuine ICAO apart from that store's fallback
+  // abbreviation (computeAirbaseLabels in store/runways.js) baked into its
+  // centerline .label strings, and drop line 1 when there's no real mapping.
+  const [icaoMap, setIcaoMap] = useState({})
+  useEffect(() => {
+    fetch('/icaoMapping.json').then(r => r.ok ? r.json() : {}).catch(() => ({})).then(setIcaoMap)
+  }, [])
+
   const [pendingDeclaration, setPendingDeclaration] = useState(null)
 
   // Faded/coasting contacts — same tracking pattern as AIC
@@ -431,12 +498,18 @@ export default function AbmScope() {
   const elevRef          = useRef(null)
   const lastElevFetchRef = useRef(null)
 
+  // Raw canvas-pixel cursor position — tracked unconditionally (unlike
+  // cursorLatLngRef above, which only updates when .coords is on) since the
+  // hover readout below needs it regardless of whether .coords is toggled.
+  const cursorCanvasPosRef = useRef({ x: null, y: null })
+
   const handleCursorMove = useCallback((e) => {
-    if (!coordsVisible) return
     const rect = interactiveRef.current?.getBoundingClientRect()
-    if (!rect || !viewRef.current) return
+    if (!rect) return
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
+    cursorCanvasPosRef.current = { x, y }
+    if (!coordsVisible || !viewRef.current) return
     cursorLatLngRef.current = canvasToLatLng(x, y, viewRef.current)
   }, [coordsVisible])
 
@@ -458,6 +531,124 @@ export default function AbmScope() {
     }, 150)
     return () => clearInterval(id)
   }, [coordsVisible])
+
+  // ── Cursor-proximity unit readout (top-left) ────────────────────────────────
+  // Lists every ground unit within READOUT_RADIUS_PX of the cursor, cross-
+  // referenced against groundUnitDb. Reuses visibleGroundUnitsRef — the same
+  // fog-of-war set drawAbmGroundContacts renders — so a unit only shows up
+  // here if it's actually visible on the scope. Always-on (unlike .coords),
+  // gated on the same 150ms interval so it doesn't re-render on every raw
+  // mousemove.
+  //
+  // Airports/runways (2026-07-09) piggyback on the same interval and radius:
+  // useRunwaysStore.centerlines emits two direction-entries per physical
+  // strip (same rwyEnd1/rwyEnd2, opposite rwyName/reciprocal) — collapsed
+  // below (airportStrips) back into one strip per physical runway, then
+  // grouped by airbase so a hit anywhere on any of an airport's strips
+  // surfaces every runway at that airport, not just the one under the
+  // cursor. Gated on runwaysVisible||polygonsVisible (either toggle means
+  // the airport is actually rendered on the scope) rather than on the
+  // centerline draw specifically — at ABM's zoom levels a runway's physical
+  // width is sub-pixel, so "near the centerline" already means "on the
+  // pavement" whichever layer is the one actually visible.
+  const airportStrips = useMemo(() => {
+    const theatreIcao = (theatre && icaoMap[theatre.toLowerCase()]) || {}
+    const stripMap = new Map()
+    for (const c of runwayCenterlines) {
+      if (!c.rwyEnd1 || !c.rwyEnd2) continue
+      // centerlines' public shape (store/runways.js) doesn't carry rwyName
+      // directly — only rawCenterlines (an internal intermediate) does — but
+      // id is `${airbase}__${rwyName}`, so pull it back out from there.
+      const rwyName = c.id.slice(c.airbase.length + 2)
+      const key = `${c.airbase}|${c.rwyEnd1.lat.toFixed(6)},${c.rwyEnd1.lng.toFixed(6)}|${c.rwyEnd2.lat.toFixed(6)},${c.rwyEnd2.lng.toFixed(6)}`
+      const existing = stripMap.get(key)
+      if (existing) existing.names.push(rwyName)
+      else stripMap.set(key, { airbase: c.airbase, rwyEnd1: c.rwyEnd1, rwyEnd2: c.rwyEnd2, names: [rwyName] })
+    }
+    const byAirbase = new Map()
+    for (const strip of stripMap.values()) {
+      const designator = strip.names.map(padRunwayName).sort((a, b) => parseInt(a, 10) - parseInt(b, 10)).join('/')
+      if (!byAirbase.has(strip.airbase)) {
+        byAirbase.set(strip.airbase, {
+          airbase: strip.airbase, icao: theatreIcao[strip.airbase] ?? null, strips: [], designators: [],
+        })
+      }
+      const entry = byAirbase.get(strip.airbase)
+      entry.strips.push({ rwyEnd1: strip.rwyEnd1, rwyEnd2: strip.rwyEnd2 })
+      entry.designators.push(designator)
+    }
+    return [...byAirbase.values()]
+  }, [runwayCenterlines, icaoMap, theatre])
+  const airportStripsRef = useRef(airportStrips)
+  useEffect(() => { airportStripsRef.current = airportStrips }, [airportStrips])
+
+  const [readoutHits, setReadoutHits] = useState([])
+  useEffect(() => {
+    const id = setInterval(() => {
+      const v = viewRef.current
+      const { x, y } = cursorCanvasPosRef.current
+      if (!v || x === null) {
+        setReadoutHits(prev => prev.length ? [] : prev)
+        return
+      }
+      const hits = []
+      for (const [unitId, unit] of Object.entries(visibleGroundUnitsRef.current)) {
+        if (!unit.position) continue
+        const p = latLngToCanvas(unit.position.lat, unit.position.lng, v)
+        if (Math.hypot(x - p.x, y - p.y) <= READOUT_RADIUS_PX) hits.push({ kind: 'ground', unitId, unit })
+      }
+
+      if (runwaysVisible || polygonsVisible) {
+        for (const airport of airportStripsRef.current) {
+          const isHit = airport.strips.some((strip) => {
+            const p1 = latLngToCanvas(strip.rwyEnd1.lat, strip.rwyEnd1.lng, v)
+            const p2 = latLngToCanvas(strip.rwyEnd2.lat, strip.rwyEnd2.lng, v)
+            return distToSegment(x, y, p1.x, p1.y, p2.x, p2.y) <= READOUT_RADIUS_PX
+          })
+          if (isHit) hits.push({ kind: 'airport', unitId: `airport-${airport.airbase}`, airport })
+        }
+      }
+
+      setReadoutHits(hits)
+    }, 150)
+    return () => clearInterval(id)
+  }, [runwaysVisible, polygonsVisible])
+
+  // Collapse same-type ground hits (matched on unit.name, the groundUnitDb
+  // key — e.g. three LAV-25s under the cursor) into one entry carrying a
+  // count, so the readout/index line reflects the pre-collapse total while
+  // the cycle itself only steps through distinct types. Airport hits are
+  // already one-per-airbase (deduped in the hit test above) — distinct
+  // airports are never "duplicates" of each other, so no count/xN applies.
+  const groupedReadout = useMemo(() => {
+    const groups = new Map()
+    for (const hit of readoutHits) {
+      if (hit.kind === 'airport') {
+        groups.set(hit.unitId, { kind: 'airport', unitId: hit.unitId, airport: hit.airport, count: 1 })
+        continue
+      }
+      const key = `ground:${hit.unit.name}`
+      const existing = groups.get(key)
+      if (existing) existing.count++
+      else groups.set(key, { kind: 'ground', unitId: hit.unitId, unit: hit.unit, count: 1 })
+    }
+    // Airfields always lead the list — Array#sort is stable, so this only
+    // reorders across kinds and leaves same-kind relative order untouched.
+    return [...groups.values()].sort((a, b) => (a.kind === 'airport' ? 0 : 1) - (b.kind === 'airport' ? 0 : 1))
+  }, [readoutHits])
+
+  // Readout is one object at a time: with only one (post-collapse) hit it's
+  // shown steadily, with 2+ it cycles through them, one per READOUT_CYCLE_MS,
+  // each fading in and back out over that whole phase (abm-readout-fade in
+  // the CSS, timed to match).
+  const [readoutIdx, setReadoutIdx] = useState(0)
+  useEffect(() => {
+    if (groupedReadout.length <= 1) { setReadoutIdx(0); return }
+    const id = setInterval(() => {
+      setReadoutIdx(i => (i + 1) % groupedReadout.length)
+    }, READOUT_CYCLE_MS)
+    return () => clearInterval(id)
+  }, [groupedReadout.length])
 
   useEffect(() => {
     if (!theatre) return
@@ -1444,6 +1635,29 @@ export default function AbmScope() {
           onContextMenu={(e) => e.preventDefault()}
         />
         {!bullseyeEntry && <div className="abm-warn">NO BULLSEYE</div>}
+
+        {groupedReadout.length > 0 && (() => {
+          const cycling = groupedReadout.length > 1
+          const active  = groupedReadout[readoutIdx] ?? groupedReadout[0]
+          const fields  = active.kind === 'airport'
+            ? buildAirportFields(active.airport)
+            : buildReadoutFields(groundUnitDb[active.unit.name])
+          if (active.kind === 'ground' && active.count > 1) fields.push(`x${active.count}`)
+          if (!fields.length) return null
+          return (
+            <div className="abm-readout-box">
+              <div
+                key={cycling ? `${active.unitId}-${readoutIdx}` : active.unitId}
+                className={`abm-readout-entry${cycling ? ' abm-readout-fade' : ''}`}
+              >
+                <div className="abm-readout-index">{readoutIdx + 1}/{groupedReadout.length}</div>
+                {fields.map((value, i) => (
+                  <div key={i}>{value}</div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
 
         {coordsVisible && coordsReadout && (
           <div className="abm-coords-box">

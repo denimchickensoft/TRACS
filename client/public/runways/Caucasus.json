@@ -1,1 +1,488 @@
-{"theatre":"Caucasus","airbases":[{"airbase":"Anapa-Vityazevo","runways":[{"elevation_ft":141.07626,"end2":{"lon":37.359513,"lat":45.013364},"lat":45.004948,"course_true_deg":138.51016,"name":22,"length_ft":8623.9002,"lon":37.347825,"end1":{"lon":37.33614,"lat":44.996531},"width_ft":196.8504,"course_raw":2.4174583}]},{"airbase":"Krasnodar-Center","runways":[{"elevation_ft":98.458109,"end2":{"lon":38.925195,"lat":45.087161},"lat":45.08695,"course_true_deg":-86.943028,"name":9,"length_ft":7659.2547,"lon":38.939984,"end1":{"lon":38.954774,"lat":45.086737},"width_ft":196.8504,"course_raw":-1.5174421}]},{"airbase":"Novorossiysk","runways":[{"elevation_ft":131.26654,"end2":{"lon":37.785961,"lat":44.673521},"lat":44.668096,"course_true_deg":137.99171,"name":22,"length_ft":5639.2353,"lon":37.778258,"end1":{"lon":37.770556,"lat":44.66267},"width_ft":196.8504,"course_raw":2.4084096}]},{"airbase":"Krymsk","runways":[{"elevation_ft":65.650604,"end2":{"lon":37.986165,"lat":44.961199},"lat":44.967937,"course_true_deg":-39.519656,"name":4,"length_ft":6733.4379,"lon":37.99503,"end1":{"lon":38.003898,"lat":44.974673},"width_ft":196.8504,"course_raw":-0.68974811}]},{"airbase":"Maykop-Khanskaya","runways":[{"elevation_ft":590.58464,"end2":{"lon":40.021699,"lat":44.671254},"lat":44.681285,"course_true_deg":-38.999742,"name":4,"length_ft":10195.652,"lon":40.035254,"end1":{"lon":40.048814,"lat":44.691315},"width_ft":196.8504,"course_raw":-0.6806739}]},{"airbase":"Gelendzhik","runways":[{"elevation_ft":72.211039,"end2":{"lon":38.00442,"lat":44.567489},"lat":44.572901,"course_true_deg":-40.021784,"name":1,"length_ft":5452.197,"lon":38.011614,"end1":{"lon":38.018811,"lat":44.578312},"width_ft":196.8504,"course_raw":-0.6985119}]},{"airbase":"Sochi-Adler","runways":[{"elevation_ft":98.458122,"end2":{"lon":39.924378,"lat":43.439131},"lat":43.444354,"course_true_deg":-61.988953,"name":6,"length_ft":9686.5231,"lon":39.941077,"end1":{"lon":39.957778,"lat":43.449574},"width_ft":196.8504,"course_raw":-1.0819113}]},{"airbase":"Krasnodar-Pashkovsky","runways":[{"elevation_ft":111.58149,"end2":{"lon":39.20283,"lat":45.04631},"lat":45.038008,"course_true_deg":132.94338,"name":23,"length_ft":9738.7907,"lon":39.188135,"end1":{"lon":39.173445,"lat":45.029704},"width_ft":196.8504,"course_raw":2.3202996}]},{"airbase":"Sukhumi-Babushara","runways":[{"elevation_ft":43.761506,"end2":{"lon":41.142642,"lat":42.852969},"lat":42.861092,"course_true_deg":63.511764,"name":30,"length_ft":11217.995,"lon":41.124999,"end1":{"lon":41.107351,"lat":42.869214},"width_ft":196.8504,"course_raw":1.1084894}]},{"airbase":"Gudauta","runways":[{"elevation_ft":68.930549,"end2":{"lon":40.56384,"lat":43.124125},"lat":43.114327,"course_true_deg":-151.00327,"name":15,"length_ft":7839.8539,"lon":40.569741,"end1":{"lon":40.575641,"lat":43.104529},"width_ft":196.8504,"course_raw":-2.6355042}]},{"airbase":"Batumi","runways":[{"elevation_ft":32.952881,"end2":{"lon":41.609512,"lat":41.603482},"lat":41.609597,"course_true_deg":54.438496,"name":31,"length_ft":6792.638,"lon":41.600237,"end1":{"lon":41.590961,"lat":41.615712},"width_ft":196.8504,"course_raw":0.950131}]},{"airbase":"Senaki-Kolkhi","runways":[{"elevation_ft":43.438133,"end2":{"lon":42.061089,"lat":42.238992},"lat":42.240849,"course_true_deg":85.292698,"name":27,"length_ft":7256.0615,"lon":42.048015,"end1":{"lon":42.034939,"lat":42.242705},"width_ft":196.8504,"course_raw":1.4886384}]},{"airbase":"Kobuleti","runways":[{"elevation_ft":59.087985,"end2":{"lon":41.876397,"lat":41.932365},"lat":41.929919,"course_true_deg":109.97328,"name":25,"length_ft":7406.8335,"lon":41.863275,"end1":{"lon":41.850153,"lat":41.927471},"width_ft":196.8504,"course_raw":1.9193958}]},{"airbase":"Kutaisi","runways":[{"elevation_ft":147.67077,"end2":{"lon":42.495624,"lat":42.179418},"lat":42.177616,"course_true_deg":106.00091,"name":25,"length_ft":7936.4577,"lon":42.481293,"end1":{"lon":42.466961,"lat":42.175811},"width_ft":196.8504,"course_raw":1.8500649}]},{"airbase":"Mineralnye Vody","runways":[{"elevation_ft":1049.9026,"end2":{"lon":43.100878,"lat":44.218873},"lat":44.227853,"course_true_deg":64.690422,"name":30,"length_ft":12316.381,"lon":43.081191,"end1":{"lon":43.061498,"lat":44.236829},"width_ft":196.8504,"course_raw":1.1290609}]},{"airbase":"Nalchik","runways":[{"elevation_ft":1410.7953,"end2":{"lon":43.625277,"lat":43.509833},"lat":43.514002,"course_true_deg":-55.498665,"name":6,"length_ft":6720.5188,"lon":43.636451,"end1":{"lon":43.647628,"lat":43.518169},"width_ft":196.8504,"course_raw":-0.96863443}]},{"airbase":"Mozdok","runways":[{"elevation_ft":507.25673,"end2":{"lon":44.620332,"lat":43.79157},"lat":43.791711,"course_true_deg":97.330004,"name":26,"length_ft":7734.4265,"lon":44.605838,"end1":{"lon":44.591345,"lat":43.791849},"width_ft":196.8504,"course_raw":1.698729}]},{"airbase":"Tbilisi-Lochini","runways":[{"elevation_ft":1573.8019,"end2":{"lon":44.946619,"lat":41.674535},"lat":41.667034,"course_true_deg":-127.96506,"name":13,"length_ft":7692.2073,"lon":44.956288,"end1":{"lon":44.965954,"lat":41.659533},"width_ft":196.8504,"course_raw":-2.2334116}]},{"airbase":"Soganlug","runways":[{"elevation_ft":1474.4431,"end2":{"lon":44.947457,"lat":41.641334},"lat":41.649542,"course_true_deg":47.744433,"name":14,"length_ft":7871.8822,"lon":44.938358,"end1":{"lon":44.929256,"lat":41.65775},"width_ft":196.8504,"course_raw":0.83329755}]},{"airbase":"Vaziani","runways":[{"elevation_ft":1523.9517,"end2":{"lon":45.018804,"lat":41.637577},"lat":41.629026,"course_true_deg":-135.47348,"name":13,"length_ft":7842.8488,"lon":45.02723,"end1":{"lon":45.035655,"lat":41.620474},"width_ft":196.8504,"course_raw":-2.3644583}]},{"airbase":"Beslan","runways":[{"elevation_ft":1719.1792,"end2":{"lon":44.588849,"lat":43.208239},"lat":43.205706,"course_true_deg":-93.542384,"name":10,"length_ft":9327.2038,"lon":44.605808,"end1":{"lon":44.622765,"lat":43.203171},"width_ft":196.8504,"course_raw":-1.6326226}]}]}
+{
+  "theatre": "Caucasus",
+  "airbases": [
+    {
+      "airbase": "Anapa-Vityazevo",
+      "runways": [
+        {
+          "elevation_ft": 141.07626,
+          "end2": {
+            "lon": 37.359513,
+            "lat": 45.013364
+          },
+          "lat": 45.004948,
+          "course_true_deg": 138.51016,
+          "name": 22,
+          "length_ft": 8623.9002,
+          "lon": 37.347825,
+          "end1": {
+            "lon": 37.33614,
+            "lat": 44.996531
+          },
+          "width_ft": 196.8504,
+          "course_raw": 2.4174583
+        }
+      ]
+    },
+    {
+      "airbase": "Krasnodar-Center",
+      "runways": [
+        {
+          "elevation_ft": 98.458109,
+          "end2": {
+            "lon": 38.925195,
+            "lat": 45.087161
+          },
+          "lat": 45.08695,
+          "course_true_deg": -86.943028,
+          "name": 9,
+          "length_ft": 7659.2547,
+          "lon": 38.939984,
+          "end1": {
+            "lon": 38.954774,
+            "lat": 45.086737
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.5174421
+        }
+      ]
+    },
+    {
+      "airbase": "Novorossiysk",
+      "runways": [
+        {
+          "elevation_ft": 131.26654,
+          "end2": {
+            "lon": 37.785961,
+            "lat": 44.673521
+          },
+          "lat": 44.668096,
+          "course_true_deg": 137.99171,
+          "name": 22,
+          "length_ft": 5639.2353,
+          "lon": 37.778258,
+          "end1": {
+            "lon": 37.770556,
+            "lat": 44.66267
+          },
+          "width_ft": 196.8504,
+          "course_raw": 2.4084096
+        }
+      ]
+    },
+    {
+      "airbase": "Krymsk",
+      "runways": [
+        {
+          "elevation_ft": 65.650604,
+          "end2": {
+            "lon": 37.986165,
+            "lat": 44.961199
+          },
+          "lat": 44.967937,
+          "course_true_deg": -39.519656,
+          "name": 4,
+          "length_ft": 6733.4379,
+          "lon": 37.99503,
+          "end1": {
+            "lon": 38.003898,
+            "lat": 44.974673
+          },
+          "width_ft": 196.8504,
+          "course_raw": -0.68974811
+        }
+      ]
+    },
+    {
+      "airbase": "Maykop-Khanskaya",
+      "runways": [
+        {
+          "elevation_ft": 590.58464,
+          "end2": {
+            "lon": 40.021699,
+            "lat": 44.671254
+          },
+          "lat": 44.681285,
+          "course_true_deg": -38.999742,
+          "name": 4,
+          "length_ft": 10195.652,
+          "lon": 40.035254,
+          "end1": {
+            "lon": 40.048814,
+            "lat": 44.691315
+          },
+          "width_ft": 196.8504,
+          "course_raw": -0.6806739
+        }
+      ]
+    },
+    {
+      "airbase": "Gelendzhik",
+      "runways": [
+        {
+          "elevation_ft": 72.211039,
+          "end2": {
+            "lon": 38.00442,
+            "lat": 44.567489
+          },
+          "lat": 44.572901,
+          "course_true_deg": -40.021784,
+          "name": 1,
+          "length_ft": 5452.197,
+          "lon": 38.011614,
+          "end1": {
+            "lon": 38.018811,
+            "lat": 44.578312
+          },
+          "width_ft": 196.8504,
+          "course_raw": -0.6985119
+        }
+      ]
+    },
+    {
+      "airbase": "Sochi-Adler",
+      "runways": [
+        {
+          "elevation_ft": 98.458122,
+          "end2": {
+            "lon": 39.924378,
+            "lat": 43.439131
+          },
+          "lat": 43.444354,
+          "course_true_deg": -61.988953,
+          "name": 6,
+          "length_ft": 9686.5231,
+          "lon": 39.941077,
+          "end1": {
+            "lon": 39.957778,
+            "lat": 43.449574
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.0819113
+        }
+      ]
+    },
+    {
+      "airbase": "Krasnodar-Pashkovsky",
+      "runways": [
+        {
+          "elevation_ft": 111.58149,
+          "end2": {
+            "lon": 39.20283,
+            "lat": 45.04631
+          },
+          "lat": 45.038008,
+          "course_true_deg": 132.94338,
+          "name": 23,
+          "length_ft": 9738.7907,
+          "lon": 39.188135,
+          "end1": {
+            "lon": 39.173445,
+            "lat": 45.029704
+          },
+          "width_ft": 196.8504,
+          "course_raw": 2.3202996
+        }
+      ]
+    },
+    {
+      "airbase": "Sukhumi-Babushara",
+      "runways": [
+        {
+          "elevation_ft": 43.761506,
+          "end2": {
+            "lon": 41.142642,
+            "lat": 42.852969
+          },
+          "lat": 42.861092,
+          "course_true_deg": 63.511764,
+          "name": 30,
+          "length_ft": 11217.995,
+          "lon": 41.124999,
+          "end1": {
+            "lon": 41.107351,
+            "lat": 42.869214
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.1084894
+        }
+      ]
+    },
+    {
+      "airbase": "Gudauta",
+      "runways": [
+        {
+          "elevation_ft": 68.930549,
+          "end2": {
+            "lon": 40.56384,
+            "lat": 43.124125
+          },
+          "lat": 43.114327,
+          "course_true_deg": -151.00327,
+          "name": 15,
+          "length_ft": 7839.8539,
+          "lon": 40.569741,
+          "end1": {
+            "lon": 40.575641,
+            "lat": 43.104529
+          },
+          "width_ft": 196.8504,
+          "course_raw": -2.6355042
+        }
+      ]
+    },
+    {
+      "airbase": "Batumi",
+      "runways": [
+        {
+          "elevation_ft": 32.952881,
+          "end2": {
+            "lon": 41.609512,
+            "lat": 41.603482
+          },
+          "lat": 41.609597,
+          "course_true_deg": 54.438496,
+          "name": 31,
+          "length_ft": 6792.638,
+          "lon": 41.600237,
+          "end1": {
+            "lon": 41.590961,
+            "lat": 41.615712
+          },
+          "width_ft": 196.8504,
+          "course_raw": 0.950131
+        }
+      ]
+    },
+    {
+      "airbase": "Senaki-Kolkhi",
+      "runways": [
+        {
+          "elevation_ft": 43.438133,
+          "end2": {
+            "lon": 42.061089,
+            "lat": 42.238992
+          },
+          "lat": 42.240849,
+          "course_true_deg": 85.292698,
+          "name": 27,
+          "length_ft": 7256.0615,
+          "lon": 42.048015,
+          "end1": {
+            "lon": 42.034939,
+            "lat": 42.242705
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.4886384
+        }
+      ]
+    },
+    {
+      "airbase": "Kobuleti",
+      "runways": [
+        {
+          "elevation_ft": 59.087985,
+          "end2": {
+            "lon": 41.876397,
+            "lat": 41.932365
+          },
+          "lat": 41.929919,
+          "course_true_deg": 109.97328,
+          "name": 25,
+          "length_ft": 7406.8335,
+          "lon": 41.863275,
+          "end1": {
+            "lon": 41.850153,
+            "lat": 41.927471
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.9193958
+        }
+      ]
+    },
+    {
+      "airbase": "Kutaisi",
+      "runways": [
+        {
+          "elevation_ft": 147.67077,
+          "end2": {
+            "lon": 42.495624,
+            "lat": 42.179418
+          },
+          "lat": 42.177616,
+          "course_true_deg": 106.00091,
+          "name": 25,
+          "length_ft": 7936.4577,
+          "lon": 42.481293,
+          "end1": {
+            "lon": 42.466961,
+            "lat": 42.175811
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.8500649
+        }
+      ]
+    },
+    {
+      "airbase": "Mineralnye Vody",
+      "runways": [
+        {
+          "elevation_ft": 1049.9026,
+          "end2": {
+            "lon": 43.100878,
+            "lat": 44.218873
+          },
+          "lat": 44.227853,
+          "course_true_deg": 64.690422,
+          "name": 30,
+          "length_ft": 12316.381,
+          "lon": 43.081191,
+          "end1": {
+            "lon": 43.061498,
+            "lat": 44.236829
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.1290609
+        }
+      ]
+    },
+    {
+      "airbase": "Nalchik",
+      "runways": [
+        {
+          "elevation_ft": 1410.7953,
+          "end2": {
+            "lon": 43.625277,
+            "lat": 43.509833
+          },
+          "lat": 43.514002,
+          "course_true_deg": -55.498665,
+          "name": 6,
+          "length_ft": 6720.5188,
+          "lon": 43.636451,
+          "end1": {
+            "lon": 43.647628,
+            "lat": 43.518169
+          },
+          "width_ft": 196.8504,
+          "course_raw": -0.96863443
+        }
+      ]
+    },
+    {
+      "airbase": "Mozdok",
+      "runways": [
+        {
+          "elevation_ft": 507.25673,
+          "end2": {
+            "lon": 44.620332,
+            "lat": 43.79157
+          },
+          "lat": 43.791711,
+          "course_true_deg": 97.330004,
+          "name": 26,
+          "length_ft": 7734.4265,
+          "lon": 44.605838,
+          "end1": {
+            "lon": 44.591345,
+            "lat": 43.791849
+          },
+          "width_ft": 196.8504,
+          "course_raw": 1.698729
+        }
+      ]
+    },
+    {
+      "airbase": "Tbilisi-Lochini",
+      "runways": [
+        {
+          "elevation_ft": 1573.8019,
+          "end2": {
+            "lon": 44.946619,
+            "lat": 41.674535
+          },
+          "lat": 41.667034,
+          "course_true_deg": -127.96506,
+          "name": 13,
+          "length_ft": 7692.2073,
+          "lon": 44.956288,
+          "end1": {
+            "lon": 44.965954,
+            "lat": 41.659533
+          },
+          "width_ft": 196.8504,
+          "course_raw": -2.2334116
+        }
+      ]
+    },
+    {
+      "airbase": "Soganlug",
+      "runways": [
+        {
+          "elevation_ft": 1474.4431,
+          "end2": {
+            "lon": 44.947457,
+            "lat": 41.641334
+          },
+          "lat": 41.649542,
+          "course_true_deg": 47.744433,
+          "name": 14,
+          "length_ft": 7871.8822,
+          "lon": 44.938358,
+          "end1": {
+            "lon": 44.929256,
+            "lat": 41.65775
+          },
+          "width_ft": 196.8504,
+          "course_raw": 0.83329755
+        }
+      ]
+    },
+    {
+      "airbase": "Vaziani",
+      "runways": [
+        {
+          "elevation_ft": 1523.9517,
+          "end2": {
+            "lon": 45.018804,
+            "lat": 41.637577
+          },
+          "lat": 41.629026,
+          "course_true_deg": -135.47348,
+          "name": 13,
+          "length_ft": 7842.8488,
+          "lon": 45.02723,
+          "end1": {
+            "lon": 45.035655,
+            "lat": 41.620474
+          },
+          "width_ft": 196.8504,
+          "course_raw": -2.3644583
+        }
+      ]
+    },
+    {
+      "airbase": "Beslan",
+      "runways": [
+        {
+          "elevation_ft": 1719.1792,
+          "end2": {
+            "lon": 44.588849,
+            "lat": 43.208239
+          },
+          "lat": 43.205706,
+          "course_true_deg": -93.542384,
+          "name": 10,
+          "length_ft": 9327.2038,
+          "lon": 44.605808,
+          "end1": {
+            "lon": 44.622765,
+            "lat": 43.203171
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.6326226
+        }
+      ]
+    }
+  ]
+}

@@ -723,7 +723,8 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     const mapKey = mapKeyOf(btn)
     if (mapKey != null) {
       const label = typeof mapKey === 'number' ? (maps[mapKey]?.name ?? '') : 'LBL'
-      displayBtn = { ...btn, lines: [label] }
+      const lines = label.startsWith('ADJ ') ? ['ADJ', label.slice(4)] : [label]
+      displayBtn = { ...btn, lines }
     }
 
     if (btn.type === 'preset-slot') {

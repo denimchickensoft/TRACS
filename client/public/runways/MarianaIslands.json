@@ -1,1 +1,210 @@
-{"theatre":"MarianaIslands","airbases":[{"airbase":"Rota Intl","runways":[{"elevation_ft":568.83261,"end2":{"lon":145.23248,"lat":14.174634},"lat":14.174373,"course_true_deg":-92.213284,"name":9,"length_ft":6105.9564,"lon":145.24109,"end1":{"lon":145.24971,"lat":14.174111},"width_ft":196.8504,"course_raw":-1.6094254}]},{"airbase":"Saipan Intl","runways":[{"elevation_ft":213.25483,"end2":{"lon":145.7189,"lat":15.114871},"lat":15.118931,"course_true_deg":-68.100148,"name":7,"length_ft":7790.1023,"lon":145.72913,"end1":{"lon":145.73935,"lat":15.122991},"width_ft":196.8504,"course_raw":-1.1885718}]},{"airbase":"Tinian Intl","runways":[{"elevation_ft":240.00744,"end2":{"lon":145.60836,"lat":14.997163},"lat":14.999194,"course_true_deg":-79.434383,"name":8,"length_ft":7777.876,"lon":145.61918,"end1":{"lon":145.63,"lat":15.001224},"width_ft":196.8504,"course_raw":-1.3863915}]},{"airbase":"Antonio B. Won Pat Intl","runways":[{"elevation_ft":255.22335,"end2":{"lon":144.78489,"lat":13.479324},"lat":13.48478,"course_true_deg":-65.471345,"name":6,"length_ft":9359.4588,"lon":144.79682,"end1":{"lon":144.80876,"lat":13.490235},"width_ft":196.8504,"course_raw":-1.1426905},{"elevation_ft":255.22335,"end2":{"lon":144.78421,"lat":13.476868},"lat":13.48233,"course_true_deg":-65.44522,"name":24,"length_ft":9359.4588,"lon":144.79614,"end1":{"lon":144.80807,"lat":13.487791},"width_ft":196.8504,"course_raw":-1.1422346}]},{"airbase":"Olf Orote","runways":[{"elevation_ft":93.523771,"end2":{"lon":144.6467,"lat":13.44008},"lat":13.438201,"course_true_deg":112.74184,"name":25,"length_ft":3451.9771,"lon":144.64224,"end1":{"lon":144.63778,"lat":13.436321},"width_ft":147.6378,"course_raw":1.9677163}]},{"airbase":"Andersen AFB","runways":[{"elevation_ft":545.62488,"end2":{"lon":144.91757,"lat":13.575801},"lat":13.581703,"course_true_deg":-66.369843,"name":6,"length_ft":10489.424,"lon":144.93105,"end1":{"lon":144.94453,"lat":13.587605},"width_ft":196.8504,"course_raw":-1.1583723},{"elevation_ft":545.62488,"end2":{"lon":144.916,"lat":13.580505},"lat":13.586408,"course_true_deg":-66.37013,"name":24,"length_ft":10489.424,"lon":144.92947,"end1":{"lon":144.94295,"lat":13.59231},"width_ft":196.8504,"course_raw":-1.1583773}]},{"airbase":"Pagan Airstrip","runways":[{"elevation_ft":50.223773,"end2":{"lon":145.76096,"lat":18.123953},"lat":18.123154,"course_true_deg":-111.31208,"name":11,"length_ft":1625.141,"lon":145.76315,"end1":{"lon":145.76533,"lat":18.122354},"width_ft":164.042,"course_raw":-1.9427623}]},{"airbase":"North West Field","runways":{}},{"airbase":"Guam NB Helipad","runways":{}},{"airbase":"CVN-70","runways":[{"elevation_ft":0,"end2":{"lon":144.63075,"lat":13.446183},"lat":13.446183,"course_true_deg":-122.00001,"name":0,"length_ft":0,"lon":144.63075,"end1":{"lon":144.63075,"lat":13.446183},"width_ft":0,"course_raw":-2.1293018},{"elevation_ft":0,"end2":{"lon":144.63075,"lat":13.446183},"lat":13.446183,"course_true_deg":-122.00001,"name":624,"length_ft":0,"lon":144.63075,"end1":{"lon":144.63075,"lat":13.446183},"width_ft":0,"course_raw":-2.1293018},{"elevation_ft":0,"end2":{"lon":144.63075,"lat":13.446183},"lat":13.446183,"course_true_deg":-122.00001,"name":624,"length_ft":0,"lon":144.63075,"end1":{"lon":144.63075,"lat":13.446183},"width_ft":0,"course_raw":-2.1293018},{"elevation_ft":0,"end2":{"lon":144.63075,"lat":13.446183},"lat":13.446183,"course_true_deg":-122.00001,"name":621,"length_ft":0,"lon":144.63075,"end1":{"lon":144.63075,"lat":13.446183},"width_ft":0,"course_raw":-2.1293018},{"elevation_ft":0,"end2":{"lon":144.63075,"lat":13.446183},"lat":13.446183,"course_true_deg":-122.00001,"name":621,"length_ft":0,"lon":144.63075,"end1":{"lon":144.63075,"lat":13.446183},"width_ft":0,"course_raw":-2.1293018}]},{"airbase":"CVN-74","runways":[{"elevation_ft":0,"end2":{"lon":144.90121,"lat":13.359306},"lat":13.359306,"course_true_deg":-27.15668,"name":1.2250318e+09,"length_ft":0,"lon":144.90121,"end1":{"lon":144.90121,"lat":13.359306},"width_ft":0,"course_raw":-0.47397348},{"elevation_ft":0,"end2":{"lon":144.90121,"lat":13.359306},"lat":13.359306,"course_true_deg":-27.15668,"name":624,"length_ft":0,"lon":144.90121,"end1":{"lon":144.90121,"lat":13.359306},"width_ft":0,"course_raw":-0.47397348},{"elevation_ft":0,"end2":{"lon":144.90121,"lat":13.359306},"lat":13.359306,"course_true_deg":-27.15668,"name":625,"length_ft":0,"lon":144.90121,"end1":{"lon":144.90121,"lat":13.359306},"width_ft":0,"course_raw":-0.47397348},{"elevation_ft":0,"end2":{"lon":144.90121,"lat":13.359306},"lat":13.359306,"course_true_deg":-27.15668,"name":623,"length_ft":0,"lon":144.90121,"end1":{"lon":144.90121,"lat":13.359306},"width_ft":0,"course_raw":-0.47397348},{"elevation_ft":0,"end2":{"lon":144.90121,"lat":13.359306},"lat":13.359306,"course_true_deg":-27.15668,"name":623,"length_ft":0,"lon":144.90121,"end1":{"lon":144.90121,"lat":13.359306},"width_ft":0,"course_raw":-0.47397348}]},{"airbase":"CG-65","runways":{}},{"airbase":"DDG-103","runways":{}},{"airbase":"DDG-113","runways":{}},{"airbase":"LHA-1","runways":[{"elevation_ft":0,"end2":{"lon":null,"lat":null},"lat":15.257166,"course_true_deg":125.24015,"name":2,"length_ft":null,"lon":145.71055,"end1":{"lon":null,"lat":null},"width_ft":0,"course_raw":2.185853},{"elevation_ft":0,"end2":{"lon":145.71055,"lat":15.257166},"lat":15.257166,"course_true_deg":125.24015,"name":624,"length_ft":0,"lon":145.71055,"end1":{"lon":145.71055,"lat":15.257166},"width_ft":0,"course_raw":2.185853},{"elevation_ft":0,"end2":{"lon":145.71055,"lat":15.257166},"lat":15.257166,"course_true_deg":125.24015,"name":0,"length_ft":0,"lon":145.71055,"end1":{"lon":145.71055,"lat":15.257166},"width_ft":0,"course_raw":2.185853},{"elevation_ft":0,"end2":{"lon":145.71055,"lat":15.257166},"lat":15.257166,"course_true_deg":125.24015,"name":624,"length_ft":0,"lon":145.71055,"end1":{"lon":145.71055,"lat":15.257166},"width_ft":0,"course_raw":2.185853},{"elevation_ft":0,"end2":{"lon":145.71055,"lat":15.257166},"lat":15.257166,"course_true_deg":125.24015,"name":624,"length_ft":0,"lon":145.71055,"end1":{"lon":145.71055,"lat":15.257166},"width_ft":0,"course_raw":2.185853}]},{"airbase":"DDG-105","runways":{}}]}
+{
+  "theatre": "MarianaIslands",
+  "airbases": [
+    {
+      "airbase": "Rota Intl",
+      "runways": [
+        {
+          "elevation_ft": 568.83261,
+          "end2": {
+            "lon": 145.23248,
+            "lat": 14.174634
+          },
+          "lat": 14.174373,
+          "course_true_deg": -92.213284,
+          "name": 9,
+          "length_ft": 6105.9564,
+          "lon": 145.24109,
+          "end1": {
+            "lon": 145.24971,
+            "lat": 14.174111
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.6094254
+        }
+      ]
+    },
+    {
+      "airbase": "Saipan Intl",
+      "runways": [
+        {
+          "elevation_ft": 213.25483,
+          "end2": {
+            "lon": 145.7189,
+            "lat": 15.114871
+          },
+          "lat": 15.118931,
+          "course_true_deg": -68.100148,
+          "name": 7,
+          "length_ft": 7790.1023,
+          "lon": 145.72913,
+          "end1": {
+            "lon": 145.73935,
+            "lat": 15.122991
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.1885718
+        }
+      ]
+    },
+    {
+      "airbase": "Tinian Intl",
+      "runways": [
+        {
+          "elevation_ft": 240.00744,
+          "end2": {
+            "lon": 145.60836,
+            "lat": 14.997163
+          },
+          "lat": 14.999194,
+          "course_true_deg": -79.434383,
+          "name": 8,
+          "length_ft": 7777.876,
+          "lon": 145.61918,
+          "end1": {
+            "lon": 145.63,
+            "lat": 15.001224
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.3863915
+        }
+      ]
+    },
+    {
+      "airbase": "Antonio B. Won Pat Intl",
+      "runways": [
+        {
+          "elevation_ft": 255.22335,
+          "end2": {
+            "lon": 144.78489,
+            "lat": 13.479324
+          },
+          "lat": 13.48478,
+          "course_true_deg": -65.471345,
+          "name": 6,
+          "length_ft": 9359.4588,
+          "lon": 144.79682,
+          "end1": {
+            "lon": 144.80876,
+            "lat": 13.490235
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.1426905
+        },
+        {
+          "elevation_ft": 255.22335,
+          "end2": {
+            "lon": 144.78421,
+            "lat": 13.476868
+          },
+          "lat": 13.48233,
+          "course_true_deg": -65.44522,
+          "name": 24,
+          "length_ft": 9359.4588,
+          "lon": 144.79614,
+          "end1": {
+            "lon": 144.80807,
+            "lat": 13.487791
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.1422346
+        }
+      ]
+    },
+    {
+      "airbase": "Olf Orote",
+      "runways": [
+        {
+          "elevation_ft": 93.523771,
+          "end2": {
+            "lon": 144.6467,
+            "lat": 13.44008
+          },
+          "lat": 13.438201,
+          "course_true_deg": 112.74184,
+          "name": 25,
+          "length_ft": 3451.9771,
+          "lon": 144.64224,
+          "end1": {
+            "lon": 144.63778,
+            "lat": 13.436321
+          },
+          "width_ft": 147.6378,
+          "course_raw": 1.9677163
+        }
+      ]
+    },
+    {
+      "airbase": "Andersen AFB",
+      "runways": [
+        {
+          "elevation_ft": 545.62488,
+          "end2": {
+            "lon": 144.91757,
+            "lat": 13.575801
+          },
+          "lat": 13.581703,
+          "course_true_deg": -66.369843,
+          "name": 6,
+          "length_ft": 10489.424,
+          "lon": 144.93105,
+          "end1": {
+            "lon": 144.94453,
+            "lat": 13.587605
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.1583723
+        },
+        {
+          "elevation_ft": 545.62488,
+          "end2": {
+            "lon": 144.916,
+            "lat": 13.580505
+          },
+          "lat": 13.586408,
+          "course_true_deg": -66.37013,
+          "name": 24,
+          "length_ft": 10489.424,
+          "lon": 144.92947,
+          "end1": {
+            "lon": 144.94295,
+            "lat": 13.59231
+          },
+          "width_ft": 196.8504,
+          "course_raw": -1.1583773
+        }
+      ]
+    },
+    {
+      "airbase": "Pagan Airstrip",
+      "runways": [
+        {
+          "elevation_ft": 50.223773,
+          "end2": {
+            "lon": 145.76096,
+            "lat": 18.123953
+          },
+          "lat": 18.123154,
+          "course_true_deg": -111.31208,
+          "name": 11,
+          "length_ft": 1625.141,
+          "lon": 145.76315,
+          "end1": {
+            "lon": 145.76533,
+            "lat": 18.122354
+          },
+          "width_ft": 164.042,
+          "course_raw": -1.9427623
+        }
+      ]
+    },
+    {
+      "airbase": "North West Field",
+      "runways": {}
+    },
+    {
+      "airbase": "Guam NB Helipad",
+      "runways": {}
+    }
+  ]
+}
