@@ -4,6 +4,7 @@ import './index.css'
 import { App } from './App'
 import { StripBayWindow }      from './components/StripBay/StripBayWindow'
 import { StatusBoardWindow }   from './modules/catcc/StatusBoardWindow'
+import { DeckWindow }          from './modules/catcc/DeckWindow'
 import { ControllerListWindow } from './components/ControllerList/ControllerListWindow'
 import { ParWindow }            from './components/par/ParWindow'
 import { AsdexOdsWindow }      from './modules/atc/asdex/AsdexOdsWindow'
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     {windowMode === 'strips'      ? <StripBayWindow />       :
      windowMode === 'catcc-board' ? <StatusBoardWindow />    :
+     windowMode === 'catcc-deck'  ? <DeckWindow />           :
      windowMode === 'cl'          ? <ControllerListWindow /> :
      windowMode === 'par'         ? <ParWindow />            :
      windowMode === 'asdex-ods'   ? <AsdexOdsWindow />       :

@@ -16,13 +16,14 @@ import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
 import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
 import { drawCompassRose }       from '../atc/stars/canvas/drawCompassRose.js'
-import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
-import { CARRIER_TYPES }         from '../../utils/carriers.js'
+import { computeMagvar } from '../../utils/magvar.js'
+import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { matchStarsKey, isTypedInput } from '../atc/stars/input/starsKeys.js'
 import { parseCommand }          from '../atc/stars/input/commandParser.js'
 import { dispatch as dispatchAction } from '../atc/actions/index.js'
 import { processOdsCommand }     from './odsCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
+import { loadCatccPrefs }        from '../../store/catccPrefs.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
 import './CatccScope.css'
 
@@ -81,14 +82,14 @@ export default function CatccScope() {
   const carrierUnit = carrierUnitId != null ? units[carrierUnitId] : null
   const carrierLat  = carrierUnit?.position?.lat ?? 0
   const carrierLng  = carrierUnit?.position?.lng ?? 0
-  const magvar      = computeMagvar(carrierLat, carrierLng, missionDate)
+  // Declination (IGRF) — the only correction applied anywhere (canvas
+  // rotation, BRC/FB). See utils/magvar.js: DCS's own heading readouts don't
+  // apply grid convergence, so this app doesn't add it either.
+  const declinationDeg = computeMagvar(carrierLat, carrierLng, missionDate)
 
-  const convergence    = theatre ? theatreConvergence(theatre, carrierLat, carrierLng) : 0
-  const dcsMagvar      = magvar + convergence
   const carrierHeadingDeg = (carrierUnit?.heading ?? 0) * 180 / Math.PI
-  const brc        = ((carrierHeadingDeg - dcsMagvar) % 360 + 360) % 360
   const deckOffset = CARRIER_TYPES[carrierUnit?.name]?.deckOffset ?? 9
-  const fb             = ((brc - deckOffset) % 360 + 360) % 360
+  const { brc, fb } = computeCarrierBrcFb(carrierHeadingDeg, declinationDeg, deckOffset)
 
   const marshalBearing = (fb + 180) % 360
 
@@ -116,12 +117,10 @@ export default function CatccScope() {
   // Refs for values that buildView and the ResizeObserver need to stay stable
   const carrierLatRef  = useRef(carrierLat)
   const carrierLngRef  = useRef(carrierLng)
-  const magvarRef      = useRef(magvar)
-  const dcsMagvarRef   = useRef(dcsMagvar)
+  const declinationRef = useRef(declinationDeg)
   useEffect(() => { carrierLatRef.current  = carrierLat  }, [carrierLat])
   useEffect(() => { carrierLngRef.current  = carrierLng  }, [carrierLng])
-  useEffect(() => { magvarRef.current      = magvar      }, [magvar])
-  useEffect(() => { dcsMagvarRef.current   = dcsMagvar   }, [dcsMagvar])
+  useEffect(() => { declinationRef.current = declinationDeg }, [declinationDeg])
 
   const tdmMode = windowSettings?.tdmMode ?? false
 
@@ -163,7 +162,7 @@ export default function CatccScope() {
   // ── Initialize display window ──────────────────────────────────────
   useEffect(() => {
     if (!windowSettings) {
-      displayStore.initWindow(WINDOW_ID, { rangeNm: 50, ringSpacingNm: 10, statusTextXPct: 50, statusTextYPct: 2, showHistory: true, historyRate: 4.5 })
+      displayStore.initWindow(WINDOW_ID, { rangeNm: 50, ringSpacingNm: 10, statusTextXPct: 50, statusTextYPct: 2, showHistory: true, historyRate: 4.5, dbca: loadCatccPrefs().dbca })
     }
   }, []) // eslint-disable-line
 
@@ -184,7 +183,7 @@ export default function CatccScope() {
       pixelsPerNm: rangeToPixelsPerNm(ws.rangeNm, w, h),
       width:  w,
       height: h,
-      magvar: dcsMagvarRef.current,
+      declinationDeg: declinationRef.current,
       theatre,
     }
   }, [theatre]) // all other changing values read from refs/store
@@ -234,10 +233,10 @@ export default function CatccScope() {
     return () => ro.disconnect()
   }, [syncCanvasSize, hasWindowSettings]) // eslint-disable-line
 
-  // Rebuild view when carrier position, zoom, or magvar changes
+  // Rebuild view when carrier position, zoom, or declination changes
   useEffect(() => {
     setView(buildView())
-  }, [carrierLat, carrierLng, dcsMagvar, windowSettings?.rangeNm]) // eslint-disable-line
+  }, [carrierLat, carrierLng, declinationDeg, windowSettings?.rangeNm]) // eslint-disable-line
 
   // ── Render CATCC layers (rings + CCZ/CCA + corridor + radial) ─────
   useEffect(() => {
@@ -334,10 +333,11 @@ export default function CatccScope() {
       ownership,
       myControllerId,
       windowSettings?.catccLeaderLen  ?? 16,
+      windowSettings?.dbca ?? true,
     )
   }, [visibleUnits, view, trackMap, effectiveCorrelations, ownership, handoffs, blinkTracks, blinkTick,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos,
-      windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen])
+      windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca])
 
   // ── Marking MOMS — bullseye readout from carrier to cursor ───────
   const [momsReadout, setMomsReadout] = useState('')

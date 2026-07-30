@@ -14,6 +14,7 @@ import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useControllersStore } from '../../store/controllers.js'
 import { useDisplayStore }     from '../../store/display.js'
+import { saveCatccPrefs }      from '../../store/catccPrefs.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { applyCallsignChange } from '../../utils/callsignRename.js'
@@ -162,6 +163,15 @@ register('.LD', (parts) => {
   if (!key) return ['ILL DIR']
   useDisplayStore.getState().updateWindow(WINDOW_ID, { globalLeaderDir: key })
   return []
+})
+
+// .DBCA — toggle datablock collision avoidance (on by default for CATCC)
+register('.DBCA', () => {
+  const ws = useDisplayStore.getState().windows[WINDOW_ID]
+  const next = !(ws?.dbca ?? true)
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { dbca: next })
+  saveCatccPrefs({ dbca: next })
+  return [`DBCA ${next ? 'ON' : 'OFF'}`]
 })
 
 // ── Dispatcher ────────────────────────────────────────────────────────────────

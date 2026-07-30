@@ -7,6 +7,7 @@ import StarsScope        from './modules/atc/stars/StarsScope'
 import AsdexScope        from './modules/atc/asdex/AsdexScope'
 import CatccScope        from './modules/catcc/CatccScope'
 import { StatusBoard, SB_NATURAL_WIDTH } from './modules/catcc/StatusBoard'
+import { Deck }           from './modules/catcc/Deck'
 import AicScope          from './modules/aic/AicScope'
 import { BraaList, BRAA_NATURAL_WIDTH } from './modules/aic/BraaList'
 import AbmScope          from './modules/abm/AbmScope'
@@ -158,6 +159,10 @@ export function App() {
   const handleCatccResize = useCallback(makeResizeHandler(catccWidthRef, setCatccWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
   const handleSbUndock    = useCallback(makeUndockHandler('/?window=catcc-board', 'tracs-catcc-board', catccWidthRef, setSbDocked, sbPopupRef), []) // eslint-disable-line
 
+  const [deckDocked, setDeckDocked] = useState(true)
+  const deckPopupRef   = useRef(null)
+  const handleDeckUndock = useCallback(makeUndockHandler('/?window=catcc-deck', 'tracs-catcc-deck', catccWidthRef, setDeckDocked, deckPopupRef), []) // eslint-disable-line
+
   // ── ATC right partition (strips + par share one width) ─────────────
   const [stripsDocked,  setStripsDocked]  = useState(true)
   const initAtcWidth = (() => { const v = parseInt(localStorage.getItem('tracs.atc.width'), 10); return isNaN(v) ? 520 : v })()
@@ -189,7 +194,7 @@ export function App() {
 
   // ── Active right panel per scope ('main' | 'par') ─────────────────
   const [atcPanel,   setAtcPanel]   = useState('main')   // 'main' = strips, 'par'
-  const [catccPanel, setCatccPanel] = useState('main')   // 'main' = status board, 'par'
+  const [catccPanel, setCatccPanel] = useState('main')   // 'main' = status board, 'par', 'deck'
   const [aicPanel,   setAicPanel]   = useState('main')   // 'main' = braa list
 
   const handleParUndock = useCallback(() => {
@@ -249,6 +254,7 @@ export function App() {
     if (hasCatcc) {
       if (catccPanel === 'main' && sbDocked)   return Math.round(catccWidth * sbScale) + TAB_STRIP_W
       if (catccPanel === 'par'  && parDocked)  return catccWidth + TAB_STRIP_W
+      if (catccPanel === 'deck' && deckDocked) return catccWidth + TAB_STRIP_W
       return TAB_STRIP_W
     }
     if (hasAic) {
@@ -569,12 +575,23 @@ export function App() {
               />
             )}
             {catccPanel === 'par' && !parDocked && null}
+            {catccPanel === 'deck' && deckDocked && (
+              <Deck
+                docked
+                width={catccWidth}
+                onResize={handleCatccResize}
+                onUndock={handleDeckUndock}
+                onHide={() => setCatccPanel(null)}
+              />
+            )}
+            {catccPanel === 'deck' && !deckDocked && null}
 
             {/* Tab strip */}
             <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
               {[
-                { key: 'main', label: sbDocked  ? 'STATUS'  : 'STATUS ↗',  onClick: () => { if (!sbDocked  && sbPopupRef.current)  sbPopupRef.current.focus();  else setCatccPanel((p) => p === 'main' ? null : 'main') } },
-                { key: 'par',  label: parDocked ? 'PAR'     : 'PAR ↗',     onClick: () => { if (!parDocked && parPopupRef.current) parPopupRef.current.focus(); else setCatccPanel((p) => p === 'par'  ? null : 'par')  } },
+                { key: 'main', label: sbDocked   ? 'STATUS'  : 'STATUS ↗',  onClick: () => { if (!sbDocked   && sbPopupRef.current)   sbPopupRef.current.focus();   else setCatccPanel((p) => p === 'main' ? null : 'main') } },
+                { key: 'par',  label: parDocked  ? 'PAR'     : 'PAR ↗',     onClick: () => { if (!parDocked  && parPopupRef.current)  parPopupRef.current.focus();  else setCatccPanel((p) => p === 'par'  ? null : 'par')  } },
+                { key: 'deck', label: deckDocked ? 'DECK'    : 'DECK ↗',    onClick: () => { if (!deckDocked && deckPopupRef.current) deckPopupRef.current.focus(); else setCatccPanel((p) => p === 'deck' ? null : 'deck') } },
               ].map(({ key, label, onClick }) => (
                 <div
                   key={key}

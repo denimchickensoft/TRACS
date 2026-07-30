@@ -3,7 +3,7 @@ import { useUnitsStore }        from '../../store/units.js'
 import { useRunwaysStore }      from '../../store/runways.js'
 import { useCorrelationStore }  from '../../store/correlation.js'
 import { useSessionStore, MODULE } from '../../store/session.js'
-import { CARRIER_TYPES }        from '../../utils/carriers.js'
+import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import './Par.css'
@@ -19,6 +19,7 @@ const PAR_AZ_HALF    = 10  // degrees — PAR azimuth service volume half-angle 
 const GS_TOL_DEG     = 0.7  // glideslope full-scale deflection (ILS/PAR standard)
 const AZ_TOL_DEG     = 2.5  // azimuth full-scale deflection
 const TCH_FT         = 50   // standard threshold crossing height (airfield)
+const TDZ_OFFSET_FT  = 250  // TEST: carrier TDZ offset aft (toward the approaching aircraft) from reported carrier position
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -35,6 +36,20 @@ function bearingDeg(lat1, lng1, lat2, lng2) {
   const y  = Math.sin(Δλ) * Math.cos(φ2)
   const x  = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ)
   return ((Math.atan2(y, x) / D2R) + 360) % 360
+}
+
+// Projects a point distFt feet along bearingDegVal from (lat, lng).
+function destPoint(lat, lng, bearingDegVal, distFt) {
+  const R    = 3440.065 // NM — matches distNm()
+  const δ    = (distFt / NM_TO_FEET) / R
+  const brg  = bearingDegVal * D2R
+  const φ1   = lat * D2R, λ1 = lng * D2R
+  const φ2   = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(brg))
+  const λ2   = λ1 + Math.atan2(
+    Math.sin(brg) * Math.sin(δ) * Math.cos(φ1),
+    Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2)
+  )
+  return { lat: φ2 / D2R, lng: λ2 / D2R }
 }
 
 // Projects a unit position onto the approach geometry.
@@ -450,23 +465,36 @@ export function Par({
   const [manualHdg,  setManualHdg]  = useState('')
   const [threshElev, setThreshElev] = useState(0)
   const [gsAngleRaw, setGsAngleRaw] = useState(() => {
-    const saved = localStorage.getItem('tracs.par.gsAngle')
+    const saved = localStorage.getItem(`tracs.par.gsAngle.${mode}`)
     const v = parseFloat(saved)
-    return isNaN(v) ? String(initCarrierId != null ? 3.5 : 3.0) : saved
+    return isNaN(v) ? String(mode === 'carrier' ? 3.5 : 3.0) : saved
   })
   const [rangeNmRaw, setRangeNmRaw] = useState(() => {
-    const saved = localStorage.getItem('tracs.par.rangeNm')
+    const saved = localStorage.getItem(`tracs.par.rangeNm.${mode}`)
     const v = parseFloat(saved)
     return isNaN(v) ? '10' : saved
   })
-  const gsAngle = Math.min(7, Math.max(1, parseFloat(gsAngleRaw) || (initCarrierId != null ? 3.5 : 3.0)))
+  const gsAngle = Math.min(7, Math.max(1, parseFloat(gsAngleRaw) || (mode === 'carrier' ? 3.5 : 3.0)))
   const rangeNm = parseFloat(rangeNmRaw) || 10
+
+  // GS angle and range default/persistence are per-mode (carrier GS defaults to 3.5,
+  // airfield to 3.0) — re-derive whenever mode changes instead of sharing one storage
+  // key across both.
+  useEffect(() => {
+    const savedGs = localStorage.getItem(`tracs.par.gsAngle.${mode}`)
+    const vGs = parseFloat(savedGs)
+    setGsAngleRaw(isNaN(vGs) ? String(mode === 'carrier' ? 3.5 : 3.0) : savedGs)
+
+    const savedRange = localStorage.getItem(`tracs.par.rangeNm.${mode}`)
+    const vRange = parseFloat(savedRange)
+    setRangeNmRaw(isNaN(vRange) ? '10' : savedRange)
+  }, [mode])
 
   // Persist PAR config across remounts and popup windows
   useEffect(() => { localStorage.setItem('tracs.par.mode',     mode)      }, [mode])
   useEffect(() => { localStorage.setItem('tracs.par.runwayId', runwayId)  }, [runwayId])
-  useEffect(() => { localStorage.setItem('tracs.par.gsAngle',  gsAngleRaw) }, [gsAngleRaw])
-  useEffect(() => { localStorage.setItem('tracs.par.rangeNm',  rangeNmRaw) }, [rangeNmRaw])
+  useEffect(() => { localStorage.setItem(`tracs.par.gsAngle.${mode}`,  gsAngleRaw)  }, [gsAngleRaw, mode])
+  useEffect(() => { localStorage.setItem(`tracs.par.rangeNm.${mode}`,  rangeNmRaw)  }, [rangeNmRaw, mode])
 
   // Sync manual fields from selected runway (handles dropdown changes and on-mount restore)
   useEffect(() => {
@@ -475,7 +503,7 @@ export function Par({
     if (!cl) return
     setManualLat(cl.thresholdLat.toFixed(6))
     setManualLng(cl.thresholdLng.toFixed(6))
-    const magHdg = cl.magHead ?? ((cl.headingRad / D2R + 180 - cl.magvar) % 360 + 360) % 360
+    const magHdg = cl.magHead ?? ((cl.headingRad / D2R + 180 - cl.declinationDeg) % 360 + 360) % 360
     setManualHdg(Math.round(magHdg).toString())
     setThreshElev(Math.round(cl.elevFt))
   }, [runwayId, centerlines]) // eslint-disable-line
@@ -494,14 +522,25 @@ export function Par({
       const deckHt     = ct?.deckHeightFt  ?? 72
       const gridHdgDeg = (carrierUnit.heading ?? 0) / D2R  // DCS grid heading
       const magvar     = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
+      // Real geographic true (grid + convergence) for the approach-corridor
+      // geometry below, which compares against bearingDeg()'s real-lat/lng
+      // bearings — see utils/magvar.js's note on the one legitimate use of
+      // theatreConvergence(). finalBearingMag is a displayed number instead
+      // (matching DCS's own cockpit reading), so it uses declination only.
       const conv       = initTheatre ? theatreConvergence(initTheatre, carrierUnit.position.lat, carrierUnit.position.lng) : 0
-      const trueHdgDeg = gridHdgDeg + conv  // geographic true heading = grid + convergence
-      const finalBearingMag = ((gridHdgDeg - deckOff - magvar) % 360 + 360) % 360
+      const trueHdgDeg = gridHdgDeg + conv
+      const { fb: finalBearingMag } = computeCarrierBrcFb(gridHdgDeg, magvar, deckOff)
+      const trueHdg    = ((trueHdgDeg - deckOff) % 360 + 360) % 360
+      // TEST HARDWIRE: TDZ is TDZ_OFFSET_FT feet aft of the carrier's
+      // reported position (along the outbound bearing, toward the
+      // approaching aircraft) — the reported point doesn't line up with
+      // the actual wires/ramp. See project memory on PAR carrier TDZ offset.
+      const tdz        = destPoint(carrierUnit.position.lat, carrierUnit.position.lng, (trueHdg + 180) % 360, TDZ_OFFSET_FT)
       return {
         ...base,
-        threshLat:  carrierUnit.position.lat,
-        threshLng:  carrierUnit.position.lng,
-        trueHdg:    ((trueHdgDeg - deckOff) % 360 + 360) % 360,
+        threshLat:  tdz.lat,
+        threshLng:  tdz.lng,
+        trueHdg,
         threshElev: deckHt,
         tch:        TCH_FT,
         finalBearingMag,
@@ -542,9 +581,9 @@ export function Par({
     for (const [id, unit] of Object.entries(units)) {
       if (!AIRBORNE.has(unit.category) || !unit.position) continue
       const proj = projectOnApproach(unit.position, approachCfg)
-      // Reject if behind the threshold, beyond display range, or below TCH (landed)
+      // Reject if behind the threshold, beyond display range, or at/below deck/field height (landed)
       if (proj.rangeFinal < 0 || proj.rangeFinal > approachCfg.rangeNm) continue
-      if (proj.altAgl <= (approachCfg.tch ?? 0)) continue
+      if (proj.altAgl <= 0) continue
       // Reject if outside the PAR azimuth service volume cone
       if (Math.abs(proj.lateralDev) > proj.rangeFinal * azConeSlope * 1.1) continue
       // Reject if above the PAR elevation service volume ceiling
@@ -581,10 +620,9 @@ export function Par({
     if (!carrierUnit?.position) return null
     const deckOff = CARRIER_TYPES[carrierUnit.name]?.deckOffset ?? 9
     const magvar  = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
-    const conv    = initTheatre ? theatreConvergence(initTheatre, carrierUnit.position.lat, carrierUnit.position.lng) : 0
     const gridHdg = (carrierUnit.heading ?? 0) / D2R
-    const brc     = ((gridHdg - magvar + 720) % 360)
-    const fb      = Math.round(((brc - deckOff + 360) % 360))
+    const { fb: fbRaw } = computeCarrierBrcFb(gridHdg, magvar, deckOff)
+    const fb = Math.round(fbRaw)
     return fb === 0 ? 360 : fb
   }, [carrierUnit, missionDate, initTheatre])
 
