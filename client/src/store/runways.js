@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { computeMagvar, theatreConvergence, missionDecimalYear } from '../utils/magvar.js'
+import { computeMagvar, missionDecimalYear } from '../utils/magvar.js'
 
 const FT_PER_NM = 6076.115
 
@@ -173,11 +173,12 @@ export const useRunwaysStore = create((set, get) => ({
           const name1 = String(rwy.name)    + (primaryIsLower ? lowerSuffix : recipSuffix)
           const name2 = String(reciprocal)  + (primaryIsLower ? recipSuffix : lowerSuffix)
 
-          // Compute magnetic headings from DCS grid heading via TM convergence + WMM.
-          // course_true_deg is a DCS grid heading; negating gives the approach direction.
-          const rwyMagvar    = computeMagvar(rwy.lat, rwy.lon, missionDate)
-          const convergence  = theatreConvergence(theatre, rwy.lat, rwy.lon)
-          const rawMagHead   = ((-rwy.course_true_deg) - rwyMagvar + 360) % 360
+          // Compute magnetic headings from DCS's raw heading via WMM declination.
+          // course_true_deg matches what DCS itself calls "true" (its own raw
+          // heading, uncorrected for grid convergence — see utils/magvar.js);
+          // negating gives the approach direction.
+          const rwyDeclination = computeMagvar(rwy.lat, rwy.lon, missionDate)
+          const rawMagHead     = ((-rwy.course_true_deg) - rwyDeclination + 360) % 360
           // Orient toward rwy.name * 10 (the primary designator direction).
           const expected     = rwy.name * 10
           const magHead      = angDist(rawMagHead, expected) <= 90 ? rawMagHead : (rawMagHead + 180) % 360
@@ -205,10 +206,6 @@ export const useRunwaysStore = create((set, get) => ({
                 end1.lat - end2.lat
               )
             : headingDeg * Math.PI / 180
-          // geoMagvar: convergence-corrected magvar for scope bearing display.
-          // = convergence + WMM magvar, matching how AicScope/CatccScope compute effectiveMagvar.
-          const geoMagvar = convergence + rwyMagvar
-
           // ── Centerlines (one per direction), carrying pavement endpoints ──
           // headingRad = bearing from end2 → end1. The primary runway (rwy.name)
           // lands in the magHead direction. If magHead aligns with headingRad the
@@ -231,8 +228,7 @@ export const useRunwaysStore = create((set, get) => ({
               headingRad:   primHeadRad,
               magHead:      magHead,
               elevFt:       rwy.elevation_ft ?? 0,
-              magvar:       rwyMagvar,
-              geoMagvar:    geoMagvar,
+              declinationDeg: rwyDeclination,
               rwyEnd1:      end1,
               rwyEnd2:      end2,
             })
@@ -248,8 +244,7 @@ export const useRunwaysStore = create((set, get) => ({
               headingRad:   otherHeadRad,
               magHead:      magHead2,
               elevFt:       rwy.elevation_ft ?? 0,
-              magvar:       rwyMagvar,
-              geoMagvar:    geoMagvar,
+              declinationDeg: rwyDeclination,
               rwyEnd1:      end1,
               rwyEnd2:      end2,
             })
@@ -301,8 +296,7 @@ export const useRunwaysStore = create((set, get) => ({
         headingRad:   c.headingRad,
         magHead:      c.magHead,
         elevFt:       c.elevFt,
-        magvar:       c.magvar,
-        geoMagvar:    c.geoMagvar,
+        declinationDeg: c.declinationDeg,
         rwyEnd1:      c.rwyEnd1,
         rwyEnd2:      c.rwyEnd2,
       }))
@@ -345,7 +339,7 @@ export const useRunwaysStore = create((set, get) => ({
 
         for (const cl of centerlines) {
           if (cl.airbase === facilityAirbase) continue
-          const clMagHead = cl.magHead ?? ((cl.headingRad * 180 / Math.PI) - cl.magvar + 180 + 360) % 360
+          const clMagHead = cl.magHead ?? ((cl.headingRad * 180 / Math.PI) - cl.declinationDeg + 180 + 360) % 360
           if (angDist(clMagHead, headA) <= angDist(clMagHead, headB)) bucketA.ids.push(cl.id)
           else bucketB.ids.push(cl.id)
         }

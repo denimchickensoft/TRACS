@@ -349,14 +349,51 @@ export function computeMagvar(latDeg, lngDeg, dateOrYear = new Date()) {
   return Math.atan2(-Y, X) / _D2R
 }
 
-// ── DCS meridian convergence ──────────────────────────────────────────────────
-// DCS uses a Transverse Mercator projection. Grid north diverges from geographic
-// north by γ = (lng − λ₀) × sin(lat), where λ₀ is the theatre central meridian.
-// DCS_magvar = IGRF_magvar + convergence, so that:
-//   DCS_grid_heading − DCS_magvar  =  geographic_true − IGRF  =  magnetic_heading
+// ── Declination vs. grid convergence — read before touching any bearing math ─
+// DCS's own map for each theatre really is a Transverse Mercator projection
+// (see /projection_params.json's real per-theatre central_meridian values),
+// so grid convergence — the angle between DCS's engine-frame "north" and
+// true geographic north — is a real, position-dependent geometric quantity.
+// It is NOT, however, something DCS's own instruments apply to the heading
+// values it exports or displays.
 //
-// Central meridians are loaded from /projection_params.json (exact DCS values).
-// Fallback table covers theatres not yet in that file (e.g. Afghanistan).
+// Verified empirically (2026-07-27) against live DCS readouts across three
+// theatres (Caucasus, Persian Gulf) and multiple positions, including one
+// (Vaziani, Caucasus) with ~8° of real convergence: a unit's raw exported
+// heading/track always matches what DCS itself labels "True" heading, to
+// within normal display rounding — even where real convergence is large.
+// DCS's "Magnetic" is then just that same raw value minus a per-theatre
+// declination, no convergence step. Subtracting convergence on top (as this
+// codebase did until 2026-07-27) produces an error equal to the local
+// convergence angle: small on theatres close to their central meridian
+// (Persian Gulf), large and obvious far from it (Caucasus).
+//
+// So: declination alone is the right correction for anything meant to match
+// what DCS itself displays or a controller would read off their own
+// instruments — BRC/FB, RBL/BRAA/bullseye labels, the canvas rotation
+// (compass rose), PTL. That covers nearly every bearing in this app. Don't
+// hand-roll this conversion at a new call site — use
+// client/src/utils/bearing.js (trueBearingRangeNm, toMagneticFromTrue,
+// toTrueFromMagnetic).
+//
+// The one legitimate exception: geometry compared directly against real
+// lat/lng math (e.g. Par.jsx's approach-corridor projection, which measures
+// an aircraft's lateral deviation against bearingDeg() computed from real
+// lat/lng). DCS's engine coordinates convert to real lat/lng through a
+// genuine TM inverse, so a runway/deck's real-world physical orientation —
+// as opposed to what DCS's cockpit displays for it — really is grid heading
+// plus real convergence. Dropping convergence there would misalign the
+// corridor by the full local convergence angle, growing with range from the
+// threshold (a few degrees of convergence over 10nm is already thousands of
+// feet of apparent lateral deviation on an aircraft that's actually on
+// course). Use theatreConvergence() only for this kind of case, added to
+// declination for a DCS grid-referenced heading being turned into a
+// geometrically real true bearing — never for anything meant to match a
+// displayed/instrument value.
+//
+// Central meridians are loaded from /projection_params.json (exact DCS values)
+// and used both for the real TM forward/inverse projection (positional
+// accuracy at range — see projection.js) and for theatreConvergence() below.
 const _FALLBACK_MERIDIAN = {
   Afghanistan: 67,
 }
@@ -374,7 +411,10 @@ export function getProjectionParams(theatre) {
   return _projectionParams?.[theatre] ?? null
 }
 
-// Returns convergence in degrees. Add to IGRF to get the DCS-equivalent magvar.
+// Grid convergence in degrees — see the note above. Only for turning a DCS
+// grid-referenced heading into a geometrically real true bearing (e.g. an
+// approach corridor compared against real lat/lng math); never for matching
+// a displayed/instrument value.
 export function theatreConvergence(theatre, latDeg, lngDeg) {
   const centralMeridian =
     _projectionParams?.[theatre]?.central_meridian ??
