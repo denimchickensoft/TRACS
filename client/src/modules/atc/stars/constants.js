@@ -14,3 +14,14 @@ export const DIR_TO_ANGLE = {
 // Directions whose leader points into the left hemisphere — text right-aligns
 // so it extends away from the contact symbol rather than back toward it.
 export const RIGHT_ALIGN_ANGLES = new Set([90, 135, 180, 225]) // S, SW, W, NW
+
+// Middle-click highlight color — shared between STARS (drawContacts.js/
+// DatablockOverlay.jsx) and ABM (drawAbmContacts.js/drawAbmGroundContacts.js),
+// overriding whatever classification/ownership color a symbol or datablock
+// would otherwise use while the contact is highlighted.
+export const HIGHLIGHT_TEAL = '#00FFFF'
+
+// ABM-only (2026-07-29) — a highlighted contact whose *effective* declaration
+// is HOSTILE/BOGEY uses purple instead of teal (FRIENDLY/NEUTRAL stay teal).
+// STARS has no declaration concept, so it always uses HIGHLIGHT_TEAL.
+export const HIGHLIGHT_PURPLE = '#C000FF'
