@@ -3,6 +3,9 @@
  *
  * All bearings stored as TRUE. Callers supply magnetic input; they convert
  * before calling (sectorAxisBearing works in either system).
+ *
+ * `declinationDeg` params below are IGRF declination (see utils/magvar.js) —
+ * the only correction this app applies to any bearing.
  */
 
 const NM_DEG_LAT = 60   // nm per degree latitude
@@ -77,7 +80,7 @@ function _cluster(contacts) {
 
 // ── Group property computation ─────────────────────────────────────────────────
 
-function _groupProps(contacts, bsLat, bsLng, magvar, sector) {
+function _groupProps(contacts, bsLat, bsLng, declinationDeg, sector) {
   const n    = contacts.length
   const lat  = contacts.reduce((s, c) => s + c.lat, 0) / n
   const lng  = contacts.reduce((s, c) => s + c.lng, 0) / n
@@ -93,7 +96,7 @@ function _groupProps(contacts, bsLat, bsLng, magvar, sector) {
   const avgSpdKts = contacts.reduce((s, c) => s + (c.speed ?? 0) * 1.94384, 0) / n
 
   const trueTrkDeg = (Math.atan2(avgVx, avgVy) * 180 / Math.PI + 360) % 360
-  const magTrkDeg  = (trueTrkDeg - magvar + 360) % 360
+  const magTrkDeg  = (trueTrkDeg - declinationDeg + 360) % 360
   const trackDir   = Math.hypot(avgVx, avgVy) > 0.5 ? _card8(magTrkDeg) : null
 
   // Velocity along axis (kts); sector.axisBearing is TRUE
@@ -107,7 +110,7 @@ function _groupProps(contacts, bsLat, bsLng, magvar, sector) {
   const bsDN   = (lat - bsLat) * NM_DEG_LAT
   const bsDE   = (lng - bsLng) * _nmPerDegLng((lat + bsLat) / 2)
   const trueBrg = (Math.atan2(bsDE, bsDN) * 180 / Math.PI + 360) % 360
-  const magBrg  = Math.round((trueBrg - magvar + 360) % 360) || 360
+  const magBrg  = Math.round((trueBrg - declinationDeg + 360) % 360) || 360
 
   const decl    = contacts.some(c => c.decl === 'HOSTILE') ? 'HOSTILE' : 'BOGEY'
   const platform = contacts.map(c => c.typeName).find(Boolean) ?? null
@@ -150,9 +153,9 @@ function _oc(lead, trail) {
 // same compass octant for both ends of a pair — unlike bearing-to-a-shared-
 // point schemes (axis or centroid), which can collide when two groups are
 // laterally close together.
-function _cardBetween(fromLat, fromLng, toLat, toLng, magvar) {
+function _cardBetween(fromLat, fromLng, toLat, toLng, declinationDeg) {
   const trueBrg = _bearingDeg(fromLat, fromLng, toLat, toLng)
-  return _card8((trueBrg - magvar + 360) % 360)
+  return _card8((trueBrg - declinationDeg + 360) % 360)
 }
 
 function _centroidOf(groups) {
@@ -211,7 +214,7 @@ function _detectFormation(groups) {
 
 // ── Group naming ───────────────────────────────────────────────────────────────
 
-function _nameGroups(formation, magvar) {
+function _nameGroups(formation, declinationDeg) {
   const { subtype, sorted } = formation
 
   switch (subtype) {
@@ -221,8 +224,8 @@ function _nameGroups(formation, magvar) {
     case 'AZIMUTH': {
       const [a, b] = [...sorted].sort((x, y) => x.A - y.A)
       return [
-        { ...a, name: `${_cardBetween(b.lat, b.lng, a.lat, a.lng, magvar)} GROUP` },
-        { ...b, name: `${_cardBetween(a.lat, a.lng, b.lat, b.lng, magvar)} GROUP` },
+        { ...a, name: `${_cardBetween(b.lat, b.lng, a.lat, a.lng, declinationDeg)} GROUP` },
+        { ...b, name: `${_cardBetween(a.lat, a.lng, b.lat, b.lng, declinationDeg)} GROUP` },
       ]
     }
 
@@ -237,8 +240,8 @@ function _nameGroups(formation, magvar) {
       const nOuter = sortedByA.length
       const first  = sortedByA[0]
       const last   = sortedByA[nOuter - 1]
-      const cardFirst = _cardBetween(last.lat, last.lng, first.lat, first.lng, magvar)
-      const cardLast  = _cardBetween(first.lat, first.lng, last.lat, last.lng, magvar)
+      const cardFirst = _cardBetween(last.lat, last.lng, first.lat, first.lng, declinationDeg)
+      const cardLast  = _cardBetween(first.lat, first.lng, last.lat, last.lng, declinationDeg)
       const aMin = first.A, totalWidth = last.A - first.A
       return sortedByA.map((g, i) => {
         let name
@@ -258,8 +261,8 @@ function _nameGroups(formation, magvar) {
       const [tL, tR] = [t1, t2].sort((a, b) => a.A - b.A)
       return [
         { ...lead, name: 'LEAD GROUP', openingClosing: _oc(lead, t1) },
-        { ...tL,   name: `${_cardBetween(tR.lat, tR.lng, tL.lat, tL.lng, magvar)} TRAIL GROUP` },
-        { ...tR,   name: `${_cardBetween(tL.lat, tL.lng, tR.lat, tR.lng, magvar)} TRAIL GROUP` },
+        { ...tL,   name: `${_cardBetween(tR.lat, tR.lng, tL.lat, tL.lng, declinationDeg)} TRAIL GROUP` },
+        { ...tR,   name: `${_cardBetween(tL.lat, tL.lng, tR.lat, tR.lng, declinationDeg)} TRAIL GROUP` },
       ]
     }
 
@@ -267,8 +270,8 @@ function _nameGroups(formation, magvar) {
       const [l1, l2, trail] = sorted
       const [lL, lR] = [l1, l2].sort((a, b) => a.A - b.A)
       return [
-        { ...lL,   name: `${_cardBetween(lR.lat, lR.lng, lL.lat, lL.lng, magvar)} LEAD GROUP` },
-        { ...lR,   name: `${_cardBetween(lL.lat, lL.lng, lR.lat, lR.lng, magvar)} LEAD GROUP` },
+        { ...lL,   name: `${_cardBetween(lR.lat, lR.lng, lL.lat, lL.lng, declinationDeg)} LEAD GROUP` },
+        { ...lR,   name: `${_cardBetween(lL.lat, lL.lng, lR.lat, lR.lng, declinationDeg)} LEAD GROUP` },
         { ...trail, name: 'TRAIL GROUP', openingClosing: _oc(l1, trail) },
       ]
     }
@@ -288,10 +291,10 @@ function _nameGroups(formation, magvar) {
       const [lL, lR] = [g0, g1].sort((a, b) => a.A - b.A)
       const [tL, tR] = [g2, g3].sort((a, b) => a.A - b.A)
       return [
-        { ...lL, name: `${_cardBetween(lR.lat, lR.lng, lL.lat, lL.lng, magvar)} LEAD GROUP`  },
-        { ...lR, name: `${_cardBetween(lL.lat, lL.lng, lR.lat, lR.lng, magvar)} LEAD GROUP`  },
-        { ...tL, name: `${_cardBetween(tR.lat, tR.lng, tL.lat, tL.lng, magvar)} TRAIL GROUP` },
-        { ...tR, name: `${_cardBetween(tL.lat, tL.lng, tR.lat, tR.lng, magvar)} TRAIL GROUP` },
+        { ...lL, name: `${_cardBetween(lR.lat, lR.lng, lL.lat, lL.lng, declinationDeg)} LEAD GROUP`  },
+        { ...lR, name: `${_cardBetween(lL.lat, lL.lng, lR.lat, lR.lng, declinationDeg)} LEAD GROUP`  },
+        { ...tL, name: `${_cardBetween(tR.lat, tR.lng, tL.lat, tL.lng, declinationDeg)} TRAIL GROUP` },
+        { ...tR, name: `${_cardBetween(tL.lat, tL.lng, tR.lat, tR.lng, declinationDeg)} TRAIL GROUP` },
       ]
     }
 
@@ -301,7 +304,7 @@ function _nameGroups(formation, magvar) {
     case 'LEADING_EDGE': {
       const leadSlice  = sorted.slice(0, Math.min(3, sorted.length))
       const followSlice = sorted.slice(Math.min(3, sorted.length))
-      const named   = _nameGroups(_detectFormation(leadSlice), magvar)
+      const named   = _nameGroups(_detectFormation(leadSlice), declinationDeg)
       const follows = followSlice.map(g => ({ ...g, name: 'FOLLOW ON', isFollowOn: true }))
       return [...named, ...follows]
     }
@@ -313,7 +316,7 @@ function _nameGroups(formation, magvar) {
 
 // ── Amplifiers ─────────────────────────────────────────────────────────────────
 
-function _amplifiers(formation, magvar) {
+function _amplifiers(formation, declinationDeg) {
   const { subtype, sorted } = formation
   const result = { openingClosing: null, weighted: null, echelon: null, dimensionStr: '', followOnNm: null }
 
@@ -328,7 +331,7 @@ function _amplifiers(formation, magvar) {
       const d = Math.abs(sorted[1].R - sorted[0].R)
       if (d > 5) {
         const [near, off] = sorted[1].R > sorted[0].R ? [sorted[0], sorted[1]] : [sorted[1], sorted[0]]
-        result.echelon = _cardBetween(near.lat, near.lng, off.lat, off.lng, magvar)
+        result.echelon = _cardBetween(near.lat, near.lng, off.lat, off.lng, declinationDeg)
       }
       break
     }
@@ -338,7 +341,7 @@ function _amplifiers(formation, magvar) {
       const w = Math.round(Math.abs(sorted[1].A - sorted[0].A))
       result.dimensionStr    = `${d}`
       result.openingClosing  = _oc(sorted[0], sorted[1])
-      if (w >= 3) result.echelon = _cardBetween(sorted[0].lat, sorted[0].lng, sorted[1].lat, sorted[1].lng, magvar)
+      if (w >= 3) result.echelon = _cardBetween(sorted[0].lat, sorted[0].lng, sorted[1].lat, sorted[1].lng, declinationDeg)
       break
     }
 
@@ -351,7 +354,7 @@ function _amplifiers(formation, magvar) {
         for (let i = 1; i < sortedByA.length - 1; i++) {
           const frac = (sortedByA[i].A - aMin) / totalWidth
           if (frac < 1 / 3 || frac > 2 / 3) {
-            result.weighted = _cardBetween(midLat, midLng, sortedByA[i].lat, sortedByA[i].lng, magvar)
+            result.weighted = _cardBetween(midLat, midLng, sortedByA[i].lat, sortedByA[i].lng, declinationDeg)
             break
           }
         }
@@ -368,7 +371,7 @@ function _amplifiers(formation, magvar) {
       const tSpan = Math.abs(t2.A - t1.A)
       if (tSpan > 0 && Math.abs(lead.A - midA) > tSpan / 3) {
         const midLat = (t1.lat + t2.lat) / 2, midLng = (t1.lng + t2.lng) / 2
-        result.weighted = _cardBetween(midLat, midLng, lead.lat, lead.lng, magvar)
+        result.weighted = _cardBetween(midLat, midLng, lead.lat, lead.lng, declinationDeg)
       }
       break
     }
@@ -382,7 +385,7 @@ function _amplifiers(formation, magvar) {
       const lSpan = Math.abs(l2.A - l1.A)
       if (lSpan > 0 && Math.abs(trail.A - midA) > lSpan / 3) {
         const midLat = (l1.lat + l2.lat) / 2, midLng = (l1.lng + l2.lng) / 2
-        result.weighted = _cardBetween(midLat, midLng, trail.lat, trail.lng, magvar)
+        result.weighted = _cardBetween(midLat, midLng, trail.lat, trail.lng, declinationDeg)
       }
       break
     }
@@ -464,7 +467,7 @@ const _SUBTYPE_WORD = {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-export function computePicture(visibleUnits, getEffectiveDecl, myCoalitionNum, sector, bsLat, bsLng, magvar) {
+export function computePicture(visibleUnits, getEffectiveDecl, myCoalitionNum, sector, bsLat, bsLng, declinationDeg) {
   // Hostile/bogey contacts — scoped to the sector if one is set, otherwise
   // every visible hostile/bogey is in play.
   const contacts = []
@@ -499,12 +502,12 @@ export function computePicture(visibleUnits, getEffectiveDecl, myCoalitionNum, s
 
   const axis = _deriveThreatAxis(contacts, friendlies, sector, bsLat, bsLng)
 
-  const groups = _cluster(contacts).map(c => _groupProps(c, bsLat, bsLng, magvar, axis))
+  const groups = _cluster(contacts).map(c => _groupProps(c, bsLat, bsLng, declinationDeg, axis))
   groups.sort((a, b) => a.R - b.R)
 
   const formation   = _detectFormation(groups)
-  const namedGroups = _nameGroups(formation, magvar)
-  const ampls       = _amplifiers(formation, magvar)
+  const namedGroups = _nameGroups(formation, declinationDeg)
+  const ampls       = _amplifiers(formation, declinationDeg)
 
   // Hard guarantee: no two groups ever share a display name. Mutual-bearing
   // naming makes collisions essentially impossible (two distinct points'

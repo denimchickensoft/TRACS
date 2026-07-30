@@ -4,14 +4,15 @@ import { useUnitsStore }       from '../../store/units.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { useAicStore, DECLARATION, ROE_STATE } from '../../store/aic.js'
-import { useAtcStore }          from '../../store/atc.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
+import { resolveCallsign }      from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useRunwaysStore }       from '../../store/runways.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../atc/stars/canvas/projection.js'
 import { resolveSlew }         from '../atc/stars/input/slewResolver.js'
-import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
+import { computeMagvar } from '../../utils/magvar.js'
+import { trueBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
 import { drawAicContacts }     from './canvas/drawAicContacts.js'
 import { drawGeo }             from '../atc/stars/canvas/drawGeo.js'
@@ -25,6 +26,8 @@ import './AicScope.css'
 
 const WINDOW_ID = 'aic-main'
 const AIC_SETTINGS_KEY = 'aic-settings'
+const AIC_AUTOTHREAT_KEY = 'tracs-aic-autothreat'
+const AIC_PICTURE_KEY = 'tracs-aic-showpicture'
 const AIC_WIN_FIELDS = [
   'rangeNm', 'ringSpacingNm', 'ptlSeconds', 'symSize',
   'fadedSeconds', 'threatRadius', 'centerLat', 'centerLng',
@@ -113,6 +116,13 @@ function picFillIns(g) {
   return parts.join('  ')
 }
 
+function nmBetween(a, b) {
+  const nmPerDegLng = 60 * Math.cos(a.lat * Math.PI / 180)
+  const dN = (b.lat - a.lat) * 60
+  const dE = (b.lng - a.lng) * nmPerDegLng
+  return Math.hypot(dN, dE)
+}
+
 function findNearestBogey(fighterId, fighterUnit, units, declarations, myCoalitionNum) {
   if (!fighterUnit?.position) return null
   let nearestId = null, nearestDist = Infinity
@@ -160,19 +170,10 @@ function subcardinal(deg) {
   return dirs[Math.round(((deg % 360) + 360) % 360 / 45) % 8]
 }
 
-function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, magvar) {
-  const nmPerDegLng = 60 * Math.cos(bsLat * Math.PI / 180)
-  const dN = (lat - bsLat) * 60
-  const dE = (lng - bsLng) * nmPerDegLng
-  const trueBrg = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360
-  const magBrg  = ((trueBrg - magvar) + 360) % 360
-  const range   = Math.hypot(dN, dE)
-  return { brg: Math.round(magBrg) || 360, range: Math.round(range) }
-}
-
-function resolveCallsignDisplay(unit) {
-  const override = useAtcStore.getState().callsignOverrides[String(unit.id)]
-  return override || unit.callsign || unit.unitName || unit.name || '?'
+function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, declinationDeg) {
+  const { trueBearingDeg, rangeNm } = trueBearingRangeNm(bsLat, bsLng, lat, lng)
+  const magBrg = toMagneticFromTrue(trueBearingDeg, declinationDeg)
+  return { brg: Math.round(magBrg) || 360, range: Math.round(rangeNm) }
 }
 
 export default function AicScope() {
@@ -237,16 +238,17 @@ export default function AicScope() {
     useReliefStore.getState().loadForTheatre(theatre)
   }, [theatre])
 
-  const magvar      = computeMagvar(centerLat, centerLng, missionDate)
-  const convergence = theatre ? theatreConvergence(theatre, centerLat, centerLng) : 0
-  const effectiveMagvar = magvar + convergence
+  // declinationDeg (IGRF) is the only correction this app applies — see
+  // utils/magvar.js: DCS's own heading readouts don't apply grid
+  // convergence, so this app doesn't add it either.
+  const declinationDeg = computeMagvar(centerLat, centerLng, missionDate)
 
   const centerLatRef = useRef(centerLat)
   const centerLngRef = useRef(centerLng)
-  const magvarRef    = useRef(effectiveMagvar)
+  const declinationRef = useRef(declinationDeg)
   useEffect(() => { centerLatRef.current = centerLat }, [centerLat])
   useEffect(() => { centerLngRef.current = centerLng }, [centerLng])
-  useEffect(() => { magvarRef.current = effectiveMagvar }, [effectiveMagvar])
+  useEffect(() => { declinationRef.current = declinationDeg }, [declinationDeg])
 
   const rangeNm       = windowSettings?.rangeNm       ?? 120
   const ringSpacingNm = windowSettings?.ringSpacingNm ?? 20
@@ -310,7 +312,7 @@ export default function AicScope() {
       rangeNm:     ws.rangeNm ?? 120,
       pixelsPerNm: rangeToPixelsPerNm(ws.rangeNm ?? 120, size, size),
       width: size, height: size,
-      magvar: magvarRef.current,
+      declinationDeg: declinationRef.current,
       theatre,
     }
   }, [theatre])
@@ -331,7 +333,7 @@ export default function AicScope() {
     return () => ro.disconnect()
   }, [hasWindowSettings]) // eslint-disable-line
 
-  useEffect(() => { setView(buildView()) }, [centerLat, centerLng, effectiveMagvar, windowSettings?.rangeNm]) // eslint-disable-line
+  useEffect(() => { setView(buildView()) }, [centerLat, centerLng, declinationDeg, windowSettings?.rangeNm]) // eslint-disable-line
 
   useEffect(() => {
     let saved = null
@@ -385,10 +387,54 @@ export default function AicScope() {
     setThreatRings(prev => { const n = new Set(prev); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
   const threatRadius = windowSettings?.threatRadius ?? 45
 
+  // .autothreat (2026-07-10) — local UI toggle (not shared with other
+  // controllers), persisted to its own localStorage key rather than via
+  // AIC_SETTINGS_KEY since it isn't backed by a subscribed store. While on,
+  // rings light automatically on every friendly aircraft within threatRadius
+  // of a HOSTILE/BOGEY aircraft; auto-lit rings are tracked separately from
+  // threatRings (manual Ctrl+Alt+click/.threat+click) and just union at draw
+  // time, so auto fully owns a contact's ring for as long as the breach lasts.
+  const [autoThreat, setAutoThreatState] = useState(() => {
+    try { return localStorage.getItem(AIC_AUTOTHREAT_KEY) === 'true' } catch { return false }
+  })
+  const setAutoThreat = (enabled) => {
+    setAutoThreatState(enabled)
+    try { localStorage.setItem(AIC_AUTOTHREAT_KEY, String(enabled)) } catch {}
+  }
+  const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
+
+  useEffect(() => {
+    if (!autoThreat) { setAutoThreatRingIds(new Set()); return }
+    const friendlies = []
+    const hostiles   = []
+    for (const [id, unit] of Object.entries(visibleUnits)) {
+      if (!unit.position) continue
+      const decl = getEffectiveDeclaration(id, unit, myCoalitionNum)
+      if (decl === DECLARATION.FRIENDLY) friendlies.push([id, unit])
+      else if (decl === DECLARATION.HOSTILE || decl === DECLARATION.BOGEY) hostiles.push(unit)
+    }
+    const breached = new Set()
+    for (const [id, unit] of friendlies) {
+      if (hostiles.some(h => nmBetween(unit.position, h.position) <= threatRadius)) breached.add(id)
+    }
+    setAutoThreatRingIds(breached)
+  }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius]) // eslint-disable-line
+
   // .centroid / .axis — debug toggles for the hostile-picture centroid and
   // the dynamic threat axis line derived from it (see computePicture.js).
   const [showCentroid, setShowCentroid] = useState(false)
   const [showAxis, setShowAxis] = useState(false)
+
+  // .picture — toggles visibility of the PICTURE readout panel. Local UI
+  // preference (not shared with other controllers), persisted to its own
+  // localStorage key like .autothreat. Off by default.
+  const [showPicture, setShowPictureState] = useState(() => {
+    try { return localStorage.getItem(AIC_PICTURE_KEY) === 'true' } catch { return false }
+  })
+  const setShowPicture = (enabled) => {
+    setShowPictureState(enabled)
+    try { localStorage.setItem(AIC_PICTURE_KEY, String(enabled)) } catch {}
+  }
 
   const fadedRef       = useRef({})
   const prevVisibleRef = useRef({})
@@ -443,10 +489,13 @@ export default function AicScope() {
     const toMag   = parseFloat(m[2]) % 360
     const rng     = parseFloat(m[3])
     if (isNaN(fromMag) || isNaN(toMag) || isNaN(rng) || rng <= 0) return null
-    const fromTrue = (fromMag + effectiveMagvar + 360) % 360
-    const toTrue   = (toMag   + effectiveMagvar + 360) % 360
+    // fromMag/toMag are user-typed magnetic bearings; convert to true for
+    // computePicture.js's _inSector, which compares against lat/lng-derived
+    // true bearings.
+    const fromTrue = toTrueFromMagnetic(fromMag, declinationDeg)
+    const toTrue   = toTrueFromMagnetic(toMag, declinationDeg)
     return { fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng, axisBearing: sectorAxisBearing(fromTrue, toTrue) }
-  }, [cmdBuffer, effectiveMagvar, sector])
+  }, [cmdBuffer, declinationDeg, sector])
 
   // Ref so event callbacks can always read the current pendingSector value
   const pendingSectorRef = useRef(null)
@@ -518,23 +567,26 @@ export default function AicScope() {
       myCoalitionNum,
       sector,
       bullseyeLat, bullseyeLng,
-      effectiveMagvar,
+      declinationDeg,
     )
-  }, [visibleUnits, declarations, myCoalitionNum, sector, bullseyeLat, bullseyeLng, effectiveMagvar]) // eslint-disable-line
+  }, [visibleUnits, declarations, myCoalitionNum, sector, bullseyeLat, bullseyeLng, declinationDeg]) // eslint-disable-line
 
   // Contacts + sector preview
   useEffect(() => {
     if (!view || !contactsRef.current) return
     const ctx = contactsRef.current.getContext('2d')
     const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
-    drawAicContacts(ctx, view, visibleUnits, getDecl, ptlSeconds, symSize, braaList, rangeNm, rbl, effectiveMagvar,
-      threatRings, threatRadius, fadedRef.current, Date.now(), findMarker,
+    const mergedThreatRings = autoThreatRingIds.size
+      ? new Set([...threatRings, ...autoThreatRingIds])
+      : threatRings
+    drawAicContacts(ctx, view, visibleUnits, getDecl, ptlSeconds, symSize, braaList, rangeNm, rbl, declinationDeg,
+      mergedThreatRings, threatRadius, fadedRef.current, Date.now(), findMarker,
       showCentroid ? picture?.centroid : null,
       showAxis && picture?.axisOrigin ? { origin: picture.axisOrigin, axisBearing: picture.axisBearing } : null)
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }
-  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, effectiveMagvar, threatRings, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
+  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRings, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
 
   // RBL drag (left-click) — only arms once the drag clears a threshold, so
   // plain left-clicks used for declare/BRAA/sector/etc. don't touch the RBL
@@ -605,8 +657,8 @@ export default function AicScope() {
         const rng = parseFloat(parts[1])
         if (!isNaN(brg) && !isNaN(rng)) {
           const nmPerDegLng = 60 * Math.cos(bullseyeLat * Math.PI / 180)
-          const magv    = magvarRef.current
-          const trueRad = ((brg + magv) % 360) * Math.PI / 180
+          // brg is a user-typed magnetic bearing; convert to true for the lat/lng walk.
+          const trueRad = ((brg + declinationRef.current) % 360) * Math.PI / 180
           const newLat  = bullseyeLat + (rng * Math.cos(trueRad)) / 60
           const newLng  = bullseyeLng + (rng * Math.sin(trueRad)) / nmPerDegLng
           displayStore.updateWindow(WINDOW_ID, { centerLat: newLat, centerLng: newLng, centerOverridden: true })
@@ -677,14 +729,12 @@ export default function AicScope() {
       const [, oldLetter, newLetter] = str.match(/^\.class\s+([fnbh])\s+([fnbh])$/)
       const oldDecl = CLASS_LETTER[oldLetter]
       const newDecl = CLASS_LETTER[newLetter]
-      let count = 0
       for (const [id, unit] of Object.entries(visibleUnitsRef.current)) {
         if (getEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
           setDeclaration(id, newDecl)
-          count++
         }
       }
-      setCmdFeedback(`CLASS ${oldDecl} → ${newDecl}: ${count}`)
+      setCmdFeedback(`CLASS ${oldDecl} → ${newDecl}`)
     } else if (str === '.autoclass') {
       // Toggles autoclassification (2026-07-08). Turning it ON sets every
       // currently-visible contact to its TRUE (coalition-based) classification
@@ -695,15 +745,20 @@ export default function AicScope() {
       const next = !autoClassify
       setAutoClassify(next)
       if (next) {
-        let count = 0
         for (const [id, unit] of Object.entries(visibleUnitsRef.current)) {
           setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
-          count++
         }
-        setCmdFeedback(`AUTOCLASS ON: ${count}`)
+        setCmdFeedback('AUTOCLASS ON')
       } else {
         setCmdFeedback('AUTOCLASS OFF')
       }
+    } else if (str === '.autothreat') {
+      // Toggles automatic threat rings (2026-07-10): while on, every friendly
+      // aircraft within threatRadius of a HOSTILE/BOGEY aircraft gets its ring
+      // lit until the breach clears — see the useEffect above.
+      const next = !autoThreat
+      setAutoThreat(next)
+      setCmdFeedback(next ? 'AUTOTHREAT ON' : 'AUTOTHREAT OFF')
     } else if (str === '.roe free') {
       setRoe(ROE_STATE.FREE)
       setCmdFeedback('WEAPONS FREE')
@@ -742,6 +797,9 @@ export default function AicScope() {
     } else if (str === '.axis') {
       setShowAxis(!showAxis)
       setCmdFeedback(!showAxis ? 'AXIS ON' : 'AXIS OFF')
+    } else if (str === '.picture') {
+      setShowPicture(!showPicture)
+      setCmdFeedback(!showPicture ? 'PICTURE ON' : 'PICTURE OFF')
     } else if (str === '.sector') {
       if (sectorRef.current) { setSectorVisible(true); setCmdFeedback('SECTOR ON') }
       else { setCmdFeedback('NO SECTOR') }
@@ -757,9 +815,11 @@ export default function AicScope() {
       const fromMag  = parseFloat(parts[0]) % 360
       const toMag    = parseFloat(parts[1]) % 360
       const rng      = parseFloat(parts[2])
-      const magv     = magvarRef.current
-      const fromTrue = (fromMag + magv + 360) % 360
-      const toTrue   = (toMag   + magv + 360) % 360
+      // Same conversion as the pendingSector useMemo above (matching
+      // computePicture.js's true-referenced comparisons).
+      const decl     = declinationRef.current
+      const fromTrue = toTrueFromMagnetic(fromMag, decl)
+      const toTrue   = toTrueFromMagnetic(toMag, decl)
       setSector({
         origin:      { lat: bullseyeLat, lng: bullseyeLng },
         fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng,
@@ -900,6 +960,14 @@ export default function AicScope() {
 
     const buf = cmdBuffer.trim().toLowerCase()
 
+    if (buf === '.center') {
+      const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
+      displayStore.updateWindow(WINDOW_ID, { centerLat: ll.lat, centerLng: ll.lng, centerOverridden: true })
+      setCmdFeedback('CENTERED')
+      clearCmd()
+      return
+    }
+
     if (buf === '.threat' || buf.match(/^\.threat\s+\d+(\.\d+)?$/)) {
       if (target) {
         if (buf !== '.threat') {
@@ -974,9 +1042,9 @@ export default function AicScope() {
     const altFt      = Math.round((unit.position.alt ?? 0) * 3.28084)
     const altK       = Math.round(altFt / 1000)
     const trueTrkDeg = ((unit.track ?? 0) * 180 / Math.PI + 360) % 360
-    const magTrkDeg  = Math.round(((trueTrkDeg - effectiveMagvar) + 360) % 360) || 360
+    const magTrkDeg  = Math.round(toMagneticFromTrue(trueTrkDeg, declinationDeg)) || 360
     const { brg, range } = bearingRangeFromBullseye(
-      unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, effectiveMagvar
+      unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg
     )
     const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
     const isFriendly = decl === 'FRIENDLY'
@@ -984,7 +1052,7 @@ export default function AicScope() {
     const typeName  = typeRevealed
       ? (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
       : null
-    const callsign  = isFriendly ? resolveCallsignDisplay(unit) : null
+    const callsign  = isFriendly ? resolveCallsign(unit) : null
     const spdKts    = Math.round((unit.speed ?? 0) * 1.94384)
 
     return {
@@ -997,15 +1065,15 @@ export default function AicScope() {
       flags:    speedFlags(unit),
       callsign,
     }
-  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, effectiveMagvar, declarations, myCoalitionNum]) // eslint-disable-line
+  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum]) // eslint-disable-line
 
   const cursorBullseye = useMemo(() => {
     if (!cursorLatLng || !bullseyeEntry) return null
     const { brg, range } = bearingRangeFromBullseye(
-      cursorLatLng.lat, cursorLatLng.lng, bullseyeLat, bullseyeLng, effectiveMagvar
+      cursorLatLng.lat, cursorLatLng.lng, bullseyeLat, bullseyeLng, declinationDeg
     )
     return `${String(brg).padStart(3, '0')} / ${range}`
-  }, [cursorLatLng, bullseyeLat, bullseyeLng, effectiveMagvar, bullseyeEntry])
+  }, [cursorLatLng, bullseyeLat, bullseyeLng, declinationDeg, bullseyeEntry])
 
   const isPictureAlert = useMemo(() => {
     if (!picture || picture.labelKey === 'CLEAN') return false
@@ -1047,7 +1115,7 @@ export default function AicScope() {
     cmdPreview = `${DECL_LABEL[pendingDeclaration]} +`
   } else if (pendingBraaFighter) {
     const fu = visibleUnits[pendingBraaFighter]
-    cmdPreview = `BRAA: ${fu ? resolveCallsignDisplay(fu) : pendingBraaFighter} → ?`
+    cmdPreview = `BRAA: ${fu ? resolveCallsign(fu) : pendingBraaFighter} → ?`
   } else if (cmdBuffer) {
     cmdPreview = cmdBuffer
   }
@@ -1107,8 +1175,9 @@ export default function AicScope() {
           </div>
         )}
 
-        {/* PICTURE readout — top left, below ROE. Click to acknowledge NEW PICTURE. */}
-        {picture && (
+        {/* PICTURE readout — top left, below ROE. Click to acknowledge NEW PICTURE.
+            Hidden by default; toggled with the .picture command. */}
+        {showPicture && picture && (
           <div
             className="aic-picture"
             onClick={() => {

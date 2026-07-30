@@ -74,8 +74,8 @@ export function drawPtl(ctx, x, y, unit, view, ptlSeconds, color) {
   const distNm = (unit.speed * ptlSeconds) / 1852
   if (distNm < 0.01) return
 
-  // Rotate track by display magvar so PTL aligns with the magnetic-north-up canvas
-  const magTrackRad = unit.track - view.magvar * Math.PI / 180
+  // Rotate track by declination so PTL aligns with the magnetic-north-up canvas.
+  const magTrackRad = unit.track - view.declinationDeg * Math.PI / 180
   const endX = x + Math.sin(magTrackRad) * distNm * view.pixelsPerNm
   const endY = y - Math.cos(magTrackRad) * distNm * view.pixelsPerNm
 
@@ -166,7 +166,7 @@ function drawBraaOverlays(ctx, view, braaList, units, rangeNm) {
   }
 }
 
-function drawRbl(ctx, view, rbl, magvar) {
+function drawRbl(ctx, view, rbl, declinationDeg) {
   if (!rbl?.anchor || !rbl?.end) return
 
   const ap = latLngToCanvas(rbl.anchor.lat, rbl.anchor.lng, view)
@@ -193,7 +193,7 @@ function drawRbl(ctx, view, rbl, magvar) {
   const dE          = (rbl.end.lng - rbl.anchor.lng) * nmPerDegLng
   const range       = Math.round(Math.hypot(dN, dE))
   const trueBrg     = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360
-  const magBrg      = Math.round((trueBrg - magvar + 360) % 360) || 360
+  const magBrg      = Math.round((trueBrg - declinationDeg + 360) % 360) || 360
   const label       = `${String(magBrg).padStart(3, '0')}°M  ${range}NM`
 
   const midX = (ap.x + ep.x) / 2
@@ -266,7 +266,7 @@ function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize
 
 export function drawAicContacts(
   ctx, view, units, getDecl, ptlSeconds, symSize, braaList, rangeNm,
-  rbl = null, magvar = 0,
+  rbl = null, declinationDeg = 0,
   threatRings = new Set(), threatRadius = 45,
   fadedContacts = {}, fadedNow = 0,
   findMarker = null,
@@ -309,7 +309,7 @@ export function drawAicContacts(
   drawFadedContacts(ctx, view, fadedContacts, fadedNow, clipR, cx, cy, symSize, ptlSeconds)
 
   // RBL on top of everything
-  drawRbl(ctx, view, rbl, magvar)
+  drawRbl(ctx, view, rbl, declinationDeg)
 
   // .find marker — small green square, clipped to inner dugout circle
   if (findMarker) {
@@ -347,7 +347,7 @@ export function drawAicContacts(
   // north-up display), same as drawSector in drawAicLayers.js.
   if (axisLine?.origin) {
     const { x: ox, y: oy } = latLngToCanvas(axisLine.origin.lat, axisLine.origin.lng, view)
-    const mag = (axisLine.axisBearing - magvar + 360) % 360
+    const mag = (axisLine.axisBearing - declinationDeg + 360) % 360
     const sin = Math.sin(mag * Math.PI / 180), cos = Math.cos(mag * Math.PI / 180)
     const len = Math.max(width, height)
 

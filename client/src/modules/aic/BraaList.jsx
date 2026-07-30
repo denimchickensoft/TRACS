@@ -1,10 +1,11 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useAicStore }  from '../../store/aic.js'
-import { useAtcStore }  from '../../store/atc.js'
 import { useUnitsStore } from '../../store/units.js'
+import { resolveCallsign } from '../../utils/callsign.js'
 import { useSessionStore } from '../../store/session.js'
-import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
+import { computeMagvar } from '../../utils/magvar.js'
+import { trueBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
 import { DECLARATION } from '../../store/aic.js'
 import { computeAicIntercept } from './aicGeometry.js'
 import './BraaList.css'
@@ -31,19 +32,12 @@ const safeNum = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
 
-function computeBraa(fighter, bogey, magvar) {
+function computeBraa(fighter, bogey, declinationDeg) {
   const fp = fighter.position, bp = bogey.position
   if (!fp || !bp) return null
 
-  const avgLat      = (fp.lat + bp.lat) / 2
-  const nmPerDegLng = 60 * Math.cos(avgLat * Math.PI / 180)
-  const dN          = (bp.lat - fp.lat) * 60
-  const dE          = (bp.lng - fp.lng) * nmPerDegLng
-  const rangeNm     = Math.hypot(dN, dE)
-
-  const trueBrgRad = Math.atan2(dE, dN)
-  const trueBrgDeg = (trueBrgRad * 180 / Math.PI + 360) % 360
-  const magBrgDeg  = ((trueBrgDeg - magvar) + 360) % 360
+  const { trueBearingDeg: trueBrgDeg, rangeNm } = trueBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng)
+  const magBrgDeg = toMagneticFromTrue(trueBrgDeg, declinationDeg)
 
   const altFt      = Math.round((bp.alt ?? 0) * 3.28084)
   const altRounded = Math.round(altFt / 100) * 100
@@ -68,11 +62,13 @@ function computeBraa(fighter, bogey, magvar) {
   }
 }
 
-function computeIntercept(fighter, bogey, magvar) {
+// declinationDeg must be IGRF declination ONLY — computeAicIntercept's
+// interceptRad is derived from lat/lng + unit.track, both true-referenced.
+function computeIntercept(fighter, bogey, declinationDeg) {
   const result = computeAicIntercept(fighter, bogey)
   if (!result) return null
   const interceptTrueDeg = (result.interceptRad * 180 / Math.PI + 360) % 360
-  const interceptMagDeg  = ((interceptTrueDeg - magvar) + 360) % 360
+  const interceptMagDeg  = toMagneticFromTrue(interceptTrueDeg, declinationDeg)
   return {
     heading:    Math.round(interceptMagDeg) || 360,
     ttiSeconds: Math.round(result.ttiHours * 3600),
@@ -92,11 +88,7 @@ function shortType(unit) {
 
 function resolveDisplay(unit, isFriendly) {
   if (!unit) return '?'
-  if (isFriendly) {
-    const override = useAtcStore.getState().callsignOverrides[String(unit.id)]
-    return override || unit.callsign || unit.unitName || shortType(unit)
-  }
-  return shortType(unit)
+  return isFriendly ? resolveCallsign(unit) : shortType(unit)
 }
 
 // ── BraaList component ────────────────────────────────────────────────────────
@@ -119,7 +111,6 @@ export function BraaList({ docked = true, width, onResize, onUndock, onHide, onS
   const declarations      = useAicStore(s => s.declarations)
   const myCoalitionNum    = { blue: 2, red: 1, gm: 2, admin: 2 }[coalition] ?? 2
 
-  const theatre     = mission?.mission?.theatre
   const missionDate = mission?.mission?.dateAndTime?.date ?? null
   const bullseyes   = useSessionStore(s => s.bullseyes)
 
@@ -134,11 +125,10 @@ export function BraaList({ docked = true, width, onResize, onUndock, onHide, onS
   const bsLat = bullseyeEntry?.latitude  ?? 0
   const bsLng = bullseyeEntry?.longitude ?? 0
 
-  const magvar = useMemo(() => {
-    const mv   = computeMagvar(bsLat, bsLng, missionDate)
-    const conv = theatre ? theatreConvergence(theatre, bsLat, bsLng) : 0
-    return mv + conv
-  }, [bsLat, bsLng, missionDate, theatre])
+  const declinationDeg = useMemo(
+    () => computeMagvar(bsLat, bsLng, missionDate),
+    [bsLat, bsLng, missionDate]
+  )
 
   // Title bar: scroll wheel changes zoom scale
   const [scale,     setScale]     = useState(() => {
@@ -169,15 +159,15 @@ export function BraaList({ docked = true, width, onResize, onUndock, onHide, onS
   const rows = useMemo(() => braaList.map(pair => {
     const fighter = units[pair.fighterId]
     const bogey   = units[pair.bogeyId]
-    const braa      = (fighter && bogey) ? computeBraa(fighter, bogey, magvar) : null
-    const intercept = (fighter && bogey) ? computeIntercept(fighter, bogey, magvar) : null
+    const braa      = (fighter && bogey) ? computeBraa(fighter, bogey, declinationDeg) : null
+    const intercept = (fighter && bogey) ? computeIntercept(fighter, bogey, declinationDeg) : null
     const fighterDecl = fighter ? getEffectiveDecl(pair.fighterId, fighter, myCoalitionNum) : null
     const bogeyDecl   = bogey   ? getEffectiveDecl(pair.bogeyId,   bogey,   myCoalitionNum) : null
     const fighterLabel = resolveDisplay(fighter, fighterDecl === 'FRIENDLY')
     const bogeyLabel   = resolveDisplay(bogey,   bogeyDecl   === 'FRIENDLY')
     const bogeyFlags = speedFlags(bogey)
     return { ...pair, fighter, bogey, braa, intercept, fighterLabel, bogeyLabel, fighterDecl, bogeyDecl, bogeyFlags }
-  }), [braaList, units, magvar, declarations, myCoalitionNum]) // eslint-disable-line
+  }), [braaList, units, declinationDeg, declarations, myCoalitionNum]) // eslint-disable-line
 
   return (
     <div className="braa" style={style}>

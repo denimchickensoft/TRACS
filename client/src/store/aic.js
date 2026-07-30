@@ -19,6 +19,19 @@ export function registerAicBroadcast(fn) {
   _broadcastFn = fn
 }
 
+// autoClassify is a local UI preference, not session data — persisted to
+// localStorage (2026-07-09) so it survives a page refresh even when no other
+// AIC peer is connected to STATE_DUMP it back to you.
+const AUTOCLASS_STORAGE_KEY = 'tracs.aic.autoClassify'
+
+function loadStoredAutoClassify() {
+  try {
+    return localStorage.getItem(AUTOCLASS_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export function applyAicDeclaration(unitId, classification) {
   useAicStore.getState()._applyDeclaration(unitId, classification)
 }
@@ -46,7 +59,7 @@ export function applyAicDeclarationsReset() {
 export const useAicStore = create((set, get) => ({
   declarations:       {},    // { [unitId]: DECLARATION }
   roe:                null,  // ROE_STATE | null
-  autoClassify:       false, // .autoclass (2026-07-08) — see setAutoClassify below
+  autoClassify:       loadStoredAutoClassify(), // .autoclass (2026-07-08) — see setAutoClassify below
   braaList:           [],    // [{ id, fighterId, bogeyId }] — local, not synced
   pendingBraaFighter: null,  // unitId awaiting second Ctrl+click
 
@@ -117,3 +130,12 @@ export const useAicStore = create((set, get) => ({
 
   reset: () => set({ declarations: {}, roe: null, autoClassify: false, braaList: [], pendingBraaFighter: null }),
 }))
+
+useAicStore.subscribe((state, prevState) => {
+  if (state.autoClassify === prevState.autoClassify) return
+  try {
+    localStorage.setItem(AUTOCLASS_STORAGE_KEY, String(state.autoClassify))
+  } catch {
+    // ignore (e.g. private browsing quota)
+  }
+})

@@ -52,8 +52,8 @@ export function drawAicLayers(ctx, view, rangeNm, ringSpacingNm, bullseyeLat, bu
 
 /**
  * Draw a sector wedge (two radials + arc).
- * sector.fromBearing and .toBearing are TRUE bearings; view.magvar is applied
- * to convert to canvas angles (magnetic-north-up display).
+ * sector.fromBearing and .toBearing are TRUE bearings (lat/lng-derived);
+ * view.declinationDeg converts to canvas angles (magnetic-north-up display).
  * isPreview: dashed / lower opacity while user is still placing.
  */
 export function drawSector(ctx, view, sector, isPreview = false) {
@@ -64,8 +64,8 @@ export function drawSector(ctx, view, sector, isPreview = false) {
   const r = rangeNm * view.pixelsPerNm
 
   // Convert TRUE bearings to MAGNETIC for canvas (magnetic-north-up)
-  const fromMag = (fromBearing - view.magvar + 360) % 360
-  const toMag   = (toBearing   - view.magvar + 360) % 360
+  const fromMag = (fromBearing - view.declinationDeg + 360) % 360
+  const toMag   = (toBearing   - view.declinationDeg + 360) % 360
 
   // Canvas arc angles: magnetic bearing 0° (north) = canvas -π/2
   const startAngle = fromMag * Math.PI / 180 - Math.PI / 2
