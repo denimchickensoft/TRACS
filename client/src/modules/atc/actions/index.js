@@ -26,6 +26,7 @@ import { useProceduresStore }  from '../../../store/procedures.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
+import { saveStarsPrefs } from '../../../store/starsPrefs.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -529,6 +530,16 @@ export function TOGGLE_COORDS() {
   ok()
 }
 
+// Datablock collision avoidance — shared algorithm w/ CATCC/ABM, see
+// utils/datablockPlacement.js. Off by default for STARS, persisted locally.
+export function TOGGLE_DBCA() {
+  const win  = getDisplay().windows[WINDOW_ID]
+  const next = !(win?.dbca ?? false)
+  getDisplay().updateWindow(WINDOW_ID, { dbca: next })
+  saveStarsPrefs({ dbca: next })
+  ok()
+}
+
 // ── Find fix / navaid / airport ───────────────────────────────────────────────
 
 export function FIND_FIX({ captures }) {
@@ -573,6 +584,7 @@ const ACTION_MAP = {
   SET_ASP_COLORS,
   REFRESH_ASP_COLORS,
   TOGGLE_COORDS,
+  TOGGLE_DBCA,
   FIND_FIX,
   RENAME_CALLSIGN,
   RESET_CALLSIGN,

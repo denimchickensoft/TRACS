@@ -1,4 +1,5 @@
 import { latLngToCanvas } from './projection.js'
+import { HIGHLIGHT_TEAL } from '../constants.js'
 
 /**
  * Draw an octagon (8-sided polygon) centred at (cx, cy).
@@ -37,7 +38,7 @@ const BLINK_DIM    = '#C0C0C0'
 const PO_BLINK_ON  = '#FFFF00'
 const PO_BLINK_OFF = '#808000'
 
-export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8, blinkingUids = null, blinkOn = true, poReceivingUids = null) {
+export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8, blinkingUids = null, blinkOn = true, poReceivingUids = null, highlightedUids = null) {
   const width  = ctx.canvas.width
   const height = ctx.canvas.height
   const { colors, symbol } = visual
@@ -100,9 +101,11 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
       ctx.globalAlpha = 1.0
     }
 
-    // --- Contact symbol ---
-    const isBlinkUnit = blinkingUids?.has(String(id)) ?? false
-    const isPoUnit    = poReceivingUids?.has(String(id)) ?? false
+    // --- Contact symbol --- (highlight does NOT touch the symbol shape/color —
+    // only the interior text, below, per 2026-07-29 direction)
+    const isBlinkUnit    = blinkingUids?.has(String(id)) ?? false
+    const isPoUnit       = poReceivingUids?.has(String(id)) ?? false
+    const isHighlighted  = highlightedUids?.has(String(id)) ?? false
     drawOctagon(ctx, x, y, radius, rotDeg)
     if (filled) {
       ctx.fillStyle = colors.contact
@@ -119,8 +122,9 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
     const letterPx   = 10 + csPos * 2
     const fontPx     = isAsterisk ? Math.round(letterPx * 1.76) : letterPx
     const baseColor  = entry.mine ? colors.fdbText : colors.ldbText
-    const letColor   = isPoUnit    ? (blinkOn ? PO_BLINK_ON : PO_BLINK_OFF)
-                     : isBlinkUnit ? (blinkOn ? colors.fdbText : BLINK_DIM)
+    const letColor   = isHighlighted ? HIGHLIGHT_TEAL
+                     : isPoUnit      ? (blinkOn ? PO_BLINK_ON : PO_BLINK_OFF)
+                     : isBlinkUnit   ? (blinkOn ? colors.fdbText : BLINK_DIM)
                      : baseColor
     ctx.font         = `bold ${fontPx}px "Roboto Mono", monospace`
     ctx.textAlign    = 'center'

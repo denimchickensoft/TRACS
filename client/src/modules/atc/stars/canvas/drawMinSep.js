@@ -91,7 +91,7 @@ function triangle(ctx, cx, cy, r) {
  * Draw the MIN (minimum separation) tool on the tools canvas.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {object}      view     { centerLat, centerLng, pixelsPerNm, width, height, magvar? }
+ * @param {object}      view     { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg? }
  * @param {object|null} minSep   { ac0: unitId, ac1: unitId } completed MIN
  * @param {object|null} minWip   { ac0: unitId } awaiting second click
  * @param {object|null} cursor   { x, y } canvas-pixel cursor for WIP preview

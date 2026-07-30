@@ -57,6 +57,7 @@ import { useNavdataStore }      from '../../../store/navdata.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
+import { loadStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
 
 const WINDOW_ID  = 'atc-main'
@@ -128,6 +129,11 @@ export default function StarsScope() {
   const [view,       setView]      = useState(null)
   const [dcbVisible, setDcbVisible] = useState(true)
   const [slewedPdbs, setSlewedPdbs] = useState(() => new Set())
+  // Middle-click highlight (STARS behaviour) — session-local, not persisted;
+  // toggles a contact's symbol/datablock to HIGHLIGHT_TEAL (constants.js).
+  const [highlightedUids, setHighlightedUids] = useState(() => new Set())
+  const toggleHighlight = (uid) =>
+    setHighlightedUids(s => { const n = new Set(s); n.has(uid) ? n.delete(uid) : n.add(uid); return n })
   const [routeProcData, setRouteProcData] = useState({})  // { [icao]: raw | null }
 
   const routeDisplayedUids = useMemo(
@@ -234,7 +240,7 @@ export default function StarsScope() {
   // ── Initialize display window ─────────────────────────────────────
   useEffect(() => {
     if (!windowSettings) {
-      displayStore.initWindow(WINDOW_ID, activeProfile?.defaults ?? {})
+      displayStore.initWindow(WINDOW_ID, { ...activeProfile?.defaults, dbca: loadStarsPrefs().dbca })
     }
   }, []) // eslint-disable-line
 
@@ -246,7 +252,11 @@ export default function StarsScope() {
   // ── Build view ────────────────────────────────────────────────────
   const theatre    = mission?.mission?.theatre
   const facilityCl = centerlines.find((c) => c.airbase === facilityDcsName)
-  const magvar     = facilityCl?.geoMagvar ?? facilityCl?.magvar ?? 0
+  // Declination only (from the runway database) — used for the canvas
+  // rotation and for any bearing derived from lat/lng or unit.track. See
+  // utils/magvar.js: DCS's own heading readouts don't apply grid
+  // convergence, so this app doesn't add it either.
+  const declinationDeg = facilityCl?.declinationDeg ?? 0
 
   // Load fixes + navaids for the current theatre so .FIND lookups work
   useEffect(() => {
@@ -260,7 +270,7 @@ export default function StarsScope() {
     const w = canvas.width
     const h = canvas.height
     if (!w || !h) return null
-    const effectiveMagvar = typeof window.__magvarOverride === 'number' ? window.__magvarOverride : magvar
+    const effectiveDeclination = typeof window.__magvarOverride === 'number' ? window.__magvarOverride : declinationDeg
     return {
       centerLat: centerLat ?? 0,
       centerLng: centerLng ?? 0,
@@ -268,10 +278,10 @@ export default function StarsScope() {
       pixelsPerNm: rangeToPixelsPerNm(rangeNm, w, h),
       width: w,
       height: h,
-      magvar: effectiveMagvar,
+      declinationDeg: effectiveDeclination,
       theatre,
     }
-  }, [windowSettings, magvar, theatre])
+  }, [windowSettings, declinationDeg, theatre])
 
   const canvasAreaRef = useRef(null)
 
@@ -573,7 +583,7 @@ export default function StarsScope() {
       visibleUnits, historyRef.current, activeProfile.visual,
       symbolMap, (windowSettings?.britePos ?? 80) / 100, windowSettings?.csPos ?? 3,
       ptlOpts, windowSettings?.historyLength ?? 5, (windowSettings?.briteHst ?? 80) / 100,
-      blinkingUids, blinkOn, poReceivingUids,
+      blinkingUids, blinkOn, poReceivingUids, highlightedUids,
     )
 
     // Draw .FIND marker — small green square centered on the found fix
@@ -589,7 +599,7 @@ export default function StarsScope() {
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
       windowSettings?.findMarker,
-      activeProfile])
+      activeProfile, highlightedUids])
 
   // ── RBL layer — rAF loop for smooth cursor tracking ───────────────
   useEffect(() => {
@@ -789,6 +799,9 @@ export default function StarsScope() {
       panRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, moved: false }
       e.preventDefault()
     }
+    // Middle mouse — suppress the browser's autoscroll/paste behaviour so
+    // mouseup's highlight toggle (below) is the only effect.
+    if (e.button === 1) e.preventDefault()
   }, [])
 
   const handleMouseMove = useCallback((e) => {
@@ -954,7 +967,11 @@ export default function StarsScope() {
     }
     if (e.button === 1) {
       // Middle click — toggle highlight (STARS behaviour)
-      // TODO: implement highlight toggle
+      const rect = interactiveRef.current?.getBoundingClientRect()
+      if (!rect || !viewRef.current) return
+      const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+      if (target) toggleHighlight(String(target.unitId))
     }
   }, [evaluateCommand, windowSettings, displayStore])
 
@@ -1031,6 +1048,7 @@ export default function StarsScope() {
           csDatablocks={csDatablocks}
           slewedPdbs={slewedPdbs}
           blinkOn={blinkOn}
+          highlightedUids={highlightedUids}
         />
 
         <div

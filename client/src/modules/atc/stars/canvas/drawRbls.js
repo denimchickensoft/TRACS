@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas, canvasToLatLng } from './projection.js'
 
 const M_PER_S_TO_KT = 1.94384
 
@@ -31,7 +31,7 @@ function rangeNm(lat0, lng0, lat1, lng1) {
  * Draw all completed RBLs and the WIP preview on the contacts canvas.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {object}  view       { centerLat, centerLng, pixelsPerNm, width, height, magvar? }
+ * @param {object}  view       { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg? }
  * @param {Array}   rbls       [{ p0, p1 }] completed lines
  * @param {object|null} rblWip { p0 } awaiting second click
  * @param {object|null} rblCursor { x, y } canvas-pixel cursor for WIP preview
@@ -41,7 +41,7 @@ function rangeNm(lat0, lng0, lat1, lng1) {
 export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3) {
   if (!rbls?.length && !rblWip) return
 
-  const magvar  = view.magvar ?? 0
+  const declinationDeg = view.declinationDeg ?? 0
   const fontPx  = 10 + csTools * 2
 
   // Stale-check: filter completed RBLs where a track endpoint has vanished.
@@ -75,7 +75,7 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
     ctx.stroke()
 
     const dist    = rangeNm(ep0.lat, ep0.lng, ep1.lat, ep1.lng)
-    const magBrg  = ((trueBearing(ep0.lat, ep0.lng, ep1.lat, ep1.lng) - magvar) % 360 + 360) % 360
+    const magBrg  = ((trueBearing(ep0.lat, ep0.lng, ep1.lat, ep1.lng) - declinationDeg) % 360 + 360) % 360
     const hdg     = String(Math.round(magBrg)).padStart(3, '0')
     const distStr = dist.toFixed(2)
 
@@ -107,19 +107,14 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
       ctx.lineTo(rblCursor.x, rblCursor.y)
       ctx.stroke()
 
-      // Resolve cursor back to lat/lng for bearing/range label
-      const nmPerPx     = 1 / view.pixelsPerNm
-      const rE  = (rblCursor.x - view.width  / 2) * nmPerPx
-      const rN  = (view.height / 2 - rblCursor.y) * nmPerPx
-      const rad = (view.magvar ?? 0) * Math.PI / 180
-      const nmEast  =  rE * Math.cos(rad) + rN * Math.sin(rad)
-      const nmNorth = -rE * Math.sin(rad) + rN * Math.cos(rad)
-      const NM_PER_DEG_LAT = 60
-      const curLat = view.centerLat + nmNorth / NM_PER_DEG_LAT
-      const curLng = view.centerLng + nmEast  / (NM_PER_DEG_LAT * Math.cos(view.centerLat * Math.PI / 180))
+      // Resolve cursor back to lat/lng via the real projection inverse (full TM
+      // inverse when the theatre has params) — must match how the endpoint
+      // gets resolved on click (StarsScope.jsx's canvasToLatLng call), or the
+      // WIP preview's bearing disagrees with the registered line's.
+      const { lat: curLat, lng: curLng } = canvasToLatLng(rblCursor.x, rblCursor.y, view)
 
       const dist   = rangeNm(ep0.lat, ep0.lng, curLat, curLng)
-      const magBrg = ((trueBearing(ep0.lat, ep0.lng, curLat, curLng) - (view.magvar ?? 0)) % 360 + 360) % 360
+      const magBrg = ((trueBearing(ep0.lat, ep0.lng, curLat, curLng) - declinationDeg) % 360 + 360) % 360
       const label  = `${String(Math.round(magBrg)).padStart(3, '0')}/${dist.toFixed(2)}`
       ctx.fillText(label, rblCursor.x + 4, rblCursor.y - 4)
     }

@@ -33,7 +33,7 @@ function icaoLegTime(minAlt) {
 }
 
 // Build racetrack polygon.
-// course = inbound course (magnetic); trueCourse = course + magvar.
+// course = inbound course (magnetic); trueCourse = course + declinationDeg.
 // The fix (lat, lon) is where the inbound leg terminates.
 // Arc centers are offset perpendicular to course by turnRadius.
 function buildRacetrackPoly(lat, lon, trueCourse, turnDir, legNm, turnRadius) {
@@ -80,7 +80,7 @@ function buildRacetrackPoly(lat, lon, trueCourse, turnDir, legNm, turnRadius) {
 
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {object}   view      { centerLat, centerLng, pixelsPerNm, width, height, magvar }
+ * @param {object}   view      { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg }
  * @param {object[]} holdings  from holdings store
  * @param {boolean}  visible
  * @param {number}   brite     0–100
@@ -91,7 +91,7 @@ export function drawHoldings(ctx, view, holdings, visible, brite = 50, csMap = 2
 
   const { width, height } = view
   const alpha    = Math.max(0, Math.min(1, brite / 100))
-  const magvar   = view.magvar ?? 0
+  const declinationDeg = view.declinationDeg ?? 0
   const fontSize = 6 + csMap * 2
 
   const holdsEntry = colors?.HOLDS
@@ -114,7 +114,7 @@ export function drawHoldings(ctx, view, holdings, visible, brite = 50, csMap = 2
     const legTime    = hold.legTime    ?? icaoLegTime(hold.minAlt)
     const legNm      = hold.legLength  ?? (legTime * speed / 60)
     const turnRadius = speed / (60 * Math.PI)
-    const trueCourse = ((hold.course ?? 0) + magvar + 360) % 360
+    const trueCourse = ((hold.course ?? 0) + declinationDeg + 360) % 360
 
     const poly = buildRacetrackPoly(hold.lat, hold.lon, trueCourse, hold.turnDir ?? 'R', legNm, turnRadius)
 

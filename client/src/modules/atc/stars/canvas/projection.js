@@ -5,15 +5,17 @@
  * see utils/transverseMercator.js and /projection_params.json), so contact
  * placement has no positional drift at range the way a flat equirectangular
  * approximation would. Grid north (the TM northing axis) is "up" before
- * rotation; when view.magvar is set (degrees East — IGRF declination plus
- * theatre grid convergence, see utils/magvar.js), the display is rotated so
- * magnetic north appears at the top of the screen instead.
+ * rotation; when view.declinationDeg is set (IGRF declination — see
+ * utils/magvar.js), the display is rotated so magnetic north appears at the
+ * top of the screen instead. Declination only, deliberately not combined
+ * with grid convergence — DCS's own heading readouts don't apply that
+ * correction either, so matching DCS means not adding it here.
  *
  * Theatres missing full TM params in projection_params.json (e.g.
  * Afghanistan) fall back to the previous flat equirectangular approximation,
  * logged once per theatre.
  *
- * view: { centerLat, centerLng, pixelsPerNm, width, height, magvar?, theatre? }
+ * view: { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg?, theatre? }
  */
 
 import { tmForward, tmInverse } from '../../../../utils/transverseMercator.js'
@@ -34,16 +36,16 @@ function tmParamsFor(theatre) {
   return params
 }
 
-function rotate(nmEast, nmNorth, magvar) {
-  const rad = magvar * Math.PI / 180
+function rotate(nmEast, nmNorth, declinationDeg) {
+  const rad = declinationDeg * Math.PI / 180
   return {
     rE: nmEast * Math.cos(rad) - nmNorth * Math.sin(rad),
     rN: nmEast * Math.sin(rad) + nmNorth * Math.cos(rad),
   }
 }
 
-function unrotate(rE, rN, magvar) {
-  const rad = magvar * Math.PI / 180
+function unrotate(rE, rN, declinationDeg) {
+  const rad = declinationDeg * Math.PI / 180
   return {
     nmEast:  rE * Math.cos(rad) + rN * Math.sin(rad),
     nmNorth: -rE * Math.sin(rad) + rN * Math.cos(rad),
@@ -51,7 +53,7 @@ function unrotate(rE, rN, magvar) {
 }
 
 export function latLngToCanvas(lat, lng, view) {
-  const { centerLat, centerLng, pixelsPerNm, width, height, magvar = 0, theatre } = view
+  const { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg = 0, theatre } = view
   const params = tmParamsFor(theatre)
 
   let nmEast, nmNorth
@@ -66,8 +68,8 @@ export function latLngToCanvas(lat, lng, view) {
     nmEast  = (lng - centerLng) * nmPerDegreeLng
   }
 
-  // Rotate counterclockwise by magvar so magnetic north sits at screen top.
-  const { rE, rN } = rotate(nmEast, nmNorth, magvar)
+  // Rotate counterclockwise by declination so magnetic north sits at screen top.
+  const { rE, rN } = rotate(nmEast, nmNorth, declinationDeg)
 
   return {
     x: width  / 2 + rE * pixelsPerNm,
@@ -76,14 +78,14 @@ export function latLngToCanvas(lat, lng, view) {
 }
 
 export function canvasToLatLng(x, y, view) {
-  const { centerLat, centerLng, pixelsPerNm, width, height, magvar = 0, theatre } = view
+  const { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg = 0, theatre } = view
   const params = tmParamsFor(theatre)
 
   const rE = (x - width  / 2) / pixelsPerNm
   const rN = (height / 2 - y) / pixelsPerNm
 
-  // Inverse: clockwise rotation by magvar
-  const { nmEast, nmNorth } = unrotate(rE, rN, magvar)
+  // Inverse: clockwise rotation by declination
+  const { nmEast, nmNorth } = unrotate(rE, rN, declinationDeg)
 
   if (params) {
     const p0 = tmForward(centerLat, centerLng, params)

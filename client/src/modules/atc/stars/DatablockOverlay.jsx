@@ -7,11 +7,15 @@ import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { useOdsStore }         from '../../../store/ods.js'
 import { latLngToCanvas }      from './canvas/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES } from './constants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from './constants.js'
+import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
 
 const WINDOW_ID        = 'atc-main'
 const M_PER_S_TO_KNOTS = 1.94384
 const METERS_TO_FEET   = 3.28084
+// SVG text isn't measured against a canvas context here, so estimate width
+// from Roboto Mono's monospace advance instead of ctx.measureText.
+const MONO_CHAR_RATIO  = 0.6
 
 const DEFAULT_SEQUENCE  = [1, 2, 1, 3]
 const DEFAULT_INTERVALS = [3, 2, 3, 2]
@@ -105,8 +109,8 @@ function computeLine2(phase, alt, sp1, sp2, handoffId, gs, actype) {
 const Datablock = memo(function Datablock({
   id, unit, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks,
   ownership, handoffs, pointOuts, quickLook, displayFdb, scratchpads,
-  myId, unitLeaderDir, globalLeaderDir,
-  clockPhase, actype, slewed, isBlinking, blinkOn,
+  myId, unitLeaderDir, globalLeaderDir, placement,
+  clockPhase, actype, slewed, isBlinking, blinkOn, isHighlighted,
 }) {
   const pos = unit.position
   if (!pos) return null
@@ -117,29 +121,45 @@ const Datablock = memo(function Datablock({
   const uid = String(id)
   const { colors, symbol, dataBlock } = visual
 
+  const symR   = (symbol.diameter ?? 13) / 2
+  const fontPx = 10 + (csDatablocks ?? 3) * 2
+  const lh     = dataBlock.lineHeight ?? Math.round(fontPx * 1.2)
+  const font   = `500 ${fontPx}px "Roboto Mono", monospace`
+
   // ── Leader geometry ─────────────────────────────────────────────────
-  const dir = unitLeaderDir ?? globalLeaderDir ?? null
-  const angleDeg = dir != null
-    ? (DIR_TO_ANGLE[dir] ?? (ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45))
-    : (ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45)
+  // With a placement (dbca on), the leader endpoint (bbox edge) and the
+  // text anchor (first line's baseline) differ — placeDatablocks already
+  // resolved both. Without one, leader endpoint and text anchor are the
+  // same fixed-angle point, as before .dbca existed.
+  const leaderLen = ldrLength ?? dataBlock.leaderLength ?? 40
 
-  const leaderLen   = ldrLength ?? dataBlock.leaderLength ?? 40
-  const leaderAngle = angleDeg * Math.PI / 180
-  const symR        = (symbol.diameter ?? 13) / 2
-  const fontPx      = 10 + (csDatablocks ?? 3) * 2
-  const lh          = dataBlock.lineHeight ?? Math.round(fontPx * 1.2)
-  const font        = `500 ${fontPx}px "Roboto Mono", monospace`
+  let lx0, ly0, lx1, ly1, tx, ty, anchor
+  if (placement) {
+    lx0 = placement.leaderStart.x; ly0 = placement.leaderStart.y
+    lx1 = placement.leaderEnd.x;   ly1 = placement.leaderEnd.y
+    tx  = placement.bbox.textX
+    ty  = placement.bbox.ly1
+    anchor = placement.bbox.align === 'right' ? 'end' : placement.bbox.align === 'left' ? 'start' : 'middle'
+  } else {
+    const dir = unitLeaderDir ?? globalLeaderDir ?? null
+    const angleDeg = dir != null
+      ? (DIR_TO_ANGLE[dir] ?? (ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45))
+      : (ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45)
 
-  const lx0 = x + Math.cos(leaderAngle) * symR
-  const ly0 = y + Math.sin(leaderAngle) * symR
-  const textDist = Math.max(leaderLen, symR)
-  const lx1 = x + Math.cos(leaderAngle) * textDist
-  const ly1 = y + Math.sin(leaderAngle) * textDist
+    const leaderAngle = angleDeg * Math.PI / 180
+    const textDist    = Math.max(leaderLen, symR)
 
-  const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
-  const tx     = rightAlign ? lx1 - 2 : lx1 + 2
-  const anchor = rightAlign ? 'end' : 'start'
-  const style  = { font, dominantBaseline: 'alphabetic' }
+    lx0 = x + Math.cos(leaderAngle) * symR
+    ly0 = y + Math.sin(leaderAngle) * symR
+    lx1 = x + Math.cos(leaderAngle) * textDist
+    ly1 = y + Math.sin(leaderAngle) * textDist
+
+    const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
+    tx     = rightAlign ? lx1 - 2 : lx1 + 2
+    ty     = ly1
+    anchor = rightAlign ? 'end' : 'start'
+  }
+  const style = { font, dominantBaseline: 'alphabetic' }
 
   // ── Data ────────────────────────────────────────────────────────────
   const dbType    = resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId)
@@ -161,10 +181,11 @@ const Datablock = memo(function Datablock({
 
   // ── LDB ─────────────────────────────────────────────────────────────
   if (dbType === 'LDB') {
+    const ldbColor = isHighlighted ? HIGHLIGHT_TEAL : colors.ldbText
     return (
       <g>
         {leader}
-        <text x={tx} y={ly1} fill={colors.ldbText} opacity={briteLdb} textAnchor={anchor} style={style}>
+        <text x={tx} y={ty} fill={ldbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
           {`${alt} ${gs}`}
         </text>
       </g>
@@ -175,14 +196,15 @@ const Datablock = memo(function Datablock({
   // Unslewed: leader attaches at the data line (single line).
   // Slewed: leader attaches at ACID line; data line drops below — same layout as FDB.
   if (dbType === 'PDB') {
+    const pdbColor = isHighlighted ? HIGHLIGHT_TEAL : colors.pdbText
     if (slewed) {
       return (
         <g>
           {leader}
-          <text x={tx} y={ly1}      fill={colors.pdbText} opacity={briteLdb} textAnchor={anchor} style={style}>
+          <text x={tx} y={ty}      fill={pdbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
             {cs}
           </text>
-          <text x={tx} y={ly1 + lh} fill={colors.pdbText} opacity={briteLdb} textAnchor={anchor} style={style}>
+          <text x={tx} y={ty + lh} fill={pdbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
             {line2}
           </text>
         </g>
@@ -191,7 +213,7 @@ const Datablock = memo(function Datablock({
     return (
       <g>
         {leader}
-        <text x={tx} y={ly1} fill={colors.pdbText} opacity={briteLdb} textAnchor={anchor} style={style}>
+        <text x={tx} y={ty} fill={pdbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
           {line2}
         </text>
       </g>
@@ -204,7 +226,8 @@ const Datablock = memo(function Datablock({
   // Both blink between white and light gray — never go invisible.
   const isIncomingHo  = handoffs[uid]?.to === myId
   const shouldBlink   = isBlinking || isIncomingHo || isPoReceiving || isPoRejected
-  const fdbColor      = isPoReceiving
+  const fdbColor      = isHighlighted ? HIGHLIGHT_TEAL
+    : isPoReceiving
     ? (blinkOn ? '#FFFF00' : '#808000')
     : shouldBlink ? (blinkOn ? '#FFFFFF' : '#C0C0C0') : colors.fdbText
   const acidLine      = isPoReceiving ? cs + ' PO'
@@ -214,10 +237,10 @@ const Datablock = memo(function Datablock({
   return (
     <g>
       {leader}
-      <text x={tx} y={ly1}      fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
+      <text x={tx} y={ty}      fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
         {acidLine}
       </text>
-      <text x={tx} y={ly1 + lh} fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
+      <text x={tx} y={ty + lh} fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
         {line2}
       </text>
     </g>
@@ -226,7 +249,7 @@ const Datablock = memo(function Datablock({
 
 // ── Overlay ──────────────────────────────────────────────────────────────────
 
-export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn }) {
+export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn, highlightedUids }) {
   const ownership   = useAtcStore((s) => s.ownership)
   const handoffs    = useAtcStore((s) => s.handoffs)
   const pointOuts   = useAtcStore((s) => s.pointOuts)
@@ -240,6 +263,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
 
   const leaderDirs      = useDisplayStore((s) => s.windows[WINDOW_ID]?.leaderDirs      ?? {})
   const globalLeaderDir = useDisplayStore((s) => s.windows[WINDOW_ID]?.globalLeaderDir ?? null)
+  const dbca            = useDisplayStore((s) => s.windows[WINDOW_ID]?.dbca ?? false)
 
   const plans = useFlightPlansStore((s) => s.plans)
   const plansByUnit = useMemo(() => {
@@ -264,6 +288,64 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   const now        = Date.now()
 
   const entries = useMemo(() => Object.entries(units), [units])
+
+  // ── Collision-avoidance placement (dbca on only) — one batch pass across
+  //    every visible contact, resolved before any <Datablock> renders, since
+  //    each contact's placement depends on where every other one landed.
+  //    SVG text isn't measured, so widths use a monospace char-count
+  //    estimate (MONO_CHAR_RATIO) rather than STARS' usual exact widths.
+  const placements = useMemo(() => {
+    if (!dbca || !view) return null
+
+    const fontPx = 10 + (csDatablocks ?? 3) * 2
+    const contacts = []
+    for (const [id, unit] of entries) {
+      const pos = unit.position
+      if (!pos) continue
+      const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
+      if (x < -100 || x > view.width + 100 || y < -100 || y > view.height + 100) continue
+
+      const uid    = String(id)
+      const dbType = resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId)
+      const cs     = resolveCallsign(unit).toUpperCase()
+      const alt    = fmtAlt(pos.alt)
+      const gs     = fmtSpd(unit.speed)
+      const sp1    = scratchpads[uid]?.sp1 ?? ''
+      const sp2    = scratchpads[uid]?.sp2 ?? ''
+      const handoffId = resolveHandoffId(uid, handoffs, myId)
+      const actype = plansByUnit[uid]?.typ ?? ''
+      const line2  = computeLine2(clockPhase, alt, sp1, sp2, handoffId, gs, actype)
+
+      let lines
+      if (dbType === 'LDB') lines = [`${alt} ${gs}`]
+      else if (dbType === 'PDB') lines = slewedPdbs?.has(uid) ? [cs, line2] : [line2]
+      else lines = [cs, line2] // FDB
+
+      const unitDir = leaderDirs[uid] ?? null
+      contacts.push({
+        id: uid, x, y,
+        lineWidths: lines.map((t) => t.length * fontPx * MONO_CHAR_RATIO),
+        prefAngleDeg: unitDir != null ? DIR_TO_ANGLE[unitDir] : globalLeaderDir != null ? DIR_TO_ANGLE[globalLeaderDir] : null,
+        prefTier: unitDir != null ? 'unit' : globalLeaderDir != null ? 'global' : null,
+      })
+    }
+    if (contacts.length === 0) return {}
+
+    const symR = (visual.symbol.diameter ?? 13) / 2
+    const lh   = visual.dataBlock.lineHeight ?? Math.round(fontPx * 1.2)
+
+    return placeDatablocks(contacts, {
+      candidateAnglesDeg: DEFAULT_CANDIDATE_ANGLES_DEG,
+      symbolRadius: symR,
+      leaderLen: ldrLength ?? visual.dataBlock.leaderLength ?? 40,
+      lineHeight: lh,
+      ascent: Math.round(fontPx * 0.8),
+      descent: Math.round(fontPx * 0.2),
+      padding: 2,
+    })
+  }, [dbca, view, entries, ownership, handoffs, pointOuts, quickLook, displayFdb, myId,
+      scratchpads, clockPhase, plansByUnit, slewedPdbs, leaderDirs, globalLeaderDir,
+      ldrLength, csDatablocks, visual])
 
   if (!view) return null
 
@@ -295,11 +377,13 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
           myId={myId}
           unitLeaderDir={leaderDirs[String(id)] ?? null}
           globalLeaderDir={globalLeaderDir}
+          placement={placements ? (placements[String(id)] ?? null) : null}
           clockPhase={clockPhase}
           actype={plansByUnit[String(id)]?.typ ?? ''}
           slewed={slewedPdbs?.has(String(id)) ?? false}
           isBlinking={!!blinkTracks[String(id)] && now < blinkTracks[String(id)]}
           blinkOn={blinkOn}
+          isHighlighted={highlightedUids?.has(String(id)) ?? false}
         />
       ))}
     </svg>
