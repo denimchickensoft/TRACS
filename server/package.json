@@ -8,8 +8,10 @@
     "start": "node src/index.js",
     "extract": "node navdata/tools/extract-navdata.js",
     "build:relief": "node scripts/buildReliefMap.js",
+    "build:basemap": "node scripts/buildAbmBasemap.js",
     "build:mva": "node scripts/buildMvaMap.js",
-    "package:extract": "node --experimental-sea-config navdata/tools/sea-config.json"
+    "package:extract": "node --experimental-sea-config navdata/tools/sea-config.json",
+    "build:terrain-exe": "node scripts/terrainDataExe/build.js"
   },
   "dependencies": {
     "@trystero-p2p/ws-relay": "^0.24.0",
@@ -19,5 +21,9 @@
     "polylabel": "^2.0.1",
     "sql.js": "^1.12.0",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "postject": "^1.0.0-alpha.6"
   }
 }

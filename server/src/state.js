@@ -1,8 +1,5 @@
 'use strict'
 
-// In-memory unit state. The browser is never the authority on unit data —
-// this is the single source of truth on the server side.
-
 const units = new Map()   // unitId (string) → unit object
 let mission   = null
 let airbases  = []

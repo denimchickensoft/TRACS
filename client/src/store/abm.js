@@ -13,6 +13,19 @@ export function registerAbmBroadcast(fn) {
   _broadcastFn = fn
 }
 
+// autoClassify is a local UI preference, not session data — persisted to
+// localStorage (2026-07-09) so it survives a page refresh even when no other
+// ABM peer is connected to STATE_DUMP it back to you.
+const AUTOCLASS_STORAGE_KEY = 'tracs.abm.autoClassify'
+
+function loadStoredAutoClassify() {
+  try {
+    return localStorage.getItem(AUTOCLASS_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export function applyAbmDeclaration(unitId, classification) {
   useAbmStore.getState()._applyDeclaration(unitId, classification)
 }
@@ -34,7 +47,7 @@ export function applyAbmDeclarationsReset() {
 
 export const useAbmStore = create((set, get) => ({
   declarations: {},    // { [unitId]: DECLARATION } — own room, NOT shared with AIC's declarations (deferred, see abm-spec.md §1.2)
-  autoClassify: false, // .autoclass (2026-07-08) — see setAutoClassify below
+  autoClassify: loadStoredAutoClassify(), // .autoclass (2026-07-08) — see setAutoClassify below
 
   // BRAA line / bogey dope — ported from AIC's store/aic.js as-is: local to
   // this controller, not synced via WebRTC (same as AIC's braaList).
@@ -98,3 +111,12 @@ export const useAbmStore = create((set, get) => ({
 
   reset: () => set({ declarations: {}, autoClassify: false, braaList: [], pendingBraaFighter: null }),
 }))
+
+useAbmStore.subscribe((state, prevState) => {
+  if (state.autoClassify === prevState.autoClassify) return
+  try {
+    localStorage.setItem(AUTOCLASS_STORAGE_KEY, String(state.autoClassify))
+  } catch {
+    // ignore (e.g. private browsing quota)
+  }
+})

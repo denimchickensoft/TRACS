@@ -5,8 +5,9 @@
  */
 
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { trueBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 
-export function drawRbl(ctx, view, rbl, magvar) {
+export function drawRbl(ctx, view, rbl, declinationDeg) {
   if (!rbl?.anchor || !rbl?.end) return
 
   const ap = latLngToCanvas(rbl.anchor.lat, rbl.anchor.lng, view)
@@ -25,13 +26,10 @@ export function drawRbl(ctx, view, rbl, magvar) {
   ctx.beginPath(); ctx.arc(ap.x, ap.y, 3, 0, Math.PI * 2); ctx.fill()
   ctx.beginPath(); ctx.arc(ep.x, ep.y, 3, 0, Math.PI * 2); ctx.fill()
 
-  const nmPerDegLng = 60 * Math.cos(rbl.anchor.lat * Math.PI / 180)
-  const dN          = (rbl.end.lat - rbl.anchor.lat) * 60
-  const dE          = (rbl.end.lng - rbl.anchor.lng) * nmPerDegLng
-  const range       = Math.round(Math.hypot(dN, dE))
-  const trueBrg     = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360
-  const magBrg      = Math.round((trueBrg - magvar + 360) % 360) || 360
-  const label       = `${String(magBrg).padStart(3, '0')}°M  ${range}NM`
+  const { trueBearingDeg, rangeNm } = trueBearingRangeNm(rbl.anchor.lat, rbl.anchor.lng, rbl.end.lat, rbl.end.lng)
+  const range  = Math.round(rangeNm)
+  const magBrg = Math.round(toMagneticFromTrue(trueBearingDeg, declinationDeg)) || 360
+  const label  = `${String(magBrg).padStart(3, '0')}°M  ${range}NM`
 
   const midX = (ap.x + ep.x) / 2
   const midY = (ap.y + ep.y) / 2

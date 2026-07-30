@@ -9,9 +9,14 @@
 //   node server/scripts/buildTownLabels.js [--dcs-path <path>] [theatre]
 //
 // DCS terrain path defaults to the Steam installation. Override with --dcs-path.
+//
+// See also: server/scripts/terrainDataExe — a standalone .exe build of this
+// same logic (via server/scripts/lib/townLabelsCore.js) for distribution to
+// machines without this repo checked out.
 
 const fs   = require('fs')
 const path = require('path')
+const core = require('./lib/townLabelsCore')
 
 const ROOT       = path.join(__dirname, '../..')
 const THEATRES   = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/theatres.json'), 'utf8'))
@@ -19,32 +24,18 @@ const OUTPUT_DIR = path.join(ROOT, 'client/public/towns')
 
 const DEFAULT_DCS_PATH = 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\DCSWorld\\Mods\\terrains'
 
-const LINE_RE = /^\["(.+)"\]\s*=\s*\{\s*latitude\s*=\s*(-?[0-9.]+),\s*longitude\s*=\s*(-?[0-9.]+),\s*display_name\s*=\s*_\(".*"\)\s*\},?$/
+function buildAndWriteTheatre(theatre, dcsPath) {
+  const result = core.buildTheatre({ theatre, terrainsDir: dcsPath })
 
-function buildTheatre(theatre, dcsPath) {
-  const luaPath = path.join(dcsPath, theatre, 'map', 'towns.lua')
-  if (!fs.existsSync(luaPath)) {
-    console.log(`  ${theatre}: skipped — towns.lua not found`)
+  if (result.status === 'skip') {
+    console.log(`  ${theatre}: skipped — ${result.reason}`)
     return
   }
 
-  const lines = fs.readFileSync(luaPath, 'utf8').split(/\r?\n/)
-  const towns = []
-  let skipped = 0
-  for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('local') || trimmed === 'towns = {' || trimmed === '}') continue
-    const m = LINE_RE.exec(trimmed)
-    if (!m) { skipped++; continue }
-    towns.push({ name: m[1], lat: parseFloat(m[2]), lon: parseFloat(m[3]) })
-  }
-
-  towns.sort((a, b) => a.name.localeCompare(b.name))
-
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
   const outPath = path.join(OUTPUT_DIR, `${theatre}.json`)
-  fs.writeFileSync(outPath, JSON.stringify({ theatre, towns }, null, 1))
-  console.log(`  ${theatre}: ${towns.length} towns written to ${path.relative(ROOT, outPath)}${skipped ? ` (${skipped} unparsed lines skipped)` : ''}`)
+  fs.writeFileSync(outPath, JSON.stringify({ theatre, towns: result.towns }, null, 1))
+  console.log(`  ${theatre}: ${result.towns.length} towns written to ${path.relative(ROOT, outPath)}${result.skippedLines ? ` (${result.skippedLines} unparsed lines skipped)` : ''}`)
 }
 
 function main() {
@@ -59,7 +50,7 @@ function main() {
   const theatres = args.length ? args : Object.keys(THEATRES)
 
   console.log(`DCS path: ${dcsPath}\n`)
-  for (const t of theatres) buildTheatre(t, dcsPath)
+  for (const t of theatres) buildAndWriteTheatre(t, dcsPath)
 }
 
-main()
+if (require.main === module) main()

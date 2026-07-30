@@ -8,25 +8,20 @@
  */
 
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { trueBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 
-function computeBraa(fighter, bogey, magvar) {
+function computeBraa(fighter, bogey, declinationDeg) {
   const fp = fighter.position, bp = bogey.position
   if (!fp || !bp) return null
 
-  const avgLat      = (fp.lat + bp.lat) / 2
-  const nmPerDegLng = 60 * Math.cos(avgLat * Math.PI / 180)
-  const dN          = (bp.lat - fp.lat) * 60
-  const dE          = (bp.lng - fp.lng) * nmPerDegLng
-  const rangeNm     = Math.hypot(dN, dE)
-
-  const trueBrgDeg = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360
-  const magBrgDeg  = ((trueBrgDeg - magvar) + 360) % 360
+  const { trueBearingDeg, rangeNm } = trueBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng)
+  const magBrgDeg = toMagneticFromTrue(trueBearingDeg, declinationDeg)
 
   return { bearing: Math.round(magBrgDeg) || 360, range: Math.round(rangeNm) }
 }
 
 // units: merged air+ground/naval visible units (BRAA pairing works across both)
-export function drawBraaOverlays(ctx, view, braaList, units, magvar) {
+export function drawBraaOverlays(ctx, view, braaList, units, declinationDeg) {
   for (const pair of braaList) {
     const fighter = units[pair.fighterId]
     const bogey   = units[pair.bogeyId]
@@ -44,7 +39,7 @@ export function drawBraaOverlays(ctx, view, braaList, units, magvar) {
     ctx.stroke()
     ctx.setLineDash([])
 
-    const braa = computeBraa(fighter, bogey, magvar)
+    const braa = computeBraa(fighter, bogey, declinationDeg)
     if (braa) {
       const label = `${String(braa.bearing).padStart(3, '0')}°M  ${braa.range}NM`
       const midX  = (fp.x + bp.x) / 2

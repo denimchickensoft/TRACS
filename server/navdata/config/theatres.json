@@ -21,7 +21,7 @@
   },
   "SouthAtlantic": {
     "folder": "south_atlantic",
-    "bbox": [-65.0, -55.0, -55.0, -45.0]
+    "bbox": [-74.0, -56.0, -55.0, -45.0]
   },
   "Sinai": {
     "folder": "sinai",
@@ -29,7 +29,7 @@
   },
   "Kola": {
     "folder": "kola",
-    "bbox": [19.0, 65.0, 40.0, 72.0]
+    "bbox": [12.0, 64.0, 41.0, 73.0]
   },
   "Afghanistan": {
     "folder": "afghanistan",

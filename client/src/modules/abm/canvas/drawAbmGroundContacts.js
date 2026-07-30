@@ -15,6 +15,7 @@
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
 import { DECL_COLOR } from '../../aic/canvas/drawAicContacts.js'
 import { DECLARATION } from '../../../store/abm.js'
+import { HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
 
 const GROUND_RADIUS = 1.5
 const CULL_MARGIN   = 60
@@ -36,7 +37,7 @@ function drawRangeRing(ctx, x, y, rangeM, pixelsPerNm, color, dashed) {
 
 // unitDb: plain object keyed by unit type name -> { acquisitionRange, engagementRange } (meters)
 // acqHidden/engHidden: Sets of DECLARATION values whose rings are suppressed (.acq/.eng commands)
-export function drawAbmGroundContacts(ctx, view, units, getDecl, unitDb, acqHidden = new Set(), engHidden = new Set()) {
+export function drawAbmGroundContacts(ctx, view, units, getDecl, unitDb, acqHidden = new Set(), engHidden = new Set(), highlightedIds = new Set()) {
   const { width, height, pixelsPerNm } = view
 
   for (const [id, unit] of Object.entries(units)) {
@@ -46,6 +47,11 @@ export function drawAbmGroundContacts(ctx, view, units, getDecl, unitDb, acqHidd
 
     const decl  = getDecl(id, unit)
     const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY]
+    // Middle-click highlight override — symbol only (ground/naval contacts
+    // have no datablock — see module header). Non-friendly (HOSTILE/BOGEY)
+    // highlights purple instead of teal, matching drawAbmContacts.js.
+    const highlightColor = (decl === DECLARATION.HOSTILE || decl === DECLARATION.BOGEY) ? HIGHLIGHT_PURPLE : HIGHLIGHT_TEAL
+    const symColor = highlightedIds.has(id) ? highlightColor : color
 
     const dbEntry = unitDb[unit.name]
     if (dbEntry) {
@@ -56,10 +62,10 @@ export function drawAbmGroundContacts(ctx, view, units, getDecl, unitDb, acqHidd
     ctx.beginPath()
     ctx.arc(x, y, GROUND_RADIUS, 0, Math.PI * 2)
     ctx.globalAlpha = 0.4
-    ctx.fillStyle   = color
+    ctx.fillStyle   = symColor
     ctx.fill()
     ctx.globalAlpha = 1
-    ctx.strokeStyle = color
+    ctx.strokeStyle = symColor
     ctx.lineWidth   = 1
     ctx.stroke()
   }

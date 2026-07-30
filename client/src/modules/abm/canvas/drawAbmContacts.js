@@ -10,18 +10,14 @@
 
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
 import { drawPtl, DECL_COLOR } from '../../aic/canvas/drawAicContacts.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES } from '../../atc/stars/constants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
 import { DECLARATION } from '../../../store/abm.js'
-import { useAtcStore }  from '../../../store/atc.js'
+import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
+import { resolveCallsign } from '../../../utils/callsign.js'
 
 const SYM_HALF     = 3   // square half-width, px (hollow outline, not filled)
 const CULL_MARGIN  = 60
 const EMPTY_SET    = new Set()
-
-function resolveCallsignDisplay(unit) {
-  const override = useAtcStore.getState().callsignOverrides[String(unit.id)]
-  return override || unit.callsign || unit.unitName || unit.name || '?'
-}
 
 // Same truncation AIC's readout uses: strip suffix after _/space, then
 // collapse a double-hyphen type name to its first two segments.
@@ -39,7 +35,7 @@ function typeAbbrev(unit) {
 const FLIGHT_RE = /^([A-Z]+)(\d{2,})$/
 
 function parseFlightElement(unit) {
-  const raw = resolveCallsignDisplay(unit)
+  const raw = resolveCallsign(unit)
   if (!raw) return null
   const cleaned = raw.replace(/[^a-z0-9]/gi, '').toUpperCase()
   const m = cleaned.match(FLIGHT_RE)
@@ -144,11 +140,19 @@ export function drawAbmContacts(
   fadedContacts = {}, fadedNow = 0,
   dbSuppress = true,
   myCoalitionNum = null,
+  dbca = false,
+  dbHiddenIds = EMPTY_SET,
+  highlightedIds = EMPTY_SET,
 ) {
   const { width, height } = view
   ctx.font = '11px "Roboto Mono", monospace'
 
   const suppressedIds = dbSuppress ? computeSuppressedIds(units) : EMPTY_SET
+
+  // Collision-avoidance candidates — only populated when dbca is on; drawn
+  // in a second pass once placeDatablocks has resolved every direction
+  // against every other contact's symbol/label (see utils/datablockPlacement.js).
+  const dbCandidates = []
 
   for (const [id, unit] of Object.entries(units)) {
     if (!unit.position) continue
@@ -157,8 +161,16 @@ export function drawAbmContacts(
 
     const decl  = getDecl(id, unit)
     const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY]
+    // Middle-click highlight override — symbol/leader/text/PTL, not the
+    // history trail (that stays in the contact's own classification color).
+    // Non-friendly (HOSTILE/BOGEY) highlights purple instead of teal, so a
+    // highlighted bandit doesn't read as friendly-adjacent at a glance.
+    const isHighlighted  = highlightedIds.has(id)
+    const highlightColor = (decl === DECLARATION.HOSTILE || decl === DECLARATION.BOGEY) ? HIGHLIGHT_PURPLE : HIGHLIGHT_TEAL
+    const dbColor        = isHighlighted ? highlightColor : color
+    const textColor      = isHighlighted ? highlightColor : '#ffffff'
 
-    if (ptlMinutes > 0) drawPtl(ctx, x, y, unit, view, ptlMinutes * 60, color)
+    if (ptlMinutes > 0) drawPtl(ctx, x, y, unit, view, ptlMinutes * 60, dbColor)
 
     // History trail — small squares in the same classification color, fading
     const trail = (history ?? {})[id] || []
@@ -171,30 +183,13 @@ export function drawAbmContacts(
     ctx.globalAlpha = 1
 
     // Symbol — plain hollow square, no shape variation by declaration
-    ctx.strokeStyle = color
+    ctx.strokeStyle = dbColor
     ctx.lineWidth   = 1.5
     ctx.strokeRect(x - SYM_HALF, y - SYM_HALF, SYM_HALF * 2, SYM_HALF * 2)
 
     if (!dbVisible) continue
     if (suppressedIds.has(id)) continue  // formation lead's datablock covers this wingman
-
-    const unitDir    = leaderDirs?.[String(id)]
-    const angleDeg   = unitDir != null ? (DIR_TO_ANGLE[unitDir] ?? ldrAngleDeg) : ldrAngleDeg
-    const angleRad   = angleDeg * Math.PI / 180
-    const ldrPx      = ldrLength * 10
-    const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
-
-    const lx0 = x + Math.cos(angleRad) * SYM_HALF
-    const ly0 = y + Math.sin(angleRad) * SYM_HALF
-    const lx1 = x + Math.cos(angleRad) * ldrPx
-    const ly1 = y + Math.sin(angleRad) * ldrPx
-
-    ctx.strokeStyle = color
-    ctx.lineWidth   = 1
-    ctx.beginPath()
-    ctx.moveTo(lx0, ly0)
-    ctx.lineTo(lx1, ly1)
-    ctx.stroke()
+    if (dbHiddenIds.has(id)) continue    // .db + click per-contact override
 
     // Datablock — friendly gets callsign + alt/speed-or-type; everyone else
     // gets a single alt/speed line (no callsign — same "IFF doesn't know the
@@ -208,18 +203,90 @@ export function drawAbmContacts(
     const alt100  = String(Math.round(altFt / 100)).padStart(3, '0')
     const spdKts  = (unit.speed ?? 0) * 1.94384
     const spd10   = String(Math.round(spdKts / 10)).padStart(2, '0')
-    const tx      = lx1 + (rightAlign ? -2 : 2)
 
-    ctx.fillStyle    = '#ffffff'
+    const unitDir  = leaderDirs?.[String(id)]
+    const line2    = altToggle ? `${alt100} ${typeAbbrev(unit)}` : `${alt100} ${spd10}`
+    const lines    = isFriendly ? [resolveCallsign(unit).toUpperCase(), line2] : [`${alt100} ${spd10}`]
+
+    if (dbca) {
+      dbCandidates.push({
+        id, x, y, color: dbColor, textColor, lines,
+        prefAngleDeg: unitDir != null ? (DIR_TO_ANGLE[unitDir] ?? ldrAngleDeg) : ldrAngleDeg,
+        prefTier: unitDir != null ? 'unit' : 'global',
+      })
+      continue
+    }
+
+    const angleDeg   = unitDir != null ? (DIR_TO_ANGLE[unitDir] ?? ldrAngleDeg) : ldrAngleDeg
+    const angleRad   = angleDeg * Math.PI / 180
+    const ldrPx      = ldrLength * 10
+    const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
+
+    const lx0 = x + Math.cos(angleRad) * SYM_HALF
+    const ly0 = y + Math.sin(angleRad) * SYM_HALF
+    const lx1 = x + Math.cos(angleRad) * ldrPx
+    const ly1 = y + Math.sin(angleRad) * ldrPx
+
+    ctx.strokeStyle = dbColor
+    ctx.lineWidth   = 1
+    ctx.beginPath()
+    ctx.moveTo(lx0, ly0)
+    ctx.lineTo(lx1, ly1)
+    ctx.stroke()
+
+    const tx = lx1 + (rightAlign ? -2 : 2)
+
+    ctx.fillStyle    = textColor
     ctx.textAlign    = rightAlign ? 'right' : 'left'
     ctx.textBaseline = 'alphabetic'
 
     if (isFriendly) {
-      ctx.fillText(resolveCallsignDisplay(unit).toUpperCase(), tx, ly1 - 6)
-      const line2 = altToggle ? `${alt100} ${typeAbbrev(unit)}` : `${alt100} ${spd10}`
-      ctx.fillText(line2, tx, ly1 + 6)
+      ctx.fillText(lines[0], tx, ly1 - 6)
+      ctx.fillText(lines[1], tx, ly1 + 6)
     } else {
-      ctx.fillText(`${alt100} ${spd10}`, tx, ly1)
+      ctx.fillText(lines[0], tx, ly1)
+    }
+  }
+
+  // ── Collision-avoided datablocks (dbca on) — placed once against every
+  //    other contact's symbol/label, then drawn in a second pass ───────────
+  if (dbca && dbCandidates.length > 0) {
+    const placements = placeDatablocks(
+      dbCandidates.map((c) => ({
+        id: c.id, x: c.x, y: c.y,
+        lineWidths: c.lines.map((t) => ctx.measureText(t).width),
+        prefAngleDeg: c.prefAngleDeg,
+        prefTier: c.prefTier,
+      })),
+      {
+        candidateAnglesDeg: DEFAULT_CANDIDATE_ANGLES_DEG,
+        symbolRadius: SYM_HALF,
+        leaderLen: ldrLength * 10,
+        lineHeight: 12,
+        ascent: 8,
+        descent: 2,
+        padding: 2,
+      },
+    )
+
+    ctx.textBaseline = 'alphabetic'
+    for (const c of dbCandidates) {
+      const placement = placements[c.id]
+      if (!placement) continue
+      const { bbox, leaderStart, leaderEnd } = placement
+
+      ctx.strokeStyle = c.color
+      ctx.lineWidth   = 1
+      ctx.beginPath()
+      ctx.moveTo(leaderStart.x, leaderStart.y)
+      ctx.lineTo(leaderEnd.x, leaderEnd.y)
+      ctx.stroke()
+
+      ctx.fillStyle = c.textColor
+      ctx.textAlign = bbox.align
+      for (let i = 0; i < c.lines.length; i++) {
+        ctx.fillText(c.lines[i], bbox.textX, bbox.ly1 + i * 12)
+      }
     }
   }
 

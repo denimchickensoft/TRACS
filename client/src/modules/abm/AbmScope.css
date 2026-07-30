@@ -51,7 +51,7 @@
   flex-direction: column;
   font-family:    'Roboto Mono', monospace;
   font-size:      0.7rem;
-  color:          #aaa;
+  color:          #fff;
   white-space:    normal;
   word-wrap:      break-word;
   pointer-events: none;
@@ -92,7 +92,7 @@
   gap:            2px;
   font-family:    'Roboto Mono', monospace;
   font-size:      0.7rem;
-  color:          #aaa;
+  color:          #fff;
   text-align:     right;
   pointer-events: none;
 }

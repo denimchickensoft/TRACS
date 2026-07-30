@@ -125,6 +125,32 @@ app.get('/api/airports/polygons/:theatre', (req, res) => {
   res.sendFile(filePath)
 })
 
+// GET /api/abm/raster/:theatre/:layer — baked raster metadata for one of the
+// ABM raster layers ({ originLat, originLng, originPx, originPy, nmPerPixel,
+// width, height }) — layer is one of basemap (.map)/water (.water)/roads
+// (.roads); see buildAbmBasemap.js / client's drawAbmRaster.js.
+const ABM_RASTER_LAYERS = new Set(['basemap', 'water', 'roads'])
+app.get('/api/abm/raster/:theatre/:layer', (req, res) => {
+  const { theatre, layer } = req.params
+  if (!ABM_RASTER_LAYERS.has(layer)) return res.status(404).json({ error: `unknown raster layer: ${layer}` })
+  const folder = navdata.theatreFolder(theatre)
+  if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
+  const filePath = path.join(__dirname, '../navdata/cache', folder, `${layer}.json`)
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'no data for this layer/theatre' })
+  res.sendFile(filePath)
+})
+
+// GET /api/abm/raster/:theatre/:layer/image.png — the raster itself
+app.get('/api/abm/raster/:theatre/:layer/image.png', (req, res) => {
+  const { theatre, layer } = req.params
+  if (!ABM_RASTER_LAYERS.has(layer)) return res.status(404).json({ error: `unknown raster layer: ${layer}` })
+  const folder = navdata.theatreFolder(theatre)
+  if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
+  const filePath = path.join(__dirname, '../navdata/cache', folder, `${layer}.png`)
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'no data for this layer/theatre' })
+  res.sendFile(filePath)
+})
+
 // GET /api/airports/names/:theatre — reversed name map: { dcsName: stemName }
 app.get('/api/airports/names/:theatre', (req, res) => {
   const { theatre } = req.params

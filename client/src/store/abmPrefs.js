@@ -19,19 +19,29 @@ const DEFAULTS = {
   ptlMinutes:     1,
   fadedSeconds:   30,
   threatRadius:   45,
+  autoThreat:     false,
   ringsVisible:   false,
   ringSpacingNm:  20,
   mgrsVisible:    false,
+  townsVisible:   false,
+  basemapVisible: false,
+  waterVisible:   false,
+  roadsVisible:   false,
   fixesVisible:   false,
   navaidsVisible: false,
   runwaysVisible: false,
   polygonsVisible: false,
   asVisible:      {},    // { [displayCategory]: bool }
+  aspColorIdx:    0,     // index into airspace_colors.json palette array
   coordsVisible:  false,
   coordFormat:    'dms', // 'dms' | 'ddm'
   elevUnit:       'feet', // 'feet' | 'meters'
   acqHidden:      [],    // DECLARATION[]
   engHidden:      [],    // DECLARATION[]
+  historyVisible: true,
+  historyLength:  4,     // trail points shown, capped by AbmScope's MAX_HISTORY
+  historyRate:    4.5,   // seconds between trail captures
+  dbca:           false, // datablock collision avoidance — off by default (on for CATCC only)
 }
 
 export function loadAbmPrefs() {

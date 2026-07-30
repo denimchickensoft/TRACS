@@ -34,7 +34,7 @@ const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const CACHE_DIR      = path.join(__dirname, '../navdata/cache')
 const GEO_DIR         = path.join(__dirname, '../data/geo') // shared with buildGeoData.js
 const OSM_BUILD_DIR   = path.join(__dirname, '../../resources/osm-build')
-const ROADS_RAIL_RAW  = path.join(OSM_BUILD_DIR, 'roads_rail_raw.json')
+const ROADS_RAIL_RAW_DIR = path.join(OSM_BUILD_DIR, 'roads_rail_raw')
 const TOWNS_DIR       = path.join(__dirname, '../../client/public/towns')
 
 // theatres.json bboxes are padded generously for relief/geo (sea, distant
@@ -137,7 +137,11 @@ function paddedBbox(theatreBbox) {
 // abm-map-context-spec.md, ~4.5M points measured at ~25 bytes/point = the
 // entire 113MB before this was added).
 
-const SIMPLIFY_TOLERANCE_DEG = 0.001 // ~100m at these latitudes
+const SIMPLIFY_TOLERANCE_DEG = 0.0002 // ~20m at these latitudes — tightened from ~100m
+                                       // (2026-07-29) now that the ABM raster (buildAbmBasemap.js)
+                                       // renders this at up to ~150m/px (4800px budget): the old
+                                       // 100m tolerance was throwing away real curve detail the
+                                       // raster could otherwise resolve
 const COORD_DECIMALS = 5              // ~1m precision - plenty for this purpose
 
 function round(v) {
@@ -200,35 +204,43 @@ function clipWaterFeatures(features, theatreBbox, type) {
 
 // ── Roads/rail (pre-filtered Geofabrik data) ─────────────────────────────────
 
-let _roadsRailCache = null
-function loadRoadsRailRaw() {
-  if (_roadsRailCache) return _roadsRailCache
-  if (!fs.existsSync(ROADS_RAIL_RAW)) {
+// Streams through the per-country raw files one at a time and filters
+// immediately, instead of concatenating all countries into one big live
+// array first (the previous approach - simple, but holding ~5.4M parsed
+// feature objects at once exceeded Node's heap once Germany's 6-country
+// batch pushed the total that high; crashed at ~4.2GB). Only one country's
+// parsed features are ever live at a time here, so peak memory is bounded
+// by the single largest country file, not the sum of all of them. Costs a
+// fresh read+parse of every country file per theatre (no cross-theatre
+// cache), which is slower for a full "all theatres" run but no longer a
+// correctness problem.
+function clipRoadsRail(theatreBbox) {
+  if (!fs.existsSync(ROADS_RAIL_RAW_DIR)) {
     throw new Error(
-      `${ROADS_RAIL_RAW} not found. Run "python server/scripts/extract_osm_roads.py" first.`
+      `${ROADS_RAIL_RAW_DIR} not found. Run "python server/scripts/extract_osm_roads.py" first.`
     )
   }
-  process.stdout.write('  loading Geofabrik-derived roads/rail data…')
-  _roadsRailCache = JSON.parse(fs.readFileSync(ROADS_RAIL_RAW, 'utf8')).features
-  process.stdout.write(` ${_roadsRailCache.length} features\n`)
-  return _roadsRailCache
-}
-
-function clipRoadsRail(allFeatures, theatreBbox) {
   const padded = paddedBbox(theatreBbox)
+  const files  = fs.readdirSync(ROADS_RAIL_RAW_DIR).filter(f => f.endsWith('.json'))
   const roads = []
   const rail  = []
-  for (const f of allFeatures) {
-    if (!f.coords || f.coords.length < 2) continue
-    const bbox = bboxOf(f.coords)
-    if (!bboxIntersects(bbox, padded)) continue
-    const coords = simplifyAndRound(f.coords)
-    if (f.railway) {
-      rail.push({ coords, name: f.name || null })
-    } else if (f.class) {
-      roads.push({ coords, class: f.class, name: f.name || null })
+  let total = 0
+  for (const file of files) {
+    const { features } = JSON.parse(fs.readFileSync(path.join(ROADS_RAIL_RAW_DIR, file), 'utf8'))
+    total += features.length
+    for (const f of features) {
+      if (!f.coords || f.coords.length < 2) continue
+      const bbox = bboxOf(f.coords)
+      if (!bboxIntersects(bbox, padded)) continue
+      const coords = simplifyAndRound(f.coords)
+      if (f.railway) {
+        rail.push({ coords, name: f.name || null })
+      } else if (f.class) {
+        roads.push({ coords, class: f.class, name: f.name || null })
+      }
     }
   }
+  process.stdout.write(`  scanned ${total} features across ${files.length} countries\n`)
   return { roads, rail }
 }
 
@@ -242,8 +254,7 @@ async function buildTheatre(name, conf, opts) {
 
   let roads = [], rail = []
   if (!opts.waterOnly) {
-    const allRoadsRail = loadRoadsRailRaw()
-    ;({ roads, rail } = clipRoadsRail(allRoadsRail, clipBbox))
+    ;({ roads, rail } = clipRoadsRail(clipBbox))
   }
 
   const [riverFeatures, lakeFeatures] = await Promise.all([
