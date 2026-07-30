@@ -3,9 +3,14 @@ import { useSessionStore, MODULE, POSITION_MODE } from '../../store/session'
 import { useControllersStore } from '../../store/controllers'
 import { useUnitsStore } from '../../store/units'
 import { useAicStore } from '../../store/aic'
+import { useStatusBoardStore } from '../../store/statusBoard'
 import { wsClient } from '../../ws/client'
 import { initWebrtc } from '../../webrtc/client'
 import { CARRIER_TYPES } from '../../utils/carriers'
+import {
+  loadServerProfiles, upsertServerProfile, toggleFavoriteProfile,
+  removeServerProfile, findProfileByName, filterServerProfiles, getMostRecentProfile,
+} from '../../utils/serverProfiles'
 import './Login.css'
 
 const SUFFIX_TO_NAVDATA_ROLE = {
@@ -32,23 +37,78 @@ const COALITION_OPTIONS = [
 
 // ── Phase 1: Connect to Olympus ───────────────────────────────────────────────
 function ConnectPhase({ onConnected }) {
-  const [olympusUrl, setOlympusUrl] = useState(
-    () => localStorage.getItem('tracs.lastOlympusUrl') ?? 'http://localhost:4514'
-  )
-  const [password,   setPassword]   = useState(
-    () => localStorage.getItem('tracs.lastCoalitionPassword') ?? ''
-  )
-  const [coalition,  setCoalition]  = useState('blue')
+  const [profiles,   setProfiles]   = useState(() => loadServerProfiles())
+  const lastProfile = useMemo(() => getMostRecentProfile(profiles), []) // eslint-disable-line
+  const [name,       setName]       = useState(() => lastProfile?.name ?? '')
+  const [olympusUrl, setOlympusUrl] = useState(() => lastProfile?.url ?? '')
+  const [coalition,  setCoalition]  = useState(() => lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
+  const [password,   setPassword]   = useState(() => lastProfile?.passwords?.[coalition] ?? '')
   const [error,      setError]      = useState(null)
   const [connecting, setConnecting] = useState(false)
 
+  const [showDropdown,      setShowDropdown]      = useState(false)
+  const [confirmDeleteName, setConfirmDeleteName] = useState(null)
+  const [confirmOverwrite, setConfirmOverwrite]   = useState(false)
+  const [saveStatus,       setSaveStatus]         = useState(null) // null | 'saved'
+  const saveStatusTimer = useRef(null)
+  useEffect(() => () => clearTimeout(saveStatusTimer.current), [])
+
   const { setConnection } = useSessionStore()
+
+  // Always show the full favorites+recents list — typing shouldn't filter it out from under the user.
+  const filteredProfiles = useMemo(
+    () => filterServerProfiles(profiles, ''),
+    [profiles]
+  )
+
+  // Re-fill the password when the role changes, if the current name matches a saved profile
+  useEffect(() => {
+    const match = findProfileByName(profiles, name)
+    if (match) setPassword(match.passwords[coalition] ?? '')
+  }, [coalition]) // eslint-disable-line
 
   function normalizeUrl(raw) {
     let url = raw.trim()
     if (!/^https?:\/\//i.test(url)) url = 'http://' + url
     url = url.replace(/\/+$/, '')
     return url
+  }
+
+  function handleSelectProfile(profile) {
+    const profileCoalition = profile.lastCoalition ?? coalition
+    setName(profile.name)
+    setOlympusUrl(profile.url)
+    setCoalition(profileCoalition)
+    setPassword(profile.passwords[profileCoalition] ?? '')
+    setShowDropdown(false)
+  }
+
+  function handleToggleFavorite(profileName) {
+    setProfiles((prev) => toggleFavoriteProfile(prev, profileName))
+  }
+
+  function handleDelete(profileName) {
+    setProfiles((prev) => removeServerProfile(prev, profileName))
+    setConfirmDeleteName(null)
+  }
+
+  function persistProfile() {
+    const normalizedUrl = normalizeUrl(olympusUrl)
+    setOlympusUrl(normalizedUrl)
+    setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password }))
+    setConfirmOverwrite(false)
+    setSaveStatus('saved')
+    clearTimeout(saveStatusTimer.current)
+    saveStatusTimer.current = setTimeout(() => setSaveStatus(null), 1500)
+  }
+
+  function handleSaveClick() {
+    if (!name.trim()) return
+    if (findProfileByName(profiles, name)) {
+      setConfirmOverwrite(true)
+      return
+    }
+    persistProfile()
   }
 
   async function handleConnect(e) {
@@ -71,8 +131,7 @@ function ConnectPhase({ onConnected }) {
         throw new Error(body.error ?? `Server responded ${res.status}`)
       }
 
-      localStorage.setItem('tracs.lastOlympusUrl', normalizedUrl)
-      localStorage.setItem('tracs.lastCoalitionPassword', password)
+      localStorage.setItem('tracs.lastCoalition', coalition)
       setConnection({ olympusUrl: normalizedUrl, coalition })
       wsClient.connect()
       onConnected()
@@ -87,25 +146,95 @@ function ConnectPhase({ onConnected }) {
 
   return (
     <form className="login-form" onSubmit={handleConnect}>
+      <section className="server-name-section">
+        <label>Server Name</label>
+        <div className="server-name-row">
+          <input
+            type="text"
+            className="server-name-input"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setConfirmOverwrite(false) }}
+            onFocus={() => setShowDropdown(true)}
+            onBlur={() => setShowDropdown(false)}
+            placeholder="DCS Server Name"
+            disabled={connecting}
+          />
+          <button
+            type="button"
+            className="save-profile-btn"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleSaveClick}
+            disabled={connecting || !name.trim()}
+            title="Save server"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+          </button>
+        </div>
+        {confirmOverwrite && (
+          <div className="profile-delete-confirm profile-overwrite-confirm">
+            <span>Overwrite saved server "{name}"?</span>
+            <button type="button" onClick={persistProfile}>Confirm</button>
+            <button type="button" onClick={() => setConfirmOverwrite(false)}>Cancel</button>
+          </div>
+        )}
+        {saveStatus === 'saved' && !confirmOverwrite && (
+          <span className="login-hint save-status-hint">Saved</span>
+        )}
+        {showDropdown && filteredProfiles.length > 0 && (
+          <ul className="server-profile-dropdown" onMouseDown={(e) => e.preventDefault()}>
+            {filteredProfiles.map((p) => (
+              <li key={p.name} className="server-profile-row">
+                {confirmDeleteName === p.name ? (
+                  <div className="profile-delete-confirm">
+                    <span>Delete "{p.name}"?</span>
+                    <button type="button" onClick={() => handleDelete(p.name)}>Confirm</button>
+                    <button type="button" onClick={() => setConfirmDeleteName(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="profile-name-btn"
+                      onClick={() => handleSelectProfile(p)}
+                    >
+                      {p.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={`profile-star-btn ${p.favorite ? 'active' : ''}`}
+                      onClick={() => handleToggleFavorite(p.name)}
+                      aria-label="Toggle favorite"
+                    >
+                      ★
+                    </button>
+                    <button
+                      type="button"
+                      className="profile-trash-btn"
+                      onClick={() => setConfirmDeleteName(p.name)}
+                      aria-label="Delete server"
+                    >
+                      🗑
+                    </button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section>
-        <label>Olympus Server URL</label>
+        <label>Olympus Server URL &amp; Port</label>
         <input
           type="text"
           value={olympusUrl}
           onChange={(e) => setOlympusUrl(e.target.value)}
-          placeholder="http://your-dcs-server:4514"
+          placeholder="http://dcs-server-address:4513"
           required
-          disabled={connecting}
-        />
-      </section>
-
-      <section>
-        <label>Coalition Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Olympus coalition password"
           disabled={connecting}
         />
       </section>
@@ -121,6 +250,17 @@ function ConnectPhase({ onConnected }) {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+      </section>
+
+      <section>
+        <label>Coalition Password</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Olympus coalition password"
+          disabled={connecting}
+        />
       </section>
 
       {error && <p className="login-error">{error}</p>}
@@ -510,6 +650,10 @@ function PositionPhase({ onSignedIn }) {
     } else if (selectedModule === MODULE.CATCC) {
       const formattedFreq  = parseFloat(catccFrequency).toFixed(3)
       const posTypeDef     = CATCC_POSITION_TYPES.find((pt) => pt.suffix === catccSuffix)
+      // RAD is meant to default to the reciprocal of FB each session; without this
+      // it keeps whatever was left in localStorage from the last time the tab was
+      // closed without a clean Disconnect, which can be stale for the current mission.
+      useStatusBoardStore.getState().setHeader('rad', '')
       localStorage.setItem('tracs.catcc.lastCarrierId', selectedCarrierId)
       localStorage.setItem('tracs.catcc.lastSuffix',    catccSuffix)
       localStorage.setItem('tracs.catcc.lastFrequency', catccFrequency)
