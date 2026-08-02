@@ -246,7 +246,7 @@ function buildDump(mod) {
     return {
       ...base,
       statusBoard: {
-        eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz },
+        eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery },
         recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn, rad: s.rad },
         entries:        s.entries,
       },

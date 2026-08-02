@@ -9,6 +9,7 @@ import { useFpeStore }         from '../../../store/fpe.js'
 import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../stars/canvas/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
+import { computeMagvar }       from '../../../utils/magvar.js'
 import { AsdexDcb, ASDEX_WINDOW_ID } from './AsdexDcb.jsx'
 import { AsdexInputHandler }   from './AsdexInputHandler.jsx'
 import { AsdexPreviewArea }    from './AsdexPreviewArea.jsx'
@@ -62,6 +63,7 @@ export default function AsdexScope() {
   // ── Refs that shadow live state for use in callbacks/rAF ─────────────────────
   const centerLatRef       = useRef(0)
   const centerLngRef       = useRef(0)
+  const declinationRef     = useRef(0)
   const viewRef            = useRef(null)
   const unitsRef           = useRef(units)
   const plansRef           = useRef(plans)
@@ -111,6 +113,17 @@ export default function AsdexScope() {
     if (match?.latitude != null) return { lat: match.latitude, lng: match.longitude }
     return null
   }, [facilityDcsName, airbases, centerlines])
+
+  // declinationDeg (IGRF) is the only correction applied — see utils/magvar.js:
+  // DCS's own heading readouts don't apply grid convergence, so this app
+  // doesn't add it either.
+  const missionDate    = mission?.mission?.dateAndTime?.date ?? null
+  const declinationDeg = computeMagvar(
+    windowSettings?.centerLat ?? facilityLatLng?.lat ?? 0,
+    windowSettings?.centerLng ?? facilityLatLng?.lng ?? 0,
+    missionDate
+  )
+  useEffect(() => { declinationRef.current = declinationDeg }, [declinationDeg])
 
   // Filter polygon features to facility airport via reverse name lookup
   const facilityFeatures = useMemo(() => {
@@ -225,6 +238,7 @@ export default function AsdexScope() {
       rangeNm,
       pixelsPerNm: rangeToPixelsPerNm(rangeNm, rawW, rawH),
       width: rawW, height: rawH,
+      declinationDeg: declinationRef.current,
       theatre,
     }
   }, [theatre])
@@ -245,7 +259,7 @@ export default function AsdexScope() {
     return () => ro.disconnect()
   }, [hasWindowSettings]) // eslint-disable-line
 
-  useEffect(() => { setView(buildView()) }, [windowSettings?.rangeNm, windowSettings?.centerLat, windowSettings?.centerLng]) // eslint-disable-line
+  useEffect(() => { setView(buildView()) }, [windowSettings?.rangeNm, windowSettings?.centerLat, windowSettings?.centerLng, declinationDeg]) // eslint-disable-line
   useEffect(() => { viewRef.current = view }, [view])
 
   // ── History capture ──────────────────────────────────────────────────────────
@@ -379,6 +393,8 @@ export default function AsdexScope() {
       rangeNm,
       pixelsPerNm: pxPerNm,
       width: rawW, height: rawH,
+      declinationDeg: declinationRef.current,
+      theatre: v.theatre,
     }
     viewRef.current = nextView
     setView(nextView)

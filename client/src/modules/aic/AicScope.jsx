@@ -21,6 +21,7 @@ import { computePicture, sectorAxisBearing } from './canvas/computePicture.js'
 import { useGeoStore }         from '../../store/geo.js'
 import { useReliefStore }      from '../../store/relief.js'
 import { useMapsStore }        from '../../store/maps.js'
+import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { BraaList }            from './BraaList.jsx'
 import './AicScope.css'
 
@@ -214,6 +215,11 @@ export default function AicScope() {
   const myCoalitionNum = COALITION_NUM[coalition] ?? 2
   const theatre        = mission?.mission?.theatre
   const missionDate    = mission?.mission?.dateAndTime?.date ?? null
+
+  // ── Mission clock — defaults to Zulu, click to toggle theatre-local ────────────
+  const { timeStr, localTimeStr } = useMissionClock()
+  const [showLocalTime, setShowLocalTime] = useState(false)
+  const clockTime = showLocalTime ? localTimeStr : timeStr
 
   const bullseyeEntry = useMemo(() => {
     if (!bullseyes?.bullseyes) return null
@@ -1218,6 +1224,15 @@ export default function AicScope() {
           <div className="aic-warn">NO BULLSEYE</div>
         )}
 
+
+        {/* Mission clock — above cmd feedback/entry. Click to toggle Zulu/Local. */}
+        <div
+          className="aic-clock"
+          onClick={() => setShowLocalTime((v) => !v)}
+          title="Click to toggle Zulu / Local time"
+        >
+          {clockTime ?? (showLocalTime ? '--:--:--L' : '--:--:--Z')}
+        </div>
 
         {/* Command feedback — above cmd entry */}
         {cmdFeedback && (

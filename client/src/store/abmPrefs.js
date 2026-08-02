@@ -42,6 +42,8 @@ const DEFAULTS = {
   historyLength:  4,     // trail points shown, capped by AbmScope's MAX_HISTORY
   historyRate:    4.5,   // seconds between trail captures
   dbca:           false, // datablock collision avoidance — off by default (on for CATCC only)
+  timeVisible:    true,  // mission clock, top-center — .time toggles
+  unitReadoutVisible: true, // cursor-proximity ground/air unit readout — .unitro toggles
 }
 
 export function loadAbmPrefs() {

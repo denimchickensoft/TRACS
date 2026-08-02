@@ -8,6 +8,9 @@ import { DeckWindow }          from './modules/catcc/DeckWindow'
 import { ControllerListWindow } from './components/ControllerList/ControllerListWindow'
 import { ParWindow }            from './components/par/ParWindow'
 import { AsdexOdsWindow }      from './modules/atc/asdex/AsdexOdsWindow'
+import { AtoWindow }           from './modules/abm/AtoWindow'
+import { FragWindow }          from './modules/abm/FragWindow'
+import { BraaListWindow }      from './modules/aic/BraaListWindow'
 
 const _params    = new URLSearchParams(window.location.search)
 const windowMode = _params.get('window')
@@ -20,6 +23,9 @@ createRoot(document.getElementById('root')).render(
      windowMode === 'cl'          ? <ControllerListWindow /> :
      windowMode === 'par'         ? <ParWindow />            :
      windowMode === 'asdex-ods'   ? <AsdexOdsWindow />       :
+     windowMode === 'abm-ato'     ? <AtoWindow />            :
+     windowMode === 'abm-frag'    ? <FragWindow />           :
+     windowMode === 'braa'        ? <BraaListWindow />       :
      <App />}
   </StrictMode>
 )

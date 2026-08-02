@@ -1,0 +1,230 @@
+.frag {
+  display:        flex;
+  flex-direction: column;
+  background:     #0a0a0a;
+  border-left:    1px solid #1a1a1a;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      10px;
+  color:          #ccc;
+  position:       relative;
+  overflow:       hidden;
+}
+
+.frag-resize {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: ew-resize;
+  z-index: 10;
+}
+.frag-resize:hover,
+.frag-resize:active {
+  background: rgba(255, 215, 0, 0.15);
+}
+
+.frag-title {
+  position:      relative;
+  display:       flex;
+  align-items:   center;
+  padding:       4px 8px;
+  background:    #111;
+  border-bottom: 1px solid #222;
+  flex-shrink:   0;
+  user-select:   none;
+}
+
+.frag-title-text {
+  font-size:      9px;
+  letter-spacing: 0.12em;
+  color:          #FFD700;
+  flex:           1;
+  text-transform: uppercase;
+}
+
+.frag-title-scale-hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  color: #FFD700;
+  font-size: 9px;
+  padding: 1px 5px;
+  pointer-events: none;
+}
+
+.frag-title-right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.frag-btn {
+  background: transparent;
+  border: none;
+  color: #444;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.frag-btn:hover { color: #FFD700; }
+
+.frag-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.frag-empty {
+  padding: 16px 12px;
+  font-size: 9px;
+  color: #444;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+}
+
+.frag-section {
+  padding: 6px 8px;
+  border-bottom: 1px solid #181818;
+}
+
+.frag-section-grow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: none;
+}
+
+.frag-section-label {
+  font-size: 8px;
+  color: #444;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.frag-kv {
+  display: flex;
+  gap: 8px;
+  font-size: 9px;
+  padding: 1px 0;
+}
+.frag-kv span:first-child { color: #555; width: 44px; flex-shrink: 0; }
+.frag-kv span:last-child  { color: #ccc; }
+
+.frag-active  { color: #5A8A5A !important; }
+.frag-reserve { color: #BB8833 !important; }
+
+.frag-unit {
+  padding: 3px 0;
+  border-bottom: 1px solid #141414;
+}
+.frag-unit:last-child { border-bottom: none; }
+
+.frag-unit-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  font-size: 9px;
+}
+.frag-unit-cs   { color: #FFD700; }
+.frag-unit-type { color: #aaa; }
+.frag-unit-tcs  { color: #7AA9E8; }
+.frag-unit-mdx  { color: #888; }
+.frag-unit-skl  { color: #555; font-size: 8px; }
+.frag-unit-skl.client { color: #5A8A5A; }
+
+.frag-ordnance {
+  margin-top: 3px;
+  padding-left: 4px;
+}
+.frag-ord-row {
+  display: grid;
+  grid-template-columns: 1fr 20px;
+  gap: 0 6px;
+  font-size: 8px;
+  padding: 1px 0;
+}
+.frag-ord-name {
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.frag-ord-qty {
+  color: #666;
+  text-align: right;
+}
+
+.frag-radio-block {
+  margin-top: 3px;
+  padding-left: 4px;
+}
+.frag-radio-toggle {
+  font-size: 8px;
+  color: #555;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  user-select: none;
+}
+.frag-radio-toggle:hover { color: #888; }
+.frag-radio-caret {
+  display: inline-block;
+  width: 9px;
+  color: #444;
+}
+.frag-radios {
+  display: flex;
+  gap: 0 14px;
+  margin-top: 2px;
+}
+.frag-radio {
+  flex: 1;
+  min-width: 0;
+}
+.frag-radio-label {
+  font-size: 8px;
+  color: #444;
+  letter-spacing: 0.06em;
+}
+.frag-radio-row {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 0 4px;
+  font-size: 8px;
+  padding: 1px 0;
+}
+.frag-radio-ch   { color: #999; }
+.frag-radio-fm   { justify-self: start; }
+.frag-radio-freq { color: #FFD700; }
+.frag-radio-mod  { color: #666; }
+
+.frag-link16 {
+  font-size: 8px;
+  color: #555;
+  padding-left: 4px;
+  margin-top: 2px;
+}
+
+.frag-route {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.frag-wp {
+  display: grid;
+  grid-template-columns: 1fr 70px 50px;
+  gap: 0 6px;
+  font-size: 9px;
+  padding: 2px 0;
+  border-bottom: 1px solid #141414;
+}
+.frag-wp-name  { color: #FFD700; }
+.frag-wp-alt   { color: #aaa; text-align: right; }
+.frag-wp-speed { color: #888; text-align: right; }

@@ -100,7 +100,7 @@ const BRAA_SCALE_STEP = 0.05
 
 export const BRAA_NATURAL_WIDTH = 280
 
-export function BraaList({ docked = true, width, onResize, onUndock, onHide, onScaleChange }) {
+export function BraaList({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir     = useWheelDirection()
   const units        = useUnitsStore(s => s.units)
   const coalition    = useSessionStore(s => s.coalition)
@@ -178,8 +178,9 @@ export function BraaList({ docked = true, width, onResize, onUndock, onHide, onS
         <span className="braa-title-text">BRAA LIST</span>
         {scaleHint && <span className="braa-scale-hint">{Math.round(scale * 100)}%</span>}
         <span className="braa-title-right">
-          {docked && onUndock && <button className="braa-btn" onClick={onUndock} title="Undock">⬡</button>}
-          {docked && onHide   && <button className="braa-btn" onClick={onHide}   title="Hide">›</button>}
+          {docked  && onUndock && <button className="braa-btn" onClick={onUndock} title="Undock">⬡</button>}
+          {!docked && onDock   && <button className="braa-btn" onClick={onDock}   title="Dock">⬡</button>}
+          {docked  && onHide   && <button className="braa-btn" onClick={onHide}   title="Hide">›</button>}
         </span>
       </div>
 

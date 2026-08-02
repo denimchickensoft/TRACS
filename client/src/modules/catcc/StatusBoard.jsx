@@ -10,6 +10,8 @@ import { resolveCallsign, parseUnitName } from '../../utils/callsign.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
+import { useMissionClock }      from '../../utils/useMissionClock.js'
+import { toUtcDateTime, getTheatreUtcOffset } from '../../utils/theatreTime.js'
 import './StatusBoard.css'
 
 // ── Time validation (2400-clock: 0000–2359, plus 2400) ───────────────────────
@@ -307,7 +309,7 @@ const SCALE_STEP    = 0.05
 export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
   const {
-    event, launch, recovery, tz, clg, vis, qnh,
+    event, launch, recovery, clg, vis, qnh,
     caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn, rad,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
     clearMissionData, clearAll,
@@ -353,9 +355,14 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const visibleUnits = useMemo(() => getVisibleUnits(units, coalition), [units, coalition])
 
   // ── Carrier-derived values ─────────────────────────────────────────
-  const carrier    = carrierUnitId != null ? units[carrierUnitId] : null
-  const missionDate = mission?.mission?.dateAndTime?.date ?? null
-  const magvar     = computeMagvar(carrier?.position?.lat ?? 0, carrier?.position?.lng ?? 0, missionDate)
+  const carrier      = carrierUnitId != null ? units[carrierUnitId] : null
+  const theatre      = mission?.mission?.theatre
+  const missionDate  = mission?.mission?.dateAndTime?.date ?? null
+  const missionTod   = mission?.mission?.dateAndTime?.time ?? null
+  const utcDate      = (missionDate && missionTod)
+    ? toUtcDateTime(missionDate, missionTod, theatre).date
+    : missionDate
+  const magvar     = computeMagvar(carrier?.position?.lat ?? 0, carrier?.position?.lng ?? 0, utcDate)
   const hdgDeg     = (carrier?.heading ?? 0) * 180 / Math.PI
   const deckOffset = CARRIER_TYPES[carrier?.name]?.deckOffset ?? 9
   const { brc: brcF, fb: fbF } = computeCarrierBrcFb(hdgDeg, magvar, deckOffset)
@@ -366,54 +373,27 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const spd        = Math.round((carrier?.speed ?? 0) * 1.94384)
 
   const carrierPos   = carrier?.position
-  const tzOffset     = carrierPos ? Math.round(carrierPos.lng / 15) : null
-  const autoTzStr    = tzOffset == null ? ''
-                     : tzOffset === 0   ? 'Z'
-                     : tzOffset > 0     ? `+${tzOffset}`
-                     :                    String(tzOffset)
+  const tzOffset      = theatre ? getTheatreUtcOffset(theatre) : null
+  const autoTzStr     = tzOffset == null ? ''
+                      : tzOffset === 0   ? 'Z'
+                      : tzOffset > 0     ? `+${tzOffset}`
+                      :                    String(tzOffset)
 
   const brcAlert = useStabilityAlert(brc, { threshold: 5, stabilityMs: 20000, circular: true })
   const fbAlert  = useStabilityAlert(fb,  { threshold: 5, stabilityMs: 20000, circular: true })
   const spdAlert = useStabilityAlert(spd, { threshold: 5, stabilityMs: 20000 })
 
   const { sunrise: sunriseZ, sunset: sunsetZ } = useMemo(() => {
-    if (!missionDate || !carrierPos) return { sunrise: null, sunset: null }
-    const { Day, Month, Year } = missionDate
+    if (!utcDate || !carrierPos) return { sunrise: null, sunset: null }
+    const { Day, Month, Year } = utcDate
     return sunTimes(carrierPos.lat, carrierPos.lng, Year, Month, Day)
-  }, [missionDate, carrierPos])
+  }, [utcDate, carrierPos])
 
   // ── Mission clock ──────────────────────────────────────────────────
-  const syncRef = useRef(null)
-  const [missionTime, setMissionTime] = useState('----Z')
-
-  useEffect(() => {
-    const t = mission?.mission?.dateAndTime?.time
-    if (!t) return
-    syncRef.current = {
-      missionSeconds: (t.h ?? 0) * 3600 + (t.m ?? 0) * 60 + (t.s ?? 0),
-      wallMs: Date.now(),
-    }
-  }, [mission])
-
-  useEffect(() => {
-    function tick() {
-      if (!syncRef.current) { setMissionTime('----Z'); return }
-      const elapsed = (Date.now() - syncRef.current.wallMs) / 1000
-      const total = Math.floor(syncRef.current.missionSeconds + elapsed) % 86400
-      const h = Math.floor(total / 3600)
-      const m = Math.floor((total % 3600) / 60)
-      const s = total % 60
-      setMissionTime(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}Z`)
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [])
-
-  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
-  const missionDateStr = missionDate
-    ? `${String(missionDate.Day).padStart(2, '0')} ${MONTHS[missionDate.Month - 1]} ${missionDate.Year}`
-    : ''
+  const { timeStr, dateStr, localTimeStr, localDateStr } = useMissionClock()
+  const [showLocalTime, setShowLocalTime] = useState(false)
+  const missionTime     = showLocalTime ? localTimeStr : timeStr
+  const missionDateStr  = showLocalTime ? localDateStr : dateStr
 
   const magvarStr = magvar >= 0
     ? `+${magvar.toFixed(1)}`
@@ -477,13 +457,19 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     <div className="sb" style={style}>
       {docked && <div className="sb-resize-handle" onMouseDown={onResize} />}
       <div className="sb-title" onWheel={handleTitleWheel}>
-        <span className="sb-title-time">{missionTime}</span>
+        <span
+          className="sb-title-time"
+          onClick={() => setShowLocalTime((v) => !v)}
+          title="Click to toggle Zulu / Local time"
+        >
+          {missionTime ?? (showLocalTime ? '----L' : '----Z')}
+        </span>
         <span className="sb-title-text">CATCC Status Board</span>
         {scaleHint && (
           <span className="sb-title-scale-hint">{Math.round(scale * 100)}%</span>
         )}
         <span className="sb-title-right">
-          <span className="sb-title-date">{missionDateStr}</span>
+          <span className="sb-title-date">{missionDateStr ?? ''}</span>
           {docked  && onUndock && <button className="sb-dock-btn" onClick={onUndock} title="Undock">⬡</button>}
           {!docked && onDock   && <button className="sb-dock-btn" onClick={onDock}   title="Dock">⬡</button>}
           {docked  && onHide   && <button className="sb-dock-btn" onClick={onHide}   title="Hide">›</button>}
@@ -498,10 +484,10 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <HeaderField label="RECOVERY" value={recovery} onChange={(v) => setHeader('recovery', v)} inputW={32}  maxLen={4}  digitsOnly timeValidate hdrIdx={2} />
         </div>
         <div className="sb-group">
-          <HeaderField label="SUNRISE"  value={sunriseZ ?? '——'} onChange={() => {}} readOnly inputW={32} />
-          <HeaderField label="SUNSET"   value={sunsetZ  ?? '——'} onChange={() => {}} readOnly inputW={32} />
+          <HeaderField label="SUNRISE"  value={sunriseZ ? `${sunriseZ}Z` : '——'} onChange={() => {}} readOnly inputW={40} />
+          <HeaderField label="SUNSET"   value={sunsetZ  ? `${sunsetZ}Z`  : '——'} onChange={() => {}} readOnly inputW={40} />
           <HeaderField label="MAGVAR"   value={magvarStr} onChange={() => {}} readOnly inputW={36} />
-          <HeaderField label="TZ"       value={tz || autoTzStr} onChange={(v) => setHeader('tz', v)} inputW={24} maxLen={3}  hdrIdx={3} />
+          <HeaderField label="TZ"       value={autoTzStr || '——'} onChange={() => {}} readOnly inputW={24} />
         </div>
         <div className="sb-group">
           <HeaderField label="CLG"      value={clg}             onChange={(v) => setHeader('clg', v)} inputW={24} maxLen={3}  digitsOnly padZero={3} hdrIdx={4} />
@@ -538,7 +524,17 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
         >
           {/* Header */}
           {COLUMNS.map((col) => (
-            <div key={col.id} className="sb-th">{col.label}</div>
+            <div
+              key={col.id}
+              className="sb-th sb-th-sort"
+              onClick={() => {
+                if (sortField === col.field) setSortDir((d) => d === 'asc' ? 'desc' : 'asc')
+                else { setSortField(col.field); setSortDir('asc') }
+              }}
+              title={`Sort by ${col.label}`}
+            >
+              {col.label}{sortField === col.field ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+            </div>
           ))}
           <div className="sb-th" />
           <div className="sb-th" />
@@ -625,26 +621,6 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
               <button className="sb-add-btn sb-clear-mission-btn" onClick={clearMissionData}>✕ Clear Mission</button>
             )}
             <button className="sb-add-btn sb-clear-all-btn" onClick={() => setConfirmingClear(true)}>✕ Clear ALL</button>
-            <select
-              className="sb-sort-select"
-              value={sortField ?? ''}
-              onChange={(e) => setSortField(e.target.value || null)}
-            >
-              <option value="">Sort...</option>
-              {COLUMNS.filter((c, i, arr) => !c.readOnly && arr.findIndex(x => x.field === c.field) === i)
-                .map((c) => (
-                  <option key={c.id} value={c.field}>{c.label}</option>
-                ))}
-            </select>
-            {sortField && (
-              <button
-                className="sb-sort-dir-btn"
-                onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
-                title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-              >
-                {sortDir === 'asc' ? '▲' : '▼'}
-              </button>
-            )}
           </>
         )}
       </div>

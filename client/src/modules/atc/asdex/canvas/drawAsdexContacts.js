@@ -80,10 +80,14 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
       ctx.fill()
     }
 
-    // Symbol — filled triangle rotated by heading
+    // Symbol — filled triangle rotated by heading. unit.track is a true
+    // bearing (radians); the canvas is already rotated by declinationDeg
+    // (see projection.js) so screen-up is magnetic north, not true north —
+    // subtract the same correction here or the triangle points off by the
+    // declination angle.
     ctx.save()
     ctx.translate(x, y)
-    ctx.rotate(unit.track ?? 0)
+    ctx.rotate((unit.track ?? 0) - (view.declinationDeg ?? 0) * Math.PI / 180)
     ctx.beginPath()
     ctx.moveTo(0, -7)
     ctx.lineTo(5, 5)

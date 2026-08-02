@@ -31,12 +31,15 @@ import { drawRunways }      from '../atc/stars/canvas/drawRunways.js'
 import { drawAbmLayers }    from './canvas/drawAbmLayers.js'
 import { drawAbmFixSymbols } from './canvas/drawAbmFixSymbols.js'
 import { drawAbmAirportPolygons } from './canvas/drawAbmAirportPolygons.js'
-import { drawAbmContacts } from './canvas/drawAbmContacts.js'
+import { drawAbmContacts, typeAbbrev } from './canvas/drawAbmContacts.js'
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
+import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
+import { useAbmMissionStore } from '../../store/abmMission.js'
 import { drawBraaOverlays, drawThreatRings } from './canvas/drawAbmBraa.js'
 import { drawRbl }         from './canvas/drawAbmRbl.js'
 import { drawMgrsGrid }    from './canvas/drawMgrsGrid.js'
 import { drawAbmTowns }    from './canvas/drawAbmTowns.js'
+import { useMissionClock } from '../../utils/useMissionClock.js'
 import { drawAbmRaster }   from './canvas/drawAbmRaster.js'
 import { drawAbmAirspace } from './canvas/drawAbmAirspace.js'
 import './AbmScope.css'
@@ -97,7 +100,7 @@ const AIRSPACE_CMD_CATEGORY = {
 // Same fog-of-war model as AIC (client/src/modules/aic/AicScope.jsx
 // getAicVisibleUnits) — kept as a local copy rather than a shared import
 // since it's a small, stable filter and AIC doesn't export it.
-function getAbmVisibleUnits(units, myCoalitionNum) {
+function getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
   const result      = {}
   const detectedIds = new Set()
 
@@ -105,6 +108,7 @@ function getAbmVisibleUnits(units, myCoalitionNum) {
     if (!unit.contacts) continue
     for (const c of unit.contacts) {
       if ((c.detectionMethod & 4) || (c.detectionMethod & 32)) detectedIds.add(String(c.ID))
+      if (c.detectionMethod & 16) rwrEverDetected?.add(String(c.ID))
     }
   }
 
@@ -222,6 +226,23 @@ function buildReadoutFields(dbEntry) {
   return fields.filter(v => v !== undefined && v !== null && v !== '')
 }
 
+// Friendly air-unit readout — true coalition (unit.coalition === myCoalitionNum),
+// not the possibly F-key-overridden declaration, same "actual side" gate
+// drawAbmContacts.js uses for its own friendly/non-friendly datablock split
+// (2026-08-02 direction: classification overrides shouldn't unlock this).
+// One line per ammo entry, no cap — a loaded-out jet just gets a long list.
+function buildFriendlyAirFields(unit) {
+  const fields = [
+    resolveCallsign(unit).toUpperCase(),
+    typeAbbrev(unit),
+    unit.fuel != null ? `${Math.round(unit.fuel)}% FUEL` : null,
+    ...(unit.ammo ?? [])
+      .filter(a => a.quantity > 0)
+      .map(a => `${a.name} x ${a.quantity}`),
+  ]
+  return fields.filter(v => v !== undefined && v !== null && v !== '')
+}
+
 // Perpendicular distance from (px,py) to the segment (x1,y1)-(x2,y2), clamped
 // to the segment itself (not the infinite line) — used to hit-test the
 // cursor against runway centerlines for the airport readout below.
@@ -289,6 +310,12 @@ export default function AbmScope() {
   const missionDate = mission?.mission?.dateAndTime?.date ?? null
   const myCoalitionNum = COALITION_NUM[coalition] ?? 2
 
+  // ── Mission clock — click to toggle Zulu/Local, .time to toggle visibility ─────
+  const { timeStr, localTimeStr } = useMissionClock()
+  const [showLocalTime, setShowLocalTime] = useState(false)
+  const [clockVisible,  setClockVisible]  = useState(abmPrefs.timeVisible)
+  const clockTime = showLocalTime ? localTimeStr : timeStr
+
   const displayStore   = useDisplayStore()
   const windowSettings = useDisplayStore(s => s.windows[WINDOW_ID])
 
@@ -299,6 +326,15 @@ export default function AbmScope() {
   const getEffectiveDeclaration = useAbmStore(s => s.getEffectiveDeclaration)
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
+
+  // ── ATO/FRAG package selection (Ctrl+Shift+Click) ───────────────────────────
+  const atoPackages     = useAbmMissionStore(s => s.packages)
+  const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
+  const selectAtoGroup  = useAbmMissionStore(s => s.selectGroup)
+  const selectedRoute = useMemo(
+    () => atoPackages.find(p => p.groupId === selectedGroupId)?.route ?? null,
+    [atoPackages, selectedGroupId]
+  )
 
   // BRAA line / bogey dope — ported from AIC, same keypresses/commands
   // (§11-adjacent — not in the original spec draft, added 2026-07-07).
@@ -350,8 +386,13 @@ export default function AbmScope() {
   const [acqHidden, setAcqHidden] = useState(new Set(abmPrefs.acqHidden))
   const [engHidden, setEngHidden] = useState(new Set(abmPrefs.engHidden))
 
+  // IDs ever seen with the RWR detection bit (16) set — same "sticky" reveal
+  // rule as AIC (AicScope.jsx rwrEverDetectedRef): once a non-friendly air
+  // contact is RWR-detected, its type stays revealed in the air-unit readout
+  // below even if RWR drops out again.
+  const rwrEverDetectedRef = useRef(new Set())
   const visibleUnits = useMemo(
-    () => getAbmVisibleUnits(units, myCoalitionNum),
+    () => getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetectedRef.current),
     [units, myCoalitionNum]
   )
   const visibleUnitsRef = useRef(visibleUnits)
@@ -657,9 +698,12 @@ export default function AbmScope() {
   // Lists every ground unit within READOUT_RADIUS_PX of the cursor, cross-
   // referenced against groundUnitDb. Reuses visibleGroundUnitsRef — the same
   // fog-of-war set drawAbmGroundContacts renders — so a unit only shows up
-  // here if it's actually visible on the scope. Always-on (unlike .coords),
-  // gated on the same 150ms interval so it doesn't re-render on every raw
-  // mousemove.
+  // here if it's actually visible on the scope. On by default (.unitro
+  // toggles it, 2026-08-02) — gates only the ground/air unit hit-gathering
+  // below, not the airport readout, which is a separate concern that
+  // happens to share the same box/interval. Gated on the same 150ms
+  // interval so it doesn't re-render on every raw mousemove.
+  const [unitReadoutVisible, setUnitReadoutVisible] = useState(abmPrefs.unitReadoutVisible)
   //
   // Airports/runways (2026-07-09) piggyback on the same interval and radius:
   // useRunwaysStore.centerlines emits two direction-entries per physical
@@ -713,10 +757,17 @@ export default function AbmScope() {
         return
       }
       const hits = []
-      for (const [unitId, unit] of Object.entries(visibleGroundUnitsRef.current)) {
-        if (!unit.position) continue
-        const p = latLngToCanvas(unit.position.lat, unit.position.lng, v)
-        if (Math.hypot(x - p.x, y - p.y) <= READOUT_RADIUS_PX) hits.push({ kind: 'ground', unitId, unit })
+      if (unitReadoutVisible) {
+        for (const [unitId, unit] of Object.entries(visibleGroundUnitsRef.current)) {
+          if (!unit.position) continue
+          const p = latLngToCanvas(unit.position.lat, unit.position.lng, v)
+          if (Math.hypot(x - p.x, y - p.y) <= READOUT_RADIUS_PX) hits.push({ kind: 'ground', unitId, unit })
+        }
+        for (const [unitId, unit] of Object.entries(visibleUnitsRef.current)) {
+          if (!unit.position) continue
+          const p = latLngToCanvas(unit.position.lat, unit.position.lng, v)
+          if (Math.hypot(x - p.x, y - p.y) <= READOUT_RADIUS_PX) hits.push({ kind: 'air', unitId, unit })
+        }
       }
 
       if (runwaysVisible || polygonsVisible) {
@@ -733,7 +784,7 @@ export default function AbmScope() {
       setReadoutHits(hits)
     }, 150)
     return () => clearInterval(id)
-  }, [runwaysVisible, polygonsVisible])
+  }, [runwaysVisible, polygonsVisible, unitReadoutVisible])
 
   // Collapse same-type ground hits (matched on unit.name, the groundUnitDb
   // key — e.g. three LAV-25s under the cursor) into one entry carrying a
@@ -741,11 +792,38 @@ export default function AbmScope() {
   // the cycle itself only steps through distinct types. Airport hits are
   // already one-per-airbase (deduped in the hit test above) — distinct
   // airports are never "duplicates" of each other, so no count/xN applies.
+  //
+  // Air hits (2026-08-02) split by true coalition: friendly aircraft each
+  // carry their own callsign/fuel/ammo, so they're never collapsed together
+  // (one entry per unitId, count always 1). Non-friendly aircraft only ever
+  // show a type-or-"UNKNOWN" line, so they collapse the same way ground
+  // units do — grouped by whatever label will actually be displayed
+  // (revealed type, or the shared "unknown" bucket) so two undetected
+  // contacts of different real types still merge into one "UNKNOWN x2"
+  // rather than leaking their (undisplayed) distinctness via separate lines.
   const groupedReadout = useMemo(() => {
     const groups = new Map()
     for (const hit of readoutHits) {
       if (hit.kind === 'airport') {
         groups.set(hit.unitId, { kind: 'airport', unitId: hit.unitId, airport: hit.airport, count: 1 })
+        continue
+      }
+      if (hit.kind === 'air') {
+        const isFriendly = hit.unit.coalition === myCoalitionNum
+        if (isFriendly) {
+          groups.set(`air:${hit.unitId}`, {
+            kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: true, count: 1,
+          })
+          continue
+        }
+        const revealed  = rwrEverDetectedRef.current.has(String(hit.unitId))
+        const typeLabel = revealed ? typeAbbrev(hit.unit) : null
+        const key       = `air-unknown:${typeLabel ?? 'UNKNOWN'}`
+        const existing  = groups.get(key)
+        if (existing) existing.count++
+        else groups.set(key, {
+          kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: false, revealed, typeLabel, count: 1,
+        })
         continue
       }
       const key = `ground:${hit.unit.name}`
@@ -756,7 +834,7 @@ export default function AbmScope() {
     // Airfields always lead the list — Array#sort is stable, so this only
     // reorders across kinds and leaves same-kind relative order untouched.
     return [...groups.values()].sort((a, b) => (a.kind === 'airport' ? 0 : 1) - (b.kind === 'airport' ? 0 : 1))
-  }, [readoutHits])
+  }, [readoutHits, myCoalitionNum])
 
   // Readout is one object at a time: with only one (post-collapse) hit it's
   // shown steadily, with 2+ it cycles through them, one per READOUT_CYCLE_MS,
@@ -1048,11 +1126,15 @@ export default function AbmScope() {
       fadedRef.current, Date.now(),
       windowSettings?.dbSuppress ?? true,
       myCoalitionNum,
+      rwrEverDetectedRef.current,
       windowSettings?.dbca ?? false,
       dbHiddenIds,
       highlightedIds,
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
+
+    // Selected FRAG package's route, if any.
+    drawAbmFragRoute(ctx, view, selectedRoute)
 
     // RBL on top of everything — same layering AIC uses.
     drawRbl(ctx, view, rbl, view.declinationDeg)
@@ -1067,7 +1149,7 @@ export default function AbmScope() {
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
-      threatRings, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIds, highlightedIds])
+      threatRings, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIds, highlightedIds, selectedRoute])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {
@@ -1269,6 +1351,22 @@ export default function AbmScope() {
     }
 
     // ── Navdata layer toggles (§4.2) ──────────────────────────────────────────
+    if (str === '.time') {
+      const next = !clockVisible
+      setClockVisible(next)
+      saveAbmPrefs({ timeVisible: next })
+      setCmdFeedback(next ? 'TIME ON' : 'TIME OFF')
+      return
+    }
+
+    if (str === '.unitro') {
+      const next = !unitReadoutVisible
+      setUnitReadoutVisible(next)
+      saveAbmPrefs({ unitReadoutVisible: next })
+      setCmdFeedback(next ? 'UNIT READOUT ON' : 'UNIT READOUT OFF')
+      return
+    }
+
     if (str === '.geo') {
       useGeoStore.getState().toggleVisible()
       setCmdFeedback(useGeoStore.getState().visible ? 'GEO ON' : 'GEO OFF')
@@ -1832,7 +1930,18 @@ export default function AbmScope() {
       return
     }
 
-    if (e.shiftKey && !e.altKey) {
+    if (e.ctrlKey && e.shiftKey && !e.altKey) {
+      if (target?.unit?.groupID != null) {
+        const pkg = useAbmMissionStore.getState().packages.find(p => p.groupId === target.unit.groupID)
+        // FRAG is coalition-restricted like ATO — GM/admin sees everything,
+        // blue/red sessions only their own side's packages.
+        const ownSide = coalition !== 'blue' && coalition !== 'red' || pkg?.coalition === coalition
+        if (pkg && ownSide) selectAtoGroup(pkg.groupId)
+      }
+      return
+    }
+
+    if (e.shiftKey && !e.altKey && !e.ctrlKey) {
       if (target) removeBraaPairsForUnit(target.unitId)
       return
     }
@@ -1955,13 +2064,27 @@ export default function AbmScope() {
         />
         {!bullseyeEntry && <div className="abm-warn">NO BULLSEYE</div>}
 
+        {clockVisible && (
+          <div
+            className="abm-clock"
+            onClick={() => setShowLocalTime((v) => !v)}
+            title="Click to toggle Zulu / Local time"
+          >
+            {clockTime ?? (showLocalTime ? '--:--:--L' : '--:--:--Z')}
+          </div>
+        )}
+
         {groupedReadout.length > 0 && (() => {
           const cycling = groupedReadout.length > 1
           const active  = groupedReadout[readoutIdx] ?? groupedReadout[0]
           const fields  = active.kind === 'airport'
             ? buildAirportFields(active.airport)
-            : buildReadoutFields(groundUnitDb[active.unit.name])
-          if (active.kind === 'ground' && active.count > 1) fields.push(`x${active.count}`)
+            : active.kind === 'air'
+              ? (active.isFriendly ? buildFriendlyAirFields(active.unit) : [active.revealed ? active.typeLabel : 'UNKNOWN'])
+              : buildReadoutFields(groundUnitDb[active.unit.name])
+          if ((active.kind === 'ground' || (active.kind === 'air' && !active.isFriendly)) && active.count > 1) {
+            fields.push(`x${active.count}`)
+          }
           if (!fields.length) return null
           return (
             <div className="abm-readout-box">

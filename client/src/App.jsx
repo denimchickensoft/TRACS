@@ -11,6 +11,9 @@ import { Deck }           from './modules/catcc/Deck'
 import AicScope          from './modules/aic/AicScope'
 import { BraaList, BRAA_NATURAL_WIDTH } from './modules/aic/BraaList'
 import AbmScope          from './modules/abm/AbmScope'
+import { Ato, ATO_NATURAL_WIDTH } from './modules/abm/Ato'
+import { Frag }          from './modules/abm/Frag'
+import { useAbmMissionStore } from './store/abmMission'
 import { StripBay }      from './components/StripBay/StripBay'
 import { Par }           from './components/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
@@ -189,13 +192,44 @@ export function App() {
   })
   const aicWidthRef  = useRef(initAicWidth)
   const braaPopupRef = useRef(null)
+  const [aicDocked, setAicDocked] = useState(true)
   const handleAicResize  = useCallback(makeResizeHandler(aicWidthRef, setAicWidth, 220, 600, 'tracs.braa.width'), []) // eslint-disable-line
-  const handleBraaUndock = useCallback(makeUndockHandler('/?window=braa', 'tracs-braa', aicWidthRef, () => {}, braaPopupRef), []) // eslint-disable-line
+  const handleBraaUndock = useCallback(makeUndockHandler('/?window=braa', 'tracs-braa', aicWidthRef, setAicDocked, braaPopupRef), []) // eslint-disable-line
+
+  // ── ABM right partition (ATO / FRAG) ───────────────────────────────
+  const initAbmWidth = (() => { const v = parseInt(localStorage.getItem('tracs.abm.width'), 10); return isNaN(v) ? ATO_NATURAL_WIDTH : v })()
+  const [abmWidth, setAbmWidth] = useState(initAbmWidth)
+  const abmWidthRef = useRef(initAbmWidth)
+  const atoPopupRef = useRef(null)
+  const fragPopupRef = useRef(null)
+  const [atoDocked, setAtoDocked] = useState(true)
+  const [fragDocked, setFragDocked] = useState(true)
+  const [atoScale, setAtoScale]   = useState(() => {
+    const s = parseFloat(localStorage.getItem('tracs.ato.scale'))
+    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
+  })
+  const [fragScale, setFragScale] = useState(() => {
+    const s = parseFloat(localStorage.getItem('tracs.frag.scale'))
+    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
+  })
+  const handleAbmResize = useCallback(makeResizeHandler(abmWidthRef, setAbmWidth, 280, 700, 'tracs.abm.width'), []) // eslint-disable-line
+  const handleAtoUndock  = useCallback(makeUndockHandler('/?window=abm-ato',  'tracs-abm-ato',  abmWidthRef, setAtoDocked, atoPopupRef), []) // eslint-disable-line
+  const handleFragUndock = useCallback(makeUndockHandler('/?window=abm-frag', 'tracs-abm-frag', abmWidthRef, setFragDocked, fragPopupRef), []) // eslint-disable-line
 
   // ── Active right panel per scope ('main' | 'par') ─────────────────
   const [atcPanel,   setAtcPanel]   = useState('main')   // 'main' = strips, 'par'
   const [catccPanel, setCatccPanel] = useState('main')   // 'main' = status board, 'par', 'deck'
   const [aicPanel,   setAicPanel]   = useState('main')   // 'main' = braa list
+  const [abmPanel,   setAbmPanel]   = useState(null)      // null | 'ato' | 'frag'
+
+  // Selecting a package (Ctrl+Shift+Click on the scope, or a row in ATO)
+  // auto-switches to the FRAG tab — keyed on selectNonce (not selectedGroupId)
+  // so reselecting the same contact still reopens the panel if it was closed.
+  const abmSelectedGroupId = useAbmMissionStore((s) => s.selectedGroupId)
+  const abmSelectNonce     = useAbmMissionStore((s) => s.selectNonce)
+  useEffect(() => {
+    if (abmSelectedGroupId != null) setAbmPanel('frag')
+  }, [abmSelectNonce]) // eslint-disable-line
 
   const handleParUndock = useCallback(() => {
     const { mission, carrierUnitId: cid, activeModule: am } = useSessionStore.getState()
@@ -258,7 +292,12 @@ export function App() {
       return TAB_STRIP_W
     }
     if (hasAic) {
-      if (aicPanel === 'main')                 return Math.round(aicWidth * braaScale) + TAB_STRIP_W
+      if (aicPanel === 'main' && aicDocked)    return Math.round(aicWidth * braaScale) + TAB_STRIP_W
+      return TAB_STRIP_W
+    }
+    if (hasAbm) {
+      if (abmPanel === 'ato'  && atoDocked)  return Math.round(abmWidth * atoScale)  + TAB_STRIP_W
+      if (abmPanel === 'frag' && fragDocked) return Math.round(abmWidth * fragScale) + TAB_STRIP_W
       return TAB_STRIP_W
     }
     return 0
@@ -612,7 +651,7 @@ export function App() {
               <AicScope />
             </div>
 
-            {aicPanel === 'main' && (
+            {aicPanel === 'main' && aicDocked && (
               <BraaList
                 docked
                 width={aicWidth}
@@ -626,7 +665,7 @@ export function App() {
             {/* Tab strip */}
             <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
               {[
-                { key: 'main', label: 'BRAA', onClick: () => setAicPanel(p => p === 'main' ? null : 'main') },
+                { key: 'main', label: aicDocked ? 'BRAA' : 'BRAA ↗', onClick: () => { if (!aicDocked && braaPopupRef.current) braaPopupRef.current.focus(); else setAicPanel(p => p === 'main' ? null : 'main') } },
               ].map(({ key, label, onClick }) => (
                 <div
                   key={key}
@@ -645,6 +684,44 @@ export function App() {
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, height: '100%' }}>
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden', height: '100%' }}>
               <AbmScope />
+            </div>
+
+            {abmPanel === 'ato' && atoDocked && (
+              <Ato
+                docked
+                width={abmWidth}
+                onResize={handleAbmResize}
+                onUndock={handleAtoUndock}
+                onHide={() => setAbmPanel(null)}
+                onScaleChange={setAtoScale}
+              />
+            )}
+            {abmPanel === 'frag' && fragDocked && (
+              <Frag
+                docked
+                width={abmWidth}
+                onResize={handleAbmResize}
+                onUndock={handleFragUndock}
+                onHide={() => setAbmPanel(null)}
+                onScaleChange={setFragScale}
+              />
+            )}
+
+            {/* Tab strip */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
+              {[
+                { key: 'ato',  label: atoDocked  ? 'ATO'  : 'ATO ↗',  onClick: () => { if (!atoDocked  && atoPopupRef.current)  atoPopupRef.current.focus();  else setAbmPanel(p => p === 'ato'  ? null : 'ato')  } },
+                { key: 'frag', label: fragDocked ? 'FRAG' : 'FRAG ↗', onClick: () => { if (!fragDocked && fragPopupRef.current) fragPopupRef.current.focus(); else setAbmPanel(p => p === 'frag' ? null : 'frag') } },
+              ].map(({ key, label, onClick }) => (
+                <div
+                  key={key}
+                  title={label}
+                  onClick={onClick}
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: abmPanel === key ? '#141414' : 'transparent' }}
+                >
+                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: abmPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -142,6 +142,21 @@
   pointer-events: none;
 }
 
+/* ── Mission clock — above the command entry/preview area ───────────────────────── */
+.aic-clock {
+  position:    absolute;
+  bottom:      44px;
+  left:        10px;
+  font-family: 'Roboto Mono', monospace;
+  font-size:   0.8rem;
+  color:       #BFA100;
+  cursor:      pointer;
+}
+
+.aic-clock:hover {
+  color: #FFD700;
+}
+
 /* ── Command entry ───────────────────────────────────────────────────────────── */
 .aic-cmd-feedback {
   position:       absolute;

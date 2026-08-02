@@ -1,4 +1,5 @@
-const STORAGE_KEY  = 'tracs.serverProfiles'
+const STORAGE_KEY       = 'tracs.serverProfiles'
+const LAST_CONN_KEY     = 'tracs.lastConnection'
 const MAX_RECENTS  = 5
 
 export function loadServerProfiles() {
@@ -77,6 +78,21 @@ export function removeServerProfile(profiles, name) {
 
 export function getMostRecentProfile(profiles) {
   return profiles.reduce((latest, p) => (!latest || p.lastUsed > latest.lastUsed) ? p : latest, null)
+}
+
+// Tracks the literal last successful connection, independent of the named profile list —
+// so the login form defaults to it even when the server was never named/saved.
+export function loadLastConnection() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LAST_CONN_KEY))
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+export function saveLastConnection({ name, url, coalition, password }) {
+  localStorage.setItem(LAST_CONN_KEY, JSON.stringify({ name, url, coalition, password }))
 }
 
 // Favorites first, then up to MAX_RECENTS non-favorites, both by most-recently-used;

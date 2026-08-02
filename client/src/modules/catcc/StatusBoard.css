@@ -184,6 +184,14 @@
   border-right: none;
 }
 
+.sb-th-sort {
+  cursor: pointer;
+  user-select: none;
+}
+.sb-th-sort:hover {
+  color: #888;
+}
+
 .sb-td {
   padding: 0px 0px;
   border-bottom: 1px solid #111;
@@ -302,46 +310,6 @@
   color: #FF7744;
 }
 
-.sb-sort-select {
-  background: transparent;
-  border: 1px solid #333;
-  border-radius: 2px;
-  color: #555;
-  font-family: inherit;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  padding: 2px 4px;
-  cursor: pointer;
-  text-transform: uppercase;
-  outline: none;
-}
-
-.sb-sort-select:hover {
-  border-color: #666;
-  color: #888;
-}
-
-.sb-sort-select option {
-  background: #0A0A0A;
-  color: #888;
-}
-
-.sb-sort-dir-btn {
-  background: transparent;
-  border: 1px solid #333;
-  border-radius: 2px;
-  color: #555;
-  font-family: inherit;
-  font-size: 9px;
-  padding: 2px 5px;
-  cursor: pointer;
-}
-
-.sb-sort-dir-btn:hover {
-  border-color: #666;
-  color: #888;
-}
-
 .sb-td-move {
   flex-direction: column;
   justify-content: center;
@@ -399,6 +367,11 @@
   font-size: 10px;
   letter-spacing: 0.06em;
   justify-self: start;
+  cursor: pointer;
+}
+
+.sb-title-time:hover {
+  color: #7FBF7F;
 }
 
 .sb-title-text {

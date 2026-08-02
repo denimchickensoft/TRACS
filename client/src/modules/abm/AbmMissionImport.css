@@ -1,0 +1,205 @@
+.mi-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.mi-modal {
+  background: #0A0A0A;
+  border: 1px solid #333;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: #FFD700;
+  display: flex;
+  flex-direction: column;
+  width: 480px;
+  max-height: 80vh;
+  min-height: 200px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.mi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px 4px;
+  border-bottom: 1px solid #222;
+}
+
+.mi-title {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #888;
+}
+
+.mi-close {
+  background: transparent;
+  border: none;
+  color: #555;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.mi-close:hover { color: #CC4444; }
+
+/* ── Drop zone ──────────────────────────────────────────── */
+.mi-dropzone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px;
+  border: 1px dashed #333;
+  cursor: pointer;
+  padding: 32px;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.mi-dropzone:hover,
+.mi-dropzone.dragging {
+  border-color: #555;
+  background: rgba(255, 215, 0, 0.03);
+}
+
+.mi-drop-icon  { font-size: 20px; color: #444; }
+.mi-drop-label { color: #888; letter-spacing: 0.06em; }
+.mi-drop-sub   { color: #444; font-size: 9px; }
+
+/* ── Loading / error ────────────────────────────────────── */
+.mi-status {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  padding: 32px;
+  letter-spacing: 0.06em;
+}
+
+.mi-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #CC4444;
+  text-align: center;
+}
+
+/* ── Preview ────────────────────────────────────────────── */
+.mi-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mi-section {
+  padding: 6px 8px;
+  border-bottom: 1px solid #181818;
+}
+
+.mi-section-grow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: none;
+}
+
+.mi-section-label {
+  font-size: 8px;
+  color: #444;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Task counts */
+.mi-task-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mi-task-count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #AAA;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.mi-task-count-n {
+  color: #FFD700;
+}
+
+/* Package rows */
+.mi-ac-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.mi-pkg-row {
+  display: grid;
+  grid-template-columns: 90px 60px 34px 1fr;
+  gap: 0 6px;
+  align-items: center;
+  padding: 2px;
+  color: #AAA;
+}
+
+.mi-pkg-row:hover { background: #0D150D; }
+
+.mi-pkg-name { color: #FFD700; }
+.mi-pkg-task { color: #AAA; }
+.mi-pkg-units { color: #666; text-align: right; }
+.mi-pkg-reserve { color: #BB8833; font-size: 8px; letter-spacing: 0.06em; }
+
+/* ── Footer ─────────────────────────────────────────────── */
+.mi-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid #1A1A1A;
+}
+
+.mi-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 3px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.mi-btn:hover { border-color: #666; color: #888; }
+
+.mi-btn-primary {
+  border-color: #556622;
+  color: #99BB33;
+}
+
+.mi-btn-primary:hover {
+  border-color: #88AA33;
+  color: #CCEE55;
+}

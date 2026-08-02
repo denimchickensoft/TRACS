@@ -10,6 +10,7 @@ import { CARRIER_TYPES } from '../../utils/carriers'
 import {
   loadServerProfiles, upsertServerProfile, toggleFavoriteProfile,
   removeServerProfile, findProfileByName, filterServerProfiles, getMostRecentProfile,
+  loadLastConnection, saveLastConnection,
 } from '../../utils/serverProfiles'
 import './Login.css'
 
@@ -38,11 +39,12 @@ const COALITION_OPTIONS = [
 // ── Phase 1: Connect to Olympus ───────────────────────────────────────────────
 function ConnectPhase({ onConnected }) {
   const [profiles,   setProfiles]   = useState(() => loadServerProfiles())
+  const lastConnection = useMemo(() => loadLastConnection(), []) // eslint-disable-line
   const lastProfile = useMemo(() => getMostRecentProfile(profiles), []) // eslint-disable-line
-  const [name,       setName]       = useState(() => lastProfile?.name ?? '')
-  const [olympusUrl, setOlympusUrl] = useState(() => lastProfile?.url ?? '')
-  const [coalition,  setCoalition]  = useState(() => lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
-  const [password,   setPassword]   = useState(() => lastProfile?.passwords?.[coalition] ?? '')
+  const [name,       setName]       = useState(() => lastConnection?.name ?? lastProfile?.name ?? '')
+  const [olympusUrl, setOlympusUrl] = useState(() => lastConnection?.url ?? lastProfile?.url ?? '')
+  const [coalition,  setCoalition]  = useState(() => lastConnection?.coalition ?? lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
+  const [password,   setPassword]   = useState(() => lastConnection?.password ?? lastProfile?.passwords?.[coalition] ?? '')
   const [error,      setError]      = useState(null)
   const [connecting, setConnecting] = useState(false)
 
@@ -132,6 +134,10 @@ function ConnectPhase({ onConnected }) {
       }
 
       localStorage.setItem('tracs.lastCoalition', coalition)
+      saveLastConnection({ name, url: normalizedUrl, coalition, password })
+      if (name.trim()) {
+        setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password }))
+      }
       setConnection({ olympusUrl: normalizedUrl, coalition })
       wsClient.connect()
       onConnected()

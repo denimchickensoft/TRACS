@@ -1,4 +1,5 @@
 import { CARRIER_TYPES } from './carriers.js'
+import { dcsPointToLatLng } from './dcsCoords.js'
 
 // ── Lua parser ────────────────────────────────────────────────────────────────
 
@@ -227,9 +228,8 @@ function firstWP(group) {
   return Array.isArray(pts) ? pts[0] : (pts['1'] ?? null)
 }
 
-export function findCarriersAndAircraft(mission) {
+function collectCarriers(mission) {
   const carriers = []
-
   for (const coaData of Object.values(mission.coalition ?? {})) {
     for (const country of toArray(coaData.country)) {
       for (const group of toArray(country.ship?.group)) {
@@ -245,6 +245,11 @@ export function findCarriersAndAircraft(mission) {
       }
     }
   }
+  return carriers
+}
+
+export function findCarriersAndAircraft(mission) {
+  const carriers = collectCarriers(mission)
 
   if (carriers.length === 0) return { carriers, aircraft: [] }
 
@@ -275,4 +280,140 @@ export function findCarriersAndAircraft(mission) {
   }
 
   return { carriers, aircraft }
+}
+
+// ── ATO/FRAG extraction ─────────────────────────────────────────────────────
+// Every tasked "plane" group across all coalitions/countries, with route,
+// payload, radio and Link16 detail — built only from structural mission data
+// (no trig/trigrules/l10n dictionary).
+
+function unitCallsign(unit) {
+  return unit.callsign?.name ?? unit.name ?? ''
+}
+
+function buildRoute(group, theatre) {
+  return toArray(group.route?.points).map((p) => {
+    const ll = dcsPointToLatLng(p.x, p.y, theatre)
+    return {
+      name:   p.name ?? null,
+      lat:    ll?.lat ?? null,
+      lng:    ll?.lng ?? null,
+      alt:    p.alt ?? null,
+      speed:  p.speed ?? null,
+      action: p.action ?? null,
+    }
+  })
+}
+
+// A waypoint referencing a carrier or airbase — resolved to a name
+// client-side via /airdromes/<theatre>.json (see utils/airdromes.js) for the
+// airbase case: DCS's own numeric airdrome ID space, transcribed per-theatre
+// from pydcs (github.com/pydcs/dcs), the community source for this since DCS
+// has no officially published id->name table.
+function resolveAirfieldRef(point, carriersById, theatre) {
+  if (!point) return null
+  if (point.linkUnit != null && carriersById.has(point.linkUnit)) {
+    return { type: 'carrier', carrierUnitId: point.linkUnit, carrierName: carriersById.get(point.linkUnit).display }
+  }
+  if (point.airdromeId != null) {
+    return { type: 'airbase', airdromeId: point.airdromeId, theatre }
+  }
+  return null
+}
+
+function buildLaunch(wp1, carriersById, theatre) {
+  // If the first waypoint isn't a departure from a carrier/airbase, the
+  // mission genuinely never recorded a takeoff point — the flight spawns
+  // already airborne (e.g. an on-station tanker/CAP orbit). That's a known
+  // state, not a parse failure, so it gets its own type rather than 'unknown'.
+  return resolveAirfieldRef(wp1, carriersById, theatre) ?? { type: 'airstart' }
+}
+
+// Last route point that references a carrier/airbase (typically the final
+// "Landing" waypoint) — the flight's recovery point, which may be captured
+// even when the launch point wasn't (air-start flights still often land
+// somewhere real).
+function buildRecovery(points, carriersById, theatre) {
+  for (let i = points.length - 1; i >= 0; i--) {
+    const ref = resolveAirfieldRef(points[i], carriersById, theatre)
+    if (ref) return ref
+  }
+  return { type: 'unknown' }
+}
+
+function buildUnits(group) {
+  return toArray(group.units).map((unit) => ({
+    unitId:   unit.unitId ?? null,
+    callsign: unitCallsign(unit),
+    type:     TYPE_ABBREV[unit.type] ?? (unit.type ?? '').slice(0, 4).toUpperCase(),
+    rawType:  unit.type ?? '',
+    modex:    String(unit.onboard_num ?? ''),
+    skill:    unit.skill ?? '',
+    livery:   unit.livery_id ?? '',
+    radios: toArray(unit.Radio).map((r) => ({
+      channels:    r?.channels ?? {},
+      modulations: r?.modulations ?? {},
+    })),
+    payload: {
+      fuel:  unit.payload?.fuel ?? null,
+      chaff: unit.payload?.chaff ?? null,
+      flare: unit.payload?.flare ?? null,
+      gun:   unit.payload?.gun ?? null,
+      // Station numbers on non-contiguous pylon tables are lost by the Lua
+      // parser's integer-key-table -> array collapse; index+1 is a
+      // best-effort label, not necessarily the true DCS station number.
+      pylons: toArray(unit.payload?.pylons).map((p, idx) => ({
+        station: idx + 1,
+        clsid:   p?.CLSID ?? null,
+      })),
+    },
+    link16: {
+      stn:     unit.AddPropAircraft?.STN_L16 ?? null,
+      network: unit.datalinks?.Link16?.network ?? null,
+    },
+  }))
+}
+
+export function findAtoPackages(mission) {
+  const theatre = mission?.theatre ?? null
+  const carriers = collectCarriers(mission)
+  const carriersById = new Map(carriers.map((c) => [c.unitId, c]))
+
+  const packages = []
+
+  for (const [coalition, coaData] of Object.entries(mission.coalition ?? {})) {
+    for (const country of toArray(coaData.country)) {
+      for (const group of toArray(country.plane?.group)) {
+        // Every plane group is a real flight worth listing — a group-level
+        // task of "Nothing" does NOT mean inert/scenery. DCS mission
+        // designers commonly leave it unset on AI wingmen whose tasking
+        // instead comes from per-waypoint actions or trigger scripting
+        // (confirmed against a real mission where an active, uncontrolled=
+        // false, 2-ship flight had task="Nothing" and was being silently
+        // dropped here).
+        const task = group.task ?? 'Nothing'
+        const isReserve = group.lateActivation === true
+
+        const points = toArray(group.route?.points)
+        const wp1 = firstWP(group)
+
+        packages.push({
+          groupId:        group.groupId ?? null,
+          coalition,
+          name:           group.name ?? '',
+          task:           TASK_ABBREV[task] ?? (task ?? '').slice(0, 6).toUpperCase(),
+          rawTask:        task,
+          frequency:      group.frequency ?? null,
+          lateActivation: isReserve,
+          uncontrolled:   group.uncontrolled === true,
+          launch:         buildLaunch(wp1, carriersById, theatre),
+          recovery:       buildRecovery(points, carriersById, theatre),
+          route:          buildRoute(group, theatre),
+          units:          buildUnits(group),
+        })
+      }
+    }
+  }
+
+  return packages
 }

@@ -210,8 +210,15 @@ function drawRbl(ctx, view, rbl, declinationDeg) {
 // Ring color signals whether a BOGEY/HOSTILE contact is inside — green
 // (clear) or purple (violated), matching ABM's threat rings
 // (drawAbmBraa.js) so both scopes read the same way (2026-07-07).
-function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl) {
+// Clipped to the inner (on-scope) circle so a ring near the edge of range
+// doesn't bleed into the gold dugout band (2026-08-01).
+function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl, clipR, cx, cy) {
   if (!threatRings.size) return
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, clipR, 0, Math.PI * 2)
+  ctx.clip()
+
   ctx.lineWidth   = 0.75
   ctx.setLineDash([6, 4])
   for (const unitId of threatRings) {
@@ -235,6 +242,7 @@ function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl) {
     ctx.stroke()
   }
   ctx.setLineDash([])
+  ctx.restore()
 }
 
 function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize, ptlSeconds) {
@@ -279,8 +287,12 @@ export function drawAicContacts(
   ctx.clearRect(0, 0, width, height)
   ctx.save()
 
+  const cx      = width  / 2
+  const cy      = height / 2
+  const clipR   = Math.max(0, (rangeNm - 10) * view.pixelsPerNm)
+
   // Threat rings (under everything else)
-  drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl)
+  drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl, clipR, cx, cy)
 
   // BRAA overlays first (under symbols)
   drawBraaOverlays(ctx, view, braaList, units, rangeNm)
@@ -289,9 +301,6 @@ export function drawAicContacts(
   drawDugout(ctx, view, units, getDecl, rangeNm, symSize)
 
   // Contacts: PTL then symbol — only within the inner dugout ring
-  const cx      = width  / 2
-  const cy      = height / 2
-  const clipR   = Math.max(0, (rangeNm - 10) * view.pixelsPerNm)
 
   for (const [id, unit] of Object.entries(units)) {
     if (!unit.position) continue

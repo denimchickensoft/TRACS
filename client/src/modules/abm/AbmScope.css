@@ -39,6 +39,23 @@
   pointer-events: none;
 }
 
+/* Mission clock — dead center, just below the compass rose's top (000) label. */
+.abm-clock {
+  position:    absolute;
+  top:         30px;
+  left:        50%;
+  transform:   translateX(-50%);
+  font-family: 'Roboto Mono', monospace;
+  font-size:   1.4rem;
+  letter-spacing: 0.08em;
+  color:       #fff;
+  cursor:      pointer;
+}
+
+.abm-clock:hover {
+  color: #ddd;
+}
+
 /* ── Cursor-proximity unit readout (top-left) ────────────────────────────────── */
 /* Mirrors the command preview area's position/type scale (bottom:32/left:40,
    0.7rem Roboto Mono) but anchored to the opposite corner. */

@@ -551,7 +551,13 @@ export function Par({
     if (mode === 'airfield') {
       const lat = parseFloat(manualLat)
       const lng = parseFloat(manualLng)
-      const hdg = parseFloat(manualHdg)
+      // The HDG box displays a whole-degree rounded value, but while it still
+      // reflects an unedited runway selection, compute from that runway's
+      // precise magHead instead — rounding for display shouldn't feed the
+      // corridor geometry. Any manual edit clears runwayId (see input
+      // onChange below), which falls this back to the typed value.
+      const selectedCl = runwayId ? centerlines.find((c) => c.id === runwayId) : null
+      const hdg = selectedCl ? selectedCl.magHead : parseFloat(manualHdg)
       if (!isNaN(lat) && !isNaN(lng) && !isNaN(hdg)) {
         const magvar = computeMagvar(lat, lng, missionDate)
         const conv   = initTheatre ? theatreConvergence(initTheatre, lat, lng) : 0
@@ -569,7 +575,7 @@ export function Par({
     }
 
     return { ...base, valid: false }
-  }, [mode, carrierUnit, manualLat, manualLng, manualHdg,
+  }, [mode, carrierUnit, manualLat, manualLng, manualHdg, runwayId, centerlines,
       gsAngle, rangeNm, latTol, vertTol, threshElev, missionDate, initTheatre]) // latTol/vertTol derived from rangeNm
 
   // ── Contacts in approach corridor ─────────────────────────────────

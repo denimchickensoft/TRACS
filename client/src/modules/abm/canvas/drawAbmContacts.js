@@ -20,8 +20,10 @@ const CULL_MARGIN  = 60
 const EMPTY_SET    = new Set()
 
 // Same truncation AIC's readout uses: strip suffix after _/space, then
-// collapse a double-hyphen type name to its first two segments.
-function typeAbbrev(unit) {
+// collapse a double-hyphen type name to its first two segments. Exported
+// for AbmScope's cursor-proximity air-unit readout, which needs the same
+// abbreviation the datablock's line 2 already uses.
+export function typeAbbrev(unit) {
   return (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
 }
 
@@ -140,6 +142,7 @@ export function drawAbmContacts(
   fadedContacts = {}, fadedNow = 0,
   dbSuppress = true,
   myCoalitionNum = null,
+  rwrKnownIds = EMPTY_SET,
   dbca = false,
   dbHiddenIds = EMPTY_SET,
   highlightedIds = EMPTY_SET,
@@ -192,21 +195,26 @@ export function drawAbmContacts(
     if (dbHiddenIds.has(id)) continue    // .db + click per-contact override
 
     // Datablock — friendly gets callsign + alt/speed-or-type; everyone else
-    // gets a single alt/speed line (no callsign — same "IFF doesn't know the
-    // bogey's name" convention AIC's readout already uses). Keyed off the
-    // unit's *actual* coalition, not the (possibly manually overridden)
-    // declaration — a controller tagging a real hostile/neutral as FRIENDLY
-    // (F4) changes its color but must not grant it the friendly-only 2-line
-    // datablock (2026-07-08).
+    // gets a single alt/speed(-or-type) line (no callsign — same "IFF
+    // doesn't know the bogey's name" convention AIC's readout already
+    // uses). Keyed off the unit's *actual* coalition, not the (possibly
+    // manually overridden) declaration — a controller tagging a real
+    // hostile/neutral as FRIENDLY (F4) changes its color but must not grant
+    // it the friendly-only 2-line datablock (2026-07-08).
     const isFriendly = unit.coalition === myCoalitionNum
+    // Non-friendly type is only known once RWR has ever painted it
+    // (rwrKnownIds — same sticky reveal as the air-unit readout in
+    // AbmScope.jsx); until then it can't cycle to a type it doesn't have.
+    const knowsType = isFriendly || rwrKnownIds.has(id)
     const altFt   = Math.round((unit.position.alt ?? 0) * 3.28084)
     const alt100  = String(Math.round(altFt / 100)).padStart(3, '0')
     const spdKts  = (unit.speed ?? 0) * 1.94384
     const spd10   = String(Math.round(spdKts / 10)).padStart(2, '0')
 
-    const unitDir  = leaderDirs?.[String(id)]
-    const line2    = altToggle ? `${alt100} ${typeAbbrev(unit)}` : `${alt100} ${spd10}`
-    const lines    = isFriendly ? [resolveCallsign(unit).toUpperCase(), line2] : [`${alt100} ${spd10}`]
+    const unitDir   = leaderDirs?.[String(id)]
+    const altSpdLine = `${alt100} ${spd10}`
+    const line2      = (altToggle && knowsType) ? `${alt100} ${typeAbbrev(unit)}` : altSpdLine
+    const lines      = isFriendly ? [resolveCallsign(unit).toUpperCase(), line2] : [line2]
 
     if (dbca) {
       dbCandidates.push({

@@ -5,7 +5,7 @@ const SB_KEY = 'tracs.catcc.sb'
 function serialize(s) {
   return {
     event: s.event, launch: s.launch, recovery: s.recovery,
-    sunrise: s.sunrise, sunset: s.sunset, tz: s.tz,
+    sunrise: s.sunrise, sunset: s.sunset,
     clg: s.clg, vis: s.vis, qnh: s.qnh,
     caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery,
     marBtn: s.marBtn, app: s.app, twrBtn: s.twrBtn, depBtn: s.depBtn,
@@ -26,7 +26,6 @@ export const useStatusBoardStore = create((set) => ({
   recovery:     saved.recovery     ?? '',
   sunrise:      saved.sunrise      ?? '',  // TODO: auto-calculate from carrier position + date
   sunset:       saved.sunset       ?? '',  // TODO: auto-calculate from carrier position + date
-  tz:           saved.tz           ?? '',
   clg:          saved.clg          ?? '',
   vis:          saved.vis          ?? '',
   qnh:          saved.qnh          ?? '',
@@ -115,7 +114,7 @@ export const useStatusBoardStore = create((set) => ({
     }),
 
   reset: () => set({
-    event: '', launch: '', recovery: '', sunrise: '', sunset: '', tz: '',
+    event: '', launch: '', recovery: '', sunrise: '', sunset: '',
     clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad: '',
@@ -123,7 +122,7 @@ export const useStatusBoardStore = create((set) => ({
   }),
 
   clearAll: (rad = '') => set({
-    event: '', launch: '', recovery: '', sunrise: '', sunset: '', tz: '',
+    event: '', launch: '', recovery: '', sunrise: '', sunset: '',
     clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad,
@@ -143,7 +142,7 @@ export function registerStatusBoardBroadcast(fn) { _webrtcBroadcast = fn }
 function buildPayload(s) {
   return {
     eventHeader: {
-      event: s.event, launch: s.launch, recovery: s.recovery, tz: s.tz,
+      event: s.event, launch: s.launch, recovery: s.recovery,
       clg: s.clg, vis: s.vis, qnh: s.qnh,
     },
     recoveryStatus: {
