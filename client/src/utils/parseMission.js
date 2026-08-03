@@ -179,6 +179,18 @@ export function extractWeather(mission) {
 
 // ── Aircraft extraction ───────────────────────────────────────────────────────
 
+// Aircraft whose own cockpit numbers waypoints starting at 0, one behind the
+// mission editor's route order — confirmed in-sim (2026-08-02): ME waypoint 1
+// (the launch point) shows as WP0 in the jet, ME waypoint 2 as WP1, etc. Not
+// the same as the Hornet's separate "WP0 = spawn position" DTC concept (that
+// one is additive and doesn't shift ME numbering — see
+// project_frag_waypoint_naming memory). Other aircraft keep the natural
+// 1-based ME numbering (WP1 = route.points[0]) until verified otherwise —
+// don't add to this set without an in-sim check, per that same memory.
+export const ZERO_INDEXED_WAYPOINT_TYPES = new Set([
+  'FA-18C_hornet',
+])
+
 // DCS unit type → 4-char display abbreviation
 export const TYPE_ABBREV = {
   'FA-18C_hornet':  'F18C',
@@ -201,14 +213,18 @@ export const TASK_ABBREV = {
   'CAS':              'CAS',
   'CAP':              'CAP',
   'SEAD':             'SEAD',
-  'Anti-ship Strike': 'ASUW',
-  'Ground Attack':    'GA',
-  'Escort':          'ESCRT',
-  'Intercept':       'INT',
-  'Refueling':       'TANK',
-  'AWACS':           'AWACS',
-  'Fighter Sweep':   'SWEEP',
-  'Nothing':         '',
+  'Antiship Strike':  'AI',
+  'Ground Attack':    'AI',
+  'Escort':           'ESCORT',
+  'Intercept':        'DCA',
+  'Refueling':        'AR',
+  'AWACS':            'AEW',
+  'Fighter Sweep':    'SWEEP',
+  'Transport':        'AIRLIFT',
+  'Reconnaissance':   'RECCE',
+  'Runway Attack':    'OCA',
+  'Nothing':          'NONE',
+  'Без задачи':       'NONE',  // Russian-localized "no task"
 }
 
 const DEPARTURE_ACTIONS = new Set([
@@ -236,9 +252,10 @@ function collectCarriers(mission) {
         for (const unit of toArray(group.units)) {
           if (CARRIER_TYPES[unit.type]) {
             carriers.push({
-              unitId:  unit.unitId,
-              type:    unit.type,
-              display: CARRIER_TYPES[unit.type].displayName,
+              unitId:   unit.unitId,
+              type:     unit.type,
+              display:  CARRIER_TYPES[unit.type].displayName,
+              abbrev:   CARRIER_TYPES[unit.type].facilityId,
             })
           }
         }
@@ -295,7 +312,7 @@ function buildRoute(group, theatre) {
   return toArray(group.route?.points).map((p) => {
     const ll = dcsPointToLatLng(p.x, p.y, theatre)
     return {
-      name:   p.name ?? null,
+      name:   p.name || null,  // DCS sometimes writes an explicit "" instead of omitting the key — both mean "unnamed"
       lat:    ll?.lat ?? null,
       lng:    ll?.lng ?? null,
       alt:    p.alt ?? null,
@@ -313,7 +330,11 @@ function buildRoute(group, theatre) {
 function resolveAirfieldRef(point, carriersById, theatre) {
   if (!point) return null
   if (point.linkUnit != null && carriersById.has(point.linkUnit)) {
-    return { type: 'carrier', carrierUnitId: point.linkUnit, carrierName: carriersById.get(point.linkUnit).display }
+    return {
+      type: 'carrier', carrierUnitId: point.linkUnit,
+      carrierName:   carriersById.get(point.linkUnit).display,
+      carrierAbbrev: carriersById.get(point.linkUnit).abbrev,
+    }
   }
   if (point.airdromeId != null) {
     return { type: 'airbase', airdromeId: point.airdromeId, theatre }
@@ -374,12 +395,12 @@ function buildUnits(group) {
   }))
 }
 
-export function findAtoPackages(mission) {
+export function findAtoFlights(mission) {
   const theatre = mission?.theatre ?? null
   const carriers = collectCarriers(mission)
   const carriersById = new Map(carriers.map((c) => [c.unitId, c]))
 
-  const packages = []
+  const flights = []
 
   for (const [coalition, coaData] of Object.entries(mission.coalition ?? {})) {
     for (const country of toArray(coaData.country)) {
@@ -397,7 +418,7 @@ export function findAtoPackages(mission) {
         const points = toArray(group.route?.points)
         const wp1 = firstWP(group)
 
-        packages.push({
+        flights.push({
           groupId:        group.groupId ?? null,
           coalition,
           name:           group.name ?? '',
@@ -415,5 +436,5 @@ export function findAtoPackages(mission) {
     }
   }
 
-  return packages
+  return flights
 }

@@ -120,6 +120,28 @@
 .frag-active  { color: #5A8A5A !important; }
 .frag-reserve { color: #BB8833 !important; }
 
+.frag-task-input {
+  background:  transparent;
+  border:      1px solid transparent;
+  color:       #ccc;
+  font-family: inherit;
+  font-size:   9px;
+  padding:     0 2px;
+  margin:      -1px 0;
+  flex:        1;
+  min-width:   0;
+}
+.frag-task-input:hover   { border-color: #333; }
+.frag-task-input:focus   { outline: none; border-color: #FFD700; background: rgba(255, 215, 0, 0.06); }
+
+.frag-base-findable { cursor: pointer; }
+.frag-base-findable:hover { color: #00e000 !important; }
+
+/* Persistent green while this row's marker/blink is still active on the
+   scope — Base/route text stays this color until Escape or another
+   find/click clears it; roster callsign stays it while blinking. */
+.frag-find-active { color: #00e000 !important; }
+
 .frag-unit {
   padding: 3px 0;
   border-bottom: 1px solid #141414;
@@ -133,12 +155,20 @@
   align-items: baseline;
   font-size: 9px;
 }
+.frag-unit-findable { cursor: pointer; }
+.frag-unit-findable:hover { background: rgba(255, 255, 255, 0.05); }
+.frag-unit-blinking { background: rgba(255, 255, 255, 0.09); }
+.frag-unit-blinking .frag-unit-cs { color: #00e000 !important; }
 .frag-unit-cs   { color: #FFD700; }
 .frag-unit-type { color: #aaa; }
 .frag-unit-tcs  { color: #7AA9E8; }
 .frag-unit-mdx  { color: #888; }
 .frag-unit-skl  { color: #555; font-size: 8px; }
 .frag-unit-skl.client { color: #5A8A5A; }
+.frag-unit-state { font-size: 8px; letter-spacing: 0.04em; }
+.frag-unit-state-air    { color: #5A8A5A; }
+.frag-unit-state-taxi   { color: #BB8833; }
+.frag-unit-state-ground { color: #666; }
 
 .frag-ordnance {
   margin-top: 3px;
@@ -219,12 +249,16 @@
 
 .frag-wp {
   display: grid;
-  grid-template-columns: 1fr 70px 50px;
+  grid-template-columns: 12px 1fr 70px 50px;
   gap: 0 6px;
   font-size: 9px;
   padding: 2px 0;
   border-bottom: 1px solid #141414;
 }
+.frag-wp-idx   { color: #555; text-align: left; }
 .frag-wp-name  { color: #FFD700; }
 .frag-wp-alt   { color: #aaa; text-align: right; }
+.frag-wp-findable { cursor: pointer; }
+.frag-wp-findable:hover .frag-wp-name { color: #00e000; }
+.frag-wp.frag-find-active .frag-wp-name { color: #00e000 !important; }
 .frag-wp-speed { color: #888; text-align: right; }

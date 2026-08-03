@@ -1,0 +1,125 @@
+.af-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.af-modal {
+  background: #0A0A0A;
+  border: 1px solid #333;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: #FFD700;
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-height: 80vh;
+}
+
+.af-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px 4px;
+  border-bottom: 1px solid #222;
+}
+
+.af-title {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #888;
+}
+
+.af-close {
+  background: transparent;
+  border: none;
+  color: #555;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.af-close:hover { color: #CC4444; }
+
+.af-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.af-row {
+  display: flex;
+  gap: 8px;
+}
+.af-row .af-field { flex: 1; }
+.af-field-num { max-width: 70px; }
+
+.af-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.af-field span {
+  font-size: 8px;
+  color: #555;
+  letter-spacing: 0.06em;
+}
+.af-field input,
+.af-field select {
+  background: #111;
+  border: 1px solid #333;
+  color: #ccc;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 3px 5px;
+}
+.af-field input:focus,
+.af-field select:focus {
+  outline: none;
+  border-color: #FFD700;
+}
+.af-field input::placeholder { color: #444; }
+
+.af-error {
+  color: #CC4444;
+  font-size: 9px;
+  letter-spacing: 0.03em;
+}
+
+.af-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid #1A1A1A;
+}
+
+.af-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 3px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.af-btn:hover { border-color: #666; color: #888; }
+
+.af-btn-primary {
+  border-color: #556622;
+  color: #99BB33;
+}
+.af-btn-primary:hover {
+  border-color: #88AA33;
+  color: #CCEE55;
+}

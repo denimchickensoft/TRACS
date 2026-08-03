@@ -18,6 +18,8 @@ import { resolveCallsign } from '../../../utils/callsign.js'
 const SYM_HALF     = 3   // square half-width, px (hollow outline, not filled)
 const CULL_MARGIN  = 60
 const EMPTY_SET    = new Set()
+const EMPTY_MAP    = new Map()
+const BLINK_DIM    = '#C0C0C0'  // same dim gray STARS blinks a handoff datablock down to
 
 // Same truncation AIC's readout uses: strip suffix after _/space, then
 // collapse a double-hyphen type name to its first two segments. Exported
@@ -36,7 +38,10 @@ export function typeAbbrev(unit) {
 // grouped and is left alone.
 const FLIGHT_RE = /^([A-Z]+)(\d{2,})$/
 
-function parseFlightElement(unit) {
+// Exported for Ato.jsx's CALLSIGN column, which needs the same flight/
+// element split to show the flight's own callsign ("SHELL1") without the
+// individual lead aircraft's element digit ("SHELL11").
+export function parseFlightElement(unit) {
   const raw = resolveCallsign(unit)
   if (!raw) return null
   const cleaned = raw.replace(/[^a-z0-9]/gi, '').toUpperCase()
@@ -72,7 +77,11 @@ function withinFormationBox(lead, other) {
 // 1-3/1-4 elsewhere) ends up with two leads (1-1 and 1-3), not one
 // (2026-07-08 direction — explicitly non-transitive, box is always
 // evaluated against the current cluster's lead, never chained).
-function computeSuppressedIds(units) {
+// Exported so AbmScope's click handler can resolve the same
+// follower -> lead mapping used here, letting a click on the lead (the only
+// datablock actually on screen for a suppressed formation) stop a blink
+// that's really targeting one of its covered wingmen.
+export function computeSuppressedIds(units) {
   const groups = new Map()
   for (const [id, unit] of Object.entries(units)) {
     if (!unit.position) continue
@@ -83,6 +92,7 @@ function computeSuppressedIds(units) {
   }
 
   const suppressed = new Set()
+  const leaderOf    = new Map()   // followerId -> the lead id whose datablock covers it
   for (const members of groups.values()) {
     if (members.length < 2) continue
     members.sort((a, b) => a.element - b.element)
@@ -96,11 +106,12 @@ function computeSuppressedIds(units) {
         if (withinFormationBox(lead.unit, follower.unit)) {
           claimed.add(follower.id)
           suppressed.add(follower.id)
+          leaderOf.set(follower.id, lead.id)
         }
       }
     }
   }
-  return suppressed
+  return { suppressed, leaderOf }
 }
 
 // Faded / coasting contacts — same dead-reckon-from-last-position model as
@@ -146,11 +157,24 @@ export function drawAbmContacts(
   dbca = false,
   dbHiddenIds = EMPTY_SET,
   highlightedIds = EMPTY_SET,
+  blinkingIds = EMPTY_SET,
+  blinkOn = true,
 ) {
   const { width, height } = view
   ctx.font = '11px "Roboto Mono", monospace'
 
-  const suppressedIds = dbSuppress ? computeSuppressedIds(units) : EMPTY_SET
+  const { suppressed: suppressedIds, leaderOf } = dbSuppress
+    ? computeSuppressedIds(units)
+    : { suppressed: EMPTY_SET, leaderOf: EMPTY_MAP }
+
+  // A blinking wingman whose datablock is currently suppressed (.dbs) never
+  // gets its own text drawn — the blink has to surface on the formation
+  // lead's datablock instead, since that's the only one actually on screen.
+  const blinkViaLead = new Set()
+  for (const followerId of blinkingIds) {
+    const leadId = leaderOf.get(followerId)
+    if (leadId != null) blinkViaLead.add(leadId)
+  }
 
   // Collision-avoidance candidates — only populated when dbca is on; drawn
   // in a second pass once placeDatablocks has resolved every direction
@@ -171,7 +195,12 @@ export function drawAbmContacts(
     const isHighlighted  = highlightedIds.has(id)
     const highlightColor = (decl === DECLARATION.HOSTILE || decl === DECLARATION.BOGEY) ? HIGHLIGHT_PURPLE : HIGHLIGHT_TEAL
     const dbColor        = isHighlighted ? highlightColor : color
-    const textColor      = isHighlighted ? highlightColor : '#ffffff'
+    // FRAG roster "blink datablock" click — same white/gray blink STARS uses
+    // for an incoming handoff, and takes priority over the highlight color
+    // since it's the more transient, attention-grabbing cue of the two.
+    const isBlinkUnit    = blinkingIds.has(id) || blinkViaLead.has(id)
+    const textColor      = isBlinkUnit ? (blinkOn ? '#ffffff' : BLINK_DIM)
+                          : isHighlighted ? highlightColor : '#ffffff'
 
     if (ptlMinutes > 0) drawPtl(ctx, x, y, unit, view, ptlMinutes * 60, dbColor)
 

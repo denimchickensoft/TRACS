@@ -1,4 +1,4 @@
-// Draws a selected ATO/FRAG package's mission-editor route on the ABM scope:
+// Draws a selected ATO/FRAG flight's mission-editor route on the ABM scope:
 // a polyline through its waypoints, with labels on whichever points the
 // mission designer actually named (unlabeled points just get a small tick).
 

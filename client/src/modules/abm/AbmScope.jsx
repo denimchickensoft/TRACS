@@ -31,10 +31,11 @@ import { drawRunways }      from '../atc/stars/canvas/drawRunways.js'
 import { drawAbmLayers }    from './canvas/drawAbmLayers.js'
 import { drawAbmFixSymbols } from './canvas/drawAbmFixSymbols.js'
 import { drawAbmAirportPolygons } from './canvas/drawAbmAirportPolygons.js'
-import { drawAbmContacts, typeAbbrev } from './canvas/drawAbmContacts.js'
+import { drawAbmContacts, typeAbbrev, computeSuppressedIds } from './canvas/drawAbmContacts.js'
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
 import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
+import { preloadAirdromes } from '../../utils/airdromes.js'
 import { drawBraaOverlays, drawThreatRings } from './canvas/drawAbmBraa.js'
 import { drawRbl }         from './canvas/drawAbmRbl.js'
 import { drawMgrsGrid }    from './canvas/drawMgrsGrid.js'
@@ -255,6 +256,22 @@ function distToSegment(px, py, x1, y1, x2, y2) {
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
 }
 
+// Average of every runway-strip endpoint at the named airbase — a good
+// enough center point for a FRAG BASE .find-style marker, and reuses the
+// same per-airbase strip tables airportStrips (below) already builds from
+// runwayCenterlines rather than a separate lookup.
+function airbaseCenterFromStrips(strips, airbaseName) {
+  const airport = strips.find(a => a.airbase === airbaseName)
+  if (!airport) return null
+  let latSum = 0, lngSum = 0, count = 0
+  for (const s of airport.strips) {
+    latSum += s.rwyEnd1.lat + s.rwyEnd2.lat
+    lngSum += s.rwyEnd1.lng + s.rwyEnd2.lng
+    count += 2
+  }
+  return count ? { lat: latSum / count, lng: lngSum / count } : null
+}
+
 // Standard aviation padding: single-digit runway numbers get a leading zero
 // (e.g. "4" → "04"), the L/C/R parallel suffix (already resolved by
 // useRunwaysStore) passes through unchanged.
@@ -327,14 +344,23 @@ export default function AbmScope() {
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
 
-  // ── ATO/FRAG package selection (Ctrl+Shift+Click) ───────────────────────────
-  const atoPackages     = useAbmMissionStore(s => s.packages)
+  // ── ATO/FRAG flight selection (Ctrl+Shift+Click) ─────────────────────────────
+  const atoFlights       = useAbmMissionStore(s => s.flights)
   const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
   const selectAtoGroup  = useAbmMissionStore(s => s.selectGroup)
   const selectedRoute = useMemo(
-    () => atoPackages.find(p => p.groupId === selectedGroupId)?.route ?? null,
-    [atoPackages, selectedGroupId]
+    () => atoFlights.find(f => f.groupId === selectedGroupId)?.route ?? null,
+    [atoFlights, selectedGroupId]
   )
+
+  // FRAG BASE/waypoint click (requestFind) and roster click (toggleBlink) —
+  // store/abmMission.js. AbmScope is the only place holding theatre navdata/
+  // runway/live-unit data, so it resolves these refs; see the findRequest
+  // effect and blink wiring below.
+  const findRequest = useAbmMissionStore(s => s.findRequest)
+  const findNonce    = useAbmMissionStore(s => s.findNonce)
+  const blinkIds     = useAbmMissionStore(s => s.blinkIds) ?? []
+  const blinkIdSet   = useMemo(() => new Set(blinkIds), [blinkIds])
 
   // BRAA line / bogey dope — ported from AIC, same keypresses/commands
   // (§11-adjacent — not in the original spec draft, added 2026-07-07).
@@ -586,6 +612,15 @@ export default function AbmScope() {
     const id = setInterval(() => setAltToggle(v => !v), ALT_TOGGLE_MS)
     return () => clearInterval(id)
   }, [])
+
+  // FRAG roster "blink datablock" cue — same 200ms redraw tick / 500ms
+  // on-off period StarsScope.jsx uses for handoff/point-out blink.
+  const [blinkTick, setBlinkTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setBlinkTick(t => t + 1), 200)
+    return () => clearInterval(id)
+  }, [])
+  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0
 
   // ── Navdata layers (§4) — reused directly from STARS's stores/draw functions ─
   const geoBoundaries   = useGeoStore(s => s.boundaries)
@@ -984,6 +1019,38 @@ export default function AbmScope() {
   // .find <fix> — ported from AIC (AicScope.jsx), same green-square marker.
   const [findMarker, setFindMarker] = useState(null)
 
+  // FRAG BASE/waypoint click → requestFind (store/abmMission.js) — resolves
+  // the ref into a lat/lon and drops it into the same findMarker the local
+  // .find command above already draws. Keyed on findNonce (not findRequest
+  // itself) so re-clicking the same row re-fires even though FRAG hands us
+  // a fresh-but-equivalent ref object each time. A null ref is FRAG clicking
+  // its own already-active row again (toggle-off — Frag.jsx passes
+  // requestFind(null, null) in that case) and clears the marker; this only
+  // ever fires on a real nonce bump, so it never stomps a marker set by the
+  // local .find command below (that path calls the no-nonce-bump clearFind()
+  // instead, purely to desync FRAG's row highlight).
+  useEffect(() => {
+    const ref = findRequest
+    if (!ref) { setFindMarker(null); return }
+
+    if (ref.type === 'point') {
+      if (ref.lat != null && ref.lng != null) setFindMarker({ lat: ref.lat, lon: ref.lng, id: ref.id })
+      return
+    }
+    if (ref.type === 'carrier') {
+      const unit = Object.values(useUnitsStore.getState().units).find(u => u.unitID === ref.carrierUnitId)
+      if (unit?.position) setFindMarker({ lat: unit.position.lat, lon: unit.position.lng, id: ref.carrierName })
+      return
+    }
+    if (ref.type === 'airbase') {
+      preloadAirdromes(ref.theatre).then((names) => {
+        const name = names?.[String(ref.airdromeId)] ?? null
+        const pos  = name ? airbaseCenterFromStrips(airportStripsRef.current, name) : null
+        if (pos) setFindMarker({ lat: pos.lat, lon: pos.lng, id: name })
+      })
+    }
+  }, [findNonce]) // eslint-disable-line
+
   const buildView = useCallback((w, h) => {
     const container = canvasAreaRef.current
     if (!container) return null
@@ -1089,7 +1156,7 @@ export default function AbmScope() {
   }, [view, windowSettings?.ringsVisible, windowSettings?.ringSpacingNm, ringAnchorLat, ringAnchorLng, ringAnchorId, bullseyeLat, bullseyeLng])
 
   // ── Compass rose — CATCC's fontScale (0.625), not STARS's default (1) ──────
-  // ABM's view is the densest of any scope (contacts+sectors+packages all at
+  // ABM's view is the densest of any scope (contacts+sectors+flights all at
   // once), so the smaller CATCC variant reads better than STARS's larger one.
   // Shared draw function (client/src/modules/atc/stars/canvas/drawCompassRose.js)
   // — no ABM-specific copy needed, just CATCC's parameter choice.
@@ -1130,10 +1197,12 @@ export default function AbmScope() {
       windowSettings?.dbca ?? false,
       dbHiddenIds,
       highlightedIds,
+      blinkIdSet,
+      blinkOn,
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
 
-    // Selected FRAG package's route, if any.
+    // Selected FRAG flight's route, if any.
     drawAbmFragRoute(ctx, view, selectedRoute)
 
     // RBL on top of everything — same layering AIC uses.
@@ -1149,7 +1218,8 @@ export default function AbmScope() {
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
-      threatRings, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIds, highlightedIds, selectedRoute])
+      threatRings, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIds, highlightedIds, selectedRoute,
+      blinkIdSet, blinkOn, blinkTick])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {
@@ -1478,6 +1548,7 @@ export default function AbmScope() {
       const result = useNavdataStore.getState().lookupFix(str.slice(6).trim())
       if (result) {
         setFindMarker(result)
+        useAbmMissionStore.getState().clearFind() // this find isn't tied to a FRAG row
         setCmdFeedback(`FIND ${result.id}`)
       } else {
         setCmdFeedback('NOT FOUND')
@@ -1846,7 +1917,7 @@ export default function AbmScope() {
 
     if (e.key === 'Escape') {
       e.preventDefault()
-      if (findMarker) { setFindMarker(null); return }
+      if (findMarker) { setFindMarker(null); useAbmMissionStore.getState().clearFind(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
       if (rbl) { setRbl(null); return }
@@ -1932,11 +2003,11 @@ export default function AbmScope() {
 
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
       if (target?.unit?.groupID != null) {
-        const pkg = useAbmMissionStore.getState().packages.find(p => p.groupId === target.unit.groupID)
+        const flight = useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
         // FRAG is coalition-restricted like ATO — GM/admin sees everything,
-        // blue/red sessions only their own side's packages.
-        const ownSide = coalition !== 'blue' && coalition !== 'red' || pkg?.coalition === coalition
-        if (pkg && ownSide) selectAtoGroup(pkg.groupId)
+        // blue/red sessions only their own side's flights.
+        const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
+        if (flight && ownSide) selectAtoGroup(flight.groupId)
       }
       return
     }
@@ -2028,6 +2099,42 @@ export default function AbmScope() {
       for (const t of targets) useAbmStore.getState().setDeclaration(t.unitId, pendingDeclaration)
       setCmdFeedback(pendingDeclaration)
       setPendingDeclaration(null)
+    }
+
+    // FRAG roster "blink datablock" cancel — a plain click on the blinking
+    // contact turns it off, same as clicking it again in FRAG would
+    // (toggleBlink). Resolved independently of `target` above: `target` is
+    // whichever unit is nearest-overall to the click, so a blinking contact
+    // sitting close to some other (non-blinking) contact could lose the hit
+    // test to its neighbor and silently fail to cancel. Re-running
+    // resolveSlew scoped to just the blink-eligible units (the blinking ids
+    // themselves, plus their formation leads if .dbs suppression means only
+    // the lead's datablock is actually on screen) guarantees a click near
+    // the blinking contact always resolves to it.
+    const liveBlinkIds = useAbmMissionStore.getState().blinkIds ?? []
+    if (liveBlinkIds.length) {
+      const dbSuppressOn = useDisplayStore.getState().windows[WINDOW_ID]?.dbSuppress ?? true
+      const { leaderOf } = dbSuppressOn ? computeSuppressedIds(visibleUnitsRef.current) : { leaderOf: new Map() }
+      const candidateIds = new Set(liveBlinkIds)
+      for (const id of liveBlinkIds) {
+        const lead = leaderOf.get(id)
+        if (lead != null) candidateIds.add(lead)
+      }
+      const candidateUnits = {}
+      for (const id of candidateIds) {
+        if (allVisibleUnitsRef.current[id]) candidateUnits[id] = allVisibleUnitsRef.current[id]
+      }
+      const blinkTarget = resolveSlew(pos, candidateUnits, viewRef.current)
+      if (blinkTarget) {
+        const hitId = blinkTarget.unitId
+        if (liveBlinkIds.includes(hitId)) {
+          useAbmMissionStore.getState().toggleBlink(hitId)
+        } else {
+          for (const id of liveBlinkIds) {
+            if (leaderOf.get(id) === hitId) useAbmMissionStore.getState().toggleBlink(id)
+          }
+        }
+      }
     }
   }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getEffectiveDeclaration,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa]) // eslint-disable-line

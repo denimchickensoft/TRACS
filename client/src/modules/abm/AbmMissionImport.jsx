@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { unzipSync } from 'fflate'
-import { parseLua, findAtoPackages } from '../../utils/parseMission.js'
+import { parseLua, findAtoFlights } from '../../utils/parseMission.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
+import { useSessionStore } from '../../store/session.js'
 import { preloadOrdnanceDb } from '../../utils/ordnance.js'
 import './AbmMissionImport.css'
 
@@ -25,38 +26,47 @@ async function loadMissionText(file) {
   return readFileText(file)
 }
 
-function taskCounts(packages) {
+function taskCounts(flights) {
   const counts = {}
-  for (const p of packages) counts[p.task || '—'] = (counts[p.task || '—'] ?? 0) + 1
+  for (const f of flights) counts[f.task || '—'] = (counts[f.task || '—'] ?? 0) + 1
   return Object.entries(counts).sort((a, b) => b[1] - a[1])
 }
 
 export function AbmMissionImport({ onClose }) {
-  const setPackages = useAbmMissionStore(s => s.setPackages)
+  const setFlights = useAbmMissionStore(s => s.setFlights)
+  const sessionCoalition = useSessionStore(s => s.coalition)
 
   const [phase,    setPhase]    = useState('idle')   // idle | loading | preview | error
   const [error,    setError]    = useState('')
-  const [packages, setLocalPackages] = useState([])
+  const [flights, setLocalFlights] = useState([])
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef()
 
+  // Blue/red sessions must never even preview the other side's tasking —
+  // that would spoil surprises the mission intended to keep hidden from
+  // them. Filter right at import, before anything is shown. GM/admin
+  // aren't aligned to a side, so they see everything (same rule as ATO/FRAG).
   const processFile = useCallback(async (file) => {
     setPhase('loading')
     try {
       const text    = await loadMissionText(file)
       const mission = parseLua(text)
-      const pkgs    = findAtoPackages(mission)
+      let found     = findAtoFlights(mission)
 
-      if (pkgs.length === 0) throw new Error('No tasked flights found in this mission.')
+      if (sessionCoalition === 'blue' || sessionCoalition === 'red') {
+        found = found.filter(f => f.coalition === sessionCoalition)
+      }
+
+      if (found.length === 0) throw new Error('No tasked flights found in this mission.')
 
       preloadOrdnanceDb()
-      setLocalPackages(pkgs)
+      setLocalFlights(found)
       setPhase('preview')
     } catch (e) {
       setError(e.message ?? 'Unknown error')
       setPhase('error')
     }
-  }, [])
+  }, [sessionCoalition])
 
   const onDragOver  = e => { e.preventDefault(); setDragging(true)  }
   const onDragLeave = e => { e.preventDefault(); setDragging(false) }
@@ -71,7 +81,7 @@ export function AbmMissionImport({ onClose }) {
   }
 
   const doImport = () => {
-    setPackages(packages)
+    setFlights(flights)
     onClose()
   }
 
@@ -118,9 +128,9 @@ export function AbmMissionImport({ onClose }) {
         {phase === 'preview' && (
           <div className="mi-preview">
             <div className="mi-section">
-              <div className="mi-section-label">PACKAGES FOUND</div>
+              <div className="mi-section-label">FLIGHTS FOUND</div>
               <div className="mi-task-counts">
-                {taskCounts(packages).map(([task, n]) => (
+                {taskCounts(flights).map(([task, n]) => (
                   <span key={task} className="mi-task-count">
                     <span className="mi-task-count-n">{n}</span>{task}
                   </span>
@@ -128,14 +138,14 @@ export function AbmMissionImport({ onClose }) {
               </div>
             </div>
             <div className="mi-section mi-section-grow">
-              <div className="mi-section-label">FLIGHTS ({packages.length})</div>
+              <div className="mi-section-label">FLIGHTS ({flights.length})</div>
               <div className="mi-ac-list">
-                {packages.map(p => (
-                  <div key={p.groupId} className="mi-pkg-row">
-                    <span className="mi-pkg-name">{p.name}</span>
-                    <span className="mi-pkg-task">{p.task || p.rawTask}</span>
-                    <span className="mi-pkg-units">{p.units.length}x</span>
-                    {p.lateActivation && <span className="mi-pkg-reserve">RESERVE</span>}
+                {flights.map(f => (
+                  <div key={f.groupId} className="mi-flight-row">
+                    <span className="mi-flight-name">{f.name}</span>
+                    <span className="mi-flight-task">{f.task || f.rawTask}</span>
+                    <span className="mi-flight-units">{f.units.length}x</span>
+                    {f.lateActivation && <span className="mi-flight-reserve">RESERVE</span>}
                   </div>
                 ))}
               </div>

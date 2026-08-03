@@ -1,7 +1,11 @@
 import { useAtcStore }     from '../store/atc'
 import { useSessionStore } from '../store/session'
 
-function stripAcid(s) {
+// Exported for manually-added ATO flights (Ato.jsx/Frag.jsx), which have no
+// DCS unitId to match against a live Olympus unit — they instead search for
+// a live unit whose resolveCallsign() output matches the entered callsign
+// after the same normalization.
+export function stripAcid(s) {
   return s.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
 }
 
@@ -57,4 +61,29 @@ export function resolveCallsign(unit) {
 export function resolvePilotName(unit) {
   if (!useSessionStore.getState().useDcsNames) return null
   return parseUnitName(unit.unitName).pilotName
+}
+
+/**
+ * Manually-added ATO flights (AddAtoFlight.jsx) have no DCS unitId, and no
+ * reliable way to predict the *exact* per-element callsign DCS will assign —
+ * flight number + element digit are concatenated with no separator (flight
+ * 1's elements resolve as "SHELL11"/"SHELL12", flight 3's as "SHELL31"/
+ * "SHELL32"). Prefix matching sidesteps needing to guess the element digit:
+ * every live unit whose resolved callsign starts with the controller-
+ * entered prefix counts as a match. The prefix must still include the
+ * flight number ("SHELL1", not bare "SHELL") — otherwise it also sweeps in
+ * any other flight sharing the same NATO callsign name (e.g. a separate
+ * "Shell 3" elsewhere in the mission). Returns { key, unit, callsign }[],
+ * sorted by callsign for stable display order.
+ */
+export function matchLiveByPrefix(prefix, liveUnits) {
+  const norm = stripAcid(prefix ?? '')
+  if (!norm) return []
+  const out = []
+  for (const [key, unit] of Object.entries(liveUnits ?? {})) {
+    const callsign = resolveCallsign(unit)
+    if (callsign && callsign.startsWith(norm)) out.push({ key, unit, callsign })
+  }
+  out.sort((a, b) => a.callsign.localeCompare(b.callsign))
+  return out
 }

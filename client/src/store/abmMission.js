@@ -1,26 +1,39 @@
-// Imported ATO/FRAG mission data for the ABM sidebar. Not persisted across
-// reloads (re-import each session, same as CATCC's MissionImport flow), but
-// IS synced across same-machine windows (main window + undocked ATO/FRAG
-// popups) via localStorage + BroadcastChannel — same pattern as
-// store/statusBoard.js, minus the WebRTC broadcast (packages are local to
-// this controller's imported mission, not shared with other controllers).
+// Imported ATO/FRAG mission data for the ABM sidebar. Persisted to
+// localStorage (survives a page refresh, browser crash, or full restart —
+// the loaded mission and any in-store edits aren't lost, so it isn't a
+// re-import-every-session flow like CATCC's MissionImport), and also synced
+// live across same-machine windows (main window + undocked ATO/FRAG popups)
+// via BroadcastChannel — same pattern as store/statusBoard.js, minus the
+// WebRTC broadcast (flights are local to this controller's imported
+// mission, not shared with other controllers).
+//
+// "flights" not "packages": each entry is one DCS Mission Editor Group (one
+// callsign, one route, one task) — a real-world "flight." DCS has no native
+// concept of a multi-flight "package" (strikers+SEAD+escort coordinated for
+// one mission), so that word never described what this data actually is.
 
 import { create } from 'zustand'
 
 const SB_KEY = 'tracs.abm.mission'
 
 function serialize(s) {
-  return { packages: s.packages, importedAt: s.importedAt, selectedGroupId: s.selectedGroupId, selectNonce: s.selectNonce }
+  return {
+    flights: s.flights, importedAt: s.importedAt, selectedGroupId: s.selectedGroupId, selectNonce: s.selectNonce,
+    findRequest: s.findRequest, findNonce: s.findNonce, findKey: s.findKey,
+    blinkIds: s.blinkIds,
+    taskOverrides: s.taskOverrides,
+    nextManualId: s.nextManualId,
+  }
 }
 
 function loadSaved() {
-  try { return JSON.parse(sessionStorage.getItem(SB_KEY) ?? 'null') } catch { return null }
+  try { return JSON.parse(localStorage.getItem(SB_KEY) ?? 'null') } catch { return null }
 }
 
 const saved = loadSaved() ?? {}
 
 export const useAbmMissionStore = create((set) => ({
-  packages:        saved.packages        ?? [],
+  flights:         saved.flights         ?? [],
   importedAt:      saved.importedAt      ?? null,
   selectedGroupId: saved.selectedGroupId ?? null,
   // Bumped on every selectGroup() call, even reselecting the same group —
@@ -29,11 +42,110 @@ export const useAbmMissionStore = create((set) => ({
   // re-run, if the panel was closed and the same contact clicked again).
   selectNonce: saved.selectNonce ?? 0,
 
-  setPackages: (packages) => set({ packages, importedAt: Date.now(), selectedGroupId: null }),
+  // A FRAG panel's Base/route-waypoint click — request for AbmScope (the
+  // only place holding theatre navdata/runway/unit data, and never undocked
+  // itself) to resolve the ref to a position and drop a .find-style marker
+  // on the scope. Bumped nonce so re-clicking the same ref re-fires even
+  // though the ref object itself didn't change. findKey is a caller-supplied
+  // id (e.g. "base-<groupId>" or "wp-<groupId>-<i>") FRAG compares against
+  // to know which of its own rows is the currently-active find, so it can
+  // hold that row's text green until the marker is cleared/replaced.
+  findRequest: saved.findRequest ?? null,
+  findNonce:   saved.findNonce   ?? 0,
+  findKey:     saved.findKey     ?? null,
+
+  // FRAG roster click — units-store ids currently blinking their datablock
+  // on the ABM scope (STARS handoff/point-out-style cue). A Set of ids
+  // rather than a single target, like AbmScope's own middle-click
+  // toggleHighlight, so multiple aircraft can be called out at once; stored
+  // as an array since Sets don't round-trip through JSON/BroadcastChannel.
+  blinkIds: saved.blinkIds ?? [],
+
+  // FRAG's editable TASKING/Task field — a controller override of the
+  // mission's own task string, keyed by groupId. ATO's TASK column reads
+  // the same map so an edit in FRAG is immediately reflected there too.
+  taskOverrides: saved.taskOverrides ?? {},
+
+  // Manually-added flights (AddAtoFlight.jsx) get a negative groupId — real
+  // DCS group IDs are always positive, so this can never collide with an
+  // imported flight's own id. Monotonic and persisted so ids never get
+  // reused even across a reload.
+  nextManualId: saved.nextManualId ?? -1,
+
+  // Replaces the imported set but keeps any manually-added flights —
+  // loading a new mission shouldn't delete flights the controller typed in
+  // by hand (AddAtoFlight.jsx), only the previously-imported ones.
+  setFlights: (flights) => set((s) => ({
+    flights: [...flights, ...s.flights.filter(f => f.manual)],
+    importedAt: Date.now(),
+    selectedGroupId: null,
+  })),
+
+  // Clear Mission — drops only the imported flights (and their task
+  // overrides), leaving manually-added ones alone. Bare find/blink state is
+  // still wiped either way, since a stale marker/blink has no meaning once
+  // whatever it was pointing at is gone.
+  clearFlights: () => set((s) => {
+    const keep = new Set(s.flights.filter(f => f.manual).map(f => f.groupId))
+    const overrides = {}
+    for (const [gid, v] of Object.entries(s.taskOverrides)) {
+      if (keep.has(Number(gid))) overrides[gid] = v
+    }
+    return {
+      flights: s.flights.filter(f => f.manual),
+      importedAt: null,
+      selectedGroupId: keep.has(s.selectedGroupId) ? s.selectedGroupId : null,
+      findRequest: null, findKey: null, blinkIds: [],
+      taskOverrides: overrides,
+    }
+  }),
+
+  // Clear ALL — the CATCC status-board-style full wipe, including
+  // manually-added flights. Gated behind a confirm step in the UI.
+  clearAllFlights: () => set({
+    flights: [], importedAt: null, selectedGroupId: null,
+    findRequest: null, findKey: null, blinkIds: [], taskOverrides: {},
+  }),
+
+  // Appends one hand-entered flight (AddAtoFlight.jsx) — additive, unlike
+  // setFlights which replaces the whole imported set.
+  addFlight: (flight) => set((s) => ({
+    flights: [...s.flights, { ...flight, groupId: s.nextManualId, manual: true }],
+    nextManualId: s.nextManualId - 1,
+  })),
+
+  removeFlight: (groupId) => set((s) => {
+    const next = { ...s.taskOverrides }
+    delete next[groupId]
+    return {
+      flights: s.flights.filter(f => f.groupId !== groupId),
+      selectedGroupId: s.selectedGroupId === groupId ? null : s.selectedGroupId,
+      taskOverrides: next,
+    }
+  }),
+
+  setTaskOverride: (groupId, value) => set((s) => {
+    const next = { ...s.taskOverrides }
+    if (value) next[groupId] = value
+    else delete next[groupId]
+    return { taskOverrides: next }
+  }),
 
   selectGroup: (groupId) => set((s) => ({ selectedGroupId: groupId, selectNonce: s.selectNonce + 1 })),
 
   clearSelection: () => set({ selectedGroupId: null }),
+
+  requestFind: (ref, key = null) => set((s) => ({ findRequest: ref, findKey: key, findNonce: s.findNonce + 1 })),
+
+  clearFind: () => set({ findRequest: null, findKey: null }),
+
+  toggleBlink: (unitKey) => set((s) => {
+    const next = new Set(s.blinkIds)
+    next.has(unitKey) ? next.delete(unitKey) : next.add(unitKey)
+    return { blinkIds: [...next] }
+  }),
+
+  clearBlink: () => set({ blinkIds: [] }),
 }))
 
 // ── Cross-window sync (main window + undocked ATO/FRAG popups) ─────────────
@@ -43,7 +155,7 @@ const _ch = new BroadcastChannel('tracs-abm-mission')
 
 useAbmMissionStore.subscribe((state) => {
   if (_syncing) return
-  try { sessionStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
+  try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
   _ch.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
 })
 

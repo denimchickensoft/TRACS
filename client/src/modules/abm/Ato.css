@@ -114,10 +114,23 @@
 }
 .ato-col-sort:hover { color: #888; }
 
-.ato-pkg { color: #FFD700; }
+.ato-flight-name { color: #FFD700; text-transform: uppercase; }
 .ato-taskunit { color: #aaa; overflow: hidden; text-overflow: ellipsis; }
 .ato-active  { color: #5A8A5A; font-size: 9px; }
 .ato-reserve { color: #BB8833; font-size: 9px; }
+
+.ato-row-actions { display: flex; justify-content: center; }
+.ato-row-delete {
+  background: transparent;
+  border: none;
+  color: #444;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.ato-row-delete:hover { color: #CC4444; }
 
 .ato-footer {
   padding: 4px 6px;
@@ -140,3 +153,38 @@
   text-transform: uppercase;
 }
 .ato-add-btn:hover { border-color: #666; color: #888; }
+
+.ato-clear-mission-btn {
+  border-color: #3A1A1A;
+  color: #663333;
+}
+.ato-clear-mission-btn:hover {
+  border-color: #664444;
+  color: #AA4444;
+}
+
+.ato-clear-all-btn {
+  border-color: #3A1A1A;
+  color: #884444;
+}
+.ato-clear-all-btn:hover {
+  border-color: #884444;
+  color: #CC4444;
+}
+
+.ato-confirm-label {
+  color: #886644;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+
+.ato-confirm-btn {
+  border-color: #664422;
+  color: #CC6633;
+}
+.ato-confirm-btn:hover {
+  border-color: #AA5533;
+  color: #FF7744;
+}

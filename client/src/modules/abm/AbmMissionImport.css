@@ -148,13 +148,13 @@
   color: #FFD700;
 }
 
-/* Package rows */
+/* Flight rows */
 .mi-ac-list {
   flex: 1;
   overflow-y: auto;
 }
 
-.mi-pkg-row {
+.mi-flight-row {
   display: grid;
   grid-template-columns: 90px 60px 34px 1fr;
   gap: 0 6px;
@@ -163,12 +163,12 @@
   color: #AAA;
 }
 
-.mi-pkg-row:hover { background: #0D150D; }
+.mi-flight-row:hover { background: #0D150D; }
 
-.mi-pkg-name { color: #FFD700; }
-.mi-pkg-task { color: #AAA; }
-.mi-pkg-units { color: #666; text-align: right; }
-.mi-pkg-reserve { color: #BB8833; font-size: 8px; letter-spacing: 0.06em; }
+.mi-flight-name { color: #FFD700; }
+.mi-flight-task { color: #AAA; }
+.mi-flight-units { color: #666; text-align: right; }
+.mi-flight-reserve { color: #BB8833; font-size: 8px; letter-spacing: 0.06em; }
 
 /* ── Footer ─────────────────────────────────────────────── */
 .mi-footer {

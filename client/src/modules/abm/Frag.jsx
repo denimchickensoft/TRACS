@@ -3,10 +3,13 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
-import { resolveCallsign } from '../../utils/callsign.js'
+import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 import { getOrdnanceName, preloadOrdnanceDb } from '../../utils/ordnance.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
+import { computeAirbaseLabels } from '../../store/runways.js'
+import { groundState } from '../../utils/carriers.js'
+import { ZERO_INDEXED_WAYPOINT_TYPES } from '../../utils/parseMission.js'
 import './Frag.css'
 
 const FRAG_SCALE_KEY = 'tracs.frag.scale'
@@ -14,22 +17,42 @@ const SCALE_MIN      = 0.5
 const SCALE_MAX      = 2.0
 const SCALE_STEP     = 0.05
 
-function airfieldLabel(ref) {
+// Flight-level rollup when 2+ units disagree (e.g. staggered catapult
+// launches mid-flight) — the most-advanced state wins. Same as Ato.jsx.
+const STATE_PRIORITY = { AIR: 3, TAXI: 2, GROUND: 1 }
+
+// Non-airborne per-unit state — 'AIR' | 'TAXI' | 'GROUND'.
+function unitState(liveUnit, isCarrierBase, carrierUnit) {
+  return liveUnit.airborne ? 'AIR' : groundState(liveUnit, isCarrierBase, carrierUnit)
+}
+
+// Full name + "(ICAO/abbrev)" — unlike ATO's TASKUNIT column, which shows
+// only the abbreviated form. Falls back to the same first-4-letters scheme
+// store/runways.js uses for airports with no icaoMapping.json entry.
+function airfieldLabel(ref, icaoMap) {
   if (!ref) return 'Unknown'
-  if (ref.type === 'carrier')  return ref.carrierName
-  if (ref.type === 'airbase')  return getAirdromeName(ref.theatre, ref.airdromeId) ?? `Airdrome #${ref.airdromeId}`
+  if (ref.type === 'carrier') {
+    return ref.carrierAbbrev ? `${ref.carrierName} (${ref.carrierAbbrev})` : ref.carrierName
+  }
+  if (ref.type === 'airbase') {
+    const name = getAirdromeName(ref.theatre, ref.airdromeId)
+    if (!name) return `Airdrome #${ref.airdromeId}`
+    const icao   = icaoMap[ref.theatre?.toLowerCase()]?.[name]
+    const abbrev = icao ?? computeAirbaseLabels([name])[name]
+    return `${name} (${abbrev})`
+  }
   if (ref.type === 'airstart') return 'Air Start'
   return 'Unknown'
 }
 
-// "Base" — a package's operating airfield, defined by whichever of
-// departure (launch) or arrival (recovery) the mission actually captured.
-// Departure wins when both are known; air-start flights fall back to
-// recovery, since the mission never recorded a takeoff point for them.
-function resolveBase(pkg) {
-  if (pkg.launch?.type && pkg.launch.type !== 'airstart') return pkg.launch
-  if (pkg.recovery?.type && pkg.recovery.type !== 'unknown') return pkg.recovery
-  return pkg.launch
+// "Base" — a flight's operating airfield, defined by whichever of departure
+// (launch) or arrival (recovery) the mission actually captured. Departure
+// wins when both are known; air-start flights fall back to recovery, since
+// the mission never recorded a takeoff point for them.
+function resolveBase(flight) {
+  if (flight.launch?.type && flight.launch.type !== 'airstart') return flight.launch
+  if (flight.recovery?.type && flight.recovery.type !== 'unknown') return flight.recovery
+  return flight.launch
 }
 
 function fmtAlt(m) {
@@ -67,8 +90,14 @@ function ordnanceSummary(unit) {
 
 export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
-  const packages = useAbmMissionStore(s => s.packages)
+  const flights = useAbmMissionStore(s => s.flights)
   const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
+  const requestFind = useAbmMissionStore(s => s.requestFind)
+  const findKey = useAbmMissionStore(s => s.findKey)
+  const toggleBlink = useAbmMissionStore(s => s.toggleBlink)
+  const blinkIds = useAbmMissionStore(s => s.blinkIds) ?? []
+  const taskOverrides = useAbmMissionStore(s => s.taskOverrides) ?? {}
+  const setTaskOverride = useAbmMissionStore(s => s.setTaskOverride)
   const liveUnits = useUnitsStore(s => s.units)
 
   // Mission-file unit -> live Olympus unit, matched on DCS's own numeric
@@ -83,8 +112,26 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
     return m
   }, [liveUnits])
 
+  // Live unit -> its units-store key (the id drawAbmContacts/AbmScope key
+  // everything off of, e.g. highlightedIds) — separate from liveByDcsId
+  // above since that map's value is the unit object itself, not its key.
+  const keyByDcsId = useMemo(() => {
+    const m = new Map()
+    for (const [key, u] of Object.entries(liveUnits)) {
+      if (u.unitID != null) m.set(u.unitID, key)
+    }
+    return m
+  }, [liveUnits])
+
   const [, setOrdnanceTick] = useState(0)
   useEffect(() => { preloadOrdnanceDb().then(() => setOrdnanceTick(t => t + 1)) }, [])
+
+  // Real ICAO codes (client/public/icaoMapping.json), same fetch AbmScope.jsx
+  // and Ato.jsx do — needed for the Base line's "(ICAO/abbrev)" suffix.
+  const [icaoMap, setIcaoMap] = useState({})
+  useEffect(() => {
+    fetch('/icaoMapping.json').then(r => r.ok ? r.json() : {}).catch(() => ({})).then(setIcaoMap)
+  }, [])
 
   const [expandedRadios, setExpandedRadios] = useState(new Set())
   const toggleRadio = (key) => setExpandedRadios(prev => {
@@ -122,18 +169,50 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   // their own side. Defense-in-depth: AbmScope's click handler already
   // blocks selecting a foreign-coalition group, this just guarantees FRAG
   // itself never renders one regardless of how selectedGroupId got set.
-  const pkg = useMemo(() => {
-    const found = packages.find(p => p.groupId === selectedGroupId) ?? null
+  const flight = useMemo(() => {
+    const found = flights.find(f => f.groupId === selectedGroupId) ?? null
     if (!found) return null
     if (sessionCoalition !== 'blue' && sessionCoalition !== 'red') return found
     return found.coalition === sessionCoalition ? found : null
-  }, [packages, selectedGroupId, sessionCoalition])
+  }, [flights, selectedGroupId, sessionCoalition])
 
   const [, setAirdromeTick] = useState(0)
   useEffect(() => {
-    const theatre = pkg?.launch?.theatre ?? pkg?.recovery?.theatre
+    const theatre = flight?.launch?.theatre ?? flight?.recovery?.theatre
     if (theatre) preloadAirdromes(theatre).then(() => setAirdromeTick(t => t + 1))
-  }, [pkg])
+  }, [flight])
+
+  // Editable TASKING/Task field — a controller override of the mission's
+  // own task string (store/abmMission.js taskOverrides, keyed by groupId),
+  // which ATO's TASK column reads too. Local draft state resets only when
+  // the selected flight changes (not on every taskOverrides update from
+  // elsewhere), so an in-progress edit here never gets clobbered by e.g. a
+  // cross-window sync echo of the same store.
+  const [taskDraft, setTaskDraft] = useState('')
+  useEffect(() => {
+    setTaskDraft(flight ? (taskOverrides[flight.groupId] ?? (flight.task || flight.rawTask || '')) : '')
+  }, [flight?.groupId]) // eslint-disable-line
+
+  const commitTask = () => {
+    if (!flight) return
+    setTaskOverride(flight.groupId, taskDraft.trim() || null)
+  }
+
+  // Shared by the flight-level Status line and each roster row's granular
+  // state below — carrierUnit is the live carrier Olympus unit a
+  // carrier-based flight's TASKUNIT resolves to, used to compare a
+  // non-airborne unit's velocity against the ship's own (see
+  // utils/carriers.js groundState) rather than absolute ground speed.
+  const flightBase          = flight ? resolveBase(flight) : null
+  const flightIsCarrierBase = flightBase?.type === 'carrier'
+  const flightCarrierUnit   = flightIsCarrierBase ? liveByDcsId.get(flightBase.carrierUnitId) : null
+
+  // Manual flights (AddAtoFlight.jsx) have no DCS unitId — matched by
+  // callsign *prefix* instead (Ato.jsx does the same), since there's no
+  // reliable way to predict whether DCS resolves elements as "SHELL1"/
+  // "SHELL2" or "SHELL31"/"SHELL32". Every live unit whose resolved
+  // callsign starts with the entered prefix is a match.
+  const flightLiveMatches = flight?.manual ? matchLiveByPrefix(flight.callsignPrefix, liveUnits) : []
 
   const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
 
@@ -142,7 +221,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
       {docked && <div className="frag-resize" onMouseDown={onResize} />}
 
       <div className="frag-title" onWheel={handleTitleWheel}>
-        <span className="frag-title-text">{pkg ? pkg.name : 'FRAG'}</span>
+        <span className="frag-title-text">{flight ? flight.name : 'FRAG'}</span>
         {scaleHint && <span className="frag-title-scale-hint">{Math.round(scale * 100)}%</span>}
         <span className="frag-title-right">
           {docked  && onUndock && <button className="frag-btn" onClick={onUndock} title="Undock">⬡</button>}
@@ -152,97 +231,222 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
       </div>
 
       <div className="frag-body">
-        {!pkg && (
+        {!flight && (
           <div className="frag-empty">
-            Ctrl+Shift+Click a contact on the scope,<br />or select a package from ATO.
+            Ctrl+Shift+Click a contact on the scope,<br />or select a flight from ATO.
           </div>
         )}
 
-        {pkg && (
+        {flight && (
           <>
             <div className="frag-section">
               <div className="frag-section-label">TASKING</div>
-              <div className="frag-kv"><span>Task</span><span>{pkg.task || pkg.rawTask}</span></div>
-              <div className="frag-kv"><span>Base</span><span>{airfieldLabel(resolveBase(pkg))}</span></div>
-              <div className="frag-kv"><span>Status</span><span className={pkg.lateActivation ? 'frag-reserve' : 'frag-active'}>{pkg.lateActivation ? 'RESERVE' : 'ACTIVE'}</span></div>
+              <div className="frag-kv">
+                <span>Task</span>
+                <input
+                  className="frag-task-input"
+                  value={taskDraft}
+                  onChange={(e) => setTaskDraft(e.target.value)}
+                  onBlur={commitTask}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                  spellCheck={false}
+                />
+              </div>
+              <div className="frag-kv">
+                <span>Base</span>
+                {(() => {
+                  const base = resolveBase(flight)
+                  const findable = base?.type === 'airbase' || base?.type === 'carrier'
+                  const baseKey = `base-${flight.groupId}`
+                  const isActive = findable && findKey === baseKey
+                  return (
+                    <span
+                      className={[findable ? 'frag-base-findable' : '', isActive ? 'frag-find-active' : ''].join(' ').trim()}
+                      onClick={findable ? () => requestFind(isActive ? null : base, isActive ? null : baseKey) : undefined}
+                      title={findable ? 'Highlight on scope' : undefined}
+                    >
+                      {airfieldLabel(base, icaoMap)}
+                    </span>
+                  )
+                })()}
+              </div>
+              {(() => {
+                // RESERVE only means "not spawned yet" — same live check as
+                // ATO's STATUS column (Ato.jsx): a late-activation group
+                // that's since been triggered in-game is ACTIVE regardless
+                // of the mission file's static flag. Once the lead is live
+                // (CALLSIGN populated — same gate the roster's TCS column
+                // uses), ACTIVE is replaced by the flight's actual
+                // air/ground picture — AIR beats TAXI beats GROUND across
+                // every live unit in the flight.
+                const liveLead  = flight.manual
+                  ? (flightLiveMatches[0]?.unit ?? null)
+                  : (flight.units[0] ? liveByDcsId.get(flight.units[0].unitId) : null)
+                const isReserve = flight.lateActivation && !(flight.manual
+                  ? flightLiveMatches.length > 0
+                  : flight.units.some(u => liveByDcsId.get(u.unitId)))
+                let statusLabel = 'ACTIVE'
+                if (isReserve) {
+                  statusLabel = 'RESERVE'
+                } else if (liveLead) {
+                  const liveUnitsForRollup = flight.manual
+                    ? flightLiveMatches.map(m => m.unit)
+                    : flight.units.map(u => liveByDcsId.get(u.unitId)).filter(Boolean)
+                  let rollup = null
+                  for (const lu of liveUnitsForRollup) {
+                    const state = unitState(lu, flightIsCarrierBase, flightCarrierUnit)
+                    if (!rollup || STATE_PRIORITY[state] > STATE_PRIORITY[rollup]) rollup = state
+                  }
+                  if (rollup) statusLabel = rollup
+                }
+                return (
+                  <div className="frag-kv">
+                    <span>Status</span>
+                    <span className={isReserve ? 'frag-reserve' : 'frag-active'}>{statusLabel}</span>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="frag-section">
-              <div className="frag-section-label">ROSTER ({pkg.units.length})</div>
-              {pkg.units.map(u => {
-                const liveUnit = liveByDcsId.get(u.unitId)
-                const tracsCallsign = liveUnit ? resolveCallsign(liveUnit) : null
-                return (
-                <div key={u.unitId} className="frag-unit">
-                  <div className="frag-unit-header">
-                    <span className="frag-unit-cs">{u.callsign.toUpperCase()}</span>
-                    <span className="frag-unit-type">{typeAbbrev({ name: u.rawType })}</span>
-                    <span className="frag-unit-tcs">{tracsCallsign ? tracsCallsign.toUpperCase() : '—'}</span>
-                    <span className="frag-unit-mdx">#{u.modex}</span>
-                    <span className={['frag-unit-skl', u.skill === 'Client' ? 'client' : ''].join(' ')}>{u.skill}</span>
-                  </div>
-                  {(() => { const ord = ordnanceSummary(u); return ord.length > 0 && (
-                    <div className="frag-ordnance">
-                      {ord.map(([name, qty], i) => (
-                        <div key={i} className="frag-ord-row">
-                          <span className="frag-ord-name">{name}</span>
-                          <span className="frag-ord-qty">x{qty}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) })()}
-                  {u.radios.some(r => radioPresets(r).length > 0) && (() => {
-                    const expanded = expandedRadios.has(u.unitId)
+              {flight.manual ? (
+                // Manual flights have no mission-file roster — the live
+                // matches (Ato.jsx's same prefix match) *are* the roster,
+                // one row per real aircraft found right now. No mission
+                // data exists for ordnance/radios/link16/modex/skill, so
+                // those simply aren't shown.
+                <>
+                  <div className="frag-section-label">ROSTER ({flightLiveMatches.length})</div>
+                  {flightLiveMatches.map(m => {
+                    const isBlinking = blinkIds.includes(m.key)
+                    const state = unitState(m.unit, flightIsCarrierBase, flightCarrierUnit)
                     return (
-                      <div className="frag-radio-block">
-                        <div className="frag-radio-toggle" onClick={() => toggleRadio(u.unitId)}>
-                          <span className="frag-radio-caret">{expanded ? '▾' : '▸'}</span>COMM
+                      <div key={m.key} className="frag-unit">
+                        <div
+                          className={['frag-unit-header', 'frag-unit-findable', isBlinking ? 'frag-unit-blinking' : ''].join(' ').trim()}
+                          onClick={() => toggleBlink(m.key)}
+                          title="Blink datablock on scope"
+                        >
+                          <span className="frag-unit-cs">{m.callsign}</span>
+                          <span className="frag-unit-type">{typeAbbrev(m.unit)}</span>
+                          <span className={['frag-unit-state', `frag-unit-state-${state.toLowerCase()}`].join(' ')}>{state}</span>
                         </div>
-                        {expanded && (
-                          <div className="frag-radios">
-                            {u.radios.map((r, ri) => {
-                              const presets = radioPresets(r)
-                              if (presets.length === 0) return null
-                              return (
-                                <div key={ri} className="frag-radio">
-                                  <div className="frag-radio-label">COMM{ri + 1}</div>
-                                  {presets.map(p => (
-                                    <div key={p.preset} className="frag-radio-row">
-                                      <span className="frag-radio-ch">CH {p.preset}</span>
-                                      <span className="frag-radio-fm">
-                                        <span className="frag-radio-freq">{p.freq.toFixed(3)}</span>{' '}
-                                        <span className="frag-radio-mod">{p.mod}</span>
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
                       </div>
                     )
-                  })()}
-                  {u.link16.stn && (
-                    <div className="frag-link16">L16 STN {u.link16.stn}</div>
-                  )}
-                </div>
-                )
-              })}
+                  })}
+                </>
+              ) : (
+                <>
+                  <div className="frag-section-label">ROSTER ({flight.units.length})</div>
+                  {flight.units.map(u => {
+                    const liveUnit = liveByDcsId.get(u.unitId)
+                    const liveKey = keyByDcsId.get(u.unitId)
+                    const tracsCallsign = liveUnit ? resolveCallsign(liveUnit) : null
+                    const findable = liveKey != null
+                    const isBlinking = findable && blinkIds.includes(liveKey)
+                    // Granular per-unit air/ground state — the flight-level
+                    // Status line above only shows the rolled-up worst/best case.
+                    const state = liveUnit ? unitState(liveUnit, flightIsCarrierBase, flightCarrierUnit) : null
+                    return (
+                    <div key={u.unitId} className="frag-unit">
+                      <div
+                        className={['frag-unit-header', findable ? 'frag-unit-findable' : '', isBlinking ? 'frag-unit-blinking' : ''].join(' ').trim()}
+                        onClick={findable ? () => toggleBlink(liveKey) : undefined}
+                        title={findable ? 'Blink datablock on scope' : undefined}
+                      >
+                        <span className="frag-unit-cs">{u.callsign.toUpperCase()}</span>
+                        <span className="frag-unit-type">{typeAbbrev({ name: u.rawType })}</span>
+                        <span className="frag-unit-tcs">{tracsCallsign ? tracsCallsign.toUpperCase() : '—'}</span>
+                        <span className="frag-unit-mdx">#{u.modex}</span>
+                        <span className={['frag-unit-skl', u.skill === 'Client' ? 'client' : ''].join(' ')}>{u.skill}</span>
+                        <span className={['frag-unit-state', state ? `frag-unit-state-${state.toLowerCase()}` : ''].join(' ').trim()}>{state ?? '—'}</span>
+                      </div>
+                      {(() => { const ord = ordnanceSummary(u); return ord.length > 0 && (
+                        <div className="frag-ordnance">
+                          {ord.map(([name, qty], i) => (
+                            <div key={i} className="frag-ord-row">
+                              <span className="frag-ord-name">{name}</span>
+                              <span className="frag-ord-qty">x{qty}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) })()}
+                      {u.radios.some(r => radioPresets(r).length > 0) && (() => {
+                        const expanded = expandedRadios.has(u.unitId)
+                        return (
+                          <div className="frag-radio-block">
+                            <div className="frag-radio-toggle" onClick={() => toggleRadio(u.unitId)}>
+                              <span className="frag-radio-caret">{expanded ? '▾' : '▸'}</span>COMM
+                            </div>
+                            {expanded && (
+                              <div className="frag-radios">
+                                {u.radios.map((r, ri) => {
+                                  const presets = radioPresets(r)
+                                  if (presets.length === 0) return null
+                                  return (
+                                    <div key={ri} className="frag-radio">
+                                      <div className="frag-radio-label">COMM{ri + 1}</div>
+                                      {presets.map(p => (
+                                        <div key={p.preset} className="frag-radio-row">
+                                          <span className="frag-radio-ch">CH {p.preset}</span>
+                                          <span className="frag-radio-fm">
+                                            <span className="frag-radio-freq">{p.freq.toFixed(3)}</span>{' '}
+                                            <span className="frag-radio-mod">{p.mod}</span>
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                      {u.link16.stn && (
+                        <div className="frag-link16">L16 STN {u.link16.stn}</div>
+                      )}
+                    </div>
+                    )
+                  })}
+                </>
+              )}
             </div>
 
+            {flight.route.length > 0 && (
             <div className="frag-section frag-section-grow">
               <div className="frag-section-label">ROUTE</div>
               <div className="frag-route">
-                {pkg.route.map((wp, i) => (
-                  <div key={i} className="frag-wp">
-                    <span className="frag-wp-name">{wp.name ?? `WP${i + 1}`}</span>
-                    <span className="frag-wp-alt">{fmtAlt(wp.alt)}</span>
-                    <span className="frag-wp-speed">{fmtSpeed(wp.speed)}</span>
-                  </div>
-                ))}
+                {(() => {
+                  // Hornet's own cockpit numbers waypoints one behind the
+                  // mission editor's route order (confirmed in-sim) — see
+                  // ZERO_INDEXED_WAYPOINT_TYPES for the aircraft this is
+                  // verified for; everyone else keeps the natural 1-based
+                  // ME numbering until similarly confirmed.
+                  const wpLabelOffset = ZERO_INDEXED_WAYPOINT_TYPES.has(flight.units[0]?.rawType) ? 0 : 1
+                  return flight.route.map((wp, i) => {
+                    const wpName = wp.name ?? `WP${i + wpLabelOffset}`
+                    const findable = wp.lat != null && wp.lng != null
+                    const wpKey = `wp-${flight.groupId}-${i}`
+                    const isActive = findable && findKey === wpKey
+                    return (
+                      <div
+                        key={i}
+                        className={['frag-wp', findable ? 'frag-wp-findable' : '', isActive ? 'frag-find-active' : ''].join(' ').trim()}
+                        onClick={findable ? () => requestFind(isActive ? null : { type: 'point', lat: wp.lat, lng: wp.lng, id: wpName }, isActive ? null : wpKey) : undefined}
+                        title={findable ? 'Highlight on scope' : undefined}
+                      >
+                        <span className="frag-wp-idx">{i + wpLabelOffset}</span>
+                        <span className="frag-wp-name">{wpName}</span>
+                        <span className="frag-wp-alt">{fmtAlt(wp.alt)}</span>
+                        <span className="frag-wp-speed">{fmtSpeed(wp.speed)}</span>
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             </div>
+            )}
           </>
         )}
       </div>
