@@ -27,7 +27,7 @@ const MSG_VISIBLE_KEY = 'tracs.msg.visible'
 const SB_WIDTH_KEY    = 'tracs.sb.width'
 
 const PROFILE_STORAGE_KEY = 'tracs.lastProfile'
-const DEFAULT_PROFILE     = 'simple'
+const DEFAULT_PROFILE     = 'stars'
 
 function getSavedProfile() {
   return localStorage.getItem(PROFILE_STORAGE_KEY) ?? DEFAULT_PROFILE
