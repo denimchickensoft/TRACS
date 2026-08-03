@@ -12,16 +12,21 @@ import { rangeToPixelsPerNm }    from '../atc/stars/canvas/projection.js'
 import { resolveSlew }           from '../atc/stars/input/slewResolver.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
+import { useGeoStore }           from '../../store/geo.js'
+import { useNavdataStore }       from '../../store/navdata.js'
+import { useAbmAirspaceStore }   from '../../store/abmAirspace.js'
 import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
 import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
 import { drawCompassRose }       from '../atc/stars/canvas/drawCompassRose.js'
+import { drawGeo }               from '../atc/stars/canvas/drawGeo.js'
+import { drawAbmAirspace }       from '../abm/canvas/drawAbmAirspace.js'
+import { drawAbmFixSymbols }     from '../abm/canvas/drawAbmFixSymbols.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { matchStarsKey, isTypedInput } from '../atc/stars/input/starsKeys.js'
-import { parseCommand }          from '../atc/stars/input/commandParser.js'
-import { dispatch as dispatchAction } from '../atc/actions/index.js'
-import { processOdsCommand }     from './odsCommands.js'
+import { processOdsCommand } from './odsCommands.js'
+import { initCntl, termCntl, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
@@ -77,6 +82,35 @@ export default function CatccScope() {
 
   const theatre     = mission?.mission?.theatre
   const missionDate = mission?.mission?.dateAndTime?.date ?? null
+
+  // ── Navdata layers (.asp/.sua/.classc/etc, .fixes, .geo) — reused directly
+  // from ABM's stores/draw functions (store/abmAirspace.js, store/geo.js,
+  // store/navdata.js, modules/abm/canvas/drawAbmAirspace.js,
+  // modules/abm/canvas/drawAbmFixSymbols.js): flat theatre-wide data with no
+  // facility/DCB concept, same reason ABM bypasses STARS' bucketed useMapsStore.
+  // Visibility is driven by this window's own settings (odsCommands.js), not
+  // useGeoStore's shared `visible` flag — CATCC never calls setVisible on it,
+  // so toggling .geo here can't fight with STARS' DCB or ABM's always-on geo
+  // in another window.
+  const geoBoundaries    = useGeoStore((s) => s.boundaries)
+  const geoCoastlines    = useGeoStore((s) => s.coastlines)
+  const fixes            = useNavdataStore((s) => s.fixes)
+  const airspaceFeatures = useAbmAirspaceStore((s) => s.features)
+  const airspacePalettes = useAbmAirspaceStore((s) => s.palettes)
+  // Default to the all-yellow "CATCC" palette (server/navdata/config/
+  // airspace_colors.json) by name, unless .aspcolors has set an explicit
+  // index (windowSettings.aspColorIdx) — that always wins once set.
+  const airspacePalette = windowSettings?.aspColorIdx != null
+    ? airspacePalettes[windowSettings.aspColorIdx]
+    : (airspacePalettes.find((p) => p.name === 'CATCC') ?? airspacePalettes[0])
+  const airspaceColors = airspacePalette?.colors ?? null
+
+  useEffect(() => {
+    if (!theatre) return
+    useGeoStore.getState().loadForTheatre(theatre)
+    useNavdataStore.getState().loadForTheatre(theatre)
+    useAbmAirspaceStore.getState().loadForTheatre(theatre)
+  }, [theatre])
 
   // Carrier unit — source of scope center and BRC
   const carrierUnit = carrierUnitId != null ? units[carrierUnitId] : null
@@ -162,7 +196,13 @@ export default function CatccScope() {
   // ── Initialize display window ──────────────────────────────────────
   useEffect(() => {
     if (!windowSettings) {
-      displayStore.initWindow(WINDOW_ID, { rangeNm: 50, ringSpacingNm: 10, statusTextXPct: 50, statusTextYPct: 2, showHistory: true, historyRate: 4.5, dbca: loadCatccPrefs().dbca })
+      const catccPrefs = loadCatccPrefs()
+      displayStore.initWindow(WINDOW_ID, {
+        rangeNm: 50, ringSpacingNm: 10, statusTextXPct: 50, statusTextYPct: 2, showHistory: true, historyRate: 4.5,
+        dbca: catccPrefs.dbca,
+        asVisible: catccPrefs.asVisible, aspColorIdx: catccPrefs.aspColorIdx, labelsVisible: catccPrefs.labelsVisible,
+        fixesVisible: catccPrefs.fixesVisible, geoVisible: catccPrefs.geoVisible,
+      })
     }
   }, []) // eslint-disable-line
 
@@ -237,6 +277,21 @@ export default function CatccScope() {
   useEffect(() => {
     setView(buildView())
   }, [carrierLat, carrierLng, declinationDeg, windowSettings?.rangeNm]) // eslint-disable-line
+
+  // ── Render navdata layers (geo/airspace/fixes) — bottom canvas, under the
+  //    rings/CCZ/CCA layer, same stacking ABM uses for its mapRef ──────────
+  useEffect(() => {
+    if (!view || !mapCanvasRef.current) return
+    const ctx = mapCanvasRef.current.getContext('2d')
+    ctx.clearRect(0, 0, view.width, view.height)
+    drawGeo(ctx, view, geoBoundaries, geoCoastlines, windowSettings?.geoVisible ?? false, 50)
+    // Per-feature stroke, no edge de-dup — see drawAbmAirspace.js for the
+    // dedupe option if dense theatres read as double/uneven lines.
+    drawAbmAirspace(ctx, view, airspaceFeatures, windowSettings?.asVisible ?? {}, 80, false, airspaceColors, windowSettings?.labelsVisible ?? false)
+    drawAbmFixSymbols(ctx, view, fixes, windowSettings?.fixesVisible ?? false, '#66CCFF', 60, windowSettings?.labelsVisible ?? false)
+  }, [view, geoBoundaries, geoCoastlines, windowSettings?.geoVisible,
+      airspaceFeatures, airspaceColors, windowSettings?.asVisible, windowSettings?.labelsVisible,
+      fixes, windowSettings?.fixesVisible])
 
   // ── Render CATCC layers (rings + CCZ/CCA + corridor + radial) ─────
   useEffect(() => {
@@ -383,24 +438,19 @@ export default function CatccScope() {
     if (e.key === 'Backspace') { e.preventDefault(); usePreviewStore.getState().backspace(); return }
     if (e.key === 'Enter') {
       e.preventDefault()
-      const buf    = usePreviewStore.getState().buffer
-      const parsed = parseCommand(buf, 'ENTER')
-      if (parsed) {
-        dispatchAction(parsed, null, { positionName, windowId: WINDOW_ID })
-        if (!usePreviewStore.getState().response) setOdsLines([])
-        return
-      }
-      // ODS text command fallback (IT, DT, HO, PO, RN, …)
-      const output = processOdsCommand(buf, {
+      const buf = usePreviewStore.getState().buffer
+      // Every ENTER-triggered CATCC command is local (odsCommands.js) — no
+      // shared STARS parser/dispatcher involved. processOdsCommand always
+      // returns a Promise (some handlers, e.g. .ASPCOLORS/.REFRESH, hit the
+      // server), so the buffer/preview clear immediately and the result
+      // lines land in odsLines whenever it resolves.
+      processOdsCommand(buf, {
         visibleUnits: visibleUnitsRef.current,
         correlations: effectiveCorrelationsRef.current,
         positionName,
+      }).then((output) => {
+        setOdsLines((prev) => (output.length ? [...prev, ...output].slice(-ODS_MAX_LINES) : []))
       })
-      if (output.length) {
-        setOdsLines((prev) => [...prev, ...output].slice(-ODS_MAX_LINES))
-      } else {
-        setOdsLines([])
-      }
       usePreviewStore.getState().clear()
       return
     }
@@ -421,13 +471,13 @@ export default function CatccScope() {
 
     // Ctrl+Shift+Click — initiate track (mirrors F3/IC + slew)
     if (e.ctrlKey && e.shiftKey) {
-      dispatchAction({ command: { id: 'INIT_CNTL' }, captures: {} }, target, { positionName, windowId: WINDOW_ID })
+      initCntl(target)
       return
     }
 
     // Shift+Click — drop track (mirrors F4/TC + slew)
     if (e.shiftKey && !e.ctrlKey) {
-      dispatchAction({ command: { id: 'TERM_CNTL' }, captures: {} }, target, { positionName, windowId: WINDOW_ID })
+      termCntl(target)
       return
     }
 
@@ -454,19 +504,14 @@ export default function CatccScope() {
       return
     }
 
-    // STARS slew — parse ODS buffer as a SLEW command
-    const view = viewRef.current
-    const parsed = parseCommand(usePreviewStore.getState().buffer, 'SLEW')
+    // Slew commands — parse ODS buffer against CATCC's own local slew table
+    // (IC/TC/HO <tcp>/point-outs/leader-line/scratchpad — see slewCommands.js)
+    const parsed = parseCatccSlew(usePreviewStore.getState().buffer)
     if (parsed) {
-      dispatchAction(parsed, target, {
-        positionName,
-        canvasPos,
-        canvasSize: { w: view.width, h: view.height },
-        windowId: WINDOW_ID,
-      })
+      dispatchCatccSlew(parsed, target)
       if (!usePreviewStore.getState().response) setOdsLines([])
     }
-  }, [positionName])
+  }, [])
 
   // ── Zoom ───────────────────────────────────────────────────────────
   const handleWheel = useCallback((e) => {

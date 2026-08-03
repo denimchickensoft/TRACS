@@ -175,6 +175,41 @@
     }
   },
   {
+    "name": "CATCC",
+    "colors": {
+      "TMA":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "TMA" },
+      "CTR":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "CTR" },
+      "CTA":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "CTA" },
+      "CLASS A": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "Class A" },
+      "CLASS B": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "Class B" },
+      "CLASS C": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "Class C" },
+      "CLASS D": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "Class D" },
+      "CLASS E": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "Class E" },
+      "CLASS F": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "Class F" },
+      "CLASS G": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "Class G" },
+      "FIR":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "FIR" },
+      "UIR":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "UIR" },
+      "SUA":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "SUA" },
+      "MIL":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "MIL" },
+      "TRSA":    { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "TRSA" },
+      "HOLDS":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "AIRWAYS_V": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "AIRWAYS_J": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "AIRWAYS_B": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "MSA":       { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "MORA":      { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "RELIEF":       { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "MVA":          { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "PROC_SID":     { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "PROC_STAR":    { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "PROC_APPCH":   { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "ROUTE":        { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "GEO_COAST":    { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "GEO_BOUNDARY": { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0] },
+      "CUSTOM":       { "stroke": "#FFD700", "fill": "#FFD700", "dash": [0, 0], "label": "CUSTOM" }
+    }
+  },
+  {
     "name": "Random",
     "colors": {
       "TMA":     { "stroke": "#FF69B4", "fill": "#FF69B4", "dash": [5, 2], "label": "TMA" },

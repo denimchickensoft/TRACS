@@ -10,6 +10,7 @@ export const useAbmAirspaceStore = create((set, get) => ({
   palettes: [],  // [{ name, colors: { [displayCategory]: { stroke, fill, dash, label } } }]
   theatre:  null,
   loading:  false,
+  lastError: null, // set on a failed refreshPalettes() — lets callers surface the real reason
 
   loadForTheatre: async (theatre) => {
     if (!theatre || get().theatre === theatre) return
@@ -33,13 +34,14 @@ export const useAbmAirspaceStore = create((set, get) => ({
       const res = await fetch('/api/navdata/palettes')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const palettes = await res.json()
-      set({ palettes: palettes ?? [] })
+      set({ palettes: palettes ?? [], lastError: null })
       return true
     } catch (err) {
       console.error('[abmAirspace] palette refresh error:', err.message)
+      set({ lastError: err.message })
       return false
     }
   },
 
-  reset: () => set({ features: [], palettes: [], theatre: null, loading: false }),
+  reset: () => set({ features: [], palettes: [], theatre: null, loading: false, lastError: null }),
 }))

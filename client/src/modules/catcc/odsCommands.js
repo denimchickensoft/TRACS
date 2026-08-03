@@ -2,7 +2,8 @@
  * CATCC ODS command processor.
  *
  * Each command handler receives (parts, context) and returns an array of
- * output line strings. An empty array means success (no output, like STARS).
+ * output line strings, or a Promise of one for handlers that hit the server
+ * (.ASPCOLORS/.REFRESH). An empty array means success (no output, like STARS).
  *
  * context: { visibleUnits, correlations, view, fb, marshalBearing,
  *             windowSettings, positionName }
@@ -15,6 +16,7 @@ import { useSessionStore }     from '../../store/session.js'
 import { useControllersStore } from '../../store/controllers.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { saveCatccPrefs }      from '../../store/catccPrefs.js'
+import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { applyCallsignChange } from '../../utils/callsignRename.js'
@@ -80,8 +82,24 @@ register('DT', (parts, ctx) => {
   return []
 })
 
-// HO <callsign|side> <tcp> — handoff to controller
+// HO <callsign|side> <tcp> — handoff to controller.
+// Bare "HO" (no args) — accept the nearest incoming handoff. Was formerly
+// STARS' HND_OFF_ACCEPT_NEAR (commandParser.js `/^HO$/` ENTER), reachable
+// only because CatccScope tried STARS' shared parser first; now local.
 register('HO', (parts, ctx) => {
+  if (parts.length === 1) {
+    const { handoffs, claimTrack, clearHandoff } = useAtcStore.getState()
+    const controllerId = getMyControllerId()
+    for (const [unitId, ho] of Object.entries(handoffs)) {
+      if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === controllerId) {
+        claimTrack(unitId, controllerId)
+        clearHandoff(unitId)
+        sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId, fromControllerId: ho.from, toControllerId: controllerId })
+        return []
+      }
+    }
+    return ['NO INCOMING HANDOFF']
+  }
   const id  = parts[1]
   const tcp = parts[2]
   if (!id || !tcp) return ['HO <callsign|side> <tcp>']
@@ -174,15 +192,118 @@ register('.DBCA', () => {
   return [`DBCA ${next ? 'ON' : 'OFF'}`]
 })
 
+// ── Airspace / navdata layers — same categories + bulk/.labels convention as
+// ABM (modules/abm/AbmScope.jsx AIRSPACE_CATEGORIES/AIRSPACE_CMD_CATEGORY),
+// reimplemented against window settings (CatccScope reads windowSettings for
+// its draw effects, same as .LL/.LD/.DBCA above) rather than local useState.
+const AIRSPACE_CATEGORIES = [
+  'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
+  'CLASS A', 'CLASS B', 'CLASS C', 'CLASS D', 'CLASS E', 'CLASS F', 'CLASS G',
+]
+const AIRSPACE_CMD_CATEGORY = {
+  '.TMA': 'TMA', '.CTR': 'CTR', '.CTA': 'CTA', '.FIR': 'FIR', '.UIR': 'UIR',
+  '.SUA': 'SUA', '.MIL': 'MIL', '.TRSA': 'TRSA',
+  '.CLASSA': 'CLASS A', '.CLASSB': 'CLASS B', '.CLASSC': 'CLASS C', '.CLASSD': 'CLASS D',
+  '.CLASSE': 'CLASS E', '.CLASSF': 'CLASS F', '.CLASSG': 'CLASS G',
+}
+
+// .ASP — bulk toggle: on if any category is currently visible, off otherwise.
+register('.ASP', () => {
+  const ws = useDisplayStore.getState().windows[WINDOW_ID]
+  const asVisible = ws?.asVisible ?? {}
+  const anyOn = AIRSPACE_CATEGORIES.some((c) => asVisible[c])
+  const next  = anyOn ? {} : Object.fromEntries(AIRSPACE_CATEGORIES.map((c) => [c, true]))
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { asVisible: next })
+  saveCatccPrefs({ asVisible: next })
+  return [anyOn ? 'AIRSPACE OFF' : 'AIRSPACE ON']
+})
+
+// Per-category airspace toggles — .tma/.ctr/.cta/.fir/.uir/.sua/.mil/.trsa/
+// .classa-.classg.
+for (const [verb, cat] of Object.entries(AIRSPACE_CMD_CATEGORY)) {
+  register(verb, () => {
+    const ws = useDisplayStore.getState().windows[WINDOW_ID]
+    const asVisible = ws?.asVisible ?? {}
+    const next   = !asVisible[cat]
+    const merged = { ...asVisible, [cat]: next }
+    useDisplayStore.getState().updateWindow(WINDOW_ID, { asVisible: merged })
+    saveCatccPrefs({ asVisible: merged })
+    return [`${cat} ${next ? 'ON' : 'OFF'}`]
+  })
+}
+
+// .LABELS — name-label toggle for airspace/fix layers (same "show text too"
+// role as ABM's .labels).
+register('.LABELS', () => {
+  const ws   = useDisplayStore.getState().windows[WINDOW_ID]
+  const next = !(ws?.labelsVisible ?? false)
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { labelsVisible: next })
+  saveCatccPrefs({ labelsVisible: next })
+  return [`LABELS ${next ? 'ON' : 'OFF'}`]
+})
+
+// .FIXES — theatre fixes point layer (store/navdata.js, same data STARS/ABM use).
+register('.FIXES', () => {
+  const ws   = useDisplayStore.getState().windows[WINDOW_ID]
+  const next = !(ws?.fixesVisible ?? false)
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { fixesVisible: next })
+  saveCatccPrefs({ fixesVisible: next })
+  return [`FIXES ${next ? 'ON' : 'OFF'}`]
+})
+
+// .GEO — coastlines/boundaries layer (store/geo.js). Driven by this window's
+// own setting rather than the shared store's `visible` flag, so toggling it
+// here can't fight with STARS' DCB or ABM's always-on geo in another window.
+register('.GEO', () => {
+  const ws   = useDisplayStore.getState().windows[WINDOW_ID]
+  const next = !(ws?.geoVisible ?? false)
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { geoVisible: next })
+  saveCatccPrefs({ geoVisible: next })
+  return [`GEO ${next ? 'ON' : 'OFF'}`]
+})
+
+// .ASPCOLORS <name> — same command STARS/ABM use for airspace palettes
+// (store/abmAirspace.js), reimplemented against window settings. Refreshes
+// palettes from the server first, same as ABM, so a palette added/edited in
+// airspace_colors.json since load (e.g. the new "CATCC" palette) is pickable
+// without a full reload. Explicitly set here always wins over the "CATCC"
+// named-palette default in CatccScope's airspaceColors.
+register('.ASPCOLORS', async (parts) => {
+  const name = parts[1]
+  if (!name) return ['.ASPCOLORS <name>']
+  const refreshed = await useAbmAirspaceStore.getState().refreshPalettes()
+  if (!refreshed) {
+    const err = useAbmAirspaceStore.getState().lastError
+    return [err ? `REFRESH FAILED: ${err}` : 'REFRESH FAILED']
+  }
+  const palettes = useAbmAirspaceStore.getState().palettes
+  const idx = palettes.findIndex((p) => p.name.toUpperCase() === name)
+  if (idx < 0) return ['INVALID PALETTE']
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { aspColorIdx: idx })
+  saveCatccPrefs({ aspColorIdx: idx })
+  return [`ASP COLORS: ${palettes[idx].name.toUpperCase()}`]
+})
+
+// .REFRESH — re-fetch airspace_colors.json palettes without a full reload.
+register('.REFRESH', async () => {
+  const success = await useAbmAirspaceStore.getState().refreshPalettes()
+  if (success) return ['PALETTES REFRESHED']
+  const err = useAbmAirspaceStore.getState().lastError
+  return [err ? `REFRESH FAILED: ${err}` : 'REFRESH FAILED']
+})
+
 // ── Dispatcher ────────────────────────────────────────────────────────────────
-export function processOdsCommand(raw, context) {
+// Always returns a Promise (even for synchronous handlers) so the caller has
+// one code path — some handlers (.ASPCOLORS/.REFRESH) hit the server.
+export async function processOdsCommand(raw, context) {
   const parts = raw.trim().toUpperCase().split(/\s+/)
   const verb  = parts[0]
   if (!verb) return []
   const handler = COMMANDS[verb]
   if (!handler) return [`INVALID: ${verb}`]
   try {
-    return handler(parts, context) ?? []
+    const result = await handler(parts, context)
+    return result ?? []
   } catch (err) {
     return [`ERROR: ${err.message}`]
   }

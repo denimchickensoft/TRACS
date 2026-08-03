@@ -19,16 +19,22 @@ Aircraft are addressed by side number or callsign.
 | `.LL [0-99]` | Set leader-line length (pixels); bare `.LL` queries the current value |
 | `.LD [N\|NE\|E\|SE\|S\|SW\|W\|NW\|1-9\|OFF]` | Set the default leader-line direction |
 | `.DBCA` | Toggle datablock collision avoidance (on by default) |
+| `.ASP` | Bulk-toggle all airspace categories |
+| `.TMA` `.CTR` `.CTA` `.FIR` `.UIR` `.SUA` `.MIL` `.TRSA` `.CLASSA`–`.CLASSG` | Toggle one airspace category |
+| `.LABELS` | Toggle airspace/fix name labels |
+| `.FIXES` | Toggle theatre fix points |
+| `.GEO` | Toggle coastlines/boundaries |
+| `.ASPCOLORS <name>` | Select an airspace color palette (e.g. `CATCC` — the default, all-yellow) |
+| `.REFRESH` | Re-fetch airspace color palettes without reloading |
 
 Errors appear in the ODS response area: `NO TRACK: <id>` (unit not found), `ILL TRK` (you don't own that track), `ILL POS` / `ILL POS: <tcp>` (invalid handoff target).
 
-**Slew commands** (type the command, then left-click the target to complete it) — these are shared with the ATC/STARS scope:
+**Slew commands** (type the command, then left-click the target to complete it) — CATCC has its own local implementation of these (mirrors the ATC/STARS scope's bindings, but targets CATCC's own state independently — no shared dispatcher):
 
 - `IC` — initiate control on the clicked contact
 - `TC` — terminate control
 - `HO` (bare) — accept the nearest incoming handoff; `HO <tcp>` then slew — hand off to a position
 - `<id>*` then slew — point out; `**` then slew — accept an incoming point-out as a handoff; `UN` then slew — reject a point-out
-- A 3-digit number (e.g. `070`) then slew — set reported/assigned altitude scratchpad
 - A 3–4 character alphanumeric then slew — set scratchpad 1; prefix with `+` for scratchpad 2
 - `MF L<n><n>` (e.g. `MF L33`) then slew — set leader-line direction globally; `MF L<n>` — for a single track
 - `MF S`, then click anywhere on the scope — relocate the status-text overlay
@@ -41,7 +47,7 @@ Errors appear in the ODS response area: `NO TRACK: <id>` (unit not found), `ILL 
 - **Mouse wheel** over the scope — zoom range (hold Ctrl for larger steps)
 - Moving the mouse shows a live bearing/range readout from the carrier to the cursor
 - **Alt+T** — toggle top-down display mode
-- `F2`–`F13` and other function keys map to STARS-style command prefixes (`F3`=IC, `F4`=TC, `F5`=HO, `F7`=MF, `F9`=FP, etc.) — same bindings as the ATC scope
+- `F2`–`F13` and other function keys map to STARS-style command prefixes (`F3`=IC, `F4`=TC, `F5`=HO, `F7`=MF, `F9`=FP, etc.) — same key-to-token mapping table as the ATC scope (purely a keyboard convenience, no shared command dispatch)
 - `Escape` clears the command line; `Backspace` deletes the last character
 
 ## Status Board
