@@ -22,6 +22,7 @@ const BBOX_PAD      = 1.0   // degrees — extend theatre bbox before clipping
 const NE_SOURCES = {
   boundaries: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_0_boundary_lines_land.geojson',
   coastlines:  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_coastline.geojson',
+  land:        'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_land.geojson',
 }
 
 // ── HTTP fetch with redirect support ─────────────────────────────────────────
@@ -83,6 +84,70 @@ function extractSegments(features, theatreBbox) {
   return out
 }
 
+// ── Land-polygon clipping ─────────────────────────────────────────────────────
+// Unlike coastlines/boundaries (already pre-chunked by Natural Earth into
+// thousands of modestly-sized features — max ~16.5k points each),
+// ne_10m_land packs each connected landmass into a single giant ring: the
+// Eurasia+Africa supercontinent alone is ~80k points. Whole-feature bbox
+// filtering (extractSegments' approach) would keep that entire ring —
+// including vertices on the opposite side of the planet — for every Old
+// World theatre, and feeding vertices 90°+ from a regional TM's central
+// meridian through tmForward risks numerically undefined output that
+// corrupts fillPolygonEvenOdd's scanline fill (see 2026-08-03 discussion).
+// So land rings get genuinely clipped to the padded theatre bbox here, in
+// lat/lon space, before ever reaching the projection step — standard
+// Sutherland–Hodgman against the (convex) rectangle, run once per axis.
+function clipEdge(points, inside, intersect) {
+  if (!points.length) return []
+  const out = []
+  const n = points.length
+  for (let i = 0; i < n; i++) {
+    const curr = points[i]
+    const prev = points[(i - 1 + n) % n]
+    const currIn = inside(curr)
+    if (currIn !== inside(prev)) out.push(intersect(prev, curr))
+    if (currIn) out.push(curr)
+  }
+  return out
+}
+
+function clipRingToBbox(ring, bbox) {
+  const [xmin, ymin, xmax, ymax] = bbox
+  let pts = ring
+  pts = clipEdge(pts, p => p[0] >= xmin, (a, b) => [xmin, a[1] + (xmin - a[0]) * (b[1] - a[1]) / (b[0] - a[0])])
+  pts = clipEdge(pts, p => p[0] <= xmax, (a, b) => [xmax, a[1] + (xmax - a[0]) * (b[1] - a[1]) / (b[0] - a[0])])
+  pts = clipEdge(pts, p => p[1] >= ymin, (a, b) => [a[0] + (ymin - a[1]) * (b[0] - a[0]) / (b[1] - a[1]), ymin])
+  pts = clipEdge(pts, p => p[1] <= ymax, (a, b) => [a[0] + (ymax - a[1]) * (b[0] - a[0]) / (b[1] - a[1]), ymax])
+  return pts
+}
+
+// Every ring (outer boundaries and holes alike) clipped independently and
+// handed back flat — fillPolygonEvenOdd doesn't need holes paired with their
+// own outer ring, just the full set together in one call, since even-odd
+// parity across disjoint real-world landmasses/holes works out the same
+// either way (see 2026-08-03 discussion).
+function extractLandRings(features, theatreBbox) {
+  const [tMinLon, tMinLat, tMaxLon, tMaxLat] = theatreBbox
+  const padded = [tMinLon - BBOX_PAD, tMinLat - BBOX_PAD, tMaxLon + BBOX_PAD, tMaxLat + BBOX_PAD]
+  const out = []
+  for (const feat of features) {
+    const geom = feat.geometry
+    if (!geom) continue
+    const polys = geom.type === 'Polygon'      ? [geom.coordinates]
+                : geom.type === 'MultiPolygon' ? geom.coordinates
+                : []
+    for (const rings of polys) {
+      for (const ring of rings) {
+        const bbox = bboxOf(ring)
+        if (!bboxIntersects(bbox, padded)) continue
+        const clipped = clipRingToBbox(ring, padded)
+        if (clipped.length >= 3) out.push(clipped)
+      }
+    }
+  }
+  return out
+}
+
 // ── Source data loading (download once, cache locally) ────────────────────────
 
 async function loadSource(key) {
@@ -112,9 +177,10 @@ async function main() {
   console.log('\nBuilding GEO data (Natural Earth 1:10m)\n')
 
   console.log('Source files:')
-  const [boundaryFeatures, coastlineFeatures] = await Promise.all([
+  const [boundaryFeatures, coastlineFeatures, landFeatures] = await Promise.all([
     loadSource('boundaries'),
     loadSource('coastlines'),
+    loadSource('land'),
   ])
   console.log()
 
@@ -124,16 +190,18 @@ async function main() {
     const t0 = process.hrtime.bigint()
     const boundaries = extractSegments(boundaryFeatures, conf.bbox)
     const coastlines  = extractSegments(coastlineFeatures, conf.bbox)
+    const land        = extractLandRings(landFeatures, conf.bbox)
 
     const outDir = path.join(CACHE_DIR, conf.folder)
     fs.mkdirSync(outDir, { recursive: true })
-    fs.writeFileSync(path.join(outDir, 'geo.json'), JSON.stringify({ boundaries, coastlines }))
+    fs.writeFileSync(path.join(outDir, 'geo.json'), JSON.stringify({ boundaries, coastlines, land }))
 
     const ms = Number(process.hrtime.bigint() - t0) / 1e6
-    const kb = (JSON.stringify({ boundaries, coastlines }).length / 1024).toFixed(1)
+    const kb = (JSON.stringify({ boundaries, coastlines, land }).length / 1024).toFixed(1)
     console.log(
       `${name.padEnd(16)} ${String(boundaries.length).padStart(3)} boundaries  ` +
       `${String(coastlines.length).padStart(3)} coastlines  ` +
+      `${String(land.length).padStart(3)} land rings  ` +
       `${kb.padStart(6)} KB  ·  ${ms.toFixed(0)}ms`
     )
   }

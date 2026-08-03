@@ -170,6 +170,16 @@ async function buildTheatre(name, conf, params, tm) {
 
   // ── basemap: terrain + sea + coastlines + boundaries, fully opaque ───────
   const basemapBuf = newBuffer(width, height, SEA_COLOR)
+  // Real land/sea mask (geo.json's land rings — see buildGeoData.js's
+  // extractLandRings/clipRingToBbox) painted before the relief bands, which
+  // only cover elevation > 0 and otherwise leave true sea level (both actual
+  // ocean and low-lying coastal land) as SEA_COLOR. Without this, flat
+  // coastal land reads as ocean; this ensures dry land is never left sea-
+  // colored even where relief has nothing to draw over it.
+  if (geo?.land?.length) {
+    const [r, g, b] = RAMP[0][1]
+    fillPolygonEvenOdd(basemapBuf, width, height, geo.land.map(projectRing), r, g, b, 1)
+  }
   if (relief) {
     const sorted = [...relief].sort((a, b) => a.elev - b.elev)
     for (const region of sorted) {
