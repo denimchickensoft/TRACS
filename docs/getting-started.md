@@ -6,7 +6,7 @@ On first launch you're prompted to connect:
 
 - **Server Name** — optional label; click the save icon to store this connection (URL, coalition, password) as a favorite for next time. Saved servers appear in a dropdown as you type.
 - **Olympus Server URL & Port** — the DCS server's Olympus address, e.g. `http://1.2.3.4:4513`. `http://` is added automatically if omitted.
-- **Coalition Role** — Blue Commander, Red Commander, Game Master, or Admin. This determines which units and which Olympus PUT permissions you have.
+- **Coalition Role** — Blue Commander, Red Commander, Game Master, or Admin. This determines which units you can see and control.
 - **Coalition Password** — the Olympus password for that role, set on the DCS server.
 
 Click **Connect to Network**. This calls the local TRACS server's `/api/connect`, which authenticates against Olympus and starts polling. If you see "Cannot reach TRACS server — is it running?", the local Node server (`npm run dev` / `npm start`) isn't up.

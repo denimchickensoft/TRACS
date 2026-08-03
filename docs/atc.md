@@ -9,100 +9,100 @@ Commands are typed into the preview buffer, then resolved one of two ways:
 - **ENTER** — the buffer is evaluated as typed; no target needed.
 - **SLEW** — the buffer is evaluated against whatever contact you click. Type the command, then left-click a target to complete it.
 
-Each command below is marked `(ENTER)` or `(SLEW)`. A bare click with an empty buffer is context-sensitive: it accepts/recalls a pending handoff or point-out involving that track if one exists, or toggles the contact's datablock between partial and full otherwise.
+Each command below reads as `COMMAND + ENTER` or `COMMAND + SLEW`. A bare click with an empty buffer is context-sensitive: it accepts/recalls a pending handoff or point-out involving that track if one exists, or toggles the contact's datablock between partial and full otherwise.
 
 ## Track ownership
 
-| Command | Trigger | Effect |
+| Command | Shortcut | Effect |
 |---|---|---|
-| `IC` | SLEW | Initiate Control — claim the clicked track |
-| `TC` | SLEW | Terminate Control — drop the clicked track (must be yours) |
-| `TC ALL` | ENTER | Drop every track you own |
+| `IC` + SLEW | `F3` | Initiate Control — claim the clicked track |
+| `TC` + SLEW | `F4` | Terminate Control — drop the clicked track (must be yours) |
+| `TC ALL` + ENTER | — | Drop every track you own |
 
 **Ctrl+Shift+Click** a contact is a direct shortcut for `IC` — claims it without typing anything.
 
 ## Handoffs
 
-| Command | Trigger | Effect |
+| Command | Shortcut | Effect |
 |---|---|---|
-| `HO` | ENTER | Accept an incoming handoff |
-| `HO <tcp>` | SLEW | Hand off the clicked (owned) track to position `<tcp>` |
-| `HO` | SLEW | Context-sensitive on the clicked track: recall if it's an outgoing handoff from you, accept if it's incoming to you |
-| `<tcp>` (e.g. `1D`) | SLEW | Shorthand for `HO <tcp>` — no prefix needed |
+| `HO` + ENTER | — | Accept an incoming handoff |
+| `HO <tcp>` + SLEW | `F5` | Hand off the clicked (owned) track to position `<tcp>` |
+| `HO` + SLEW | — | Context-sensitive on the clicked track: recall if it's an outgoing handoff from you, accept if it's incoming to you |
+| `<tcp>` (e.g. `1D`) + SLEW | — | Shorthand for `HO <tcp>` — no prefix needed |
 
-**F5** inserts `HO ` into the buffer for you.
+`F5` inserts the `HO ` prefix into the buffer — type the position id, then click a track.
 
 ## Point outs
 
-| Command | Trigger | Effect |
+| Command | Shortcut | Effect |
 |---|---|---|
-| `<tcp>*` | SLEW | Point out the clicked track to position `<tcp>` |
-| `**` | SLEW | Convert an incoming point-out into a claimed handoff |
-| `UN` | SLEW | Reject an incoming point-out |
+| `<tcp>*` + SLEW | — | Point out the clicked track to position `<tcp>` |
+| `**` + SLEW | — | Convert an incoming point-out into a claimed handoff |
+| `UN` + SLEW | — | Reject an incoming point-out |
 
-Bare-click (empty buffer) also resolves pending point-outs/handoffs automatically, same as it does for handoffs above.
+Bare-click (empty buffer) also resolves pending point-outs/handoffs automatically, same as it does for handoffs above. No function key is mapped to point outs.
 
 ## Scratchpads
 
-| Command | Trigger | Effect |
+| Command | Shortcut | Effect |
 |---|---|---|
-| `MF Y<text>` | SLEW | Set scratchpad 1 (SP1) |
-| `MF Y` | SLEW | Clear SP1 |
-| `MF Y+<text>` | SLEW | Set scratchpad 2 (SP2) |
-| `MF Y+` | SLEW | Clear SP2 |
-| `<text>` (3–4 chars) | SLEW | Shorthand — set SP1 directly, no `MF Y` prefix |
-| `+<text>` (1–4 chars) | SLEW | Shorthand — set SP2 |
-| `.` | SLEW | Clear SP1 |
-| `+` | SLEW | Clear SP2 |
+| `MF Y<text>` + SLEW | `F7` | Set scratchpad 1 (SP1) |
+| `MF Y` + SLEW | `F7` | Clear SP1 |
+| `MF Y+<text>` + SLEW | `F7` | Set scratchpad 2 (SP2) |
+| `MF Y+` + SLEW | `F7` | Clear SP2 |
+| `<text>` (3–4 chars) + SLEW | — | Shorthand — set SP1 directly, no `MF Y` prefix |
+| `+<text>` (1–4 chars) + SLEW | — | Shorthand — set SP2 |
+| `.` + SLEW | — | Clear SP1 |
+| `+` + SLEW | — | Clear SP2 |
 
-You must own a track to edit its scratchpads.
+`F7` inserts the `MF ` prefix — follow it with `Y<text>` etc. You must own a track to edit its scratchpads.
 
 ## Leader lines
 
-| Command | Trigger | Effect |
+| Command | Shortcut | Effect |
 |---|---|---|
-| `MF L<d><d>` (same digit twice, e.g. `MF L33`) | SLEW | Set the facility-wide default leader direction; digit `5` clears it |
-| `MF L<d>` | SLEW | Set direction for one track |
-| `<d>` (single digit 1–9) | SLEW | Shorthand for `MF L<d>` |
-| `LD (0-7)` | ENTER | Leader length, via the DCB LDR key |
+| `MF L<d><d>` (same digit twice, e.g. `MF L33`) + SLEW | `F7` | Set the facility-wide default leader direction; digit `5` clears it |
+| `MF L<d>` + SLEW | `F7` | Set direction for one track |
+| `<d>` (single digit 1–9) + SLEW | — | Shorthand for `MF L<d>` |
+| `LD (0-7)` + ENTER | — | Leader length, via the DCB LDR key |
 
-Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/default `6`=E `1`=SW `2`=S `3`=SE.
+`F7` inserts the `MF ` prefix. Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/default `6`=E `1`=SW `2`=S `3`=SE.
 
 ## Range/bearing line & minimum separation
 
-| Command | Trigger | Effect |
+| Command | Shortcut | Effect |
 |---|---|---|
-| `*T` | SLEW | Start an RBL from the clicked track; click again (or type a fix + Enter) for the second point |
-| `*T <fix>` | ENTER | Start an RBL from a named fix |
-| `*T` | ENTER | Clear all RBLs |
-| `*T<n>` | ENTER | Clear RBL number `n` |
-| `MIN` | SLEW | Pick the clicked track as the first aircraft of a minimum-separation pair; click a second track to complete it |
-| `MIN` | ENTER | Clear the min-sep display |
+| `*T` + SLEW | — | Start an RBL from the clicked track; click again (or type a fix + Enter) for the second point |
+| `*T <fix>` + ENTER | — | Start an RBL from a named fix |
+| `*T` + ENTER | — | Clear all RBLs |
+| `*T<n>` + ENTER | — | Clear RBL number `n` |
+| `MIN` + SLEW | `End` | Pick the clicked track as the first aircraft of a minimum-separation pair; click a second track to complete it |
+| `MIN` + ENTER | `End` | Clear the min-sep display |
 
-`Escape` cancels a pending RBL/MIN second point.
+`End` inserts `MIN` into the buffer. `Escape` cancels a pending RBL/MIN second point.
 
 ## Display, range, and reference commands
 
-| Command | Trigger | Effect |
+| Command | Shortcut | Effect |
 |---|---|---|
-| `RG <n>` | ENTER | Set range, 6–256 NM |
-| `RR (2\|5\|10\|20)` | ENTER | Set range-ring spacing |
-| `MF P` | SLEW | Relocate the command-line/response readout to the clicked point |
-| `MF S` | SLEW | Relocate the SSA overlay |
-| `.ALTIM <val>` / `.QNH <val>` | ENTER | Set altimeter (inHg or hPa, auto-detected by range) |
-| `.ASPCOLORS <name>` | ENTER | Switch the airspace color palette |
-| `.REFRESH` | ENTER | Reload airspace color palettes from the server |
-| `.DBCA` | ENTER | Toggle datablock collision-avoidance placement |
-| `.COORDS` | ENTER | Toggle a cursor lat/lng debug readout |
-| `.FIND <query>` | ENTER | Drop a marker at a named fix/navaid/airport |
-| `.PROC <name>` | ENTER | Toggle display of a named SID/STAR/approach procedure |
-| `.PROC` | ENTER | Clear all shown procedures |
-| `.FP <callsign>` | ENTER | Open the Flight Plan Editor prefilled for that callsign |
-| `.FP` | ENTER | Open a blank Flight Plan Editor |
-| `.RENAME <newCallsign>` | SLEW | Rename the clicked track's displayed callsign |
-| `.RENAME` | SLEW | Reset callsign to the DCS-assigned one |
+| `RG <n>` + ENTER | — | Set range, 6–256 NM |
+| `RR (2\|5\|10\|20)` + ENTER | — | Set range-ring spacing |
+| `MF P` + SLEW | `F7` | Relocate the command-line/response readout to the clicked point |
+| `MF S` + SLEW | `F7` | Relocate the SSA overlay |
+| `.ALTIM <val>` / `.QNH <val>` + ENTER | — | Set altimeter (inHg or hPa, auto-detected by range) |
+| `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
+| `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
+| `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement |
+| `.COORDS` + ENTER | — | Toggle a cursor lat/lng debug readout |
+| `.FIND <query>` + ENTER | — | Drop a marker at a named fix/navaid/airport |
+| `.PROC <name>` + ENTER | — | Toggle display of a named SID/STAR/approach procedure |
+| `.PROC` + ENTER | — | Clear all shown procedures |
+| `.FP <callsign>` + ENTER | — | Open the Flight Plan Editor prefilled for that callsign |
+| `.FP` + ENTER | `Ctrl+F` | Open a blank Flight Plan Editor |
+| `.RENAME <newCallsign>` + SLEW | — | Rename the clicked track's displayed callsign |
+| `.RENAME` + SLEW | — | Reset callsign to the DCS-assigned one |
 
-**Ctrl+F** opens a blank Flight Plan Editor directly, bypassing the command line. **Ctrl+Click** a contact opens its FPE (read-only if another controller owns it).
+`Ctrl+F` opens a blank Flight Plan Editor directly, bypassing the command line. **Ctrl+Click** a contact opens its FPE (read-only if another controller owns it).
 
 ## Multi-function (MF) lists
 
@@ -134,7 +134,31 @@ Click a value button, then use the **mouse wheel** to adjust it. Click a submenu
 
 ## Keyboard shortcuts
 
-F5 (Hand Off), Ctrl+F (blank FPE), Ctrl+F8 (show/hide DCB), Alt+T (toggle top-down mode), Ctrl+Alt+0–9 (save view bookmark), Ctrl+0–9 (load view bookmark) all work as described above. A few other function keys (F2, F6, F9, F11, F13) currently insert text into the command buffer with no matching command behind them yet — don't rely on them.
+Function keys insert the corresponding command into the buffer for you — you still complete it with a click (SLEW) or Enter as usual.
+
+| Key | Inserts | Effect |
+|---|---|---|
+| `F3` | `IC` | Init Control — click a track to claim it |
+| `F4` | `TC` | Term Control — click a track to drop it |
+| `F5` | `HO ` | Hand Off — type a position id, then click a track |
+| `F7` | `MF ` | Multi-Function prefix — follow with a list/scratchpad/leader command |
+| `End` | `MIN` | Minimum-separation tool |
+| `` ` `` (backquote) | `Δ` | Inserts the delta glyph |
+
+Other shortcuts that act immediately, no buffer involved:
+
+| Key | Effect |
+|---|---|
+| `Ctrl+F` | Open a blank Flight Plan Editor |
+| `Ctrl+F8` | Show/hide the DCB |
+| `Alt+T` | Toggle top-down display mode |
+| `Ctrl+Alt+0`–`9` | Save current view (center/range/overlays) to bookmark slot 0–9 |
+| `Ctrl+0`–`9` | Load view bookmark 0–9 |
+| `Escape` | Cancel a pending RBL/MIN second point, clear a `.FIND` marker and route overlays, then clear the buffer |
+| `Backspace` | Delete the last buffer character |
+| `Enter` | Run the current buffer as an ENTER-triggered command |
+
+`F2`, `F6`, `F9`, `F11`, and `F13`/`Shift+F3` also insert text into the buffer, but nothing currently consumes it — treat them as not yet functional. Most `Ctrl+F1`–`F10`/`Insert` display shortcuts other than `Ctrl+F8` are likewise no-ops for now.
 
 ---
 
@@ -144,13 +168,13 @@ A smaller, ground-movement-focused sub-scope showing surface traffic (aircraft/h
 
 **Commands:**
 
-| Command | Trigger | Effect |
-|---|---|---|
-| `.FP <callsign>` / `.FP` | ENTER | Open Flight Plan Editor (prefilled or blank) |
-| `.CENTERLINE` | ENTER | Toggle runway centerline overlay |
-| `.COORDS` | ENTER | Toggle cursor lat/lng readout |
-| `.COLORS <name>` | ENTER | Switch color profile (e.g. Day/Night) |
-| `<d>` (1–9) | SLEW | Set/clear a contact's leader-line direction (`5` clears) |
+| Command | Effect |
+|---|---|
+| `.FP <callsign>` / `.FP` + ENTER | Open Flight Plan Editor (prefilled or blank) |
+| `.CENTERLINE` + ENTER | Toggle runway centerline overlay |
+| `.COORDS` + ENTER | Toggle cursor lat/lng readout |
+| `.COLORS <name>` + ENTER | Switch color profile (e.g. Day/Night) |
+| `<d>` (1–9) + SLEW | Set/clear a contact's leader-line direction (`5` clears) |
 
 **Mouse:** Ctrl+Click opens a contact's FPE; right-click+drag pans; mouse wheel zooms (0.1–2.0 NM range, in 0.1 steps).
 
