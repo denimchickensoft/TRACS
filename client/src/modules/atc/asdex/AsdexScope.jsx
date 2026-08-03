@@ -7,6 +7,7 @@ import { useControllersStore } from '../../../store/controllers.js'
 import { useAtcStore }         from '../../../store/atc.js'
 import { useFpeStore }         from '../../../store/fpe.js'
 import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
+import { loadAsdexPrefs } from '../../../store/asdexPrefs.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../stars/canvas/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
 import { computeMagvar }       from '../../../utils/magvar.js'
@@ -138,9 +139,11 @@ export default function AsdexScope() {
     if (windowSettings) return
     const lat = facilityLatLng?.lat ?? 0
     const lng = facilityLatLng?.lng ?? 0
+    const prefs = loadAsdexPrefs()
     displayStore.initWindow(ASDEX_WINDOW_ID, {
-      rangeNm: 1, ptlLength: 0.5, ldrLength: 2, ldrAngleDeg: -45,
-      historyLength: 5, historyRate: 4.5,
+      rangeNm: 1,
+      ptlLength: prefs.ptlLength, ldrLength: prefs.ldrLength, ldrAngleDeg: prefs.ldrAngleDeg,
+      historyLength: prefs.historyLength, historyRate: prefs.historyRate,
       centerLat: lat, centerLng: lng,
     })
     centerLatRef.current = lat

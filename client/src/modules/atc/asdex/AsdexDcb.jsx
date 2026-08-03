@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }   from '../../../store/display.js'
+import { saveAsdexPrefs }   from '../../../store/asdexPrefs.js'
 import '../stars/dcb/Dcb.css'
 
 export const ASDEX_WINDOW_ID = 'asdex-main'
@@ -50,7 +51,7 @@ function getValue(id, win) {
       return idx >= 0 ? idx : 1
     }
     case 'LDR_LEN':  return win?.ldrLength    ?? 2
-    case 'PTL_LNTH': return win?.ptlLength    ?? 0.5
+    case 'PTL_LNTH': return win?.ptlLength    ?? 0.0
     case 'HISTORY':  return win?.historyLength ?? 5
     case 'H_RATE':   return win?.historyRate   ?? 4.5
     default:         return null
@@ -67,7 +68,9 @@ function applyDelta(id, delta, win, updateWindow) {
   if (id === 'LDR_DIR') {
     const cur  = getValue('LDR_DIR', win)
     const next = ((cur - delta) % 8 + 8) % 8
-    updateWindow(ASDEX_WINDOW_ID, { ldrAngleDeg: LDR_DIR_CANVAS_ANGLES[next] })
+    const ldrAngleDeg = LDR_DIR_CANVAS_ANGLES[next]
+    updateWindow(ASDEX_WINDOW_ID, { ldrAngleDeg })
+    saveAsdexPrefs({ ldrAngleDeg })
     return
   }
   const cfg = VALUE_CONFIG[id]
@@ -77,10 +80,10 @@ function applyDelta(id, delta, win, updateWindow) {
     parseFloat((cur + delta * cfg.step * (cfg.dir ?? -1)).toFixed(3))
   ))
   switch (id) {
-    case 'LDR_LEN':  updateWindow(ASDEX_WINDOW_ID, { ldrLength: next });     break
-    case 'PTL_LNTH': updateWindow(ASDEX_WINDOW_ID, { ptlLength: next });     break
-    case 'HISTORY':  updateWindow(ASDEX_WINDOW_ID, { historyLength: next }); break
-    case 'H_RATE':   updateWindow(ASDEX_WINDOW_ID, { historyRate: next });   break
+    case 'LDR_LEN':  updateWindow(ASDEX_WINDOW_ID, { ldrLength: next });     saveAsdexPrefs({ ldrLength: next });     break
+    case 'PTL_LNTH': updateWindow(ASDEX_WINDOW_ID, { ptlLength: next });     saveAsdexPrefs({ ptlLength: next });     break
+    case 'HISTORY':  updateWindow(ASDEX_WINDOW_ID, { historyLength: next }); saveAsdexPrefs({ historyLength: next }); break
+    case 'H_RATE':   updateWindow(ASDEX_WINDOW_ID, { historyRate: next });   saveAsdexPrefs({ historyRate: next });   break
   }
 }
 
