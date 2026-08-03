@@ -73,7 +73,10 @@ const SORT_ACCESSORS = {
   callsign: r => r.callsignLabel ?? '',
   taskunit: r => r.taskunitLabel ?? '',
   freq:     r => r.frequency ?? -1,
-  status:   r => r.statusLabel ?? '',
+  // RESERVE is its own group, separate from the "active" states (ACTIVE/
+  // AIR/GROUND/TAXI) — plain alphabetical would interleave RESERVE between
+  // GROUND and TAXI, splitting the reserve flights across the sorted list.
+  status:   r => `${r.isReserve ? 1 : 0}_${r.statusLabel ?? ''}`,
 }
 
 export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {

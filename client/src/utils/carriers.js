@@ -37,10 +37,10 @@ export function isCarrierUnit(unit) {
   return unit?.category === 'NavyUnit' && CARRIER_TYPES[unit.name] != null
 }
 
-// ≈3 kt — a non-airborne aircraft's (relative) ground speed above this
+// ≈2 kt — a non-airborne aircraft's (relative) ground speed above this
 // counts as TAXI rather than GROUND (parked). Same value whether the
 // comparison below ends up being absolute or carrier-relative.
-const TAXI_THRESHOLD_MPS = 1.5
+const TAXI_THRESHOLD_MPS = 1.0
 
 // Non-airborne ground state ('TAXI' | 'GROUND') for a single aircraft.
 // For a carrier-based flight, compares the aircraft's velocity against the
