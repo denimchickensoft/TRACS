@@ -5,13 +5,22 @@
  * this handles arbitrary user files (any of Point/MultiPoint/LineString/
  * MultiLineString/Polygon/MultiPolygon) with per-feature simplestyle-ish
  * styling (`stroke`/`stroke-opacity`/`stroke-width`/`fill`/`fill-opacity`/
- * `marker-color`/`dash` properties, see utils/parseGeojson.js). Stroke/dash
- * fall back to the current airspace palette's CUSTOM entry (server/navdata/
- * config/airspace_colors.json — see store/abmAirspace.js), then to the
- * layer's assigned color if no palette is loaded. Fill is deliberately never
- * defaulted from the palette (2026-08-03 decision) — a polygon is only
- * filled when the feature itself sets `fill`, using that color; most
- * hand-drawn boundaries are meant as outlines, not areas.
+ * `marker-color`/`dash` properties, see utils/parseGeojson.js). Stroke color
+ * priority: a feature's own explicit `stroke` (imported-file styling) wins
+ * first, then the layer's own picked color (Drawings panel swatch —
+ * store/abmDrawings.js's per-layer `color`, null until the user explicitly
+ * picks one there), then the airspace palette's CUSTOM entry (server/navdata/
+ * config/airspace_colors.json — see store/abmAirspace.js) as the last
+ * resort. A user-picked layer color deliberately outranks the palette
+ * default (2026-08-03) so the swatch always reflects what's actually drawn —
+ * but since new layers start with `color: null` (store/abmDrawings.js), a
+ * freshly imported or drawn shape falls straight through to the CUSTOM
+ * palette entry until the user actually overrides it. Dash stays
+ * palette-first (unaffected — only stroke COLOR changed priority). Fill is
+ * deliberately never defaulted
+ * from either (2026-08-03 decision) — a polygon is only filled when the
+ * feature itself sets `fill`, using that color; most hand-drawn boundaries
+ * are meant as outlines, not areas.
  *
  * Labels (feature.label, from parseGeojson's title/name convention) draw the
  * same way drawAbmAirspace.js draws airspace names — centroid placement for
@@ -19,7 +28,15 @@
  * placement for points (offset right of the marker) and lines (rotated text
  * at the line's midpoint by cumulative length). Gated by `labelsVisible`,
  * the same AbmScope `.labels` toggle that gates airspace labels — one
- * command controls both layers' names.
+ * command controls both layers' names — EXCEPT when a layer's own
+ * `labelOverride` is set (the Drawings panel's per-row "Label" checkbox),
+ * which always shows that one layer's label regardless of the global
+ * toggle. .text-command shapes (layer.shapeType === 'text') behave as if
+ * permanently overridden — their label IS the shape's actual content
+ * rather than an auxiliary name-tag, so it always renders (otherwise a
+ * placed .text would show while being dragged into place, then vanish into
+ * an unlabeled dot the moment it's committed, if `.labels` happened to be
+ * off).
  */
 
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
@@ -38,23 +55,24 @@ export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, la
     const visibleFeatures = layer.features.filter(f => bboxInView(f.bbox, view))
     if (!visibleFeatures.length) continue
 
-    for (const f of visibleFeatures) drawFeature(ctx, view, f, layer.color, customColors)
+    for (const f of visibleFeatures) drawFeature(ctx, view, f, layer.color, customColors, layer.shapeType)
 
-    if (!labelsVisible) continue
+    const showLabels = labelsVisible || layer.shapeType === 'text' || layer.labelOverride
+    if (!showLabels) continue
     ctx.font         = `${fontSize}px "Roboto Mono", monospace`
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'middle'
     for (const f of visibleFeatures) {
-      if (f.label) drawLabel(ctx, view, f, layer.color, customColors, fontSize, lineH)
+      if (f.label) drawLabel(ctx, view, f, layer.color, customColors, fontSize, lineH, layer.shapeType)
     }
   }
   ctx.globalAlpha = 1
   ctx.setLineDash([])
 }
 
-function drawFeature(ctx, view, f, layerColor, customColors) {
+function drawFeature(ctx, view, f, layerColor, customColors, shapeType) {
   const p = f.properties ?? {}
-  const stroke        = p.stroke ?? customColors?.stroke ?? layerColor
+  const stroke        = p.stroke ?? layerColor ?? customColors?.stroke
   const strokeOpacity = p['stroke-opacity'] ?? 1
   const strokeWidth   = p['stroke-width'] ?? 1.5
   // A geojson-authored dash is used as raw pixel values — there's no
@@ -68,11 +86,15 @@ function drawFeature(ctx, view, f, layerColor, customColors) {
   const fillOpacity   = p['fill-opacity'] ?? 0.2
 
   switch (f.geometry.type) {
+    // .text-command shapes (shapeType === 'text') are the label itself —
+    // no marker dot, just the text centered on the point (see drawLabel).
     case 'Point':
-      drawPoint(ctx, view, f.geometry.coordinates, p['marker-color'] ?? stroke, strokeOpacity)
+      if (shapeType !== 'text') drawPoint(ctx, view, f.geometry.coordinates, p['marker-color'] ?? stroke, strokeOpacity)
       break
     case 'MultiPoint':
-      for (const c of f.geometry.coordinates) drawPoint(ctx, view, c, p['marker-color'] ?? stroke, strokeOpacity)
+      if (shapeType !== 'text') {
+        for (const c of f.geometry.coordinates) drawPoint(ctx, view, c, p['marker-color'] ?? stroke, strokeOpacity)
+      }
       break
     case 'LineString':
       strokeLine(ctx, view, f.geometry.coordinates, stroke, strokeOpacity, strokeWidth, dash)
@@ -92,7 +114,7 @@ function drawFeature(ctx, view, f, layerColor, customColors) {
   }
 }
 
-function drawPoint(ctx, view, [lng, lat], color, opacity) {
+export function drawPoint(ctx, view, [lng, lat], color, opacity) {
   const { x, y } = latLngToCanvas(lat, lng, view)
   ctx.globalAlpha = opacity
   ctx.fillStyle   = color
@@ -101,7 +123,7 @@ function drawPoint(ctx, view, [lng, lat], color, opacity) {
   ctx.fill()
 }
 
-function strokeLine(ctx, view, coords, color, opacity, width, dash) {
+export function strokeLine(ctx, view, coords, color, opacity, width, dash) {
   ctx.globalAlpha = opacity
   ctx.strokeStyle = color
   ctx.lineWidth   = width
@@ -112,7 +134,7 @@ function strokeLine(ctx, view, coords, color, opacity, width, dash) {
   ctx.setLineDash([])
 }
 
-function strokePolygon(ctx, view, polygons, color, opacity, width, dash, fill, fillOpacity) {
+export function strokePolygon(ctx, view, polygons, color, opacity, width, dash, fill, fillOpacity) {
   if (fill) {
     ctx.globalAlpha = fillOpacity
     ctx.fillStyle   = fill
@@ -135,7 +157,7 @@ function strokePolygon(ctx, view, polygons, color, opacity, width, dash, fill, f
   ctx.setLineDash([])
 }
 
-function tracePath(ctx, view, ring) {
+export function tracePath(ctx, view, ring) {
   ring.forEach(([lng, lat], i) => {
     const { x, y } = latLngToCanvas(lat, lng, view)
     if (i === 0) ctx.moveTo(x, y)
@@ -143,20 +165,33 @@ function tracePath(ctx, view, ring) {
   })
 }
 
-function drawLabel(ctx, view, f, layerColor, customColors, fontSize, lineH) {
+function drawLabel(ctx, view, f, layerColor, customColors, fontSize, lineH, shapeType) {
   const p     = f.properties ?? {}
   const lines = f.label
   ctx.globalAlpha = 1
-  ctx.fillStyle    = p.stroke ?? customColors?.stroke ?? layerColor
+  ctx.fillStyle    = p.stroke ?? layerColor ?? customColors?.stroke
 
   const type = f.geometry.type
   if (type === 'Point' || type === 'MultiPoint') {
     const coord = type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates[0]
     const { x, y } = latLngToCanvas(coord[1], coord[0], view)
-    ctx.textAlign = 'left'
+    // .text's middle-mouse rotation (AbmScope.jsx) lands here via
+    // properties.labelRotationDeg — 0 for every other Point-geometry
+    // feature, so this is a no-op rotation for those.
+    const rotationRad = (p.labelRotationDeg ?? 0) * Math.PI / 180
+    // .text has no marker dot to sit beside (drawFeature skips it) — the
+    // placed point IS the text's centroid, not an offset-right label next
+    // to a marker like every other Point feature's name-tag.
+    const isTextShape = shapeType === 'text'
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(rotationRad)
+    ctx.textAlign = isTextShape ? 'center' : 'left'
+    const xOffset = isTextShape ? 0 : MARKER_RADIUS + 4
     lines.forEach((line, idx) => {
-      ctx.fillText(line, x + MARKER_RADIUS + 4, y + (idx - (lines.length - 1) / 2) * lineH)
+      ctx.fillText(line, xOffset, (idx - (lines.length - 1) / 2) * lineH)
     })
+    ctx.restore()
     ctx.textAlign = 'center'
     return
   }

@@ -14,7 +14,7 @@ Type into the buffer, press **Enter**. A few commands (`.threat`, `.db`, `.dope`
 
 ### Map & reference layers (bare toggles unless noted)
 
-`.time` (mission clock) · `.unitro` (cursor unit-proximity readout, on by default) · `.geo` (coastlines/boundaries) · `.relief` (terrain shading) · `.holds` · `.mora` · `.airways` (all) / `.airways v`/`j`/`b` (one class) · `.asp` (all airspace) or per-category: `.tma .ctr .cta .fir .uir .sua .mil .trsa .classa .classb .classc .classd .classe .classf .classg` · `.aspcolors <name>` (palette) · `.refresh` (reload palettes) · `.labels` (name labels for airspace *and* custom drawings) · `.custom` (all imported drawing layers) · `.fixes` · `.navaids` · `.find <fix>` (drop a marker) · `.runways` · `.polygons` (airport polygons) · `.mgrs` (grid overlay) · `.towns` · `.base`/`.water`/`.roads` (terrain raster layers; `.map` toggles all three together)
+`.time` (mission clock) · `.unitro` (cursor unit-proximity readout, on by default) · `.geo` (coastlines/boundaries) · `.relief` (terrain shading) · `.holds` · `.mora` · `.airways` (all) / `.airways v`/`j`/`b` (one class) · `.asp` (all airspace) or per-category: `.tma .ctr .cta .fir .uir .sua .mil .trsa .classa .classb .classc .classd .classe .classf .classg` · `.aspcolors <name>` (palette) · `.refresh` (reload palettes) · `.labels` (name labels for airspace *and* custom drawings) · `.custom`/`.cust` (all custom drawing layers) or `.custom <name>`/`.cust <name>` (toggles just the drawing(s) with that name) · `.fixes` · `.navaids` · `.find <fix>` (drop a marker) · `.runways` · `.polygons` (airport polygons) · `.mgrs` (grid overlay) · `.towns` · `.base`/`.water`/`.roads` (terrain raster layers; `.map` toggles all three together)
 
 Note: SID/STAR/approach procedures are deliberately display-only here — there's no `.proc`-style command in ABM.
 
@@ -106,7 +106,7 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 
 - Accepts `.geojson`, `.json`, `.ndgeojson`, `.ndjson` — multiple files at once. Both single-document and newline-delimited GeoJSON are supported; a few bad lines in an ndjson file won't sink the whole import.
 - Preview lets you rename each layer (defaults to the filename) before importing; a failed file shows its error inline without blocking the others.
-- Each imported layer is auto-assigned a distinct color so stacked imports stay visually separable; a feature is only filled if the source GeoJSON explicitly sets a fill — plain outlines are the default, since most hand-drawn boundaries are meant as boundaries, not shaded areas.
+- Each imported layer defaults to the current airspace palette's CUSTOM color (Drawings panel swatch to override per-layer); a feature is only filled if the source GeoJSON explicitly sets a fill — plain outlines are the default, since most hand-drawn boundaries are meant as boundaries, not shaded areas.
 - Feature labels come from the GeoJSON's `title`/`name` properties, gated by the same `.labels` toggle used for airspace names.
 - Drawings are stored per-theatre locally and shared across your own open windows, but are **not** broadcast to other controllers — they're your own reference overlays.
 

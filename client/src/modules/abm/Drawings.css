@@ -81,7 +81,7 @@
 
 .dr-row {
   display: grid;
-  grid-template-columns: 16px 10px 1fr 30px 16px;
+  grid-template-columns: 16px 10px 1fr 16px 30px 16px;
   gap: 0 6px;
   align-items: center;
   padding: 3px 6px;
@@ -89,18 +89,90 @@
 }
 .dr-row:hover { background: #131300; }
 
+.dr-label-override {
+  justify-self: center;
+}
+.dr-label-override:disabled {
+  opacity: 0.5;
+}
+
 .dr-swatch {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: none;
   border-radius: 2px;
   flex-shrink: 0;
+  cursor: pointer;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
+.dr-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.dr-swatch::-webkit-color-swatch        { border: none; border-radius: 2px; }
+.dr-swatch::-moz-color-swatch           { border: none; border-radius: 2px; }
 
 .dr-name {
   color: #FFD700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: text;
+}
+
+.dr-name-input {
+  background: #000;
+  border: 1px solid #FFD700;
+  color: #FFD700;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 1px 3px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dr-disclosure {
+  background: transparent;
+  border: none;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  cursor: pointer;
+  text-align: right;
+  padding: 0;
+}
+.dr-disclosure:hover { color: #FFD700; }
+
+.dr-params {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 6px 6px 32px;
+  background: #0d0d00;
+  border-bottom: 1px solid #141414;
+}
+
+.dr-param-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+}
+
+.dr-param-label {
+  color: #666;
+  flex: 1;
+}
+
+.dr-param-row input,
+.dr-param-row select {
+  background: #000;
+  border: 1px solid #333;
+  color: #ccc;
+  font-family: inherit;
+  font-size: 9px;
+  width: 70px;
+  padding: 1px 3px;
 }
 
 .dr-count {
@@ -143,3 +215,29 @@
 }
 .dr-add-btn:hover { border-color: #666; color: #888; }
 .dr-add-btn:disabled { opacity: 0.4; cursor: default; }
+
+.dr-clear-all-btn {
+  border-color: #3A1A1A;
+  color: #884444;
+}
+.dr-clear-all-btn:hover {
+  border-color: #884444;
+  color: #CC4444;
+}
+
+.dr-confirm-label {
+  color: #886644;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+
+.dr-confirm-btn {
+  border-color: #664422;
+  color: #CC6633;
+}
+.dr-confirm-btn:hover {
+  border-color: #AA5533;
+  color: #FF7744;
+}

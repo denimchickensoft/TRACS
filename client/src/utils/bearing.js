@@ -63,6 +63,27 @@ export function destinationPoint(fromLat, fromLng, trueBearingDeg, rangeNm) {
   }
 }
 
+/**
+ * Local tangent-plane (east, north) NM offset of (toLat,toLng) from
+ * (fromLat,fromLng), scaling longitude by fromLat alone — the exact inverse
+ * of destinationPoint (which projects an east/north offset the same way),
+ * so offset → destinationPoint round-trips bit-for-bit. Deliberately NOT
+ * the same reference trueBearingRangeNm uses (that one averages both
+ * endpoints' latitudes — a better approximation over long distances, but
+ * not destinationPoint's exact inverse). Use this one specifically when a
+ * value needs to survive a decompose → reconstruct → decompose-again round
+ * trip without drifting (e.g. .rect's live free-draw snapping, where the
+ * snapped point gets independently re-decomposed by drawShapes.js's
+ * buildRectFeature).
+ */
+export function localOffsetNm(fromLat, fromLng, toLat, toLng) {
+  const nmPerDegLng = NM_PER_DEG_LAT * Math.cos(fromLat * Math.PI / 180)
+  return {
+    eastNm:  (toLng - fromLng) * nmPerDegLng,
+    northNm: (toLat - fromLat) * NM_PER_DEG_LAT,
+  }
+}
+
 /** True → magnetic. Use for lat/lng-derived bearings, unit.track, and unit.heading/carrier.heading alike. */
 export function toMagneticFromTrue(trueDeg, declinationDeg) {
   return (trueDeg - declinationDeg + 360) % 360

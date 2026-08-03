@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { unzipSync } from 'fflate'
 import { parseGeojson } from '../../utils/parseGeojson.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import './AbmMissionImport.css'
@@ -10,6 +11,19 @@ function readFileText(file) {
     reader.onerror = () => reject(new Error('File read failed'))
     reader.readAsText(file)
   })
+}
+
+// A .zip (e.g. exportDrawings.js's bundle) expands into one entry per
+// contained .geojson/.ndgeojson — each becomes its own pending row, same as
+// if that many separate files had been dropped at once. Non-geometry
+// entries inside the zip (stray files, folders) are silently skipped.
+async function expandZip(file) {
+  const buf = new Uint8Array(await file.arrayBuffer())
+  const entries = unzipSync(buf)
+  const decoder = new TextDecoder()
+  return Object.entries(entries)
+    .filter(([entryName]) => /\.(nd)?(geo)?json$/i.test(entryName))
+    .map(([entryName, data]) => ({ name: entryName, text: decoder.decode(data) }))
 }
 
 function geometrySummary(features) {
@@ -26,18 +40,36 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef()
 
-  // Each file is parsed independently so one bad file in a multi-drop
-  // doesn't block the rest — failures show inline in their own row instead
-  // of a single all-or-nothing error screen.
+  // Each file (or zip entry) is parsed independently so one bad one in a
+  // multi-drop doesn't block the rest — failures show inline in their own
+  // row instead of a single all-or-nothing error screen. A .zip expands
+  // into one {name, text} per contained drawing before this same per-item
+  // parse step runs, so a bundle and an equivalent multi-file drop end up
+  // identical from here on.
   const processFiles = useCallback(async (fileList) => {
     const files = Array.from(fileList ?? [])
     if (!files.length) return
     setPhase('loading')
-    const results = await Promise.all(files.map(async (file) => {
+
+    const items = []
+    for (const file of files) {
+      if (/\.zip$/i.test(file.name)) {
+        try {
+          items.push(...await expandZip(file))
+        } catch (e) {
+          items.push({ name: file.name, text: null, error: e.message ?? 'Bad zip file' })
+        }
+      } else {
+        items.push({ name: file.name, file })
+      }
+    }
+
+    const results = await Promise.all(items.map(async (item) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-      const name = file.name.replace(/\.(nd)?(geo)?json$/i, '')
+      const name = item.name.replace(/\.(nd)?(geo)?json$/i, '')
+      if (item.error) return { id, name, features: null, error: item.error }
       try {
-        const text = await readFileText(file)
+        const text = item.text ?? await readFileText(item.file)
         return { id, name, features: parseGeojson(text), error: null }
       } catch (e) {
         return { id, name, features: null, error: e.message ?? 'Unknown error' }
@@ -96,12 +128,12 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
             onClick={() => fileRef.current?.click()}
           >
             <span className="mi-drop-icon">⬆</span>
-            <span className="mi-drop-label">Drop .geojson/.json/.ndgeojson file(s)</span>
+            <span className="mi-drop-label">Drop .geojson/.json/.ndgeojson file(s) or a .zip bundle</span>
             <span className="mi-drop-sub">or click to browse — multiple files supported</span>
             <input
               ref={fileRef}
               type="file"
-              accept=".geojson,.json,.ndgeojson,.ndjson,*"
+              accept=".geojson,.json,.ndgeojson,.ndjson,.zip,*"
               multiple
               style={{ display: 'none' }}
               onChange={onFileChange}

@@ -31,7 +31,7 @@
       "ROUTE":        { "stroke": "#C8AA88", "fill": "#C8AA88", "dash": [] },
       "GEO_COAST":    { "stroke": "#6699AA", "fill": "#6699AA", "dash": [] },
       "GEO_BOUNDARY": { "stroke": "#557788", "fill": "#557788", "dash": [4, 3] },
-      "CUSTOM":       { "stroke": "#DDAA33", "fill": "#DDAA33", "dash": [0, 0], "label": "CUSTOM" }
+      "CUSTOM":       { "stroke": "#DDDDDD", "fill": "#DDDDDD", "dash": [0, 0], "label": "CUSTOM" }
     }
   },
   {

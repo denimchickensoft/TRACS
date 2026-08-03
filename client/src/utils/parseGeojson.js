@@ -79,7 +79,7 @@ function deriveLabel(properties) {
   return [line1, line2].filter(Boolean)
 }
 
-function computeBbox(geometry) {
+export function computeBbox(geometry) {
   let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity
   walkCoords(geometry.coordinates, ([lng, lat]) => {
     if (lng < minLng) minLng = lng

@@ -45,6 +45,11 @@ import { useMissionClock } from '../../utils/useMissionClock.js'
 import { drawAbmRaster }   from './canvas/drawAbmRaster.js'
 import { drawAbmAirspace } from './canvas/drawAbmAirspace.js'
 import { drawAbmCustomDrawings } from './canvas/drawAbmCustomDrawings.js'
+import { drawPendingDraw } from './canvas/drawPendingDraw.js'
+import { hitTestDrawingLayer } from './canvas/hitTestDrawing.js'
+import {
+  parseDrawCommand, advancePendingDraw, rotatePendingDraw, supportsRotation, POLY_CLOSE_RADIUS_PX,
+} from './draw/drawCommands.js'
 import './AbmScope.css'
 
 const WINDOW_ID  = 'abm-main'
@@ -56,6 +61,10 @@ const MAX_HISTORY   = 10  // absolute cap on captured points; display capped by 
 const ALT_TOGGLE_MS   = 2000  // datablock line-2 speed/type alternation rate
 const READOUT_RADIUS_PX = 10    // cursor-proximity radius for the unit readout box
 const READOUT_CYCLE_MS  = 3000  // per-object fade in/out phase when >1 unit is under the cursor
+// Must match SEA_COLOR in server/scripts/buildAbmBasemap.js — the .base
+// raster's own background fill, so the scope's letterbox background reads
+// as a continuation of the basemap instead of a black border around it.
+const BASEMAP_SEA_COLOR = 'rgb(26, 38, 48)'
 
 const F_KEY_DECL = {
   F1: DECLARATION.HOSTILE,
@@ -82,6 +91,18 @@ function trueDeclaration(unit, myCoalitionNum) {
   if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
   if (unit.coalition === 0) return DECLARATION.NEUTRAL
   return DECLARATION.HOSTILE
+}
+
+// Draw-command arg tokens (.line/.rect/.circ/.poly/.sect/.race/.text) must
+// come from the ORIGINAL-case command text, not the lowercased `str`
+// execCommand matches against — .text's label content needs to keep
+// whatever case the controller typed. `str`/`raw.trim()` share the same
+// length and whitespace positions (lowercasing doesn't change either), so
+// the split point found in `str` is reused to slice the original-case raw.
+function drawCmdTokens(str, raw) {
+  const trimmedRaw = raw.trim()
+  const spaceIdx = str.indexOf(' ')
+  return spaceIdx === -1 ? [] : trimmedRaw.slice(spaceIdx + 1).trim().split(/\s+/).filter(Boolean)
 }
 
 // Per-category airspace toggles (2026-07-08) — replaces the old single
@@ -643,6 +664,11 @@ export default function AbmScope() {
   const [labelsVisible, setLabelsVisible] = useState(abmPrefs.labelsVisible)
   const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
   const toggleAllDrawings = useAbmDrawingsStore(s => s.toggleAll)
+  const addDrawnShape = useAbmDrawingsStore(s => s.addDrawnShape)
+  const removeDrawingLayer = useAbmDrawingsStore(s => s.removeLayer)
+  const removeDrawingsByName = useAbmDrawingsStore(s => s.removeLayersByName)
+  const toggleDrawingsByName = useAbmDrawingsStore(s => s.toggleLayersByName)
+  const clearAllDrawings = useAbmDrawingsStore(s => s.clearTheatre)
   const airspaceColors = airspacePalettes[aspColorIdx]?.colors ?? airspacePalettes[0]?.colors ?? null
   const fixes   = useNavdataStore(s => s.fixes)
   const navaids = useNavdataStore(s => s.navaids)
@@ -1127,8 +1153,8 @@ export default function AbmScope() {
     drawAirways(ctx, view, airways, airwaysVisible, 50)
     drawMora(ctx, view, mora, moraVisible, 50)
     drawHoldings(ctx, view, holdings, holdingsVisible, 50, 0)
-    drawAbmFixSymbols(ctx, view, navaids, navaidsVisible, '#FFCC44')
-    drawAbmFixSymbols(ctx, view, fixes,   fixesVisible,   '#66CCFF')
+    drawAbmFixSymbols(ctx, view, navaids, navaidsVisible, '#FFCC44', 60, labelsVisible)
+    drawAbmFixSymbols(ctx, view, fixes,   fixesVisible,   '#66CCFF', 60, labelsVisible)
     if (runwaysVisible && runwayCenterlines.length) {
       // drawRunways expects { id, end1, end2 }; the store's centerlines carry
       // the same points under rwyEnd1/rwyEnd2 (built for STARS's own draw path).
@@ -1170,6 +1196,41 @@ export default function AbmScope() {
     if (!view || !compassRef.current) return
     drawCompassRose(compassRef.current.getContext('2d'), view, 70, 3, 0.625)
   }, [view])
+
+  // .line/.rect/.circ/.poly/.sect/.race/.text click-driven drawing —
+  // pendingDraw is null when no draw command is armed; see
+  // modules/abm/draw/drawCommands.js for the per-shape state shape/arity.
+  // drawCursor tracks the live mouse position (map lat/lng) only while a
+  // draw command is pending, driving the preview redraw the same way RBL's
+  // `rbl.end` already does. Declared here (ahead of the contactsRef draw
+  // effect below, which reads both) rather than down by cmdBuffer/
+  // cmdFeedback where the rest of the command-line state lives, since a
+  // useEffect's dependency array is evaluated during this render pass and a
+  // `const` referenced before its own declaration line throws (TDZ), even
+  // though the effect body itself only runs after render.
+  const [pendingDraw, setPendingDraw] = useState(null)
+  const [drawCursor,  setDrawCursor]  = useState(null)
+
+  // .clear — bare/click form arms pendingClearClick (one-shot: the next
+  // click hit-tests via hitTestDrawingLayer and removes whatever it finds,
+  // then disarms regardless of a hit). .clear all arms
+  // pendingClearAllConfirm instead, which execCommand intercepts at the top
+  // on the NEXT submitted line as a bare yes/no answer (not a new command).
+  const [pendingClearClick, setPendingClearClick] = useState(false)
+  const [pendingClearAllConfirm, setPendingClearAllConfirm] = useState(false)
+
+  useEffect(() => {
+    if (!pendingDraw) { setDrawCursor(null); return }
+    const onMove = (e) => {
+      const rect = interactiveRef.current?.getBoundingClientRect()
+      if (!rect || !viewRef.current) return
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      setDrawCursor(canvasToLatLng(x, y, viewRef.current))
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [pendingDraw])
 
   // ── Air contacts (top canvas) ────────────────────────────────────────────────
   // Draw order (bottom to top, matching AIC's drawAicContacts): threat rings,
@@ -1220,12 +1281,16 @@ export default function AbmScope() {
       ctx.fillStyle = '#00e000'
       ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
     }
+
+    // In-progress .line/.rect/.circ/.poly/.sect/.race/.text preview — on top
+    // of everything, same as RBL.
+    drawPendingDraw(ctx, view, pendingDraw, drawCursor)
   }, [view, visibleUnits, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getEffectiveDeclaration, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
       threatRings, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIds, highlightedIds, selectedRoute,
-      blinkIdSet, blinkOn, blinkTick])
+      blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {
@@ -1338,6 +1403,14 @@ export default function AbmScope() {
     if (!el) return
     const onWheel = (e) => {
       e.preventDefault()
+      // While a .rect/.poly/.race/.text draw command is pending, the scroll
+      // wheel rotates the shape (whole-degree steps, locked to the MAGNETIC
+      // heading lattice — see ROTATION_STEP_DEG) instead of zooming.
+      if (pendingDraw && supportsRotation(pendingDraw.type)) {
+        const declinationDeg = viewRef.current?.declinationDeg ?? 0
+        setPendingDraw(pd => pd && rotatePendingDraw(pd, e.deltaY < 0 ? 1 : -1, declinationDeg))
+        return
+      }
       const ws = useDisplayStore.getState().windows[WINDOW_ID]
       if (!ws) return
       const dir     = e.deltaY < 0 ? 1 : -1
@@ -1350,13 +1423,14 @@ export default function AbmScope() {
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [!!windowSettings, displayStore]) // eslint-disable-line
+  }, [!!windowSettings, displayStore, pendingDraw]) // eslint-disable-line
 
   // ── Command preview area (bottom-left, same pattern as AIC) ─────────────────
   const [cmdBuffer,   setCmdBuffer]   = useState('')
   const [cmdFeedback, setCmdFeedback] = useState('')
   const [cmdHistory,  setCmdHistory]  = useState([])
   const cmdHistoryRef = useRef([])
+
   useEffect(() => { cmdHistoryRef.current = cmdHistory }, [cmdHistory])
   const [cmdHistoryIdx, setCmdHistoryIdx] = useState(-1)
   const cmdHistoryIdxRef = useRef(-1)
@@ -1367,6 +1441,19 @@ export default function AbmScope() {
 
   async function execCommand(raw) {
     const str = raw.trim().toLowerCase()
+
+    // .clear all's confirmation — intercepts the very next submitted line
+    // as a bare yes/no answer, not a new command, however it's routed.
+    if (pendingClearAllConfirm) {
+      setPendingClearAllConfirm(false)
+      if (str === 'y') {
+        clearAllDrawings(theatre)
+        setCmdFeedback('ALL DRAWINGS CLEARED')
+      } else {
+        setCmdFeedback('CLEAR ALL CANCELLED')
+      }
+      return
+    }
 
     if (str === '.rr') {
       const on = !(windowSettings?.ringsVisible ?? false)
@@ -1545,14 +1632,150 @@ export default function AbmScope() {
       return
     }
 
-    // .custom — bulk toggle for user-imported GeoJSON drawings (store/
-    // abmDrawings.js), same any-on pattern as .asp. Individual drawings are
-    // otherwise toggled from the Drawings panel's per-row checkbox.
-    if (str === '.custom') {
+    // .custom/.cust — interchangeable: bare form is a bulk toggle for
+    // user-imported GeoJSON drawings (store/abmDrawings.js), same any-on
+    // pattern as .asp. `.custom <name>`/`.cust <name>` instead toggles just
+    // the drawing(s) matching that name (case-insensitive, could be more
+    // than one after manual renames — all matched layers toggle together,
+    // same any-on pattern). Individual drawings can otherwise be toggled
+    // from the Drawings panel's per-row checkbox.
+    if (str === '.custom' || str === '.cust') {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
       const anyOn = drawingLayers.some(l => l.visible)
       toggleAllDrawings(theatre)
       setCmdFeedback(anyOn ? 'CUSTOM OFF' : 'CUSTOM ON')
+      return
+    }
+    if (str.startsWith('.custom ') || str.startsWith('.cust ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const arg = drawCmdTokens(str, raw).join(' ').trim()
+      const matches = drawingLayers.filter(l => l.name.toUpperCase() === arg.toUpperCase())
+      if (!matches.length) { setCmdFeedback('NOT FOUND'); return }
+      const anyOn = matches.some(l => l.visible)
+      toggleDrawingsByName(theatre, arg)
+      setCmdFeedback(`${arg.toUpperCase()} ${anyOn ? 'OFF' : 'ON'}`)
+      return
+    }
+
+    // ── Draw commands ─────────────────────────────────────────────────────
+    // .line/.rect/.circ/.poly/.sect/.race/.text — fully-typed args commit
+    // immediately (addDrawnShape, store/abmDrawings.js); anything left
+    // unresolved arms pendingDraw and waits for click(s). See
+    // modules/abm/draw/drawCommands.js for the per-shape grammar/arity.
+    if (str === '.line' || str.startsWith('.line ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const result = parseDrawCommand('line', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      if (result.error) { setCmdFeedback(result.error); return }
+      if (result.immediate) {
+        addDrawnShape(theatre, 'line', result.immediate)
+        setCmdFeedback('LINE DRAWN')
+      } else {
+        setPendingDraw(result.pending)
+        setCmdFeedback('LINE: CLICK TO PLACE')
+      }
+      return
+    }
+
+    if (str === '.rect' || str.startsWith('.rect ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const result = parseDrawCommand('rect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      if (result.error) { setCmdFeedback(result.error); return }
+      setPendingDraw(result.pending)
+      setCmdFeedback('RECT: CLICK TO PLACE')
+      return
+    }
+
+    if (str === '.circ' || str.startsWith('.circ ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const result = parseDrawCommand('circ', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      if (result.error) { setCmdFeedback(result.error); return }
+      if (result.immediate) {
+        addDrawnShape(theatre, 'circ', result.immediate)
+        setCmdFeedback('CIRCLE DRAWN')
+      } else {
+        setPendingDraw(result.pending)
+        setCmdFeedback('CIRC: CLICK TO PLACE')
+      }
+      return
+    }
+
+    if (str === '.poly' || str.startsWith('.poly ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const result = parseDrawCommand('poly', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      if (result.error) { setCmdFeedback(result.error); return }
+      if (result.immediate) {
+        addDrawnShape(theatre, 'poly', result.immediate)
+        setCmdFeedback('POLY DRAWN')
+      } else {
+        setPendingDraw(result.pending)
+        setCmdFeedback('POLY: CLICK VERTICES, CLICK NEAR START TO CLOSE')
+      }
+      return
+    }
+
+    if (str === '.sect' || str.startsWith('.sect ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const result = parseDrawCommand('sect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      if (result.error) { setCmdFeedback(result.error); return }
+      if (result.immediate) {
+        // .sect <id> <brg1> <brg2>...<brgN> <radius> draws N-1 adjoining
+        // sectors sharing that radius — result.immediate is an array here
+        // (every other command's `immediate` is a single params object).
+        for (const sector of result.immediate) addDrawnShape(theatre, 'sect', sector)
+        setCmdFeedback(result.immediate.length > 1 ? `${result.immediate.length} SECTORS DRAWN` : 'SECTOR DRAWN')
+      } else {
+        setPendingDraw(result.pending)
+        setCmdFeedback('SECT: CLICK TO PLACE')
+      }
+      return
+    }
+
+    if (str === '.race' || str.startsWith('.race ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const result = parseDrawCommand('race', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      if (result.error) { setCmdFeedback(result.error); return }
+      if (result.immediate) {
+        addDrawnShape(theatre, 'race', result.immediate)
+        setCmdFeedback('RACETRACK DRAWN')
+      } else {
+        setPendingDraw(result.pending)
+        setCmdFeedback('RACE: CLICK TO PLACE')
+      }
+      return
+    }
+
+    if (str === '.text' || str.startsWith('.text ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const result = parseDrawCommand('text', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      if (result.error) { setCmdFeedback(result.error); return }
+      setPendingDraw(result.pending)
+      setCmdFeedback('TEXT: CLICK TO PLACE')
+      return
+    }
+
+    // .clear — bare/click removes whatever's hit-tested at the click point
+    // (handleMouseUp); .clear <name> removes every same-named drawing
+    // (case-insensitive, could be more than one after manual renames);
+    // .clear all confirms via the pendingClearAllConfirm intercept above.
+    if (str === '.clear' || str.startsWith('.clear ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const arg = drawCmdTokens(str, raw).join(' ').trim()
+      if (!arg) {
+        setPendingDraw(null)
+        setPendingClearClick(true)
+        setCmdFeedback('CLEAR: CLICK A DRAWING')
+        return
+      }
+      if (arg.toLowerCase() === 'all') {
+        if (!drawingLayers.length) { setCmdFeedback('NOTHING TO CLEAR'); return }
+        setPendingClearAllConfirm(true)
+        setCmdFeedback(`CLEAR ALL ${drawingLayers.length} DRAWINGS? Y TO CONFIRM`)
+        return
+      }
+      const matches = drawingLayers.filter(l => l.name.toUpperCase() === arg.toUpperCase())
+      if (!matches.length) { setCmdFeedback('NOT FOUND'); return }
+      removeDrawingsByName(theatre, arg)
+      setCmdFeedback(matches.length > 1 ? `CLEARED ${matches.length} ${arg.toUpperCase()}` : `CLEARED ${matches[0].name}`)
       return
     }
 
@@ -1936,6 +2159,19 @@ export default function AbmScope() {
     setCmdFeedback('UNKNOWN COMMAND')
   }
 
+  // Ctrl+V into the command line — interactiveRef is a plain div (not a
+  // text input), so pasting only works if something actually listens for
+  // the native paste event and appends the clipboard text to cmdBuffer
+  // itself; without this the browser has nowhere to put it. Collapses any
+  // newlines in the pasted text to spaces — cmdBuffer is a single line.
+  const handlePaste = useCallback((e) => {
+    e.preventDefault()
+    const text = e.clipboardData.getData('text')
+    if (!text) return
+    setCmdFeedback('')
+    setCmdBuffer(b => b + text.replace(/[\r\n]+/g, ' '))
+  }, [])
+
   const handleKeyDown = useCallback((e) => {
     const fDecl = F_KEY_DECL[e.key]
     if (fDecl) {
@@ -1947,6 +2183,9 @@ export default function AbmScope() {
 
     if (e.key === 'Escape') {
       e.preventDefault()
+      if (pendingClearClick) { setPendingClearClick(false); return }
+      if (pendingClearAllConfirm) { setPendingClearAllConfirm(false); setCmdFeedback('CLEAR ALL CANCELLED'); return }
+      if (pendingDraw) { setPendingDraw(null); return }
       if (findMarker) { setFindMarker(null); useAbmMissionStore.getState().clearFind(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
@@ -2002,7 +2241,8 @@ export default function AbmScope() {
       setCmdFeedback('')
       setCmdBuffer(b => b + e.key)
     }
-  }, [cmdBuffer, pendingDeclaration, pendingBraaFighter, clearPendingBraa, rbl, findMarker]) // eslint-disable-line
+  }, [cmdBuffer, pendingDeclaration, pendingBraaFighter, clearPendingBraa, rbl, findMarker, pendingDraw,
+      pendingClearClick, pendingClearAllConfirm]) // eslint-disable-line
 
   // ── Click dispatch — ported from AIC's handleMouseUp, same modifier/command
   // precedence (2026-07-07): Shift+click removes BRAA pairs for the target;
@@ -2025,6 +2265,60 @@ export default function AbmScope() {
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
+
+    // .clear + click — one-shot: disarms on this click regardless of
+    // whether anything was actually under it.
+    if (pendingClearClick) {
+      if (e.button === 1) return
+      setPendingClearClick(false)
+      const hit = hitTestDrawingLayer(viewRef.current, drawingLayers, pos.x, pos.y)
+      if (hit) {
+        removeDrawingLayer(theatre, hit.id)
+        setCmdFeedback(`CLEARED ${hit.name}`)
+      } else {
+        setCmdFeedback('NOTHING THERE')
+      }
+      return
+    }
+
+    // In-progress .line/.rect/.circ/.poly/.sect/.race/.text draw command —
+    // takes priority over every other click behavior below (BRAA/threat/
+    // dope/highlight/etc.) until it's committed or Escape-cancelled.
+    // Middle-click is suppressed (not the usual toggleHighlight) while a
+    // draw command is pending — rotation itself is now driven by the scroll
+    // wheel (see the wheel listener below), not the middle-click.
+    if (pendingDraw) {
+      if (e.button === 1) return
+
+      // .poly closes when a click lands near its first vertex (screen-pixel
+      // distance, so it feels the same at any zoom level) — checked here,
+      // not in advancePendingDraw, since that needs the view/projection to
+      // test proximity and drawCommands.js is deliberately map-agnostic.
+      if (pendingDraw.type === 'poly' && pendingDraw.vertices.length >= 3) {
+        const originPx = latLngToCanvas(pendingDraw.vertices[0].lat, pendingDraw.vertices[0].lng, viewRef.current)
+        if (Math.hypot(pos.x - originPx.x, pos.y - originPx.y) <= POLY_CLOSE_RADIUS_PX) {
+          if (theatre) {
+            addDrawnShape(theatre, 'poly', { vertices: pendingDraw.vertices })
+            setCmdFeedback('POLY DRAWN')
+          }
+          setPendingDraw(null)
+          return
+        }
+      }
+
+      const clickLatLng = canvasToLatLng(pos.x, pos.y, viewRef.current)
+      const result = advancePendingDraw(pendingDraw, clickLatLng, viewRef.current?.declinationDeg ?? 0)
+      if (result.immediate) {
+        if (theatre) {
+          addDrawnShape(theatre, pendingDraw.type, result.immediate)
+          setCmdFeedback(`${pendingDraw.type.toUpperCase()} DRAWN`)
+        }
+        setPendingDraw(null)
+      } else {
+        setPendingDraw(result.pending)
+      }
+      return
+    }
 
     if (e.button === 1) {
       if (target) toggleHighlight(String(target.unitId))
@@ -2167,7 +2461,9 @@ export default function AbmScope() {
       }
     }
   }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getEffectiveDeclaration,
-      addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa]) // eslint-disable-line
+      addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
+      pendingDraw, theatre, addDrawnShape,
+      pendingClearClick, drawingLayers, removeDrawingLayer]) // eslint-disable-line
 
   if (!windowSettings) return null
 
@@ -2183,7 +2479,7 @@ export default function AbmScope() {
   }
 
   return (
-    <div className="abm-scope">
+    <div className="abm-scope" style={basemapVisible ? { background: BASEMAP_SEA_COLOR } : undefined}>
       <div ref={canvasAreaRef} className="abm-canvas-area">
         <canvas ref={mapRef}      className="abm-layer" />
         <canvas ref={layersRef}   className="abm-layer" />
@@ -2197,6 +2493,7 @@ export default function AbmScope() {
           onMouseMove={handleCursorMove}
           onMouseUp={handleMouseUp}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onContextMenu={(e) => e.preventDefault()}
         />
         {!bullseyeEntry && <div className="abm-warn">NO BULLSEYE</div>}
