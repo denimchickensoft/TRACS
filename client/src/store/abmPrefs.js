@@ -33,6 +33,7 @@ const DEFAULTS = {
   polygonsVisible: false,
   asVisible:      {},    // { [displayCategory]: bool }
   aspColorIdx:    0,     // index into airspace_colors.json palette array
+  labelsVisible:  false, // airspace name labels — .labels toggles
   coordsVisible:  false,
   coordFormat:    'dms', // 'dms' | 'ddm'
   elevUnit:       'feet', // 'feet' | 'meters'

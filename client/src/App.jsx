@@ -13,6 +13,7 @@ import { BraaList, BRAA_NATURAL_WIDTH } from './modules/aic/BraaList'
 import AbmScope          from './modules/abm/AbmScope'
 import { Ato, ATO_NATURAL_WIDTH } from './modules/abm/Ato'
 import { Frag }          from './modules/abm/Frag'
+import { Drawings }      from './modules/abm/Drawings'
 import { useAbmMissionStore } from './store/abmMission'
 import { StripBay }      from './components/StripBay/StripBay'
 import { Par }           from './components/par/Par'
@@ -218,8 +219,10 @@ export function App() {
   const abmWidthRef = useRef(initAbmWidth)
   const atoPopupRef = useRef(null)
   const fragPopupRef = useRef(null)
+  const drawingsPopupRef = useRef(null)
   const [atoDocked, setAtoDocked] = useState(true)
   const [fragDocked, setFragDocked] = useState(true)
+  const [drawingsDocked, setDrawingsDocked] = useState(true)
   const [atoScale, setAtoScale]   = useState(() => {
     const s = parseFloat(localStorage.getItem('tracs.ato.scale'))
     return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
@@ -231,12 +234,13 @@ export function App() {
   const handleAbmResize = useCallback(makeResizeHandler(abmWidthRef, setAbmWidth, 280, 700, 'tracs.abm.width'), []) // eslint-disable-line
   const handleAtoUndock  = useCallback(makeUndockHandler('/?window=abm-ato',  'tracs-abm-ato',  abmWidthRef, setAtoDocked, atoPopupRef), []) // eslint-disable-line
   const handleFragUndock = useCallback(makeUndockHandler('/?window=abm-frag', 'tracs-abm-frag', abmWidthRef, setFragDocked, fragPopupRef), []) // eslint-disable-line
+  const handleDrawingsUndock = useCallback(makeUndockHandler('/?window=abm-drawings', 'tracs-abm-drawings', abmWidthRef, setDrawingsDocked, drawingsPopupRef), []) // eslint-disable-line
 
   // ── Active right panel per scope ('main' | 'par') ─────────────────
   const [atcPanel,   setAtcPanel]   = useState('main')   // 'main' = strips, 'par'
   const [catccPanel, setCatccPanel] = useState('main')   // 'main' = status board, 'par', 'deck'
   const [aicPanel,   setAicPanel]   = useState('main')   // 'main' = braa list
-  const [abmPanel,   setAbmPanel]   = useState(null)      // null | 'ato' | 'frag'
+  const [abmPanel,   setAbmPanel]   = useState(null)      // null | 'ato' | 'frag' | 'drawings'
 
   // Selecting a flight (Ctrl+Shift+Click on the scope, or a row in ATO)
   // auto-switches to the FRAG tab — keyed on selectNonce (not selectedGroupId)
@@ -312,8 +316,9 @@ export function App() {
       return TAB_STRIP_W
     }
     if (hasAbm) {
-      if (abmPanel === 'ato'  && atoDocked)  return Math.round(abmWidth * atoScale)  + TAB_STRIP_W
-      if (abmPanel === 'frag' && fragDocked) return Math.round(abmWidth * fragScale) + TAB_STRIP_W
+      if (abmPanel === 'ato'      && atoDocked)      return Math.round(abmWidth * atoScale)  + TAB_STRIP_W
+      if (abmPanel === 'frag'     && fragDocked)     return Math.round(abmWidth * fragScale) + TAB_STRIP_W
+      if (abmPanel === 'drawings' && drawingsDocked) return abmWidth + TAB_STRIP_W
       return TAB_STRIP_W
     }
     return 0
@@ -722,12 +727,22 @@ export function App() {
                 onScaleChange={setFragScale}
               />
             )}
+            {abmPanel === 'drawings' && drawingsDocked && (
+              <Drawings
+                docked
+                width={abmWidth}
+                onResize={handleAbmResize}
+                onUndock={handleDrawingsUndock}
+                onHide={() => setAbmPanel(null)}
+              />
+            )}
 
             {/* Tab strip */}
             <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
               {[
-                { key: 'ato',  label: atoDocked  ? 'ATO'  : 'ATO ↗',  onClick: () => { if (!atoDocked  && atoPopupRef.current)  atoPopupRef.current.focus();  else setAbmPanel(p => p === 'ato'  ? null : 'ato')  } },
-                { key: 'frag', label: fragDocked ? 'FRAG' : 'FRAG ↗', onClick: () => { if (!fragDocked && fragPopupRef.current) fragPopupRef.current.focus(); else setAbmPanel(p => p === 'frag' ? null : 'frag') } },
+                { key: 'ato',      label: atoDocked      ? 'ATO'  : 'ATO ↗',  onClick: () => { if (!atoDocked      && atoPopupRef.current)      atoPopupRef.current.focus();      else setAbmPanel(p => p === 'ato'      ? null : 'ato')      } },
+                { key: 'frag',     label: fragDocked     ? 'FRAG' : 'FRAG ↗', onClick: () => { if (!fragDocked     && fragPopupRef.current)     fragPopupRef.current.focus();     else setAbmPanel(p => p === 'frag'     ? null : 'frag')     } },
+                { key: 'drawings', label: drawingsDocked ? 'DRAW' : 'DRAW ↗', onClick: () => { if (!drawingsDocked && drawingsPopupRef.current) drawingsPopupRef.current.focus(); else setAbmPanel(p => p === 'drawings' ? null : 'drawings') } },
               ].map(({ key, label, onClick }) => (
                 <div
                   key={key}

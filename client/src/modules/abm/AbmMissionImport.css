@@ -170,6 +170,54 @@
 .mi-flight-units { color: #666; text-align: right; }
 .mi-flight-reserve { color: #BB8833; font-size: 8px; letter-spacing: 0.06em; }
 
+/* Drawing rows (AbmDrawingImport — one row per dropped file) */
+.mi-drawing-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.mi-drawing-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 16px;
+  gap: 0 6px;
+  align-items: center;
+  padding: 3px 8px;
+}
+.mi-drawing-row:hover { background: #0D150D; }
+
+.mi-drawing-name {
+  background: #111;
+  border: 1px solid #333;
+  color: #FFD700;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 3px 6px;
+  box-sizing: border-box;
+  width: 100%;
+}
+.mi-drawing-name:disabled { color: #666; border-color: #222; }
+
+.mi-drawing-summary {
+  color: #888;
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mi-drawing-summary.error { color: #CC4444; }
+
+.mi-drawing-remove {
+  background: transparent;
+  border: none;
+  color: #444;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.mi-drawing-remove:hover { color: #CC4444; }
+
 /* ── Footer ─────────────────────────────────────────────── */
 .mi-footer {
   display: flex;
@@ -193,6 +241,8 @@
 }
 
 .mi-btn:hover { border-color: #666; color: #888; }
+.mi-btn:disabled { opacity: 0.4; cursor: default; }
+.mi-btn:disabled:hover { border-color: #333; color: #555; }
 
 .mi-btn-primary {
   border-color: #556622;

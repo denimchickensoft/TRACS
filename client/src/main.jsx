@@ -10,6 +10,7 @@ import { ParWindow }            from './components/par/ParWindow'
 import { AsdexOdsWindow }      from './modules/atc/asdex/AsdexOdsWindow'
 import { AtoWindow }           from './modules/abm/AtoWindow'
 import { FragWindow }          from './modules/abm/FragWindow'
+import { DrawingsWindow }      from './modules/abm/DrawingsWindow'
 import { BraaListWindow }      from './modules/aic/BraaListWindow'
 
 const _params    = new URLSearchParams(window.location.search)
@@ -25,6 +26,7 @@ createRoot(document.getElementById('root')).render(
      windowMode === 'asdex-ods'   ? <AsdexOdsWindow />       :
      windowMode === 'abm-ato'     ? <AtoWindow />            :
      windowMode === 'abm-frag'    ? <FragWindow />           :
+     windowMode === 'abm-drawings' ? <DrawingsWindow />      :
      windowMode === 'braa'        ? <BraaListWindow />       :
      <App />}
   </StrictMode>

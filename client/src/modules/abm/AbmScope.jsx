@@ -14,6 +14,7 @@ import { useHoldingsStore } from '../../store/holdings.js'
 import { useMoraStore }     from '../../store/mora.js'
 import { useAirwaysStore }  from '../../store/airways.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
+import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { loadAbmPrefs, saveAbmPrefs } from '../../store/abmPrefs.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../atc/stars/canvas/projection.js'
 import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
@@ -43,6 +44,7 @@ import { drawAbmTowns }    from './canvas/drawAbmTowns.js'
 import { useMissionClock } from '../../utils/useMissionClock.js'
 import { drawAbmRaster }   from './canvas/drawAbmRaster.js'
 import { drawAbmAirspace } from './canvas/drawAbmAirspace.js'
+import { drawAbmCustomDrawings } from './canvas/drawAbmCustomDrawings.js'
 import './AbmScope.css'
 
 const WINDOW_ID  = 'abm-main'
@@ -638,6 +640,9 @@ export default function AbmScope() {
   const airspacePalettes = useAbmAirspaceStore(s => s.palettes)
   const [asVisible, setAsVisible] = useState(abmPrefs.asVisible)
   const [aspColorIdx, setAspColorIdx] = useState(abmPrefs.aspColorIdx)
+  const [labelsVisible, setLabelsVisible] = useState(abmPrefs.labelsVisible)
+  const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
+  const toggleAllDrawings = useAbmDrawingsStore(s => s.toggleAll)
   const airspaceColors = airspacePalettes[aspColorIdx]?.colors ?? airspacePalettes[0]?.colors ?? null
   const fixes   = useNavdataStore(s => s.fixes)
   const navaids = useNavdataStore(s => s.navaids)
@@ -1117,7 +1122,8 @@ export default function AbmScope() {
     // Per-feature stroke, no edge de-dup — adjacent regions each draw their
     // own shared border. If dense theatres make that read as double/uneven
     // lines, pass `true` as a 6th arg here to de-dup (see drawAbmAirspace.js).
-    drawAbmAirspace(ctx, view, airspaceFeatures, asVisible, 80, false, airspaceColors)
+    drawAbmAirspace(ctx, view, airspaceFeatures, asVisible, 80, false, airspaceColors, labelsVisible)
+    drawAbmCustomDrawings(ctx, view, drawingLayers, airspaceColors?.CUSTOM ?? null, labelsVisible)
     drawAirways(ctx, view, airways, airwaysVisible, 50)
     drawMora(ctx, view, mora, moraVisible, 50)
     drawHoldings(ctx, view, holdings, holdingsVisible, 50, 0)
@@ -1134,7 +1140,7 @@ export default function AbmScope() {
     drawAbmTowns(ctx, view, towns, townsVisible)
   }, [view, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible,
       polygonFeatures, polygonsVisible,
-      asVisible, airspaceFeatures, airspaceColors, airways, airwaysVisible, mora, moraVisible,
+      asVisible, airspaceFeatures, airspaceColors, labelsVisible, drawingLayers, airways, airwaysVisible, mora, moraVisible,
       holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible,
       runwaysVisible, runwayCenterlines, mgrsVisible, towns, townsVisible,
       basemap, basemapVisible, water, waterVisible, roads, roadsVisible])
@@ -1523,6 +1529,30 @@ export default function AbmScope() {
     if (str === '.refresh') {
       const success = await useAbmAirspaceStore.getState().refreshPalettes()
       setCmdFeedback(success ? 'PALETTES REFRESHED' : 'REFRESH FAILED')
+      return
+    }
+
+    // .labels — name-label toggle for both airspace and custom-drawing
+    // layers. Airspace labels are drawn only for categories currently on
+    // via asVisible (.tma/.classc/etc); custom-drawing labels only for
+    // features that have one (parseGeojson's title/name convention). Either
+    // way this is purely a "show text too" layer on top of the geometry.
+    if (str === '.labels') {
+      const next = !labelsVisible
+      setLabelsVisible(next)
+      saveAbmPrefs({ labelsVisible: next })
+      setCmdFeedback(next ? 'LABELS ON' : 'LABELS OFF')
+      return
+    }
+
+    // .custom — bulk toggle for user-imported GeoJSON drawings (store/
+    // abmDrawings.js), same any-on pattern as .asp. Individual drawings are
+    // otherwise toggled from the Drawings panel's per-row checkbox.
+    if (str === '.custom') {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const anyOn = drawingLayers.some(l => l.visible)
+      toggleAllDrawings(theatre)
+      setCmdFeedback(anyOn ? 'CUSTOM OFF' : 'CUSTOM ON')
       return
     }
 

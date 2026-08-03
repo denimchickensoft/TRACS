@@ -1,0 +1,145 @@
+.dr {
+  display:        flex;
+  flex-direction: column;
+  background:     #0a0a0a;
+  border-left:    1px solid #1a1a1a;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      10px;
+  color:          #ccc;
+  position:       relative;
+  overflow:       hidden;
+}
+
+.dr-dragging {
+  outline: 1px dashed #FFD700;
+  outline-offset: -1px;
+  background: rgba(255, 215, 0, 0.03);
+}
+
+.dr-resize {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: ew-resize;
+  z-index: 10;
+}
+.dr-resize:hover,
+.dr-resize:active {
+  background: rgba(255, 215, 0, 0.15);
+}
+
+.dr-title {
+  display:       flex;
+  align-items:   center;
+  padding:       4px 8px;
+  background:    #111;
+  border-bottom: 1px solid #222;
+  flex-shrink:   0;
+  user-select:   none;
+}
+
+.dr-title-text {
+  font-size:      9px;
+  letter-spacing: 0.12em;
+  color:          #666;
+  flex:           1;
+  text-transform: uppercase;
+}
+
+.dr-title-right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.dr-btn {
+  background: transparent;
+  border: none;
+  color: #444;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.dr-btn:hover { color: #FFD700; }
+
+.dr-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.dr-empty {
+  padding: 16px 12px;
+  font-size: 9px;
+  color: #444;
+  letter-spacing: 0.04em;
+}
+
+.dr-row {
+  display: grid;
+  grid-template-columns: 16px 10px 1fr 30px 16px;
+  gap: 0 6px;
+  align-items: center;
+  padding: 3px 6px;
+  border-bottom: 1px solid #141414;
+}
+.dr-row:hover { background: #131300; }
+
+.dr-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.dr-name {
+  color: #FFD700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dr-count {
+  color: #666;
+  font-size: 9px;
+  text-align: right;
+}
+
+.dr-row-delete {
+  background: transparent;
+  border: none;
+  color: #444;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.dr-row-delete:hover { color: #CC4444; }
+
+.dr-footer {
+  padding: 4px 6px;
+  border-top: 1px solid #1A1A1A;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.dr-add-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.dr-add-btn:hover { border-color: #666; color: #888; }
+.dr-add-btn:disabled { opacity: 0.4; cursor: default; }

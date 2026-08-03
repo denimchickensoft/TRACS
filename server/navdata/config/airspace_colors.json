@@ -14,7 +14,7 @@
       "CLASS G": { "stroke": "#CCDDE0", "fill": "#CCDDE0", "dash": [5, 2], "label": "Class G" },
       "FIR":     { "stroke": "#667799", "fill": "#667799", "dash": [5, 2], "label": "FIR" },
       "UIR":     { "stroke": "#556688", "fill": "#556688", "dash": [5, 2], "label": "UIR" },
-      "SUA":     { "stroke": "#BBCCDD", "fill": "#BBCCDD", "dash": [1, 5], "label": "SUA" },
+      "SUA":     { "stroke": "#BBCCDD", "fill": "#BBCCDD", "dash": [2, 2], "label": "SUA" },
       "MIL":     { "stroke": "#99AABB", "fill": "#99AABB", "dash": [5, 2], "label": "MIL" },
       "TRSA":    { "stroke": "#8899BB", "fill": "#8899BB", "dash": [5, 2], "label": "TRSA" },
       "HOLDS":     { "stroke": "#7BBFBF", "fill": "#7BBFBF", "dash": [0, 0] },
@@ -30,7 +30,8 @@
       "PROC_APPCH":   { "stroke": "#8899AA", "fill": "#8899AA", "dash": [] },
       "ROUTE":        { "stroke": "#C8AA88", "fill": "#C8AA88", "dash": [] },
       "GEO_COAST":    { "stroke": "#6699AA", "fill": "#6699AA", "dash": [] },
-      "GEO_BOUNDARY": { "stroke": "#557788", "fill": "#557788", "dash": [4, 3] }
+      "GEO_BOUNDARY": { "stroke": "#557788", "fill": "#557788", "dash": [4, 3] },
+      "CUSTOM":       { "stroke": "#DDAA33", "fill": "#DDAA33", "dash": [0, 0], "label": "CUSTOM" }
     }
   },
   {
@@ -64,7 +65,8 @@
       "PROC_APPCH":   { "stroke": "#FFFF44", "fill": "#FFFF44", "dash": [] },
       "ROUTE":        { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] },
       "GEO_COAST":    { "stroke": "#22CCDD", "fill": "#22CCDD", "dash": [] },
-      "GEO_BOUNDARY": { "stroke": "#2266AA", "fill": "#2266AA", "dash": [4, 3] }
+      "GEO_BOUNDARY": { "stroke": "#2266AA", "fill": "#2266AA", "dash": [4, 3] },
+      "CUSTOM":       { "stroke": "#FF44CC", "fill": "#FF44CC", "dash": [0, 0], "label": "CUSTOM" }
     }
   },
   {
@@ -98,7 +100,8 @@
       "PROC_APPCH":   { "stroke": "#FFFF44", "fill": "#FFFF44", "dash": [] },
       "ROUTE":        { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] },
       "GEO_COAST":    { "stroke": "#33BBDD", "fill": "#33BBDD", "dash": [] },
-      "GEO_BOUNDARY": { "stroke": "#2255AA", "fill": "#2255AA", "dash": [4, 3] }
+      "GEO_BOUNDARY": { "stroke": "#2255AA", "fill": "#2255AA", "dash": [4, 3] },
+      "CUSTOM":       { "stroke": "#33FF66", "fill": "#33FF66", "dash": [0, 0], "label": "CUSTOM" }
     }
   },
   {
@@ -132,7 +135,8 @@
       "PROC_APPCH":   { "stroke": "#0000AA", "fill": "#0000AA", "dash": [] },
       "ROUTE":        { "stroke": "#FFD700", "fill": "#FFD700", "dash": [] },
       "GEO_COAST":    { "stroke": "#808080", "fill": "#808080", "dash": [] },
-      "GEO_BOUNDARY": { "stroke": "#606060", "fill": "#606060", "dash": [4, 3] }
+      "GEO_BOUNDARY": { "stroke": "#606060", "fill": "#606060", "dash": [4, 3] },
+      "CUSTOM":       { "stroke": "#808080", "fill": "#808080", "dash": [0, 0], "label": "CUSTOM" }
     }
   },
   {
@@ -166,7 +170,8 @@
       "PROC_APPCH":   { "stroke": "#FF9900", "fill": "#FF9900", "dash": [] },
       "ROUTE":        { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [] },
       "GEO_COAST":    { "stroke": "#AA8833", "fill": "#AA8833", "dash": [] },
-      "GEO_BOUNDARY": { "stroke": "#886622", "fill": "#886622", "dash": [4, 3] }
+      "GEO_BOUNDARY": { "stroke": "#886622", "fill": "#886622", "dash": [4, 3] },
+      "CUSTOM":       { "stroke": "#00CCFF", "fill": "#00CCFF", "dash": [0, 0], "label": "CUSTOM" }
     }
   },
   {
@@ -200,7 +205,8 @@
       "PROC_APPCH":   { "stroke": "#FFDD44", "fill": "#FFDD44", "dash": [] },
       "ROUTE":        { "stroke": "#FF88CC", "fill": "#FF88CC", "dash": [] },
       "GEO_COAST":    { "stroke": "#00FFFF", "fill": "#00FFFF", "dash": [] },
-      "GEO_BOUNDARY": { "stroke": "#FF69B4", "fill": "#FF69B4", "dash": [4, 3] }
+      "GEO_BOUNDARY": { "stroke": "#FF69B4", "fill": "#FF69B4", "dash": [4, 3] },
+      "CUSTOM":       { "stroke": "#FFFFFF", "fill": "#FFFFFF", "dash": [0, 0], "label": "CUSTOM" }
     }
   }
 ]

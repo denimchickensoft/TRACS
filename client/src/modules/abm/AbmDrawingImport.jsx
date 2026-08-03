@@ -1,0 +1,152 @@
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { parseGeojson } from '../../utils/parseGeojson.js'
+import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
+import './AbmMissionImport.css'
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload  = e => resolve(e.target.result)
+    reader.onerror = () => reject(new Error('File read failed'))
+    reader.readAsText(file)
+  })
+}
+
+function geometrySummary(features) {
+  const counts = {}
+  for (const f of features) counts[f.geometry.type] = (counts[f.geometry.type] ?? 0) + 1
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([type, n]) => `${n} ${type}`).join(', ')
+}
+
+export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
+  const addLayer = useAbmDrawingsStore(s => s.addLayer)
+
+  const [phase,   setPhase]   = useState('idle')   // idle | loading | preview
+  const [pending, setPending] = useState([])        // [{id, name, features, error}]
+  const [dragging, setDragging] = useState(false)
+  const fileRef = useRef()
+
+  // Each file is parsed independently so one bad file in a multi-drop
+  // doesn't block the rest — failures show inline in their own row instead
+  // of a single all-or-nothing error screen.
+  const processFiles = useCallback(async (fileList) => {
+    const files = Array.from(fileList ?? [])
+    if (!files.length) return
+    setPhase('loading')
+    const results = await Promise.all(files.map(async (file) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      const name = file.name.replace(/\.(nd)?(geo)?json$/i, '')
+      try {
+        const text = await readFileText(file)
+        return { id, name, features: parseGeojson(text), error: null }
+      } catch (e) {
+        return { id, name, features: null, error: e.message ?? 'Unknown error' }
+      }
+    }))
+    setPending(results)
+    setPhase('preview')
+  }, [])
+
+  // Dropped directly on the Drawings panel (Drawings.jsx) rather than
+  // inside this modal's own dropzone — skip straight to parsing instead of
+  // making the user drop a second time. Runs once; initialFiles is only
+  // ever set at mount (Drawings.jsx opens a fresh modal per drop).
+  useEffect(() => {
+    if (initialFiles?.length) processFiles(initialFiles)
+  }, []) // eslint-disable-line
+
+  const onDragOver  = e => { e.preventDefault(); setDragging(true)  }
+  const onDragLeave = e => { e.preventDefault(); setDragging(false) }
+  const onDrop = e => {
+    e.preventDefault(); setDragging(false)
+    processFiles(e.dataTransfer.files)
+  }
+  const onFileChange = e => processFiles(e.target.files)
+
+  const updateName = (id, name) => {
+    setPending(rows => rows.map(r => r.id === id ? { ...r, name } : r))
+  }
+  const removeRow = (id) => {
+    setPending(rows => rows.filter(r => r.id !== id))
+  }
+
+  const importable = pending.filter(r => !r.error)
+
+  const doImport = () => {
+    for (const row of importable) {
+      addLayer(theatre, row.name.trim() || 'Untitled', row.features)
+    }
+    onClose()
+  }
+
+  return (
+    <div className="mi-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mi-modal">
+        <div className="mi-header">
+          <span className="mi-title">LOAD DRAWING</span>
+          <button className="mi-close" onClick={onClose}>×</button>
+        </div>
+
+        {phase === 'idle' && (
+          <div
+            className={['mi-dropzone', dragging ? 'dragging' : ''].join(' ')}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onClick={() => fileRef.current?.click()}
+          >
+            <span className="mi-drop-icon">⬆</span>
+            <span className="mi-drop-label">Drop .geojson/.json/.ndgeojson file(s)</span>
+            <span className="mi-drop-sub">or click to browse — multiple files supported</span>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".geojson,.json,.ndgeojson,.ndjson,*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={onFileChange}
+            />
+          </div>
+        )}
+
+        {phase === 'loading' && (
+          <div className="mi-status">Parsing GeoJSON…</div>
+        )}
+
+        {phase === 'preview' && (
+          <div className="mi-preview">
+            <div className="mi-section-label" style={{ padding: '6px 8px 0' }}>
+              {pending.length} file{pending.length === 1 ? '' : 's'} — {importable.length} ready
+            </div>
+            <div className="mi-drawing-list">
+              {pending.map(row => (
+                <div key={row.id} className="mi-drawing-row">
+                  <input
+                    className="mi-drawing-name"
+                    value={row.name}
+                    onChange={e => updateName(row.id, e.target.value)}
+                    disabled={!!row.error}
+                    maxLength={40}
+                  />
+                  <span className={['mi-drawing-summary', row.error ? 'error' : ''].join(' ')}>
+                    {row.error ?? geometrySummary(row.features)}
+                  </span>
+                  <button className="mi-drawing-remove" onClick={() => removeRow(row.id)} title="Remove">×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mi-footer">
+          <button className="mi-btn" onClick={onClose}>Cancel</button>
+          {phase === 'preview' && (
+            <button className="mi-btn mi-btn-primary" disabled={importable.length === 0} onClick={doImport}>
+              Import{importable.length > 0 ? ` (${importable.length})` : ''}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
