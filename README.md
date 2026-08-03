@@ -1,16 +1,20 @@
 # TRACS — Tactical Radar And Control Suite
 
-A browser-based ATC and carrier air traffic control (CATCC) display for DCS World multiplayer servers running the [Olympus](https://github.com/Pax1601/DCSOlympus) mod.
+A browser-based control suite for DCS World multiplayer servers running the [Olympus](https://github.com/Pax1601/DCSOlympus) mod, providing ATC, CATCC, AIC, and ABM displays.
 
 Each controller runs a local Node.js server that polls the Olympus REST API and pushes data to their browser. Controllers connect to each other peer-to-peer via WebRTC — no port forwarding or shared server required.
+
+**Status:** pre-beta, under active development. No automated test suite yet — treat scope behavior as verified only insofar as it's been run in a live session.
+
+**Documentation:** in-depth operator guides live in [`docs/`](docs/index.md) — start there for how to actually run a position.
 
 ---
 
 ## Requirements
 
 - Node.js 18+
-- Chrome, Firefox, or Edge (Safari not supported)
-- A DCS World server running Olympus
+- A Chromium-based browser (Chrome, Edge, Brave, etc.) — the only officially supported target. Firefox has known WebRTC issues and is not supported; Safari is not supported.
+- A DCS World server running Olympus and its front-end server application
 
 ---
 
@@ -54,17 +58,33 @@ Open your browser to `http://localhost:3000`.
 
 ## Modules
 
-### ATC Scope
-Full approach/departure radar display. STARS-style command set: track ownership, handoffs, point outs, flight plan management, scratchpads, PTLs.
+### ATC (Air Traffic Controller) Scope
+Approach/departure radar display. STARS-style command set: track ownership, handoffs, point outs, flight plan management, scratchpads, PTLs, datablock collision avoidance.
 
-### CATCC Scope
-Carrier air traffic control display. Includes a Status Board for event/recovery tracking, synchronized across all CATCC positions via WebRTC.
+- **ASDE-X** — ground radar sub-scope for surface movement (taxiways, ramps).
+- **PAR** — precision approach radar panel, available from both ATC and CATCC.
+
+### CATCC (Carrier Air Traffic Control Center) Scope
+Carrier air traffic control display.
+
+- **Status Board** — event/recovery tracking (case launch/recovery), synchronized across all CATCC positions via WebRTC.
+- **Deck** — carrier deck view with zoom/pan and lat-lon calibration.
+- Mission import for carrier/airbase data.
+
+### AIC (Air Intercept Controller) Scope
+Tactical display for airborne intercept control (AWACS/GCI role): BRAA list, intercept geometry.
+
+### ABM (Air Battle Manager)
+Mission-wide package tracking display.
+
+- **ATO / FRAG** — tasking summary and per-package detail, built from a dragged-in `.miz`/mission file. Deliberately limited to structural mission data (groups/routes/payloads) — trigger scripting and briefing text are excluded by design.
+- Custom airspace/drawing import (GeoJSON), manual flight entry, airfield/ground-unit hover readout.
 
 ### Strip Bay
-Flight progress strip management. Can be docked alongside the ATC scope or undocked to a separate window.
+Flight progress strip management. Dockable alongside a scope or undocked to a separate window.
 
-### AIC Scope *(not yet implemented)*
-Tactical display for airborne intercept control (AWACS/GCI role). Deferred.
+### Pilot Flight Plan Filing
+Standalone page (`pilot.html`) pilots can use to file flight plans directly into a session over WebRTC, without going through Olympus.
 
 ---
 
@@ -78,8 +98,8 @@ Tactical display for airborne intercept control (AWACS/GCI role). Deferred.
                                                               [Other controllers]
 ```
 
-- Each controller runs their own local server — nothing is installed on the DCS/Olympus machine
-- Peer discovery and WebRTC signaling uses the public Nostr relay network — no account or infrastructure required
+- Each controller runs their own local server — nothing extra is installed on the DCS/Olympus machine
+- Peer discovery and WebRTC signaling uses the public Nostr relay network by default, falling back to a self-hosted ws-relay if no Nostr relay connects within ~8s — no account or infrastructure required
 - Session identity is derived from the Olympus server address and an optional password — no coordination needed to join the same session
 
 ---
