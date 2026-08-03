@@ -662,6 +662,8 @@ export default function AbmScope() {
   const [asVisible, setAsVisible] = useState(abmPrefs.asVisible)
   const [aspColorIdx, setAspColorIdx] = useState(abmPrefs.aspColorIdx)
   const [labelsVisible, setLabelsVisible] = useState(abmPrefs.labelsVisible)
+  const [fillVisible, setFillVisible] = useState(abmPrefs.fillVisible)
+  const [fillPct, setFillPct] = useState(abmPrefs.fillPct)
   const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
   const toggleAllDrawings = useAbmDrawingsStore(s => s.toggleAll)
   const addDrawnShape = useAbmDrawingsStore(s => s.addDrawnShape)
@@ -1148,7 +1150,8 @@ export default function AbmScope() {
     // Per-feature stroke, no edge de-dup — adjacent regions each draw their
     // own shared border. If dense theatres make that read as double/uneven
     // lines, pass `true` as a 6th arg here to de-dup (see drawAbmAirspace.js).
-    drawAbmAirspace(ctx, view, airspaceFeatures, asVisible, 80, false, airspaceColors, labelsVisible)
+    drawAbmAirspace(ctx, view, airspaceFeatures, asVisible, 80, false, airspaceColors, labelsVisible,
+      fillVisible ? fillPct : 0)
     drawAbmCustomDrawings(ctx, view, drawingLayers, airspaceColors?.CUSTOM ?? null, labelsVisible)
     drawAirways(ctx, view, airways, airwaysVisible, 50)
     drawMora(ctx, view, mora, moraVisible, 50)
@@ -1166,7 +1169,7 @@ export default function AbmScope() {
     drawAbmTowns(ctx, view, towns, townsVisible)
   }, [view, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible,
       polygonFeatures, polygonsVisible,
-      asVisible, airspaceFeatures, airspaceColors, labelsVisible, drawingLayers, airways, airwaysVisible, mora, moraVisible,
+      asVisible, airspaceFeatures, airspaceColors, labelsVisible, fillVisible, fillPct, drawingLayers, airways, airwaysVisible, mora, moraVisible,
       holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible,
       runwaysVisible, runwayCenterlines, mgrsVisible, towns, townsVisible,
       basemap, basemapVisible, water, waterVisible, roads, roadsVisible])
@@ -1629,6 +1632,27 @@ export default function AbmScope() {
       setLabelsVisible(next)
       saveAbmPrefs({ labelsVisible: next })
       setCmdFeedback(next ? 'LABELS ON' : 'LABELS OFF')
+      return
+    }
+
+    // .fill — toggle airspace polygon fill, remembering the last percentage
+    // used. .fill <1-100> — set percentage and always turn it on.
+    if (str === '.fill') {
+      const next = !fillVisible
+      setFillVisible(next)
+      saveAbmPrefs({ fillVisible: next })
+      setCmdFeedback(next ? 'FILL ON' : 'FILL OFF')
+      return
+    }
+
+    const fillPctMatch = str.match(/^\.fill (\d{1,3})$/)
+    if (fillPctMatch) {
+      const pct = parseInt(fillPctMatch[1], 10)
+      if (pct < 1 || pct > 100) { setCmdFeedback('ILL VAL'); return }
+      setFillVisible(true)
+      setFillPct(pct)
+      saveAbmPrefs({ fillVisible: true, fillPct: pct })
+      setCmdFeedback(`FILL ${pct}%`)
       return
     }
 

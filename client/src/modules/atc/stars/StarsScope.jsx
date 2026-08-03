@@ -240,7 +240,13 @@ export default function StarsScope() {
   // ── Initialize display window ─────────────────────────────────────
   useEffect(() => {
     if (!windowSettings) {
-      displayStore.initWindow(WINDOW_ID, { ...activeProfile?.defaults, dbca: loadStarsPrefs().dbca })
+      const starsPrefs = loadStarsPrefs()
+      displayStore.initWindow(WINDOW_ID, {
+        ...activeProfile?.defaults,
+        dbca: starsPrefs.dbca,
+        fillVisible: starsPrefs.fillVisible,
+        fillPct: starsPrefs.fillPct,
+      })
     }
   }, []) // eslint-disable-line
 
@@ -454,7 +460,7 @@ export default function StarsScope() {
     const ctx = mapCanvasRef.current.getContext('2d')
     drawMaps(ctx, view, maps, mapVisible,
       windowSettings?.briteMapA ?? 50, briteB, csMap, activeColors,
-      activeProfile?.visual?.mapPolygonFill ?? 0)
+      windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0)
     drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, briteB)
     drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 50)
     drawHoldings(ctx, view, holdings, holdsVisible, briteB, csMap, activeColors)
@@ -468,7 +474,8 @@ export default function StarsScope() {
   }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
       holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible, mva, mvaVisible, facilityId,
       procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
-      windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap, windowSettings?.aspColorIdx])
+      windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap, windowSettings?.aspColorIdx,
+      windowSettings?.fillVisible, windowSettings?.fillPct])
 
   // ── Load procedure data for displayed routes (async, per-ICAO cache) ────
   useEffect(() => {

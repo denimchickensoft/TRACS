@@ -540,6 +540,25 @@ export function TOGGLE_DBCA() {
   ok()
 }
 
+// Airspace polygon fill — shared CATCC/ABM concept (drawAbmAirspace.js), here
+// against drawMaps.js's polygonFill pass. `.fill` toggles on/off remembering
+// the last percentage; `.fill <n>` sets the percentage and always turns it on.
+export function TOGGLE_FILL() {
+  const win  = getDisplay().windows[WINDOW_ID]
+  const next = !(win?.fillVisible ?? false)
+  getDisplay().updateWindow(WINDOW_ID, { fillVisible: next })
+  saveStarsPrefs({ fillVisible: next })
+  ok()
+}
+
+export function SET_FILL({ captures }) {
+  const pct = parseInt(captures?.pct, 10)
+  if (isNaN(pct) || pct < 1 || pct > 100) return err('ILL VAL')
+  getDisplay().updateWindow(WINDOW_ID, { fillVisible: true, fillPct: pct })
+  saveStarsPrefs({ fillVisible: true, fillPct: pct })
+  ok()
+}
+
 // ── Find fix / navaid / airport ───────────────────────────────────────────────
 
 export function FIND_FIX({ captures }) {
@@ -585,6 +604,8 @@ const ACTION_MAP = {
   REFRESH_ASP_COLORS,
   TOGGLE_COORDS,
   TOGGLE_DBCA,
+  TOGGLE_FILL,
+  SET_FILL,
   FIND_FIX,
   RENAME_CALLSIGN,
   RESET_CALLSIGN,

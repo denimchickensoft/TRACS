@@ -34,10 +34,12 @@ export function drawMaps(ctx, view, maps, visible, briteMapA, briteMapB, csMap, 
     const visibleFeatures = maps[i].features.filter(f => bboxInView(f.bbox, view))
     if (!visibleFeatures.length) continue
 
-    // Fill pass — closed polygons, no stroke
+    // Fill pass — closed polygons, no stroke. Uses the category's `fill`
+    // color (distinct from `stroke`, e.g. a lighter wash under a bold
+    // outline) rather than reusing the outline color.
     if (polygonFill > 0) {
       ctx.globalAlpha = alpha * (polygonFill / 100)
-      ctx.fillStyle   = color
+      ctx.fillStyle   = entry?.fill ?? color
       for (const f of visibleFeatures) {
         drawFill(ctx, view, f)
       }

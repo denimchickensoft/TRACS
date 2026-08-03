@@ -262,6 +262,24 @@ register('.GEO', () => {
   return [`GEO ${next ? 'ON' : 'OFF'}`]
 })
 
+// .FILL — toggle airspace polygon fill on/off, remembering the last
+// percentage used. .FILL <1-100> — set fill percentage and turn it on.
+register('.FILL', (parts) => {
+  const ws = useDisplayStore.getState().windows[WINDOW_ID]
+  const val = parts[1]
+  if (!val) {
+    const next = !(ws?.fillVisible ?? false)
+    useDisplayStore.getState().updateWindow(WINDOW_ID, { fillVisible: next })
+    saveCatccPrefs({ fillVisible: next })
+    return [`FILL ${next ? 'ON' : 'OFF'}`]
+  }
+  const pct = parseInt(val, 10)
+  if (isNaN(pct) || pct < 1 || pct > 100) return ['ILL VAL']
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { fillVisible: true, fillPct: pct })
+  saveCatccPrefs({ fillVisible: true, fillPct: pct })
+  return [`FILL ${pct}%`]
+})
+
 // .ASPCOLORS <name> — same command STARS/ABM use for airspace palettes
 // (store/abmAirspace.js), reimplemented against window settings. Refreshes
 // palettes from the server first, same as ABM, so a palette added/edited in

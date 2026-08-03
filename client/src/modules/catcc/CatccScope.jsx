@@ -202,6 +202,7 @@ export default function CatccScope() {
         dbca: catccPrefs.dbca,
         asVisible: catccPrefs.asVisible, aspColorIdx: catccPrefs.aspColorIdx, labelsVisible: catccPrefs.labelsVisible,
         fixesVisible: catccPrefs.fixesVisible, geoVisible: catccPrefs.geoVisible,
+        fillVisible: catccPrefs.fillVisible, fillPct: catccPrefs.fillPct,
       })
     }
   }, []) // eslint-disable-line
@@ -287,10 +288,12 @@ export default function CatccScope() {
     drawGeo(ctx, view, geoBoundaries, geoCoastlines, windowSettings?.geoVisible ?? false, 50)
     // Per-feature stroke, no edge de-dup — see drawAbmAirspace.js for the
     // dedupe option if dense theatres read as double/uneven lines.
-    drawAbmAirspace(ctx, view, airspaceFeatures, windowSettings?.asVisible ?? {}, 80, false, airspaceColors, windowSettings?.labelsVisible ?? false)
+    drawAbmAirspace(ctx, view, airspaceFeatures, windowSettings?.asVisible ?? {}, 80, false, airspaceColors, windowSettings?.labelsVisible ?? false,
+      windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0)
     drawAbmFixSymbols(ctx, view, fixes, windowSettings?.fixesVisible ?? false, '#66CCFF', 60, windowSettings?.labelsVisible ?? false)
   }, [view, geoBoundaries, geoCoastlines, windowSettings?.geoVisible,
       airspaceFeatures, airspaceColors, windowSettings?.asVisible, windowSettings?.labelsVisible,
+      windowSettings?.fillVisible, windowSettings?.fillPct,
       fixes, windowSettings?.fixesVisible])
 
   // ── Render CATCC layers (rings + CCZ/CCA + corridor + radial) ─────

@@ -93,6 +93,8 @@ Bare-click (empty buffer) also resolves pending point-outs/handoffs automaticall
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
 | `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement |
+| `.FILL` + ENTER | — | Toggle airspace polygon fill |
+| `.FILL <1-100>` + ENTER | — | Set fill transparency % and turn it on |
 | `.COORDS` + ENTER | — | Toggle a cursor lat/lng debug readout |
 | `.FIND <query>` + ENTER | — | Drop a marker at a named fix/navaid/airport |
 | `.PROC <name>` + ENTER | — | Toggle display of a named SID/STAR/approach procedure |

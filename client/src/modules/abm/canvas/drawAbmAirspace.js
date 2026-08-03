@@ -20,13 +20,18 @@
  * nameLabel/altLabel — see drawLabels() below. Labels only ever appear for
  * features already passing the visibleCategories filter above, so they
  * track the .tma/.classc/etc category toggles automatically.
+ *
+ * `fillPct` (0-100, from the `.fill` command) draws a filled-polygon pass
+ * before the stroke pass, using each category's `fill` color (falls back to
+ * `stroke`, then FALLBACK_COLOR) — same convention as drawMaps.js's
+ * polygonFill. 0 (the default) skips the pass entirely.
  */
 
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
 
 const FALLBACK_COLOR = '#556677'
 
-export function drawAbmAirspace(ctx, view, features, visibleCategories, brite = 80, dedupe = false, colors = null, labelsVisible = false) {
+export function drawAbmAirspace(ctx, view, features, visibleCategories, brite = 80, dedupe = false, colors = null, labelsVisible = false, fillPct = 0) {
   if (!features?.length) return
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
@@ -34,6 +39,21 @@ export function drawAbmAirspace(ctx, view, features, visibleCategories, brite = 
   const visibleFeatures = features.filter(f =>
     visibleCategories[f.displayCategory] && bboxInView(f.bbox, view))
   if (!visibleFeatures.length) return
+
+  // Fill pass — closed polygon area, grouped by category so each keeps its
+  // own fill color.
+  if (fillPct > 0) {
+    const byCategory = new Map()
+    for (const f of visibleFeatures) {
+      if (!byCategory.has(f.displayCategory)) byCategory.set(f.displayCategory, [])
+      byCategory.get(f.displayCategory).push(f)
+    }
+    ctx.globalAlpha = alpha * (fillPct / 100)
+    for (const [category, feats] of byCategory) {
+      ctx.fillStyle = colors?.[category]?.fill ?? colors?.[category]?.stroke ?? FALLBACK_COLOR
+      for (const f of feats) drawFill(ctx, view, f)
+    }
+  }
 
   ctx.globalAlpha = alpha
   ctx.lineWidth   = 1.0
@@ -218,6 +238,27 @@ function longestNearStraightRun(ring, view, toleranceDeg) {
   if (angle < -Math.PI / 2) angle += Math.PI
 
   return { mx, my, angle, len: bestLen }
+}
+
+// Draw filled polygon area for a feature (no stroke). Copied verbatim from
+// drawMaps.js's drawFill.
+function drawFill(ctx, view, feature) {
+  const polygons = feature.geometry.type === 'Polygon'
+    ? [feature.geometry.coordinates]
+    : feature.geometry.coordinates
+
+  for (const poly of polygons) {
+    ctx.beginPath()
+    const ring = poly[0]
+    for (let j = 0; j < ring.length - 1; j++) {
+      const [lng, lat] = ring[j]
+      const { x, y } = latLngToCanvas(lat, lng, view)
+      if (j === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    ctx.fill()
+  }
 }
 
 // Strokes one feature's rings independently of every other feature.

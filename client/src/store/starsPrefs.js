@@ -9,6 +9,8 @@ const KEY = 'tracs-stars-prefs'
 
 const DEFAULTS = {
   dbca: false, // datablock collision avoidance — off by default (on for CATCC only)
+  fillVisible: false, // airspace polygon fill — .fill toggles
+  fillPct: 30, // 1-100 — .fill <n> sets this and turns fillVisible on
 }
 
 export function loadStarsPrefs() {
