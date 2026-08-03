@@ -1,0 +1,640 @@
+{
+ "theatre": "Germany",
+ "towns": [
+  {
+   "name": "Anklam",
+   "lat": 53.856053,
+   "lon": 13.688091
+  },
+  {
+   "name": "Aschersleben",
+   "lat": 51.755955,
+   "lon": 11.462133
+  },
+  {
+   "name": "Bad Belzig",
+   "lat": 52.140562,
+   "lon": 12.586587
+  },
+  {
+   "name": "Bad Bevensen",
+   "lat": 53.080941,
+   "lon": 10.574481
+  },
+  {
+   "name": "Bad Fallingbostel",
+   "lat": 52.865449,
+   "lon": 9.693018
+  },
+  {
+   "name": "Bad Kreuznach",
+   "lat": 49.831043,
+   "lon": 7.876043
+  },
+  {
+   "name": "Bad Segeberg",
+   "lat": 53.936935,
+   "lon": 10.304477
+  },
+  {
+   "name": "Barth",
+   "lat": 54.369055,
+   "lon": 12.725858
+  },
+  {
+   "name": "Berlin",
+   "lat": 52.517036,
+   "lon": 13.38886
+  },
+  {
+   "name": "Bernburg (Saale)",
+   "lat": 51.793079,
+   "lon": 11.73916
+  },
+  {
+   "name": "Bielefeld",
+   "lat": 52.023927,
+   "lon": 8.538114
+  },
+  {
+   "name": "Bitburg",
+   "lat": 49.985912,
+   "lon": 6.511769
+  },
+  {
+   "name": "Blankenburg (Harz)",
+   "lat": 51.790268,
+   "lon": 10.955198
+  },
+  {
+   "name": "Boizenburg",
+   "lat": 53.375079,
+   "lon": 10.723236
+  },
+  {
+   "name": "Bonn",
+   "lat": 50.698964,
+   "lon": 7.074078
+  },
+  {
+   "name": "Brandenburg an der Havel",
+   "lat": 52.410826,
+   "lon": 12.549793
+  },
+  {
+   "name": "Braunschweig",
+   "lat": 52.264658,
+   "lon": 10.523606
+  },
+  {
+   "name": "Bremen",
+   "lat": 53.07582,
+   "lon": 8.807162
+  },
+  {
+   "name": "Bremerhaven",
+   "lat": 53.566169,
+   "lon": 8.635711
+  },
+  {
+   "name": "Buchholz in der Nordheide",
+   "lat": 53.333302,
+   "lon": 9.866664
+  },
+  {
+   "name": "Burg",
+   "lat": 52.270563,
+   "lon": 11.858819
+  },
+  {
+   "name": "Butzow",
+   "lat": 53.850005,
+   "lon": 11.983295
+  },
+  {
+   "name": "Buxtehude",
+   "lat": 53.476735,
+   "lon": 9.700393
+  },
+  {
+   "name": "Celle",
+   "lat": 52.624056,
+   "lon": 10.081051
+  },
+  {
+   "name": "Cologne",
+   "lat": 50.914806,
+   "lon": 6.858789
+  },
+  {
+   "name": "Copenhagen",
+   "lat": 55.691109,
+   "lon": 12.570825
+  },
+  {
+   "name": "Dabendorf",
+   "lat": 52.23962,
+   "lon": 13.43268
+  },
+  {
+   "name": "Demmin",
+   "lat": 53.907002,
+   "lon": 13.032784
+  },
+  {
+   "name": "Dessau",
+   "lat": 51.830996,
+   "lon": 12.243072
+  },
+  {
+   "name": "Dusseldorf",
+   "lat": 51.180399,
+   "lon": 6.720742
+  },
+  {
+   "name": "Eberswalde",
+   "lat": 52.835081,
+   "lon": 13.799654
+  },
+  {
+   "name": "Einbeck",
+   "lat": 51.818507,
+   "lon": 9.867845
+  },
+  {
+   "name": "Elmshorn",
+   "lat": 53.753249,
+   "lon": 9.652455
+  },
+  {
+   "name": "Erfurt",
+   "lat": 50.993575,
+   "lon": 11.023765
+  },
+  {
+   "name": "Eutin",
+   "lat": 54.136464,
+   "lon": 10.615907
+  },
+  {
+   "name": "Frankfurt",
+   "lat": 50.116661,
+   "lon": 8.670233
+  },
+  {
+   "name": "Fulda",
+   "lat": 50.553317,
+   "lon": 9.693899
+  },
+  {
+   "name": "Furstenwalde",
+   "lat": 52.358021,
+   "lon": 14.064985
+  },
+  {
+   "name": "Gardelegen",
+   "lat": 52.526556,
+   "lon": 11.392978
+  },
+  {
+   "name": "Geesthacht",
+   "lat": 53.437468,
+   "lon": 10.367823
+  },
+  {
+   "name": "Genthin",
+   "lat": 52.406374,
+   "lon": 12.156174
+  },
+  {
+   "name": "Giessen",
+   "lat": 50.584796,
+   "lon": 8.670472
+  },
+  {
+   "name": "Gottingen",
+   "lat": 51.532833,
+   "lon": 9.93518
+  },
+  {
+   "name": "Greifswald",
+   "lat": 54.095791,
+   "lon": 13.381524
+  },
+  {
+   "name": "Grevesmuhlen",
+   "lat": 53.864471,
+   "lon": 11.189884
+  },
+  {
+   "name": "Gustrow",
+   "lat": 53.793652,
+   "lon": 12.175965
+  },
+  {
+   "name": "Hagenow",
+   "lat": 53.43058,
+   "lon": 11.190482
+  },
+  {
+   "name": "Haldensleben",
+   "lat": 52.291124,
+   "lon": 11.413272
+  },
+  {
+   "name": "Halle",
+   "lat": 51.482504,
+   "lon": 11.970545
+  },
+  {
+   "name": "Hamburg",
+   "lat": 53.569715,
+   "lon": 10.016331
+  },
+  {
+   "name": "Hameln",
+   "lat": 52.103994,
+   "lon": 9.356155
+  },
+  {
+   "name": "Hannover",
+   "lat": 52.374478,
+   "lon": 9.738552
+  },
+  {
+   "name": "Helmstedt",
+   "lat": 52.227704,
+   "lon": 11.010469
+  },
+  {
+   "name": "Hildesheim",
+   "lat": 52.152164,
+   "lon": 9.951303
+  },
+  {
+   "name": "Holzminden",
+   "lat": 51.828835,
+   "lon": 9.446657
+  },
+  {
+   "name": "Jena",
+   "lat": 50.92807,
+   "lon": 11.585796
+  },
+  {
+   "name": "Juterbog",
+   "lat": 51.991649,
+   "lon": 13.080113
+  },
+  {
+   "name": "Kaiserslautern",
+   "lat": 49.436429,
+   "lon": 7.759265
+  },
+  {
+   "name": "Kaltenkirchen",
+   "lat": 53.837171,
+   "lon": 9.961488
+  },
+  {
+   "name": "Kassel",
+   "lat": 51.316397,
+   "lon": 9.490107
+  },
+  {
+   "name": "Koblenz",
+   "lat": 50.383869,
+   "lon": 7.582582
+  },
+  {
+   "name": "Kothen (Anhalt)",
+   "lat": 51.751033,
+   "lon": 11.973698
+  },
+  {
+   "name": "Leipzig",
+   "lat": 51.342248,
+   "lon": 12.38866
+  },
+  {
+   "name": "Lubeck",
+   "lat": 53.866444,
+   "lon": 10.684738
+  },
+  {
+   "name": "Luchow",
+   "lat": 52.968667,
+   "lon": 11.156762
+  },
+  {
+   "name": "Luckenwalde",
+   "lat": 52.090204,
+   "lon": 13.174188
+  },
+  {
+   "name": "Ludwigslust",
+   "lat": 53.330023,
+   "lon": 11.499364
+  },
+  {
+   "name": "Luneburg",
+   "lat": 53.248706,
+   "lon": 10.407854
+  },
+  {
+   "name": "Lutherstadt Eisleben",
+   "lat": 51.517707,
+   "lon": 11.551967
+  },
+  {
+   "name": "Lutherstadt Wittenberg",
+   "lat": 51.866653,
+   "lon": 12.64676
+  },
+  {
+   "name": "Magdeburg",
+   "lat": 52.131589,
+   "lon": 11.63996
+  },
+  {
+   "name": "Mainz",
+   "lat": 50.006234,
+   "lon": 8.251375
+  },
+  {
+   "name": "Malmo",
+   "lat": 55.591917,
+   "lon": 13.022326
+  },
+  {
+   "name": "Mannheim",
+   "lat": 49.549269,
+   "lon": 8.522608
+  },
+  {
+   "name": "Merseburg",
+   "lat": 51.356441,
+   "lon": 11.996147
+  },
+  {
+   "name": "Molln",
+   "lat": 53.62892,
+   "lon": 10.688017
+  },
+  {
+   "name": "Naumburg (Saale)",
+   "lat": 51.152565,
+   "lon": 11.809918
+  },
+  {
+   "name": "Neubrandenburg",
+   "lat": 53.557446,
+   "lon": 13.260278
+  },
+  {
+   "name": "Neuruppin",
+   "lat": 52.924386,
+   "lon": 12.809292
+  },
+  {
+   "name": "Neustadt",
+   "lat": 54.10299,
+   "lon": 10.818674
+  },
+  {
+   "name": "Neustrelitz",
+   "lat": 53.361716,
+   "lon": 13.063
+  },
+  {
+   "name": "Nienburg/Weser",
+   "lat": 52.641085,
+   "lon": 9.21819
+  },
+  {
+   "name": "Nordhausen",
+   "lat": 51.497892,
+   "lon": 10.79224
+  },
+  {
+   "name": "Oldenburg",
+   "lat": 53.109976,
+   "lon": 8.203132
+  },
+  {
+   "name": "Oranienburg",
+   "lat": 52.752938,
+   "lon": 13.245759
+  },
+  {
+   "name": "Osnabruck",
+   "lat": 52.268156,
+   "lon": 8.021913
+  },
+  {
+   "name": "Osterode am Harz",
+   "lat": 51.72784,
+   "lon": 10.250819
+  },
+  {
+   "name": "Paderborn",
+   "lat": 51.721605,
+   "lon": 8.751781
+  },
+  {
+   "name": "Parchim",
+   "lat": 53.425845,
+   "lon": 11.847524
+  },
+  {
+   "name": "Pasewalk",
+   "lat": 53.505368,
+   "lon": 13.988905
+  },
+  {
+   "name": "Potsdam",
+   "lat": 52.400931,
+   "lon": 13.059139
+  },
+  {
+   "name": "Prenzlau",
+   "lat": 53.3167,
+   "lon": 13.866575
+  },
+  {
+   "name": "Quedlinburg",
+   "lat": 51.785543,
+   "lon": 11.151993
+  },
+  {
+   "name": "Querfurt",
+   "lat": 51.378527,
+   "lon": 11.597443
+  },
+  {
+   "name": "Rathenow",
+   "lat": 52.60637,
+   "lon": 12.338225
+  },
+  {
+   "name": "Rostock",
+   "lat": 54.092444,
+   "lon": 12.128612
+  },
+  {
+   "name": "Rotenburg (Wumme)",
+   "lat": 53.110891,
+   "lon": 9.404928
+  },
+  {
+   "name": "Salzwedel",
+   "lat": 52.852846,
+   "lon": 11.15397
+  },
+  {
+   "name": "Sangerhausen",
+   "lat": 51.482864,
+   "lon": 11.297828
+  },
+  {
+   "name": "Schneverdingen",
+   "lat": 53.116597,
+   "lon": 9.792589
+  },
+  {
+   "name": "Schonebeck (Elbe)",
+   "lat": 52.020618,
+   "lon": 11.738391
+  },
+  {
+   "name": "Schwedt",
+   "lat": 53.058637,
+   "lon": 14.284086
+  },
+  {
+   "name": "Schweinfurt",
+   "lat": 50.04399,
+   "lon": 10.211814
+  },
+  {
+   "name": "Schwerin",
+   "lat": 53.62883,
+   "lon": 11.414804
+  },
+  {
+   "name": "Stabfurt",
+   "lat": 51.851451,
+   "lon": 11.592945
+  },
+  {
+   "name": "Stade",
+   "lat": 53.599794,
+   "lon": 9.475436
+  },
+  {
+   "name": "Stadthagen",
+   "lat": 52.328969,
+   "lon": 9.205347
+  },
+  {
+   "name": "Stendal",
+   "lat": 52.605078,
+   "lon": 11.859428
+  },
+  {
+   "name": "Stralsund",
+   "lat": 54.309631,
+   "lon": 13.082085
+  },
+  {
+   "name": "Strausberg",
+   "lat": 52.581401,
+   "lon": 13.883395
+  },
+  {
+   "name": "Szczecin",
+   "lat": 53.431799,
+   "lon": 14.526161
+  },
+  {
+   "name": "Tangermunde",
+   "lat": 52.54311,
+   "lon": 11.972252
+  },
+  {
+   "name": "Templin",
+   "lat": 53.11935,
+   "lon": 13.500556
+  },
+  {
+   "name": "Uelzen",
+   "lat": 52.966684,
+   "lon": 10.558485
+  },
+  {
+   "name": "Verden (Aller)",
+   "lat": 52.922341,
+   "lon": 9.228151
+  },
+  {
+   "name": "Waren (Muritz)",
+   "lat": 53.515625,
+   "lon": 12.685061
+  },
+  {
+   "name": "Weimar",
+   "lat": 50.988118,
+   "lon": 11.323693
+  },
+  {
+   "name": "Weissenfels",
+   "lat": 51.199979,
+   "lon": 11.966785
+  },
+  {
+   "name": "Wernigerode",
+   "lat": 51.834417,
+   "lon": 10.786252
+  },
+  {
+   "name": "Wismar",
+   "lat": 53.890983,
+   "lon": 11.464793
+  },
+  {
+   "name": "Wittenberge",
+   "lat": 52.998372,
+   "lon": 11.75072
+  },
+  {
+   "name": "Wittenburg",
+   "lat": 53.505962,
+   "lon": 11.084783
+  },
+  {
+   "name": "Wolfsburg",
+   "lat": 52.420559,
+   "lon": 10.786168
+  },
+  {
+   "name": "Wolgast",
+   "lat": 54.053647,
+   "lon": 13.775781
+  },
+  {
+   "name": "Wurzburg",
+   "lat": 49.794783,
+   "lon": 9.959447
+  },
+  {
+   "name": "Zeitz",
+   "lat": 51.049164,
+   "lon": 12.134999
+  },
+  {
+   "name": "Zerbst",
+   "lat": 51.964034,
+   "lon": 12.085502
+  }
+ ]
+}

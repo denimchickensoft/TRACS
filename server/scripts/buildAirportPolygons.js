@@ -33,7 +33,7 @@ function buildAndWriteTheatre(theatre, dcsPath) {
   const nameMap = NAME_MAP[theatre] || {}
   const conf    = THEATRES[theatre]
 
-  const rwFile = core.RUNWAY_FILE[theatre] ?? theatre
+  const rwFile = conf.runwayKey || theatre
   const rwPath = path.join(ROOT, 'client/public/runways', `${rwFile}.json`)
   const rwJson = fs.existsSync(rwPath) ? JSON.parse(fs.readFileSync(rwPath, 'utf8')) : null
 
@@ -56,6 +56,23 @@ function buildAndWriteTheatre(theatre, dcsPath) {
     `${String(result.rwyCount).padStart(3)} runways  ` +
     `${kb.padStart(6)} KB`
   )
+
+  if (result.unmatchedStems.length || result.unclaimedAirbases.length) {
+    fs.writeFileSync(
+      path.join(outDir, 'unmatched_airports.json'),
+      JSON.stringify({
+        theatre,
+        unmatchedStems: result.unmatchedStems,
+        unclaimedAirbases: result.unclaimedAirbases,
+        suggestedPairs: result.suggestedPairs,
+      }, null, 1)
+    )
+    console.log(
+      `                ${result.unmatchedStems.length} rn5 stems have no airport_name_map entry, ` +
+      `${result.unclaimedAirbases.length} runway-JSON airbases unclaimed, ` +
+      `${result.suggestedPairs.length} suggested by location -> unmatched_airports.json`
+    )
+  }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

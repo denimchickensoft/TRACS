@@ -11,7 +11,8 @@
     "build:basemap": "node scripts/buildAbmBasemap.js",
     "build:mva": "node scripts/buildMvaMap.js",
     "package:extract": "node --experimental-sea-config navdata/tools/sea-config.json",
-    "build:terrain-exe": "node scripts/terrainDataExe/build.js"
+    "build:terrain-exe": "node scripts/terrainDataExe/build.js",
+    "seed-manifest": "node scripts/terrainDataExe/seedManifest.js"
   },
   "dependencies": {
     "@trystero-p2p/ws-relay": "^0.24.0",

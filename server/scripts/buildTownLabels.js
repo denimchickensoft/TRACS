@@ -25,7 +25,8 @@ const OUTPUT_DIR = path.join(ROOT, 'client/public/towns')
 const DEFAULT_DCS_PATH = 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\DCSWorld\\Mods\\terrains'
 
 function buildAndWriteTheatre(theatre, dcsPath) {
-  const result = core.buildTheatre({ theatre, terrainsDir: dcsPath })
+  const dcsFolder = THEATRES[theatre]?.terrainsFolder
+  const result = core.buildTheatre({ theatre, terrainsDir: dcsPath, dcsFolder })
 
   if (result.status === 'skip') {
     console.log(`  ${theatre}: skipped — ${result.reason}`)

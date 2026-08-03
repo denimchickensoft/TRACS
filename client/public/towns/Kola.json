@@ -1,0 +1,3940 @@
+{
+ "theatre": "Kola",
+ "towns": [
+  {
+   "name": "Aapua",
+   "lat": 66.859856,
+   "lon": 23.520965
+  },
+  {
+   "name": "Aarborte",
+   "lat": 65.596262,
+   "lon": 13.990966
+  },
+  {
+   "name": "Aavasaksa",
+   "lat": 66.378123,
+   "lon": 23.697575
+  },
+  {
+   "name": "Abborrtrask",
+   "lat": 65.449762,
+   "lon": 19.386899
+  },
+  {
+   "name": "Abisko",
+   "lat": 68.35017,
+   "lon": 18.830006
+  },
+  {
+   "name": "Adak",
+   "lat": 65.352164,
+   "lon": 18.597745
+  },
+  {
+   "name": "Afrikanda",
+   "lat": 67.441689,
+   "lon": 32.776907
+  },
+  {
+   "name": "Ahola",
+   "lat": 66.110272,
+   "lon": 28.16577
+  },
+  {
+   "name": "Airivaara",
+   "lat": 67.394335,
+   "lon": 23.709376
+  },
+  {
+   "name": "Aittojarvi",
+   "lat": 65.417329,
+   "lon": 26.730406
+  },
+  {
+   "name": "Ajluokta",
+   "lat": 68.044711,
+   "lon": 16.080025
+  },
+  {
+   "name": "Akaslompolo",
+   "lat": 67.606571,
+   "lon": 24.146278
+  },
+  {
+   "name": "Aker",
+   "lat": 66.17127,
+   "lon": 12.568573
+  },
+  {
+   "name": "Ala-Raumo",
+   "lat": 65.849852,
+   "lon": 24.264813
+  },
+  {
+   "name": "Alakurtti",
+   "lat": 66.964005,
+   "lon": 30.342423
+  },
+  {
+   "name": "Alakyla",
+   "lat": 67.35632,
+   "lon": 24.892615
+  },
+  {
+   "name": "Alsvag",
+   "lat": 68.901802,
+   "lon": 15.28002
+  },
+  {
+   "name": "Alta",
+   "lat": 69.966605,
+   "lon": 23.273328
+  },
+  {
+   "name": "Alternes",
+   "lat": 66.308329,
+   "lon": 14.021878
+  },
+  {
+   "name": "Altevika",
+   "lat": 68.943289,
+   "lon": 16.67448
+  },
+  {
+   "name": "Alvik",
+   "lat": 65.563098,
+   "lon": 21.780972
+  },
+  {
+   "name": "Alvsbyn",
+   "lat": 65.675141,
+   "lon": 20.996923
+  },
+  {
+   "name": "Ambarnyi",
+   "lat": 65.897865,
+   "lon": 33.710458
+  },
+  {
+   "name": "Ammarnas",
+   "lat": 65.960573,
+   "lon": 16.205739
+  },
+  {
+   "name": "Andenes",
+   "lat": 69.32182,
+   "lon": 16.124722
+  },
+  {
+   "name": "Andervag",
+   "lat": 68.916249,
+   "lon": 17.171979
+  },
+  {
+   "name": "Angesan",
+   "lat": 66.752709,
+   "lon": 22.297303
+  },
+  {
+   "name": "Ankarsund",
+   "lat": 65.354932,
+   "lon": 16.501515
+  },
+  {
+   "name": "Anstad",
+   "lat": 68.829723,
+   "lon": 17.184762
+  },
+  {
+   "name": "Antinrova",
+   "lat": 67.255855,
+   "lon": 22.76114
+  },
+  {
+   "name": "Antis",
+   "lat": 67.266007,
+   "lon": 22.764015
+  },
+  {
+   "name": "Antnas",
+   "lat": 65.552553,
+   "lon": 21.842873
+  },
+  {
+   "name": "Apatity",
+   "lat": 67.568626,
+   "lon": 33.404389
+  },
+  {
+   "name": "Arjeplog",
+   "lat": 66.051769,
+   "lon": 17.89168
+  },
+  {
+   "name": "Arnoyhamn",
+   "lat": 70.052676,
+   "lon": 20.631698
+  },
+  {
+   "name": "Arstein",
+   "lat": 68.692199,
+   "lon": 17.532278
+  },
+  {
+   "name": "Arvidsjaur",
+   "lat": 65.594767,
+   "lon": 19.169502
+  },
+  {
+   "name": "Arviksand",
+   "lat": 70.195149,
+   "lon": 20.522036
+  },
+  {
+   "name": "Ase",
+   "lat": 69.016061,
+   "lon": 15.809436
+  },
+  {
+   "name": "Aska",
+   "lat": 67.290852,
+   "lon": 26.694835
+  },
+  {
+   "name": "Austbo",
+   "lat": 65.933881,
+   "lon": 12.359247
+  },
+  {
+   "name": "Avan",
+   "lat": 65.68034,
+   "lon": 21.804493
+  },
+  {
+   "name": "Avneporog",
+   "lat": 65.007767,
+   "lon": 33.754709
+  },
+  {
+   "name": "Avzi",
+   "lat": 69.022855,
+   "lon": 23.229443
+  },
+  {
+   "name": "Badderen",
+   "lat": 69.844761,
+   "lon": 22.025795
+  },
+  {
+   "name": "Balinge",
+   "lat": 65.632213,
+   "lon": 21.926266
+  },
+  {
+   "name": "Ballangen",
+   "lat": 68.342872,
+   "lon": 16.831338
+  },
+  {
+   "name": "Ballstad",
+   "lat": 68.074298,
+   "lon": 13.545046
+  },
+  {
+   "name": "Bardal",
+   "lat": 66.214951,
+   "lon": 13.376487
+  },
+  {
+   "name": "Bardufoss",
+   "lat": 69.065637,
+   "lon": 18.515924
+  },
+  {
+   "name": "Batsfjord",
+   "lat": 70.635287,
+   "lon": 29.72135
+  },
+  {
+   "name": "Batskarsnas",
+   "lat": 65.780929,
+   "lon": 23.422139
+  },
+  {
+   "name": "Beisfjord",
+   "lat": 68.376171,
+   "lon": 17.596287
+  },
+  {
+   "name": "Beloye More",
+   "lat": 67.080414,
+   "lon": 32.272826
+  },
+  {
+   "name": "Bensbyn",
+   "lat": 65.639826,
+   "lon": 22.239666
+  },
+  {
+   "name": "Berg",
+   "lat": 65.367566,
+   "lon": 12.198035
+  },
+  {
+   "name": "Bergsfjord",
+   "lat": 70.249336,
+   "lon": 21.792242
+  },
+  {
+   "name": "Berlevag",
+   "lat": 70.857815,
+   "lon": 29.086036
+  },
+  {
+   "name": "Biertavarri",
+   "lat": 69.494955,
+   "lon": 20.831901
+  },
+  {
+   "name": "Billavuotna",
+   "lat": 70.31531,
+   "lon": 25.046216
+  },
+  {
+   "name": "Bindalseidet",
+   "lat": 65.126685,
+   "lon": 12.230452
+  },
+  {
+   "name": "Bissojohka",
+   "lat": 70.31791,
+   "lon": 25.565881
+  },
+  {
+   "name": "Bjerka",
+   "lat": 66.149043,
+   "lon": 13.836276
+  },
+  {
+   "name": "Bjerkvik",
+   "lat": 68.549166,
+   "lon": 17.557148
+  },
+  {
+   "name": "Bjorkfors",
+   "lat": 65.918698,
+   "lon": 23.457986
+  },
+  {
+   "name": "Bjorn",
+   "lat": 66.081122,
+   "lon": 12.582781
+  },
+  {
+   "name": "Bjornevatn",
+   "lat": 69.667366,
+   "lon": 29.987224
+  },
+  {
+   "name": "Bjorsbyn",
+   "lat": 65.639258,
+   "lon": 22.12963
+  },
+  {
+   "name": "Blattnicksele",
+   "lat": 65.34286,
+   "lon": 17.585861
+  },
+  {
+   "name": "Bleik",
+   "lat": 69.271954,
+   "lon": 15.956005
+  },
+  {
+   "name": "Bleikvasslia",
+   "lat": 65.908645,
+   "lon": 13.807608
+  },
+  {
+   "name": "Blokken",
+   "lat": 68.599846,
+   "lon": 15.388129
+  },
+  {
+   "name": "Bo",
+   "lat": 68.620277,
+   "lon": 14.447525
+  },
+  {
+   "name": "Boden",
+   "lat": 65.8275,
+   "lon": 21.69641
+  },
+  {
+   "name": "Bodo",
+   "lat": 67.284431,
+   "lon": 14.38175
+  },
+  {
+   "name": "Bodtraskfors",
+   "lat": 66.088845,
+   "lon": 20.903053
+  },
+  {
+   "name": "Bogen",
+   "lat": 68.526476,
+   "lon": 16.995525
+  },
+  {
+   "name": "Bol'shoe Ramozero",
+   "lat": 68.226013,
+   "lon": 33.86277
+  },
+  {
+   "name": "Bole",
+   "lat": 65.887649,
+   "lon": 22.256659
+  },
+  {
+   "name": "Bole",
+   "lat": 65.386152,
+   "lon": 21.322539
+  },
+  {
+   "name": "Bolga",
+   "lat": 66.80499,
+   "lon": 13.234235
+  },
+  {
+   "name": "Bonna",
+   "lat": 67.604921,
+   "lon": 15.728283
+  },
+  {
+   "name": "Borjelsbyn",
+   "lat": 65.900185,
+   "lon": 22.937626
+  },
+  {
+   "name": "Borkenes",
+   "lat": 68.772631,
+   "lon": 16.171555
+  },
+  {
+   "name": "Botnhamn",
+   "lat": 69.508219,
+   "lon": 17.902828
+  },
+  {
+   "name": "Brandon",
+   "lat": 65.695381,
+   "lon": 22.336566
+  },
+  {
+   "name": "Brannberg",
+   "lat": 65.785834,
+   "lon": 21.230359
+  },
+  {
+   "name": "Breivikbotn",
+   "lat": 70.588673,
+   "lon": 22.287152
+  },
+  {
+   "name": "Breivoll",
+   "lat": 68.759458,
+   "lon": 17.147881
+  },
+  {
+   "name": "Bronnoysund",
+   "lat": 65.474876,
+   "lon": 12.21164
+  },
+  {
+   "name": "Brostadbotn",
+   "lat": 69.088527,
+   "lon": 17.693431
+  },
+  {
+   "name": "Bugoyfjord",
+   "lat": 69.868257,
+   "lon": 29.345878
+  },
+  {
+   "name": "Bugoynes",
+   "lat": 69.972965,
+   "lon": 29.642054
+  },
+  {
+   "name": "Buolbmat",
+   "lat": 70.069941,
+   "lon": 28.010523
+  },
+  {
+   "name": "Burfjord",
+   "lat": 69.93787,
+   "lon": 22.051867
+  },
+  {
+   "name": "Chavan'ga",
+   "lat": 66.111063,
+   "lon": 37.759033
+  },
+  {
+   "name": "Chupa",
+   "lat": 66.271167,
+   "lon": 33.054713
+  },
+  {
+   "name": "Chupa",
+   "lat": 66.267567,
+   "lon": 32.966171
+  },
+  {
+   "name": "Cietnjalluokta",
+   "lat": 69.748664,
+   "lon": 20.490164
+  },
+  {
+   "name": "Dafjord",
+   "lat": 69.992526,
+   "lon": 19.404793
+  },
+  {
+   "name": "Dalsgrenda",
+   "lat": 66.250624,
+   "lon": 13.984848
+  },
+  {
+   "name": "Dalusvaggi",
+   "lat": 69.603093,
+   "lon": 20.537129
+  },
+  {
+   "name": "Dartsel",
+   "lat": 65.554129,
+   "lon": 20.041604
+  },
+  {
+   "name": "Deanusaldi",
+   "lat": 70.198633,
+   "lon": 28.188111
+  },
+  {
+   "name": "Demmahagen",
+   "lat": 66.399122,
+   "lon": 12.861011
+  },
+  {
+   "name": "Djupvag",
+   "lat": 69.170436,
+   "lon": 18.114831
+  },
+  {
+   "name": "Dokkas",
+   "lat": 67.064808,
+   "lon": 21.33299
+  },
+  {
+   "name": "Dragnes",
+   "lat": 68.954897,
+   "lon": 15.649372
+  },
+  {
+   "name": "Drevvassbygda",
+   "lat": 66.071456,
+   "lon": 13.452728
+  },
+  {
+   "name": "Ekkeroya",
+   "lat": 70.076263,
+   "lon": 30.102238
+  },
+  {
+   "name": "Elsfjord",
+   "lat": 66.10326,
+   "lon": 13.548003
+  },
+  {
+   "name": "Elvegarden",
+   "lat": 68.256342,
+   "lon": 17.402571
+  },
+  {
+   "name": "Elvenes",
+   "lat": 69.679172,
+   "lon": 30.105165
+  },
+  {
+   "name": "Engavagen",
+   "lat": 66.779487,
+   "lon": 13.534125
+  },
+  {
+   "name": "Engozero",
+   "lat": 65.784998,
+   "lon": 33.942169
+  },
+  {
+   "name": "Ersfjordbotn",
+   "lat": 69.694412,
+   "lon": 18.620835
+  },
+  {
+   "name": "Ersnas",
+   "lat": 65.529053,
+   "lon": 21.794633
+  },
+  {
+   "name": "Evenes",
+   "lat": 68.458884,
+   "lon": 16.699134
+  },
+  {
+   "name": "Eyna",
+   "lat": 67.604164,
+   "lon": 31.158881
+  },
+  {
+   "name": "Eynskiy",
+   "lat": 67.580553,
+   "lon": 31.156658
+  },
+  {
+   "name": "Fagernes",
+   "lat": 69.561227,
+   "lon": 19.182262
+  },
+  {
+   "name": "Fauske",
+   "lat": 67.258859,
+   "lon": 15.394595
+  },
+  {
+   "name": "Finneidfjord",
+   "lat": 66.187798,
+   "lon": 13.791952
+  },
+  {
+   "name": "Finnfjordbotn",
+   "lat": 69.235356,
+   "lon": 18.09266
+  },
+  {
+   "name": "Finnsnes",
+   "lat": 69.229602,
+   "lon": 17.981296
+  },
+  {
+   "name": "Fjelldal",
+   "lat": 68.556025,
+   "lon": 16.52606
+  },
+  {
+   "name": "Fjordgard",
+   "lat": 69.509146,
+   "lon": 17.628333
+  },
+  {
+   "name": "Flakaberg",
+   "lat": 66.519044,
+   "lon": 21.907234
+  },
+  {
+   "name": "Foldvika",
+   "lat": 68.692938,
+   "lon": 17.424615
+  },
+  {
+   "name": "Forsmark",
+   "lat": 65.481121,
+   "lon": 15.891359
+  },
+  {
+   "name": "Forsol",
+   "lat": 70.721363,
+   "lon": 23.801544
+  },
+  {
+   "name": "Fossbakken",
+   "lat": 68.688754,
+   "lon": 17.980906
+  },
+  {
+   "name": "Fredvang",
+   "lat": 68.084056,
+   "lon": 13.166687
+  },
+  {
+   "name": "Furuflaten",
+   "lat": 69.441302,
+   "lon": 20.154007
+  },
+  {
+   "name": "Gadzhiyevo",
+   "lat": 69.250359,
+   "lon": 33.315279
+  },
+  {
+   "name": "Gallivare",
+   "lat": 67.135243,
+   "lon": 20.660484
+  },
+  {
+   "name": "Gammelgarden",
+   "lat": 65.881965,
+   "lon": 23.041194
+  },
+  {
+   "name": "Gamvik",
+   "lat": 71.062155,
+   "lon": 28.245793
+  },
+  {
+   "name": "Gargnas",
+   "lat": 65.311977,
+   "lon": 17.969662
+  },
+  {
+   "name": "Gasluokta",
+   "lat": 68.097301,
+   "lon": 16.378637
+  },
+  {
+   "name": "Gausvika",
+   "lat": 68.613162,
+   "lon": 16.513026
+  },
+  {
+   "name": "Gibostad",
+   "lat": 69.353805,
+   "lon": 18.076092
+  },
+  {
+   "name": "Gisloya",
+   "lat": 68.935014,
+   "lon": 15.272364
+  },
+  {
+   "name": "Gjesvaer",
+   "lat": 71.098399,
+   "lon": 25.376291
+  },
+  {
+   "name": "Gladstad",
+   "lat": 65.676929,
+   "lon": 11.961864
+  },
+  {
+   "name": "Glein",
+   "lat": 66.157342,
+   "lon": 12.610958
+  },
+  {
+   "name": "Glomfjord",
+   "lat": 66.816569,
+   "lon": 13.94365
+  },
+  {
+   "name": "Golnes",
+   "lat": 70.073378,
+   "lon": 30.032428
+  },
+  {
+   "name": "Golubie Ruch'i",
+   "lat": 68.757267,
+   "lon": 33.020042
+  },
+  {
+   "name": "Gorzi",
+   "lat": 69.525473,
+   "lon": 20.524201
+  },
+  {
+   "name": "Grane",
+   "lat": 65.584826,
+   "lon": 13.393431
+  },
+  {
+   "name": "Granhult",
+   "lat": 67.128767,
+   "lon": 21.801081
+  },
+  {
+   "name": "Granmoen",
+   "lat": 65.975825,
+   "lon": 13.212481
+  },
+  {
+   "name": "Grannas",
+   "lat": 65.307987,
+   "lon": 16.369346
+  },
+  {
+   "name": "Gratangsbotn",
+   "lat": 68.668493,
+   "lon": 17.668062
+  },
+  {
+   "name": "Gravdal",
+   "lat": 68.118191,
+   "lon": 13.553298
+  },
+  {
+   "name": "Grotavaer",
+   "lat": 68.964402,
+   "lon": 16.261908
+  },
+  {
+   "name": "Gryllefjorden",
+   "lat": 69.362696,
+   "lon": 17.055042
+  },
+  {
+   "name": "Gunnarnes",
+   "lat": 70.998404,
+   "lon": 24.116365
+  },
+  {
+   "name": "Guovdageaidnu",
+   "lat": 69.012421,
+   "lon": 23.041319
+  },
+  {
+   "name": "Hagnen",
+   "lat": 65.881254,
+   "lon": 23.034767
+  },
+  {
+   "name": "Hakkas",
+   "lat": 66.916459,
+   "lon": 21.566148
+  },
+  {
+   "name": "Hakvik",
+   "lat": 68.404819,
+   "lon": 17.308252
+  },
+  {
+   "name": "Halsa",
+   "lat": 66.743711,
+   "lon": 13.575924
+  },
+  {
+   "name": "Hammerfest",
+   "lat": 70.662836,
+   "lon": 23.683107
+  },
+  {
+   "name": "Hamningberg",
+   "lat": 70.540202,
+   "lon": 30.616257
+  },
+  {
+   "name": "Hamnoya",
+   "lat": 67.946083,
+   "lon": 13.132594
+  },
+  {
+   "name": "Hamnvik",
+   "lat": 68.77931,
+   "lon": 17.171467
+  },
+  {
+   "name": "Hansnes",
+   "lat": 69.967044,
+   "lon": 19.627087
+  },
+  {
+   "name": "Haparanda",
+   "lat": 65.835667,
+   "lon": 24.135721
+  },
+  {
+   "name": "Harads",
+   "lat": 66.087707,
+   "lon": 20.952542
+  },
+  {
+   "name": "Harstad",
+   "lat": 68.799943,
+   "lon": 16.544032
+  },
+  {
+   "name": "Hasvik",
+   "lat": 70.48652,
+   "lon": 22.161097
+  },
+  {
+   "name": "Hatteng",
+   "lat": 69.270738,
+   "lon": 19.959865
+  },
+  {
+   "name": "Havoysund",
+   "lat": 70.996311,
+   "lon": 24.660958
+  },
+  {
+   "name": "Hedenaset",
+   "lat": 66.235517,
+   "lon": 23.677934
+  },
+  {
+   "name": "Helppi",
+   "lat": 67.21202,
+   "lon": 24.835497
+  },
+  {
+   "name": "Hemavan",
+   "lat": 65.815278,
+   "lon": 15.08528
+  },
+  {
+   "name": "Hemnesberget",
+   "lat": 66.224837,
+   "lon": 13.606675
+  },
+  {
+   "name": "Henningsvaer",
+   "lat": 68.152888,
+   "lon": 14.200724
+  },
+  {
+   "name": "Hesseng",
+   "lat": 69.68682,
+   "lon": 29.99733
+  },
+  {
+   "name": "Hetta",
+   "lat": 68.38549,
+   "lon": 23.643798
+  },
+  {
+   "name": "Hibiny",
+   "lat": 67.673599,
+   "lon": 33.212994
+  },
+  {
+   "name": "Hierenjargga",
+   "lat": 68.252058,
+   "lon": 16.056574
+  },
+  {
+   "name": "Hilleshamn",
+   "lat": 68.732653,
+   "lon": 17.273351
+  },
+  {
+   "name": "Hirvas",
+   "lat": 66.432423,
+   "lon": 25.479246
+  },
+  {
+   "name": "Holand",
+   "lat": 65.70724,
+   "lon": 11.915403
+  },
+  {
+   "name": "Holm",
+   "lat": 65.183353,
+   "lon": 12.124369
+  },
+  {
+   "name": "Holt",
+   "lat": 69.016876,
+   "lon": 19.413002
+  },
+  {
+   "name": "Hommelsto",
+   "lat": 65.407327,
+   "lon": 12.551631
+  },
+  {
+   "name": "Honningsvag",
+   "lat": 70.980264,
+   "lon": 25.977841
+  },
+  {
+   "name": "Hovden",
+   "lat": 68.812652,
+   "lon": 14.552509
+  },
+  {
+   "name": "Husby",
+   "lat": 66.225671,
+   "lon": 12.769801
+  },
+  {
+   "name": "Husoy",
+   "lat": 69.544198,
+   "lon": 17.663699
+  },
+  {
+   "name": "Husvaer",
+   "lat": 65.910314,
+   "lon": 12.119883
+  },
+  {
+   "name": "Idivuoma",
+   "lat": 68.315239,
+   "lon": 22.13502
+  },
+  {
+   "name": "Ii",
+   "lat": 65.321876,
+   "lon": 25.371622
+  },
+  {
+   "name": "Inari",
+   "lat": 68.906246,
+   "lon": 27.026077
+  },
+  {
+   "name": "Inbyn",
+   "lat": 65.898431,
+   "lon": 21.860296
+  },
+  {
+   "name": "Ingoy",
+   "lat": 71.083538,
+   "lon": 24.05731
+  },
+  {
+   "name": "Inndyr",
+   "lat": 67.03524,
+   "lon": 14.026502
+  },
+  {
+   "name": "Isokyla",
+   "lat": 66.695766,
+   "lon": 27.562635
+  },
+  {
+   "name": "Ivalo",
+   "lat": 68.658818,
+   "lon": 27.534811
+  },
+  {
+   "name": "Jakkvik",
+   "lat": 66.383415,
+   "lon": 16.965475
+  },
+  {
+   "name": "Jakobsnes",
+   "lat": 69.728732,
+   "lon": 30.124722
+  },
+  {
+   "name": "Jamton",
+   "lat": 65.853761,
+   "lon": 22.498202
+  },
+  {
+   "name": "Jarhoinen",
+   "lat": 66.964177,
+   "lon": 23.844077
+  },
+  {
+   "name": "Jeesio",
+   "lat": 67.509877,
+   "lon": 26.032229
+  },
+  {
+   "name": "Jektvika",
+   "lat": 66.625835,
+   "lon": 13.291854
+  },
+  {
+   "name": "Jokkmokk",
+   "lat": 66.605854,
+   "lon": 19.837932
+  },
+  {
+   "name": "Juhonpieti och Erkheikki",
+   "lat": 67.246325,
+   "lon": 23.185237
+  },
+  {
+   "name": "Jukkasjarvi",
+   "lat": 67.850378,
+   "lon": 20.605305
+  },
+  {
+   "name": "Junosuando",
+   "lat": 67.428291,
+   "lon": 22.511418
+  },
+  {
+   "name": "Juntusranta",
+   "lat": 65.221458,
+   "lon": 29.46924
+  },
+  {
+   "name": "Juoksengi",
+   "lat": 66.55764,
+   "lon": 23.832344
+  },
+  {
+   "name": "Juoksenki",
+   "lat": 66.564667,
+   "lon": 23.870622
+  },
+  {
+   "name": "Jurmu",
+   "lat": 65.510423,
+   "lon": 27.947384
+  },
+  {
+   "name": "Juujarvi",
+   "lat": 66.381912,
+   "lon": 27.302132
+  },
+  {
+   "name": "Kaakamo",
+   "lat": 65.799373,
+   "lon": 24.451677
+  },
+  {
+   "name": "Kaaresuvanto",
+   "lat": 68.450137,
+   "lon": 22.485735
+  },
+  {
+   "name": "Kabdalis",
+   "lat": 66.149498,
+   "lon": 19.986874
+  },
+  {
+   "name": "Kabelvag",
+   "lat": 68.21012,
+   "lon": 14.477379
+  },
+  {
+   "name": "Kafjord",
+   "lat": 69.937562,
+   "lon": 23.028172
+  },
+  {
+   "name": "Kainuunkyla",
+   "lat": 66.225575,
+   "lon": 23.765632
+  },
+  {
+   "name": "Kairala",
+   "lat": 67.190106,
+   "lon": 27.445209
+  },
+  {
+   "name": "Kajava",
+   "lat": 65.968997,
+   "lon": 29.606411
+  },
+  {
+   "name": "Kaldfjord",
+   "lat": 69.685181,
+   "lon": 18.740765
+  },
+  {
+   "name": "Kalevala",
+   "lat": 65.200096,
+   "lon": 31.180171
+  },
+  {
+   "name": "Kalix",
+   "lat": 65.858917,
+   "lon": 23.14033
+  },
+  {
+   "name": "Kallax",
+   "lat": 65.524574,
+   "lon": 22.059254
+  },
+  {
+   "name": "Kallo",
+   "lat": 67.421837,
+   "lon": 24.516544
+  },
+  {
+   "name": "Kalsjarv",
+   "lat": 65.92455,
+   "lon": 23.167423
+  },
+  {
+   "name": "Kamoyvaer",
+   "lat": 71.048818,
+   "lon": 25.905278
+  },
+  {
+   "name": "Kandalaksha",
+   "lat": 67.151442,
+   "lon": 32.413054
+  },
+  {
+   "name": "Kangos",
+   "lat": 67.484526,
+   "lon": 22.655664
+  },
+  {
+   "name": "Kantomaanpaa",
+   "lat": 66.427896,
+   "lon": 24.06182
+  },
+  {
+   "name": "Karasjok",
+   "lat": 69.471874,
+   "lon": 25.511138
+  },
+  {
+   "name": "Karesuando",
+   "lat": 68.440505,
+   "lon": 22.474315
+  },
+  {
+   "name": "Kariel",
+   "lat": 70.100798,
+   "lon": 29.38076
+  },
+  {
+   "name": "Karigasniemi",
+   "lat": 69.399117,
+   "lon": 25.849382
+  },
+  {
+   "name": "Karlsborg",
+   "lat": 65.799611,
+   "lon": 23.289268
+  },
+  {
+   "name": "Karlstad",
+   "lat": 69.213609,
+   "lon": 18.470398
+  },
+  {
+   "name": "Karlsvik",
+   "lat": 65.597284,
+   "lon": 22.079107
+  },
+  {
+   "name": "Karpankyla",
+   "lat": 65.919944,
+   "lon": 29.870536
+  },
+  {
+   "name": "Karungi",
+   "lat": 66.044554,
+   "lon": 23.953028
+  },
+  {
+   "name": "Karunki",
+   "lat": 66.0403,
+   "lon": 24.018313
+  },
+  {
+   "name": "Karvikhamn",
+   "lat": 69.392845,
+   "lon": 18.181825
+  },
+  {
+   "name": "Kasfjord",
+   "lat": 68.835702,
+   "lon": 16.345107
+  },
+  {
+   "name": "Kattilasaari",
+   "lat": 65.947978,
+   "lon": 23.798576
+  },
+  {
+   "name": "Kaukonen",
+   "lat": 67.484337,
+   "lon": 24.899699
+  },
+  {
+   "name": "Kauliranta",
+   "lat": 66.456757,
+   "lon": 23.6771
+  },
+  {
+   "name": "Kaunisvaara",
+   "lat": 67.382544,
+   "lon": 23.3382
+  },
+  {
+   "name": "Kaymajarvi",
+   "lat": 67.394539,
+   "lon": 22.968809
+  },
+  {
+   "name": "Kelloselka",
+   "lat": 66.933634,
+   "lon": 28.890305
+  },
+  {
+   "name": "Kem",
+   "lat": 64.95509,
+   "lon": 34.569741
+  },
+  {
+   "name": "Kemi",
+   "lat": 65.73334,
+   "lon": 24.566649
+  },
+  {
+   "name": "Kemijarvi",
+   "lat": 66.716118,
+   "lon": 27.433353
+  },
+  {
+   "name": "Keminmaa",
+   "lat": 65.803014,
+   "lon": 24.520878
+  },
+  {
+   "name": "Kentta",
+   "lat": 67.353708,
+   "lon": 23.424032
+  },
+  {
+   "name": "Kepa",
+   "lat": 65.152998,
+   "lon": 32.165183
+  },
+  {
+   "name": "Kestenga",
+   "lat": 65.885864,
+   "lon": 31.827918
+  },
+  {
+   "name": "Kevajarvi",
+   "lat": 68.709648,
+   "lon": 27.776885
+  },
+  {
+   "name": "Kiberg",
+   "lat": 70.284866,
+   "lon": 30.999159
+  },
+  {
+   "name": "Kiby",
+   "lat": 70.062573,
+   "lon": 29.85661
+  },
+  {
+   "name": "Kieksiaisvaara",
+   "lat": 67.223686,
+   "lon": 23.5047
+  },
+  {
+   "name": "Kilboghamn",
+   "lat": 66.487806,
+   "lon": 13.225465
+  },
+  {
+   "name": "Kilbotn",
+   "lat": 68.718103,
+   "lon": 16.535653
+  },
+  {
+   "name": "Kildinstroy",
+   "lat": 68.804916,
+   "lon": 33.099985
+  },
+  {
+   "name": "Kilp'yavr",
+   "lat": 69.090462,
+   "lon": 32.427264
+  },
+  {
+   "name": "Kilpisjarvi",
+   "lat": 69.045464,
+   "lon": 20.8004
+  },
+  {
+   "name": "Kirkenes",
+   "lat": 69.727148,
+   "lon": 30.044897
+  },
+  {
+   "name": "Kirnujarvi",
+   "lat": 67.020007,
+   "lon": 23.127915
+  },
+  {
+   "name": "Kirovsk",
+   "lat": 67.615133,
+   "lon": 33.66375
+  },
+  {
+   "name": "Kiruna",
+   "lat": 67.848889,
+   "lon": 20.302778
+  },
+  {
+   "name": "Kittelfjall",
+   "lat": 65.255048,
+   "lon": 15.517935
+  },
+  {
+   "name": "Kittila",
+   "lat": 67.651985,
+   "lon": 24.909509
+  },
+  {
+   "name": "Kjeldebotn",
+   "lat": 68.405727,
+   "lon": 16.660487
+  },
+  {
+   "name": "Kjerringoy",
+   "lat": 67.52078,
+   "lon": 14.764554
+  },
+  {
+   "name": "Kjollefjord",
+   "lat": 70.945666,
+   "lon": 27.351054
+  },
+  {
+   "name": "Klippen",
+   "lat": 65.871767,
+   "lon": 15.006278
+  },
+  {
+   "name": "Klo",
+   "lat": 68.982451,
+   "lon": 15.1743
+  },
+  {
+   "name": "Klovertrask",
+   "lat": 65.638013,
+   "lon": 21.392009
+  },
+  {
+   "name": "Knyazhaya Guba",
+   "lat": 66.873489,
+   "lon": 32.393619
+  },
+  {
+   "name": "Koashva",
+   "lat": 67.609612,
+   "lon": 34.180076
+  },
+  {
+   "name": "Kokelv",
+   "lat": 70.612221,
+   "lon": 24.645804
+  },
+  {
+   "name": "Kola",
+   "lat": 68.880638,
+   "lon": 33.019724
+  },
+  {
+   "name": "Kolari",
+   "lat": 67.330335,
+   "lon": 23.781474
+  },
+  {
+   "name": "Kollajanniemi",
+   "lat": 65.346611,
+   "lon": 26.603035
+  },
+  {
+   "name": "Komagvaer",
+   "lat": 70.245605,
+   "lon": 30.532884
+  },
+  {
+   "name": "Kompelusvaara",
+   "lat": 67.064396,
+   "lon": 22.251447
+  },
+  {
+   "name": "Kongsfjord",
+   "lat": 70.720239,
+   "lon": 29.319159
+  },
+  {
+   "name": "Kongsvika",
+   "lat": 68.566231,
+   "lon": 16.25356
+  },
+  {
+   "name": "Konsvikosen",
+   "lat": 66.49909,
+   "lon": 13.101829
+  },
+  {
+   "name": "Konttajarvi",
+   "lat": 66.839001,
+   "lon": 24.372621
+  },
+  {
+   "name": "Korgen",
+   "lat": 66.076592,
+   "lon": 13.821882
+  },
+  {
+   "name": "Korpilombolo",
+   "lat": 66.850432,
+   "lon": 23.056268
+  },
+  {
+   "name": "Korstrask",
+   "lat": 65.66819,
+   "lon": 20.867355
+  },
+  {
+   "name": "Korvua",
+   "lat": 65.349207,
+   "lon": 28.674046
+  },
+  {
+   "name": "Korzunovo",
+   "lat": 69.402342,
+   "lon": 31.014669
+  },
+  {
+   "name": "Koskenkyla",
+   "lat": 65.897472,
+   "lon": 29.784073
+  },
+  {
+   "name": "Koskullskulle",
+   "lat": 67.185964,
+   "lon": 20.738666
+  },
+  {
+   "name": "Kostamo",
+   "lat": 66.789431,
+   "lon": 27.461716
+  },
+  {
+   "name": "Kovdor",
+   "lat": 67.563049,
+   "lon": 30.474108
+  },
+  {
+   "name": "Kovdozero",
+   "lat": 66.760956,
+   "lon": 31.560824
+  },
+  {
+   "name": "Krampenes",
+   "lat": 70.105028,
+   "lon": 30.193759
+  },
+  {
+   "name": "Krasnoshchel'ye",
+   "lat": 67.350373,
+   "lon": 37.040585
+  },
+  {
+   "name": "Krivoi Porog",
+   "lat": 65.039479,
+   "lon": 33.673164
+  },
+  {
+   "name": "Kuivaniemi",
+   "lat": 65.576683,
+   "lon": 25.195038
+  },
+  {
+   "name": "Kukkola",
+   "lat": 65.974073,
+   "lon": 24.067838
+  },
+  {
+   "name": "Kumpu",
+   "lat": 67.469175,
+   "lon": 24.943108
+  },
+  {
+   "name": "Kurenalus",
+   "lat": 65.359541,
+   "lon": 26.997597
+  },
+  {
+   "name": "Kurki",
+   "lat": 65.324911,
+   "lon": 27.548733
+  },
+  {
+   "name": "Kurkkio",
+   "lat": 67.53193,
+   "lon": 22.228691
+  },
+  {
+   "name": "Kurravaara",
+   "lat": 67.944021,
+   "lon": 20.357162
+  },
+  {
+   "name": "Kursu",
+   "lat": 66.764941,
+   "lon": 28.139467
+  },
+  {
+   "name": "Kurtakko",
+   "lat": 67.396908,
+   "lon": 24.195001
+  },
+  {
+   "name": "Kuttainen",
+   "lat": 68.38168,
+   "lon": 22.82608
+  },
+  {
+   "name": "Kuusamo",
+   "lat": 65.964564,
+   "lon": 29.188328
+  },
+  {
+   "name": "Kuusiniemi",
+   "lat": 65.174042,
+   "lon": 31.462056
+  },
+  {
+   "name": "Kuvshinskaya Salma",
+   "lat": 69.305809,
+   "lon": 33.418073
+  },
+  {
+   "name": "Kuzema",
+   "lat": 65.354805,
+   "lon": 34.254966
+  },
+  {
+   "name": "Kuzomen'",
+   "lat": 66.287447,
+   "lon": 36.865389
+  },
+  {
+   "name": "Kvaloysletta",
+   "lat": 69.690173,
+   "lon": 18.861991
+  },
+  {
+   "name": "Kvalsund",
+   "lat": 70.502821,
+   "lon": 23.979384
+  },
+  {
+   "name": "Kvenvik",
+   "lat": 69.926931,
+   "lon": 23.101794
+  },
+  {
+   "name": "Kvikkjokk",
+   "lat": 66.952031,
+   "lon": 17.720642
+  },
+  {
+   "name": "Kvina",
+   "lat": 66.467023,
+   "lon": 13.168794
+  },
+  {
+   "name": "Kylajoki",
+   "lat": 65.829087,
+   "lon": 24.299988
+  },
+  {
+   "name": "Kylaniemi",
+   "lat": 66.659313,
+   "lon": 24.719816
+  },
+  {
+   "name": "Kyngas",
+   "lat": 65.404653,
+   "lon": 26.791843
+  },
+  {
+   "name": "Kypasjarv",
+   "lat": 66.179673,
+   "lon": 23.211174
+  },
+  {
+   "name": "Laberget",
+   "lat": 68.675903,
+   "lon": 17.506813
+  },
+  {
+   "name": "Laberget",
+   "lat": 68.861416,
+   "lon": 17.820087
+  },
+  {
+   "name": "Lahpoluoppal",
+   "lat": 69.208804,
+   "lon": 23.760856
+  },
+  {
+   "name": "Laisvall",
+   "lat": 66.13055,
+   "lon": 17.169948
+  },
+  {
+   "name": "Laivajarvi",
+   "lat": 65.844085,
+   "lon": 24.388446
+  },
+  {
+   "name": "Lakatrask",
+   "lat": 66.275642,
+   "lon": 21.122881
+  },
+  {
+   "name": "Lakselv",
+   "lat": 70.052498,
+   "lon": 24.960657
+  },
+  {
+   "name": "Lakselvbukt",
+   "lat": 69.433311,
+   "lon": 19.646989
+  },
+  {
+   "name": "Laksvatn",
+   "lat": 69.376223,
+   "lon": 19.362932
+  },
+  {
+   "name": "Lampsijarvi",
+   "lat": 66.700926,
+   "lon": 24.516431
+  },
+  {
+   "name": "Langsel",
+   "lat": 65.541125,
+   "lon": 20.081799
+  },
+  {
+   "name": "Langtrask",
+   "lat": 65.382961,
+   "lon": 20.332862
+  },
+  {
+   "name": "Lankojarvi",
+   "lat": 66.730412,
+   "lon": 24.366383
+  },
+  {
+   "name": "Lannavaara",
+   "lat": 68.046936,
+   "lon": 21.970345
+  },
+  {
+   "name": "Lappea",
+   "lat": 67.155779,
+   "lon": 23.585194
+  },
+  {
+   "name": "Lauker",
+   "lat": 65.651329,
+   "lon": 19.805874
+  },
+  {
+   "name": "Laukvika",
+   "lat": 68.388072,
+   "lon": 14.417906
+  },
+  {
+   "name": "Lavkgieddi",
+   "lat": 69.541671,
+   "lon": 20.546057
+  },
+  {
+   "name": "Leaibevuotna",
+   "lat": 70.473948,
+   "lon": 25.070577
+  },
+  {
+   "name": "Lebesby",
+   "lat": 70.57279,
+   "lon": 27.002444
+  },
+  {
+   "name": "Leines",
+   "lat": 67.737139,
+   "lon": 14.810105
+  },
+  {
+   "name": "Leipojarvi",
+   "lat": 67.049676,
+   "lon": 21.21837
+  },
+  {
+   "name": "Leirbotn",
+   "lat": 70.119043,
+   "lon": 23.394142
+  },
+  {
+   "name": "Leirpollskogen",
+   "lat": 70.439569,
+   "lon": 28.508368
+  },
+  {
+   "name": "Leirvikbogen",
+   "lat": 67.89867,
+   "lon": 15.191182
+  },
+  {
+   "name": "Leka",
+   "lat": 65.087861,
+   "lon": 11.713566
+  },
+  {
+   "name": "Leknes",
+   "lat": 68.147465,
+   "lon": 13.611531
+  },
+  {
+   "name": "Leknes",
+   "lat": 65.098177,
+   "lon": 11.703223
+  },
+  {
+   "name": "Leland",
+   "lat": 66.063987,
+   "lon": 12.943317
+  },
+  {
+   "name": "Lempea",
+   "lat": 66.84197,
+   "lon": 23.982863
+  },
+  {
+   "name": "Leypi",
+   "lat": 67.500099,
+   "lon": 30.709552
+  },
+  {
+   "name": "Liikasenvaara",
+   "lat": 66.369828,
+   "lon": 29.537638
+  },
+  {
+   "name": "Liinahamari",
+   "lat": 69.638176,
+   "lon": 31.335189
+  },
+  {
+   "name": "Liland",
+   "lat": 68.480896,
+   "lon": 16.8891
+  },
+  {
+   "name": "Lillpite",
+   "lat": 65.373997,
+   "lon": 21.151355
+  },
+  {
+   "name": "Livo",
+   "lat": 65.54289,
+   "lon": 26.950864
+  },
+  {
+   "name": "Loding",
+   "lat": 67.297101,
+   "lon": 14.744898
+  },
+  {
+   "name": "Lodingen",
+   "lat": 68.410465,
+   "lon": 15.990197
+  },
+  {
+   "name": "Lohijarvi",
+   "lat": 66.428373,
+   "lon": 24.406853
+  },
+  {
+   "name": "Lohiniva",
+   "lat": 67.167333,
+   "lon": 24.951833
+  },
+  {
+   "name": "Lokka",
+   "lat": 67.81818,
+   "lon": 27.742603
+  },
+  {
+   "name": "Loukhi",
+   "lat": 66.076141,
+   "lon": 33.041902
+  },
+  {
+   "name": "Loukusa",
+   "lat": 65.730132,
+   "lon": 27.953959
+  },
+  {
+   "name": "Lovikka",
+   "lat": 67.340318,
+   "lon": 22.610503
+  },
+  {
+   "name": "Lovozero",
+   "lat": 68.005883,
+   "lon": 35.017209
+  },
+  {
+   "name": "Lovund",
+   "lat": 66.368994,
+   "lon": 12.36435
+  },
+  {
+   "name": "Luiro",
+   "lat": 67.223893,
+   "lon": 27.537503
+  },
+  {
+   "name": "Lulea",
+   "lat": 65.583119,
+   "lon": 22.145954
+  },
+  {
+   "name": "Lundenes",
+   "lat": 68.876888,
+   "lon": 16.566705
+  },
+  {
+   "name": "Lunkkaus",
+   "lat": 67.245885,
+   "lon": 27.902125
+  },
+  {
+   "name": "Luostari",
+   "lat": 69.420891,
+   "lon": 31.104106
+  },
+  {
+   "name": "Luosto",
+   "lat": 67.158263,
+   "lon": 26.918337
+  },
+  {
+   "name": "Luroy",
+   "lat": 66.419578,
+   "lon": 12.84327
+  },
+  {
+   "name": "Luspa",
+   "lat": 68.489904,
+   "lon": 22.033488
+  },
+  {
+   "name": "Luusalmi",
+   "lat": 65.055893,
+   "lon": 31.569407
+  },
+  {
+   "name": "Lyngseidet",
+   "lat": 69.576257,
+   "lon": 20.21907
+  },
+  {
+   "name": "Maaninkavaara",
+   "lat": 66.443391,
+   "lon": 28.490196
+  },
+  {
+   "name": "Majavatn",
+   "lat": 65.168465,
+   "lon": 13.369451
+  },
+  {
+   "name": "Malinovaya Varakka",
+   "lat": 66.302894,
+   "lon": 33.213435
+  },
+  {
+   "name": "Malmberget",
+   "lat": 67.176118,
+   "lon": 20.658936
+  },
+  {
+   "name": "Markitta",
+   "lat": 67.177933,
+   "lon": 21.558301
+  },
+  {
+   "name": "Marnes",
+   "lat": 67.146701,
+   "lon": 14.094589
+  },
+  {
+   "name": "Marrasjarvi",
+   "lat": 66.900637,
+   "lon": 25.124301
+  },
+  {
+   "name": "Marraskoski",
+   "lat": 66.779408,
+   "lon": 25.423401
+  },
+  {
+   "name": "Martti",
+   "lat": 67.474019,
+   "lon": 28.36174
+  },
+  {
+   "name": "Masoy",
+   "lat": 71.007796,
+   "lon": 25.003738
+  },
+  {
+   "name": "Mattsund",
+   "lat": 65.544163,
+   "lon": 21.902536
+  },
+  {
+   "name": "Maze",
+   "lat": 69.443755,
+   "lon": 23.66707
+  },
+  {
+   "name": "Mefjordvaer",
+   "lat": 69.518643,
+   "lon": 17.438209
+  },
+  {
+   "name": "Mehamn",
+   "lat": 71.038992,
+   "lon": 27.851759
+  },
+  {
+   "name": "Melbu",
+   "lat": 68.501262,
+   "lon": 14.800938
+  },
+  {
+   "name": "Melfjordbotn",
+   "lat": 66.515365,
+   "lon": 13.676248
+  },
+  {
+   "name": "Mellakoski",
+   "lat": 66.317883,
+   "lon": 24.463844
+  },
+  {
+   "name": "Meloysjoen",
+   "lat": 66.823156,
+   "lon": 13.407853
+  },
+  {
+   "name": "Meloyvaer",
+   "lat": 69.073518,
+   "lon": 16.506463
+  },
+  {
+   "name": "Meltaus",
+   "lat": 66.913636,
+   "lon": 25.358717
+  },
+  {
+   "name": "Meltosjarvi",
+   "lat": 66.535233,
+   "lon": 24.618527
+  },
+  {
+   "name": "Merasjarvi",
+   "lat": 67.550573,
+   "lon": 21.931711
+  },
+  {
+   "name": "Mertajarvi Nearva",
+   "lat": 68.352098,
+   "lon": 22.185688
+  },
+  {
+   "name": "Metsakyla",
+   "lat": 65.346018,
+   "lon": 28.375671
+  },
+  {
+   "name": "Metta Dokkas",
+   "lat": 67.065142,
+   "lon": 21.287164
+  },
+  {
+   "name": "Mezhdurech'ye",
+   "lat": 69.032639,
+   "lon": 32.939447
+  },
+  {
+   "name": "Misi",
+   "lat": 66.619319,
+   "lon": 26.686659
+  },
+  {
+   "name": "Misvaer",
+   "lat": 67.118831,
+   "lon": 14.999309
+  },
+  {
+   "name": "Mo i Rana",
+   "lat": 66.311097,
+   "lon": 14.138699
+  },
+  {
+   "name": "Moen",
+   "lat": 69.122691,
+   "lon": 18.617077
+  },
+  {
+   "name": "Moldjord",
+   "lat": 67.006797,
+   "lon": 14.576452
+  },
+  {
+   "name": "Molochny",
+   "lat": 68.853966,
+   "lon": 33.015657
+  },
+  {
+   "name": "Monchegorsk",
+   "lat": 67.939903,
+   "lon": 32.931677
+  },
+  {
+   "name": "Morjarv",
+   "lat": 66.068057,
+   "lon": 22.703472
+  },
+  {
+   "name": "Mosjoen",
+   "lat": 65.837534,
+   "lon": 13.18921
+  },
+  {
+   "name": "Moskenes",
+   "lat": 67.90234,
+   "lon": 13.04187
+  },
+  {
+   "name": "Moskosel",
+   "lat": 65.875186,
+   "lon": 19.451282
+  },
+  {
+   "name": "Muodoslompolo",
+   "lat": 67.94375,
+   "lon": 23.425547
+  },
+  {
+   "name": "Muonio",
+   "lat": 67.95934,
+   "lon": 23.677404
+  },
+  {
+   "name": "Muoniovaara",
+   "lat": 67.945421,
+   "lon": 23.626356
+  },
+  {
+   "name": "Murjek",
+   "lat": 66.483676,
+   "lon": 20.876923
+  },
+  {
+   "name": "Murmansk",
+   "lat": 68.970665,
+   "lon": 33.074968
+  },
+  {
+   "name": "Murmashi",
+   "lat": 68.816956,
+   "lon": 32.816503
+  },
+  {
+   "name": "Muurola",
+   "lat": 66.376447,
+   "lon": 25.376396
+  },
+  {
+   "name": "Myken",
+   "lat": 66.76092,
+   "lon": 12.478571
+  },
+  {
+   "name": "Myklebostad",
+   "lat": 67.77556,
+   "lon": 15.017395
+  },
+  {
+   "name": "Myre",
+   "lat": 68.914894,
+   "lon": 15.089084
+  },
+  {
+   "name": "Myre",
+   "lat": 69.105974,
+   "lon": 15.963081
+  },
+  {
+   "name": "Napp",
+   "lat": 68.133169,
+   "lon": 13.431933
+  },
+  {
+   "name": "Narvik",
+   "lat": 68.43838,
+   "lon": 17.427198
+  },
+  {
+   "name": "Nattavaara by",
+   "lat": 66.760382,
+   "lon": 21.030585
+  },
+  {
+   "name": "Nedre Parakka",
+   "lat": 67.49299,
+   "lon": 21.67894
+  },
+  {
+   "name": "Neiden",
+   "lat": 69.695282,
+   "lon": 29.379154
+  },
+  {
+   "name": "Nellim",
+   "lat": 68.847965,
+   "lon": 28.323526
+  },
+  {
+   "name": "Nergardshamn",
+   "lat": 68.999738,
+   "lon": 16.565048
+  },
+  {
+   "name": "Nesna",
+   "lat": 66.199892,
+   "lon": 13.019146
+  },
+  {
+   "name": "Neverdal",
+   "lat": 66.834341,
+   "lon": 13.773033
+  },
+  {
+   "name": "Neverfjord",
+   "lat": 70.44018,
+   "lon": 23.784997
+  },
+  {
+   "name": "Niemisel",
+   "lat": 66.019201,
+   "lon": 21.988393
+  },
+  {
+   "name": "Nikel",
+   "lat": 69.406222,
+   "lon": 30.211421
+  },
+  {
+   "name": "Nikkala",
+   "lat": 65.804058,
+   "lon": 23.914271
+  },
+  {
+   "name": "Nikkaluokta",
+   "lat": 67.851359,
+   "lon": 19.015423
+  },
+  {
+   "name": "Nilivaara",
+   "lat": 67.225298,
+   "lon": 21.6062
+  },
+  {
+   "name": "Niskanpera",
+   "lat": 66.452426,
+   "lon": 25.610307
+  },
+  {
+   "name": "Nivskiy",
+   "lat": 67.297455,
+   "lon": 32.480823
+  },
+  {
+   "name": "Nordfold",
+   "lat": 67.762175,
+   "lon": 15.226923
+  },
+  {
+   "name": "Nordhus",
+   "lat": 65.464599,
+   "lon": 12.154888
+  },
+  {
+   "name": "Nordkjosbotn",
+   "lat": 69.217319,
+   "lon": 19.558313
+  },
+  {
+   "name": "Nordmela",
+   "lat": 69.13647,
+   "lon": 15.677084
+  },
+  {
+   "name": "Nordskot",
+   "lat": 67.832786,
+   "lon": 14.79061
+  },
+  {
+   "name": "Nordvagen",
+   "lat": 70.984694,
+   "lon": 26.030493
+  },
+  {
+   "name": "Norra Ammarnas",
+   "lat": 65.973456,
+   "lon": 16.220734
+  },
+  {
+   "name": "Norra Bredaker",
+   "lat": 65.90365,
+   "lon": 21.351985
+  },
+  {
+   "name": "Norrfjarden",
+   "lat": 65.41962,
+   "lon": 21.500646
+  },
+  {
+   "name": "Nousu",
+   "lat": 67.160876,
+   "lon": 28.637981
+  },
+  {
+   "name": "Nuksujarvi",
+   "lat": 66.963263,
+   "lon": 22.947708
+  },
+  {
+   "name": "Nuorgam",
+   "lat": 70.081299,
+   "lon": 27.872383
+  },
+  {
+   "name": "Nusfjord",
+   "lat": 68.03541,
+   "lon": 13.347705
+  },
+  {
+   "name": "Nuvsvag",
+   "lat": 70.269383,
+   "lon": 22.116068
+  },
+  {
+   "name": "Nyborg",
+   "lat": 65.789642,
+   "lon": 23.186449
+  },
+  {
+   "name": "Nyksund",
+   "lat": 68.995763,
+   "lon": 15.013437
+  },
+  {
+   "name": "Nykvag",
+   "lat": 68.776812,
+   "lon": 14.472802
+  },
+  {
+   "name": "Ohtanajarvi",
+   "lat": 66.916122,
+   "lon": 23.168587
+  },
+  {
+   "name": "Ojebyn",
+   "lat": 65.3435,
+   "lon": 21.402291
+  },
+  {
+   "name": "Oksfjord",
+   "lat": 70.239495,
+   "lon": 22.350527
+  },
+  {
+   "name": "Oksfjordhamn",
+   "lat": 69.907477,
+   "lon": 21.328841
+  },
+  {
+   "name": "Olenegorsk",
+   "lat": 68.140732,
+   "lon": 33.282594
+  },
+  {
+   "name": "Olenegorsk-1",
+   "lat": 68.107788,
+   "lon": 33.927434
+  },
+  {
+   "name": "Olenitsa",
+   "lat": 66.4684,
+   "lon": 35.331316
+  },
+  {
+   "name": "Olenya Guba",
+   "lat": 69.21387,
+   "lon": 33.373449
+  },
+  {
+   "name": "Olhava",
+   "lat": 65.463387,
+   "lon": 25.383488
+  },
+  {
+   "name": "Olsborg",
+   "lat": 69.144466,
+   "lon": 18.594539
+  },
+  {
+   "name": "Onkamo",
+   "lat": 66.742654,
+   "lon": 29.076223
+  },
+  {
+   "name": "Oppeid",
+   "lat": 68.084992,
+   "lon": 15.61307
+  },
+  {
+   "name": "Orajarvi",
+   "lat": 67.341748,
+   "lon": 26.837901
+  },
+  {
+   "name": "Oresvika",
+   "lat": 66.462206,
+   "lon": 13.226395
+  },
+  {
+   "name": "Ornes",
+   "lat": 66.873078,
+   "lon": 13.706087
+  },
+  {
+   "name": "Ose",
+   "lat": 68.621248,
+   "lon": 17.650824
+  },
+  {
+   "name": "Ostrovnoy",
+   "lat": 68.054449,
+   "lon": 39.512897
+  },
+  {
+   "name": "Oteren",
+   "lat": 69.255459,
+   "lon": 19.883416
+  },
+  {
+   "name": "Overkalix",
+   "lat": 66.327055,
+   "lon": 22.843688
+  },
+  {
+   "name": "Overtornea",
+   "lat": 66.390045,
+   "lon": 23.655002
+  },
+  {
+   "name": "Ovre Alta",
+   "lat": 69.925572,
+   "lon": 23.264439
+  },
+  {
+   "name": "Ovre Soppero",
+   "lat": 68.090233,
+   "lon": 21.69165
+  },
+  {
+   "name": "Ovre Svartla",
+   "lat": 66.014623,
+   "lon": 21.172578
+  },
+  {
+   "name": "Paharova",
+   "lat": 66.808373,
+   "lon": 22.336708
+  },
+  {
+   "name": "Pajala",
+   "lat": 67.209036,
+   "lon": 23.36473
+  },
+  {
+   "name": "Palang",
+   "lat": 65.813773,
+   "lon": 22.891509
+  },
+  {
+   "name": "Palkem",
+   "lat": 66.386417,
+   "lon": 21.61061
+  },
+  {
+   "name": "Palojoensuu",
+   "lat": 68.282634,
+   "lon": 23.086366
+  },
+  {
+   "name": "Panozero",
+   "lat": 64.974012,
+   "lon": 32.861653
+  },
+  {
+   "name": "Panuma",
+   "lat": 65.25355,
+   "lon": 26.414657
+  },
+  {
+   "name": "Pasmajarvi",
+   "lat": 67.102146,
+   "lon": 24.384115
+  },
+  {
+   "name": "Pelkosenniemi",
+   "lat": 67.109597,
+   "lon": 27.511812
+  },
+  {
+   "name": "Pello",
+   "lat": 66.774733,
+   "lon": 23.967682
+  },
+  {
+   "name": "Pello",
+   "lat": 66.804083,
+   "lon": 23.977188
+  },
+  {
+   "name": "Person",
+   "lat": 65.739829,
+   "lon": 22.168236
+  },
+  {
+   "name": "Pessalompolo",
+   "lat": 66.499479,
+   "lon": 24.399458
+  },
+  {
+   "name": "Petchenga",
+   "lat": 69.547714,
+   "lon": 31.212253
+  },
+  {
+   "name": "Peurasuvanto",
+   "lat": 67.840486,
+   "lon": 26.722524
+  },
+  {
+   "name": "Pintamo",
+   "lat": 65.454482,
+   "lon": 27.657687
+  },
+  {
+   "name": "Pitea",
+   "lat": 65.313465,
+   "lon": 21.490025
+  },
+  {
+   "name": "Pjesker",
+   "lat": 65.520354,
+   "lon": 19.666469
+  },
+  {
+   "name": "Plotina",
+   "lat": 66.197067,
+   "lon": 33.361563
+  },
+  {
+   "name": "Polarnie Zori",
+   "lat": 67.374084,
+   "lon": 32.495791
+  },
+  {
+   "name": "Polyarny",
+   "lat": 69.199524,
+   "lon": 33.445836
+  },
+  {
+   "name": "Porjus",
+   "lat": 66.960081,
+   "lon": 19.822232
+  },
+  {
+   "name": "Porsangmoen",
+   "lat": 69.903672,
+   "lon": 24.999663
+  },
+  {
+   "name": "Posio",
+   "lat": 66.109259,
+   "lon": 28.165078
+  },
+  {
+   "name": "Prestoya",
+   "lat": 65.908284,
+   "lon": 12.162809
+  },
+  {
+   "name": "Pudasjarvi",
+   "lat": 65.360401,
+   "lon": 26.99849
+  },
+  {
+   "name": "Puoltikasvaara",
+   "lat": 67.440519,
+   "lon": 21.105806
+  },
+  {
+   "name": "Pushnoy",
+   "lat": 68.479355,
+   "lon": 33.31984
+  },
+  {
+   "name": "Pyaozersky",
+   "lat": 65.765129,
+   "lon": 31.081166
+  },
+  {
+   "name": "Pyhajarvi",
+   "lat": 67.069237,
+   "lon": 27.22217
+  },
+  {
+   "name": "Pyhatunturi",
+   "lat": 67.021324,
+   "lon": 27.243633
+  },
+  {
+   "name": "Raanujarvi",
+   "lat": 66.647042,
+   "lon": 24.731557
+  },
+  {
+   "name": "Raattama",
+   "lat": 68.139532,
+   "lon": 24.220043
+  },
+  {
+   "name": "Rabocheostrovsk",
+   "lat": 64.985896,
+   "lon": 34.78072
+  },
+  {
+   "name": "Rafsbotn",
+   "lat": 70.01955,
+   "lon": 23.532775
+  },
+  {
+   "name": "Ramberg",
+   "lat": 68.089906,
+   "lon": 13.229892
+  },
+  {
+   "name": "Ramsund",
+   "lat": 68.49194,
+   "lon": 16.518204
+  },
+  {
+   "name": "Ranea",
+   "lat": 65.856088,
+   "lon": 22.289997
+  },
+  {
+   "name": "Ranua",
+   "lat": 65.927682,
+   "lon": 26.513104
+  },
+  {
+   "name": "Ratasjarvi",
+   "lat": 66.515963,
+   "lon": 23.901719
+  },
+  {
+   "name": "Rattosjarvi",
+   "lat": 66.843604,
+   "lon": 24.868153
+  },
+  {
+   "name": "Rautiosaari",
+   "lat": 66.420072,
+   "lon": 25.500634
+  },
+  {
+   "name": "Reine",
+   "lat": 67.932468,
+   "lon": 13.088769
+  },
+  {
+   "name": "Reipa",
+   "lat": 66.910111,
+   "lon": 13.63707
+  },
+  {
+   "name": "Revda",
+   "lat": 67.941543,
+   "lon": 34.548966
+  },
+  {
+   "name": "Rison",
+   "lat": 65.813714,
+   "lon": 23.241376
+  },
+  {
+   "name": "Risoyhamn",
+   "lat": 68.971911,
+   "lon": 15.638351
+  },
+  {
+   "name": "Ritavalkea",
+   "lat": 66.807158,
+   "lon": 24.122712
+  },
+  {
+   "name": "Ritsem",
+   "lat": 67.719844,
+   "lon": 17.475847
+  },
+  {
+   "name": "Roabadallu",
+   "lat": 68.676388,
+   "lon": 17.120942
+  },
+  {
+   "name": "Rodoy",
+   "lat": 66.659433,
+   "lon": 13.07625
+  },
+  {
+   "name": "Rognan",
+   "lat": 67.101439,
+   "lon": 15.393563
+  },
+  {
+   "name": "Rokland",
+   "lat": 66.986239,
+   "lon": 15.318251
+  },
+  {
+   "name": "Roknas",
+   "lat": 65.349933,
+   "lon": 21.178993
+  },
+  {
+   "name": "Rolfs",
+   "lat": 65.846277,
+   "lon": 23.124371
+  },
+  {
+   "name": "Rollnes",
+   "lat": 68.86168,
+   "lon": 17.041205
+  },
+  {
+   "name": "Ronkaisenniemi",
+   "lat": 65.917066,
+   "lon": 29.242288
+  },
+  {
+   "name": "Rossfjordstraumen",
+   "lat": 69.362958,
+   "lon": 18.314509
+  },
+  {
+   "name": "Rossvoll",
+   "lat": 66.358542,
+   "lon": 14.324782
+  },
+  {
+   "name": "Rost",
+   "lat": 67.517197,
+   "lon": 12.116895
+  },
+  {
+   "name": "Rosvik",
+   "lat": 65.426626,
+   "lon": 21.692732
+  },
+  {
+   "name": "Rosvika",
+   "lat": 67.478084,
+   "lon": 15.462085
+  },
+  {
+   "name": "Rotsund",
+   "lat": 69.777459,
+   "lon": 20.590153
+  },
+  {
+   "name": "Rotsundelv",
+   "lat": 69.788217,
+   "lon": 20.71059
+  },
+  {
+   "name": "Rovaniemi",
+   "lat": 66.502566,
+   "lon": 25.73122
+  },
+  {
+   "name": "Ruka",
+   "lat": 66.170266,
+   "lon": 29.131129
+  },
+  {
+   "name": "Rundhaug",
+   "lat": 69.020188,
+   "lon": 18.898328
+  },
+  {
+   "name": "Ruollaluokta",
+   "lat": 69.524827,
+   "lon": 20.761405
+  },
+  {
+   "name": "Ruostafielbma",
+   "lat": 70.398842,
+   "lon": 28.193357
+  },
+  {
+   "name": "Rutvik",
+   "lat": 65.670178,
+   "lon": 22.089851
+  },
+  {
+   "name": "Ruuhijarvi",
+   "lat": 66.855453,
+   "lon": 24.649036
+  },
+  {
+   "name": "Rypefjord",
+   "lat": 70.641294,
+   "lon": 23.671824
+  },
+  {
+   "name": "Ryssbalt",
+   "lat": 65.770934,
+   "lon": 23.01464
+  },
+  {
+   "name": "Saarenkyla",
+   "lat": 66.520103,
+   "lon": 25.77293
+  },
+  {
+   "name": "Saariselka",
+   "lat": 68.421398,
+   "lon": 27.417764
+  },
+  {
+   "name": "Safonovo",
+   "lat": 69.059029,
+   "lon": 33.292047
+  },
+  {
+   "name": "Sahavaara",
+   "lat": 67.362567,
+   "lon": 23.308407
+  },
+  {
+   "name": "Sahtik",
+   "lat": 68.678247,
+   "lon": 16.787657
+  },
+  {
+   "name": "Salla",
+   "lat": 66.831877,
+   "lon": 28.666863
+  },
+  {
+   "name": "Saltsraumen",
+   "lat": 67.233902,
+   "lon": 14.625731
+  },
+  {
+   "name": "Sand",
+   "lat": 69.391476,
+   "lon": 18.608645
+  },
+  {
+   "name": "Sandland",
+   "lat": 70.267191,
+   "lon": 21.602966
+  },
+  {
+   "name": "Sandnes",
+   "lat": 69.671945,
+   "lon": 29.955992
+  },
+  {
+   "name": "Sandnessjoen",
+   "lat": 66.021545,
+   "lon": 12.631723
+  },
+  {
+   "name": "Sangis",
+   "lat": 65.855789,
+   "lon": 23.49575
+  },
+  {
+   "name": "Sanna",
+   "lat": 66.507203,
+   "lon": 12.053858
+  },
+  {
+   "name": "Sarkela",
+   "lat": 65.624132,
+   "lon": 28.787929
+  },
+  {
+   "name": "Sattajarvi",
+   "lat": 67.077356,
+   "lon": 23.347971
+  },
+  {
+   "name": "Saukkoriipi",
+   "lat": 66.810446,
+   "lon": 24.244209
+  },
+  {
+   "name": "Savast",
+   "lat": 65.761657,
+   "lon": 21.751024
+  },
+  {
+   "name": "Savukoski",
+   "lat": 67.292311,
+   "lon": 28.163877
+  },
+  {
+   "name": "Schongui",
+   "lat": 68.743279,
+   "lon": 33.153822
+  },
+  {
+   "name": "Schukozero",
+   "lat": 69.036284,
+   "lon": 33.630836
+  },
+  {
+   "name": "Seipajarvi",
+   "lat": 67.160663,
+   "lon": 26.225636
+  },
+  {
+   "name": "Selsoyvika",
+   "lat": 66.574492,
+   "lon": 12.981243
+  },
+  {
+   "name": "Selvaer",
+   "lat": 66.587648,
+   "lon": 12.240656
+  },
+  {
+   "name": "Senjahopen",
+   "lat": 69.495881,
+   "lon": 17.485991
+  },
+  {
+   "name": "Seskaro",
+   "lat": 65.738484,
+   "lon": 23.738859
+  },
+  {
+   "name": "Setermoen",
+   "lat": 68.860941,
+   "lon": 18.348243
+  },
+  {
+   "name": "Severomorsk",
+   "lat": 69.069168,
+   "lon": 33.416654
+  },
+  {
+   "name": "Severomorsk-3",
+   "lat": 68.88739,
+   "lon": 33.734586
+  },
+  {
+   "name": "Shomba",
+   "lat": 65.099775,
+   "lon": 33.023124
+  },
+  {
+   "name": "Shueretskoe",
+   "lat": 64.743675,
+   "lon": 34.707202
+  },
+  {
+   "name": "Sieidda",
+   "lat": 70.231229,
+   "lon": 28.179043
+  },
+  {
+   "name": "Sieppijarvi",
+   "lat": 67.148962,
+   "lon": 23.986468
+  },
+  {
+   "name": "Sifjorden",
+   "lat": 69.285308,
+   "lon": 17.147588
+  },
+  {
+   "name": "Sigerfjord",
+   "lat": 68.646953,
+   "lon": 15.505438
+  },
+  {
+   "name": "Sihtuuna",
+   "lat": 66.175446,
+   "lon": 24.655388
+  },
+  {
+   "name": "Sikfors",
+   "lat": 65.531908,
+   "lon": 21.195429
+  },
+  {
+   "name": "Siknas",
+   "lat": 65.844013,
+   "lon": 22.681672
+  },
+  {
+   "name": "Silsand",
+   "lat": 69.244812,
+   "lon": 17.949738
+  },
+  {
+   "name": "Silvalen",
+   "lat": 65.983325,
+   "lon": 12.288505
+  },
+  {
+   "name": "Simo",
+   "lat": 65.662285,
+   "lon": 25.063816
+  },
+  {
+   "name": "Sinetta",
+   "lat": 66.643762,
+   "lon": 25.468186
+  },
+  {
+   "name": "Sirbma",
+   "lat": 70.014538,
+   "lon": 27.399009
+  },
+  {
+   "name": "Sirkka",
+   "lat": 67.80756,
+   "lon": 24.805573
+  },
+  {
+   "name": "Sirkkakoski",
+   "lat": 66.683321,
+   "lon": 24.416668
+  },
+  {
+   "name": "Sirnio",
+   "lat": 65.852939,
+   "lon": 28.159749
+  },
+  {
+   "name": "Sjovegan",
+   "lat": 68.872641,
+   "lon": 17.852183
+  },
+  {
+   "name": "Sjulsmark",
+   "lat": 65.51986,
+   "lon": 21.491571
+  },
+  {
+   "name": "Skaidi",
+   "lat": 70.432402,
+   "lon": 24.502352
+  },
+  {
+   "name": "Skaland",
+   "lat": 69.444696,
+   "lon": 17.298383
+  },
+  {
+   "name": "Skallelv",
+   "lat": 70.189131,
+   "lon": 30.334256
+  },
+  {
+   "name": "Skanik",
+   "lat": 68.582942,
+   "lon": 16.571911
+  },
+  {
+   "name": "Skanik",
+   "lat": 68.585455,
+   "lon": 16.580007
+  },
+  {
+   "name": "Skarfvaggi",
+   "lat": 69.518173,
+   "lon": 20.630227
+  },
+  {
+   "name": "Skarsvag",
+   "lat": 71.112765,
+   "lon": 25.825204
+  },
+  {
+   "name": "Skarvika",
+   "lat": 68.892106,
+   "lon": 17.803808
+  },
+  {
+   "name": "Skaulo",
+   "lat": 67.414729,
+   "lon": 21.111482
+  },
+  {
+   "name": "Skibotn",
+   "lat": 69.390798,
+   "lon": 20.267845
+  },
+  {
+   "name": "Skiippagurra",
+   "lat": 70.166383,
+   "lon": 28.224952
+  },
+  {
+   "name": "Skjerstad",
+   "lat": 67.23284,
+   "lon": 15.024954
+  },
+  {
+   "name": "Skjervoy",
+   "lat": 70.033617,
+   "lon": 20.974752
+  },
+  {
+   "name": "Skjold",
+   "lat": 69.024474,
+   "lon": 19.296857
+  },
+  {
+   "name": "Sklorbacken",
+   "lat": 65.894613,
+   "lon": 23.097909
+  },
+  {
+   "name": "Skoelva",
+   "lat": 69.131738,
+   "lon": 18.050821
+  },
+  {
+   "name": "Skonseng",
+   "lat": 66.356072,
+   "lon": 14.339857
+  },
+  {
+   "name": "Skrollsvika",
+   "lat": 69.064039,
+   "lon": 16.815055
+  },
+  {
+   "name": "Skutvik",
+   "lat": 68.015412,
+   "lon": 15.332327
+  },
+  {
+   "name": "Skuvvanvarri",
+   "lat": 69.839613,
+   "lon": 25.07839
+  },
+  {
+   "name": "Slagnas",
+   "lat": 65.587047,
+   "lon": 18.16711
+  },
+  {
+   "name": "Sleneset",
+   "lat": 66.36366,
+   "lon": 12.608631
+  },
+  {
+   "name": "Slussfors",
+   "lat": 65.43107,
+   "lon": 16.23967
+  },
+  {
+   "name": "Snezhnogorsk",
+   "lat": 69.19191,
+   "lon": 33.232355
+  },
+  {
+   "name": "Sodankyla",
+   "lat": 67.418972,
+   "lon": 26.590218
+  },
+  {
+   "name": "Sodra Bredaker",
+   "lat": 65.90102,
+   "lon": 21.321748
+  },
+  {
+   "name": "Sodra Grannas",
+   "lat": 65.296738,
+   "lon": 16.367616
+  },
+  {
+   "name": "Sodra Sunderbyn",
+   "lat": 65.654163,
+   "lon": 21.953414
+  },
+  {
+   "name": "Sodra Svartbyn",
+   "lat": 65.799784,
+   "lon": 21.744386
+  },
+  {
+   "name": "Solfjellsjoen",
+   "lat": 66.108958,
+   "lon": 12.49079
+  },
+  {
+   "name": "Sommaroy",
+   "lat": 69.633771,
+   "lon": 18.005368
+  },
+  {
+   "name": "Sor-Arnoy",
+   "lat": 67.136308,
+   "lon": 13.967313
+  },
+  {
+   "name": "Sor-Gutvika",
+   "lat": 65.083552,
+   "lon": 11.835185
+  },
+  {
+   "name": "Sor-Tverrfjord",
+   "lat": 70.219397,
+   "lon": 21.714169
+  },
+  {
+   "name": "Sorbotn",
+   "lat": 69.513641,
+   "lon": 19.247379
+  },
+  {
+   "name": "Sorfjorden",
+   "lat": 66.506752,
+   "lon": 13.30908
+  },
+  {
+   "name": "Sorfjorden",
+   "lat": 66.49164,
+   "lon": 13.292609
+  },
+  {
+   "name": "Sorfugloy",
+   "lat": 67.056038,
+   "lon": 13.778663
+  },
+  {
+   "name": "Sorkjosen",
+   "lat": 69.786023,
+   "lon": 20.950299
+  },
+  {
+   "name": "Sorland",
+   "lat": 67.665559,
+   "lon": 12.697657
+  },
+  {
+   "name": "Sorreisa",
+   "lat": 69.14544,
+   "lon": 18.152962
+  },
+  {
+   "name": "Sorrollnes",
+   "lat": 68.727272,
+   "lon": 16.842791
+  },
+  {
+   "name": "Sorsele",
+   "lat": 65.533066,
+   "lon": 17.536874
+  },
+  {
+   "name": "Sortland",
+   "lat": 68.69513,
+   "lon": 15.414826
+  },
+  {
+   "name": "Sorvaer",
+   "lat": 70.632223,
+   "lon": 21.985443
+  },
+  {
+   "name": "Sorvagen",
+   "lat": 67.889634,
+   "lon": 13.01637
+  },
+  {
+   "name": "Sorvika",
+   "lat": 68.68401,
+   "lon": 16.535728
+  },
+  {
+   "name": "Sosnovy",
+   "lat": 66.001045,
+   "lon": 32.319341
+  },
+  {
+   "name": "Stakkvik",
+   "lat": 69.954298,
+   "lon": 19.670942
+  },
+  {
+   "name": "Stamsund",
+   "lat": 68.130074,
+   "lon": 13.849228
+  },
+  {
+   "name": "Stavseng",
+   "lat": 66.173984,
+   "lon": 12.544979
+  },
+  {
+   "name": "Sto",
+   "lat": 69.018831,
+   "lon": 15.123973
+  },
+  {
+   "name": "Stokmarknes",
+   "lat": 68.567,
+   "lon": 14.913349
+  },
+  {
+   "name": "Stonglandseidet",
+   "lat": 69.083797,
+   "lon": 17.174201
+  },
+  {
+   "name": "Storbukt",
+   "lat": 70.996158,
+   "lon": 25.969921
+  },
+  {
+   "name": "Storekorsnes",
+   "lat": 70.214272,
+   "lon": 23.20182
+  },
+  {
+   "name": "Storforshei",
+   "lat": 66.404479,
+   "lon": 14.527752
+  },
+  {
+   "name": "Storjord",
+   "lat": 66.98931,
+   "lon": 14.761389
+  },
+  {
+   "name": "Storon",
+   "lat": 65.735785,
+   "lon": 23.097102
+  },
+  {
+   "name": "Storslett",
+   "lat": 69.767852,
+   "lon": 21.024457
+  },
+  {
+   "name": "Storsteinnes",
+   "lat": 69.240846,
+   "lon": 19.234144
+  },
+  {
+   "name": "Storsteinnes",
+   "lat": 69.332291,
+   "lon": 18.890881
+  },
+  {
+   "name": "Storsund",
+   "lat": 65.576594,
+   "lon": 20.625469
+  },
+  {
+   "name": "Storvik",
+   "lat": 66.963539,
+   "lon": 13.806078
+  },
+  {
+   "name": "Straume",
+   "lat": 68.688956,
+   "lon": 14.471644
+  },
+  {
+   "name": "Straumen",
+   "lat": 67.348426,
+   "lon": 15.596808
+  },
+  {
+   "name": "Straumfjordnes",
+   "lat": 69.868633,
+   "lon": 21.21437
+  },
+  {
+   "name": "Stravnjunnje",
+   "lat": 67.963367,
+   "lon": 15.930791
+  },
+  {
+   "name": "Strengelvag",
+   "lat": 68.959608,
+   "lon": 15.182345
+  },
+  {
+   "name": "Stuorravuonna",
+   "lat": 70.122619,
+   "lon": 28.574727
+  },
+  {
+   "name": "Sulitjelma",
+   "lat": 67.132905,
+   "lon": 16.077378
+  },
+  {
+   "name": "Sund",
+   "lat": 68.005183,
+   "lon": 13.207895
+  },
+  {
+   "name": "Suvanto",
+   "lat": 67.152453,
+   "lon": 27.279963
+  },
+  {
+   "name": "Svanvik",
+   "lat": 69.453778,
+   "lon": 30.049774
+  },
+  {
+   "name": "Svappavaara",
+   "lat": 67.646924,
+   "lon": 21.055485
+  },
+  {
+   "name": "Svartbacken",
+   "lat": 65.902912,
+   "lon": 21.803575
+  },
+  {
+   "name": "Svartbyn",
+   "lat": 66.25963,
+   "lon": 22.820359
+  },
+  {
+   "name": "Svolvaer",
+   "lat": 68.232171,
+   "lon": 14.564602
+  },
+  {
+   "name": "Syotekyla",
+   "lat": 65.641809,
+   "lon": 27.715944
+  },
+  {
+   "name": "Taipaleenharju",
+   "lat": 65.278085,
+   "lon": 26.824916
+  },
+  {
+   "name": "Taivalkoski",
+   "lat": 65.575294,
+   "lon": 28.242586
+  },
+  {
+   "name": "Talmulahti",
+   "lat": 70.042467,
+   "lon": 22.950196
+  },
+  {
+   "name": "Tankavaara",
+   "lat": 68.181041,
+   "lon": 27.09846
+  },
+  {
+   "name": "Tapionkyla",
+   "lat": 66.704512,
+   "lon": 25.448032
+  },
+  {
+   "name": "Tapojarvi",
+   "lat": 67.53801,
+   "lon": 23.626017
+  },
+  {
+   "name": "Tarendo",
+   "lat": 67.167297,
+   "lon": 22.627009
+  },
+  {
+   "name": "Tarnaby",
+   "lat": 65.711447,
+   "lon": 15.276544
+  },
+  {
+   "name": "Tedino",
+   "lat": 66.468575,
+   "lon": 32.749548
+  },
+  {
+   "name": "Tennevoll",
+   "lat": 68.747026,
+   "lon": 17.806291
+  },
+  {
+   "name": "Teponmaki",
+   "lat": 68.616205,
+   "lon": 27.527682
+  },
+  {
+   "name": "Tepsa",
+   "lat": 67.562358,
+   "lon": 25.681286
+  },
+  {
+   "name": "Teriberka",
+   "lat": 69.164133,
+   "lon": 35.145823
+  },
+  {
+   "name": "Ternu",
+   "lat": 66.394302,
+   "lon": 25.381853
+  },
+  {
+   "name": "Terrak",
+   "lat": 65.088648,
+   "lon": 12.373777
+  },
+  {
+   "name": "Tervola",
+   "lat": 66.082291,
+   "lon": 24.805884
+  },
+  {
+   "name": "Tjautjas",
+   "lat": 67.326607,
+   "lon": 20.736699
+  },
+  {
+   "name": "Tjong",
+   "lat": 66.685744,
+   "lon": 13.450264
+  },
+  {
+   "name": "Tjongsfjord",
+   "lat": 66.69519,
+   "lon": 13.421124
+  },
+  {
+   "name": "Tjotta",
+   "lat": 65.823064,
+   "lon": 12.426116
+  },
+  {
+   "name": "Toft",
+   "lat": 65.46901,
+   "lon": 12.134797
+  },
+  {
+   "name": "Tonnes",
+   "lat": 66.513764,
+   "lon": 13.014319
+  },
+  {
+   "name": "Tore",
+   "lat": 65.913129,
+   "lon": 22.647828
+  },
+  {
+   "name": "Tormanen",
+   "lat": 68.608003,
+   "lon": 27.488233
+  },
+  {
+   "name": "Tormasenvaara",
+   "lat": 65.905276,
+   "lon": 29.470804
+  },
+  {
+   "name": "Tornio",
+   "lat": 65.845759,
+   "lon": 24.1464
+  },
+  {
+   "name": "Torsken",
+   "lat": 69.339035,
+   "lon": 17.105746
+  },
+  {
+   "name": "Torvinen",
+   "lat": 67.196645,
+   "lon": 26.646543
+  },
+  {
+   "name": "Tovika",
+   "lat": 68.680132,
+   "lon": 16.868971
+  },
+  {
+   "name": "Traena",
+   "lat": 66.502473,
+   "lon": 12.099108
+  },
+  {
+   "name": "Tranoya",
+   "lat": 68.183447,
+   "lon": 15.662539
+  },
+  {
+   "name": "Trofors",
+   "lat": 65.538708,
+   "lon": 13.386431
+  },
+  {
+   "name": "Tromso",
+   "lat": 69.651634,
+   "lon": 18.955859
+  },
+  {
+   "name": "Trones",
+   "lat": 66.920338,
+   "lon": 14.768508
+  },
+  {
+   "name": "Tufjord",
+   "lat": 71.005063,
+   "lon": 23.908989
+  },
+  {
+   "name": "Tuloma",
+   "lat": 68.819267,
+   "lon": 32.690599
+  },
+  {
+   "name": "Tumanny",
+   "lat": 68.883561,
+   "lon": 35.692896
+  },
+  {
+   "name": "Tungozero",
+   "lat": 65.752823,
+   "lon": 31.301261
+  },
+  {
+   "name": "Turtola",
+   "lat": 66.641334,
+   "lon": 23.880791
+  },
+  {
+   "name": "Tvaran",
+   "lat": 65.562771,
+   "lon": 21.110291
+  },
+  {
+   "name": "Tverrelvdalen",
+   "lat": 69.922684,
+   "lon": 23.49698
+  },
+  {
+   "name": "Ullatti",
+   "lat": 67.020912,
+   "lon": 21.813056
+  },
+  {
+   "name": "Ulsvahke",
+   "lat": 68.115538,
+   "lon": 15.865612
+  },
+  {
+   "name": "Umba",
+   "lat": 66.678034,
+   "lon": 34.337598
+  },
+  {
+   "name": "Umfors",
+   "lat": 65.945761,
+   "lon": 15.037348
+  },
+  {
+   "name": "Unjarga",
+   "lat": 70.152165,
+   "lon": 28.864571
+  },
+  {
+   "name": "Ura-Guba",
+   "lat": 69.291389,
+   "lon": 32.79352
+  },
+  {
+   "name": "Utsjoki",
+   "lat": 69.907601,
+   "lon": 27.025246
+  },
+  {
+   "name": "Utskarpen",
+   "lat": 66.2903,
+   "lon": 13.581314
+  },
+  {
+   "name": "Vaaranpera",
+   "lat": 67.053336,
+   "lon": 23.346688
+  },
+  {
+   "name": "Vadso",
+   "lat": 70.074127,
+   "lon": 29.749777
+  },
+  {
+   "name": "Valikyla",
+   "lat": 66.77781,
+   "lon": 24.010426
+  },
+  {
+   "name": "Valivaara",
+   "lat": 67.081815,
+   "lon": 23.391848
+  },
+  {
+   "name": "Valnesfjord",
+   "lat": 67.300207,
+   "lon": 15.185026
+  },
+  {
+   "name": "Vangsvika",
+   "lat": 69.169659,
+   "lon": 17.741317
+  },
+  {
+   "name": "Vannafjarden",
+   "lat": 65.820936,
+   "lon": 23.320731
+  },
+  {
+   "name": "Vannareid",
+   "lat": 70.199238,
+   "lon": 19.608388
+  },
+  {
+   "name": "Vannvag",
+   "lat": 70.072541,
+   "lon": 19.981975
+  },
+  {
+   "name": "Varajarvi",
+   "lat": 66.258554,
+   "lon": 24.55835
+  },
+  {
+   "name": "Vardo",
+   "lat": 70.370186,
+   "lon": 31.107719
+  },
+  {
+   "name": "Varzuga",
+   "lat": 66.395158,
+   "lon": 36.58678
+  },
+  {
+   "name": "Vassdalen",
+   "lat": 70.23064,
+   "lon": 22.364169
+  },
+  {
+   "name": "Venejarvi",
+   "lat": 67.283737,
+   "lon": 24.217409
+  },
+  {
+   "name": "Vengsoy",
+   "lat": 69.837309,
+   "lon": 18.579958
+  },
+  {
+   "name": "Verkhnetulomskiy",
+   "lat": 68.606667,
+   "lon": 31.797496
+  },
+  {
+   "name": "Vestre Jakobselv",
+   "lat": 70.111613,
+   "lon": 29.333019
+  },
+  {
+   "name": "Vevelstad",
+   "lat": 65.700998,
+   "lon": 12.441513
+  },
+  {
+   "name": "Vidsel",
+   "lat": 65.833606,
+   "lon": 20.520088
+  },
+  {
+   "name": "Vidyayevo",
+   "lat": 69.318003,
+   "lon": 32.806728
+  },
+  {
+   "name": "Vik",
+   "lat": 68.742227,
+   "lon": 16.277474
+  },
+  {
+   "name": "Vik",
+   "lat": 65.311784,
+   "lon": 12.167725
+  },
+  {
+   "name": "Vikajarvi",
+   "lat": 66.624013,
+   "lon": 26.199638
+  },
+  {
+   "name": "Visokij",
+   "lat": 68.138176,
+   "lon": 33.409852
+  },
+  {
+   "name": "Visthus",
+   "lat": 65.725342,
+   "lon": 12.598182
+  },
+  {
+   "name": "Visttrask",
+   "lat": 65.692846,
+   "lon": 20.648637
+  },
+  {
+   "name": "Vita",
+   "lat": 65.926812,
+   "lon": 22.426637
+  },
+  {
+   "name": "Vittangi",
+   "lat": 67.678286,
+   "lon": 21.650188
+  },
+  {
+   "name": "Vittjarv",
+   "lat": 65.850235,
+   "lon": 21.590292
+  },
+  {
+   "name": "Voynitsa",
+   "lat": 65.18483,
+   "lon": 30.292444
+  },
+  {
+   "name": "Vuollerim",
+   "lat": 66.429561,
+   "lon": 20.602417
+  },
+  {
+   "name": "Vuonnabahta",
+   "lat": 70.172789,
+   "lon": 28.555691
+  },
+  {
+   "name": "Vuono",
+   "lat": 65.825476,
+   "lon": 24.056266
+  },
+  {
+   "name": "Vuostimo",
+   "lat": 66.970724,
+   "lon": 27.517289
+  },
+  {
+   "name": "Yli-Ii",
+   "lat": 65.370059,
+   "lon": 25.839553
+  },
+  {
+   "name": "Yli-Karppa",
+   "lat": 65.809911,
+   "lon": 25.662701
+  },
+  {
+   "name": "Yli-Kurki",
+   "lat": 65.366157,
+   "lon": 27.697735
+  },
+  {
+   "name": "Yli-Raumo",
+   "lat": 65.848118,
+   "lon": 24.228194
+  },
+  {
+   "name": "Ylitornio",
+   "lat": 66.316426,
+   "lon": 23.6713
+  },
+  {
+   "name": "Yllasjarvi",
+   "lat": 67.525138,
+   "lon": 24.306757
+  },
+  {
+   "name": "Ypykkajarvi",
+   "lat": 65.390704,
+   "lon": 26.722987
+  },
+  {
+   "name": "Zaozersk",
+   "lat": 69.400925,
+   "lon": 32.441333
+  },
+  {
+   "name": "Zapolyarnyy",
+   "lat": 69.426239,
+   "lon": 30.819939
+  },
+  {
+   "name": "Zarechensk",
+   "lat": 66.681801,
+   "lon": 31.43287
+  },
+  {
+   "name": "Zasheyek",
+   "lat": 67.406597,
+   "lon": 32.549905
+  },
+  {
+   "name": "Zelenoborskij",
+   "lat": 66.857452,
+   "lon": 32.387099
+  },
+  {
+   "name": "Zverosovkhoz",
+   "lat": 68.844899,
+   "lon": 33.092199
+  }
+ ]
+}

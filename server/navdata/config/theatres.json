@@ -21,11 +21,13 @@
   },
   "SouthAtlantic": {
     "folder": "south_atlantic",
-    "bbox": [-74.0, -56.0, -55.0, -45.0]
+    "bbox": [-74.0, -56.0, -55.0, -45.0],
+    "terrainsFolder": "Falklands"
   },
   "Sinai": {
     "folder": "sinai",
-    "bbox": [29.0, 27.0, 40.0, 35.0]
+    "bbox": [29.0, 27.0, 40.0, 35.0],
+    "runwayKey": "SinaiMap"
   },
   "Kola": {
     "folder": "kola",
@@ -37,6 +39,11 @@
   },
   "Germany": {
     "folder": "germany",
-    "bbox": [6.0, 46.0, 20.0, 56.0]
+    "bbox": [6.0, 46.0, 20.0, 56.0],
+    "terrainsFolder": "GermanyColdWar"
+  },
+  "Normandy": {
+    "folder": "normandy",
+    "bbox": [-6.0, 48.0, 2.5, 51.5]
   }
 }

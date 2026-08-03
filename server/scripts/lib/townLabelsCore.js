@@ -10,8 +10,8 @@ const path = require('path')
 
 const LINE_RE = /^\["(.+)"\]\s*=\s*\{\s*latitude\s*=\s*(-?[0-9.]+),\s*longitude\s*=\s*(-?[0-9.]+),\s*display_name\s*=\s*_\(".*"\)\s*\},?$/
 
-function buildTheatre({ theatre, terrainsDir }) {
-  const luaPath = path.join(terrainsDir, theatre, 'map', 'towns.lua')
+function buildTheatre({ theatre, terrainsDir, dcsFolder }) {
+  const luaPath = path.join(terrainsDir, dcsFolder || theatre, 'map', 'towns.lua')
   if (!fs.existsSync(luaPath)) {
     return { status: 'skip', reason: 'towns.lua not found' }
   }

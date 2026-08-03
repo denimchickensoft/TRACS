@@ -2,8 +2,10 @@
 
 // Shared core for airport surface polygon generation (ASDE-X module).
 // Pure computation only — no filesystem config loading and no output writing,
-// so this same code can run from a dev checkout (fs-loaded config) or from a
-// bundled standalone executable (config embedded at build time via require()).
+// so this same code can run from a dev checkout or from the standalone
+// terrainDataExe .exe, both of which load theatres.json/runway JSON from
+// disk (dev: server/navdata/config + client/public/runways; exe: its
+// adjacent manifest/ folder) and pass the parsed data in as arguments.
 //
 // For each theatre: reads DCS rn5 binary files (taxiway centerlines) and DCS
 // runway JSON (authoritative runway endpoints), applies a two-layer
@@ -12,11 +14,13 @@
 const fs   = require('fs')
 const path = require('path')
 
-// Runway JSON filename differs from theatre key for some theatres
-const RUNWAY_FILE = { Sinai: 'SinaiMap' }
-
 const TAXIWAY_WIDTH_M = 22.0
 const ZERO_8 = Buffer.alloc(8)
+
+// Max distance between an unmatched stem's taxiway centroid and an unclaimed
+// airbase's runway midpoint for the two to be suggested as the same airport.
+const MATCH_RADIUS_M = 5000
+const EARTH_R_M = 6371000
 
 // ── Transverse Mercator inverse projection ────────────────────────────────────
 
@@ -149,6 +153,26 @@ function bufferPolyline(coords, halfWidthM) {
   ])
 }
 
+// ── Location-based match suggestions ────────────────────────────────────────
+
+function haversineM(a, b) {
+  const toRad = d => d * Math.PI / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLon = toRad(b.lon - a.lon)
+  const lat1 = toRad(a.lat)
+  const lat2 = toRad(b.lat)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2
+  return 2 * EARTH_R_M * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+function centroidOf(segs) {
+  let sumLon = 0, sumLat = 0, n = 0
+  for (const coords of segs) {
+    for (const [lon, lat] of coords) { sumLon += lon; sumLat += lat; n++ }
+  }
+  return n ? { lon: sumLon / n, lat: sumLat / n } : null
+}
+
 // ── Per-theatre build ─────────────────────────────────────────────────────────
 //
 // Pure: takes already-loaded config for one theatre plus the DCS terrains dir,
@@ -160,7 +184,7 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson }) {
     return { status: 'skip', reason: 'no TM params or theatre config' }
   }
 
-  const atDir = path.join(terrainsDir, theatre, 'AirfieldsTaxiways')
+  const atDir = path.join(terrainsDir, conf.terrainsFolder || theatre, 'AirfieldsTaxiways')
   if (!fs.existsSync(atDir)) {
     return { status: 'skip', reason: 'AirfieldsTaxiways not found' }
   }
@@ -183,6 +207,9 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson }) {
 
   const taxiFeatures = []
   const rwyFeatures  = []
+  const unmatchedStems = []
+  const unmatchedCentroids = {}
+  const matchedAirbases = new Set()
 
   const rn5Files = fs.readdirSync(atDir).filter(f => f.endsWith('.rn5')).sort()
 
@@ -206,6 +233,7 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson }) {
     const airbaseName = nameMap[stem]
     const runways     = airbaseName ? rwByAirbase[airbaseName] : null
     if (runways) {
+      matchedAirbases.add(airbaseName)
       for (const rwy of runways) {
         const widthM = rwy.width_ft * 0.3048
         const ring   = bufferPolyline(
@@ -219,8 +247,40 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson }) {
           geometry: { type: 'Polygon', coordinates: [ring] },
         })
       }
+    } else {
+      unmatchedStems.push(stem)
+      const centroid = centroidOf(segs)
+      if (centroid) unmatchedCentroids[stem] = centroid
     }
   }
+
+  const unclaimedAirbases = Object.keys(rwByAirbase).filter(name => !matchedAirbases.has(name)).sort()
+
+  // Representative point per unclaimed airbase — average midpoint of its runways
+  const airbaseCenters = {}
+  for (const name of unclaimedAirbases) {
+    const runways = rwByAirbase[name]
+    let sumLon = 0, sumLat = 0
+    for (const rwy of runways) {
+      sumLon += (rwy.end1.lon + rwy.end2.lon) / 2
+      sumLat += (rwy.end1.lat + rwy.end2.lat) / 2
+    }
+    airbaseCenters[name] = { lon: sumLon / runways.length, lat: sumLat / runways.length }
+  }
+
+  // Suggest pairings for unmatched stems whose taxiway centroid sits near an
+  // unclaimed airbase's runway midpoint — same physical airport, still needs
+  // a manual airport_name_map.json entry to confirm and apply.
+  const suggestedPairs = []
+  for (const [stem, centroid] of Object.entries(unmatchedCentroids)) {
+    let best = null
+    for (const [name, center] of Object.entries(airbaseCenters)) {
+      const distanceM = Math.round(haversineM(centroid, center))
+      if (!best || distanceM < best.distanceM) best = { airbase: name, distanceM }
+    }
+    if (best && best.distanceM <= MATCH_RADIUS_M) suggestedPairs.push({ stem, ...best })
+  }
+  suggestedPairs.sort((a, b) => a.distanceM - b.distanceM)
 
   // Taxiways first, runways last — sequential draw gives correct superimposition
   return {
@@ -229,7 +289,10 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson }) {
     airportCount: rn5Files.length,
     taxiCount: taxiFeatures.length,
     rwyCount: rwyFeatures.length,
+    unmatchedStems,
+    unclaimedAirbases,
+    suggestedPairs,
   }
 }
 
-module.exports = { RUNWAY_FILE, TAXIWAY_WIDTH_M, makeTmInv, extractRn5, bufferPolyline, buildTheatre }
+module.exports = { TAXIWAY_WIDTH_M, makeTmInv, extractRn5, bufferPolyline, buildTheatre }
