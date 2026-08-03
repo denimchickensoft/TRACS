@@ -164,7 +164,23 @@ export function App() {
 
   const [deckDocked, setDeckDocked] = useState(true)
   const deckPopupRef   = useRef(null)
-  const handleDeckUndock = useCallback(makeUndockHandler('/?window=catcc-deck', 'tracs-catcc-deck', catccWidthRef, setDeckDocked, deckPopupRef), []) // eslint-disable-line
+  // Bespoke (not makeUndockHandler): Deck needs coalition + carrierUnitId, which
+  // aren't broadcast on the session BroadcastChannel (see store/session.js —
+  // that channel is deliberately scoped to session-wide fields only, since
+  // facility/carrier identity is per-scope and must not leak across windows).
+  // Passed via URL param instead, same pattern as handleAsdexUndock below.
+  const handleDeckUndock = useCallback(() => {
+    const { coalition, carrierUnitId } = useSessionStore.getState()
+    const p = new URLSearchParams({ window: 'catcc-deck', coalition: coalition ?? '' })
+    if (carrierUnitId != null) p.set('carrierUnitId', String(carrierUnitId))
+    const popup = window.open(`/?${p}`, 'tracs-catcc-deck', `width=${catccWidthRef.current},height=800,resizable=yes`)
+    if (!popup) return
+    deckPopupRef.current = popup
+    setDeckDocked(false)
+    const id = setInterval(() => {
+      if (popup.closed) { setDeckDocked(true); deckPopupRef.current = null; clearInterval(id) }
+    }, 500)
+  }, [])
 
   // ── ATC right partition (strips + par share one width) ─────────────
   const [stripsDocked,  setStripsDocked]  = useState(true)
@@ -222,7 +238,7 @@ export function App() {
   const [aicPanel,   setAicPanel]   = useState('main')   // 'main' = braa list
   const [abmPanel,   setAbmPanel]   = useState(null)      // null | 'ato' | 'frag'
 
-  // Selecting a package (Ctrl+Shift+Click on the scope, or a row in ATO)
+  // Selecting a flight (Ctrl+Shift+Click on the scope, or a row in ATO)
   // auto-switches to the FRAG tab — keyed on selectNonce (not selectedGroupId)
   // so reselecting the same contact still reopens the panel if it was closed.
   const abmSelectedGroupId = useAbmMissionStore((s) => s.selectedGroupId)

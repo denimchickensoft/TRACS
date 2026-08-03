@@ -45,6 +45,24 @@ export function trueBearingRangeNm(fromLat, fromLng, toLat, toLng) {
   return { trueBearingDeg, rangeNm }
 }
 
+/**
+ * Inverse of trueBearingRangeNm — destination lat/lng from a start point plus
+ * a true bearing (degrees) and range (nm), via the same flat-earth
+ * approximation. refLat uses the start point rather than the fwd function's
+ * start/end average since the caller doesn't know the endpoint yet; fine at
+ * the short ranges (well under 1nm) this is meant for.
+ */
+export function destinationPoint(fromLat, fromLng, trueBearingDeg, rangeNm) {
+  const bearingRad  = trueBearingDeg * Math.PI / 180
+  const dN          = rangeNm * Math.cos(bearingRad)
+  const dE          = rangeNm * Math.sin(bearingRad)
+  const nmPerDegLng = NM_PER_DEG_LAT * Math.cos(fromLat * Math.PI / 180)
+  return {
+    lat: fromLat + dN / NM_PER_DEG_LAT,
+    lng: fromLng + dE / nmPerDegLng,
+  }
+}
+
 /** True → magnetic. Use for lat/lng-derived bearings, unit.track, and unit.heading/carrier.heading alike. */
 export function toMagneticFromTrue(trueDeg, declinationDeg) {
   return (trueDeg - declinationDeg + 360) % 360

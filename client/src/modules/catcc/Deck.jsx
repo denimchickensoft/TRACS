@@ -4,7 +4,8 @@ import { useSessionStore }     from '../../store/session.js'
 import { useCorrelationStore } from '../../store/correlation.js'
 import { getVisibleUnits }     from '../atc/stars/visibleUnits.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
-import { CARRIER_TYPES, projectOntoDeck } from '../../utils/carriers.js'
+import { CARRIER_TYPES, projectOntoDeck, NM_TO_FEET } from '../../utils/carriers.js'
+import { destinationPoint } from '../../utils/bearing.js'
 import './Deck.css'
 
 const METERS_TO_FEET     = 3.28084
@@ -13,6 +14,13 @@ const ALT_BELOW_DECK_FT  = 20  // how far below deck level still counts — beyo
                                 // the elevator/in the hangar bay and hide it
 const SYMBOL_R         = 7   // same triangle size as AsdexScope's drawAsdexContacts.js
 const CONTACT_COLOR    = 'rgb(0,200,80)'  // CATCC range-ring green (drawCatccLayers.js)
+
+// Zoom is relative to the fit-to-container size computed below (box), which
+// is fixed at 1x — zooming out further than a full fit-to-panel view isn't
+// useful, so 1 is a hard floor, not just a default.
+const ZOOM_MIN  = 1
+const ZOOM_MAX  = 4
+const ZOOM_STEP = 0.2
 
 // Cache of rotated (bow-up) deck backgrounds keyed by image src, so each
 // carrier class's PNG is only decoded + rotated once no matter how often
@@ -23,6 +31,14 @@ const CONTACT_COLOR    = 'rgb(0,200,80)'  // CATCC range-ring green (drawCatccLa
 // (-y), right -> +x, so aircraft plotted directly in this canvas's pixel
 // space line up with the rotated art without any further transform.
 const bgCache = new Map()
+
+// In popup mode, coalition/carrierUnitId arrive via URL param, not the session
+// store — the session BroadcastChannel deliberately doesn't broadcast these
+// (see store/session.js: they're per-scope, not session-wide, same reasoning
+// as facilityDcsName in AsdexScope.jsx).
+const _urlParams          = new URLSearchParams(window.location.search)
+const _URL_COALITION      = _urlParams.get('coalition')
+const _URL_CARRIER_UNITID = _urlParams.get('carrierUnitId')
 
 function loadRotatedBackground(src, onReady) {
   const cached = bgCache.get(src)
@@ -44,9 +60,11 @@ function loadRotatedBackground(src, onReady) {
 }
 
 export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
-  const units         = useUnitsStore((s) => s.units)
-  const coalition     = useSessionStore((s) => s.coalition)
-  const carrierUnitId = useSessionStore((s) => s.carrierUnitId)
+  const units             = useUnitsStore((s) => s.units)
+  const _sessionCoalition = useSessionStore((s) => s.coalition)
+  const _sessionCarrierId = useSessionStore((s) => s.carrierUnitId)
+  const coalition     = _URL_COALITION || _sessionCoalition
+  const carrierUnitId = _URL_CARRIER_UNITID ? Number(_URL_CARRIER_UNITID) : _sessionCarrierId
   const correlations  = useCorrelationStore((s) => s.correlations)
 
   const carrierUnit = carrierUnitId != null ? units[carrierUnitId] : null
@@ -56,6 +74,8 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   const canvasRef     = useRef(null)
   const [bg,  setBg]  = useState(null)
   const [box, setBox] = useState({ w: 0, h: 0 })
+  const [containerSize, setContainerSize] = useState({ cw: 0, ch: 0 })
+  const [zoom, setZoom] = useState(ZOOM_MIN)
 
   // Load (and cache) the rotated background for the active carrier class
   useEffect(() => {
@@ -76,6 +96,7 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
       const cw = container.clientWidth
       const ch = container.clientHeight
       if (!cw || !ch) return
+      setContainerSize({ cw, ch })
       const aspect = bg.w / bg.h
       let w = cw, h = w / aspect
       if (h > ch) { h = ch; w = h * aspect }
@@ -86,6 +107,64 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
     ro.observe(container)
     return () => ro.disconnect()
   }, [bg])
+
+  // New deck background (carrier class switch) → back out to the fit-to-panel view
+  useEffect(() => { setZoom(ZOOM_MIN) }, [bg])
+
+  // Scroll to zoom in on the deck; ZOOM_MIN (fit-to-panel) is a hard floor —
+  // zooming out further than the panel fit isn't useful.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const onWheel = (e) => {
+      e.preventDefault()
+      const dir = e.deltaY < 0 ? 1 : -1
+      setZoom((z) => Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z + dir * ZOOM_STEP)) * 100) / 100)
+    }
+    container.addEventListener('wheel', onWheel, { passive: false })
+    return () => container.removeEventListener('wheel', onWheel)
+  }, [])
+
+  // Right-click-hold to pan when zoomed. Drives the container's native
+  // scrollLeft/scrollTop directly rather than tracking an offset in state —
+  // the browser clamps those to [0, scrollWidth/Height - clientWidth/Height]
+  // for free, which is exactly "don't pan past the edges of the png".
+  const dragRef = useRef(null)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const onMouseDown = (e) => {
+      if (e.button !== 2) return
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startScrollLeft: container.scrollLeft,
+        startScrollTop:  container.scrollTop,
+      }
+      container.style.cursor = 'grabbing'
+    }
+    const onMouseMove = (e) => {
+      if (!dragRef.current) return
+      container.scrollLeft = dragRef.current.startScrollLeft - (e.clientX - dragRef.current.startX)
+      container.scrollTop  = dragRef.current.startScrollTop  - (e.clientY - dragRef.current.startY)
+    }
+    const onMouseUp = (e) => {
+      if (e.button !== 2) return
+      dragRef.current = null
+      container.style.cursor = ''
+    }
+    const onContextMenu = (e) => e.preventDefault()
+    container.addEventListener('mousedown', onMouseDown)
+    container.addEventListener('contextmenu', onContextMenu)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      container.removeEventListener('mousedown', onMouseDown)
+      container.removeEventListener('contextmenu', onContextMenu)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
 
   // getVisibleUnits(..., true) bypasses the 100ft-AGL floor: a jet sitting on
   // a ~65-72ft deck reads as under that floor against sea-level terrain and
@@ -125,23 +204,85 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
     return out
   }, [visibleUnits, carrierUnit, carrierType, correlations])
 
+  // Zoomed render size — box is the fit-to-panel (1x) size, this is what's
+  // actually drawn/scrolled. Kept separate from box so the ResizeObserver fit
+  // above doesn't have to account for zoom.
+  const renderW = Math.round(box.w * zoom)
+  const renderH = Math.round(box.h * zoom)
+
+  // Center the canvas via margin, not flexbox align/justify-center: browsers
+  // treat centered flex/grid overflow as "unsafe" alignment by default and
+  // clip the before-center portion from the scrollable area, so a zoomed,
+  // centered canvas can't be dragged all the way to its near edge. Margins
+  // sidestep that — clamped to 0 once the canvas outgrows the container on
+  // that axis, at which point native scrollLeft/scrollTop already cover the
+  // full 0..(scrollSize - clientSize) range, i.e. edge-to-edge and no further.
+  const marginLeft = Math.max(0, (containerSize.cw - renderW) / 2)
+  const marginTop  = Math.max(0, (containerSize.ch - renderH) / 2)
+
+  // TEMPORARY — deck debug aid. Ctrl+Alt+Click copies the clicked point's
+  // implied lat/lon (inverse of the forwardFt/rightFt math above), its pixel
+  // location in the *original* (un-rotated, bow-right) deck PNG, and the
+  // carrier's current lat/lon. calibRef sidesteps re-registering the listener
+  // on every high-frequency units update.
+  const calibRef = useRef(null)
+  calibRef.current = { carrierUnit, carrierType, bg, renderW, renderH }
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const onClick = (e) => {
+      if (!e.ctrlKey || !e.altKey) return
+      const { carrierUnit, carrierType, bg, renderW, renderH } = calibRef.current
+      if (!carrierUnit?.position || !carrierType || !bg || !renderW || !renderH) return
+
+      const offsetX = e.offsetX
+      const offsetY = e.offsetY
+
+      // Render-space pixel -> deck-relative feet -> lat/lng (inverse of the
+      // forward math in the draw effect + projectOntoDeck).
+      const pxPerFtForward = renderH / carrierType.deckLoaFt
+      const pxPerFtRight   = renderW / carrierType.deckBeamFt
+      const cx = renderW / 2
+      const cy = renderH / 2
+      const rightFt   = (offsetX - cx) / pxPerFtRight
+      const forwardFt = (cy - offsetY) / pxPerFtForward
+
+      const carrierHeadingDeg = (carrierUnit.heading ?? 0) * 180 / Math.PI
+      const rangeNm = Math.hypot(forwardFt, rightFt) / NM_TO_FEET
+      const relBearingDeg = Math.atan2(rightFt, forwardFt) * 180 / Math.PI
+      const trueBearingDeg = (carrierHeadingDeg + relBearingDeg + 360) % 360
+      const { lat, lng } = destinationPoint(carrierUnit.position.lat, carrierUnit.position.lng, trueBearingDeg, rangeNm)
+
+      // Render-space pixel -> rotated bg-canvas pixel -> original PNG pixel.
+      // loadRotatedBackground() maps original (u,v) -> rotated (v, W0 - u)
+      // where W0 = bg.h (original naturalWidth); this is that inverted.
+      const cxRot = offsetX * bg.w / renderW
+      const cyRot = offsetY * bg.h / renderH
+      const pngX  = Math.round(bg.h - cyRot)
+      const pngY  = Math.round(cxRot)
+
+      const text = `cursor ${lat.toFixed(6)}, ${lng.toFixed(6)}  |  png px ${pngX}, ${pngY}  |  carrier ${carrierUnit.position.lat.toFixed(6)}, ${carrierUnit.position.lng.toFixed(6)}`
+      navigator.clipboard?.writeText(text).catch(() => {})
+      console.log('[DECK calib]', text)
+    }
+    canvas.addEventListener('click', onClick)
+    return () => canvas.removeEventListener('click', onClick)
+  }, [bg])
+
   // ── Draw background + contacts ─────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !bg || !box.w || !box.h || !carrierType) return
-    canvas.width  = box.w
-    canvas.height = box.h
+    if (!canvas || !bg || !renderW || !renderH || !carrierType) return
+    canvas.width  = renderW
+    canvas.height = renderH
     const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, box.w, box.h)
-    ctx.drawImage(bg.canvas, 0, 0, box.w, box.h)
+    ctx.clearRect(0, 0, renderW, renderH)
+    ctx.drawImage(bg.canvas, 0, 0, renderW, renderH)
 
-    const pxPerFtForward = box.h / carrierType.deckLoaFt
-    const pxPerFtRight   = box.w / carrierType.deckBeamFt
-    // Reference-point correction — the artwork's true "forwardFt/rightFt = 0"
-    // point doesn't always land exactly at the image's geometric center.
-    const originFt = carrierType.deckOriginOffsetFt ?? { forward: 0, right: 0 }
-    const cx = box.w / 2 + originFt.right   * pxPerFtRight
-    const cy = box.h / 2 - originFt.forward * pxPerFtForward
+    const pxPerFtForward = renderH / carrierType.deckLoaFt
+    const pxPerFtRight   = renderW / carrierType.deckBeamFt
+    const cx = renderW / 2
+    const cy = renderH / 2
 
     ctx.font         = '10px "Roboto Mono", monospace'
     ctx.textAlign    = 'center'
@@ -167,7 +308,7 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
       ctx.fillStyle = CONTACT_COLOR
       ctx.fillText(ac.label, x, y - SYMBOL_R - 3)
     }
-  }, [bg, box, deckAircraft, carrierType])
+  }, [bg, renderW, renderH, deckAircraft, carrierType])
 
   const windowStyle = docked && width ? { width, minWidth: width } : {}
 
@@ -189,7 +330,7 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
         {!carrierUnit && <div className="deck-empty">No carrier assigned</div>}
         {carrierUnit && !carrierType && <div className="deck-empty">Unknown carrier type</div>}
         {carrierUnit && carrierType && !carrierType.deckImage && <div className="deck-empty">No deck image for this carrier</div>}
-        {bg && <canvas ref={canvasRef} className="deck-canvas" style={{ width: box.w, height: box.h }} />}
+        {bg && <canvas ref={canvasRef} className="deck-canvas" style={{ width: renderW, height: renderH, marginLeft, marginTop }} />}
       </div>
     </div>
   )
