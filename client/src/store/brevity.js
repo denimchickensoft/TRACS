@@ -38,4 +38,17 @@ export const useBrevityStore = create((set, get) => ({
     }
     return null
   },
+
+  // Alphabetically-adjacent term relative to `term`, wrapping at either end.
+  // dir: -1 for previous, +1 for next. Backs the .define readout's ArrowUp/
+  // ArrowDown browsing (see AIC/ABM handleKeyDown). Returns { term, text }.
+  neighbor: (term, dir) => {
+    const { terms } = get()
+    const keys = Object.keys(terms).sort()
+    if (!keys.length) return null
+    const idx  = keys.indexOf(term)
+    const from = idx === -1 ? 0 : idx
+    const key  = keys[(from + dir + keys.length) % keys.length]
+    return { term: key, text: terms[key] }
+  },
 }))

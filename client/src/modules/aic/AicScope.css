@@ -183,12 +183,14 @@
 }
 
 /* ── Brevity definition readout (.define) ────────────────────────────────────── */
-/* Sits above the command entry, independent of .aic-cmd-feedback (see comment
-   at that state's declaration in AicScope.jsx for why) — anchored by bottom
-   so it grows upward as definitions wrap across multiple lines. */
+/* Sits above the mission clock (44px + its own ~16px line height), independent
+   of .aic-cmd-feedback (see comment at that state's declaration in
+   AicScope.jsx for why) — anchored by bottom so it grows upward as
+   definitions wrap across multiple lines, without its closing line clipping
+   into the clock below. */
 .aic-define {
   position:       absolute;
-  bottom:         52px;
+  bottom:         70px;
   left:           10px;
   max-width:      420px;
   font-family:    'Roboto Mono', monospace;
@@ -226,7 +228,6 @@
 
 .aic-cmd-preview {
   color: #ccc;
-  min-width: 4ch;
 }
 
 .aic-cmd-fkey {

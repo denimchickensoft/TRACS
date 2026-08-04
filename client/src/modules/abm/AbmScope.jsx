@@ -2378,6 +2378,15 @@ export default function AbmScope() {
       return
     }
 
+    // While a .define readout is up, ArrowUp/ArrowDown browse the glossary
+    // alphabetically instead of the command history, until Escape.
+    if (defineEntry && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault()
+      const result = useBrevityStore.getState().neighbor(defineEntry.term, e.key === 'ArrowUp' ? -1 : 1)
+      if (result) setDefineEntry(result)
+      return
+    }
+
     if (e.key === 'ArrowUp') {
       e.preventDefault()
       const hist = cmdHistoryRef.current
@@ -2685,7 +2694,7 @@ export default function AbmScope() {
         {clockVisible && (
           <div
             className="abm-clock"
-            onClick={() => setShowLocalTime((v) => !v)}
+            onClick={() => { setShowLocalTime((v) => !v); interactiveRef.current?.focus() }}
             title="Click to toggle Zulu / Local time"
           >
             {clockTime ?? (showLocalTime ? '--:--:--L' : '--:--:--Z')}
@@ -2745,7 +2754,7 @@ export default function AbmScope() {
         )}
 
         {defineEntry && (
-          <div className="abm-define" onClick={() => setDefineEntry(null)}>
+          <div className="abm-define" onClick={() => { setDefineEntry(null); interactiveRef.current?.focus() }}>
             <div className="abm-define-term">{defineEntry.term}</div>
             <div className="abm-define-text">{defineEntry.text}</div>
           </div>
