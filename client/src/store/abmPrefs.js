@@ -39,6 +39,7 @@ const DEFAULTS = {
   coordsVisible:  false,
   coordFormat:    'dms', // 'dms' | 'ddm'
   elevUnit:       'feet', // 'feet' | 'meters'
+  becVisible:     false, // bullseye-on-cursor readout — .bec toggles
   acqHidden:      [],    // DECLARATION[]
   engHidden:      [],    // DECLARATION[]
   historyVisible: true,
@@ -47,6 +48,7 @@ const DEFAULTS = {
   dbca:           false, // datablock collision avoidance — off by default (on for CATCC only)
   timeVisible:    true,  // mission clock, top-center — .time toggles
   unitReadoutVisible: true, // cursor-proximity ground/air unit readout — .unitro toggles
+  pinnedFixes:    {},    // { [theatre]: string[] } — .fix <name...> toggles, shown regardless of .fixes
 }
 
 export function loadAbmPrefs() {

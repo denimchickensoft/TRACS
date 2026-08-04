@@ -4,7 +4,14 @@ Mission-wide package tracking: a radar scope with map/reference layers, an ATO s
 
 ## Command line
 
-Type into the buffer, press **Enter**. A few commands (`.threat`, `.db`, `.dope`, `.rename`) work by typing without pressing Enter, then clicking a contact instead — noted below. `Escape` clears state in order: find marker → pending F-key declaration → pending BRAA fighter → open RBL → command buffer. `ArrowUp`/`ArrowDown` cycle your last 50 commands.
+Type into the buffer, press **Enter**. A few commands (`.threat`, `.db`, `.dope`, `.rename`, `.be`) work by typing without pressing Enter, then clicking the map instead — noted below. `Escape` clears state in order: find marker → pending F-key declaration → pending BRAA fighter → open RBL → brevity definition readout → command buffer. `ArrowUp`/`ArrowDown` cycle your last 50 commands.
+
+### Bullseye
+
+- `.be` — bare, Enter with no click: reset to the mission bullseye (clears any override)
+- `.be` typed then click the map: place an override bullseye at that point
+- `.be <fix>` — override to a named fix/navaid/runway
+- `.be <lat> <lon>` — override to explicit decimal-degree coordinates
 
 ### Range rings
 
@@ -14,13 +21,17 @@ Type into the buffer, press **Enter**. A few commands (`.threat`, `.db`, `.dope`
 
 ### Map & reference layers (bare toggles unless noted)
 
-`.time` (mission clock) · `.unitro` (cursor unit-proximity readout, on by default) · `.geo` (coastlines/boundaries) · `.relief` (terrain shading) · `.holds` · `.mora` · `.airways` (all) / `.airways v`/`j`/`b` (one class) · `.asp` (all airspace) or per-category: `.tma .ctr .cta .fir .uir .sua .mil .trsa .classa .classb .classc .classd .classe .classf .classg` · `.aspcolors <name>` (palette) · `.refresh` (reload palettes) · `.labels` (name labels for airspace *and* custom drawings) · `.fill` (toggle airspace polygon fill; `.fill <1-100>` sets transparency % and turns it on) · `.custom`/`.cust` (all custom drawing layers) or `.custom <name>`/`.cust <name>` (toggles just the drawing(s) with that name) · `.fixes` · `.navaids` · `.find <fix>` (drop a marker) · `.runways` · `.polygons` (airport polygons) · `.mgrs` (grid overlay) · `.towns` · `.base`/`.water`/`.roads` (terrain raster layers; `.map` toggles all three together)
+`.time` (mission clock) · `.unitro` (cursor unit-proximity readout, on by default) · `.geo` (coastlines/boundaries) · `.relief` (terrain shading) · `.holds` · `.mora` · `.airways` (all) / `.airways v`/`j`/`b` (one class) · `.asp` (all airspace) or per-category: `.tma .ctr .cta .fir .uir .sua .mil .trsa .classa .classb .classc .classd .classe .classf .classg` · `.aspcolors <name>` (palette) · `.refresh` (reload palettes) · `.labels` (name labels for airspace *and* custom drawings) · `.fill` (toggle polygon fill for airspace *and* custom drawings; `.fill <1-100>` sets transparency % and turns it on) · `.custom`/`.cust` (all custom drawing layers) or `.custom <name>`/`.cust <name>` (toggles just the drawing(s) with that name) · `.fixes` · `.fix <name...>` (force-show one or more fixes regardless of `.fixes`; each name toggles independently) · `.navaids` · `.find <fix>` (drop a marker) · `.runways` · `.polygons` (airport polygons) · `.mgrs` (grid overlay) · `.towns` · `.base`/`.water`/`.roads` (terrain raster layers; `.map` toggles all three together)
 
 Note: SID/STAR/approach procedures are deliberately display-only here — there's no `.proc`-style command in ABM.
 
+### Brevity glossary
+
+`.define <term>` — look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition in a dedicated readout above the command line. Multi-word terms work as typed, e.g. `.define bogey dope`. The readout stays up until you dismiss it (Escape, another `.define`, or clicking it) rather than disappearing on the next command ack.
+
 ### Cursor readout
 
-`.coords` (toggle) · `.ddm` / `.dms` (coordinate format) · `.meters` / `.feet` (elevation units)
+`.coords` (toggle) · `.ddm` / `.dms` (coordinate format) · `.meters` / `.feet` (elevation units) · `.bec` (bullseye-on-cursor — bearing/range readout that follows the mouse)
 
 ### Contacts
 
@@ -87,7 +98,7 @@ Detail view for the flight selected in ATO or via Ctrl+Shift+Click on the scope.
 
 - **Tasking** — editable Task field, full Base name, Status (same rollup as ATO). Click Base to drop a scope marker.
 - **Roster** — one row per aircraft. For imported flights: callsign, type, live-resolved callsign, onboard number, skill, air/ground state, ordnance summary, a collapsible comms/radio list, and Link16 station if present. For manually-added flights: just callsign, type, and state — there's no mission data behind them for ordnance/radios/Link16.
-- **Route** — each waypoint's name, altitude, and speed; click one to drop a marker on the scope. The route is also drawn on the scope itself as a dashed line while the flight is selected.
+- **Route** — each waypoint's name, altitude, and speed; click one to drop a marker on the scope. Click the ROUTE header (yellow, green when active) to toggle the flight's route as a dashed line on the scope; Escape also clears it. Hidden by default each time a flight is (re)selected.
 
 Mouse wheel over the title bar zooms the panel independently of ATO.
 
@@ -106,7 +117,7 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 
 - Accepts `.geojson`, `.json`, `.ndgeojson`, `.ndjson` — multiple files at once. Both single-document and newline-delimited GeoJSON are supported; a few bad lines in an ndjson file won't sink the whole import.
 - Preview lets you rename each layer (defaults to the filename) before importing; a failed file shows its error inline without blocking the others.
-- Each imported layer defaults to the current airspace palette's CUSTOM color (Drawings panel swatch to override per-layer); a feature is only filled if the source GeoJSON explicitly sets a fill — plain outlines are the default, since most hand-drawn boundaries are meant as boundaries, not shaded areas.
+- Each imported layer defaults to the current airspace palette's CUSTOM color (Drawings panel swatch to override per-layer). Polygon fill is gated by `.fill` (same toggle as airspace): a feature's own GeoJSON `fill`, or an overridden stroke color (source `stroke` or the swatch), fills with that color; an unstyled shape only fills if the palette's CUSTOM entry itself defines a `fill`.
 - Feature labels come from the GeoJSON's `title`/`name` properties, gated by the same `.labels` toggle used for airspace names.
 - Drawings are stored per-theatre locally and shared across your own open windows, but are **not** broadcast to other controllers — they're your own reference overlays.
 

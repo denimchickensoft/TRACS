@@ -118,6 +118,20 @@
   text-align: right;
 }
 
+/* ── Bullseye-on-cursor readout (.bec) ───────────────────────────────────────── */
+/* Positioned via inline left/top (raw canvas-pixel cursor coords, set in
+   AbmScope.jsx) and nudged up/right of the pointer tip via transform so the
+   OS cursor glyph itself doesn't sit on top of the text. */
+.abm-bec-box {
+  position:       absolute;
+  transform:      translate(12px, -100%);
+  white-space:    nowrap;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  color:          #fff;
+  pointer-events: none;
+}
+
 /* ── Command entry ───────────────────────────────────────────────────────────── */
 /* Compass rose reach into this corner is capped at LABEL_GAP+fontPx (~24px
    bottom) and LABEL_GAP+labelWidth (~32px left) — those caps come from
@@ -132,6 +146,31 @@
   font-size:      0.7rem;
   color:          #FFD700;
   pointer-events: none;
+}
+
+/* ── Brevity definition readout (.define) ────────────────────────────────────── */
+/* Sits above the command entry, independent of .abm-cmd-feedback (see comment
+   at that state's declaration in AbmScope.jsx for why) — anchored by bottom
+   so it grows upward as definitions wrap across multiple lines. */
+.abm-define {
+  position:       absolute;
+  bottom:         78px;
+  left:           40px;
+  max-width:      420px;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  line-height:    1.5;
+  color:          #fff;
+  white-space:    pre-wrap;
+  pointer-events: auto;
+  cursor:         pointer;
+}
+
+.abm-define-term {
+  color:          #FFD700;
+  font-weight:    bold;
+  letter-spacing: 0.04em;
+  margin-bottom:  2px;
 }
 
 .abm-cmd-area {

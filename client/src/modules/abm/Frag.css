@@ -137,6 +137,9 @@
 .frag-base-findable { cursor: pointer; }
 .frag-base-findable:hover { color: #00e000 !important; }
 
+.frag-route-toggle { color: #FFD700; cursor: pointer; }
+.frag-route-toggle:hover { color: #00e000 !important; }
+
 /* Persistent green while this row's marker/blink is still active on the
    scope — Base/route text stays this color until Escape or another
    find/click clears it; roster callsign stays it while blinking. */

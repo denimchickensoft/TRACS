@@ -95,6 +95,8 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   const requestFind = useAbmMissionStore(s => s.requestFind)
   const findKey = useAbmMissionStore(s => s.findKey)
   const toggleBlink = useAbmMissionStore(s => s.toggleBlink)
+  const routeVisible = useAbmMissionStore(s => s.routeVisible)
+  const toggleRouteVisible = useAbmMissionStore(s => s.toggleRouteVisible)
   const blinkIds = useAbmMissionStore(s => s.blinkIds) ?? []
   const taskOverrides = useAbmMissionStore(s => s.taskOverrides) ?? {}
   const setTaskOverride = useAbmMissionStore(s => s.setTaskOverride)
@@ -415,7 +417,11 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
 
             {flight.route.length > 0 && (
             <div className="frag-section frag-section-grow">
-              <div className="frag-section-label">ROUTE</div>
+              <div
+                className={['frag-section-label', 'frag-route-toggle', routeVisible ? 'frag-find-active' : ''].join(' ').trim()}
+                onClick={toggleRouteVisible}
+                title={routeVisible ? 'Hide route on scope' : 'Show route on scope'}
+              >ROUTE</div>
               <div className="frag-route">
                 {(() => {
                   // Hornet's own cockpit numbers waypoints one behind the

@@ -21,6 +21,7 @@ function serialize(s) {
     flights: s.flights, importedAt: s.importedAt, selectedGroupId: s.selectedGroupId, selectNonce: s.selectNonce,
     findRequest: s.findRequest, findNonce: s.findNonce, findKey: s.findKey,
     blinkIds: s.blinkIds,
+    routeVisible: s.routeVisible,
     taskOverrides: s.taskOverrides,
     nextManualId: s.nextManualId,
   }
@@ -60,6 +61,13 @@ export const useAbmMissionStore = create((set) => ({
   // toggleHighlight, so multiple aircraft can be called out at once; stored
   // as an array since Sets don't round-trip through JSON/BroadcastChannel.
   blinkIds: saved.blinkIds ?? [],
+
+  // FRAG's ROUTE section header — click to toggle the selected flight's
+  // route drawing on the ABM scope, same green-when-active convention as
+  // Base/waypoint find. Reset to false on every selectGroup() (including
+  // reselecting the same flight) so a newly-opened FRAG always starts with
+  // the route hidden until the controller explicitly asks for it.
+  routeVisible: saved.routeVisible ?? false,
 
   // FRAG's editable TASKING/Task field — a controller override of the
   // mission's own task string, keyed by groupId. ATO's TASK column reads
@@ -131,9 +139,13 @@ export const useAbmMissionStore = create((set) => ({
     return { taskOverrides: next }
   }),
 
-  selectGroup: (groupId) => set((s) => ({ selectedGroupId: groupId, selectNonce: s.selectNonce + 1 })),
+  selectGroup: (groupId) => set((s) => ({ selectedGroupId: groupId, selectNonce: s.selectNonce + 1, routeVisible: false })),
 
-  clearSelection: () => set({ selectedGroupId: null }),
+  clearSelection: () => set({ selectedGroupId: null, routeVisible: false }),
+
+  toggleRouteVisible: () => set((s) => ({ routeVisible: !s.routeVisible })),
+
+  clearRouteVisible: () => set({ routeVisible: false }),
 
   requestFind: (ref, key = null) => set((s) => ({ findRequest: ref, findKey: key, findNonce: s.findNonce + 1 })),
 

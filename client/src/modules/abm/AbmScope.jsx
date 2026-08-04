@@ -36,6 +36,7 @@ import { drawAbmContacts, typeAbbrev, computeSuppressedIds } from './canvas/draw
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
 import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
+import { useBrevityStore } from '../../store/brevity.js'
 import { preloadAirdromes } from '../../utils/airdromes.js'
 import { drawBraaOverlays, drawThreatRings } from './canvas/drawAbmBraa.js'
 import { drawRbl }         from './canvas/drawAbmRbl.js'
@@ -340,7 +341,14 @@ export default function AbmScope() {
   // defaults + local useState initializers). Not re-read after that; all
   // updates go through saveAbmPrefs at the point of each command.
   const abmPrefsRef = useRef(null)
-  if (abmPrefsRef.current === null) abmPrefsRef.current = loadAbmPrefs()
+  if (abmPrefsRef.current === null) {
+    abmPrefsRef.current = loadAbmPrefs()
+    // paletteIdx lives in useAbmAirspaceStore (not local state) so
+    // Drawings.jsx can reactively read the active CUSTOM palette color —
+    // hydrated here, synchronously, so the selector below never sees the
+    // store's default 0 before this mount's saved value applies.
+    useAbmAirspaceStore.setState({ paletteIdx: abmPrefsRef.current.aspColorIdx })
+  }
   const abmPrefs = abmPrefsRef.current
 
   const coalition = useSessionStore(s => s.coalition)
@@ -371,9 +379,10 @@ export default function AbmScope() {
   const atoFlights       = useAbmMissionStore(s => s.flights)
   const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
   const selectAtoGroup  = useAbmMissionStore(s => s.selectGroup)
+  const routeVisible    = useAbmMissionStore(s => s.routeVisible)
   const selectedRoute = useMemo(
-    () => atoFlights.find(f => f.groupId === selectedGroupId)?.route ?? null,
-    [atoFlights, selectedGroupId]
+    () => (routeVisible ? atoFlights.find(f => f.groupId === selectedGroupId)?.route ?? null : null),
+    [atoFlights, selectedGroupId, routeVisible]
   )
 
   // FRAG BASE/waypoint click (requestFind) and roster click (toggleBlink) —
@@ -557,6 +566,8 @@ export default function AbmScope() {
     fetch('/icaoMapping.json').then(r => r.ok ? r.json() : {}).catch(() => ({})).then(setIcaoMap)
   }, [])
 
+  useEffect(() => { useBrevityStore.getState().load() }, [])
+
   const [pendingDeclaration, setPendingDeclaration] = useState(null)
 
   // Faded/coasting contacts — same tracking pattern as AIC
@@ -659,8 +670,9 @@ export default function AbmScope() {
   const airwaysVisible  = useAirwaysStore(s => s.visible)
   const airspaceFeatures = useAbmAirspaceStore(s => s.features)
   const airspacePalettes = useAbmAirspaceStore(s => s.palettes)
+  const aspColorIdx   = useAbmAirspaceStore(s => s.paletteIdx)
+  const setPaletteIdx = useAbmAirspaceStore(s => s.setPaletteIdx)
   const [asVisible, setAsVisible] = useState(abmPrefs.asVisible)
-  const [aspColorIdx, setAspColorIdx] = useState(abmPrefs.aspColorIdx)
   const [labelsVisible, setLabelsVisible] = useState(abmPrefs.labelsVisible)
   const [fillVisible, setFillVisible] = useState(abmPrefs.fillVisible)
   const [fillPct, setFillPct] = useState(abmPrefs.fillPct)
@@ -676,6 +688,9 @@ export default function AbmScope() {
   const navaids = useNavdataStore(s => s.navaids)
   const [fixesVisible,   setFixesVisible]   = useState(abmPrefs.fixesVisible)
   const [navaidsVisible, setNavaidsVisible] = useState(abmPrefs.navaidsVisible)
+  // .fix <name...> — per-theatre pinned fixes, always shown regardless of
+  // fixesVisible (see .fix handler below and drawAbmFixSymbols call).
+  const [pinnedFixes, setPinnedFixes] = useState(abmPrefs.pinnedFixes ?? {})
   // Same useRunwaysStore.loadForTheatre(theatre) call as below (no facility
   // args) already yields theatre-wide unfiltered centerlines — see §4.3.
   const runwayCenterlines = useRunwaysStore(s => s.centerlines)
@@ -724,15 +739,38 @@ export default function AbmScope() {
   // hover readout below needs it regardless of whether .coords is toggled.
   const cursorCanvasPosRef = useRef({ x: null, y: null })
 
+  // Bullseye-on-cursor readout (.bec) — small bearing/range label that
+  // tracks the mouse pixel-for-pixel, unlike .coords' box above which is
+  // pinned to a corner and throttled. Recomputed straight off setState on
+  // every mousemove instead of the 150ms interval .coords uses, since this
+  // is plain trig (no fetch to throttle) and needs to feel like it's
+  // actually attached to the cursor.
+  const [becVisible, setBecVisible] = useState(abmPrefs.becVisible)
+  const [becReadout, setBecReadout] = useState(null)
+
   const handleCursorMove = useCallback((e) => {
     const rect = interactiveRef.current?.getBoundingClientRect()
     if (!rect) return
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     cursorCanvasPosRef.current = { x, y }
-    if (!coordsVisible || !viewRef.current) return
-    cursorLatLngRef.current = canvasToLatLng(x, y, viewRef.current)
-  }, [coordsVisible])
+    if (coordsVisible && viewRef.current) {
+      cursorLatLngRef.current = canvasToLatLng(x, y, viewRef.current)
+    }
+    if (becVisible && viewRef.current) {
+      const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
+      const { hasBullseye, lat: bsLat, lng: bsLng } = bullseyeRef.current
+      if (hasBullseye) {
+        const { trueBearingDeg, rangeNm } = trueBearingRangeNm(bsLat, bsLng, lat, lng)
+        const magBrg = toMagneticFromTrue(trueBearingDeg, declinationRef.current)
+        setBecReadout({ x, y, bearing: Math.round(magBrg) || 360, range: Math.round(rangeNm) })
+      } else {
+        setBecReadout(null)
+      }
+    }
+  }, [coordsVisible, becVisible])
+
+  useEffect(() => { if (!becVisible) setBecReadout(null) }, [becVisible])
 
   useEffect(() => {
     if (!coordsVisible) { setCoordsReadout(null); return }
@@ -979,16 +1017,21 @@ export default function AbmScope() {
         ?? null
   }, [bullseyes, coalition])
 
-  const bullseyeLat = bullseyeEntry?.latitude  ?? 0
-  const bullseyeLng = bullseyeEntry?.longitude ?? 0
+  // .be override — lets the operator relocate bullseye off the mission's
+  // real one (fix, explicit lat/lon, or a map click). Not persisted: like
+  // ringAnchor*, it's a mission-specific placement, not a saved preference.
+  const [bullseyeOverride, setBullseyeOverride] = useState(null) // { lat, lng } | null
+
+  const bullseyeLat = bullseyeOverride?.lat ?? bullseyeEntry?.latitude  ?? 0
+  const bullseyeLng = bullseyeOverride?.lng ?? bullseyeEntry?.longitude ?? 0
 
   // Ref mirror for the .coords readout effect above, which is declared
   // earlier in the component (before bullseyeEntry/Lat/Lng exist) and would
   // hit a temporal-dead-zone error referencing them directly in its deps.
   const bullseyeRef = useRef({ hasBullseye: false, lat: 0, lng: 0 })
   useEffect(() => {
-    bullseyeRef.current = { hasBullseye: !!bullseyeEntry, lat: bullseyeLat, lng: bullseyeLng }
-  }, [bullseyeEntry, bullseyeLat, bullseyeLng])
+    bullseyeRef.current = { hasBullseye: !!(bullseyeOverride || bullseyeEntry), lat: bullseyeLat, lng: bullseyeLng }
+  }, [bullseyeOverride, bullseyeEntry, bullseyeLat, bullseyeLng])
 
   // ── Window init — default center follows bullseye until the user pans.
   // Range rings default OFF; when enabled default to 20nm spacing anchored
@@ -1152,12 +1195,15 @@ export default function AbmScope() {
     // lines, pass `true` as a 6th arg here to de-dup (see drawAbmAirspace.js).
     drawAbmAirspace(ctx, view, airspaceFeatures, asVisible, 80, false, airspaceColors, labelsVisible,
       fillVisible ? fillPct : 0)
-    drawAbmCustomDrawings(ctx, view, drawingLayers, airspaceColors?.CUSTOM ?? null, labelsVisible)
+    drawAbmCustomDrawings(ctx, view, drawingLayers, airspaceColors?.CUSTOM ?? null, labelsVisible,
+      fillVisible ? fillPct : 0)
     drawAirways(ctx, view, airways, airwaysVisible, 50)
     drawMora(ctx, view, mora, moraVisible, 50)
     drawHoldings(ctx, view, holdings, holdingsVisible, 50, 0)
     drawAbmFixSymbols(ctx, view, navaids, navaidsVisible, '#FFCC44', 60, labelsVisible)
-    drawAbmFixSymbols(ctx, view, fixes,   fixesVisible,   '#66CCFF', 60, labelsVisible)
+    const pinnedFixIds = new Set(pinnedFixes[theatre] ?? [])
+    const fixesToDraw  = fixesVisible ? fixes : fixes.filter(f => pinnedFixIds.has(f.id.toUpperCase()))
+    drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, labelsVisible)
     if (runwaysVisible && runwayCenterlines.length) {
       // drawRunways expects { id, end1, end2 }; the store's centerlines carry
       // the same points under rwyEnd1/rwyEnd2 (built for STARS's own draw path).
@@ -1170,7 +1216,7 @@ export default function AbmScope() {
   }, [view, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible,
       polygonFeatures, polygonsVisible,
       asVisible, airspaceFeatures, airspaceColors, labelsVisible, fillVisible, fillPct, drawingLayers, airways, airwaysVisible, mora, moraVisible,
-      holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible,
+      holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible, pinnedFixes, theatre,
       runwaysVisible, runwayCenterlines, mgrsVisible, towns, townsVisible,
       basemap, basemapVisible, water, waterVisible, roads, roadsVisible])
 
@@ -1431,6 +1477,11 @@ export default function AbmScope() {
   // ── Command preview area (bottom-left, same pattern as AIC) ─────────────────
   const [cmdBuffer,   setCmdBuffer]   = useState('')
   const [cmdFeedback, setCmdFeedback] = useState('')
+  // .define readout — kept separate from cmdFeedback (see AbmScope.css) since
+  // cmdFeedback gets overwritten by every incidental click/command ack and a
+  // brevity definition is meant to be read, not flashed. Dismissed only by
+  // Escape, another .define, or clicking the readout itself.
+  const [defineEntry, setDefineEntry] = useState(null) // { term, text }
   const [cmdHistory,  setCmdHistory]  = useState([])
   const cmdHistoryRef = useRef([])
 
@@ -1439,6 +1490,13 @@ export default function AbmScope() {
   const cmdHistoryIdxRef = useRef(-1)
   useEffect(() => { cmdHistoryIdxRef.current = cmdHistoryIdx }, [cmdHistoryIdx])
   const cmdDraftRef = useRef('')
+
+  // .be + click — armed live (before Enter) the moment cmdBuffer is exactly
+  // ".be", same live-parse pattern AIC uses for .sector. Ref mirror so
+  // handleMouseUp (a stable useCallback) can read it without re-binding.
+  const pendingBe = cmdBuffer.trim().toLowerCase() === '.be'
+  const pendingBeRef = useRef(false)
+  useEffect(() => { pendingBeRef.current = pendingBe }, [pendingBe])
 
   function clearCmd() { setCmdBuffer(''); setCmdFeedback('') }
 
@@ -1510,6 +1568,38 @@ export default function AbmScope() {
         // not a persisted preference (see store/abmPrefs.js header).
         saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
         setCmdFeedback(`RANGE RINGS ${nm}NM @ ${result.id}`)
+      } else {
+        setCmdFeedback('FIX NOT FOUND')
+      }
+      return
+    }
+
+    // .be — bullseye override. Bare form (Enter, no click) clears the
+    // override and reverts to the mission bullseye; typed bare and then
+    // clicked instead (see pendingBe/handleMouseUp), it places the override
+    // at the clicked point. `.be <fix>` looks up a theatre fix/navaid/runway
+    // by name; `.be <lat> <lon>` takes explicit decimal-degree coordinates.
+    if (str === '.be') {
+      setBullseyeOverride(null)
+      setCmdFeedback('BULLSEYE RESET')
+      return
+    }
+
+    const beCoords = str.match(/^\.be\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/)
+    if (beCoords) {
+      const lat = parseFloat(beCoords[1])
+      const lng = parseFloat(beCoords[2])
+      setBullseyeOverride({ lat, lng })
+      setCmdFeedback(`BULLSEYE SET ${lat.toFixed(2)}/${lng.toFixed(2)}`)
+      return
+    }
+
+    const beFix = str.match(/^\.be\s+(\S+)$/)
+    if (beFix) {
+      const result = useNavdataStore.getState().lookupFix(beFix[1])
+      if (result) {
+        setBullseyeOverride({ lat: result.lat, lng: result.lon })
+        setCmdFeedback(`BULLSEYE SET @ ${result.id}`)
       } else {
         setCmdFeedback('FIX NOT FOUND')
       }
@@ -1610,7 +1700,7 @@ export default function AbmScope() {
       const palettes = useAbmAirspaceStore.getState().palettes
       const idx = palettes.findIndex(p => p.name.toUpperCase() === name)
       if (idx < 0) { setCmdFeedback('INVALID PALETTE'); return }
-      setAspColorIdx(idx)
+      setPaletteIdx(idx)
       saveAbmPrefs({ aspColorIdx: idx })
       setCmdFeedback(`ASP COLORS: ${palettes[idx].name.toUpperCase()}`)
       return
@@ -1819,6 +1909,42 @@ export default function AbmScope() {
       return
     }
 
+    // .fix — with no argument, clears all pinned fixes for this theatre.
+    if (str === '.fix') {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const merged = { ...pinnedFixes, [theatre]: [] }
+      setPinnedFixes(merged)
+      saveAbmPrefs({ pinnedFixes: merged })
+      setCmdFeedback('FIX CLEARED')
+      return
+    }
+
+    // .fix <name...> — force-show one or more fixes regardless of .fixes
+    // visibility. Each name toggles independently (repeat to un-pin);
+    // persisted per-theatre so pins survive a reload.
+    if (str.startsWith('.fix ')) {
+      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
+      const names = drawCmdTokens(str, raw).map(n => n.toUpperCase()).filter(Boolean)
+      if (!names.length) { setCmdFeedback('ILL VAL'); return }
+      // Pinning only affects rendering of the `fixes` layer (see the
+      // drawAbmFixSymbols call below), so validate against that list rather
+      // than lookupFix's broader fix/navaid/runway/airport search — a name
+      // that resolves elsewhere would never actually draw as pinned.
+      const knownIds = new Set(fixes.map(f => f.id.toUpperCase()))
+      const notFound = names.filter(n => !knownIds.has(n))
+      if (notFound.length) { setCmdFeedback(`${notFound.join(' ')} NOT FOUND`); return }
+      const current = new Set(pinnedFixes[theatre] ?? [])
+      for (const name of names) {
+        if (current.has(name)) current.delete(name)
+        else current.add(name)
+      }
+      const merged = { ...pinnedFixes, [theatre]: [...current] }
+      setPinnedFixes(merged)
+      saveAbmPrefs({ pinnedFixes: merged })
+      setCmdFeedback(`FIX ${names.join(' ')}`)
+      return
+    }
+
     // .find <fix> — ported from AIC (AicScope.jsx): drops a green square
     // marker at the looked-up fix/navaid, cleared by Escape or another .find.
     if (str.startsWith('.find ')) {
@@ -1830,6 +1956,16 @@ export default function AbmScope() {
       } else {
         setCmdFeedback('NOT FOUND')
       }
+      return
+    }
+
+    // .define <term> — tactical brevity glossary lookup (ATP 1-02.1, see
+    // store/brevity.js). Shown in its own readout, not cmdFeedback, so it
+    // doesn't disappear the instant the next incidental click fires.
+    if (str.startsWith('.define ')) {
+      const result = useBrevityStore.getState().lookup(str.slice(8).trim())
+      if (result) { setDefineEntry(result); setCmdFeedback('') }
+      else { setDefineEntry(null); setCmdFeedback('NOT FOUND') }
       return
     }
 
@@ -1909,6 +2045,14 @@ export default function AbmScope() {
       setCoordsVisible(next)
       saveAbmPrefs({ coordsVisible: next })
       setCmdFeedback(next ? 'COORDS ON' : 'COORDS OFF')
+      return
+    }
+
+    if (str === '.bec') {
+      const next = !becVisible
+      setBecVisible(next)
+      saveAbmPrefs({ becVisible: next })
+      setCmdFeedback(next ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF')
       return
     }
 
@@ -2211,9 +2355,11 @@ export default function AbmScope() {
       if (pendingClearAllConfirm) { setPendingClearAllConfirm(false); setCmdFeedback('CLEAR ALL CANCELLED'); return }
       if (pendingDraw) { setPendingDraw(null); return }
       if (findMarker) { setFindMarker(null); useAbmMissionStore.getState().clearFind(); return }
+      if (routeVisible) { useAbmMissionStore.getState().clearRouteVisible(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
       if (rbl) { setRbl(null); return }
+      if (defineEntry) { setDefineEntry(null); return }
       clearCmd()
       return
     }
@@ -2266,7 +2412,7 @@ export default function AbmScope() {
       setCmdBuffer(b => b + e.key)
     }
   }, [cmdBuffer, pendingDeclaration, pendingBraaFighter, clearPendingBraa, rbl, findMarker, pendingDraw,
-      pendingClearClick, pendingClearAllConfirm]) // eslint-disable-line
+      pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible]) // eslint-disable-line
 
   // ── Click dispatch — ported from AIC's handleMouseUp, same modifier/command
   // precedence (2026-07-07): Shift+click removes BRAA pairs for the target;
@@ -2289,6 +2435,19 @@ export default function AbmScope() {
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
+
+    // .be + click — places the bullseye override at the clicked point.
+    // Armed live while cmdBuffer is exactly ".be" (see pendingBe above);
+    // typing on past that (a fix name or coordinates) disarms it and the
+    // command instead resolves on Enter via execCommand.
+    if (pendingBeRef.current) {
+      if (e.button === 1) return
+      const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
+      setBullseyeOverride({ lat: ll.lat, lng: ll.lng })
+      clearCmd()
+      setCmdFeedback(`BULLSEYE SET ${ll.lat.toFixed(2)}/${ll.lng.toFixed(2)}`)
+      return
+    }
 
     // .clear + click — one-shot: disarms on this click regardless of
     // whether anything was actually under it.
@@ -2516,11 +2675,12 @@ export default function AbmScope() {
           onMouseDown={handleMouseDown}
           onMouseMove={handleCursorMove}
           onMouseUp={handleMouseUp}
+          onMouseLeave={() => setBecReadout(null)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onContextMenu={(e) => e.preventDefault()}
         />
-        {!bullseyeEntry && <div className="abm-warn">NO BULLSEYE</div>}
+        {!bullseyeEntry && !bullseyeOverride && <div className="abm-warn">NO BULLSEYE</div>}
 
         {clockVisible && (
           <div
@@ -2574,8 +2734,21 @@ export default function AbmScope() {
           </div>
         )}
 
+        {becVisible && becReadout && (
+          <div className="abm-bec-box" style={{ left: becReadout.x, top: becReadout.y }}>
+            {String(becReadout.bearing).padStart(3, '0')} / {becReadout.range}
+          </div>
+        )}
+
         {cmdFeedback && (
           <div className="abm-cmd-feedback">{cmdFeedback}</div>
+        )}
+
+        {defineEntry && (
+          <div className="abm-define" onClick={() => setDefineEntry(null)}>
+            <div className="abm-define-term">{defineEntry.term}</div>
+            <div className="abm-define-text">{defineEntry.text}</div>
+          </div>
         )}
 
         <div className="abm-cmd-area">

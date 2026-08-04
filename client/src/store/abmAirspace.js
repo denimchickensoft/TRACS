@@ -8,9 +8,17 @@ import { create } from 'zustand'
 export const useAbmAirspaceStore = create((set, get) => ({
   features: [],
   palettes: [],  // [{ name, colors: { [displayCategory]: { stroke, fill, dash, label } } }]
+  // Selected palette index — lives here (rather than AbmScope local state)
+  // so other components (Drawings.jsx) can reactively read the CUSTOM
+  // palette color that drives an unpicked drawing's on-scope color. Mission-
+  // start value is hydrated from abmPrefs by AbmScope; persistence back to
+  // abmPrefs also stays AbmScope's job (this store doesn't know about it).
+  paletteIdx: 0,
   theatre:  null,
   loading:  false,
   lastError: null, // set on a failed refreshPalettes() — lets callers surface the real reason
+
+  setPaletteIdx: (idx) => set({ paletteIdx: idx }),
 
   loadForTheatre: async (theatre) => {
     if (!theatre || get().theatre === theatre) return
