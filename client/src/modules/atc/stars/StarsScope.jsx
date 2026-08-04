@@ -24,6 +24,7 @@ import { drawMora }                   from './canvas/drawMora.js'
 import { drawRelief }                 from './canvas/drawRelief.js'
 import { drawMva }                    from './canvas/drawMva.js'
 import { drawGeo }                    from './canvas/drawGeo.js'
+import { drawAbmFixSymbols }          from '../../abm/canvas/drawAbmFixSymbols.js'
 import { drawProcedures }             from './canvas/drawProcedures.js'
 import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
@@ -36,6 +37,7 @@ import { useMoraStore }         from '../../../store/mora.js'
 import { useReliefStore }       from '../../../store/relief.js'
 import { useMvaStore }          from '../../../store/mva.js'
 import { useGeoStore }          from '../../../store/geo.js'
+import { useFixesStore }        from '../../../store/fixes.js'
 import { useProceduresStore }   from '../../../store/procedures.js'
 import { DatablockOverlay }     from './DatablockOverlay.jsx'
 import { InputHandler }         from './input/InputHandler.jsx'
@@ -56,6 +58,7 @@ import { useFpeStore }      from '../../../store/fpe.js'
 import { useNavdataStore }      from '../../../store/navdata.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
+import { formatElevation } from '../../../utils/coords.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
 import { loadStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
@@ -108,6 +111,8 @@ export default function StarsScope() {
   const geoBoundaries = useGeoStore((s) => s.boundaries)
   const geoCoastlines = useGeoStore((s) => s.coastlines)
   const geoVisible    = useGeoStore((s) => s.visible)
+  const fixes         = useNavdataStore((s) => s.fixes)
+  const fixesVisible  = useFixesStore((s) => s.visible)
 
   const procRaw           = useProceduresStore((s) => s.raw)
   const procSidGroups     = useProceduresStore((s) => s.sidGroups)
@@ -176,6 +181,8 @@ export default function StarsScope() {
   const historyRef   = useRef({})
   const rblCursorRef = useRef(null)    // canvas-pixel cursor pos during RBL_P2 preview
   const coordsRef    = useRef(null)    // debug coords display div
+  const elevRef            = useRef(null)  // last-fetched elevation (m) at cursor, .coords
+  const lastElevFetchRef   = useRef(null)  // throttle key so we don't re-fetch every pixel
 
   // Keep viewRef in sync
   useEffect(() => { viewRef.current = view }, [view])
@@ -224,6 +231,7 @@ export default function StarsScope() {
         if (settings.mapsVisible)              useMapsStore.getState().setVisible(settings.mapsVisible)
         if (settings.reliefVisible  != null)   useReliefStore.getState().setVisible(settings.reliefVisible)
         if (settings.geoVisible     != null)   useGeoStore.getState().setVisible(settings.geoVisible)
+        if (settings.fixesVisible   != null)   useFixesStore.getState().setVisible(settings.fixesVisible)
         if (settings.mvaVisible     != null)   useMvaStore.getState().setVisible(settings.mvaVisible)
         if (settings.msaVisible     != null)   useMsaStore.getState().setVisible(settings.msaVisible)
         if (settings.moraVisible    != null)   useMoraStore.getState().setVisible(settings.moraVisible)
@@ -246,6 +254,7 @@ export default function StarsScope() {
         dbca: starsPrefs.dbca,
         fillVisible: starsPrefs.fillVisible,
         fillPct: starsPrefs.fillPct,
+        pinnedFixes: starsPrefs.pinnedFixes,
       })
     }
   }, []) // eslint-disable-line
@@ -471,9 +480,17 @@ export default function StarsScope() {
     drawGeo(ctx, view, geoBoundaries, geoCoastlines, geoVisible, briteB, activeColors)
     drawMva(ctx, view, mva, mvaVisible, briteB, activeColors)
     drawProcedures(ctx, view, procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, briteB, csMap, activeColors, procCommandVisible)
+    // FIXES DCB toggle gates the whole theatre point layer; .FIX-pinned fixes
+    // (windowSettings.pinnedFixes, per-theatre — see actions/index.js
+    // TOGGLE_FIX) always draw regardless of that toggle, same override
+    // CATCC/ABM's own .fix command gives their .fixes toggle.
+    const pinnedIds  = new Set(windowSettings?.pinnedFixes?.[theatre] ?? [])
+    const fixesToDraw = fixesVisible ? fixes : fixes.filter((f) => pinnedIds.has(f.id.toUpperCase()))
+    drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, mapVisible.lbl)
   }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
       holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible, mva, mvaVisible, facilityId,
       procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
+      fixes, fixesVisible, windowSettings?.pinnedFixes, theatre,
       windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap, windowSettings?.aspColorIdx,
       windowSettings?.fillVisible, windowSettings?.fillPct])
 
@@ -820,7 +837,18 @@ export default function StarsScope() {
         const { lat, lng } = canvasToLatLng(pos.x, pos.y, viewRef.current)
         const latStr = `${Math.abs(lat).toFixed(6)}°${lat >= 0 ? 'N' : 'S'}`
         const lngStr = `${Math.abs(lng).toFixed(6)}°${lng >= 0 ? 'E' : 'W'}`
-        coordsRef.current.textContent = `${latStr}  ${lngStr}`
+        const elevStr = formatElevation(elevRef.current, 'feet')
+        coordsRef.current.textContent = `${latStr}  ${lngStr}  ${elevStr}`
+
+        // Throttle elevation lookups to ~100m cells (same pattern as ABM's .coords).
+        const key = `${lat.toFixed(3)},${lng.toFixed(3)}`
+        if (key !== lastElevFetchRef.current) {
+          lastElevFetchRef.current = key
+          fetch(`/api/elevation?lat=${lat}&lng=${lng}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { elevRef.current = data?.elevationM ?? null })
+            .catch(() => {})
+        }
       }
     }
 

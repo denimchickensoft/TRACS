@@ -93,10 +93,20 @@ Bare-click (empty buffer) also resolves pending point-outs/handoffs automaticall
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
 | `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement |
+| `.LABELS` + ENTER | — | Toggle the LBL DCB MAP button (map/airspace name labels) |
+| `.FIXES` + ENTER | — | Toggle the FIXES DCB MAP button (theatre fix points) |
+| `.ASP` + ENTER | — | Bulk-toggle every airspace category MAP button |
+| `.TMA` `.CTR` `.CTA` `.FIR` `.UIR` `.SUA` `.MIL` `.TRSA` `.CLASSA`–`.CLASSG` + ENTER | — | Toggle every MAP button (main + overflow) for that airspace category |
+| `.MSA` + ENTER | — | Toggle the MSA MAP button |
+| `.HOLDS` + ENTER | — | Toggle the HOLDS MAP button |
+| `.RELIEF` + ENTER | — | Toggle the RELIEF MAP button |
+| `.MVA` + ENTER | — | Toggle the MVA MAP button |
+| `.SAT <label>` + ENTER | — | Toggle a satellite flow bucket MAP button (label varies by facility, e.g. `.SAT W`, `.SAT E`) |
 | `.FILL` + ENTER | — | Toggle airspace polygon fill |
 | `.FILL <1-100>` + ENTER | — | Set fill transparency % and turn it on |
 | `.COORDS` + ENTER | — | Toggle a cursor lat/lng debug readout |
 | `.FIND <query>` + ENTER | — | Drop a marker at a named fix/navaid/airport |
+| `.FIX <name...>` + ENTER | — | Force-show one or more fixes regardless of the FIXES DCB toggle; each name toggles independently |
 | `.PROC <name>` + ENTER | — | Toggle display of a named SID/STAR/approach procedure |
 | `.PROC` + ENTER | — | Clear all shown procedures |
 | `.FP <callsign>` + ENTER | — | Open the Flight Plan Editor prefilled for that callsign |
@@ -130,7 +140,7 @@ These only appear if your ODS profile enables coordination lists.
 
 Click a value button, then use the **mouse wheel** to adjust it. Click a submenu button to open it; **DONE** exits back to the main bar.
 
-**Main bar:** RANGE · OFF CNTR (recenter) · RR (ring spacing) · PLACE RR (click scope to set an off-center ring origin) · RR CNTR (reset) · MAPS (layer toggles: holds, MSA, airways, MORA/grid, relief, geo, obstacles, centerlines, procedures) · BRITE (brightness submenu for DCB/background/maps/datablocks/lists/symbols/rings/compass/history) · LDR DIR · LDR LEN · CHAR SIZE (submenu: datablocks/lists/DCB/tools/position/map) · PREF (12 preset slots — save/save-as/delete/default) · SHIFT (switch to the aux bar).
+**Main bar:** RANGE · OFF CNTR (recenter) · RR (ring spacing) · PLACE RR (click scope to set an off-center ring origin) · RR CNTR (reset) · MAPS (layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures) · BRITE (brightness submenu for DCB/background/maps/datablocks/lists/symbols/rings/compass/history) · LDR DIR · LDR LEN · CHAR SIZE (submenu: datablocks/lists/DCB/tools/position/map) · PREF (12 preset slots — save/save-as/delete/default) · SHIFT (switch to the aux bar).
 
 **Aux bar (via SHIFT):** VOL · HISTORY (trail dot count) · H_RATE (capture interval) · DCB TOP/LEFT/RIGHT/BOTTOM (reposition the bar) · PTL LNTH · PTL OWN (predicted track lines, your tracks only) · PTL ALL.
 

@@ -12,6 +12,7 @@ import { useMoraStore }       from '../../../../store/mora.js'
 import { useReliefStore }     from '../../../../store/relief.js'
 import { useMvaStore }        from '../../../../store/mva.js'
 import { useGeoStore }        from '../../../../store/geo.js'
+import { useFixesStore }      from '../../../../store/fixes.js'
 import { useProceduresStore } from '../../../../store/procedures.js'
 import './Dcb.css'
 
@@ -407,6 +408,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const reliefVisible  = useReliefStore((s) => s.visible)
   const mvaVisible     = useMvaStore((s) => s.visible)
   const geoVisible     = useGeoStore((s) => s.visible)
+  const fixesVisible   = useFixesStore((s) => s.visible)
 
   const procSidGroups   = useProceduresStore((s) => s.sidGroups)
   const procStarGroups  = useProceduresStore((s) => s.starGroups)
@@ -447,6 +449,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
       const halfPool = [
         { id: 'RELIEF', lines: ['RELIEF'], type: 'toggle' },
         { id: 'GEO',    lines: ['GEO'],    type: 'toggle' },
+        { id: 'FIXES',  lines: ['FIXES'],  type: 'toggle' },
       ]
       for (let i = 5; i < maps.length; i++) {
         if (maps[i] != null) halfPool.push({ id: `MAP_OVF_${i}`, mapKey: i, lines: [], type: 'toggle' })
@@ -544,6 +547,8 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           useReliefStore.getState().toggleVisible()
         } else if (btn.id === 'GEO') {
           useGeoStore.getState().toggleVisible()
+        } else if (btn.id === 'FIXES') {
+          useFixesStore.getState().toggleVisible()
         } else if (btn.id === 'MVA') {
           useMvaStore.getState().toggleVisible()
         } else if (btn.id === 'AIR_V') {
@@ -602,6 +607,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
             if (s.mapsVisible)              useMapsStore.getState().setVisible(s.mapsVisible)
             if (s.reliefVisible  != null)   useReliefStore.getState().setVisible(s.reliefVisible)
             if (s.geoVisible     != null)   useGeoStore.getState().setVisible(s.geoVisible)
+            if (s.fixesVisible   != null)   useFixesStore.getState().setVisible(s.fixesVisible)
             if (s.mvaVisible     != null)   useMvaStore.getState().setVisible(s.mvaVisible)
             if (s.msaVisible     != null)   useMsaStore.getState().setVisible(s.msaVisible)
             if (s.moraVisible    != null)   useMoraStore.getState().setVisible(s.moraVisible)
@@ -647,6 +653,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
             mapsVisible:     useMapsStore.getState().visible,
             reliefVisible:   useReliefStore.getState().visible,
             geoVisible:      useGeoStore.getState().visible,
+            fixesVisible:    useFixesStore.getState().visible,
             mvaVisible:      useMvaStore.getState().visible,
             msaVisible:      useMsaStore.getState().visible,
             moraVisible:     useMoraStore.getState().visible,
@@ -746,6 +753,8 @@ export function Dcb({ profile, briteDcb, csDcb }) {
               ? reliefVisible
             : btn.id === 'GEO'
               ? geoVisible
+            : btn.id === 'FIXES'
+              ? fixesVisible
             : btn.id === 'MVA'
               ? mvaVisible
             : btn.id === 'AIR_V'

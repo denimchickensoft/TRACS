@@ -62,14 +62,34 @@ const COMMANDS = [
   { id: 'SET_ASP_COLORS',       pattern: /^\.ASPCOLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
   { id: 'REFRESH_ASP_COLORS',  pattern: /^\.REFRESH$/,           trigger: 'ENTER' },
   { id: 'TOGGLE_DBCA',          pattern: /^\.DBCA$/,              trigger: 'ENTER' },
+  { id: 'TOGGLE_LABELS',        pattern: /^\.LABELS$/,            trigger: 'ENTER' },
+  { id: 'TOGGLE_FIXES',         pattern: /^\.FIXES$/,             trigger: 'ENTER' },
   { id: 'SET_FILL',             pattern: /^\.FILL (\d{1,3})$/,    trigger: 'ENTER', captures: ['pct'] },
   { id: 'TOGGLE_FILL',          pattern: /^\.FILL$/,              trigger: 'ENTER' },
+
+  // ── Airspace category bulk toggles — same verbs/categories as CATCC/ABM's
+  // .asp/.tma/.ctr/.../.classa-.classg, retargeted at STARS' MAPS DCB slots.
+  { id: 'TOGGLE_ASP',           pattern: /^\.ASP$/,               trigger: 'ENTER' },
+  { id: 'TOGGLE_AIRSPACE_CAT',  pattern: /^\.(TMA|CTR|CTA|FIR|UIR|SUA|MIL|TRSA|CLASSA|CLASSB|CLASSC|CLASSD|CLASSE|CLASSF|CLASSG)$/,
+    trigger: 'ENTER', captures: ['cat'] },
+
+  // ── MAPS submenu single-store toggles ─────────────────────────────
+  { id: 'TOGGLE_MSA',           pattern: /^\.MSA$/,               trigger: 'ENTER' },
+  { id: 'TOGGLE_HOLDS',         pattern: /^\.HOLDS$/,             trigger: 'ENTER' },
+  { id: 'TOGGLE_RELIEF',        pattern: /^\.RELIEF$/,            trigger: 'ENTER' },
+  { id: 'TOGGLE_MVA',           pattern: /^\.MVA$/,               trigger: 'ENTER' },
+  { id: 'TOGGLE_SAT',           pattern: /^\.SAT (\w+)$/,         trigger: 'ENTER', captures: ['label'] },
 
   // ── Debug ────────────────────────────────────────────────────────
   { id: 'TOGGLE_COORDS',        pattern: /^\.COORDS$/,            trigger: 'ENTER' },
 
   // ── Find fix/navaid/airport ──────────────────────────────────────
   { id: 'FIND_FIX',             pattern: /^\.FIND (.+)$/,         trigger: 'ENTER', captures: ['query'] },
+  // .FIX <name...> — force-show one or more fixes regardless of the FIXES
+  // DCB toggle; each name toggles independently (repeat to un-pin).
+  { id: 'TOGGLE_FIX',           pattern: /^\.FIX (.+)$/,          trigger: 'ENTER', captures: ['names'] },
+  // .FIX with no argument clears all pinned fixes for this theatre.
+  { id: 'CLEAR_FIX',            pattern: /^\.FIX$/,               trigger: 'ENTER' },
 
   // ── Procedure display ────────────────────────────────────────────
   { id: 'SHOW_PROC',            pattern: /^\.PROC (.+)$/,         trigger: 'ENTER', captures: ['name'] },

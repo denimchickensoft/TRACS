@@ -22,6 +22,12 @@ import { useSessionStore } from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
 import { useNavdataStore }    from '../../../store/navdata.js'
 import { useMapsStore }        from '../../../store/maps.js'
+import { useFixesStore }       from '../../../store/fixes.js'
+import { useMsaStore }         from '../../../store/msa.js'
+import { useHoldingsStore }    from '../../../store/holdings.js'
+import { useReliefStore }      from '../../../store/relief.js'
+import { useMvaStore }         from '../../../store/mva.js'
+import { useRunwaysStore }     from '../../../store/runways.js'
 import { useProceduresStore }  from '../../../store/procedures.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
@@ -578,6 +584,154 @@ export function RBL_INIT_FIX({ captures }) {
   ok()
 }
 
+// .FIX <name...> — force-show specific fixes regardless of the FIXES DCB
+// toggle (store/fixes.js). Each name toggles independently and is persisted
+// per-theatre (store/starsPrefs.js), same override CATCC/ABM's own .fix
+// command gives their .fixes toggle.
+export function TOGGLE_FIX({ captures }) {
+  const theatre = useSessionStore.getState().mission?.mission?.theatre
+  if (!theatre) return err('NO THEATRE')
+  const names = (captures?.names ?? '').trim().split(/\s+/).filter(Boolean)
+  if (!names.length) return err('ILL VAL')
+  // Pinning only affects rendering of store/navdata.js's `fixes` layer (see
+  // StarsScope.jsx pinnedIds filter), so validate against that list rather
+  // than lookupFix's broader fix/navaid/runway/airport search — a navaid or
+  // airport name would resolve there but never actually draw as pinned.
+  const knownIds = new Set(useNavdataStore.getState().fixes.map(f => f.id.toUpperCase()))
+  const notFound = names.filter(n => !knownIds.has(n))
+  if (notFound.length) return err(`${notFound.join(' ')} NOT FOUND`)
+  const win      = getDisplay().windows[WINDOW_ID]
+  const byTheatre = win?.pinnedFixes ?? {}
+  const current  = new Set(byTheatre[theatre] ?? [])
+  for (const name of names) {
+    if (current.has(name)) current.delete(name)
+    else current.add(name)
+  }
+  const merged = { ...byTheatre, [theatre]: [...current] }
+  getDisplay().updateWindow(WINDOW_ID, { pinnedFixes: merged })
+  saveStarsPrefs({ pinnedFixes: merged })
+  ok()
+}
+
+// .FIX with no argument — clears all pinned fixes for this theatre.
+export function CLEAR_FIX() {
+  const theatre = useSessionStore.getState().mission?.mission?.theatre
+  if (!theatre) return err('NO THEATRE')
+  const win      = getDisplay().windows[WINDOW_ID]
+  const byTheatre = win?.pinnedFixes ?? {}
+  const merged = { ...byTheatre, [theatre]: [] }
+  getDisplay().updateWindow(WINDOW_ID, { pinnedFixes: merged })
+  saveStarsPrefs({ pinnedFixes: merged })
+  ok()
+}
+
+// .LABELS — toggles the LBL DCB MAP button (store/maps.js visible.lbl),
+// same store-driven persistence useMapsStore.toggleMap already gives every
+// other map-category toggle.
+export function TOGGLE_LABELS() {
+  useMapsStore.getState().toggleMap('lbl')
+  ok()
+}
+
+// .FIXES — same theatre fix-points layer as the FIXES DCB button
+// (store/fixes.js), just reachable from the command line like CATCC/ABM's
+// own .fixes/.FIXES commands.
+export function TOGGLE_FIXES() {
+  useFixesStore.getState().toggleVisible()
+  ok()
+}
+
+// ── Airspace category bulk toggles ────────────────────────────────────────────
+// CATCC/ABM keep one flat `asVisible[displayCategory]` boolean per category, so
+// .tma/.ctr/etc there is a single flip. STARS' MAPS DCB (store/maps.js) instead
+// assigns each category's features to one or more discrete map-slot indices
+// (main-bar + overflow, "real" envelope group + "ADJ <cat>" leftovers can both
+// share the same displayCategory) — so the equivalent here has to gather every
+// index for that category and flip them together, same any-on/all-off bulk
+// convention CATCC's .ASP already uses for "every category at once".
+const AIRSPACE_CMD_CATEGORY = {
+  TMA: 'TMA', CTR: 'CTR', CTA: 'CTA', FIR: 'FIR', UIR: 'UIR',
+  SUA: 'SUA', MIL: 'MIL', TRSA: 'TRSA',
+  CLASSA: 'CLASS A', CLASSB: 'CLASS B', CLASSC: 'CLASS C', CLASSD: 'CLASS D',
+  CLASSE: 'CLASS E', CLASSF: 'CLASS F', CLASSG: 'CLASS G',
+}
+
+function mapIndicesForCategory(cat) {
+  const { maps } = useMapsStore.getState()
+  const indices = []
+  maps.forEach((m, i) => { if (m?.displayCategory === cat) indices.push(i) })
+  return indices
+}
+
+// Every non-null slot in `maps` is itself an airspace category group (MVA
+// occupies its own null gap in the array, outside this scheme entirely), so
+// "every category" is just every populated index.
+function allAirspaceIndices() {
+  const { maps } = useMapsStore.getState()
+  const indices = []
+  maps.forEach((m, i) => { if (m != null) indices.push(i) })
+  return indices
+}
+
+function toggleMapIndices(indices) {
+  const { visible } = useMapsStore.getState()
+  const anyOn = indices.some((i) => visible[i])
+  const next  = { ...visible }
+  for (const i of indices) next[i] = !anyOn
+  useMapsStore.getState().setVisible(next)
+}
+
+export function TOGGLE_AIRSPACE_CAT({ captures }) {
+  const cat = AIRSPACE_CMD_CATEGORY[captures?.cat]
+  const indices = cat ? mapIndicesForCategory(cat) : []
+  if (!indices.length) return err('NOT FOUND')
+  toggleMapIndices(indices)
+  ok()
+}
+
+export function TOGGLE_ASP() {
+  const indices = allAirspaceIndices()
+  if (!indices.length) return err('NOT FOUND')
+  toggleMapIndices(indices)
+  ok()
+}
+
+// ── MAPS submenu single-store toggles ─────────────────────────────────────────
+// Same stores/buttons as Dcb.jsx's MSA/HOLDS/RELIEF/MVA toggle handling, just
+// reachable from the command line.
+
+export function TOGGLE_MSA() {
+  useMsaStore.getState().toggleVisible()
+  ok()
+}
+
+export function TOGGLE_HOLDS() {
+  useHoldingsStore.getState().toggleVisible()
+  ok()
+}
+
+export function TOGGLE_RELIEF() {
+  useReliefStore.getState().toggleVisible()
+  ok()
+}
+
+export function TOGGLE_MVA() {
+  useMvaStore.getState().toggleVisible()
+  ok()
+}
+
+// .SAT <label> — satellite flow bucket toggle (store/runways.js), same
+// SAT_<label> DCB button Dcb.jsx builds per facility (labels are derived
+// per-theatre from the facility's runway flow heading, e.g. "W"/"E" or
+// "NW"/"SE" — not fixed, so this matches whatever's actually in satBuckets).
+export function TOGGLE_SAT({ captures }) {
+  const label  = captures?.label
+  const bucket = useRunwaysStore.getState().satBuckets.find((b) => b.label === label)
+  if (!bucket) return err('NOT FOUND')
+  useRunwaysStore.getState().toggleSatBucket(label)
+  ok()
+}
+
 // ── Procedure display ─────────────────────────────────────────────────────────
 
 export function SHOW_PROC({ captures }) {
@@ -604,9 +758,20 @@ const ACTION_MAP = {
   REFRESH_ASP_COLORS,
   TOGGLE_COORDS,
   TOGGLE_DBCA,
+  TOGGLE_LABELS,
+  TOGGLE_FIXES,
+  TOGGLE_ASP,
+  TOGGLE_AIRSPACE_CAT,
+  TOGGLE_MSA,
+  TOGGLE_HOLDS,
+  TOGGLE_RELIEF,
+  TOGGLE_MVA,
+  TOGGLE_SAT,
   TOGGLE_FILL,
   SET_FILL,
   FIND_FIX,
+  TOGGLE_FIX,
+  CLEAR_FIX,
   RENAME_CALLSIGN,
   RESET_CALLSIGN,
   INIT_CNTL,
