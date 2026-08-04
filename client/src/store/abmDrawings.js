@@ -64,18 +64,27 @@ export const useAbmDrawingsStore = create((set, get) => ({
 
   layersFor: (theatre) => get().byTheatre[theatre] ?? [],
 
-  // features: normalized array from utils/parseGeojson.js. color starts
-  // null — drawAbmCustomDrawings.js falls back to the current airspace
-  // palette's CUSTOM stroke (server/navdata/config/airspace_colors.json)
-  // until the user explicitly picks one via the Drawings panel swatch, so a
-  // freshly imported/drawn layer never silently overrides the theatre's
-  // color scheme.
+  // features: normalized array from utils/parseGeojson.js. If any feature
+  // carries its own simplestyle `stroke` (the file's own authored color),
+  // that seeds `color` and `colorOverride` starts true — an imported file's
+  // color is authoritative over the airspace palette by default, matching
+  // what the file actually specifies. Otherwise color starts null/override
+  // false, same as a fresh command-drawn shape: drawAbmCustomDrawings.js
+  // falls back to the current airspace palette's CUSTOM stroke (server/
+  // navdata/config/airspace_colors.json) until the user explicitly picks a
+  // color via the Drawings panel swatch. Only the first stroke found is
+  // used as the seed — a file whose features carry several different
+  // stroke colors collapses to one uniform layer color, same as any other
+  // manual pick; per-feature color is no longer read at render time (see
+  // drawAbmCustomDrawings.js).
   addLayer: (theatre, name, features) => set((s) => {
     const existing = s.byTheatre[theatre] ?? []
+    const seedColor = features.find(f => f.properties?.stroke)?.properties?.stroke ?? null
     const layer = {
       id:      `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
-      color:   null,
+      color:   seedColor,
+      colorOverride: seedColor !== null,
       visible: true,
       labelOverride: false,
       addedAt: Date.now(),
@@ -96,6 +105,7 @@ export const useAbmDrawingsStore = create((set, get) => ({
       id:       `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name:     finalName,
       color:    null,
+      colorOverride: false,
       visible:  true,
       labelOverride: false,
       addedAt:  Date.now(),
@@ -109,6 +119,23 @@ export const useAbmDrawingsStore = create((set, get) => ({
   removeLayer: (theatre, id) => set((s) => ({
     byTheatre: { ...s.byTheatre, [theatre]: (s.byTheatre[theatre] ?? []).filter(l => l.id !== id) },
   })),
+
+  // Drag-and-drop reorder (Drawings panel) — array order here IS draw
+  // order (drawAbmCustomDrawings.js iterates byTheatre[theatre] as-is, back
+  // to front), so this is the one action that changes on-scope z-order
+  // rather than just display order. Moves fromId to sit immediately before
+  // toId's current position. Only meaningful against the raw (unsorted)
+  // list — Drawings.jsx gates dragging on that.
+  reorderLayer: (theatre, fromId, toId) => set((s) => {
+    const layers = s.byTheatre[theatre] ?? []
+    const fromIdx = layers.findIndex(l => l.id === fromId)
+    const toIdx   = layers.findIndex(l => l.id === toId)
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return {}
+    const next = [...layers]
+    const [moved] = next.splice(fromIdx, 1)
+    next.splice(next.findIndex(l => l.id === toId), 0, moved)
+    return { byTheatre: { ...s.byTheatre, [theatre]: next } }
+  }),
 
   // Drawings panel's "Clear ALL" footer button (confirm-gated, same pattern
   // as Ato.jsx's clearAllFlights) — drops every layer (imported and
@@ -157,13 +184,24 @@ export const useAbmDrawingsStore = create((set, get) => ({
     },
   })),
 
-  // Drawer's swatch/color-picker — the layer's own color already outranks
-  // the airspace_colors.json CUSTOM stroke in drawAbmCustomDrawings.js, so
-  // picking one here always overrides that palette default per-drawing.
+  // Drawer's swatch/color-picker — picking a color always turns override on
+  // (matches drawAbmCustomDrawings.js's colorOverride-gated priority: an
+  // unpicked/overridden-off layer falls back to the airspace_colors.json
+  // CUSTOM stroke instead).
   setLayerColor: (theatre, id, color) => set((s) => ({
     byTheatre: {
       ...s.byTheatre,
-      [theatre]: (s.byTheatre[theatre] ?? []).map(l => l.id === id ? { ...l, color } : l),
+      [theatre]: (s.byTheatre[theatre] ?? []).map(l => l.id === id ? { ...l, color, colorOverride: true } : l),
+    },
+  })),
+
+  // Swatch popup's Override checkbox — toggled independently of the color
+  // picker so a controller can flip back to the palette default and back to
+  // their (or the file's) picked color without losing that stored value.
+  setLayerColorOverride: (theatre, id, colorOverride) => set((s) => ({
+    byTheatre: {
+      ...s.byTheatre,
+      [theatre]: (s.byTheatre[theatre] ?? []).map(l => l.id === id ? { ...l, colorOverride } : l),
     },
   })),
 

@@ -4,23 +4,33 @@
  * drawAbmAirspace.js — that file's data is server-built and polygon-only;
  * this handles arbitrary user files (any of Point/MultiPoint/LineString/
  * MultiLineString/Polygon/MultiPolygon) with per-feature simplestyle-ish
- * styling (`stroke`/`stroke-opacity`/`stroke-width`/`fill`/`fill-opacity`/
- * `marker-color`/`dash` properties, see utils/parseGeojson.js). Stroke color
- * priority: a feature's own explicit `stroke` (imported-file styling) wins
- * first, then the layer's own picked color (Drawings panel swatch —
- * store/abmDrawings.js's per-layer `color`, null until the user explicitly
- * picks one there), then the airspace palette's CUSTOM entry (server/navdata/
- * config/airspace_colors.json — see store/abmAirspace.js) as the last
- * resort. A user-picked layer color deliberately outranks the palette
- * default (2026-08-03) so the swatch always reflects what's actually drawn —
- * but since new layers start with `color: null` (store/abmDrawings.js), a
- * freshly imported or drawn shape falls straight through to the CUSTOM
- * palette entry until the user actually overrides it. Dash stays
- * palette-first (unaffected — only stroke COLOR changed priority). Fill is
- * deliberately never defaulted
- * from either (2026-08-03 decision) — a polygon is only filled when the
- * feature itself sets `fill`, using that color; most hand-drawn boundaries
- * are meant as outlines, not areas.
+ * styling (`stroke-opacity`/`stroke-width`/`fill`/`fill-opacity`/
+ * `marker-color`/`dash` properties, see utils/parseGeojson.js). Stroke COLOR
+ * is layer-level, not per-feature (2026-08-03 revision — an imported file's
+ * own per-feature `stroke` is only ever read once, at import time, to seed
+ * the layer's color/override — see store/abmDrawings.js's addLayer): when
+ * the layer's `colorOverride` is true, every feature paints with the
+ * layer's `color` (Drawings panel swatch); when false, every feature paints
+ * with the airspace palette's CUSTOM entry (server/navdata/config/
+ * airspace_colors.json — see store/abmAirspace.js). A layer whose features
+ * originally carried several different stroke colors collapses to one
+ * uniform color on import — there is no longer a per-feature tier. Dash
+ * stays palette-first (unaffected — only stroke COLOR moved to layer-level).
+ *
+ * `fillPct` (0-100, from the same `.fill` command that drives
+ * drawAbmAirspace.js's polygon fill) gates every polygon fill pass here too
+ * — explicit GeoJSON `fill` included, so importing a styled file no longer
+ * shows fill until `.fill` is turned on (revises the original "fill is never
+ * defaulted" 2026-08-03 call below the .fill command existed). Fill color
+ * priority mirrors stroke's: a feature's own `fill` wins, then — only when
+ * `colorOverride` is true — the layer's color is reused verbatim as the
+ * fill. That override tier deliberately does NOT fall back
+ * to the CUSTOM palette's `stroke` the way drawAbmAirspace.js's fill does —
+ * an unstyled shape only fills if airspace_colors.json's CUSTOM entry
+ * actually defines a `fill` distinct from needing a stroke fallback; most
+ * hand-drawn boundaries with no color of their own are meant as outlines,
+ * not areas, so the palette tier stays conservative while override colors
+ * (which the user explicitly chose) fill freely.
  *
  * Labels (feature.label, from parseGeojson's title/name convention) draw the
  * same way drawAbmAirspace.js draws airspace names — centroid placement for
@@ -43,7 +53,7 @@ import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
 
 const MARKER_RADIUS = 3
 
-export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, labelsVisible = false) {
+export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, labelsVisible = false, fillPct = 0) {
   if (!layers?.length) return
   const visibleLayers = layers.filter(l => l.visible && l.features?.length)
   if (!visibleLayers.length) return
@@ -55,7 +65,12 @@ export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, la
     const visibleFeatures = layer.features.filter(f => bboxInView(f.bbox, view))
     if (!visibleFeatures.length) continue
 
-    for (const f of visibleFeatures) drawFeature(ctx, view, f, layer.color, customColors, layer.shapeType)
+    // Resolved once per layer, not per feature — colorOverride is a layer-
+    // level flag (see file header), so every feature in this layer shares
+    // the same override tier.
+    const overrideColor = layer.colorOverride ? layer.color : null
+
+    for (const f of visibleFeatures) drawFeature(ctx, view, f, overrideColor, customColors, layer.shapeType, fillPct)
 
     const showLabels = labelsVisible || layer.shapeType === 'text' || layer.labelOverride
     if (!showLabels) continue
@@ -63,16 +78,18 @@ export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, la
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'middle'
     for (const f of visibleFeatures) {
-      if (f.label) drawLabel(ctx, view, f, layer.color, customColors, fontSize, lineH, layer.shapeType)
+      if (f.label) drawLabel(ctx, view, f, overrideColor, customColors, fontSize, lineH, layer.shapeType)
     }
   }
   ctx.globalAlpha = 1
   ctx.setLineDash([])
 }
 
-function drawFeature(ctx, view, f, layerColor, customColors, shapeType) {
+function drawFeature(ctx, view, f, overrideColor, customColors, shapeType, fillPct) {
   const p = f.properties ?? {}
-  const stroke        = p.stroke ?? layerColor ?? customColors?.stroke
+  // overrideColor (layer-level, resolved by the caller) is the same tier
+  // used for fill priority below — non-null only when colorOverride is on.
+  const stroke = overrideColor ?? customColors?.stroke
   const strokeOpacity = p['stroke-opacity'] ?? 1
   const strokeWidth   = p['stroke-width'] ?? 1.5
   // A geojson-authored dash is used as raw pixel values — there's no
@@ -82,8 +99,13 @@ function drawFeature(ctx, view, f, layerColor, customColors, shapeType) {
   // by pixelsPerNm the same way drawAbmAirspace.js scales its dash arrays.
   const dash = (p.dash ?? p['stroke-dasharray'])
     ?? (customColors?.dash ?? []).map(v => v * view.pixelsPerNm)
-  const fill          = p.fill ?? null
-  const fillOpacity   = p['fill-opacity'] ?? 0.2
+  // fillPct <= 0 (the `.fill` command off) suppresses fill entirely,
+  // including a feature's own explicit `fill` — see file header. Palette-tier
+  // fill deliberately doesn't fall back to customColors?.stroke the way
+  // drawAbmAirspace.js's does; an unstyled shape only fills if CUSTOM
+  // actually defines one.
+  const fill        = fillPct > 0 ? (p.fill ?? overrideColor ?? customColors?.fill ?? null) : null
+  const fillOpacity = (p['fill-opacity'] ?? 0.2) * (fillPct / 100)
 
   switch (f.geometry.type) {
     // .text-command shapes (shapeType === 'text') are the label itself —
@@ -165,11 +187,11 @@ export function tracePath(ctx, view, ring) {
   })
 }
 
-function drawLabel(ctx, view, f, layerColor, customColors, fontSize, lineH, shapeType) {
+function drawLabel(ctx, view, f, overrideColor, customColors, fontSize, lineH, shapeType) {
   const p     = f.properties ?? {}
   const lines = f.label
   ctx.globalAlpha = 1
-  ctx.fillStyle    = p.stroke ?? layerColor ?? customColors?.stroke
+  ctx.fillStyle    = overrideColor ?? customColors?.stroke
 
   const type = f.geometry.type
   if (type === 'Point' || type === 'MultiPoint') {

@@ -81,13 +81,56 @@
 
 .dr-row {
   display: grid;
-  grid-template-columns: 16px 10px 1fr 16px 30px 16px;
+  grid-template-columns: 10px 16px 10px 1fr 16px 30px 16px;
   gap: 0 6px;
   align-items: center;
   padding: 3px 6px;
   border-bottom: 1px solid #141414;
 }
 .dr-row:hover { background: #131300; }
+
+.dr-row-dragover {
+  border-top: 2px solid #FFD700;
+}
+
+.dr-row-header {
+  color: #444;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #222;
+  cursor: default;
+}
+
+.dr-grip {
+  cursor: grab;
+  color: #444;
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+}
+.dr-grip:hover { color: #888; }
+.dr-grip:active { cursor: grabbing; }
+
+.dr-grip-disabled {
+  cursor: not-allowed;
+  color: #2a2a2a;
+}
+.dr-grip-disabled:hover { color: #2a2a2a; }
+.dr-row-header:hover { background: transparent; }
+
+.dr-col-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dr-col-sort {
+  cursor: pointer;
+  user-select: none;
+}
+.dr-col-sort:hover { color: #888; }
 
 .dr-label-override {
   justify-self: center;
@@ -96,21 +139,71 @@
   opacity: 0.5;
 }
 
+.dr-swatch-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
 .dr-swatch {
   width: 12px;
   height: 12px;
   padding: 0;
-  border: none;
   border-radius: 2px;
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* Solid gold border — layer.color is authoritative (user- or file-picked),
+   see store/abmDrawings.js's colorOverride. */
+.dr-swatch-override {
+  border: 1px solid #FFD700;
+}
+
+/* Dashed border — this is the airspace palette's CUSTOM color passing
+   through, not a fixed pick; changes if the palette (.aspcolors) changes. */
+.dr-swatch-palette {
+  border: 1px dashed #555;
+}
+
+.dr-swatch-popover {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 2px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.dr-swatch-input {
+  width: 60px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
   cursor: pointer;
   background: none;
   -webkit-appearance: none;
   appearance: none;
 }
-.dr-swatch::-webkit-color-swatch-wrapper { padding: 0; }
-.dr-swatch::-webkit-color-swatch        { border: none; border-radius: 2px; }
-.dr-swatch::-moz-color-swatch           { border: none; border-radius: 2px; }
+.dr-swatch-input::-webkit-color-swatch-wrapper { padding: 0; }
+.dr-swatch-input::-webkit-color-swatch        { border: none; border-radius: 2px; }
+.dr-swatch-input::-moz-color-swatch           { border: none; border-radius: 2px; }
+
+.dr-swatch-override-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  color: #aaa;
+  white-space: nowrap;
+  cursor: pointer;
+}
 
 .dr-name {
   color: #FFD700;
@@ -147,7 +240,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 4px 6px 6px 32px;
+  padding: 4px 6px 6px 48px;
   background: #0d0d00;
   border-bottom: 1px solid #141414;
 }

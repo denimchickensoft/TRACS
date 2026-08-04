@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useSessionStore } from '../../store/session.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
+import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useAbmDeclination } from './useAbmDeclination.js'
 import { toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { AbmDrawingImport } from './AbmDrawingImport.jsx'
@@ -73,6 +74,84 @@ function NumberField({ value, deg = false, onCommit }) {
   )
 }
 
+const DR_SORT_KEY_KEY = 'tracs.abm.drawings.sortKey'
+const DR_SORT_DIR_KEY = 'tracs.abm.drawings.sortDir'
+
+// The trailing INFO column is left out of this table — it's a disclosure
+// arrow for command-drawn shapes with editable params and a feature count
+// for everything else (see the dr-count/dr-disclosure branch below), not
+// one consistent value, so it isn't offered as a sort key.
+const SORT_COLUMNS = [
+  { key: 'visible', label: 'VIS'  },
+  { key: 'color',   label: '●'   },
+  { key: 'name',    label: 'NAME' },
+  { key: 'label',   label: 'LBL'  },
+]
+
+const SORT_ACCESSORS = {
+  visible: l => l.visible ? 1 : 0,
+  color:   l => l.color ?? '',
+  name:    l => l.name ?? '',
+  label:   l => (l.shapeType === 'text' || l.labelOverride) ? 1 : 0,
+}
+
+// Swatch + popover — the swatch itself always shows the actually-rendered
+// color (drawAbmCustomDrawings.js's resolved stroke: layer.color when
+// colorOverride is on, otherwise the airspace palette's CUSTOM stroke), with
+// a border style distinguishing the two so an override is visible at a
+// glance instead of looking like any other picked color. The popover holds
+// the native color picker plus the Override checkbox — picking a color
+// always turns override on (store/abmDrawings.js's setLayerColor), the
+// checkbox alone flips override without discarding the stored color pick.
+function ColorSwatch({ layer, paletteStroke, onPick, onToggleOverride }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDocMouseDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [open])
+
+  const fallback = '#dddddd'
+  const resolved = layer.colorOverride ? (layer.color ?? fallback) : (paletteStroke ?? fallback)
+
+  return (
+    <span className="dr-swatch-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className={['dr-swatch', layer.colorOverride ? 'dr-swatch-override' : 'dr-swatch-palette'].join(' ')}
+        style={{ background: resolved }}
+        onClick={() => setOpen(o => !o)}
+        title={layer.colorOverride
+          ? `Override color: ${resolved} (overrides the airspace palette)`
+          : `Using airspace palette CUSTOM color: ${resolved}`}
+      />
+      {open && (
+        <div className="dr-swatch-popover">
+          <input
+            type="color"
+            className="dr-swatch-input"
+            value={layer.color ?? resolved}
+            onChange={e => onPick(e.target.value)}
+          />
+          <label className="dr-swatch-override-row">
+            <input
+              type="checkbox"
+              checked={layer.colorOverride}
+              onChange={e => onToggleOverride(e.target.checked)}
+            />
+            Override
+          </label>
+        </div>
+      )}
+    </span>
+  )
+}
+
 export function Drawings({ docked = true, width, onResize, onUndock, onDock, onHide }) {
   const mission = useSessionStore(s => s.mission)
   const theatre = mission?.mission?.theatre ?? null
@@ -82,10 +161,19 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const toggleVisible       = useAbmDrawingsStore(s => s.toggleVisible)
   const toggleLabelOverride = useAbmDrawingsStore(s => s.toggleLabelOverride)
   const setLayerColor       = useAbmDrawingsStore(s => s.setLayerColor)
+  const setLayerColorOverride = useAbmDrawingsStore(s => s.setLayerColorOverride)
   const removeLayer       = useAbmDrawingsStore(s => s.removeLayer)
   const renameLayer       = useAbmDrawingsStore(s => s.renameLayer)
   const updateShapeParams = useAbmDrawingsStore(s => s.updateShapeParams)
   const clearTheatre      = useAbmDrawingsStore(s => s.clearTheatre)
+
+  // Same palette AbmScope's drawAbmCustomDrawings call resolves against
+  // (useAbmAirspaceStore's paletteIdx, hydrated from abmPrefs there) — kept
+  // reactive here so an unpicked/override-off drawing's swatch tracks a
+  // live `.aspcolors` change instead of going stale.
+  const airspacePalettes = useAbmAirspaceStore(s => s.palettes)
+  const paletteIdx       = useAbmAirspaceStore(s => s.paletteIdx)
+  const paletteStroke    = airspacePalettes[paletteIdx]?.colors?.CUSTOM?.stroke ?? null
 
   const [importOpen, setImportOpen] = useState(false)
   const [initialFiles, setInitialFiles] = useState(null)
@@ -95,6 +183,61 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const [editValue, setEditValue] = useState('')
   const [expandedId, setExpandedId] = useState(null)
   const [confirmingClear, setConfirmingClear] = useState(false)
+
+  const [sortKey, setSortKey] = useState(() => localStorage.getItem(DR_SORT_KEY_KEY) || null)
+  const [sortDir, setSortDir] = useState(() => (localStorage.getItem(DR_SORT_DIR_KEY) === '-1' ? -1 : 1))   // 1 = asc, -1 = desc
+
+  // ASC -> DESC -> OFF (unlike Ato's ASC/DESC-only toggle) — a third "off"
+  // state is needed here because sorting and the drag-reorder below are
+  // mutually exclusive: dragging only makes sense when the panel is showing
+  // the underlying array order (reorderLayer's actual draw z-order), so
+  // there has to be a way back to that from any sorted state.
+  const handleSort = (key) => {
+    let nextKey = key, nextDir = 1
+    if (sortKey === key) {
+      if (sortDir === 1) nextDir = -1
+      else nextKey = null
+    }
+    setSortKey(nextKey)
+    setSortDir(nextDir)
+    localStorage.setItem(DR_SORT_KEY_KEY, nextKey ?? '')
+    localStorage.setItem(DR_SORT_DIR_KEY, String(nextDir))
+  }
+
+  const sortedLayers = useMemo(() => {
+    if (!sortKey) return layers
+    const accessor = SORT_ACCESSORS[sortKey]
+    return [...layers].sort((a, b) => {
+      const av = accessor(a), bv = accessor(b)
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir
+      return String(av).localeCompare(String(bv)) * sortDir
+    })
+  }, [layers, sortKey, sortDir])
+
+  // Manual drag-and-drop reorder — only enabled in unsorted (manual-order)
+  // view; see handleSort's comment for why.
+  const manualOrder = sortKey === null
+  const reorderLayer = useAbmDrawingsStore(s => s.reorderLayer)
+  const [dragLayerId, setDragLayerId]       = useState(null)
+  const [dragOverLayerId, setDragOverLayerId] = useState(null)
+
+  const onGripDragStart = (e, id) => {
+    setDragLayerId(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  const onRowDragOver = (e, id) => {
+    if (!dragLayerId || dragLayerId === id) return
+    e.preventDefault()
+    if (dragOverLayerId !== id) setDragOverLayerId(id)
+  }
+  const onRowDrop = (e, id) => {
+    if (!dragLayerId || dragLayerId === id) return
+    e.preventDefault()
+    reorderLayer(theatre, dragLayerId, id)
+    setDragLayerId(null)
+    setDragOverLayerId(null)
+  }
+  const onGripDragEnd = () => { setDragLayerId(null); setDragOverLayerId(null) }
 
   const startRename = (layer) => { setEditingId(layer.id); setEditValue(layer.name) }
   const commitRename = () => {
@@ -155,28 +298,49 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
         {theatre && layers.length === 0 && (
           <div className="dr-empty">No drawings loaded for this theatre.<br />Load a .geojson file below.</div>
         )}
-        {layers.map(layer => {
+        {layers.length > 0 && (
+          <div className="dr-row dr-row-header">
+            <span className="dr-col-label" title={manualOrder ? 'Drag to reorder (draw order, back to front)' : 'Clear sort to drag-reorder'} />
+            {SORT_COLUMNS.map(c => (
+              <span
+                key={c.key}
+                className="dr-col-label dr-col-sort"
+                onClick={() => handleSort(c.key)}
+                title={`Sort by ${c.key === 'label' ? 'always-show-label' : c.label}`}
+              >
+                {c.label}{sortKey === c.key ? (sortDir === 1 ? ' ▲' : ' ▼') : ''}
+              </span>
+            ))}
+            <span className="dr-col-label" title="Parameters / feature count">INFO</span>
+          </div>
+        )}
+        {sortedLayers.map(layer => {
           const fields = SHAPE_FIELDS[layer.shapeType]
           const expanded = expandedId === layer.id
           return (
             <div key={layer.id} className="dr-row-group">
-              <div className="dr-row">
+              <div
+                className={['dr-row', dragOverLayerId === layer.id ? 'dr-row-dragover' : ''].join(' ')}
+                onDragOver={e => onRowDragOver(e, layer.id)}
+                onDrop={e => onRowDrop(e, layer.id)}
+              >
+                <span
+                  className={['dr-grip', manualOrder ? '' : 'dr-grip-disabled'].join(' ')}
+                  draggable={manualOrder}
+                  onDragStart={e => onGripDragStart(e, layer.id)}
+                  onDragEnd={onGripDragEnd}
+                  title={manualOrder ? 'Drag to reorder (draw order, back to front)' : 'Clear sort to drag-reorder'}
+                >⠿</span>
                 <input
                   type="checkbox"
                   checked={layer.visible}
                   onChange={() => toggleVisible(theatre, layer.id)}
                 />
-                <input
-                  type="color"
-                  className="dr-swatch"
-                  // null (the default until the user actually picks one, see
-                  // store/abmDrawings.js) needs a placeholder here — a
-                  // controlled color input can't take null — but the layer
-                  // itself still renders from the airspace CUSTOM palette
-                  // until this control is touched.
-                  value={layer.color ?? '#dddddd'}
-                  onChange={e => setLayerColor(theatre, layer.id, e.target.value)}
-                  title="Drawing color (overrides the airspace CUSTOM default)"
+                <ColorSwatch
+                  layer={layer}
+                  paletteStroke={paletteStroke}
+                  onPick={color => setLayerColor(theatre, layer.id, color)}
+                  onToggleOverride={enabled => setLayerColorOverride(theatre, layer.id, enabled)}
                 />
                 {editingId === layer.id ? (
                   <input
