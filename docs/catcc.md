@@ -24,6 +24,7 @@ Aircraft are addressed by side number or callsign.
 | `.LABELS` | Toggle airspace/fix name labels |
 | `.FILL` | Toggle airspace polygon fill; `.FILL <1-100>` sets transparency % and turns it on |
 | `.FIXES` | Toggle theatre fix points |
+| `.FIX <name...>` | Force-show one or more fixes regardless of `.FIXES`; each name toggles independently |
 | `.GEO` | Toggle coastlines/boundaries |
 | `.ASPCOLORS <name>` | Select an airspace color palette (e.g. `CATCC` — the default, all-yellow) |
 | `.REFRESH` | Re-fetch airspace color palettes without reloading |

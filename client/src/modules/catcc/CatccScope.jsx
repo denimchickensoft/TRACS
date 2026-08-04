@@ -203,6 +203,7 @@ export default function CatccScope() {
         asVisible: catccPrefs.asVisible, aspColorIdx: catccPrefs.aspColorIdx, labelsVisible: catccPrefs.labelsVisible,
         fixesVisible: catccPrefs.fixesVisible, geoVisible: catccPrefs.geoVisible,
         fillVisible: catccPrefs.fillVisible, fillPct: catccPrefs.fillPct,
+        pinnedFixes: catccPrefs.pinnedFixes,
       })
     }
   }, []) // eslint-disable-line
@@ -290,11 +291,15 @@ export default function CatccScope() {
     // dedupe option if dense theatres read as double/uneven lines.
     drawAbmAirspace(ctx, view, airspaceFeatures, windowSettings?.asVisible ?? {}, 80, false, airspaceColors, windowSettings?.labelsVisible ?? false,
       windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0)
-    drawAbmFixSymbols(ctx, view, fixes, windowSettings?.fixesVisible ?? false, '#66CCFF', 60, windowSettings?.labelsVisible ?? false)
+    // .FIX-pinned fixes (per-theatre — see odsCommands.js .FIX) always draw
+    // regardless of .fixes, same override ABM's own .fix command gives.
+    const pinnedIds   = new Set(windowSettings?.pinnedFixes?.[theatre] ?? [])
+    const fixesToDraw = (windowSettings?.fixesVisible ?? false) ? fixes : fixes.filter((f) => pinnedIds.has(f.id.toUpperCase()))
+    drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, windowSettings?.labelsVisible ?? false)
   }, [view, geoBoundaries, geoCoastlines, windowSettings?.geoVisible,
       airspaceFeatures, airspaceColors, windowSettings?.asVisible, windowSettings?.labelsVisible,
       windowSettings?.fillVisible, windowSettings?.fillPct,
-      fixes, windowSettings?.fixesVisible])
+      fixes, windowSettings?.fixesVisible, windowSettings?.pinnedFixes, theatre])
 
   // ── Render CATCC layers (rings + CCZ/CCA + corridor + radial) ─────
   useEffect(() => {

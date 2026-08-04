@@ -17,6 +17,7 @@ import { useControllersStore } from '../../store/controllers.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { saveCatccPrefs }      from '../../store/catccPrefs.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
+import { useNavdataStore }     from '../../store/navdata.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { applyCallsignChange } from '../../utils/callsignRename.js'
@@ -249,6 +250,42 @@ register('.FIXES', () => {
   useDisplayStore.getState().updateWindow(WINDOW_ID, { fixesVisible: next })
   saveCatccPrefs({ fixesVisible: next })
   return [`FIXES ${next ? 'ON' : 'OFF'}`]
+})
+
+// .FIX <name...> — force-show specific fixes regardless of .FIXES
+// visibility. Each name toggles independently (repeat to un-pin); persisted
+// per-theatre (store/catccPrefs.js) so pins survive a reload. No argument
+// clears all pinned fixes for this theatre.
+register('.FIX', (parts) => {
+  const theatre = useSessionStore.getState().mission?.mission?.theatre
+  if (!theatre) return ['NO THEATRE']
+  const names = parts.slice(1).filter(Boolean)
+  if (!names.length) {
+    const ws        = useDisplayStore.getState().windows[WINDOW_ID]
+    const byTheatre = ws?.pinnedFixes ?? {}
+    const merged    = { ...byTheatre, [theatre]: [] }
+    useDisplayStore.getState().updateWindow(WINDOW_ID, { pinnedFixes: merged })
+    saveCatccPrefs({ pinnedFixes: merged })
+    return ['FIX CLEARED']
+  }
+  // Pinning only affects rendering of the `fixes` layer (see CatccScope.jsx
+  // pinnedIds filter), so validate against that list rather than a broader
+  // fix/navaid/airport search — a name that resolves elsewhere would never
+  // actually draw as pinned.
+  const knownIds = new Set(useNavdataStore.getState().fixes.map(f => f.id.toUpperCase()))
+  const notFound = names.filter((n) => !knownIds.has(n.toUpperCase()))
+  if (notFound.length) return [`${notFound.join(' ')} NOT FOUND`]
+  const ws        = useDisplayStore.getState().windows[WINDOW_ID]
+  const byTheatre = ws?.pinnedFixes ?? {}
+  const current   = new Set(byTheatre[theatre] ?? [])
+  for (const name of names) {
+    if (current.has(name)) current.delete(name)
+    else current.add(name)
+  }
+  const merged = { ...byTheatre, [theatre]: [...current] }
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { pinnedFixes: merged })
+  saveCatccPrefs({ pinnedFixes: merged })
+  return [`FIX ${names.join(' ')}`]
 })
 
 // .GEO — coastlines/boundaries layer (store/geo.js). Driven by this window's
