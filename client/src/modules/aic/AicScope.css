@@ -64,6 +64,20 @@
   white-space: nowrap;
 }
 
+/* ── Bullseye-on-cursor readout (.bec) ───────────────────────────────────────── */
+/* Positioned via inline left/top (raw canvas-pixel cursor coords, set in
+   AicScope.jsx) and nudged up/right of the pointer tip via transform so the
+   OS cursor glyph itself doesn't sit on top of the text. */
+.aic-bec-box {
+  position:       absolute;
+  transform:      translate(12px, -100%);
+  white-space:    nowrap;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  color:          #fff;
+  pointer-events: none;
+}
+
 /* ── ROE indicator ───────────────────────────────────────────────────────────── */
 .aic-roe {
   position:    absolute;
@@ -166,6 +180,31 @@
   font-size:      0.7rem;
   color:          #FFD700;
   pointer-events: none;
+}
+
+/* ── Brevity definition readout (.define) ────────────────────────────────────── */
+/* Sits above the command entry, independent of .aic-cmd-feedback (see comment
+   at that state's declaration in AicScope.jsx for why) — anchored by bottom
+   so it grows upward as definitions wrap across multiple lines. */
+.aic-define {
+  position:       absolute;
+  bottom:         52px;
+  left:           10px;
+  max-width:      420px;
+  font-family:    'Roboto Mono', monospace;
+  font-size:      0.7rem;
+  line-height:    1.5;
+  color:          #fff;
+  white-space:    pre-wrap;
+  pointer-events: auto;
+  cursor:         pointer;
+}
+
+.aic-define-term {
+  color:          #FFD700;
+  font-weight:    bold;
+  letter-spacing: 0.04em;
+  margin-bottom:  2px;
 }
 
 .aic-cmd-area {

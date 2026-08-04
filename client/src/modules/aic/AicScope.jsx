@@ -21,6 +21,7 @@ import { computePicture, sectorAxisBearing } from './canvas/computePicture.js'
 import { useGeoStore }         from '../../store/geo.js'
 import { useReliefStore }      from '../../store/relief.js'
 import { useMapsStore }        from '../../store/maps.js'
+import { useBrevityStore }     from '../../store/brevity.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { BraaList }            from './BraaList.jsx'
 import './AicScope.css'
@@ -29,6 +30,7 @@ const WINDOW_ID = 'aic-main'
 const AIC_SETTINGS_KEY = 'aic-settings'
 const AIC_AUTOTHREAT_KEY = 'tracs-aic-autothreat'
 const AIC_PICTURE_KEY = 'tracs-aic-showpicture'
+const AIC_BEC_KEY = 'tracs-aic-bec'
 const AIC_WIN_FIELDS = [
   'rangeNm', 'ringSpacingNm', 'ptlSeconds', 'symSize',
   'fadedSeconds', 'threatRadius', 'centerLat', 'centerLng',
@@ -229,8 +231,13 @@ export default function AicScope() {
         ?? null
   }, [bullseyes, coalition])
 
-  const bullseyeLat = bullseyeEntry?.latitude  ?? 0
-  const bullseyeLng = bullseyeEntry?.longitude ?? 0
+  // .be override — lets the operator relocate bullseye off the mission's
+  // real one (fix, explicit lat/lon, or a map click). Not persisted: it's a
+  // mission-specific placement, not a saved preference.
+  const [bullseyeOverride, setBullseyeOverride] = useState(null) // { lat, lng } | null
+
+  const bullseyeLat = bullseyeOverride?.lat ?? bullseyeEntry?.latitude  ?? 0
+  const bullseyeLng = bullseyeOverride?.lng ?? bullseyeEntry?.longitude ?? 0
 
   const centerOverridden = windowSettings?.centerOverridden ?? false
   const centerLat = centerOverridden ? (windowSettings?.centerLat ?? bullseyeLat) : bullseyeLat
@@ -442,6 +449,19 @@ export default function AicScope() {
     try { localStorage.setItem(AIC_PICTURE_KEY, String(enabled)) } catch {}
   }
 
+  // .bec — bullseye-on-cursor readout that tracks the mouse pixel-for-pixel
+  // (unlike the always-on cursorBullseye readout below, pinned to the top-
+  // right corner). Off by default, persisted to its own localStorage key
+  // like .autothreat/.picture above.
+  const [becVisible, setBecVisibleState] = useState(() => {
+    try { return localStorage.getItem(AIC_BEC_KEY) === 'true' } catch { return false }
+  })
+  const setBecVisible = (enabled) => {
+    setBecVisibleState(enabled)
+    try { localStorage.setItem(AIC_BEC_KEY, String(enabled)) } catch {}
+  }
+  const [cursorPixelPos, setCursorPixelPos] = useState(null)
+
   const fadedRef       = useRef({})
   const prevVisibleRef = useRef({})
   const [fadedTick, setFadedTick] = useState(0)
@@ -470,6 +490,12 @@ export default function AicScope() {
   // Command buffer — must be declared before pendingSector useMemo
   const [cmdBuffer, setCmdBuffer] = useState('')
   const [cmdFeedback, setCmdFeedback] = useState('')
+  // .define readout — kept separate from cmdFeedback since cmdFeedback gets
+  // overwritten by every incidental click/command ack and a brevity
+  // definition is meant to be read, not flashed. Dismissed only by Escape,
+  // another .define, or clicking the readout itself.
+  const [defineEntry, setDefineEntry] = useState(null) // { term, text }
+  useEffect(() => { useBrevityStore.getState().load() }, [])
   const [cmdHistory, setCmdHistory] = useState([])
   const cmdHistoryRef = useRef([])
   useEffect(() => { cmdHistoryRef.current = cmdHistory }, [cmdHistory])
@@ -506,6 +532,12 @@ export default function AicScope() {
   // Ref so event callbacks can always read the current pendingSector value
   const pendingSectorRef = useRef(null)
   useEffect(() => { pendingSectorRef.current = pendingSector }, [pendingSector])
+
+  // .be + click — armed live (before Enter) the moment cmdBuffer is exactly
+  // ".be", same live-parse pattern as pendingSector above.
+  const pendingBe = cmdBuffer.trim().toLowerCase() === '.be'
+  const pendingBeRef = useRef(false)
+  useEffect(() => { pendingBeRef.current = pendingBe }, [pendingBe])
 
   // ── Canvas effects ────────────────────────────────────────────────────────────
 
@@ -644,6 +676,7 @@ export default function AicScope() {
     setHoveredUnit(hit ? { unitId: hit.unitId, unit: hit.unit } : null)
     const ll = canvasToLatLng(x, y, viewRef.current)
     setCursorLatLng(ll)
+    setCursorPixelPos({ x, y })
     if (pendingSectorRef.current) setSectorPreviewOrigin(ll)
   }, [])
 
@@ -806,6 +839,9 @@ export default function AicScope() {
     } else if (str === '.picture') {
       setShowPicture(!showPicture)
       setCmdFeedback(!showPicture ? 'PICTURE ON' : 'PICTURE OFF')
+    } else if (str === '.bec') {
+      setBecVisible(!becVisible)
+      setCmdFeedback(!becVisible ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF')
     } else if (str === '.sector') {
       if (sectorRef.current) { setSectorVisible(true); setCmdFeedback('SECTOR ON') }
       else { setCmdFeedback('NO SECTOR') }
@@ -834,6 +870,34 @@ export default function AicScope() {
       setSectorVisible(true)
       setSectorPreviewOrigin(null)
       setCmdFeedback(`SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(rng)}NM @BE`)
+    } else if (str === '.be') {
+      // Bare form (Enter, no click) clears the override and reverts to the
+      // mission bullseye; typed bare and then clicked instead (see
+      // pendingBe/handleMouseUp), it places the override at the click.
+      setBullseyeOverride(null)
+      setCmdFeedback('BULLSEYE RESET')
+    } else if (str.match(/^\.be\s+-?\d+(\.\d+)?\s+-?\d+(\.\d+)?$/)) {
+      const m = str.match(/^\.be\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/)
+      const lat = parseFloat(m[1])
+      const lng = parseFloat(m[2])
+      setBullseyeOverride({ lat, lng })
+      setCmdFeedback(`BULLSEYE SET ${lat.toFixed(2)}/${lng.toFixed(2)}`)
+    } else if (str.match(/^\.be\s+(\S+)$/)) {
+      const fixName = str.match(/^\.be\s+(\S+)$/)[1]
+      const result  = useNavdataStore.getState().lookupFix(fixName)
+      if (result) {
+        setBullseyeOverride({ lat: result.lat, lng: result.lon })
+        setCmdFeedback(`BULLSEYE SET @ ${result.id}`)
+      } else {
+        setCmdFeedback('FIX NOT FOUND')
+      }
+    } else if (str.startsWith('.define ')) {
+      // Tactical brevity glossary lookup (ATP 1-02.1, see store/brevity.js).
+      // Shown in its own readout, not cmdFeedback — see the comment at
+      // defineEntry's declaration for why.
+      const result = useBrevityStore.getState().lookup(str.slice(8).trim())
+      if (result) { setDefineEntry(result); setCmdFeedback('') }
+      else { setDefineEntry(null); setCmdFeedback('NOT FOUND') }
     } else {
       setCmdFeedback('UNKNOWN COMMAND')
     }
@@ -851,6 +915,7 @@ export default function AicScope() {
     if (e.key === 'Escape') {
       e.preventDefault()
       if (findMarker) { setFindMarker(null); return }
+      if (defineEntry) { setDefineEntry(null); return }
       const previewClear = !pendingDeclaration && !pendingBraaFighter && !cmdBuffer && !cmdFeedback
       if (previewClear) {
         setRbl(null)
@@ -914,7 +979,7 @@ export default function AicScope() {
       setCmdFeedback('')
       setCmdBuffer(b => b + e.key)
     }
-  }, [cmdBuffer, cmdFeedback, pendingDeclaration, pendingBraaFighter, findMarker, clearPendingBraa]) // eslint-disable-line
+  }, [cmdBuffer, cmdFeedback, pendingDeclaration, pendingBraaFighter, findMarker, clearPendingBraa, defineEntry]) // eslint-disable-line
 
   const handleMouseUp = useCallback((e) => {
     if (e.button !== 0) return
@@ -931,6 +996,18 @@ export default function AicScope() {
       setSectorVisible(true)
       setSectorPreviewOrigin(null)
       clearCmd()
+      return
+    }
+
+    // .be + click: place the bullseye override at the clicked point. Armed
+    // live while cmdBuffer is exactly ".be" (see pendingBe above); typing
+    // on past that (a fix name or coordinates) disarms it and the command
+    // instead resolves on Enter via execCommand.
+    if (pendingBeRef.current) {
+      const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
+      setBullseyeOverride({ lat: ll.lat, lng: ll.lng })
+      clearCmd()
+      setCmdFeedback(`BULLSEYE SET ${ll.lat.toFixed(2)}/${ll.lng.toFixed(2)}`)
       return
     }
 
@@ -1147,10 +1224,16 @@ export default function AicScope() {
           }}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
-          onMouseLeave={() => { setHoveredUnit(null); setCursorLatLng(null) }}
+          onMouseLeave={() => { setHoveredUnit(null); setCursorLatLng(null); setCursorPixelPos(null) }}
           onKeyDown={handleKeyDown}
           onContextMenu={e => e.preventDefault()}
-        />
+        >
+          {becVisible && cursorBullseye && cursorPixelPos && (
+            <div className="aic-bec-box" style={{ left: cursorPixelPos.x, top: cursorPixelPos.y }}>
+              {cursorBullseye}
+            </div>
+          )}
+        </div>
 
         {/* Contact info readout / cursor bullseye — top right */}
         {(readout || cursorBullseye) && (
@@ -1220,7 +1303,7 @@ export default function AicScope() {
         )}
 
         {/* No bullseye warning */}
-        {!bullseyeEntry && (
+        {!bullseyeEntry && !bullseyeOverride && (
           <div className="aic-warn">NO BULLSEYE</div>
         )}
 
@@ -1237,6 +1320,13 @@ export default function AicScope() {
         {/* Command feedback — above cmd entry */}
         {cmdFeedback && (
           <div className="aic-cmd-feedback">{cmdFeedback}</div>
+        )}
+
+        {defineEntry && (
+          <div className="aic-define" onClick={() => setDefineEntry(null)}>
+            <div className="aic-define-term">{defineEntry.term}</div>
+            <div className="aic-define-text">{defineEntry.text}</div>
+          </div>
         )}
 
         {/* Command entry — bottom left */}

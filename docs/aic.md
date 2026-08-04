@@ -16,6 +16,11 @@ Click the scope to focus it, type, then **Enter** to run most commands. A few co
 | `.center <brg> <rng>` | Center at a magnetic bearing/range (NM) from bullseye |
 | `.center <fixname>` | Center on a named nav fix |
 | `.find <fixname>` | Drop a marker at a named fix (cleared by Escape) |
+| `.define <term>` | Look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition above the command line, e.g. `.define bogey dope`. Stays up until dismissed (Escape, another `.define`, or clicking it) |
+| `.be` | Reset bullseye to the mission bullseye (clears any override) |
+| `.be` + click | Type `.be`, then click the map to override bullseye at that point |
+| `.be <fixname>` | Override bullseye to a named fix/navaid/runway |
+| `.be <lat> <lon>` | Override bullseye to explicit decimal-degree coordinates |
 | `.rr` | Toggle range rings |
 | `.rr <nm>` | Set range ring spacing (`0` = off) |
 | `.ptl <seconds>` | Predicted Track Line length, 0–300s |
@@ -26,6 +31,7 @@ Click the scope to focus it, type, then **Enter** to run most commands. A few co
 | `.aspcolors <name>` | Set the map color palette by name |
 | `.centroid` | Debug aid — marks the hostile-picture centroid |
 | `.axis` | Debug aid — draws the computed threat axis |
+| `.bec` | Toggle bullseye-on-cursor — bearing/range readout that follows the mouse (off by default) |
 | `.clear` | Clears threat rings, RBL, sector, PICTURE-ack state, and **all** BRAA pairs |
 
 ### Classification
@@ -106,7 +112,7 @@ Rows are unsorted (insertion order). Mouse wheel on the panel's title bar zooms 
 | Key | Effect |
 |---|---|
 | `F1` / `F2` / `F3` / `F4` | Arm a pending declaration — Hostile / Bogey / Neutral / Friendly — then click a contact to apply it. Press the same key again to cancel. |
-| `Escape` | Clears whatever's active, in order: a `.find` marker, then preview-only state (RBL/sector), then any pending declaration, BRAA pairing, or typed command |
+| `Escape` | Clears whatever's active, in order: a `.find` marker, then a `.define` readout, then preview-only state (RBL/sector), then any pending declaration, BRAA pairing, or typed command |
 | `Enter` | Runs the current command |
 | `Ctrl+M` | Opens Messages — a general chat window shared across all modules (DM another position with `.chat <POSITION>`, broadcast to everyone with `/ <text>`), not AIC-specific |
 
