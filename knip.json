@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "workspaces": {
+    "client": {
+      "entry": ["src/pilot/main.jsx"],
+      "project": ["src/**/*.{js,jsx}"]
+    },
+    "server": {
+      "entry": [
+        "scripts/*.js",
+        "scripts/terrainDataExe/*.js",
+        "navdata/tools/*.js"
+      ],
+      "project": ["src/**/*.js", "scripts/**/*.js", "navdata/**/*.js"]
+    },
+    ".": {
+      "entry": ["mock-olympus/server.js"],
+      "project": ["mock-olympus/**/*.js"]
+    }
+  }
+}
