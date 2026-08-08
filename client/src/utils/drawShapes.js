@@ -6,10 +6,13 @@
 // Point-label-rotation support added for .text.
 //
 // All lat/lng math goes through utils/bearing.js's destinationPoint/
-// trueBearingRangeNm — the one sanctioned place this app computes bearings
-// and ranges — never bare trig at a call site here.
+// gridDestinationPoint — the one sanctioned place this app computes bearings
+// and ranges — never bare trig at a call site here. Most shapes here
+// (.rect/.circ/.poly/.race/.text) are frame-agnostic or deliberately
+// real-true (see each builder's own comment); .sect is the one that must be
+// grid-frame, to match what a controller clicks/types as a magnetic bearing.
 
-import { destinationPoint, localOffsetNm } from './bearing.js'
+import { destinationPoint, gridDestinationPoint, localOffsetNm } from './bearing.js'
 import { computeBbox } from './parseGeojson.js'
 
 function feature(geometry, properties = {}, label = null) {
@@ -97,18 +100,24 @@ export function buildPolyFeature({ vertices }) {
   return feature({ type: 'Polygon', coordinates: [ring] })
 }
 
-/** .sect — pie-slice sector from startBrg to endBrg, clockwise. */
-export function buildSectFeature({ center, startBrg, endBrg, radiusNm }) {
+/**
+ * .sect — pie-slice sector from startBrg to endBrg, clockwise. startBrg/
+ * endBrg are grid-frame (drawCommands.js converts click-derived bearings via
+ * gridBearingRangeNm, and typed input via toTrueFromMagnetic — both grid, see
+ * utils/bearing.js), so this uses gridDestinationPoint, not destinationPoint,
+ * to stay in the same frame.
+ */
+export function buildSectFeature({ center, startBrg, endBrg, radiusNm, theatre }) {
   const start = ((startBrg % 360) + 360) % 360
   let end = ((endBrg % 360) + 360) % 360
   if (end <= start) end += 360
 
   const ring = [[center.lng, center.lat]]
   for (let brg = start; brg < end; brg += 5) {
-    const { lat, lng } = destinationPoint(center.lat, center.lng, brg % 360, radiusNm)
+    const { lat, lng } = gridDestinationPoint(center.lat, center.lng, brg % 360, radiusNm, theatre)
     ring.push([lng, lat])
   }
-  const endPoint = destinationPoint(center.lat, center.lng, end % 360, radiusNm)
+  const endPoint = gridDestinationPoint(center.lat, center.lng, end % 360, radiusNm, theatre)
   ring.push([endPoint.lng, endPoint.lat])
   ring.push([center.lng, center.lat])
   return feature({ type: 'Polygon', coordinates: [ring] })

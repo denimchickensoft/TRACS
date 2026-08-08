@@ -1,4 +1,4 @@
-import { toMagneticFromTrue, trueBearingRangeNm } from './bearing.js'
+import { toMagneticFromTrue, gridBearingRangeNm } from './bearing.js'
 
 export const NM_TO_FEET = 6076.115
 
@@ -88,10 +88,14 @@ export function computeCarrierBrcFb(gridHeadingDeg, declinationDeg, deckOffsetDe
 // catapult/sponson overhang beyond deckLoaFt/deckBeamFt) — callers should
 // still gate on altitude (near carrierType.deckHeightFt) to exclude aircraft
 // merely transiting overhead, e.g. in the bolter/groove.
-export function projectOntoDeck(pos, carrierLat, carrierLng, carrierHeadingDeg, loaFt, beamFt) {
-  const { trueBearingDeg, rangeNm } = trueBearingRangeNm(carrierLat, carrierLng, pos.lat, pos.lng)
+export function projectOntoDeck(pos, carrierLat, carrierLng, carrierHeadingDeg, loaFt, beamFt, theatre) {
+  // carrierHeadingDeg is raw grid heading (unit.heading, uncorrected) — the
+  // bearing to the aircraft needs to be in that same grid frame, not real
+  // geographic true, or the relative angle (and therefore forwardFt/rightFt)
+  // is skewed by the local grid convergence. See utils/bearing.js.
+  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(carrierLat, carrierLng, pos.lat, pos.lng, theatre)
   const rangeFt        = rangeNm * NM_TO_FEET
-  const relBearingRad  = ((trueBearingDeg - carrierHeadingDeg + 360) % 360) * Math.PI / 180
+  const relBearingRad  = ((gridBearingDeg - carrierHeadingDeg + 360) % 360) * Math.PI / 180
   const forwardFt = rangeFt * Math.cos(relBearingRad)
   const rightFt   = rangeFt * Math.sin(relBearingRad)
   const margin = 60 // ft

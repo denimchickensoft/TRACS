@@ -16,6 +16,7 @@
 
 import {
   trueBearingRangeNm, destinationPoint, localOffsetNm,
+  gridBearingRangeNm, gridDestinationPoint,
   toMagneticFromTrue, toTrueFromMagnetic,
 } from '../../../utils/bearing.js'
 
@@ -145,13 +146,16 @@ function resolvePoint(token, lookupFix) {
 // "the next freehand point, chained off the previous one": bearing locks to
 // the nearest whole-degree magnetic heading, distance snaps to whole NM,
 // then reprojects from `from` so the stored point reflects exactly those
-// locked/snapped numbers (not the cursor's raw fractional position).
-function lockedVertexFrom(from, to, declinationDeg) {
-  const { trueBearingDeg, rangeNm } = trueBearingRangeNm(from.lat, from.lng, to.lat, to.lng)
-  const lockedBrg = lockMagneticBearing(trueBearingDeg, declinationDeg)
+// locked/snapped numbers (not the cursor's raw fractional position). Grid-
+// frame throughout (gridBearingRangeNm/gridDestinationPoint) so the drawn
+// line reads back as the same clean magnetic number via RBL — see
+// utils/bearing.js.
+function lockedVertexFrom(from, to, declinationDeg, theatre) {
+  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(from.lat, from.lng, to.lat, to.lng, theatre)
+  const lockedBrg = lockMagneticBearing(gridBearingDeg, declinationDeg)
   const snappedNm = snapRadius(rangeNm)
   return {
-    point: destinationPoint(from.lat, from.lng, lockedBrg, snappedNm),
+    point: gridDestinationPoint(from.lat, from.lng, lockedBrg, snappedNm, theatre),
     rangeNm: snappedNm,
     trueBearingDeg: lockedBrg,
   }
@@ -215,12 +219,13 @@ function parsePoly(tokens, lookupFix) {
 // plain single-sector form (.sect OMDM 270 090 100) is just the N=2 case of
 // this same pattern, not a separate code path. Bearings are typed as
 // MAGNETIC (a controller means "the 090 radial", not true 090 — same
-// convention as .race's radial below), converted to true here since
-// buildSectFeature works entirely in true bearings like every other
-// builder. NOTE: unlike every other command, a multi-sector result's
+// convention as .race's radial below), converted via toTrueFromMagnetic
+// here — grid frame (DCS's own "true" — see utils/bearing.js), since
+// buildSectFeature uses gridDestinationPoint, unlike most other builders.
+// NOTE: unlike every other command, a multi-sector result's
 // `immediate` is an ARRAY of param objects (one per sector), not a single
 // object — see the .sect branch in AbmScope.jsx's execCommand.
-function parseSect(tokens, lookupFix, declinationDeg) {
+function parseSect(tokens, lookupFix, declinationDeg, theatre) {
   let center = null
   const nums = []
   for (const t of tokens) {
@@ -231,10 +236,12 @@ function parseSect(tokens, lookupFix, declinationDeg) {
   }
   if (nums.length >= 3 && center) {
     const radiusNm = nums[nums.length - 1]
-    const trueBrgs = nums.slice(0, -1).map(b => toTrueFromMagnetic(b, declinationDeg))
+    // toTrueFromMagnetic == grid frame (DCS's own "true" — see
+    // utils/bearing.js), matching buildSectFeature's gridDestinationPoint.
+    const gridBrgs = nums.slice(0, -1).map(b => toTrueFromMagnetic(b, declinationDeg))
     const sectors = []
-    for (let i = 0; i < trueBrgs.length - 1; i++) {
-      sectors.push({ center, startBrg: trueBrgs[i], endBrg: trueBrgs[i + 1], radiusNm })
+    for (let i = 0; i < gridBrgs.length - 1; i++) {
+      sectors.push({ center, startBrg: gridBrgs[i], endBrg: gridBrgs[i + 1], radiusNm, theatre })
     }
     return { immediate: sectors }
   }
@@ -286,19 +293,19 @@ const PARSERS = {
   poly: parsePoly, sect: parseSect, race: parseRace, text: parseText,
 }
 
-export function parseDrawCommand(type, tokens, lookupFix, declinationDeg = 0) {
-  return PARSERS[type](tokens, lookupFix, declinationDeg)
+export function parseDrawCommand(type, tokens, lookupFix, declinationDeg = 0, theatre = null) {
+  return PARSERS[type](tokens, lookupFix, declinationDeg, theatre)
 }
 
 // ───────────────────────── click state transitions ─────────────────────────
 // Returns { pending: nextState } to keep waiting, or { immediate: params }
 // to commit now via addDrawnShape.
 
-export function advancePendingDraw(pd, click, declinationDeg = 0) {
+export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null) {
   switch (pd.type) {
     case 'line': {
       if (!pd.p1) return { pending: { ...pd, p1: click } }
-      const { point: p2 } = lockedVertexFrom(pd.p1, click, declinationDeg)
+      const { point: p2 } = lockedVertexFrom(pd.p1, click, declinationDeg, theatre)
       return { immediate: { p1: pd.p1, p2 } }
     }
     case 'rect': {
@@ -322,13 +329,13 @@ export function advancePendingDraw(pd, click, declinationDeg = 0) {
     // is simply "add another vertex."
     case 'poly': {
       const last = pd.vertices[pd.vertices.length - 1]
-      const next = last ? lockedVertexFrom(last, click, declinationDeg).point : click
+      const next = last ? lockedVertexFrom(last, click, declinationDeg, theatre).point : click
       return { pending: { ...pd, vertices: [...pd.vertices, next] } }
     }
     case 'sect': {
       if (!pd.center) return { pending: { ...pd, center: click } }
-      const { trueBearingDeg, rangeNm } = trueBearingRangeNm(pd.center.lat, pd.center.lng, click.lat, click.lng)
-      const lockedBrg = lockMagneticBearing(trueBearingDeg, declinationDeg)
+      const { gridBearingDeg, rangeNm } = gridBearingRangeNm(pd.center.lat, pd.center.lng, click.lat, click.lng, theatre)
+      const lockedBrg = lockMagneticBearing(gridBearingDeg, declinationDeg)
       const half = pd.halfWidthDeg ?? DEFAULT_SECT_HALF_WIDTH_DEG
       return {
         immediate: {
@@ -336,6 +343,7 @@ export function advancePendingDraw(pd, click, declinationDeg = 0) {
           startBrg: (lockedBrg - half + 360) % 360,
           endBrg:   (lockedBrg + half) % 360,
           radiusNm: snapRadius(rangeNm),
+          theatre,
         },
       }
     }
@@ -378,18 +386,18 @@ export function rotatePendingDraw(pd, direction = 1, declinationDeg = 0) {
 // position — null means "nothing to show yet" (e.g. no point placed at
 // all). Never mutates pendingDraw or touches the store.
 
-export function previewParams(pd, cursor, declinationDeg = 0) {
+export function previewParams(pd, cursor, declinationDeg = 0, theatre = null) {
   if (!cursor) return null
   switch (pd.type) {
     case 'line': {
       if (!pd.p1) return null
-      const { trueBearingDeg, rangeNm } = trueBearingRangeNm(pd.p1.lat, pd.p1.lng, cursor.lat, cursor.lng)
-      const lockedBrg  = lockMagneticBearing(trueBearingDeg, declinationDeg)
+      const { gridBearingDeg, rangeNm } = gridBearingRangeNm(pd.p1.lat, pd.p1.lng, cursor.lat, cursor.lng, theatre)
+      const lockedBrg  = lockMagneticBearing(gridBearingDeg, declinationDeg)
       const snappedNm  = snapRadius(rangeNm)
       // rangeNm/trueBearingDeg carried through exactly (not re-measured from
       // p1/p2 later) — see the rect note below for why that matters.
       return {
-        p1: pd.p1, p2: destinationPoint(pd.p1.lat, pd.p1.lng, lockedBrg, snappedNm),
+        p1: pd.p1, p2: gridDestinationPoint(pd.p1.lat, pd.p1.lng, lockedBrg, snappedNm, theatre),
         rangeNm: snappedNm, trueBearingDeg: lockedBrg,
       }
     }
@@ -416,7 +424,7 @@ export function previewParams(pd, cursor, declinationDeg = 0) {
     case 'poly': {
       if (!pd.vertices.length) return null
       const last = pd.vertices[pd.vertices.length - 1]
-      const { point, rangeNm, trueBearingDeg } = lockedVertexFrom(last, cursor, declinationDeg)
+      const { point, rangeNm, trueBearingDeg } = lockedVertexFrom(last, cursor, declinationDeg, theatre)
       // vertices includes the live cursor point (locked/snapped the same
       // way a click would commit it) appended after whatever's already
       // placed — drawPendingDraw.js reads vertices[0] to draw the "closing
@@ -425,14 +433,15 @@ export function previewParams(pd, cursor, declinationDeg = 0) {
     }
     case 'sect': {
       if (!pd.center) return null
-      const { trueBearingDeg, rangeNm } = trueBearingRangeNm(pd.center.lat, pd.center.lng, cursor.lat, cursor.lng)
-      const lockedBrg = lockMagneticBearing(trueBearingDeg, declinationDeg)
+      const { gridBearingDeg, rangeNm } = gridBearingRangeNm(pd.center.lat, pd.center.lng, cursor.lat, cursor.lng, theatre)
+      const lockedBrg = lockMagneticBearing(gridBearingDeg, declinationDeg)
       const half = pd.halfWidthDeg ?? DEFAULT_SECT_HALF_WIDTH_DEG
       return {
         center: pd.center,
         startBrg: (lockedBrg - half + 360) % 360,
         endBrg:   (lockedBrg + half) % 360,
         radiusNm: snapRadius(rangeNm),
+        theatre,
       }
     }
     case 'race': {

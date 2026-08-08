@@ -7,6 +7,7 @@
  */
 
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 import { DECLARATION } from '../../../store/aic.js'
 import { computeAicIntercept } from '../aicGeometry.js'
 
@@ -187,13 +188,9 @@ function drawRbl(ctx, view, rbl, declinationDeg) {
   ctx.beginPath(); ctx.arc(ep.x, ep.y, 3, 0, Math.PI * 2); ctx.fill()
 
   // Bearing / range label at midpoint
-  const avgLat      = (rbl.anchor.lat + rbl.end.lat) / 2
-  const nmPerDegLng = 60 * Math.cos(rbl.anchor.lat * Math.PI / 180)
-  const dN          = (rbl.end.lat - rbl.anchor.lat) * 60
-  const dE          = (rbl.end.lng - rbl.anchor.lng) * nmPerDegLng
-  const range       = Math.round(Math.hypot(dN, dE))
-  const trueBrg     = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360
-  const magBrg      = Math.round((trueBrg - declinationDeg + 360) % 360) || 360
+  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(rbl.anchor.lat, rbl.anchor.lng, rbl.end.lat, rbl.end.lng, view.theatre)
+  const range = Math.round(rangeNm)
+  const magBrg = Math.round(toMagneticFromTrue(gridBearingDeg, declinationDeg)) || 360
   const label       = `${String(magBrg).padStart(3, '0')}°M  ${range}NM`
 
   const midX = (ap.x + ep.x) / 2

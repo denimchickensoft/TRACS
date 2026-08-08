@@ -1,4 +1,5 @@
 import { latLngToCanvas, canvasToLatLng } from './projection.js'
+import { gridBearingRangeNm, toMagneticFromTrue } from '../../../../utils/bearing.js'
 
 const M_PER_S_TO_KT = 1.94384
 
@@ -9,22 +10,6 @@ function resolveEndpoint(ep, units) {
     return { lat: unit.position.lat, lng: unit.position.lng, speed: unit.speed ?? null }
   }
   return { lat: ep.lat, lng: ep.lng, speed: null }
-}
-
-function trueBearing(lat0, lng0, lat1, lng1) {
-  const dLng = (lng1 - lng0) * Math.PI / 180
-  const φ0   = lat0 * Math.PI / 180
-  const φ1   = lat1 * Math.PI / 180
-  const y    = Math.sin(dLng) * Math.cos(φ1)
-  const x    = Math.cos(φ0) * Math.sin(φ1) - Math.sin(φ0) * Math.cos(φ1) * Math.cos(dLng)
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360
-}
-
-function rangeNm(lat0, lng0, lat1, lng1) {
-  const dLat   = (lat1 - lat0) * 60
-  const midLat = ((lat0 + lat1) / 2) * Math.PI / 180
-  const dLng   = (lng1 - lng0) * 60 * Math.cos(midLat)
-  return Math.sqrt(dLat * dLat + dLng * dLng)
 }
 
 /**
@@ -74,9 +59,9 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
     ctx.lineTo(c1.x, c1.y)
     ctx.stroke()
 
-    const dist    = rangeNm(ep0.lat, ep0.lng, ep1.lat, ep1.lng)
-    const magBrg  = ((trueBearing(ep0.lat, ep0.lng, ep1.lat, ep1.lng) - declinationDeg) % 360 + 360) % 360
-    const hdg     = String(Math.round(magBrg)).padStart(3, '0')
+    const { gridBearingDeg, rangeNm: dist } = gridBearingRangeNm(ep0.lat, ep0.lng, ep1.lat, ep1.lng, view.theatre)
+    const magBrg  = toMagneticFromTrue(gridBearingDeg, declinationDeg)
+    const hdg     = String(Math.round(magBrg) || 360).padStart(3, '0')
     const distStr = dist.toFixed(2)
 
     let label = `${hdg}/${distStr}`
@@ -113,9 +98,9 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
       // WIP preview's bearing disagrees with the registered line's.
       const { lat: curLat, lng: curLng } = canvasToLatLng(rblCursor.x, rblCursor.y, view)
 
-      const dist   = rangeNm(ep0.lat, ep0.lng, curLat, curLng)
-      const magBrg = ((trueBearing(ep0.lat, ep0.lng, curLat, curLng) - declinationDeg) % 360 + 360) % 360
-      const label  = `${String(Math.round(magBrg)).padStart(3, '0')}/${dist.toFixed(2)}`
+      const { gridBearingDeg, rangeNm: dist } = gridBearingRangeNm(ep0.lat, ep0.lng, curLat, curLng, view.theatre)
+      const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
+      const label  = `${String(Math.round(magBrg) || 360).padStart(3, '0')}/${dist.toFixed(2)}`
       ctx.fillText(label, rblCursor.x + 4, rblCursor.y - 4)
     }
   }

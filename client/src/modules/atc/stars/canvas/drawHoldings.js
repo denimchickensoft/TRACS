@@ -1,24 +1,19 @@
 import { latLngToCanvas } from './projection.js'
 import { fixSymbolType, drawFixSymbol } from './fixSymbol.js'
+import { gridDestinationPoint } from '../../../../utils/bearing.js'
 
 const HOLD_COLOR_FALLBACK = '#00CED1'
 const ARC_SEGS   = 16
 const TRI_GAP    = 6  // px clearance between racetrack endpoint and fix triangle center
 
-function projectPoint(lat, lon, hdgDeg, distNm) {
-  const R    = 3440.065
-  const lat1 = lat * Math.PI / 180
-  const lon1 = lon * Math.PI / 180
-  const d    = distNm / R
-  const brg  = hdgDeg * Math.PI / 180
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg)
-  )
-  const lon2 = lon1 + Math.atan2(
-    Math.sin(brg) * Math.sin(d) * Math.cos(lat1),
-    Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
-  )
-  return { lat: lat2 * 180 / Math.PI, lon: lon2 * 180 / Math.PI }
+// hdgDeg here is grid-frame (course + declinationDeg — see buildRacetrackPoly
+// below), so this delegates to gridDestinationPoint rather than a real-
+// geodesic projector; a grid bearing fed into real-geodesic math would skew
+// the racetrack by the local grid convergence. Field renamed lng->lon on the
+// way out to match this file's existing convention.
+function projectPoint(lat, lon, hdgDeg, distNm, theatre) {
+  const { lat: lat2, lng: lon2 } = gridDestinationPoint(lat, lon, hdgDeg, distNm, theatre)
+  return { lat: lat2, lon: lon2 }
 }
 
 function icaoSpeed(minAlt) {
@@ -33,13 +28,16 @@ function icaoLegTime(minAlt) {
 }
 
 // Build racetrack polygon.
-// course = inbound course (magnetic); trueCourse = course + declinationDeg.
+// course = inbound course (magnetic); gridCourse = course + declinationDeg,
+// i.e. grid frame (DCS's own "true" — see utils/bearing.js), not real
+// geographic true. projectPoint (-> gridDestinationPoint) expects exactly
+// that frame, so this is a matched pair.
 // The fix (lat, lon) is where the inbound leg terminates.
 // Arc centers are offset perpendicular to course by turnRadius.
-function buildRacetrackPoly(lat, lon, trueCourse, turnDir, legNm, turnRadius) {
-  const outboundHdg = (trueCourse + 180) % 360
-  const perpRight   = (trueCourse + 90)  % 360
-  const perpLeft    = (trueCourse - 90 + 360) % 360
+function buildRacetrackPoly(lat, lon, gridCourse, turnDir, legNm, turnRadius, theatre) {
+  const outboundHdg = (gridCourse + 180) % 360
+  const perpRight   = (gridCourse + 90)  % 360
+  const perpLeft    = (gridCourse - 90 + 360) % 360
 
   const cw          = turnDir !== 'L'
   const turnOff     = cw ? perpRight : perpLeft   // perpendicular toward turn centers
@@ -48,10 +46,10 @@ function buildRacetrackPoly(lat, lon, trueCourse, turnDir, legNm, turnRadius) {
   const R = turnRadius
 
   // Arc centers
-  const c1 = projectPoint(lat, lon, turnOff, R)
-  const p1 = projectPoint(lat, lon, turnOff, 2 * R)          // outbound leg start
-  const p2 = projectPoint(p1.lat, p1.lon, outboundHdg, legNm) // outbound leg end
-  const c2 = projectPoint(p2.lat, p2.lon, outboundOff, R)
+  const c1 = projectPoint(lat, lon, turnOff, R, theatre)
+  const p1 = projectPoint(lat, lon, turnOff, 2 * R, theatre)          // outbound leg start
+  const p2 = projectPoint(p1.lat, p1.lon, outboundHdg, legNm, theatre) // outbound leg end
+  const c2 = projectPoint(p2.lat, p2.lon, outboundOff, R, theatre)
 
   // Generate 180° arc points around center, starting at startAngle, CW or CCW
   function arc(center, startAngle) {
@@ -60,7 +58,7 @@ function buildRacetrackPoly(lat, lon, trueCourse, turnDir, legNm, turnRadius) {
       const a = cw
         ? (startAngle + i * 180 / ARC_SEGS + 360) % 360
         : (startAngle - i * 180 / ARC_SEGS + 720) % 360
-      pts.push(projectPoint(center.lat, center.lon, a, R))
+      pts.push(projectPoint(center.lat, center.lon, a, R, theatre))
     }
     return pts
   }
@@ -114,9 +112,9 @@ export function drawHoldings(ctx, view, holdings, visible, brite = 50, csMap = 2
     const legTime    = hold.legTime    ?? icaoLegTime(hold.minAlt)
     const legNm      = hold.legLength  ?? (legTime * speed / 60)
     const turnRadius = speed / (60 * Math.PI)
-    const trueCourse = ((hold.course ?? 0) + declinationDeg + 360) % 360
+    const gridCourse = ((hold.course ?? 0) + declinationDeg + 360) % 360
 
-    const poly = buildRacetrackPoly(hold.lat, hold.lon, trueCourse, hold.turnDir ?? 'R', legNm, turnRadius)
+    const poly = buildRacetrackPoly(hold.lat, hold.lon, gridCourse, hold.turnDir ?? 'R', legNm, turnRadius, view.theatre)
 
     // poly[0] is the fix point; the outbound arc starts there and closePath() would
     // draw the inbound leg back to it. Leave a gap around the fix triangle instead.

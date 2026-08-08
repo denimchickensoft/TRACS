@@ -8,14 +8,14 @@
  */
 
 import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
-import { trueBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
+import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 
-function computeBraa(fighter, bogey, declinationDeg) {
+function computeBraa(fighter, bogey, declinationDeg, theatre) {
   const fp = fighter.position, bp = bogey.position
   if (!fp || !bp) return null
 
-  const { trueBearingDeg, rangeNm } = trueBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng)
-  const magBrgDeg = toMagneticFromTrue(trueBearingDeg, declinationDeg)
+  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng, theatre)
+  const magBrgDeg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
 
   return { bearing: Math.round(magBrgDeg) || 360, range: Math.round(rangeNm) }
 }
@@ -39,7 +39,7 @@ export function drawBraaOverlays(ctx, view, braaList, units, declinationDeg) {
     ctx.stroke()
     ctx.setLineDash([])
 
-    const braa = computeBraa(fighter, bogey, declinationDeg)
+    const braa = computeBraa(fighter, bogey, declinationDeg, view.theatre)
     if (braa) {
       const label = `${String(braa.bearing).padStart(3, '0')}°M  ${braa.range}NM`
       const midX  = (fp.x + bp.x) / 2

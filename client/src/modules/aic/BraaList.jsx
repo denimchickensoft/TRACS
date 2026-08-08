@@ -5,7 +5,7 @@ import { useUnitsStore } from '../../store/units.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { useSessionStore } from '../../store/session.js'
 import { computeMagvar } from '../../utils/magvar.js'
-import { trueBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
+import { gridBearingRangeNm, trueBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
 import { DECLARATION } from '../../store/aic.js'
 import { computeAicIntercept } from './aicGeometry.js'
 import './BraaList.css'
@@ -32,17 +32,24 @@ const safeNum = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
 
-function computeBraa(fighter, bogey, declinationDeg) {
+function computeBraa(fighter, bogey, declinationDeg, theatre) {
   const fp = fighter.position, bp = bogey.position
   if (!fp || !bp) return null
 
-  const { trueBearingDeg: trueBrgDeg, rangeNm } = trueBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng)
-  const magBrgDeg = toMagneticFromTrue(trueBrgDeg, declinationDeg)
+  // Displayed BRAA bearing needs the grid-frame bearing (matches the canvas/
+  // DCS convention — see utils/bearing.js). The aspect angle below needs the
+  // separate real-true bearing instead, to stay in the same frame as
+  // bogey.track (which is genuinely real-true, derived by Olympus from
+  // lat/lng samples) — grid-converting one side of that comparison and not
+  // the other would introduce the exact mismatch this whole fix is about.
+  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng, theatre)
+  const magBrgDeg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
 
   const altFt      = Math.round((bp.alt ?? 0) * 3.28084)
   const altRounded = Math.round(altFt / 100) * 100
 
   // Aspect: angle between bogey track and bearing back to fighter
+  const { trueBearingDeg: trueBrgDeg } = trueBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng)
   const bogeyTrackDeg     = ((safeNum(bogey.track) * 180 / Math.PI) + 360) % 360
   const brgToFighterDeg   = (trueBrgDeg + 180) % 360
   let   aspectAngle = ((bogeyTrackDeg - brgToFighterDeg) + 360) % 360

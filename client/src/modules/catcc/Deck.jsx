@@ -5,7 +5,7 @@ import { useCorrelationStore } from '../../store/correlation.js'
 import { getVisibleUnits }     from '../atc/stars/visibleUnits.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { CARRIER_TYPES, projectOntoDeck, NM_TO_FEET } from '../../utils/carriers.js'
-import { destinationPoint } from '../../utils/bearing.js'
+import { gridDestinationPoint } from '../../utils/bearing.js'
 import './Deck.css'
 
 const METERS_TO_FEET     = 3.28084
@@ -63,6 +63,8 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   const units             = useUnitsStore((s) => s.units)
   const _sessionCoalition = useSessionStore((s) => s.coalition)
   const _sessionCarrierId = useSessionStore((s) => s.carrierUnitId)
+  const mission        = useSessionStore((s) => s.mission)
+  const theatre        = mission?.mission?.theatre
   const coalition     = _URL_COALITION || _sessionCoalition
   const carrierUnitId = _URL_CARRIER_UNITID ? Number(_URL_CARRIER_UNITID) : _sessionCarrierId
   const correlations  = useCorrelationStore((s) => s.correlations)
@@ -191,7 +193,7 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
       if (relAltFt > ALT_ABOVE_DECK_FT || relAltFt < -ALT_BELOW_DECK_FT) continue
       const { forwardFt, rightFt, onDeck } = projectOntoDeck(
         unit.position, carrierUnit.position.lat, carrierUnit.position.lng,
-        carrierHeadingDeg, carrierType.deckLoaFt, carrierType.deckBeamFt,
+        carrierHeadingDeg, carrierType.deckLoaFt, carrierType.deckBeamFt, theatre,
       )
       if (!onDeck) continue
       // Canvas "up" is the ship's bow, not true north — rotate the symbol by
@@ -202,7 +204,7 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
       out.push({ uid, forwardFt, rightFt, headingRad, label: correlations[uid] || resolveCallsign(unit) })
     }
     return out
-  }, [visibleUnits, carrierUnit, carrierType, correlations])
+  }, [visibleUnits, carrierUnit, carrierType, correlations, theatre])
 
   // Zoomed render size — box is the fit-to-panel (1x) size, this is what's
   // actually drawn/scrolled. Kept separate from box so the ResizeObserver fit
@@ -226,13 +228,13 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   // carrier's current lat/lon. calibRef sidesteps re-registering the listener
   // on every high-frequency units update.
   const calibRef = useRef(null)
-  calibRef.current = { carrierUnit, carrierType, bg, renderW, renderH }
+  calibRef.current = { carrierUnit, carrierType, bg, renderW, renderH, theatre }
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const onClick = (e) => {
       if (!e.ctrlKey || !e.altKey) return
-      const { carrierUnit, carrierType, bg, renderW, renderH } = calibRef.current
+      const { carrierUnit, carrierType, bg, renderW, renderH, theatre } = calibRef.current
       if (!carrierUnit?.position || !carrierType || !bg || !renderW || !renderH) return
 
       const offsetX = e.offsetX
@@ -250,8 +252,11 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
       const carrierHeadingDeg = (carrierUnit.heading ?? 0) * 180 / Math.PI
       const rangeNm = Math.hypot(forwardFt, rightFt) / NM_TO_FEET
       const relBearingDeg = Math.atan2(rightFt, forwardFt) * 180 / Math.PI
-      const trueBearingDeg = (carrierHeadingDeg + relBearingDeg + 360) % 360
-      const { lat, lng } = destinationPoint(carrierUnit.position.lat, carrierUnit.position.lng, trueBearingDeg, rangeNm)
+      // carrierHeadingDeg is raw grid heading, so this sum is grid frame too
+      // (despite the "true" naming convention elsewhere) — gridDestinationPoint,
+      // not destinationPoint, is the matching projector. See utils/bearing.js.
+      const gridBearingDeg = (carrierHeadingDeg + relBearingDeg + 360) % 360
+      const { lat, lng } = gridDestinationPoint(carrierUnit.position.lat, carrierUnit.position.lng, gridBearingDeg, rangeNm, theatre)
 
       // Render-space pixel -> rotated bg-canvas pixel -> original PNG pixel.
       // loadRotatedBackground() maps original (u,v) -> rotated (v, W0 - u)

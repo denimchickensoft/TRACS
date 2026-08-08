@@ -12,7 +12,7 @@ import { useRunwaysStore }       from '../../store/runways.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../atc/stars/canvas/projection.js'
 import { resolveSlew }         from '../atc/stars/input/slewResolver.js'
 import { computeMagvar } from '../../utils/magvar.js'
-import { trueBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
+import { gridBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
 import { drawAicContacts }     from './canvas/drawAicContacts.js'
 import { drawGeo }             from '../atc/stars/canvas/drawGeo.js'
@@ -173,9 +173,9 @@ function subcardinal(deg) {
   return dirs[Math.round(((deg % 360) + 360) % 360 / 45) % 8]
 }
 
-function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, declinationDeg) {
-  const { trueBearingDeg, rangeNm } = trueBearingRangeNm(bsLat, bsLng, lat, lng)
-  const magBrg = toMagneticFromTrue(trueBearingDeg, declinationDeg)
+function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, declinationDeg, theatre) {
+  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatre)
+  const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
   return { brg: Math.round(magBrg) || 360, range: Math.round(rangeNm) }
 }
 
@@ -521,9 +521,10 @@ export default function AicScope() {
     const toMag   = parseFloat(m[2]) % 360
     const rng     = parseFloat(m[3])
     if (isNaN(fromMag) || isNaN(toMag) || isNaN(rng) || rng <= 0) return null
-    // fromMag/toMag are user-typed magnetic bearings; convert to true for
-    // computePicture.js's _inSector, which compares against lat/lng-derived
-    // true bearings.
+    // fromMag/toMag are user-typed magnetic bearings; convert via
+    // toTrueFromMagnetic (== grid frame, DCS's own "true" — see
+    // utils/bearing.js) for computePicture.js's _inSector, which compares
+    // against grid-frame lat/lng-derived bearings.
     const fromTrue = toTrueFromMagnetic(fromMag, declinationDeg)
     const toTrue   = toTrueFromMagnetic(toMag, declinationDeg)
     return { fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng, axisBearing: sectorAxisBearing(fromTrue, toTrue) }
@@ -606,8 +607,9 @@ export default function AicScope() {
       sector,
       bullseyeLat, bullseyeLng,
       declinationDeg,
+      theatre,
     )
-  }, [visibleUnits, declarations, myCoalitionNum, sector, bullseyeLat, bullseyeLng, declinationDeg]) // eslint-disable-line
+  }, [visibleUnits, declarations, myCoalitionNum, sector, bullseyeLat, bullseyeLng, declinationDeg, theatre]) // eslint-disable-line
 
   // Contacts + sector preview
   useEffect(() => {
@@ -858,7 +860,7 @@ export default function AicScope() {
       const toMag    = parseFloat(parts[1]) % 360
       const rng      = parseFloat(parts[2])
       // Same conversion as the pendingSector useMemo above (matching
-      // computePicture.js's true-referenced comparisons).
+      // computePicture.js's grid-referenced comparisons).
       const decl     = declinationRef.current
       const fromTrue = toTrueFromMagnetic(fromMag, decl)
       const toTrue   = toTrueFromMagnetic(toMag, decl)
@@ -1136,7 +1138,7 @@ export default function AicScope() {
     const trueTrkDeg = ((unit.track ?? 0) * 180 / Math.PI + 360) % 360
     const magTrkDeg  = Math.round(toMagneticFromTrue(trueTrkDeg, declinationDeg)) || 360
     const { brg, range } = bearingRangeFromBullseye(
-      unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg
+      unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
     )
     const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
     const isFriendly = decl === 'FRIENDLY'
@@ -1162,7 +1164,7 @@ export default function AicScope() {
   const cursorBullseye = useMemo(() => {
     if (!cursorLatLng || !bullseyeEntry) return null
     const { brg, range } = bearingRangeFromBullseye(
-      cursorLatLng.lat, cursorLatLng.lng, bullseyeLat, bullseyeLng, declinationDeg
+      cursorLatLng.lat, cursorLatLng.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
     )
     return `${String(brg).padStart(3, '0')} / ${range}`
   }, [cursorLatLng, bullseyeLat, bullseyeLng, declinationDeg, bullseyeEntry])

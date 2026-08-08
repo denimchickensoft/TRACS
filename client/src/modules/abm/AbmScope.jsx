@@ -21,7 +21,7 @@ import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
 import { DIR_TO_ANGLE }     from '../atc/stars/constants.js'
 import { computeMagvar } from '../../utils/magvar.js'
-import { trueBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
+import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
 import { drawCompassRose }  from '../atc/stars/canvas/drawCompassRose.js'
 import { drawGeo }          from '../atc/stars/canvas/drawGeo.js'
 import { drawRelief }       from '../atc/stars/canvas/drawRelief.js'
@@ -761,8 +761,8 @@ export default function AbmScope() {
       const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
       const { hasBullseye, lat: bsLat, lng: bsLng } = bullseyeRef.current
       if (hasBullseye) {
-        const { trueBearingDeg, rangeNm } = trueBearingRangeNm(bsLat, bsLng, lat, lng)
-        const magBrg = toMagneticFromTrue(trueBearingDeg, declinationRef.current)
+        const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatreRef.current)
+        const magBrg = toMagneticFromTrue(gridBearingDeg, declinationRef.current)
         setBecReadout({ x, y, bearing: Math.round(magBrg) || 360, range: Math.round(rangeNm) })
       } else {
         setBecReadout(null)
@@ -781,8 +781,8 @@ export default function AbmScope() {
       let bullseye = null
       const { hasBullseye, lat: bsLat, lng: bsLng } = bullseyeRef.current
       if (hasBullseye) {
-        const { trueBearingDeg, rangeNm } = trueBearingRangeNm(bsLat, bsLng, lat, lng)
-        const magBrg = toMagneticFromTrue(trueBearingDeg, declinationRef.current)
+        const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatreRef.current)
+        const magBrg = toMagneticFromTrue(gridBearingDeg, declinationRef.current)
         bullseye = { bearing: Math.round(magBrg) || 360, range: Math.round(rangeNm) }
       }
 
@@ -1077,6 +1077,13 @@ export default function AbmScope() {
   const declinationDeg = computeMagvar(bullseyeLat, bullseyeLng, missionDate)
   const declinationRef = useRef(declinationDeg)
   useEffect(() => { declinationRef.current = declinationDeg }, [declinationDeg])
+
+  // Grid-frame bearing math (gridBearingRangeNm) needs the theatre for its TM
+  // lookup — same ref pattern as declinationRef, for the same reason (read
+  // inside a useCallback/setInterval that would otherwise close over a stale
+  // value).
+  const theatreRef = useRef(theatre)
+  useEffect(() => { theatreRef.current = theatre }, [theatre])
 
   const [view, setView] = useState(null)
   const viewRef = useRef(null)
@@ -1778,7 +1785,7 @@ export default function AbmScope() {
     // modules/abm/draw/drawCommands.js for the per-shape grammar/arity.
     if (str === '.line' || str.startsWith('.line ')) {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('line', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      const result = parseDrawCommand('line', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
       if (result.immediate) {
         addDrawnShape(theatre, 'line', result.immediate)
@@ -1792,7 +1799,7 @@ export default function AbmScope() {
 
     if (str === '.rect' || str.startsWith('.rect ')) {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('rect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      const result = parseDrawCommand('rect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
       setPendingDraw(result.pending)
       setCmdFeedback('RECT: CLICK TO PLACE')
@@ -1801,7 +1808,7 @@ export default function AbmScope() {
 
     if (str === '.circ' || str.startsWith('.circ ')) {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('circ', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      const result = parseDrawCommand('circ', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
       if (result.immediate) {
         addDrawnShape(theatre, 'circ', result.immediate)
@@ -1815,7 +1822,7 @@ export default function AbmScope() {
 
     if (str === '.poly' || str.startsWith('.poly ')) {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('poly', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      const result = parseDrawCommand('poly', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
       if (result.immediate) {
         addDrawnShape(theatre, 'poly', result.immediate)
@@ -1829,7 +1836,7 @@ export default function AbmScope() {
 
     if (str === '.sect' || str.startsWith('.sect ')) {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('sect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      const result = parseDrawCommand('sect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
       if (result.immediate) {
         // .sect <id> <brg1> <brg2>...<brgN> <radius> draws N-1 adjoining
@@ -1846,7 +1853,7 @@ export default function AbmScope() {
 
     if (str === '.race' || str.startsWith('.race ')) {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('race', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      const result = parseDrawCommand('race', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
       if (result.immediate) {
         addDrawnShape(theatre, 'race', result.immediate)
@@ -1860,7 +1867,7 @@ export default function AbmScope() {
 
     if (str === '.text' || str.startsWith('.text ')) {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('text', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0)
+      const result = parseDrawCommand('text', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
       setPendingDraw(result.pending)
       setCmdFeedback('TEXT: CLICK TO PLACE')
@@ -2499,7 +2506,7 @@ export default function AbmScope() {
       }
 
       const clickLatLng = canvasToLatLng(pos.x, pos.y, viewRef.current)
-      const result = advancePendingDraw(pendingDraw, clickLatLng, viewRef.current?.declinationDeg ?? 0)
+      const result = advancePendingDraw(pendingDraw, clickLatLng, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.immediate) {
         if (theatre) {
           addDrawnShape(theatre, pendingDraw.type, result.immediate)

@@ -248,12 +248,15 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
 
   const setParam = (layer, key, value) => updateShapeParams(theatre, layer.id, { [key]: value })
 
-  // params.*Brg/rotationDeg/radialDeg are stored as TRUE (drawShapes.js's
-  // builders work entirely in true bearings, same as everywhere else in the
-  // app) — but a controller reading/typing a heading here means MAGNETIC,
-  // same convention as the typed .sect/.race commands and the on-map
-  // dimension readouts. Convert at this boundary only; the store never
-  // holds a magnetic value.
+  // params.startBrg/endBrg (.sect) are stored grid-frame (buildSectFeature
+  // uses gridDestinationPoint — see utils/bearing.js); rotationDeg/radialDeg
+  // (.rect/.race/.text) are stored real-true (their builders still use plain
+  // destinationPoint — deliberately unconverted, see drawCommands.js). Either
+  // way toMagneticFromTrue/toTrueFromMagnetic is the same declination-only
+  // operation, since a controller reading/typing a heading here always means
+  // MAGNETIC — same convention as the typed .sect/.race commands and the
+  // on-map dimension readouts. Convert at this boundary only; the store
+  // never holds a magnetic value.
   const magOf  = (trueDeg) => Math.round(((toMagneticFromTrue(trueDeg, declinationDeg) % 360) + 360) % 360)
   const trueOf = (magDeg)  => toTrueFromMagnetic(magDeg, declinationDeg)
 

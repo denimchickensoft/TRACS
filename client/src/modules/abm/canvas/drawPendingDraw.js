@@ -38,7 +38,7 @@ const BUILDERS = {
 export function drawPendingDraw(ctx, view, pendingDraw, cursor) {
   if (!pendingDraw) return
   const declinationDeg = view.declinationDeg ?? 0
-  const params = previewParams(pendingDraw, cursor, declinationDeg)
+  const params = previewParams(pendingDraw, cursor, declinationDeg, view.theatre)
   if (!params) return
 
   if (pendingDraw.type === 'text') {
