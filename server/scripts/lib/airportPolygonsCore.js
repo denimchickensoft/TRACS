@@ -23,38 +23,18 @@ const MATCH_RADIUS_M = 5000
 const EARTH_R_M = 6371000
 
 // ── Transverse Mercator inverse projection ────────────────────────────────────
+//
+// The actual Karney-series math lives in client/src/utils/transverseMercator.js
+// (dynamic-imported by the caller, see buildAirportPolygons.js / terrainDataExe)
+// and is passed in here as `tmInverse`, so taxiway geometry is generated with
+// the exact same projection used to render it — no second copy of the math to
+// drift out of sync.
 
-function makeTmInv(p, latMin, latMax, lonMin, lonMax) {
-  const a    = 6378137.0
-  const f    = 1 / 298.257223563
-  const e2   = 2 * f - f * f
-  const k0   = p.scale_factor
-  const lon0 = p.central_meridian * Math.PI / 180
-
+function makeTmInv(tmInverse, p, latMin, latMax, lonMin, lonMax) {
   return function tmInv(easting, northing) {
-    const x  = easting  - p.false_easting
-    const y  = northing - p.false_northing
-    const M  = y / k0
-    const mu = M / (a * (1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256))
-    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2))
-    const lat1 = mu
-      + (3 * e1 / 2 - 27 * e1 ** 3 / 32)  * Math.sin(2 * mu)
-      + (21 * e1 ** 2 / 16)                * Math.sin(4 * mu)
-      + (151 * e1 ** 3 / 96)               * Math.sin(6 * mu)
-    const N1   = a / Math.sqrt(1 - e2 * Math.sin(lat1) ** 2)
-    const T1   = Math.tan(lat1) ** 2
-    const C1   = e2 / (1 - e2) * Math.cos(lat1) ** 2
-    const R1   = a * (1 - e2) / (1 - e2 * Math.sin(lat1) ** 2) ** 1.5
-    const D    = x / (N1 * k0)
-    if (Math.abs(D) > 4) return null
-    const lat = lat1 - (N1 * Math.tan(lat1) / R1) * (
-      D ** 2 / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 ** 2) * D ** 4 / 24
-    )
-    const lon = lon0 + (D - (1 + 2 * T1 + C1) * D ** 3 / 6) / Math.cos(lat1)
-    const la  = lat * 180 / Math.PI
-    const lo  = lon * 180 / Math.PI
-    if (la < latMin || la > latMax || lo < lonMin || lo > lonMax) return null
-    return [la, lo]
+    const { lat, lng } = tmInverse(easting, northing, p)
+    if (lat < latMin || lat > latMax || lng < lonMin || lng > lonMax) return null
+    return [lat, lng]
   }
 }
 
@@ -179,7 +159,7 @@ function centroidOf(segs) {
 // returns a result descriptor. Caller is responsible for writing output and
 // logging.
 
-function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson }) {
+function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInverse }) {
   if (!tm || !conf) {
     return { status: 'skip', reason: 'no TM params or theatre config' }
   }
@@ -196,7 +176,7 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson }) {
   // Theatre bbox for TM validation (with padding)
   const [minLon, minLat, maxLon, maxLat] = conf.bbox
   const PAD = 2
-  const tmInv = makeTmInv(tm, minLat - PAD, maxLat + PAD, minLon - PAD, maxLon + PAD)
+  const tmInv = makeTmInv(tmInverse, tm, minLat - PAD, maxLat + PAD, minLon - PAD, maxLon + PAD)
 
   // Index runway JSON by airbase name → runways[]
   const rwByAirbase = {}

@@ -98,7 +98,7 @@ function resolveTerrainsDir(installPath, theatres) {
   return null
 }
 
-function buildAirports(theatre, terrainsDir, outRoot, manifest) {
+function buildAirports(theatre, terrainsDir, outRoot, manifest, tmInverse) {
   const { theatres, tmParams, nameMap, runwaysDir } = manifest
   const tm      = tmParams[theatre]
   const nMap    = nameMap[theatre] || {}
@@ -106,7 +106,7 @@ function buildAirports(theatre, terrainsDir, outRoot, manifest) {
   const rwKey   = conf.runwayKey || theatre
   const rwJson  = loadRunwayJson(runwaysDir, rwKey)
 
-  const result = airportCore.buildTheatre({ theatre, terrainsDir, tm, nameMap: nMap, conf, rwJson })
+  const result = airportCore.buildTheatre({ theatre, terrainsDir, tm, nameMap: nMap, conf, rwJson, tmInverse })
 
   if (result.status === 'skip') {
     console.log(`  airports  ${theatre}: skipped — ${result.reason}`)
@@ -184,7 +184,7 @@ function zipOutput(outRoot) {
   return { zipPath, count: files.length }
 }
 
-function main() {
+async function main() {
   const args  = process.argv.slice(2)
   const outIdx = args.indexOf('--out')
   let outRoot = null
@@ -224,9 +224,11 @@ function main() {
   console.log(`DCS terrains: ${terrainsDir}`)
   console.log(`Output:       ${outRoot}\n`)
 
+  const { tmInverse } = await import('../../../client/src/utils/transverseMercator.js')
+
   const list = only ? [only] : Object.keys(theatres)
   for (const t of list) {
-    buildAirports(t, terrainsDir, outRoot, manifest)
+    buildAirports(t, terrainsDir, outRoot, manifest, tmInverse)
     buildTowns(t, terrainsDir, outRoot, manifest)
   }
 
@@ -238,4 +240,4 @@ function main() {
   console.log('\nDone.\n')
 }
 
-main()
+main().catch((err) => { console.error(err); process.exit(1) })

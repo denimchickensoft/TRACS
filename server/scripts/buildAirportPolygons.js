@@ -28,16 +28,21 @@ const THEATRES     = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata
 
 const DEFAULT_DCS_PATH = 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\DCSWorld\\Mods\\terrains'
 
-function buildAndWriteTheatre(theatre, dcsPath) {
+function buildAndWriteTheatre(theatre, dcsPath, tmInverse) {
   const tm      = TM_PARAMS[theatre]
   const nameMap = NAME_MAP[theatre] || {}
   const conf    = THEATRES[theatre]
+
+  if (!conf) {
+    console.log(`  ${theatre}: skipped — no theatres.json entry`)
+    return
+  }
 
   const rwFile = conf.runwayKey || theatre
   const rwPath = path.join(ROOT, 'client/public/runways', `${rwFile}.json`)
   const rwJson = fs.existsSync(rwPath) ? JSON.parse(fs.readFileSync(rwPath, 'utf8')) : null
 
-  const result = core.buildTheatre({ theatre, terrainsDir: dcsPath, tm, nameMap, conf, rwJson })
+  const result = core.buildTheatre({ theatre, terrainsDir: dcsPath, tm, nameMap, conf, rwJson, tmInverse })
 
   if (result.status === 'skip') {
     console.log(`  ${theatre}: skipped — ${result.reason}`)
@@ -77,7 +82,7 @@ function buildAndWriteTheatre(theatre, dcsPath) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-function main() {
+async function main() {
   let dcsPath = DEFAULT_DCS_PATH
   const args  = process.argv.slice(2)
   const dpIdx = args.indexOf('--dcs-path')
@@ -95,10 +100,12 @@ function main() {
   console.log('\nBuilding airport polygon data\n')
   console.log(`DCS path: ${dcsPath}\n`)
 
+  const { tmInverse } = await import('../../client/src/utils/transverseMercator.js')
+
   const theatres = only ? [only] : Object.keys(TM_PARAMS)
-  for (const t of theatres) buildAndWriteTheatre(t, dcsPath)
+  for (const t of theatres) buildAndWriteTheatre(t, dcsPath, tmInverse)
 
   console.log('\nDone.\n')
 }
 
-if (require.main === module) main()
+if (require.main === module) main().catch((err) => { console.error(err); process.exit(1) })
