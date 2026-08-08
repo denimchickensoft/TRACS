@@ -5,6 +5,9 @@
 // DCS runway JSON (authoritative runway endpoints), applies a two-layer
 // superimposition approach, and writes:
 //   server/navdata/cache/<folder>/airports_polygons.json
+//   server/navdata/cache/<folder>/airports_raw.json (taxiway nodes in DCS's
+//     native theatre-grid meters, pre-projection — lets a future rebuild
+//     regenerate airports_polygons.json without needing DCS installed again)
 //
 // Usage:
 //   node server/scripts/buildAirportPolygons.js [theatre]
@@ -53,6 +56,7 @@ function buildAndWriteTheatre(theatre, dcsPath, tmInverse) {
   fs.mkdirSync(outDir, { recursive: true })
   const json = JSON.stringify({ type: 'FeatureCollection', features: result.features })
   fs.writeFileSync(path.join(outDir, 'airports_polygons.json'), json)
+  fs.writeFileSync(path.join(outDir, 'airports_raw.json'), JSON.stringify({ theatre, ...result.raw }))
 
   const kb = (json.length / 1024).toFixed(0)
   console.log(

@@ -24,6 +24,11 @@
 //
 // For each theatre, writes:
 //   <out>/cache/<theatre-folder>/airports_polygons.json  (mirrors server/navdata/cache/)
+//   <out>/cache/<theatre-folder>/airports_raw.json       (taxiway nodes in DCS's native
+//                                                          theatre-grid meters, pre-projection —
+//                                                          lets a future rebuild regenerate
+//                                                          airports_polygons.json without
+//                                                          needing DCS installed again)
 //   <out>/towns/<Theatre>.json                            (mirrors client/public/towns/)
 // <out> defaults to a "terrain_data" folder created next to the .exe.
 // The whole <out> tree is also packed into a single "<out>.zip" alongside it,
@@ -117,6 +122,7 @@ function buildAirports(theatre, terrainsDir, outRoot, manifest, tmInverse) {
   fs.mkdirSync(outDir, { recursive: true })
   const json = JSON.stringify({ type: 'FeatureCollection', features: result.features })
   fs.writeFileSync(path.join(outDir, 'airports_polygons.json'), json)
+  fs.writeFileSync(path.join(outDir, 'airports_raw.json'), JSON.stringify({ theatre, ...result.raw }))
 
   const kb = (json.length / 1024).toFixed(0)
   console.log(

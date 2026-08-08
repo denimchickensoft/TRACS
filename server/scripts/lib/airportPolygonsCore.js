@@ -39,14 +39,24 @@ function makeTmInv(tmInverse, p, latMin, latMax, lonMin, lonMax) {
 }
 
 // ── rn5 binary segment extraction ────────────────────────────────────────────
+//
+// Returns both the lat/lon nodes (for polygon building below, unchanged) and
+// the same nodes in DCS's native theatre-grid meters — easting/northing,
+// straight off the binary, before any projection is applied. The native form
+// is what gets persisted as the "raw" export: it's the actual data this app
+// extracts from the rn5 (byte-scanning/decoding is mechanical and stable),
+// with the projection step — the part that has actually had a real bug —
+// deferred to build time instead of baked in permanently.
 
 function extractRn5(data, tmInv, nMin = 5, nMax = 300) {
   const segments = []
+  const nativeSegments = []
   let i = 0
   while (i < data.length - 28) {
     const n = data.readUInt32LE(i)
     if (n >= nMin && n <= nMax) {
       const nodes = []
+      const nativeNodes = []
       let valid = true
       for (let k = 0; k < n; k++) {
         const off = i + 4 + k * 24
@@ -59,16 +69,18 @@ function extractRn5(data, tmInv, nMin = 5, nMax = 300) {
         if (!result) { valid = false; break }
         const [lat, lon] = result
         nodes.push([+lon.toFixed(7), +lat.toFixed(7)])
+        nativeNodes.push([+z.toFixed(3), +x.toFixed(3)])
       }
       if (valid && nodes.length >= 2) {
         segments.push(nodes)
+        nativeSegments.push(nativeNodes)
         i += 4 + n * 24
         continue
       }
     }
     i++
   }
-  return segments
+  return { segments, nativeSegments }
 }
 
 // ── Geometry: polyline → buffered polygon ─────────────────────────────────────
@@ -190,13 +202,15 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInver
   const unmatchedStems = []
   const unmatchedCentroids = {}
   const matchedAirbases = new Set()
+  const rawTaxiways = {}
 
   const rn5Files = fs.readdirSync(atDir).filter(f => f.endsWith('.rn5')).sort()
 
   for (const fname of rn5Files) {
     const stem = path.basename(fname, '.rn5')
     const data = fs.readFileSync(path.join(atDir, fname))
-    const segs = extractRn5(data, tmInv)
+    const { segments: segs, nativeSegments } = extractRn5(data, tmInv)
+    rawTaxiways[stem] = nativeSegments
 
     // Taxiway polygons from rn5 segments
     for (const coords of segs) {
@@ -272,6 +286,7 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInver
     unmatchedStems,
     unclaimedAirbases,
     suggestedPairs,
+    raw: { tm, taxiways: rawTaxiways },
   }
 }
 
