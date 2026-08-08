@@ -103,11 +103,11 @@ async function pollUnits() {
       }
     }
 
-    // Attach AGL to aircraft only; scrub any stale value from non-aircraft
+    // Attach AGL to airborne units only; scrub any stale value from ground/naval
     for (const [id, unit] of Object.entries(updatedMap)) {
       if (!unit.position) continue
       const category = unit.category ?? state.getUnit(id)?.category
-      if (category !== 'Aircraft') { delete unit.agl; continue }
+      if (category !== 'Aircraft' && category !== 'Helicopter') { delete unit.agl; continue }
       const agl = elevation.getAgl(unit.position.lat, unit.position.lng, unit.position.alt)
       if (agl !== null) unit.agl = Math.max(0, Math.round(agl))
     }
