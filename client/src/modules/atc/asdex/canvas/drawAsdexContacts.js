@@ -85,9 +85,20 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     // (see projection.js) so screen-up is magnetic north, not true north —
     // subtract the same correction here or the triangle points off by the
     // declination angle.
+    //
+    // track is TRACS's own bearing computed from consecutive position
+    // samples (store/units.js) — below ~1 m/s that displacement is too
+    // small/noisy to trust, so track just freezes at its last real heading
+    // rather than tracking a stationary unit's nose as it pivots (e.g. a
+    // helicopter doing a pedal turn, or pushback rotation). unit.heading is
+    // DCS's own raw engine-frame heading, in the same true-bearing frame as
+    // track (see utils/bearing.js), so it's a direct substitute — no
+    // separate correction needed beyond the same declination term below.
+    const useHeading = unit.speed != null && unit.speed < 1 && unit.heading != null
+    const symbolTrack = useHeading ? unit.heading : (unit.track ?? 0)
     ctx.save()
     ctx.translate(x, y)
-    ctx.rotate((unit.track ?? 0) - (view.declinationDeg ?? 0) * Math.PI / 180)
+    ctx.rotate(symbolTrack - (view.declinationDeg ?? 0) * Math.PI / 180)
     ctx.beginPath()
     ctx.moveTo(0, -7)
     ctx.lineTo(5, 5)
