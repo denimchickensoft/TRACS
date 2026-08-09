@@ -23,7 +23,7 @@
       "AIRWAYS_B": { "stroke": "#8899AA", "fill": "#8899AA", "dash": [5, 2] },
       "MSA":       { "stroke": "#AA8866", "fill": "#AA8866", "dash": [5, 2] },
       "MORA":      { "stroke": "#667788", "fill": "#99AABB", "dash": [5, 2] },
-      "RELIEF":       { "stroke": "#C2B280", "fill": "#C2B280", "dash": [] },
+      "RELIEF":       { "stroke": "#abcdef", "fill": "#abcdef", "dash": [] },
       "MVA":          { "stroke": "#7788AA", "fill": "#AABBDD", "dash": [] },
       "PROC_SID":     { "stroke": "#6699AA", "fill": "#6699AA", "dash": [] },
       "PROC_STAR":    { "stroke": "#7799AA", "fill": "#7799AA", "dash": [] },

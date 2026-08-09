@@ -44,6 +44,7 @@ function notReady(res) {
 
 function serveJson(res, filePath) {
   try {
+    res.set('Cache-Control', 'no-store')
     res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')))
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -70,6 +71,7 @@ function handleAirspace(req, res) {
   try {
     const data = JSON.parse(fs.readFileSync(fp, 'utf8'))
     data.palettes = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, 'airspace_colors.json'), 'utf8'))
+    res.set('Cache-Control', 'no-store')
     res.json(data)
   } catch (err) { res.status(500).json({ error: err.message }) }
 }

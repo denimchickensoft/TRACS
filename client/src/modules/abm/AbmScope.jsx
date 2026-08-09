@@ -1194,7 +1194,7 @@ export default function AbmScope() {
     drawAbmRaster(ctx, view, basemap, basemapVisible)
     drawAbmRaster(ctx, view, water, waterVisible)
     drawAbmRaster(ctx, view, roads, roadsVisible)
-    drawRelief(ctx, view, relief, reliefVisible, 40)
+    drawRelief(ctx, view, relief, reliefVisible, 40, airspaceColors)
     drawGeo(ctx, view, geoBoundaries, geoCoastlines, geoVisible, 50)
     drawAbmAirportPolygons(ctx, view, polygonFeatures, polygonsVisible)
     // Per-feature stroke, no edge de-dup — adjacent regions each draw their
