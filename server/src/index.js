@@ -6,7 +6,6 @@ const express = require('express')
 const { WebSocketServer } = require('ws')
 const olympus    = require('./olympus')
 const state      = require('./state')
-const maps       = require('./maps')
 const stateFiles = require('./stateFiles')
 const navdata    = require('../navdata')
 const elevation  = require('./elevation')
@@ -67,18 +66,6 @@ app.post('/api/connect', async (req, res) => {
   res.json({ ok: true })
 })
 
-
-// GET /api/maps?theatre=Caucasus
-app.get('/api/maps', async (req, res) => {
-  const { theatre } = req.query
-  if (!theatre) return res.status(400).json({ error: 'theatre is required' })
-  try {
-    const result = await maps.loadTheatre(theatre)
-    res.json(result)
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
 
 // GET /api/debug/units — live unit snapshot (dev/debug)
 app.get('/api/debug/units', (req, res) => {

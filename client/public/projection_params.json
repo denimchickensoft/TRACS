@@ -1,5 +1,5 @@
 {
-  "_TODO_missing_theatres": "Runway JSON exists (see client/public/runways/) but no TM projection params have been mined yet for: Afghanistan, Iraq, MarianaIslandsWWII. Until an entry is added here (central_meridian/false_easting/false_northing/scale_factor), terrainDataExe skips these theatres with reason 'no TM params or theatre config'.",
+  "_TODO_missing_theatres": "Runway JSON exists (see client/public/runways/) but no TM projection params have been mined yet for: Afghanistan, Iraq. Until an entry is added here (central_meridian/false_easting/false_northing/scale_factor), terrainDataExe skips these theatres with reason 'no TM params or theatre config'.",
   "Caucasus": {
     "central_meridian": 33,
     "false_easting": -99516.9999999732,
@@ -25,6 +25,12 @@
     "scale_factor": 0.9996
   },
   "MarianaIslands": {
+    "central_meridian": 147,
+    "false_easting": 238417.99999989968,
+    "false_northing": -1491840.000000048,
+    "scale_factor": 0.9996
+  },
+  "MarianaIslandsWWII": {
     "central_meridian": 147,
     "false_easting": 238417.99999989968,
     "false_northing": -1491840.000000048,
