@@ -1,0 +1,115 @@
+{
+ "theatre": "MarianaIslandsWWII",
+ "towns": [
+  {
+   "name": "Agat",
+   "lat": 13.396072,
+   "lon": 144.662918
+  },
+  {
+   "name": "Akashi",
+   "lat": 13.476011,
+   "lon": 144.752809
+  },
+  {
+   "name": "Asan",
+   "lat": 13.472483,
+   "lon": 144.714066
+  },
+  {
+   "name": "Dandan",
+   "lat": 15.126744,
+   "lon": 145.726518
+  },
+  {
+   "name": "Garapan",
+   "lat": 15.207571,
+   "lon": 145.719597
+  },
+  {
+   "name": "Inarajan",
+   "lat": 13.275089,
+   "lon": 144.74742
+  },
+  {
+   "name": "Kagman",
+   "lat": 15.17538,
+   "lon": 145.771259
+  },
+  {
+   "name": "Koblerville",
+   "lat": 15.116521,
+   "lon": 145.708356
+  },
+  {
+   "name": "Pigua",
+   "lat": 13.264897,
+   "lon": 144.671605
+  },
+  {
+   "name": "Piti",
+   "lat": 13.462603,
+   "lon": 144.689856
+  },
+  {
+   "name": "Puerto Rico",
+   "lat": 15.226934,
+   "lon": 145.738913
+  },
+  {
+   "name": "Rota sugar factory",
+   "lat": 14.137153,
+   "lon": 145.136033
+  },
+  {
+   "name": "Saipan sugar factory",
+   "lat": 15.148652,
+   "lon": 145.70265
+  },
+  {
+   "name": "San Jose",
+   "lat": 14.968508,
+   "lon": 145.621609
+  },
+  {
+   "name": "San Lois Point",
+   "lat": 13.43944,
+   "lon": 144.649761
+  },
+  {
+   "name": "Sinapalo",
+   "lat": 14.167866,
+   "lon": 145.226755
+  },
+  {
+   "name": "Songsong",
+   "lat": 14.139157,
+   "lon": 145.139697
+  },
+  {
+   "name": "Susupe",
+   "lat": 15.1524,
+   "lon": 145.705051
+  },
+  {
+   "name": "Tepungan",
+   "lat": 13.467035,
+   "lon": 144.699033
+  },
+  {
+   "name": "Tinian sugar factory",
+   "lat": 14.970802,
+   "lon": 145.617391
+  },
+  {
+   "name": "Umatac",
+   "lat": 13.299452,
+   "lon": 144.660904
+  },
+  {
+   "name": "Yopa",
+   "lat": 13.411814,
+   "lon": 144.773992
+  }
+ ]
+}
