@@ -20,6 +20,56 @@ import { latLngToCanvas } from '../modules/atc/stars/canvas/projection.js'
 
 const STACK_ATTEMPTS = 4
 
+// Placed-label lookup grid: checking a new candidate against every already-
+// placed label is O(n²) in label count (each candidate does a full SAT test
+// against all of them, up to STACK_ATTEMPTS times). Bucketing placed rects
+// by their axis-aligned bounds into a uniform grid lets a candidate only be
+// tested against labels that are actually nearby — same exact SAT result,
+// just skips pairs that can't possibly overlap. Cell size doesn't affect
+// correctness, only how many buckets a given rect touches.
+const GRID_CELL_PX = 128
+
+function rectAabb({ cx, cy, halfW, halfH, angle }) {
+  const cosA = Math.abs(Math.cos(angle)), sinA = Math.abs(Math.sin(angle))
+  const exX = halfW * cosA + halfH * sinA
+  const exY = halfW * sinA + halfH * cosA
+  return { minX: cx - exX, minY: cy - exY, maxX: cx + exX, maxY: cy + exY }
+}
+
+function createPlacedGrid(cellSize) {
+  const cells = new Map()
+  function keysFor({ minX, minY, maxX, maxY }) {
+    const x0 = Math.floor(minX / cellSize), x1 = Math.floor(maxX / cellSize)
+    const y0 = Math.floor(minY / cellSize), y1 = Math.floor(maxY / cellSize)
+    const keys = []
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cy = y0; cy <= y1; cy++) keys.push(cx + ',' + cy)
+    }
+    return keys
+  }
+  return {
+    insert(rect) {
+      for (const key of keysFor(rectAabb(rect))) {
+        let bucket = cells.get(key)
+        if (!bucket) { bucket = []; cells.set(key, bucket) }
+        bucket.push(rect)
+      }
+    },
+    queryCandidates(rect) {
+      const seen = new Set()
+      const out = []
+      for (const key of keysFor(rectAabb(rect))) {
+        const bucket = cells.get(key)
+        if (!bucket) continue
+        for (const r of bucket) {
+          if (!seen.has(r)) { seen.add(r); out.push(r) }
+        }
+      }
+      return out
+    },
+  }
+}
+
 /**
  * @param {object[]} items  [{ feature, lines: string[], lineWidths: number[], fontSize: number, color: string, extra?: any }]
  * @param {object}   view   { centerLat, centerLng, pixelsPerNm, width, height, ... }
@@ -27,8 +77,8 @@ const STACK_ATTEMPTS = 4
  */
 export function placeAirspaceLabels(items, view) {
   const { width, height } = view
-  const placed = []
   const results = []
+  const grid = createPlacedGrid(GRID_CELL_PX)
 
   for (const item of items) {
     const anchor = computeAnchor(item, view)
@@ -39,7 +89,9 @@ export function placeAirspaceLabels(items, view) {
     let bestCollisions = Infinity
     for (let k = 0; k < STACK_ATTEMPTS; k++) {
       const rect = candidateRect(anchor, k)
-      const collisions = placed.reduce((n, p) => n + (rectsOverlap(rect, p) ? 1 : 0), 0)
+      const nearby = grid.queryCandidates(rect)
+      let collisions = 0
+      for (const p of nearby) if (rectsOverlap(rect, p)) collisions++
       if (collisions < bestCollisions) {
         bestCollisions = collisions
         best = rect
@@ -47,7 +99,7 @@ export function placeAirspaceLabels(items, view) {
       if (collisions === 0) break
     }
 
-    placed.push(best)
+    grid.insert(best)
     results.push({
       feature: item.feature,
       lines:   item.lines,

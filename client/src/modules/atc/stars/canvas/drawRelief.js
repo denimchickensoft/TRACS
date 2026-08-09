@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas, projectRingCached } from './projection.js'
 
 const RELIEF_COLOR_FALLBACK = '#88AA88'
 
@@ -39,9 +39,9 @@ export function drawRelief(ctx, view, relief, visible, brite = 40, colors = null
 
     ctx.beginPath()
     for (const ring of region.rings) {
+      const points = projectRingCached(ring, view)
       let first = true
-      for (const [lon, lat] of ring) {
-        const { x, y } = latLngToCanvas(lat, lon, view)
+      for (const { x, y } of points) {
         if (first) { ctx.moveTo(x, y); first = false }
         else ctx.lineTo(x, y)
       }

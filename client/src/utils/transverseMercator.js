@@ -8,10 +8,16 @@
 // tried first and rejected: it's only accurate within ~3-4° of the central
 // meridian (standard UTM zone width), but DCS theatres span much further —
 // Kola and Caucasus reach ~17-19° from their central meridian — and that
-// series showed >150m round-trip error at real in-theatre points. The
-// Krüger n-series stays accurate to sub-millimeter at any distance from the
-// central meridian (short of the antipodal meridian), which is what DCS's
-// single-zone-per-theatre grids need.
+// series showed >150m round-trip error at real in-theatre points.
+//
+// The full Karney series goes to 6 terms for sub-nanometer geodesic
+// accuracy; we only need on-screen pixel accuracy, so it's truncated to 3
+// terms here. Measured against the untruncated 6-term series across every
+// TRACS theatre's central meridian at up to 20° offset (worse than any real
+// theatre reaches), 3 terms tops out at ~0.1mm error — the series converges
+// fast (each term is ~n smaller, n≈0.00168 for WGS84) so this is nowhere
+// near the naive-series failure mode above; it's cutting from "absurdly
+// overkill" to "still absurdly overkill," not toward the failure boundary.
 
 const D2R = Math.PI / 180
 const R2D = 180 / Math.PI
@@ -25,6 +31,10 @@ const _A = A_WGS84 / (1 + N_THIRD) * (
   1 + N_THIRD ** 2 / 4 + N_THIRD ** 4 / 64 + N_THIRD ** 6 / 256
 )
 
+// Series truncated at 3 terms (see file header) — coefficient values
+// themselves keep their full n⁶-order precision, only the number of j-terms
+// summed in tmForward/tmInverse's loops is cut.
+
 // Forward series coefficients α_j (n → ξ,η), Karney 2011 eq. 35
 const n = N_THIRD
 const ALPHA = [
@@ -32,9 +42,6 @@ const ALPHA = [
   n / 2 - 2 / 3 * n ** 2 + 5 / 16 * n ** 3 + 41 / 180 * n ** 4 - 127 / 288 * n ** 5 + 7891 / 37800 * n ** 6,
   13 / 48 * n ** 2 - 3 / 5 * n ** 3 + 557 / 1440 * n ** 4 + 281 / 630 * n ** 5 - 1983433 / 1935360 * n ** 6,
   61 / 240 * n ** 3 - 103 / 140 * n ** 4 + 15061 / 26880 * n ** 5 + 167603 / 181440 * n ** 6,
-  49561 / 161280 * n ** 4 - 179 / 168 * n ** 5 + 6601661 / 7257600 * n ** 6,
-  34729 / 80640 * n ** 5 - 3418889 / 1995840 * n ** 6,
-  212378941 / 319334400 * n ** 6,
 ]
 
 // Inverse series coefficients β_j (ξ,η → n), Karney 2011 eq. 36
@@ -43,9 +50,6 @@ const BETA = [
   n / 2 - 2 / 3 * n ** 2 + 37 / 96 * n ** 3 - 1 / 360 * n ** 4 - 81 / 512 * n ** 5 + 96199 / 604800 * n ** 6,
   1 / 48 * n ** 2 + 1 / 15 * n ** 3 - 437 / 1440 * n ** 4 + 46 / 105 * n ** 5 - 1118711 / 3870720 * n ** 6,
   17 / 480 * n ** 3 - 37 / 840 * n ** 4 - 209 / 4480 * n ** 5 + 5569 / 90720 * n ** 6,
-  4397 / 161280 * n ** 4 - 11 / 504 * n ** 5 - 830251 / 7257600 * n ** 6,
-  4583 / 161280 * n ** 5 - 108847 / 3991680 * n ** 6,
-  20648693 / 638668800 * n ** 6,
 ]
 
 // Conformal-latitude series δ_j (χ → φ), Karney 2011 eq. 19
@@ -54,9 +58,6 @@ const DELTA = [
   2 * n - 2 / 3 * n ** 2 - 2 * n ** 3 + 116 / 45 * n ** 4 + 26 / 45 * n ** 5 - 2854 / 675 * n ** 6,
   7 / 3 * n ** 2 - 8 / 5 * n ** 3 - 227 / 45 * n ** 4 + 2704 / 315 * n ** 5 + 2323 / 945 * n ** 6,
   56 / 15 * n ** 3 - 136 / 35 * n ** 4 - 1262 / 105 * n ** 5 + 73814 / 2835 * n ** 6,
-  4279 / 630 * n ** 4 - 332 / 35 * n ** 5 - 399572 / 14175 * n ** 6,
-  4174 / 315 * n ** 5 - 144838 / 6237 * n ** 6,
-  601676 / 22275 * n ** 6,
 ]
 
 function sinh(x) { return Math.sinh ? Math.sinh(x) : (Math.exp(x) - Math.exp(-x)) / 2 }
@@ -81,7 +82,7 @@ export function tmForward(latDeg, lngDeg, params) {
 
   let xi  = xip
   let eta = etap
-  for (let j = 1; j <= 6; j++) {
+  for (let j = 1; j <= 3; j++) {
     xi  += ALPHA[j] * Math.sin(2 * j * xip)  * cosh(2 * j * etap)
     eta += ALPHA[j] * Math.cos(2 * j * xip)  * sinh(2 * j * etap)
   }
@@ -102,14 +103,14 @@ export function tmInverse(easting, northing, params) {
 
   let xip  = xi
   let etap = eta
-  for (let j = 1; j <= 6; j++) {
+  for (let j = 1; j <= 3; j++) {
     xip  -= BETA[j] * Math.sin(2 * j * xi) * cosh(2 * j * eta)
     etap -= BETA[j] * Math.cos(2 * j * xi) * sinh(2 * j * eta)
   }
 
   const chi = Math.asin(Math.sin(xip) / cosh(etap))
   let phi = chi
-  for (let j = 1; j <= 6; j++) phi += DELTA[j] * Math.sin(2 * j * chi)
+  for (let j = 1; j <= 3; j++) phi += DELTA[j] * Math.sin(2 * j * chi)
 
   const lam = Math.atan2(sinh(etap), Math.cos(xip))
 

@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas, projectRingCached } from './projection.js'
 
 const COAST_FALLBACK    = '#6699AA'
 const BOUNDARY_FALLBACK = '#557788'
@@ -27,9 +27,9 @@ export function drawGeo(ctx, view, boundaries, coastlines, visible, brite = 50, 
       if (x1 < -5 || x0 > width + 5 || y1 < -5 || y0 > height + 5) continue
 
       ctx.beginPath()
+      const points = projectRingCached(seg.coords, view)
       let first = true
-      for (const [lon, lat] of seg.coords) {
-        const { x, y } = latLngToCanvas(lat, lon, view)
+      for (const { x, y } of points) {
         if (first) { ctx.moveTo(x, y); first = false }
         else ctx.lineTo(x, y)
       }
@@ -50,9 +50,9 @@ export function drawGeo(ctx, view, boundaries, coastlines, visible, brite = 50, 
       if (x1 < -5 || x0 > width + 5 || y1 < -5 || y0 > height + 5) continue
 
       ctx.beginPath()
+      const points = projectRingCached(seg.coords, view)
       let first = true
-      for (const [lon, lat] of seg.coords) {
-        const { x, y } = latLngToCanvas(lat, lon, view)
+      for (const { x, y } of points) {
         if (first) { ctx.moveTo(x, y); first = false }
         else ctx.lineTo(x, y)
       }

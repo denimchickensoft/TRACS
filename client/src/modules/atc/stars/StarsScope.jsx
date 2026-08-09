@@ -178,6 +178,8 @@ export default function StarsScope() {
 
   const viewRef      = useRef(null)    // always-current view for event handlers
   const panRef       = useRef({ dragging: false, startX: 0, startY: 0, lastX: 0, lastY: 0 })
+  const panAccumRef  = useRef({ dx: 0, dy: 0 })  // pixel delta accumulated since last rAF flush
+  const panRafRef    = useRef(null)              // pending rAF id for the coalesced pan flush
   const historyRef   = useRef({})
   const rblCursorRef = useRef(null)    // canvas-pixel cursor pos during RBL_P2 preview
   const coordsRef    = useRef(null)    // debug coords display div
@@ -324,7 +326,25 @@ export default function StarsScope() {
     return () => ro.disconnect()
   }, [buildView])
 
-  useEffect(() => { setView(buildView()) }, [buildView, blinkTick])
+  // blinkTick fires every 200ms and doesn't itself affect buildView's output
+  // (it's only here to catch window.__magvarOverride changes, which aren't
+  // reactive). Bail out when the rebuilt view is field-identical to the
+  // current one so its reference stays stable and doesn't force every
+  // view-dependent layer (map/relief/geo/etc.) to redraw 5x/sec for nothing.
+  useEffect(() => {
+    const next = buildView()
+    setView((prev) => (prev && next &&
+      prev.centerLat === next.centerLat &&
+      prev.centerLng === next.centerLng &&
+      prev.rangeNm === next.rangeNm &&
+      prev.pixelsPerNm === next.pixelsPerNm &&
+      prev.width === next.width &&
+      prev.height === next.height &&
+      prev.declinationDeg === next.declinationDeg &&
+      prev.theatre === next.theatre)
+      ? prev
+      : next)
+  }, [buildView, blinkTick])
 
   // ── Auto-center on facility airbase ──────────────────────────────
   // Stores the facilityDcsName that was last auto-centered so that changing
@@ -859,12 +879,33 @@ export default function StarsScope() {
     panRef.current.lastY = e.clientY
     panRef.current.moved = true
 
-    const v = viewRef.current
-    const nmPerPx = 1 / v.pixelsPerNm
-    const newLat  = v.centerLat + (dy * nmPerPx) / 60
-    const newLng  = v.centerLng - (dx * nmPerPx) / (60 * Math.cos(v.centerLat * Math.PI / 180))
-    displayStore.updateWindow(WINDOW_ID, { centerLat: newLat, centerLng: newLng, offCntr: true })
+    // Native mousemove can fire far faster than the display refreshes.
+    // Accumulate pixel deltas here (cheap) and only commit the resulting
+    // pan to the store once per animation frame, so the full map/relief/geo
+    // redraw it triggers runs at most at display refresh rate instead of
+    // once per raw input event.
+    panAccumRef.current.dx += dx
+    panAccumRef.current.dy += dy
+
+    if (panRafRef.current == null) {
+      panRafRef.current = requestAnimationFrame(() => {
+        panRafRef.current = null
+        const { dx: adx, dy: ady } = panAccumRef.current
+        panAccumRef.current = { dx: 0, dy: 0 }
+        const v = viewRef.current
+        if (!v) return
+        const nmPerPx = 1 / v.pixelsPerNm
+        const newLat  = v.centerLat + (ady * nmPerPx) / 60
+        const newLng  = v.centerLng - (adx * nmPerPx) / (60 * Math.cos(v.centerLat * Math.PI / 180))
+        displayStore.updateWindow(WINDOW_ID, { centerLat: newLat, centerLng: newLng, offCntr: true })
+      })
+    }
   }, [windowSettings, displayStore])
+
+  // Cancel any pending coalesced pan flush on unmount.
+  useEffect(() => () => {
+    if (panRafRef.current != null) cancelAnimationFrame(panRafRef.current)
+  }, [])
 
   const handleMouseUp = useCallback((e) => {
     if (e.button === 2) {
