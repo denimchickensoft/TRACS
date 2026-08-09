@@ -1,4 +1,6 @@
 {
+  "_note": "Translates each rn5 taxiway-file stem (DCS's internal AirfieldsTaxiways filename, sometimes cryptic/legacy) to that airbase's canonical name. buildAirportPolygons.js/airportPolygonsCore.js use this value as the join key into the matching client/public/runways/<Theatre>.json's 'airbase' field to attach real runway coordinates to the stem's taxiway polygons; Login.jsx's resolveIcao expects the same canonical name to match the live DCS callsign. The value must be that SAME physical airbase's own real name — never a different, unrelated airbase's name borrowed just because no runway JSON entry exists for this one (that stitches one airbase's taxiways to a different airbase's runway; see the Zarqa/Muwaffaq Salti bug this note followed from, two real airbases ~60km apart in Syria that got wrongly aliased together). If a stem's airbase genuinely has no runway JSON entry, map it to itself (identity) — its taxiway/polygon data still gets sourced and rendered fine, it just won't be a selectable login facility until DCS exposes real runway data for it (see icaoMapping.json's note).",
+
   "Caucasus": {
     "Anapa": "Anapa-Vityazevo",
     "Batumi": "Batumi",
@@ -82,7 +84,6 @@
     "BirHasanah": "Bir Hasanah",
     "Birma Air Base": "Birma Air Base",
     "Borg el Arab Intl": "Borg El Arab International Airport",
-    "Borg-el-ArabIntl": "Borg El Arab International Airport",
     "CairoInternationalAirport": "Cairo International Airport",
     "CairoWest(Almaza)": "Cairo West",
     "DamascusInternationalAirport": "Damascus Intl",
@@ -93,7 +94,7 @@
     "Faid": "Fayed",
     "Gebel el Basur": "Gebel El Basur Air Base",
     "Hatzerim Airbase": "Hatzerim",
-    "Hatzerim Heli Base": "Hatzerim",
+    "Hatzerim Heli Base": "Hatzerim Heli Base",
     "Hatzor": "Hatzor",
     "Hurghada": "Hurghada International Airport",
     "InshasAirbase": "Inshas Airbase",
@@ -189,7 +190,7 @@
     "Tel_Nof": "Tel Nof",
     "Tiyas": "Tiyas",
     "Wujah_Al_Hajar": "Wujah Al Hajar",
-    "Zarqa": "Muwaffaq Salti"
+    "Zarqa": "Zarqa"
   },
   "Germany": {
     "Adelsheim": "Adelsheim",
@@ -472,14 +473,12 @@
     "GooseGreenGrass": "Goose Green",
     "GullPoint": "Gull Point",
     "Hipico": "Hipico Flying Club",
-    "HipicoFlyingClub": "Hipico Flying Club",
     "MountPleasant": "Mount Pleasant",
     "OHiggins": "O'Higgins",
     "PampaGuanaco": "Pampa Guanaco",
     "PortStanley": "Port Stanley",
     "Porvenir Airfield": "Porvenir",
     "Puerto_Santa_Cruz": "Puerto Santa Cruz",
-    "Puerto_Sata_Cruz": "Puerto Santa Cruz",
     "PuertoNatales": "Puerto Natales",
     "PuertoWilliams": "Puerto Williams",
     "Punta_Arenas": "Punta Arenas",

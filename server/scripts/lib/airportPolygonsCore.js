@@ -48,6 +48,50 @@ function makeTmInv(tmInverse, p, latMin, latMax, lonMin, lonMax) {
 // with the projection step — the part that has actually had a real bug —
 // deferred to build time instead of baked in permanently.
 
+// Some rn5 taxiway segments lead with a placeholder "moveto" node sitting
+// right at the theatre-grid origin — not an exact (0,0) (e.g. [-0.003,-0.003]
+// or [0,0.008]), so a strict equality check misses it. Inverse-projecting
+// that node lands wherever the TM origin happens to fall — often nowhere
+// near the actual airbase (confirmed: Germany's Buchel and South Atlantic's
+// AlmiranteSchroeders both produced a taxiway polygon with one vertex
+// thousands of km away). 1m is a safe cutoff: across all 10 theatres'
+// cached raw data, the only points within 1000m of any theatre's origin are
+// this pair (sub-1cm) and ~300 legitimately real taxiway nodes at Guam and
+// Khasab, whose theatres' projection origins just happen to fall near those
+// airports — the nearest of those real points is 128m out, so there's no
+// ambiguity at 1m. Only a *leading* near-origin node is stripped (matches
+// both known cases); one appearing mid-segment is treated as real corruption
+// and still invalidates the whole segment, same as before.
+const ORIGIN_SENTINEL_EPS_M = 1.0
+
+function stripLeadingSentinel(rawNative) {
+  let start = 0
+  while (
+    start < rawNative.length &&
+    Math.abs(rawNative[start][0]) < ORIGIN_SENTINEL_EPS_M &&
+    Math.abs(rawNative[start][1]) < ORIGIN_SENTINEL_EPS_M
+  ) start++
+  return start ? rawNative.slice(start) : rawNative
+}
+
+// rawNative: array of [easting, northing] pairs in theatre-grid meters (the
+// same shape as the persisted "raw" export), already stripped of any framing
+// bytes. Returns null if the segment is invalid/corrupt after filtering.
+function projectSegment(rawNativeIn, tmInv) {
+  const rawNative = stripLeadingSentinel(rawNativeIn)
+  const nodes = []
+  const nativeNodes = []
+  for (const [z, x] of rawNative) {
+    if (!isFinite(x) || !isFinite(z) || (x === 0 && z === 0)) return null
+    const result = tmInv(z, x)
+    if (!result) return null
+    const [lat, lon] = result
+    nodes.push([+lon.toFixed(7), +lat.toFixed(7)])
+    nativeNodes.push([+z.toFixed(3), +x.toFixed(3)])
+  }
+  return nodes.length >= 2 ? { nodes, nativeNodes } : null
+}
+
 function extractRn5(data, tmInv, nMin = 5, nMax = 300) {
   const segments = []
   const nativeSegments = []
@@ -55,8 +99,7 @@ function extractRn5(data, tmInv, nMin = 5, nMax = 300) {
   while (i < data.length - 28) {
     const n = data.readUInt32LE(i)
     if (n >= nMin && n <= nMax) {
-      const nodes = []
-      const nativeNodes = []
+      const rawNative = []
       let valid = true
       for (let k = 0; k < n; k++) {
         const off = i + 4 + k * 24
@@ -64,18 +107,17 @@ function extractRn5(data, tmInv, nMin = 5, nMax = 300) {
         if (!data.slice(off + 8, off + 16).equals(ZERO_8)) { valid = false; break }
         const x = data.readDoubleLE(off)
         const z = data.readDoubleLE(off + 16)
-        if (!isFinite(x) || !isFinite(z) || (x === 0 && z === 0)) { valid = false; break }
-        const result = tmInv(z, x)
-        if (!result) { valid = false; break }
-        const [lat, lon] = result
-        nodes.push([+lon.toFixed(7), +lat.toFixed(7)])
-        nativeNodes.push([+z.toFixed(3), +x.toFixed(3)])
+        if (!isFinite(x) || !isFinite(z)) { valid = false; break }
+        rawNative.push([z, x]) // [easting, northing] — matches tmInv(easting, northing)
       }
-      if (valid && nodes.length >= 2) {
-        segments.push(nodes)
-        nativeSegments.push(nativeNodes)
-        i += 4 + n * 24
-        continue
+      if (valid) {
+        const projected = projectSegment(rawNative, tmInv)
+        if (projected) {
+          segments.push(projected.nodes)
+          nativeSegments.push(projected.nativeNodes)
+          i += 4 + n * 24
+          continue
+        }
       }
     }
     i++
@@ -290,4 +332,4 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInver
   }
 }
 
-module.exports = { TAXIWAY_WIDTH_M, makeTmInv, extractRn5, bufferPolyline, buildTheatre }
+module.exports = { TAXIWAY_WIDTH_M, makeTmInv, extractRn5, projectSegment, bufferPolyline, buildTheatre }
