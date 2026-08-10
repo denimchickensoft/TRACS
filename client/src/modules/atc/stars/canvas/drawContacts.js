@@ -19,6 +19,17 @@ function drawOctagon(ctx, cx, cy, radius, rotationDeg) {
   ctx.closePath()
 }
 
+// Small diamond interior marker for simulated squawk-standby wingmen
+// (primary-only contacts — see modules/atc/stars/stca/formations.js).
+function drawDiamond(ctx, cx, cy, radius) {
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - radius)
+  ctx.lineTo(cx + radius, cy)
+  ctx.lineTo(cx, cy + radius)
+  ctx.lineTo(cx - radius, cy)
+  ctx.closePath()
+}
+
 const M_PER_S_TO_KT = 1.94384
 
 /**
@@ -38,7 +49,7 @@ const BLINK_DIM    = '#C0C0C0'
 const PO_BLINK_ON  = '#FFFF00'
 const PO_BLINK_OFF = '#808000'
 
-export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8, blinkingUids = null, blinkOn = true, poReceivingUids = null, highlightedUids = null) {
+export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, britePos = 1.0, csPos = 3, ptlOpts = null, historyLimit = 5, briteHst = 0.8, blinkingUids = null, blinkOn = true, poReceivingUids = null, highlightedUids = null, wingmanUids = null) {
   const width  = ctx.canvas.width
   const height = ctx.canvas.height
   const { colors, symbol } = visual
@@ -114,6 +125,14 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
       ctx.strokeStyle = colors.contact
       ctx.lineWidth = 1.5
       ctx.stroke()
+    }
+
+    // --- Primary-only wingman: small diamond, no letter/asterisk, no datablock ---
+    if (wingmanUids?.has(String(id))) {
+      ctx.fillStyle = colors.ldbText
+      drawDiamond(ctx, x, y, radius * 0.35)
+      ctx.fill()
+      continue
     }
 
     // --- Interior symbol: '*' unassociated, position letter if owned ---

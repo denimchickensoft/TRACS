@@ -124,6 +124,9 @@ function handleAtc(type, payload) {
   handleTrackAndHandoff(type, payload)
 
   switch (type) {
+    case 'CONFLICT_ACK':
+      useAtcStore.getState().ackConflict(payload.pairId)
+      break
     case 'FLIGHT_PLAN_CREATE':
       fps.add(payload)
       break

@@ -291,6 +291,7 @@ export const useRunwaysStore = create((set, get) => ({
         id:           `${c.airbase}__${c.rwyName}`,
         label:        `${labelMap[c.airbase]} ${c.rwyName}`,
         airbase:      c.airbase,
+        icao:         theatreIcao[c.airbase] ?? null,
         thresholdLat: c.thresholdLat,
         thresholdLng: c.thresholdLng,
         headingRad:   c.headingRad,

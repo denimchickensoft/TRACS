@@ -12,6 +12,9 @@ const DEFAULTS = {
   fillVisible: false, // airspace polygon fill — .fill toggles
   fillPct: 30, // 1-100 — .fill <n> sets this and turns fillVisible on
   pinnedFixes: {}, // { [theatre]: string[] } — .fix <name...> toggles, shown regardless of FIXES DCB toggle
+  stcaEnabled: false, // conflict alert (STCA/CA/MCI) processing — .ca toggles
+  simWingmenStandby: false, // simulated squawk-standby wingmen — .wng toggles
+  manualWingmen: [], // unitId[] — .wng + click lead + click wing manual overrides (toggle)
 }
 
 export function loadStarsPrefs() {

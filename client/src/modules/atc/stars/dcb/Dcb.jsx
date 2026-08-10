@@ -14,6 +14,7 @@ import { useMvaStore }        from '../../../../store/mva.js'
 import { useGeoStore }        from '../../../../store/geo.js'
 import { useFixesStore }      from '../../../../store/fixes.js'
 import { useProceduresStore } from '../../../../store/procedures.js'
+import { saveStarsPrefs }     from '../../../../store/starsPrefs.js'
 import './Dcb.css'
 
 const WINDOW_ID = 'atc-main'
@@ -91,6 +92,10 @@ function padToShift(defs) {
 
 const AUX_BUTTONS = padToShift([
   { id: 'VOL', lines: ['VOL'], type: 'value' },
+  { id: 'slot_ca_wng', slotType: 'halfV', buttons: [
+    { id: 'CA',  lines: ['CA'],  type: 'toggle' },
+    { id: 'WNG', lines: ['WNG'], type: 'toggle' },
+  ]},
   { id: 'slot_history', slotType: 'halfV', buttons: [
     { id: 'HISTORY', lines: ['HISTORY'], type: 'value' },
     { id: 'H_RATE',  lines: ['H_RATE'],  type: 'value' },
@@ -569,6 +574,14 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           useProceduresStore.getState().toggleVisible(`STAR:${btn.id.slice(10)}`)
         } else if (btn.id.startsWith('PROC_APPCH_')) {
           useProceduresStore.getState().toggleVisible(`APPCH:${btn.id.slice(11)}`)
+        } else if (btn.id === 'CA') {
+          const next = !(windowSettings?.stcaEnabled ?? false)
+          updateWindow(WINDOW_ID, { stcaEnabled: next })
+          saveStarsPrefs({ stcaEnabled: next })
+        } else if (btn.id === 'WNG') {
+          const next = !(windowSettings?.simWingmenStandby ?? false)
+          updateWindow(WINDOW_ID, { simWingmenStandby: next })
+          saveStarsPrefs({ simWingmenStandby: next })
         } else {
           setToggles(prev => {
             const next = new Set(prev)
@@ -779,7 +792,11 @@ export function Dcb({ profile, briteDcb, csDcb }) {
                 ? procVisible.has(`STAR:${btn.id.slice(10)}`)
                 : btn.id.startsWith('PROC_APPCH_')
                   ? procVisible.has(`APPCH:${btn.id.slice(11)}`)
-                  : toggles.has(btn.id)
+                  : btn.id === 'CA'
+                    ? (windowSettings?.stcaEnabled ?? false)
+                    : btn.id === 'WNG'
+                      ? (windowSettings?.simWingmenStandby ?? false)
+                      : toggles.has(btn.id)
 
     if (btn.id === 'OFF_CNTR') {
       isToggled = windowSettings?.offCntr ?? false

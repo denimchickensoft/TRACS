@@ -44,6 +44,11 @@ export const useAtcStore = create(
   // Blink-white after accepting a handoff: unitId → expiresAt (ms timestamp)
   blinkTracks: {},
 
+  // Acknowledged conflict-alert pairs: pairId → true. Pruned each STCA
+  // compute cycle (StarsScope.jsx) when a pairId drops out of the active
+  // conflict set, so a resolved-then-recurring conflict re-alerts.
+  conflictAcks: {},
+
   claimTrack: (unitId, positionName) =>
     set((state) => ({
       ownership: { ...state.ownership, [unitId]: positionName },
@@ -130,8 +135,23 @@ export const useAtcStore = create(
       return { blinkTracks: next }
     }),
 
+  ackConflict: (pairId) =>
+    set((state) => ({
+      conflictAcks: { ...state.conflictAcks, [pairId]: true },
+    })),
+
+  pruneConflictAcks: (activeIds) =>
+    set((state) => {
+      const activeSet = new Set(activeIds)
+      const next = {}
+      for (const id of Object.keys(state.conflictAcks)) {
+        if (activeSet.has(id)) next[id] = true
+      }
+      return { conflictAcks: next }
+    }),
+
   reset: () =>
-    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {} }),
+    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {}, conflictAcks: {} }),
     }),
     {
       name: 'tracs.atc',

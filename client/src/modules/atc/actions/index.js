@@ -29,6 +29,8 @@ import { useReliefStore }      from '../../../store/relief.js'
 import { useMvaStore }         from '../../../store/mva.js'
 import { useRunwaysStore }     from '../../../store/runways.js'
 import { useProceduresStore }  from '../../../store/procedures.js'
+import { useUnitsStore }       from '../../../store/units.js'
+import { computeWingmanIds }   from '../stars/stca/formations.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
@@ -58,6 +60,14 @@ export function INIT_CNTL({ slewTarget }) {
   if (!controllerId) return err('NO POSITION')
   const { ownership, claimTrack } = getAtc()
   if (ownership[slewTarget.unitId] !== undefined) return err('ILL TRK')
+  // Simulated squawk-standby wingmen can't be initiated on control — a
+  // primary-only contact has no reported Mode C, so there's nothing to
+  // associate. See modules/atc/stars/stca/formations.js.
+  const win = getDisplay().windows[WINDOW_ID]
+  if (win?.simWingmenStandby) {
+    const wingmen = computeWingmanIds(useUnitsStore.getState().units, ownership, win?.manualWingmen)
+    if (wingmen.has(String(slewTarget.unitId))) return err('ILL TRK')
+  }
   claimTrack(slewTarget.unitId, controllerId)
   sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, controllerId })
   if (useSessionStore.getState().activeModule === 'ATC') {
@@ -65,6 +75,14 @@ export function INIT_CNTL({ slewTarget }) {
     useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: slewTarget.unitId })
   }
   ok()
+}
+
+// Acknowledge a conflict-alert pair — called directly from StarsScope.jsx's
+// bare-click handler (not command-parsed, same as INIT_CNTL's direct-call
+// usage from the Ctrl+Shift+click path).
+export function ackConflict(pairId) {
+  getAtc().ackConflict(pairId)
+  sendWebrtcEvent('CONFLICT_ACK', { pairId })
 }
 
 export function OPEN_FPE({ captures, slewTarget }) {
@@ -301,6 +319,19 @@ export function MIN_INIT({ slewTarget }) {
 
 export function MIN_CLEAR() {
   getDisplay().updateWindow(WINDOW_ID, { minSep: null, minWip: null, pendingAction: null })
+  ok()
+}
+
+// ── Manual wingman pairing ──────────────────────────────────────────────────
+// .WNG + click lead + click wingman — see StarsScope.jsx's WNG_P2 handling,
+// which completes the pairing on the second click (toggling that unit's
+// entry in windowSettings.manualWingmen).
+export function WNG_PAIR_INIT({ slewTarget }) {
+  if (!slewTarget) return err('NO TRACK')
+  getDisplay().updateWindow(WINDOW_ID, {
+    pendingAction: 'WNG_P2',
+    wngWip: { leadId: String(slewTarget.unitId) },
+  })
   ok()
 }
 
@@ -565,6 +596,25 @@ export function SET_FILL({ captures }) {
   ok()
 }
 
+// Conflict alert (STCA) processing on/off — facility-wide, persisted locally.
+export function TOGGLE_STCA() {
+  const win  = getDisplay().windows[WINDOW_ID]
+  const next = !(win?.stcaEnabled ?? false)
+  getDisplay().updateWindow(WINDOW_ID, { stcaEnabled: next })
+  saveStarsPrefs({ stcaEnabled: next })
+  ok()
+}
+
+// Simulated squawk-standby wingmen — only the flight lead of each DCS group
+// gets a real datablock; see modules/atc/stars/stca/formations.js.
+export function TOGGLE_WINGMEN() {
+  const win  = getDisplay().windows[WINDOW_ID]
+  const next = !(win?.simWingmenStandby ?? false)
+  getDisplay().updateWindow(WINDOW_ID, { simWingmenStandby: next })
+  saveStarsPrefs({ simWingmenStandby: next })
+  ok()
+}
+
 // ── Find fix / navaid / airport ───────────────────────────────────────────────
 
 export function FIND_FIX({ captures }) {
@@ -767,6 +817,8 @@ const ACTION_MAP = {
   TOGGLE_RELIEF,
   TOGGLE_MVA,
   TOGGLE_SAT,
+  TOGGLE_STCA,
+  TOGGLE_WINGMEN,
   TOGGLE_FILL,
   SET_FILL,
   FIND_FIX,
@@ -802,6 +854,7 @@ const ACTION_MAP = {
   BARE_SLEW,
   MIN_INIT,
   MIN_CLEAR,
+  WNG_PAIR_INIT,
   RBL_INIT,
   RBL_INIT_FIX,
   RBL_CLEAR_ALL,

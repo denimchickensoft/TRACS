@@ -1,5 +1,6 @@
 import { memo, useMemo, useState, useEffect } from 'react'
 import { useAtcStore, POINTOUT_STATE } from '../../../store/atc.js'
+import { useStcaStore }        from '../../../store/stca.js'
 import { useSessionStore }     from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
 import { useDisplayStore }     from '../../../store/display.js'
@@ -19,6 +20,12 @@ const MONO_CHAR_RATIO  = 0.6
 
 const DEFAULT_SEQUENCE  = [1, 2, 1, 3]
 const DEFAULT_INTERVALS = [3, 2, 3, 2]
+
+// Conflict alert (CA/MCI) indicator colors — blinks bright/dim red while
+// unacknowledged, solid red once acked.
+const CA_BLINK_BRIGHT = '#FF3333'
+const CA_BLINK_DIM    = '#7A1A1A'
+const CA_SOLID        = '#FF3333'
 
 // ── Formatting ───────────────────────────────────────────────────────────────
 
@@ -111,9 +118,13 @@ const Datablock = memo(function Datablock({
   ownership, handoffs, pointOuts, quickLook, displayFdb, scratchpads,
   myId, unitLeaderDir, globalLeaderDir, placement,
   clockPhase, actype, slewed, isBlinking, blinkOn, isHighlighted,
+  conflict, wingman,
 }) {
   const pos = unit.position
   if (!pos) return null
+
+  // Simulated squawk-standby wingman — primary-only, no datablock at all.
+  if (wingman) return null
 
   const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
   if (x < -100 || x > view.width + 100 || y < -100 || y > view.height + 100) return null
@@ -179,6 +190,24 @@ const Datablock = memo(function Datablock({
     ? <line x1={lx0} y1={ly0} x2={lx1} y2={ly1} stroke={colors.leaderLine} strokeWidth={0.8} />
     : null
 
+  // ── Conflict alert (CA/MCI) — renders one line above line 1, blinking
+  // red while unacknowledged, solid red once acked. Not accounted for in
+  // the dbca collision-avoidance bbox sizing (datablockPlacement.js) — a
+  // conflict is a rare, urgent, transient state, so this trades perfect
+  // collision avoidance for keeping that pass unaware of per-tick alert
+  // state. FDB/PDB only; LDBs have no callsign line to attach one above.
+  const conflictColor = conflict
+    ? (conflict.acked ? CA_SOLID : (blinkOn ? CA_BLINK_BRIGHT : CA_BLINK_DIM))
+    : null
+  function conflictEl(opacity) {
+    if (!conflict) return null
+    return (
+      <text x={tx} y={ty - lh} fill={conflictColor} opacity={opacity} textAnchor={anchor} style={style}>
+        {conflict.type}
+      </text>
+    )
+  }
+
   // ── LDB ─────────────────────────────────────────────────────────────
   if (dbType === 'LDB') {
     const ldbColor = isHighlighted ? HIGHLIGHT_TEAL : colors.ldbText
@@ -201,6 +230,7 @@ const Datablock = memo(function Datablock({
       return (
         <g>
           {leader}
+          {conflictEl(briteLdb)}
           <text x={tx} y={ty}      fill={pdbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
             {cs}
           </text>
@@ -213,6 +243,7 @@ const Datablock = memo(function Datablock({
     return (
       <g>
         {leader}
+        {conflictEl(briteLdb)}
         <text x={tx} y={ty} fill={pdbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
           {line2}
         </text>
@@ -237,6 +268,7 @@ const Datablock = memo(function Datablock({
   return (
     <g>
       {leader}
+      {conflictEl(briteFdb)}
       <text x={tx} y={ty}      fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
         {acidLine}
       </text>
@@ -249,7 +281,7 @@ const Datablock = memo(function Datablock({
 
 // ── Overlay ──────────────────────────────────────────────────────────────────
 
-export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn, highlightedUids }) {
+export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn, highlightedUids, wingmanIds }) {
   const ownership   = useAtcStore((s) => s.ownership)
   const handoffs    = useAtcStore((s) => s.handoffs)
   const pointOuts   = useAtcStore((s) => s.pointOuts)
@@ -257,6 +289,21 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   const displayFdb  = useAtcStore((s) => s.displayFdb)
   const scratchpads = useAtcStore((s) => s.scratchpads)
   const blinkTracks = useAtcStore((s) => s.blinkTracks)
+  const conflictAcks = useAtcStore((s) => s.conflictAcks)
+  const conflicts     = useStcaStore((s) => s.conflicts)
+
+  // uid -> { type, acked } — first matching conflict wins if a track is
+  // somehow part of more than one simultaneously (not modeled as multiple
+  // stacked alerts, matching the reference app's single CA/MCI indicator).
+  const conflictByUnit = useMemo(() => {
+    const map = {}
+    for (const c of conflicts) {
+      const entry = { type: c.type, acked: !!conflictAcks[c.id] }
+      if (!(c.unitAId in map)) map[c.unitAId] = entry
+      if (!(c.unitBId in map)) map[c.unitBId] = entry
+    }
+    return map
+  }, [conflicts, conflictAcks])
 
   const positionName    = useSessionStore((s) => s.positionName)
   const myId            = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
@@ -384,6 +431,8 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
           isBlinking={!!blinkTracks[String(id)] && now < blinkTracks[String(id)]}
           blinkOn={blinkOn}
           isHighlighted={highlightedUids?.has(String(id)) ?? false}
+          conflict={conflictByUnit[String(id)] ?? null}
+          wingman={wingmanIds?.has(String(id)) ?? false}
         />
       ))}
     </svg>

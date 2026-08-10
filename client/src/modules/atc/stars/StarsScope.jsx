@@ -52,7 +52,12 @@ import { AlertList }            from './lists/AlertList.jsx'
 import { VFRList }              from './lists/VFRList.jsx'
 import { resolveSlew }          from './input/slewResolver.js'
 import { parseCommand }         from './input/commandParser.js'
-import { dispatch as dispatchAction, INIT_CNTL } from '../actions/index.js'
+import { dispatch as dispatchAction, INIT_CNTL, ackConflict } from '../actions/index.js'
+import { useStcaStore }         from '../../../store/stca.js'
+import { computeConflicts }     from './stca/computeConflicts.js'
+import { buildSuppressionZones, isSuppressed } from './stca/suppressionZones.js'
+import { computeWingmanIds }    from './stca/formations.js'
+import { startAlertTone, stopAlertTone } from '../../../audio/alertTone.js'
 import { usePresetsStore }  from '../../../store/presets.js'
 import { useFpeStore }      from '../../../store/fpe.js'
 import { useNavdataStore }      from '../../../store/navdata.js'
@@ -60,11 +65,13 @@ import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { formatElevation } from '../../../utils/coords.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
-import { loadStarsPrefs }  from '../../../store/starsPrefs.js'
+import { loadStarsPrefs, saveStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
 
 const WINDOW_ID  = 'atc-main'
 const MAX_HISTORY = 10  // absolute max; display capped by historyLength setting
+const EMPTY_SET = new Set()
+const STCA_TICK_MS = 1000
 
 export default function StarsScope() {
   const wheelDir         = useWheelDirection()
@@ -82,6 +89,8 @@ export default function StarsScope() {
   const pointOuts    = useAtcStore((s) => s.pointOuts)
   const blinkTracks  = useAtcStore((s) => s.blinkTracks)
   const displayFdb   = useAtcStore((s) => s.displayFdb)
+  const conflictAcks = useAtcStore((s) => s.conflictAcks)
+  const conflicts    = useStcaStore((s) => s.conflicts)
   const coalition    = useSessionStore((s) => s.coalition)
   const positionName = useSessionStore((s) => s.positionName)
   const myControllerId = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
@@ -153,6 +162,76 @@ export default function StarsScope() {
     const id = setInterval(() => setBlinkTick((t) => t + 1), 200)
     return () => clearInterval(id)
   }, [])
+
+  // ── Simulated squawk-standby wingmen ────────────────────────────────
+  // Opt-in (.WNG / starsPrefs.simWingmenStandby) — see stca/formations.js.
+  const wingmanIds = useMemo(() => {
+    if (!windowSettings?.simWingmenStandby) return EMPTY_SET
+    return computeWingmanIds(units, ownership, windowSettings?.manualWingmen)
+  }, [units, ownership, windowSettings?.simWingmenStandby, windowSettings?.manualWingmen])
+
+  // ── STCA compute loop ────────────────────────────────────────────────
+  // Opt-in (.CA / starsPrefs.stcaEnabled) — see stca/computeConflicts.js.
+  // Runs on its own ~1s interval (independent of the 200ms blink tick) to
+  // bound cost; reads fresh store state each tick rather than closing over
+  // reactive props, since the interval callback outlives any single render.
+  const vertRatesRef = useRef(new Map())
+  const latchedRef   = useRef(new Map())
+  useEffect(() => {
+    if (!windowSettings?.stcaEnabled) {
+      // Disabling only hides/silences active alerts — it does NOT forget
+      // them. The latch (and its wider hysteresis clear-margin) survives,
+      // so re-enabling resumes instantly instead of forcing every still-
+      // active pair to re-qualify from scratch under the tight trigger
+      // thresholds, which is what caused a several-second re-alert delay.
+      useStcaStore.getState().setConflicts([])
+      return
+    }
+    const zones = buildSuppressionZones(centerlines)
+    const tick = () => {
+      const liveUnits     = useUnitsStore.getState().units
+      const liveOwnership = useAtcStore.getState().ownership
+      // Read simWingmenStandby/manualWingmen fresh each tick rather than off
+      // the closed-over `windowSettings` — manualWingmen changes (the .WNG
+      // two-click flow below) don't restart this effect, so a stale closure
+      // here would miss them until something else happened to re-arm it.
+      const liveWinSettings = useDisplayStore.getState().windows[WINDOW_ID]
+      const liveWingmen   = liveWinSettings?.simWingmenStandby
+        ? computeWingmanIds(liveUnits, liveOwnership, liveWinSettings?.manualWingmen)
+        : null
+      const result = computeConflicts({
+        units:            liveUnits,
+        ownership:        liveOwnership,
+        suppressionZones: zones,
+        isSuppressed,
+        wingmanIds:       liveWingmen,
+        vertRates:        vertRatesRef.current,
+        latched:          latchedRef.current,
+      })
+      useStcaStore.getState().setConflicts(result)
+      useAtcStore.getState().pruneConflictAcks(result.map((c) => c.id))
+    }
+    tick()
+    const id = setInterval(tick, STCA_TICK_MS)
+    return () => clearInterval(id)
+  }, [windowSettings?.stcaEnabled, windowSettings?.simWingmenStandby, centerlines])
+
+  // ── STCA alert tone ──────────────────────────────────────────────────
+  // Sector-specific: only sounds on a window whose controller owns unit A
+  // or B of an unacknowledged pair.
+  useEffect(() => {
+    const hasUnacked = conflicts.some((c) =>
+      !conflictAcks[c.id] &&
+      (ownership[c.unitAId] === myControllerId || ownership[c.unitBId] === myControllerId)
+    )
+    if (hasUnacked) {
+      startAlertTone('stars-ca', { getVolume: () => (windowSettings?.vol ?? 10) / 10 })
+    } else {
+      stopAlertTone('stars-ca')
+    }
+  }, [conflicts, conflictAcks, ownership, myControllerId, windowSettings?.vol])
+
+  useEffect(() => () => stopAlertTone('stars-ca'), [])
 
   // Ctrl+F → open blank FPE
   useEffect(() => {
@@ -257,6 +336,9 @@ export default function StarsScope() {
         fillVisible: starsPrefs.fillVisible,
         fillPct: starsPrefs.fillPct,
         pinnedFixes: starsPrefs.pinnedFixes,
+        stcaEnabled: starsPrefs.stcaEnabled,
+        simWingmenStandby: starsPrefs.simWingmenStandby,
+        manualWingmen: starsPrefs.manualWingmen,
       })
     }
   }, []) // eslint-disable-line
@@ -627,7 +709,7 @@ export default function StarsScope() {
       visibleUnits, historyRef.current, activeProfile.visual,
       symbolMap, (windowSettings?.britePos ?? 80) / 100, windowSettings?.csPos ?? 3,
       ptlOpts, windowSettings?.historyLength ?? 5, (windowSettings?.briteHst ?? 80) / 100,
-      blinkingUids, blinkOn, poReceivingUids, highlightedUids,
+      blinkingUids, blinkOn, poReceivingUids, highlightedUids, wingmanIds,
     )
 
     // Draw .FIND marker — small green square centered on the found fix
@@ -643,7 +725,7 @@ export default function StarsScope() {
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
       windowSettings?.findMarker,
-      activeProfile, highlightedUids])
+      activeProfile, highlightedUids, wingmanIds])
 
   // ── RBL layer — rAF loop for smooth cursor tracking ───────────────
   useEffect(() => {
@@ -767,6 +849,8 @@ export default function StarsScope() {
       displayStore.updateWindow(WINDOW_ID, { pendingAction: null, rblWip: null })
     } else if (pending === 'MIN_P2') {
       displayStore.updateWindow(WINDOW_ID, { pendingAction: null, minWip: null })
+    } else if (pending === 'WNG_P2') {
+      displayStore.updateWindow(WINDOW_ID, { pendingAction: null, wngWip: null })
     }
   }, [displayStore])
 
@@ -1006,12 +1090,43 @@ export default function StarsScope() {
         return
       }
 
+      // .WNG + click lead + click wingman — manual primary-only override for
+      // aircraft that don't share a DCS group (formations.js can't otherwise
+      // pair them). Second click toggles that unit's manual designation.
+      if (pending === 'WNG_P2' && viewRef.current) {
+        const wngWip = windowSettings?.wngWip
+        if (!wngWip) { displayStore.updateWindow(WINDOW_ID, { pendingAction: null }); return }
+        const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+        if (!target) return  // WNG requires a track; ignore empty-space clicks
+        const wingId = String(target.unitId)
+        if (wingId === wngWip.leadId) return  // same track, ignore
+
+        const current = new Set(windowSettings?.manualWingmen ?? [])
+        if (current.has(wingId)) current.delete(wingId)
+        else current.add(wingId)
+        const next = [...current]
+        displayStore.updateWindow(WINDOW_ID, { manualWingmen: next, wngWip: null, pendingAction: null })
+        saveStarsPrefs({ manualWingmen: next })
+        usePreviewStore.getState().clearAfterCommand()
+        return
+      }
+
       // Bare-slew handling — only when the buffer is empty (no command pending).
       if (viewRef.current && !usePreviewStore.getState().buffer.trim()) {
         const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
         if (target) {
           const atcState = useAtcStore.getState()
           const uid      = String(target.unitId)
+
+          // Acknowledging an active conflict is the click's sole effect —
+          // it does not also fall through to the PDB toggle below.
+          const activeConflict = useStcaStore.getState().conflicts
+            .find((c) => (c.unitAId === uid || c.unitBId === uid) && !atcState.conflictAcks[c.id])
+          if (activeConflict) {
+            ackConflict(activeConflict.id)
+            return
+          }
+
           const ho       = atcState.handoffs[uid]
           const po       = atcState.pointOuts[uid]
 
@@ -1125,6 +1240,7 @@ export default function StarsScope() {
           slewedPdbs={slewedPdbs}
           blinkOn={blinkOn}
           highlightedUids={highlightedUids}
+          wingmanIds={wingmanIds}
         />
 
         <div

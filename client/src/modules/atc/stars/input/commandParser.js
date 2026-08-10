@@ -66,6 +66,14 @@ const COMMANDS = [
   { id: 'TOGGLE_FIXES',         pattern: /^\.FIXES$/,             trigger: 'ENTER' },
   { id: 'SET_FILL',             pattern: /^\.FILL (\d{1,3})$/,    trigger: 'ENTER', captures: ['pct'] },
   { id: 'TOGGLE_FILL',          pattern: /^\.FILL$/,              trigger: 'ENTER' },
+  // Conflict alert (STCA) processing on/off, facility-wide.
+  { id: 'TOGGLE_STCA',          pattern: /^\.CA$/,                trigger: 'ENTER' },
+  // Simulated squawk-standby wingmen — only the DCS-group flight lead gets
+  // a real datablock, the rest render as primary-only contacts. Bare ENTER
+  // toggles the feature on/off; SLEW (typed then click) starts a manual
+  // lead+wingman pairing for aircraft that don't share a DCS group.
+  { id: 'TOGGLE_WINGMEN',       pattern: /^\.WNG$/,               trigger: 'ENTER' },
+  { id: 'WNG_PAIR_INIT',        pattern: /^\.WNG$/,               trigger: 'SLEW'  },
 
   // ── Airspace category bulk toggles — same verbs/categories as CATCC/ABM's
   // .asp/.tma/.ctr/.../.classa-.classg, retargeted at STARS' MAPS DCB slots.

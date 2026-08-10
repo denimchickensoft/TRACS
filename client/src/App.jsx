@@ -21,6 +21,7 @@ import { ControllerList } from './components/ControllerList/ControllerList'
 import { Messages }        from './components/Messages/Messages'
 import { disconnectWebrtc } from './webrtc/client'
 import { setProjectionParams } from './utils/magvar'
+import { resumeAudioContext } from './audio/audioEngine'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
 const MSG_VISIBLE_KEY = 'tracs.msg.visible'
@@ -81,6 +82,22 @@ export function App() {
   useEffect(() => {
     if (activeProfileId) localStorage.setItem(PROFILE_STORAGE_KEY, activeProfileId)
   }, [activeProfileId])
+
+  // Chromium suspends AudioContexts until a user gesture — resume once on
+  // the first interaction anywhere in the app so alert tones can play later.
+  useEffect(() => {
+    const handler = () => {
+      resumeAudioContext()
+      window.removeEventListener('pointerdown', handler)
+      window.removeEventListener('keydown', handler)
+    }
+    window.addEventListener('pointerdown', handler)
+    window.addEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('pointerdown', handler)
+      window.removeEventListener('keydown', handler)
+    }
+  }, [])
 
   useEffect(() => {
     const handler = (e) => {
