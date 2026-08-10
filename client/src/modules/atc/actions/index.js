@@ -384,6 +384,43 @@ export function SET_ALTIM({ captures }) {
   ok()
 }
 
+// ── Altitude filters (Table 29) ─────────────────────────────────────────────
+// Values are hundreds of feet (3-digit STARS convention, e.g. "001" = 100ft).
+// U = unassociated tracks, A = associated tracks. Persisted locally like other
+// facility-wide display settings, and applied live to which tracks draw on
+// scope (see the filteredUnits memo in StarsScope.jsx).
+function fmtAltFilterPair(lo, hi) {
+  return `${String(lo).padStart(3, '0')} ${String(hi).padStart(3, '0')}`
+}
+
+export function SHOW_ALT_FILTER() {
+  const win = getDisplay().windows[WINDOW_ID]
+  const loU = win?.altFilterLowU ?? 1,   hiU = win?.altFilterHighU ?? 600
+  const loA = win?.altFilterLowA ?? 1,   hiA = win?.altFilterHighA ?? 600
+  usePreviewStore.getState().showInfo(
+    `${fmtAltFilterPair(loU, hiU)}\n${fmtAltFilterPair(loA, hiA)}`
+  )
+}
+
+export function SET_ALT_FILTER({ captures }) {
+  const loU = parseInt(captures.loU, 10), hiU = parseInt(captures.hiU, 10)
+  const loA = parseInt(captures.loA, 10), hiA = parseInt(captures.hiA, 10)
+  if (loU > hiU || loA > hiA) return err('FORMAT')
+  const patch = { altFilterLowU: loU, altFilterHighU: hiU, altFilterLowA: loA, altFilterHighA: hiA }
+  getDisplay().updateWindow(WINDOW_ID, patch)
+  saveStarsPrefs(patch)
+  ok()
+}
+
+export function SET_ALT_FILTER_ASSOC({ captures }) {
+  const loA = parseInt(captures.loA, 10), hiA = parseInt(captures.hiA, 10)
+  if (loA > hiA) return err('FORMAT')
+  const patch = { altFilterLowA: loA, altFilterHighA: hiA }
+  getDisplay().updateWindow(WINDOW_ID, patch)
+  saveStarsPrefs(patch)
+  ok()
+}
+
 export function SET_RANGE({ captures }) {
   const range = parseInt(captures.range, 10)
   if (range < 6 || range > 256) return err('INVALID RANGE')
@@ -846,6 +883,9 @@ const ACTION_MAP = {
   SET_LEADER_GLOBAL,
   TOGGLE_PTL,
   SET_ALTIM,
+  SHOW_ALT_FILTER,
+  SET_ALT_FILTER,
+  SET_ALT_FILTER_ASSOC,
   SET_RANGE,
   SET_RNG_RING,
   RELOCATE_PREVIEW,

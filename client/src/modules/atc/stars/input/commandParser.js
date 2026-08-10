@@ -45,6 +45,15 @@ const COMMANDS = [
   { id: 'TOGGLE_MODE_C',        pattern: /^MF M$/,                trigger: 'SLEW'  },
   { id: 'TOGGLE_BEACON',        pattern: /^MF B$/,                trigger: 'SLEW'  },
   { id: 'TOGGLE_FDB_OVERFLIGHT',pattern: /^MF E$/,                trigger: 'ENTER' },
+
+  // ── Altitude filters (Table 29) ───────────────────────────────────
+  // MF F<ENTER>            — show current filters in preview area
+  // MF FC(loA)(hiA)        — set associated-only filter (must precede the bare-F pattern)
+  // MF F(loU)(hiU) (loA)(hiA) — set both filters, each value 3 digits (hundreds of feet)
+  { id: 'SHOW_ALT_FILTER',      pattern: /^MF F$/,                trigger: 'ENTER' },
+  { id: 'SET_ALT_FILTER_ASSOC', pattern: /^MF FC(\d{3})(\d{3})$/, trigger: 'ENTER', captures: ['loA', 'hiA'] },
+  { id: 'SET_ALT_FILTER',       pattern: /^MF F(\d{3})(\d{3}) (\d{3})(\d{3})$/, trigger: 'ENTER',
+    captures: ['loU', 'hiU', 'loA', 'hiA'] },
   { id: 'SET_RANGE',            pattern: /^RG (\d+)$/,            trigger: 'ENTER', captures: ['range'] },
   { id: 'SET_RNG_RING',         pattern: /^RR (2|5|10|20)$/,      trigger: 'ENTER', captures: ['spacing'] },
 

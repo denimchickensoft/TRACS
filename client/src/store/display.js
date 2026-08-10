@@ -54,9 +54,12 @@ const SCOPE_DEFAULTS = {
   briteRr:   null,   // range rings
   briteCmp:  null,   // compass (not yet rendered)
   briteHst:  null,   // history trails
-  // Altitude filters (ft)
-  altFilterLow: null,
-  altFilterHigh: null,
+  // Altitude filters — hundreds of feet (STARS 3-digit convention, e.g. 001 = 100ft).
+  // U = unassociated tracks, A = associated tracks. Defaults show everything.
+  altFilterLowU: 1,
+  altFilterHighU: 600,
+  altFilterLowA: 1,
+  altFilterHighA: 600,
   qnh: '29.92',
   tdmMode: false,
   lists: {

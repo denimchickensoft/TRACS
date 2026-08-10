@@ -24,6 +24,10 @@ export const usePreviewStore = create((set, get) => ({
   setResponse: (msg) => set({ response: msg }),
   clearResponse: () => set({ response: '' }),
 
+  // Successful read-only command (e.g. MF F<ENTER>): clear the typed buffer
+  // but leave the result showing in the response line, unlike clearAfterCommand.
+  showInfo: (msg) => set({ buffer: '', response: msg }),
+
   // Called after a command executes successfully
   clearAfterCommand: () => set({ buffer: '', response: '' }),
 

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
+
+const METERS_TO_FEET = 3.28084
 import { useUnitsStore }       from '../../../store/units.js'
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../../store/atc.js'
 import { useSessionStore }     from '../../../store/session.js'
@@ -294,6 +296,29 @@ export default function StarsScope() {
     return map
   }, [visibleUnits, ownership, displayFdb, myControllerId])
 
+  // ── Altitude filter (MULTI FUNC F / FC) ───────────────────────────
+  // Suppresses tracks whose altitude falls outside the filter range for
+  // their association status (symbolMap sym === '*' means unassociated).
+  // Units with no altitude data (elevation unavailable) are never filtered.
+  const filteredUnits = useMemo(() => {
+    const loU = windowSettings?.altFilterLowU  ?? 1
+    const hiU = windowSettings?.altFilterHighU ?? 600
+    const loA = windowSettings?.altFilterLowA  ?? 1
+    const hiA = windowSettings?.altFilterHighA ?? 600
+    const out = {}
+    for (const [id, unit] of Object.entries(visibleUnits)) {
+      const alt = unit.position?.alt
+      if (alt == null) { out[id] = unit; continue }
+      const hundreds   = (alt * METERS_TO_FEET) / 100
+      const associated = symbolMap[id]?.sym !== '*'
+      const [lo, hi]   = associated ? [loA, hiA] : [loU, hiU]
+      if (hundreds >= lo && hundreds <= hi) out[id] = unit
+    }
+    return out
+  }, [visibleUnits, symbolMap,
+      windowSettings?.altFilterLowU, windowSettings?.altFilterHighU,
+      windowSettings?.altFilterLowA, windowSettings?.altFilterHighA])
+
   // ── Load presets from server on mount; apply default if set ──────
   useEffect(() => {
     usePresetsStore.getState().load().then(() => {
@@ -339,6 +364,10 @@ export default function StarsScope() {
         stcaEnabled: starsPrefs.stcaEnabled,
         simWingmenStandby: starsPrefs.simWingmenStandby,
         manualWingmen: starsPrefs.manualWingmen,
+        altFilterLowU: starsPrefs.altFilterLowU,
+        altFilterHighU: starsPrefs.altFilterHighU,
+        altFilterLowA: starsPrefs.altFilterLowA,
+        altFilterHighA: starsPrefs.altFilterHighA,
       })
     }
   }, []) // eslint-disable-line
@@ -706,7 +735,7 @@ export default function StarsScope() {
     const ctx = ctxCanvasRef.current.getContext('2d')
     drawContacts(
       ctx, view,
-      visibleUnits, historyRef.current, activeProfile.visual,
+      filteredUnits, historyRef.current, activeProfile.visual,
       symbolMap, (windowSettings?.britePos ?? 80) / 100, windowSettings?.csPos ?? 3,
       ptlOpts, windowSettings?.historyLength ?? 5, (windowSettings?.briteHst ?? 80) / 100,
       blinkingUids, blinkOn, poReceivingUids, highlightedUids, wingmanIds,
@@ -720,7 +749,7 @@ export default function StarsScope() {
       ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
     }
 
-  }, [visibleUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick,
+  }, [filteredUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick,
       myControllerId, positionName,
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
@@ -1233,7 +1262,7 @@ export default function StarsScope() {
         <canvas ref={rblCanvasRef}     className="atc-layer" />
 
         <DatablockOverlay
-          units={visibleUnits} view={view} visual={activeProfile.visual}
+          units={filteredUnits} view={view} visual={activeProfile.visual}
           ldrLength={ldrLength} ldrAngleDeg={ldrAngleDeg}
           briteFdb={briteFdb} briteLdb={briteLdb}
           csDatablocks={csDatablocks}

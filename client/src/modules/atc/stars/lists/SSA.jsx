@@ -25,7 +25,10 @@ export function SSA() {
 
   if (!windowSettings || !activeProfile) return null
 
-  const { rangeNm, ptlLength, qnh, lists, briteLst, csLists, tdmMode } = windowSettings
+  const {
+    rangeNm, ptlLength, qnh, lists, briteLst, csLists, tdmMode,
+    altFilterLowU, altFilterHighU, altFilterLowA, altFilterHighA,
+  } = windowSettings
   const pos    = lists?.ssa ?? { xPct: 2, yPct: 2 }
   const brite  = (briteLst ?? 80) / 100
   const color  = activeProfile.visual?.colors?.pdbText ?? '#00cc00'
@@ -40,11 +43,15 @@ export function SSA() {
     </>
   )
 
+  const pad3 = (n) => String(n ?? 0).padStart(3, '0')
+  const altFilterLine =
+    `${pad3(altFilterLowU)} ${pad3(altFilterHighU)} U ${pad3(altFilterLowA)} ${pad3(altFilterHighA)} A`
+
   const rows = [
     `${displayTime} ${qnhStr}`,
     statusLine,
     `${rangeNm}NM PTL: ${Number(ptlLength).toFixed(1)}`,
-    `001 600 U 001 600 A`,
+    altFilterLine,
     `${facilityId || '----'} ${qnhStr}`,
   ]
 

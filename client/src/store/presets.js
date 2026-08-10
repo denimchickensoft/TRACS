@@ -10,7 +10,7 @@ const PRESET_FIELDS = [
   'briteDcb', 'briteBkg', 'briteMapA', 'briteMapB', 'aspColorIdx',
   'briteFdb', 'briteLst', 'britePos', 'briteLdb', 'briteRr', 'briteCmp', 'briteHst',
   'csDatablocks', 'csLists', 'csDcb', 'csTools', 'csPos', 'csMap',
-  'altFilterLow', 'altFilterHigh',
+  'altFilterLowU', 'altFilterHighU', 'altFilterLowA', 'altFilterHighA',
   'qnh',
   'lists',
   'mapsVisible',
