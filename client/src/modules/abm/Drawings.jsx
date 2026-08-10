@@ -166,6 +166,7 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const renameLayer       = useAbmDrawingsStore(s => s.renameLayer)
   const updateShapeParams = useAbmDrawingsStore(s => s.updateShapeParams)
   const clearTheatre      = useAbmDrawingsStore(s => s.clearTheatre)
+  const toggleAll         = useAbmDrawingsStore(s => s.toggleAll)
 
   // Same palette AbmScope's drawAbmCustomDrawings call resolves against
   // (useAbmAirspaceStore's paletteIdx, hydrated from abmPrefs there) — kept
@@ -305,14 +306,25 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
           <div className="dr-row dr-row-header">
             <span className="dr-col-label" title={manualOrder ? 'Drag to reorder (draw order, back to front)' : 'Clear sort to drag-reorder'} />
             {SORT_COLUMNS.map(c => (
-              <span
-                key={c.key}
-                className="dr-col-label dr-col-sort"
-                onClick={() => handleSort(c.key)}
-                title={`Sort by ${c.key === 'label' ? 'always-show-label' : c.label}`}
-              >
-                {c.label}{sortKey === c.key ? (sortDir === 1 ? ' ▲' : ' ▼') : ''}
-              </span>
+              c.key === 'visible' ? (
+                <input
+                  key={c.key}
+                  type="checkbox"
+                  checked={layers.some(l => l.visible)}
+                  ref={el => { if (el) el.indeterminate = layers.some(l => l.visible) && layers.some(l => !l.visible) }}
+                  onChange={() => toggleAll(theatre)}
+                  title="Toggle all drawings visible/hidden (.custom)"
+                />
+              ) : (
+                <span
+                  key={c.key}
+                  className="dr-col-label dr-col-sort"
+                  onClick={() => handleSort(c.key)}
+                  title={`Sort by ${c.key === 'label' ? 'always-show-label' : c.label}`}
+                >
+                  {c.label}{sortKey === c.key ? (sortDir === 1 ? ' ▲' : ' ▼') : ''}
+                </span>
+              )
             ))}
             <span className="dr-col-label" title="Parameters / feature count">INFO</span>
           </div>

@@ -712,9 +712,9 @@ export function CLEAR_FIX() {
   ok()
 }
 
-// .LABELS — toggles the LBL DCB MAP button (store/maps.js visible.lbl),
-// same store-driven persistence useMapsStore.toggleMap already gives every
-// other map-category toggle.
+// .LABELS/.LBL/.LABEL — toggles the LBL DCB MAP button (store/maps.js
+// visible.lbl), same store-driven persistence useMapsStore.toggleMap already
+// gives every other map-category toggle.
 export function TOGGLE_LABELS() {
   useMapsStore.getState().toggleMap('lbl')
   ok()

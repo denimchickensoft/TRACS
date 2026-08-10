@@ -1719,12 +1719,13 @@ export default function AbmScope() {
       return
     }
 
-    // .labels — name-label toggle for both airspace and custom-drawing
-    // layers. Airspace labels are drawn only for categories currently on
-    // via asVisible (.tma/.classc/etc); custom-drawing labels only for
-    // features that have one (parseGeojson's title/name convention). Either
-    // way this is purely a "show text too" layer on top of the geometry.
-    if (str === '.labels') {
+    // .labels/.lbl/.label — name-label toggle for both airspace and
+    // custom-drawing layers. Airspace labels are drawn only for categories
+    // currently on via asVisible (.tma/.classc/etc); custom-drawing labels
+    // only for features that have one (parseGeojson's title/name
+    // convention). Either way this is purely a "show text too" layer on top
+    // of the geometry.
+    if (str === '.labels' || str === '.lbl' || str === '.label') {
       const next = !labelsVisible
       setLabelsVisible(next)
       saveAbmPrefs({ labelsVisible: next })

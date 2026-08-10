@@ -233,15 +233,18 @@ for (const [verb, cat] of Object.entries(AIRSPACE_CMD_CATEGORY)) {
   })
 }
 
-// .LABELS — name-label toggle for airspace/fix layers (same "show text too"
-// role as ABM's .labels).
-register('.LABELS', () => {
+// .LABELS/.LBL/.LABEL — name-label toggle for airspace/fix layers (same
+// "show text too" role as ABM's .labels), interchangeable aliases.
+function toggleLabels() {
   const ws   = useDisplayStore.getState().windows[WINDOW_ID]
   const next = !(ws?.labelsVisible ?? false)
   useDisplayStore.getState().updateWindow(WINDOW_ID, { labelsVisible: next })
   saveCatccPrefs({ labelsVisible: next })
   return [`LABELS ${next ? 'ON' : 'OFF'}`]
-})
+}
+register('.LABELS', toggleLabels)
+register('.LBL', toggleLabels)
+register('.LABEL', toggleLabels)
 
 // .FIXES — theatre fixes point layer (store/navdata.js, same data STARS/ABM use).
 register('.FIXES', () => {

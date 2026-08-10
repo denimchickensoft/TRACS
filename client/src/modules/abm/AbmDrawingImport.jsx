@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { unzipSync } from 'fflate'
 import { parseGeojson } from '../../utils/parseGeojson.js'
+import { parseMiz } from '../../utils/parseMiz.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import './AbmMissionImport.css'
 
@@ -24,6 +25,21 @@ async function expandZip(file) {
   return Object.entries(entries)
     .filter(([entryName]) => /\.(nd)?(geo)?json$/i.test(entryName))
     .map(([entryName, data]) => ({ name: entryName, text: decoder.decode(data) }))
+}
+
+// A .miz is itself a zip whose "mission" entry is a Lua table, not GeoJSON
+// — parseMiz.js reads its trigger-zone and native-Drawing geometry and
+// returns one already-parsed {name, features} group per source (ZONES,
+// plus one per ME Drawing layer that has content). Each group becomes its
+// own pending row, same as a multi-entry .zip bundle.
+async function expandMiz(file, theatre) {
+  const buf = new Uint8Array(await file.arrayBuffer())
+  const entries = unzipSync(buf)
+  const missionEntry = entries['mission']
+  if (!missionEntry) throw new Error('No "mission" file found inside .miz')
+  const missionText = new TextDecoder().decode(missionEntry)
+  const base = file.name.replace(/\.miz$/i, '')
+  return parseMiz(missionText, theatre).map(g => ({ name: `${base} ${g.name}`, features: g.features }))
 }
 
 function geometrySummary(features) {
@@ -53,7 +69,13 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
 
     const items = []
     for (const file of files) {
-      if (/\.zip$/i.test(file.name)) {
+      if (/\.miz$/i.test(file.name)) {
+        try {
+          items.push(...await expandMiz(file, theatre))
+        } catch (e) {
+          items.push({ name: file.name, error: e.message ?? 'Bad .miz file' })
+        }
+      } else if (/\.zip$/i.test(file.name)) {
         try {
           items.push(...await expandZip(file))
         } catch (e) {
@@ -68,6 +90,7 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       const name = item.name.replace(/\.(nd)?(geo)?json$/i, '')
       if (item.error) return { id, name, features: null, error: item.error }
+      if (item.features) return { id, name, features: item.features, error: null }
       try {
         const text = item.text ?? await readFileText(item.file)
         return { id, name, features: parseGeojson(text), error: null }
@@ -77,7 +100,7 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
     }))
     setPending(results)
     setPhase('preview')
-  }, [])
+  }, [theatre])
 
   // Dropped directly on the Drawings panel (Drawings.jsx) rather than
   // inside this modal's own dropzone — skip straight to parsing instead of
@@ -100,6 +123,31 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
   }
   const removeRow = (id) => {
     setPending(rows => rows.filter(r => r.id !== id))
+  }
+
+  // Explodes one multi-shape row (e.g. a .miz's "ZONES" or "COMMON" group)
+  // into one row per feature, each keeping only its own geometry. Each
+  // resulting row imports as its own single-feature layer, so
+  // store/abmDrawings.js's addLayer seeds that layer's color from that one
+  // shape's own `properties.stroke` — the only way to retain each shape's
+  // individual DCS-authored color through a layer model whose colorOverride
+  // is otherwise all-or-nothing per layer (see addLayer's own comment).
+  // Opt-in and per-row rather than automatic, since a mission's zone table
+  // can run into the hundreds (Foothold: 828) — splitting only blows up
+  // the preview list for groups the controller actually wants split.
+  const splitRow = (id) => {
+    setPending(rows => {
+      const idx = rows.findIndex(r => r.id === id)
+      if (idx < 0) return rows
+      const row = rows[idx]
+      const split = row.features.map((f, i) => ({
+        id:       `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${i}`,
+        name:     (f.label?.[0] ?? `${row.name} ${i + 1}`).slice(0, 40),
+        features: [f],
+        error:    null,
+      }))
+      return [...rows.slice(0, idx), ...split, ...rows.slice(idx + 1)]
+    })
   }
 
   const importable = pending.filter(r => !r.error)
@@ -128,12 +176,12 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
             onClick={() => fileRef.current?.click()}
           >
             <span className="mi-drop-icon">⬆</span>
-            <span className="mi-drop-label">Drop .geojson/.json/.ndgeojson file(s) or a .zip bundle</span>
+            <span className="mi-drop-label">Drop .geojson/.json/.ndgeojson, a .zip bundle, or a .miz mission</span>
             <span className="mi-drop-sub">or click to browse — multiple files supported</span>
             <input
               ref={fileRef}
               type="file"
-              accept=".geojson,.json,.ndgeojson,.ndjson,.zip,*"
+              accept=".geojson,.json,.ndgeojson,.ndjson,.zip,.miz,*"
               multiple
               style={{ display: 'none' }}
               onChange={onFileChange}
@@ -142,7 +190,7 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
         )}
 
         {phase === 'loading' && (
-          <div className="mi-status">Parsing GeoJSON…</div>
+          <div className="mi-status">Parsing…</div>
         )}
 
         {phase === 'preview' && (
@@ -163,6 +211,16 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
                   <span className={['mi-drawing-summary', row.error ? 'error' : ''].join(' ')}>
                     {row.error ?? geometrySummary(row.features)}
                   </span>
+                  {!row.error && row.features.length > 1 && (
+                    <button
+                      className="mi-drawing-split"
+                      onClick={() => splitRow(row.id)}
+                      title="Split into one layer per shape, keeping each shape's own DCS color"
+                    >
+                      Split ({row.features.length})
+                    </button>
+                  )}
+                  {(row.error || row.features.length <= 1) && <span />}
                   <button className="mi-drawing-remove" onClick={() => removeRow(row.id)} title="Remove">×</button>
                 </div>
               ))}
