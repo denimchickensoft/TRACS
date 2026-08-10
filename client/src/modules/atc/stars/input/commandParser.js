@@ -190,6 +190,38 @@ const COMMANDS = [
   { id: 'BARE_SLEW',            pattern: /^$/,                    trigger: 'SLEW'  },
 ]
 
+// ── Known command verbs ──────────────────────────────────────────────────
+// Used to distinguish an unrecognized entry (INVALID INPUT) from a recognized
+// command with bad arguments/format — wrong digit count, missing space, bad
+// value (FORMAT) — when nothing in COMMANDS matches on ENTER. Derived from
+// the literal keyword each command family starts with; context-free shorthand
+// (bare digits, TCP shorthand, scratchpad shorthand, altitude shorthand) has
+// no fixed verb and is excluded, so those fall back to INVALID INPUT.
+const WORD_VERBS = ['MF', 'RG', 'RR', 'LD', 'IC', 'TC', 'HO', 'MIN', 'UN']
+const DOT_VERBS = [
+  'ALTIM', 'QNH', 'ASPCOLORS', 'REFRESH', 'DBCA', 'LABELS', 'FIXES', 'FILL',
+  'CA', 'WNG', 'ASP', 'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
+  'CLASSA', 'CLASSB', 'CLASSC', 'CLASSD', 'CLASSE', 'CLASSF', 'CLASSG',
+  'MSA', 'HOLDS', 'RELIEF', 'MVA', 'SAT', 'COORDS', 'FIND', 'FIX', 'PROC',
+  'FP', 'RENAME',
+]
+
+/**
+ * Whether the trimmed/uppercased buffer starts with a recognized command
+ * verb, even though it didn't match any full pattern in COMMANDS.
+ *
+ * @param {string} trimmed  trimmed, uppercased buffer
+ */
+export function looksLikeKnownCommand(trimmed) {
+  if (trimmed.startsWith('*T')) return true
+  if (trimmed.startsWith('.')) {
+    const m = trimmed.match(/^\.([A-Z]+)/)
+    return !!m && DOT_VERBS.includes(m[1])
+  }
+  const m = trimmed.match(/^([A-Z]+)(?: |$)/)
+  return !!m && WORD_VERBS.includes(m[1])
+}
+
 /**
  * Match the current buffer against the command table.
  *

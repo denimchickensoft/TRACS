@@ -367,16 +367,16 @@ export function SET_ALTIM({ captures }) {
   let display
   if (raw.includes('.')) {
     const val = parseFloat(raw)
-    if (val < 26 || val > 32) return err('INVALID ALTIM')
+    if (val < 26 || val > 32) return err('FORMAT')
     display = val.toFixed(2)
   } else {
     const n = parseInt(raw, 10)
     if (n >= 2000) {
       const val = n / 100
-      if (val < 26 || val > 32) return err('INVALID ALTIM')
+      if (val < 26 || val > 32) return err('FORMAT')
       display = val.toFixed(2)
     } else {
-      if (n < 800 || n > 1100) return err('INVALID ALTIM')
+      if (n < 800 || n > 1100) return err('FORMAT')
       display = String(n)
     }
   }

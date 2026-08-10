@@ -53,7 +53,7 @@ import { CoastList }            from './lists/CoastList.jsx'
 import { AlertList }            from './lists/AlertList.jsx'
 import { VFRList }              from './lists/VFRList.jsx'
 import { resolveSlew }          from './input/slewResolver.js'
-import { parseCommand }         from './input/commandParser.js'
+import { parseCommand, looksLikeKnownCommand } from './input/commandParser.js'
 import { dispatch as dispatchAction, INIT_CNTL, ackConflict } from '../actions/index.js'
 import { useStcaStore }         from '../../../store/stca.js'
 import { computeConflicts }     from './stca/computeConflicts.js'
@@ -799,7 +799,10 @@ export default function StarsScope() {
     const buffer  = usePreviewStore.getState().buffer
     const parsed  = parseCommand(buffer, trigger)
     if (!parsed) {
-      if (trigger === 'ENTER') usePreviewStore.getState().setResponse('INVALID INPUT')
+      if (trigger === 'ENTER') {
+        const trimmed = buffer.trim().toUpperCase()
+        usePreviewStore.getState().setResponse(looksLikeKnownCommand(trimmed) ? 'FORMAT' : 'INVALID INPUT')
+      }
       return
     }
 

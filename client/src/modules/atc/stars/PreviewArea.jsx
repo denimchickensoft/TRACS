@@ -44,7 +44,7 @@ export function PreviewArea({ defaultX = 12 }) {
       minWidth:      '10ch',
     }}>
       {response && (
-        <div style={{ color: '#FF4444' }}>{response}</div>
+        <div>{response}</div>
       )}
       <div>
         {buffer ? buffer.replace(/^MF /, 'F') : '\u00A0'}
