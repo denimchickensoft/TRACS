@@ -13,6 +13,7 @@ const https  = require('https')
 const http   = require('http')
 const fs     = require('fs')
 const path   = require('path')
+const { bboxOf, bboxIntersects, extractLandRings: clipLandRings } = require('./lib/polygonClip.js')
 
 const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const CACHE_DIR     = path.join(__dirname, '../navdata/cache')
@@ -49,21 +50,11 @@ function fetch(url, depth = 0) {
 }
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
-
-function bboxOf(coords) {
-  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity
-  for (const [lon, lat] of coords) {
-    if (lon < minLon) minLon = lon
-    if (lon > maxLon) maxLon = lon
-    if (lat < minLat) minLat = lat
-    if (lat > maxLat) maxLat = lat
-  }
-  return [minLon, minLat, maxLon, maxLat]
-}
-
-function bboxIntersects(a, b) {
-  return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1]
-}
+// bboxOf/bboxIntersects/clipRingToBbox/extractLandRings live in
+// lib/polygonClip.js (shared with buildAbmBasemap.js's land-fill layer,
+// 2026-08-11) — this file only keeps the logic that's still specific to it:
+// extractSegments (boundaries/coastlines, whole-feature filtering, no ring
+// clipping needed since those are already small pre-chunked features).
 
 function extractSegments(features, theatreBbox) {
   const [tMinLon, tMinLat, tMaxLon, tMaxLat] = theatreBbox
@@ -95,58 +86,10 @@ function extractSegments(features, theatreBbox) {
 // meridian through tmForward risks numerically undefined output that
 // corrupts fillPolygonEvenOdd's scanline fill (see 2026-08-03 discussion).
 // So land rings get genuinely clipped to the padded theatre bbox here, in
-// lat/lon space, before ever reaching the projection step — standard
-// Sutherland–Hodgman against the (convex) rectangle, run once per axis.
-function clipEdge(points, inside, intersect) {
-  if (!points.length) return []
-  const out = []
-  const n = points.length
-  for (let i = 0; i < n; i++) {
-    const curr = points[i]
-    const prev = points[(i - 1 + n) % n]
-    const currIn = inside(curr)
-    if (currIn !== inside(prev)) out.push(intersect(prev, curr))
-    if (currIn) out.push(curr)
-  }
-  return out
-}
-
-function clipRingToBbox(ring, bbox) {
-  const [xmin, ymin, xmax, ymax] = bbox
-  let pts = ring
-  pts = clipEdge(pts, p => p[0] >= xmin, (a, b) => [xmin, a[1] + (xmin - a[0]) * (b[1] - a[1]) / (b[0] - a[0])])
-  pts = clipEdge(pts, p => p[0] <= xmax, (a, b) => [xmax, a[1] + (xmax - a[0]) * (b[1] - a[1]) / (b[0] - a[0])])
-  pts = clipEdge(pts, p => p[1] >= ymin, (a, b) => [a[0] + (ymin - a[1]) * (b[0] - a[0]) / (b[1] - a[1]), ymin])
-  pts = clipEdge(pts, p => p[1] <= ymax, (a, b) => [a[0] + (ymax - a[1]) * (b[0] - a[0]) / (b[1] - a[1]), ymax])
-  return pts
-}
-
-// Every ring (outer boundaries and holes alike) clipped independently and
-// handed back flat — fillPolygonEvenOdd doesn't need holes paired with their
-// own outer ring, just the full set together in one call, since even-odd
-// parity across disjoint real-world landmasses/holes works out the same
-// either way (see 2026-08-03 discussion).
-function extractLandRings(features, theatreBbox) {
-  const [tMinLon, tMinLat, tMaxLon, tMaxLat] = theatreBbox
-  const padded = [tMinLon - BBOX_PAD, tMinLat - BBOX_PAD, tMaxLon + BBOX_PAD, tMaxLat + BBOX_PAD]
-  const out = []
-  for (const feat of features) {
-    const geom = feat.geometry
-    if (!geom) continue
-    const polys = geom.type === 'Polygon'      ? [geom.coordinates]
-                : geom.type === 'MultiPolygon' ? geom.coordinates
-                : []
-    for (const rings of polys) {
-      for (const ring of rings) {
-        const bbox = bboxOf(ring)
-        if (!bboxIntersects(bbox, padded)) continue
-        const clipped = clipRingToBbox(ring, padded)
-        if (clipped.length >= 3) out.push(clipped)
-      }
-    }
-  }
-  return out
-}
+// lat/lon space, before ever reaching the projection step (clipLandRings,
+// from lib/polygonClip.js — standard Sutherland–Hodgman against the convex
+// rectangle). That helper takes an already-padded bbox; padding by
+// BBOX_PAD happens here, at the one call site in main() below.
 
 // ── Source data loading (download once, cache locally) ────────────────────────
 
@@ -188,9 +131,11 @@ async function main() {
 
   for (const [name, conf] of entries) {
     const t0 = process.hrtime.bigint()
+    const [tMinLon, tMinLat, tMaxLon, tMaxLat] = conf.bbox
+    const paddedBbox = [tMinLon - BBOX_PAD, tMinLat - BBOX_PAD, tMaxLon + BBOX_PAD, tMaxLat + BBOX_PAD]
     const boundaries = extractSegments(boundaryFeatures, conf.bbox)
     const coastlines  = extractSegments(coastlineFeatures, conf.bbox)
-    const land        = extractLandRings(landFeatures, conf.bbox)
+    const land        = clipLandRings(landFeatures, paddedBbox)
 
     const outDir = path.join(CACHE_DIR, conf.folder)
     fs.mkdirSync(outDir, { recursive: true })

@@ -29,7 +29,22 @@ try {
 const RES_DEG      = 0.01         // DEM resolution (matches buildElevationDb)
 const STEP_DEG     = 0.02         // working-grid spacing (~1.2 NM)
 const BAND_FT      = Number(process.env.RELIEF_BAND) || 500   // elevation band / contour step
-const PAD_NM       = 2            // small mosaic pad so edge nodes have data
+const MOSAIC_PAD_NM = 2           // small extra mosaic-only pad so edge nodes of the
+                                   // (already FIELD_PAD_NM-padded, see below) field
+                                   // have real data on both sides to sample/interpolate
+
+// 2026-08-11 fix: relief's own contour data used to be computed over the exact,
+// unpadded theatre bbox — but every *other* layer that shares that bbox extends
+// beyond it (buildGeoData.js pads +1°; buildAbmBasemap.js's canvas itself pads
+// +15NM, "PAD_NM" there, so panning past the edge isn't blank). The gap between
+// relief's zero-pad edge and those wider edges reads as land (correctly drawn by
+// geo.json) with an abrupt, dead-straight cutoff to zero relief shading — often
+// mid-terrain, not at any real coastline or feature boundary, once a theatre's
+// bbox edge happens to land inside a mountain range instead of open desert/sea.
+// FIELD_PAD_NM must stay >= buildAbmBasemap.js's own PAD_NM (currently 15NM) so
+// the basemap's visible canvas is never wider than what relief actually covers;
+// kept a bit larger for headroom. If that basemap constant changes, revisit this.
+const FIELD_PAD_NM = 20
 const SIMPLIFY_NM  = 0.3          // Douglas–Peucker tolerance for contour rings
 const MIN_AREA_NM2 = 2            // drop polygons/holes smaller than this
 const MAX_ELEV_M   = 9000         // clamp voids/NODATA (Everest ≈ 8849 m)
@@ -43,6 +58,20 @@ const PREVIEW_DIR   = path.join(__dirname, '../data/relief-preview')
 
 const snap01 = (x) => Math.round(x * 100) / 100
 
+// Expands a [lonMin,latMin,lonMax,latMax] bbox by `nm` nautical miles on every
+// side (longitude scaled by cosLat, same approach buildMosaic() already used
+// for its own internal pad below). Used to grow the theatre bbox by
+// FIELD_PAD_NM *before* it's handed to buildMosaic/computeField/vectorize, so
+// relief's actual contour data — not just the mosaic's internal lookup buffer
+// — extends past the raw bbox. See FIELD_PAD_NM's comment for why.
+function padBbox([lonMin, latMin, lonMax, latMax], nm) {
+  const maxAbsLat = Math.max(Math.abs(latMin), Math.abs(latMax))
+  const cosLat    = Math.max(0.2, Math.cos(maxAbsLat * D2R))
+  const latPad    = nm / 60
+  const lonPad    = nm / 60 / cosLat
+  return [lonMin - lonPad, latMin - latPad, lonMax + lonPad, latMax + latPad]
+}
+
 // ── DEM mosaic ──────────────────────────────────────────────────────────────
 // Assemble the 1°×1° tiles covering the padded bbox into one Int16Array at
 // RES_DEG. Row 0 = north edge (latMaxP), col 0 = west edge (lonMinP). Missing
@@ -52,8 +81,8 @@ function buildMosaic(db, bbox) {
 
   const maxAbsLat = Math.max(Math.abs(latMin), Math.abs(latMax))
   const cosLat    = Math.max(0.2, Math.cos(maxAbsLat * D2R))
-  const latPad    = PAD_NM / 60
-  const lonPad    = PAD_NM / 60 / cosLat
+  const latPad    = MOSAIC_PAD_NM / 60
+  const lonPad    = MOSAIC_PAD_NM / 60 / cosLat
 
   const lonMinP = snap01(Math.floor((lonMin - lonPad) * 100) / 100)
   const lonMaxP = snap01(Math.ceil((lonMax + lonPad) * 100) / 100)
@@ -273,13 +302,18 @@ async function main() {
   let anyVectorized = false
   for (const [name, conf] of entries) {
     const t0 = process.hrtime.bigint()
-    const mosaic = buildMosaic(db, conf.bbox)
-    const field  = computeField(mosaic, conf.bbox)
+    // Field/contour data is computed over conf.bbox expanded by FIELD_PAD_NM,
+    // not the raw theatre bbox — see FIELD_PAD_NM's comment above for why
+    // (relief used to stop dead at the exact bbox edge while geo.json's land
+    // and the basemap's own canvas both extend past it).
+    const fieldBbox = padBbox(conf.bbox, FIELD_PAD_NM)
+    const mosaic = buildMosaic(db, fieldBbox)
+    const field  = computeField(mosaic, fieldBbox)
 
     writeBMP(path.join(PREVIEW_DIR, `${conf.folder}.bmp`), field.fw, field.fh,
       (x, y) => hypso(field.elev[y * field.fw + x]))
 
-    const regions = await vectorize(field, conf.bbox)
+    const regions = await vectorize(field, fieldBbox)
     if (regions) {
       anyVectorized = true
       const outDir = path.join(CACHE_DIR, conf.folder)

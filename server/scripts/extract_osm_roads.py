@@ -125,6 +125,16 @@ EXTRACTS = [
     # checking; Geofabrik's american-oceania extract covers Guam/CNMI at
     # only 5.1MB, effectively free.
     ('https://download.geofabrik.de/australia-oceania/american-oceania-latest.osm.pbf', 'american-oceania'),
+    # Afghanistan - bbox [60,23,75,39] extends well past the country's own
+    # borders (south to lat 23, deep into Pakistan) per explicit direction
+    # that these theatre bboxes aren't meant to track real country borders.
+    # Iran is already covered above (Syria/PersianGulf). Not covered: the
+    # Turkmenistan/Uzbekistan/Tajikistan slivers along the northern edge and
+    # China's Wakhan corridor tip - thin border strips with sparse roads,
+    # skipped rather than pulling in four more country-sized downloads for a
+    # few hundred meters of edge coverage each.
+    ('https://download.geofabrik.de/asia/afghanistan-latest.osm.pbf', 'afghanistan'),
+    ('https://download.geofabrik.de/asia/pakistan-latest.osm.pbf', 'pakistan'),
 ]
 
 ROAD_CLASSES = {'motorway', 'trunk', 'primary', 'secondary', 'tertiary'}

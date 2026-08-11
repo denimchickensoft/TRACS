@@ -5,7 +5,7 @@
   },
   "PersianGulf": {
     "folder": "persian_gulf",
-    "bbox": [48.0, 20.0, 63.0, 31.5]
+    "bbox": [46.0, 20.0, 65.0, 33.0]
   },
   "Syria": {
     "folder": "syria",
@@ -38,9 +38,13 @@
     "folder": "kola",
     "bbox": [12.0, 63.0, 41.0, 73.0]
   },
+  "Iraq": {
+    "folder": "iraq",
+    "bbox": [38.0, 25.0, 53.0, 38.0]
+  },
   "Afghanistan": {
     "folder": "afghanistan",
-    "bbox": [58.0, 29.0, 76.0, 40.0]
+    "bbox": [60.0, 23.0, 75.0, 39.0]
   },
   "Germany": {
     "folder": "germany",

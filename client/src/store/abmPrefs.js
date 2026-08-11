@@ -24,9 +24,10 @@ const DEFAULTS = {
   ringSpacingNm:  20,
   mgrsVisible:    false,
   townsVisible:   false,
-  basemapVisible: false,
+  terrainVisible: false, // .terrain — relief wash, formerly called "basemap" until 2026-08-11
   waterVisible:   false,
   roadsVisible:   false,
+  basemapVisible: false, // .base — land/sea silhouette, formerly called "landfill" until 2026-08-11
   fixesVisible:   false,
   navaidsVisible: false,
   runwaysVisible: false,

@@ -219,6 +219,7 @@ const THEATRE_DEFAULTS = {
   Kola:           { lat: 69.50,  lng: 33.00,  hdg: Math.PI / 2, bullseyeLat: 69.20,  bullseyeLng: 32.50  },
   Afghanistan:    { lat: 34.50,  lng: 69.00,  hdg: Math.PI / 2, bullseyeLat: 34.50,  bullseyeLng: 69.20  },
   Germany:        { lat: 51.50,  lng: 10.00,  hdg: Math.PI / 2, bullseyeLat: 51.30,  bullseyeLng: 10.50  },
+  Iraq:           { lat: 33.26,  lng: 44.23,  hdg: Math.PI / 2, bullseyeLat: 33.50,  bullseyeLng: 44.40  },
 }
 
 const serverStartWallMs = Date.now()

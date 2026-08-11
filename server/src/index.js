@@ -114,9 +114,11 @@ app.get('/api/airports/polygons/:theatre', (req, res) => {
 
 // GET /api/abm/raster/:theatre/:layer — baked raster metadata for one of the
 // ABM raster layers ({ originLat, originLng, originPx, originPy, nmPerPixel,
-// width, height }) — layer is one of basemap (.map)/water (.water)/roads
-// (.roads); see buildAbmBasemap.js / client's drawAbmRaster.js.
-const ABM_RASTER_LAYERS = new Set(['basemap', 'water', 'roads'])
+// width, height }) — layer is one of basemap (.base)/terrain (.terrain)/
+// water (.water)/roads (.roads); see buildAbmBasemap.js / client's
+// drawAbmRaster.js. basemap/terrain renamed 2026-08-11 (formerly
+// landfill/basemap respectively).
+const ABM_RASTER_LAYERS = new Set(['basemap', 'terrain', 'water', 'roads'])
 app.get('/api/abm/raster/:theatre/:layer', (req, res) => {
   const { theatre, layer } = req.params
   if (!ABM_RASTER_LAYERS.has(layer)) return res.status(404).json({ error: `unknown raster layer: ${layer}` })

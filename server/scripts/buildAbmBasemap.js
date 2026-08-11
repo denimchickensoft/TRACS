@@ -1,23 +1,31 @@
 'use strict'
 
-// Bakes three flat RGBA rasters per theatre — basemap (terrain hypsometric
-// wash + sea + coastlines/country borders), water (rivers/lakes), and roads
-// (roads/rail) — laid out in that theatre's own unrotated TM nm-plane. The
-// client places each with a single translate/rotate/scale (see
-// drawAbmRaster.js) instead of reprojecting every pixel live the way the
-// vector layers reproject every point — see the 2026-07-29 discussion on why
-// Leaflet doesn't fit under ABM's TM + declination-rotated projection.
+// Bakes four flat RGBA rasters per theatre — basemap (land/sea silhouette,
+// wide/coarse), terrain (hypsometric relief wash + coastlines/country
+// borders, tight/detailed), water (rivers/lakes), and roads (roads/rail) —
+// laid out in that theatre's own unrotated TM nm-plane. The client places
+// each with a single translate/rotate/scale (see drawAbmRaster.js) instead
+// of reprojecting every pixel live the way the vector layers reproject every
+// point — see the 2026-07-29 discussion on why Leaflet doesn't fit under
+// ABM's TM + declination-rotated projection.
 //
-// water/roads are separate images (not baked into basemap) so they can be
-// toggled independently (.water / .roads vs .map) — both transparent outside
-// their own features so whatever's underneath still shows through.
+// Draw order (client, furthest-back first): basemap, terrain, water, roads,
+// then the live vector layers (relief overlay, geo, etc). basemap/terrain
+// were named "landfill"/"basemap" respectively until 2026-08-11 — renamed
+// once terrain stopped being the sole land/sea source (see terrain's own
+// comment below) and basemap graduated from a theatre-local preview to the
+// layer that's actually responsible for land/sea color everywhere.
 //
-// Reuses geo.json (Natural Earth boundaries/coastlines) and relief.json
-// (SRTM elevation contours) — both already built for every theatre — plus
-// mapcontext.json (Geofabrik roads/rail + Natural Earth water) wherever that
-// happens to exist (currently Syria only; water/roads are simply skipped
-// elsewhere, and coverage can be extended later without touching this
-// script).
+// water/roads are separate images (not baked into basemap/terrain) so they
+// can be toggled independently (.water / .roads vs .map) — both transparent
+// outside their own features so whatever's underneath still shows through.
+//
+// Reuses geo.json (Natural Earth boundaries/coastlines), relief.json (SRTM
+// elevation contours), and the raw world land.geojson (all already built by
+// buildGeoData.js) — plus mapcontext.json (Geofabrik roads/rail + Natural
+// Earth water) wherever that happens to exist (water/roads are simply
+// skipped elsewhere, and coverage can be extended later without touching
+// this script).
 //
 // Usage:
 //   node server/scripts/buildAbmBasemap.js            # all theatres
@@ -27,17 +35,26 @@ const fs   = require('fs')
 const path = require('path')
 const { encodePNG } = require('./lib/pngEncoder.js')
 const { fillPolygonEvenOdd, strokeLine } = require('./lib/rasterCore.js')
+const { extractLandRings } = require('./lib/polygonClip.js')
 
 const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const PARAMS_PATH   = path.join(__dirname, '../navdata/config/projection_params.json')
 const CACHE_DIR     = path.join(__dirname, '../navdata/cache')
+// Raw, full-world Natural Earth land polygons (same source buildGeoData.js
+// downloads to here) — read directly for the basemap layer below, since the
+// per-theatre geo.json it also produces is only clipped to bbox+1°, far too
+// narrow for basemap's own much wider reach.
+const WORLD_LAND_PATH = path.join(__dirname, '../data/geo/land.geojson')
 
 const M_PER_NM = 1852
 const MAX_DIM  = 4800 // longer image axis, px — draw cost is a flat GPU blit regardless of
                        // source resolution, so this is a memory/build-time tradeoff, not a
                        // frame-rate one (2026-07-29 discussion) — doubled from 2400 for sharper
                        // roads/coastlines; well under typical 8192px+ texture-size limits
-const PAD_NM   = 15   // margin beyond bbox so panning slightly past the edge isn't blank
+const PAD_NM   = 15   // margin beyond bbox so panning slightly past the edge isn't blank —
+                       // buildReliefMap.js's FIELD_PAD_NM (2026-08-11) must stay >= this or
+                       // the relief wash goes dead/flat inside this canvas's own outer ring;
+                       // raise that constant too if this one grows
 
 // ── Palette ───────────────────────────────────────────────────────────────
 // Terrain bands painted opaque, lowest elevation first — each higher band's
@@ -100,7 +117,7 @@ function writeRaster(dataDir, layerName, buf, width, height, meta) {
   return png.length
 }
 
-async function buildTheatre(name, conf, params, tm) {
+async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   if (!params) {
     console.log(`${name.padEnd(16)} skipped — no TM projection params`)
     return
@@ -146,8 +163,10 @@ async function buildTheatre(name, conf, params, tm) {
   // top row first) — north-up, unrotated. The client applies declination
   // rotation itself at render time (drawAbmRaster.js), the same way
   // projection.js rotates vector points, so this file never needs to know
-  // about declination at all. Shared by all three rasters below, so they
-  // stay pixel-registered with each other (and with the live vector layers).
+  // about declination at all. Shared by terrain/water/roads below (all
+  // three at the same tight bbox+PAD_NM extent — basemap is the one with
+  // its own separate, much larger extent, see below), so they stay
+  // pixel-registered with each other (and with the live vector layers).
   function project(lat, lon) {
     const p   = tm.tmForward(lat, lon, params)
     const nmE = (p.easting  - origin.easting)  / M_PER_NM
@@ -168,33 +187,101 @@ async function buildTheatre(name, conf, params, tm) {
   const [originPx, originPy] = project(originLat, originLng)
   const gridMeta = { originLat, originLng, originPx, originPy, nmPerPixel, width, height }
 
-  // ── basemap: terrain + sea + coastlines + boundaries, fully opaque ───────
-  const basemapBuf = newBuffer(width, height, SEA_COLOR)
-  // Real land/sea mask (geo.json's land rings — see buildGeoData.js's
-  // extractLandRings/clipRingToBbox) painted before the relief bands, which
-  // only cover elevation > 0 and otherwise leave true sea level (both actual
-  // ocean and low-lying coastal land) as SEA_COLOR. Without this, flat
-  // coastal land reads as ocean; this ensures dry land is never left sea-
-  // colored even where relief has nothing to draw over it.
-  if (geo?.land?.length) {
-    const [r, g, b] = RAMP[0][1]
-    fillPolygonEvenOdd(basemapBuf, width, height, geo.land.map(projectRing), r, g, b, 1)
+  // ── basemap: flat land/sea silhouette only, no relief/coastline/border
+  // detail, drawn on its own MUCH larger, coarser canvas so it can fill the
+  // screen at true max zoom-out (AbmScope.jsx's RANGE_MAX=600nm) on a target
+  // worst-case monitor aspect ratio, without touching terrain/water/roads'
+  // resolution or extent at all — those stay exactly as they are below,
+  // completely unchanged. 2026-08-11.
+  //
+  // Sizing: the scope's own zoom math (pixelsPerNm = min(w,h)/(2*rangeNm))
+  // makes rangeNm the center-to-edge distance along the screen's SHORT axis
+  // only — the long axis reaches rangeNm*aspectRatio. And since the view can
+  // rotate (declination), "the screen's long axis" isn't fixed to one
+  // direction on the map — it sweeps through all of them — so this canvas
+  // has to be a SQUARE covering that worst-case reach in every direction,
+  // not a rectangle shaped like a monitor. At terrain's own ~0.2-0.4nm/px
+  // detail resolution that square would exceed the 8192px GPU texture
+  // ceiling for anything wider than ~4:3 — this is exactly why basemap
+  // needs its own coarser resolution rather than reusing terrain's: a flat
+  // silhouette doesn't need relief-level detail to read correctly from this
+  // far out.
+  //
+  // Drawn first/furthest-back client-side, underneath terrain/water/roads.
+  const MAX_RANGE_NM  = 600  // must match AbmScope.jsx's RANGE_MAX
+  const ASPECT_TARGET = 2.33 // 21:9 ultrawide — covers effectively all single/triple-wide gaming monitors
+  const BM_MAX_DIM    = 4800 // same pixel budget as MAX_DIM above, comfortably under the 8192px ceiling
+
+  const bmHalfExtentNm = MAX_RANGE_NM * ASPECT_TARGET
+  const nmPerPixelBm = (2 * bmHalfExtentNm) / BM_MAX_DIM
+  const bmMinE = -bmHalfExtentNm, bmMaxE = bmHalfExtentNm
+  const bmMinN = -bmHalfExtentNm, bmMaxN = bmHalfExtentNm
+  const bmWidth  = Math.max(2, Math.round((bmMaxE - bmMinE) / nmPerPixelBm))
+  const bmHeight = Math.max(2, Math.round((bmMaxN - bmMinN) / nmPerPixelBm))
+
+  function bmProject(lat, lon) {
+    const p   = tm.tmForward(lat, lon, params)
+    const nmE = (p.easting  - origin.easting)  / M_PER_NM
+    const nmN = (p.northing - origin.northing) / M_PER_NM
+    return [(nmE - bmMinE) / nmPerPixelBm, (bmMaxN - nmN) / nmPerPixelBm]
   }
+  const bmProjectRing = (coords) => coords.map(([lon, lat]) => bmProject(lat, lon))
+  const [bmOriginPx, bmOriginPy] = bmProject(originLat, originLng)
+  const bmGridMeta = { originLat, originLng, originPx: bmOriginPx, originPy: bmOriginPy, nmPerPixel: nmPerPixelBm, width: bmWidth, height: bmHeight }
+
+  // Land source: the raw, full-world land.geojson (worldLandFeatures, loaded
+  // once in main() below) — NOT geo.json's land rings, which are only
+  // clipped to bbox+1° (BBOX_PAD in buildGeoData.js), far narrower than
+  // basemap's own ±bmHalfExtentNm reach. Clipped in degree-space (same
+  // Sutherland–Hodgman helper buildGeoData.js uses, see lib/polygonClip.js)
+  // to a generous pad — 1.1x the nm half-extent converted to degrees,
+  // centered on the theatre's own ORIGIN (not added on top of the bbox
+  // edges — that double-counted the bbox's own half-width on a previous
+  // pass and needlessly dragged in extra geography).
+  const bmDegPad = 1.1
+  const bmLatPadDeg = (bmHalfExtentNm / 60) * bmDegPad
+  const bmCosLat    = Math.max(0.2, Math.cos(originLat * Math.PI / 180))
+  const bmLonPadDeg = (bmHalfExtentNm / 60 / bmCosLat) * bmDegPad
+  const bmClipBbox = [originLng - bmLonPadDeg, originLat - bmLatPadDeg, originLng + bmLonPadDeg, originLat + bmLatPadDeg]
+  const worldLandRings = worldLandFeatures ? extractLandRings(worldLandFeatures, bmClipBbox) : []
+
+  let basemapKB = null
+  if (worldLandRings.length) {
+    const basemapBuf = newBuffer(bmWidth, bmHeight, SEA_COLOR)
+    const [r, g, b] = RAMP[0][1]
+    fillPolygonEvenOdd(basemapBuf, bmWidth, bmHeight, worldLandRings.map(bmProjectRing), r, g, b, 1)
+    basemapKB = writeRaster(dataDir, 'basemap', basemapBuf, bmWidth, bmHeight, bmGridMeta) / 1024
+  }
+
+  // ── terrain: relief bands + coastline/boundary strokes, transparent
+  // everywhere else ───────────────────────────────────────────────────────
+  // 2026-08-11: used to be fully opaque (SEA_COLOR background + geo.json's
+  // land polygon as a flat base coat under the relief bands) so that true
+  // sea-level land — relief has nothing to draw there, since vectorize() in
+  // buildReliefMap.js explicitly skips the elev=0 contour — never read as
+  // ocean. Now that basemap.png exists as its own dedicated, wider-clipped
+  // land/sea layer drawn underneath this one (see AbmScope.jsx draw order),
+  // that job is basemap's alone: terrain only needs to show real elevation
+  // detail and stays transparent wherever it has none, letting basemap show
+  // through cleanly instead of terrain's own default color masking it in
+  // its own PAD_NM margin (the "background water fill" symptom this
+  // replaces). Extent/resolution otherwise unchanged (bbox+PAD_NM, MAX_DIM).
+  const terrainBuf = newBuffer(width, height, null)
   if (relief) {
     const sorted = [...relief].sort((a, b) => a.elev - b.elev)
     for (const region of sorted) {
       const rings  = region.rings.map(projectRing)
       const [r, g, b] = hypso(region.elev)
-      fillPolygonEvenOdd(basemapBuf, width, height, rings, r, g, b, 1)
+      fillPolygonEvenOdd(terrainBuf, width, height, rings, r, g, b, 1)
     }
   }
   if (geo?.coastlines) {
-    for (const c of geo.coastlines) strokeLine(basemapBuf, width, height, projectRing(c.coords), COASTLINE_COLOR[0], COASTLINE_COLOR[1], COASTLINE_COLOR[2], 0.8)
+    for (const c of geo.coastlines) strokeLine(terrainBuf, width, height, projectRing(c.coords), COASTLINE_COLOR[0], COASTLINE_COLOR[1], COASTLINE_COLOR[2], 0.8)
   }
   if (geo?.boundaries) {
-    for (const b of geo.boundaries) strokeLine(basemapBuf, width, height, projectRing(b.coords), BOUNDARY_COLOR[0], BOUNDARY_COLOR[1], BOUNDARY_COLOR[2], 0.5)
+    for (const b of geo.boundaries) strokeLine(terrainBuf, width, height, projectRing(b.coords), BOUNDARY_COLOR[0], BOUNDARY_COLOR[1], BOUNDARY_COLOR[2], 0.5)
   }
-  const basemapKB = writeRaster(dataDir, 'basemap', basemapBuf, width, height, gridMeta) / 1024
+  const terrainKB = writeRaster(dataDir, 'terrain', terrainBuf, width, height, gridMeta) / 1024
 
   // ── water: rivers + lakes, transparent elsewhere ─────────────────────────
   let waterKB = null
@@ -218,7 +305,8 @@ async function buildTheatre(name, conf, params, tm) {
   }
 
   return {
-    width, height, nmPerPixel, basemapKB, waterKB, roadsKB,
+    width, height, bmWidth, bmHeight, nmPerPixel, nmPerPixelBm,
+    terrainKB, waterKB, roadsKB, basemapKB,
     reliefCount: relief?.length ?? 0,
     geoCount:    (geo?.boundaries?.length || 0) + (geo?.coastlines?.length || 0),
     mapctx,
@@ -230,6 +318,16 @@ async function main() {
   const allParams  = JSON.parse(fs.readFileSync(PARAMS_PATH, 'utf8'))
   const tm         = await import('../../client/src/utils/transverseMercator.js')
 
+  // Loaded once, reused across every theatre below — same pattern as
+  // theatres.json/allParams/tm above. buildGeoData.js must have run at
+  // least once already (any theatre) for this file to exist.
+  let worldLandFeatures = null
+  if (fs.existsSync(WORLD_LAND_PATH)) {
+    worldLandFeatures = JSON.parse(fs.readFileSync(WORLD_LAND_PATH, 'utf8')).features
+  } else {
+    console.log(`No ${WORLD_LAND_PATH} — basemap layer will be skipped (run buildGeoData.js first for any theatre to fetch it).\n`)
+  }
+
   const only = process.argv[2]
   if (only && !theatres[only]) {
     console.error(`Unknown theatre "${only}". Options: ${Object.keys(theatres).join(', ')}`)
@@ -240,16 +338,17 @@ async function main() {
   console.log(`\nBuilding ABM rasters — ${entries.length} theatre(s)\n`)
   for (const [name, conf] of entries) {
     const t0 = process.hrtime.bigint()
-    const result = await buildTheatre(name, conf, allParams[name], tm)
+    const result = await buildTheatre(name, conf, allParams[name], tm, worldLandFeatures)
     const ms = Number(process.hrtime.bigint() - t0) / 1e6
     if (!result) continue
-    const { width, height, nmPerPixel, basemapKB, waterKB, roadsKB, reliefCount, geoCount, mapctx } = result
+    const { width, height, bmWidth, bmHeight, nmPerPixel, nmPerPixelBm, terrainKB, waterKB, roadsKB, basemapKB, reliefCount, geoCount, mapctx } = result
     console.log(
       `${name.padEnd(16)} ${String(width).padStart(4)}x${String(height).padEnd(4)}px  ` +
       `${(nmPerPixel * 1852).toFixed(0)}m/px  relief:${reliefCount} geo:${geoCount}  ` +
-      `basemap:${basemapKB.toFixed(0)}KB` +
+      `terrain:${terrainKB.toFixed(0)}KB` +
       (waterKB != null ? ` water:${waterKB.toFixed(0)}KB(${mapctx.water.length})` : '') +
       (roadsKB != null ? ` roads:${roadsKB.toFixed(0)}KB(${(mapctx.roads?.length||0)+(mapctx.rail?.length||0)})` : '') +
+      (basemapKB != null ? `  ·  basemap ${bmWidth}x${bmHeight}px ${(nmPerPixelBm * 1852).toFixed(0)}m/px ${basemapKB.toFixed(0)}KB` : '') +
       `  ·  ${(ms / 1000).toFixed(1)}s`
     )
   }

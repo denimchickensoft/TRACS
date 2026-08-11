@@ -63,8 +63,12 @@ const ALT_TOGGLE_MS   = 2000  // datablock line-2 speed/type alternation rate
 const READOUT_RADIUS_PX = 10    // cursor-proximity radius for the unit readout box
 const READOUT_CYCLE_MS  = 3000  // per-object fade in/out phase when >1 unit is under the cursor
 // Must match SEA_COLOR in server/scripts/buildAbmBasemap.js — the .base
-// raster's own background fill, so the scope's letterbox background reads
-// as a continuation of the basemap instead of a black border around it.
+// (basemap) raster's own opaque background fill; .terrain's own raster is
+// transparent beyond its relief data (2026-08-11) and has no fill of its
+// own, so the letterbox backdrop is keyed off basemap OR terrain being on,
+// whichever is visible, so the scope's own background reads as a
+// continuation of whichever raster is showing instead of a mismatched or
+// black border around it.
 const BASEMAP_SEA_COLOR = 'rgb(26, 38, 48)'
 
 const F_KEY_DECL = {
@@ -708,13 +712,20 @@ export default function AbmScope() {
   // since towns are pre-baked per-theatre JSON, not derived from mission data.
   const [towns, setTowns] = useState([])
   const [townsVisible, setTownsVisible] = useState(abmPrefs.townsVisible)
-  // Baked raster layers (.map/.water/.roads) — see server's
-  // buildAbmBasemap.js + drawAbmRaster.js. basemap (terrain/coastline/
-  // boundaries) is bottom-most, then water, then roads, all under the live
+  // Baked raster layers (.map/.terrain/.water/.roads/.base) — see server's
+  // buildAbmBasemap.js + drawAbmRaster.js. Draw order (furthest-back first):
+  // basemap (land/sea silhouette, wide/coarse), terrain (relief wash +
+  // coastline/boundary strokes, tight/detailed), water, roads, then the live
   // vector relief/geo/etc layers. Each carries the loaded <img> alongside
-  // the placement metadata (origin/scale) fetched alongside it.
+  // the placement metadata (origin/scale) fetched alongside it. basemap and
+  // terrain were named "landfill"/"basemap" respectively until 2026-08-11 —
+  // renamed once basemap (the former landfill) graduated from a theatre-by-
+  // theatre preview to the layer actually responsible for land/sea color
+  // everywhere, and terrain (the former basemap) stopped being that source.
   const [basemap, setBasemap] = useState(null)
   const [basemapVisible, setBasemapVisible] = useState(abmPrefs.basemapVisible)
+  const [terrain, setTerrain] = useState(null)
+  const [terrainVisible, setTerrainVisible] = useState(abmPrefs.terrainVisible)
   const [water, setWater] = useState(null)
   const [waterVisible, setWaterVisible] = useState(abmPrefs.waterVisible)
   const [roads, setRoads] = useState(null)
@@ -972,9 +983,9 @@ export default function AbmScope() {
   }, [theatre])
 
   useEffect(() => {
-    if (!theatre) { setBasemap(null); setWater(null); setRoads(null); return }
+    if (!theatre) { setBasemap(null); setTerrain(null); setWater(null); setRoads(null); return }
     let cancelled = false
-    const setters = { basemap: setBasemap, water: setWater, roads: setRoads }
+    const setters = { basemap: setBasemap, terrain: setTerrain, water: setWater, roads: setRoads }
     for (const [layer, setLayer] of Object.entries(setters)) {
       setLayer(null)
       fetch(`/api/abm/raster/${encodeURIComponent(theatre)}/${layer}`)
@@ -1192,6 +1203,7 @@ export default function AbmScope() {
     const ctx = mapRef.current.getContext('2d')
     ctx.clearRect(0, 0, view.width, view.height)
     drawAbmRaster(ctx, view, basemap, basemapVisible)
+    drawAbmRaster(ctx, view, terrain, terrainVisible)
     drawAbmRaster(ctx, view, water, waterVisible)
     drawAbmRaster(ctx, view, roads, roadsVisible)
     drawRelief(ctx, view, relief, reliefVisible, 40, airspaceColors)
@@ -1225,7 +1237,7 @@ export default function AbmScope() {
       asVisible, airspaceFeatures, airspaceColors, labelsVisible, fillVisible, fillPct, drawingLayers, airways, airwaysVisible, mora, moraVisible,
       holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible, pinnedFixes, theatre,
       runwaysVisible, runwayCenterlines, mgrsVisible, towns, townsVisible,
-      basemap, basemapVisible, water, waterVisible, roads, roadsVisible])
+      basemap, basemapVisible, terrain, terrainVisible, water, waterVisible, roads, roadsVisible])
 
   // ── Range rings + bullseye marker ───────────────────────────────────────────
   const ringAnchorLat = windowSettings?.ringAnchorLat ?? bullseyeLat
@@ -2017,16 +2029,25 @@ export default function AbmScope() {
       return
     }
 
-    // .map — bulk toggle for all three raster layers (base/water/roads),
-    // same any-on pattern as .asp: on if any is currently visible, off
-    // otherwise.
+    if (str === '.terrain') {
+      const next = !terrainVisible
+      setTerrainVisible(next)
+      saveAbmPrefs({ terrainVisible: next })
+      setCmdFeedback(next ? 'TERRAIN ON' : 'TERRAIN OFF')
+      return
+    }
+
+    // .map — bulk toggle for all four raster layers (base/terrain/water/
+    // roads), same any-on pattern as .asp: on if any is currently visible,
+    // off otherwise.
     if (str === '.map') {
-      const anyOn = basemapVisible || waterVisible || roadsVisible
+      const anyOn = basemapVisible || terrainVisible || waterVisible || roadsVisible
       const next  = !anyOn
       setBasemapVisible(next)
+      setTerrainVisible(next)
       setWaterVisible(next)
       setRoadsVisible(next)
-      saveAbmPrefs({ basemapVisible: next, waterVisible: next, roadsVisible: next })
+      saveAbmPrefs({ basemapVisible: next, terrainVisible: next, waterVisible: next, roadsVisible: next })
       setCmdFeedback(next ? 'MAP ON' : 'MAP OFF')
       return
     }
@@ -2679,7 +2700,7 @@ export default function AbmScope() {
   }
 
   return (
-    <div className="abm-scope" style={basemapVisible ? { background: BASEMAP_SEA_COLOR } : undefined}>
+    <div className="abm-scope" style={(basemapVisible || terrainVisible) ? { background: BASEMAP_SEA_COLOR } : undefined}>
       <div ref={canvasAreaRef} className="abm-canvas-area">
         <canvas ref={mapRef}      className="abm-layer" />
         <canvas ref={layersRef}   className="abm-layer" />
