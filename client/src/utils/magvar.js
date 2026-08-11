@@ -399,16 +399,26 @@ const _FALLBACK_MERIDIAN = {
 }
 
 let _projectionParams = null
+let _projectionParamsVersion = 0
 
 // Called once at app startup after fetching /projection_params.json.
 export function setProjectionParams(data) {
   _projectionParams = data
+  _projectionParamsVersion++
 }
 
 // Raw per-theatre TM params (central_meridian, false_easting, false_northing,
 // scale_factor), or null for theatres not in projection_params.json.
 export function getProjectionParams(theatre) {
   return _projectionParams?.[theatre] ?? null
+}
+
+// Bumped every time setProjectionParams runs — lets projection.js's ring
+// cache invalidate itself the moment params actually become available,
+// instead of possibly holding onto a pre-params fallback-computed result
+// until some unrelated view change happens to come along (2026-08-11).
+export function getProjectionParamsVersion() {
+  return _projectionParamsVersion
 }
 
 // Grid convergence in degrees — see the note above. Only for turning a DCS

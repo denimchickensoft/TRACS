@@ -19,7 +19,7 @@
  */
 
 import { tmForward, tmInverse } from '../../../../utils/transverseMercator.js'
-import { getProjectionParams } from '../../../../utils/magvar.js'
+import { getProjectionParams, getProjectionParamsVersion } from '../../../../utils/magvar.js'
 
 const NM_PER_DEGREE_LAT = 60
 const M_PER_NM = 1852
@@ -120,28 +120,101 @@ export function rangeToPixelsPerNm(rangeNm, width, height) {
   return (Math.min(width, height) / 2) / rangeNm
 }
 
-// Per-ring projected-point cache for static geometry (relief bands,
-// coastlines, boundaries — arrays of [lon, lat] pairs that never change once
-// loaded). The big combined map-layer effect redraws everything on its one
-// shared canvas whenever ANY of its many dependencies change (e.g. toggling
-// an unrelated overlay's visibility), not just when the view actually moves
-// — so without this, static geometry gets fully re-projected on redraws
-// that didn't touch it at all. Keyed by the ring array's own identity, so
-// it's invalidated for free whenever the underlying data is reloaded/
-// replaced; keyed by view signature so an actual pan/zoom/rotate still
-// reprojects normally.
-const _ringCache = new WeakMap()
+// Two-tier cache for static geometry (relief bands, coastlines, boundaries —
+// arrays of [lon, lat] pairs that never change once loaded). The big
+// combined map-layer effect redraws everything on its one shared canvas
+// whenever ANY of its many dependencies change (e.g. toggling an unrelated
+// overlay's visibility), not just when the view actually moves — so without
+// caching, static geometry gets fully re-projected on redraws that didn't
+// touch it at all.
+//
+// Tier 1 (_ringCache): final SCREEN-SPACE points for a given view signature
+// — a pure fast-path short-circuit for redraws where the view hasn't moved
+// at all. Keyed by the ring array's own identity, so it's invalidated for
+// free whenever the underlying data is reloaded/replaced (e.g. a theatre
+// switch produces brand-new ring arrays).
+//
+// Tier 2 (_ringTmCache, 2026-08-11): each point's theatre-fixed TM
+// easting/northing. Unlike the final screen point, this genuinely never
+// changes for the life of a ring — pan/zoom/rotate don't move a coastline's
+// real-world position, only the screen mapping of it — so it's cached
+// permanently instead of being invalidated by every view change. A tier-1
+// miss now only has to redo the CHEAP part on top of this (subtract the
+// view center's own TM position — itself cached via tmForwardCenter —
+// rotate by declination, scale to pixels), skipping tmForward's
+// sinh/cosh/atanh/asinh entirely on repeat draws. This is what fixed the
+// severe pan/zoom stutter on fjord/archipelago theatres (Kola, South
+// Atlantic — tens of thousands of coastline rings, see the 2026-08-11 perf
+// investigation): reprojecting every point through full TM math on every
+// single pan frame was the dominant cost.
+//
+// Only applies to theatres with real TM params — the flat equirectangular
+// fallback (no theatre in projection_params.json) computes its nm-offset
+// directly from the view's own center, so it can't be cached this way and
+// always falls through to the uncached per-point path below. In practice
+// this fallback is unreachable as of 2026-08-11 (every theatre has real
+// params) — kept only as a defensive path, not a currently-exercised one.
+//
+// getProjectionParamsVersion() in the signature closes a narrow startup
+// race: projection_params.json loads asynchronously (App.jsx), so a ring
+// could in principle draw once before params exist (using the fallback,
+// tier-2 untouched) and then never redraw again if the view happens not to
+// change afterward — leaving a stale tier-1 result cached under a
+// pre-params signature forever. Bumping this version the moment params
+// load changes the signature unconditionally, guaranteeing at least one
+// more recompute — which will see real params and populate tier-2 correctly
+// — regardless of whether the view itself ever moves again.
+const _ringCache   = new WeakMap()
+const _ringTmCache = new WeakMap()
 
 function viewSignature(view) {
   return view.centerLat + ',' + view.centerLng + ',' + view.pixelsPerNm + ',' +
-    view.width + ',' + view.height + ',' + (view.declinationDeg || 0) + ',' + view.theatre
+    view.width + ',' + view.height + ',' + (view.declinationDeg || 0) + ',' + view.theatre +
+    ',' + getProjectionParamsVersion()
+}
+
+// Tier 2: ring's points in the theatre's own fixed TM plane (meters).
+// theatre is part of the cache entry (not just the WeakMap key) as a cheap
+// defensive check — ring arrays are always freshly created per theatre load
+// (useGeoStore.loadForTheatre etc.), never mutated in place or reused
+// across theatres, but this costs nothing to verify explicitly.
+function projectRingToTm(ring, theatre, params) {
+  const cached = _ringTmCache.get(ring)
+  if (cached && cached.theatre === theatre) return cached.points
+  const points = ring.map(([lon, lat]) => tmForward(lat, lon, params))
+  _ringTmCache.set(ring, { theatre, points })
+  return points
 }
 
 export function projectRingCached(ring, view) {
   const sig = viewSignature(view)
   const cached = _ringCache.get(ring)
   if (cached && cached.sig === sig) return cached.points
-  const points = ring.map(([lon, lat]) => latLngToCanvas(lat, lon, view))
+
+  const { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg = 0, theatre } = view
+  const params = tmParamsFor(theatre)
+
+  let points
+  if (params) {
+    const tmPoints = projectRingToTm(ring, theatre, params)
+    const p0 = tmForwardCenter(centerLat, centerLng, theatre, params)
+    const rad = declinationDeg * Math.PI / 180
+    const cosR = Math.cos(rad), sinR = Math.sin(rad)
+    points = tmPoints.map((p1) => {
+      const nmEast  = (p1.easting  - p0.easting)  / M_PER_NM
+      const nmNorth = (p1.northing - p0.northing) / M_PER_NM
+      const rE = nmEast * cosR - nmNorth * sinR
+      const rN = nmEast * sinR + nmNorth * cosR
+      return { x: width / 2 + rE * pixelsPerNm, y: height / 2 - rN * pixelsPerNm }
+    })
+  } else {
+    // No TM params for this theatre (see comment above — not reachable in
+    // practice today). Same flat-approximation math latLngToCanvas uses,
+    // recomputed fully every call since it depends on the view's own
+    // center, not just the point — tier 2 doesn't apply here.
+    points = ring.map(([lon, lat]) => latLngToCanvas(lat, lon, view))
+  }
+
   _ringCache.set(ring, { sig, points })
   return points
 }
