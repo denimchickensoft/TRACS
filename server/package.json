@@ -9,6 +9,7 @@
     "extract": "node navdata/tools/extract-navdata.js",
     "build:relief": "node scripts/buildReliefMap.js",
     "build:basemap": "node scripts/buildAbmBasemap.js",
+    "build:osmland": "node scripts/buildOsmLand.js",
     "build:mva": "node scripts/buildMvaMap.js",
     "package:extract": "node --experimental-sea-config navdata/tools/sea-config.json",
     "build:terrain-exe": "node scripts/terrainDataExe/build.js",
@@ -20,8 +21,10 @@
     "d3-contour": "^4.0.2",
     "express": "^4.19.2",
     "polylabel": "^2.0.1",
+    "shapefile": "^0.6.6",
     "sql.js": "^1.12.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "esbuild": "^0.21.5",

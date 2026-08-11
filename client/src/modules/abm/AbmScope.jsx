@@ -714,9 +714,10 @@ export default function AbmScope() {
   const [townsVisible, setTownsVisible] = useState(abmPrefs.townsVisible)
   // Baked raster layers (.map/.terrain/.water/.roads/.base) — see server's
   // buildAbmBasemap.js + drawAbmRaster.js. Draw order (furthest-back first):
-  // basemap (land/sea silhouette, wide/coarse), terrain (relief wash +
-  // coastline/boundary strokes, tight/detailed), water, roads, then the live
-  // vector relief/geo/etc layers. Each carries the loaded <img> alongside
+  // basemap (land/sea silhouette, wide/coarse), terrain (relief wash only,
+  // tight/detailed — no longer bakes coastline/boundary strokes as of
+  // 2026-08-11, see .geo below), water, roads, then the live vector
+  // relief/geo/etc layers. Each carries the loaded <img> alongside
   // the placement metadata (origin/scale) fetched alongside it. basemap and
   // terrain were named "landfill"/"basemap" respectively until 2026-08-11 —
   // renamed once basemap (the former landfill) graduated from a theatre-by-
@@ -2038,15 +2039,19 @@ export default function AbmScope() {
     }
 
     // .map — bulk toggle for all four raster layers (base/terrain/water/
-    // roads), same any-on pattern as .asp: on if any is currently visible,
-    // off otherwise.
+    // roads) plus .geo's live coastline/boundary layer, same any-on pattern
+    // as .asp: on if any is currently visible, off otherwise. .geo is
+    // included because terrain.png no longer bakes coastlines/boundaries
+    // into the raster (2026-08-11) — .geo is now the only source of that
+    // linework in ABM, so a bulk "hide the map" should hide it too.
     if (str === '.map') {
-      const anyOn = basemapVisible || terrainVisible || waterVisible || roadsVisible
+      const anyOn = basemapVisible || terrainVisible || waterVisible || roadsVisible || geoVisible
       const next  = !anyOn
       setBasemapVisible(next)
       setTerrainVisible(next)
       setWaterVisible(next)
       setRoadsVisible(next)
+      useGeoStore.getState().setVisible(next)
       saveAbmPrefs({ basemapVisible: next, terrainVisible: next, waterVisible: next, roadsVisible: next })
       setCmdFeedback(next ? 'MAP ON' : 'MAP OFF')
       return

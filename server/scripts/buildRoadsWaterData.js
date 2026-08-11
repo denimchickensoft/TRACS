@@ -29,6 +29,7 @@ const https = require('https')
 const http  = require('http')
 const fs    = require('fs')
 const path  = require('path')
+const { simplifyAndRound } = require('./lib/simplify.js')
 
 const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const CACHE_DIR      = path.join(__dirname, '../navdata/cache')
@@ -132,55 +133,10 @@ function paddedBbox(theatreBbox) {
 // ── Simplification ────────────────────────────────────────────────────────────
 // This is a broad-SA reference layer, not a precision instrument - full OSM
 // vertex density and coordinate precision is far more than needed. Both
-// levers below are visually lossless at ABM's overview zoom levels but cut
-// output size drastically (coordinate arrays are ~100% of file size: see
-// abm-map-context-spec.md, ~4.5M points measured at ~25 bytes/point = the
-// entire 113MB before this was added).
-
-const SIMPLIFY_TOLERANCE_DEG = 0.0002 // ~20m at these latitudes — tightened from ~100m
-                                       // (2026-07-29) now that the ABM raster (buildAbmBasemap.js)
-                                       // renders this at up to ~150m/px (4800px budget): the old
-                                       // 100m tolerance was throwing away real curve detail the
-                                       // raster could otherwise resolve
-const COORD_DECIMALS = 5              // ~1m precision - plenty for this purpose
-
-function round(v) {
-  const f = 10 ** COORD_DECIMALS
-  return Math.round(v * f) / f
-}
-
-function perpDistSq([x, y], [x1, y1], [x2, y2]) {
-  const dx = x2 - x1, dy = y2 - y1
-  let px = x1, py = y1
-  if (dx !== 0 || dy !== 0) {
-    const t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)
-    if (t > 1) { px = x2; py = y2 }
-    else if (t > 0) { px = x1 + dx * t; py = y1 + dy * t }
-  }
-  const ddx = x - px, ddy = y - py
-  return ddx * ddx + ddy * ddy
-}
-
-function douglasPeucker(points, tolSq) {
-  const n = points.length
-  if (n <= 2) return points
-  let maxDist = 0, index = 0
-  for (let i = 1; i < n - 1; i++) {
-    const d = perpDistSq(points[i], points[0], points[n - 1])
-    if (d > maxDist) { maxDist = d; index = i }
-  }
-  if (maxDist > tolSq) {
-    const left = douglasPeucker(points.slice(0, index + 1), tolSq)
-    const right = douglasPeucker(points.slice(index), tolSq)
-    return left.slice(0, -1).concat(right)
-  }
-  return [points[0], points[n - 1]]
-}
-
-function simplifyAndRound(coords) {
-  const simplified = douglasPeucker(coords, SIMPLIFY_TOLERANCE_DEG * SIMPLIFY_TOLERANCE_DEG)
-  return simplified.map(([lon, lat]) => [round(lon), round(lat)])
-}
+// levers below (lib/simplify.js) are visually lossless at ABM's overview zoom
+// levels but cut output size drastically (coordinate arrays are ~100% of
+// file size: see abm-map-context-spec.md, ~4.5M points measured at ~25
+// bytes/point = the entire 113MB before this was added).
 
 function clipWaterFeatures(features, theatreBbox, type) {
   const padded = paddedBbox(theatreBbox)

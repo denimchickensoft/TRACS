@@ -72,4 +72,79 @@ function extractLandRings(features, bbox) {
   return out
 }
 
-module.exports = { bboxOf, bboxIntersects, clipEdge, clipRingToBbox, extractLandRings }
+// ── Open-polyline clip (Liang–Barsky) — for tracing a closed ring's boundary
+// as a STROKE without the closed-shape clip above's side effect: clipRingToBbox
+// necessarily produces a valid closed polygon, so wherever the source ring
+// extends past the bbox it inserts new points running along the bbox's own
+// rectangle edge to close the gap — invisible/correct for a fill (that edge
+// just marks where the fill stops), but drawn as a fake straight "coastline"
+// hugging the clip rectangle when the result is stroked instead (2026-08-11,
+// see buildOsmLand.js's geo.json coastline merge). This clips each segment
+// of the ring individually and, whenever a segment enters/exits the bbox,
+// BREAKS the line there instead of closing it — real coastline in, real
+// coastline out, with a genuine gap (not a fake edge) wherever it leaves the
+// visible area. Returns an array of open polylines (>=2 points each), not a
+// single closed ring — one ring can produce zero, one, or several disjoint
+// pieces depending on how many times it crosses the bbox boundary.
+//
+// Minor known imperfection: a ring that starts/ends (index 0 / index n-1,
+// equal per GeoJSON convention) partway through an in-bbox run gets that one
+// run split into two pieces at the array's own start/end seam — an arbitrary
+// storage artifact, not a real geographic feature, and harmless to stroke
+// (no fake connecting line is drawn, just an unnecessary extra break in what
+// would ideally be one continuous line). Not worth the extra complexity of
+// merging across the wrap point.
+function clipSegmentParams(x0, y0, x1, y1, bbox) {
+  const [xmin, ymin, xmax, ymax] = bbox
+  const dx = x1 - x0, dy = y1 - y0
+  let t0 = 0, t1 = 1
+  const edges = [
+    [-dx, x0 - xmin],
+    [ dx, xmax - x0],
+    [-dy, y0 - ymin],
+    [ dy, ymax - y0],
+  ]
+  for (const [p, q] of edges) {
+    if (p === 0) {
+      if (q < 0) return null // parallel to this edge and entirely outside it
+      continue
+    }
+    const r = q / p
+    if (p < 0) {
+      if (r > t1) return null
+      if (r > t0) t0 = r
+    } else {
+      if (r < t0) return null
+      if (r < t1) t1 = r
+    }
+  }
+  return t0 <= t1 ? [t0, t1] : null
+}
+
+function clipRingToOpenPolylines(ring, bbox) {
+  const out = []
+  let current = null
+  for (let i = 0; i < ring.length - 1; i++) {
+    const [x0, y0] = ring[i]
+    const [x1, y1] = ring[i + 1]
+    const clip = clipSegmentParams(x0, y0, x1, y1, bbox)
+    if (!clip) {
+      if (current && current.length >= 2) out.push(current)
+      current = null
+      continue
+    }
+    const [t0, t1] = clip
+    const p0 = t0 <= 0 ? [x0, y0] : [x0 + (x1 - x0) * t0, y0 + (y1 - y0) * t0]
+    const p1 = t1 >= 1 ? [x1, y1] : [x0 + (x1 - x0) * t1, y0 + (y1 - y0) * t1]
+    if (!current) current = [p0]
+    current.push(p1)
+    if (t1 < 1) {
+      if (current.length >= 2) out.push(current)
+      current = null
+    }
+  }
+  if (current && current.length >= 2) out.push(current)
+  return out
+}
+
+module.exports = { bboxOf, bboxIntersects, clipEdge, clipRingToBbox, extractLandRings, clipRingToOpenPolylines }

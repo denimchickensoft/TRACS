@@ -36,6 +36,7 @@ const path = require('path')
 const { encodePNG } = require('./lib/pngEncoder.js')
 const { fillPolygonEvenOdd, strokeLine } = require('./lib/rasterCore.js')
 const { extractLandRings } = require('./lib/polygonClip.js')
+const { MAX_RANGE_NM, ASPECT_TARGET, BM_MAX_DIM, computeBmClipBbox } = require('./lib/basemapExtent.js')
 
 const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const PARAMS_PATH   = path.join(__dirname, '../navdata/config/projection_params.json')
@@ -90,8 +91,6 @@ function hypso(ft) {
   return RAMP[RAMP.length - 1][1]
 }
 
-const BOUNDARY_COLOR  = [200, 160, 60]
-const COASTLINE_COLOR = [180, 200, 210]
 const ROAD_COLOR      = [190, 175, 130]
 const RAIL_COLOR      = [150, 130, 150]
 const WATER_COLOR     = [60, 130, 170]
@@ -208,9 +207,9 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   // far out.
   //
   // Drawn first/furthest-back client-side, underneath terrain/water/roads.
-  const MAX_RANGE_NM  = 600  // must match AbmScope.jsx's RANGE_MAX
-  const ASPECT_TARGET = 2.33 // 21:9 ultrawide — covers effectively all single/triple-wide gaming monitors
-  const BM_MAX_DIM    = 4800 // same pixel budget as MAX_DIM above, comfortably under the 8192px ceiling
+  // MAX_RANGE_NM/ASPECT_TARGET/BM_MAX_DIM live in lib/basemapExtent.js (must
+  // match AbmScope.jsx's RANGE_MAX) — shared with buildOsmLand.js so both
+  // scripts clip/simplify to the exact same reach and resolution.
 
   const bmHalfExtentNm = MAX_RANGE_NM * ASPECT_TARGET
   const nmPerPixelBm = (2 * bmHalfExtentNm) / BM_MAX_DIM
@@ -229,32 +228,53 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   const [bmOriginPx, bmOriginPy] = bmProject(originLat, originLng)
   const bmGridMeta = { originLat, originLng, originPx: bmOriginPx, originPy: bmOriginPy, nmPerPixel: nmPerPixelBm, width: bmWidth, height: bmHeight }
 
-  // Land source: the raw, full-world land.geojson (worldLandFeatures, loaded
-  // once in main() below) — NOT geo.json's land rings, which are only
-  // clipped to bbox+1° (BBOX_PAD in buildGeoData.js), far narrower than
-  // basemap's own ±bmHalfExtentNm reach. Clipped in degree-space (same
+  // Land source: prefer osmLand.json (buildOsmLand.js) — OSM coastline
+  // polygons, already pre-clipped+simplified per-theatre to this exact
+  // bmClipBbox reach — since that's the same coastline data the roads layer
+  // (mapcontext.json) is built from, so land/sea fill and roads finally
+  // agree at the coast (2026-08-11, see the "roads jutting into the ocean"
+  // investigation). Falls back to the raw, full-world land.geojson
+  // (worldLandFeatures, loaded once in main() below) — NOT geo.json's land
+  // rings, which are only clipped to bbox+1° (BBOX_PAD in buildGeoData.js),
+  // far narrower than basemap's own ±bmHalfExtentNm reach — for theatres
+  // buildOsmLand.js hasn't been run for yet. Clipped in degree-space (same
   // Sutherland–Hodgman helper buildGeoData.js uses, see lib/polygonClip.js)
-  // to a generous pad — 1.1x the nm half-extent converted to degrees,
-  // centered on the theatre's own ORIGIN (not added on top of the bbox
-  // edges — that double-counted the bbox's own half-width on a previous
-  // pass and needlessly dragged in extra geography).
-  const bmDegPad = 1.1
-  const bmLatPadDeg = (bmHalfExtentNm / 60) * bmDegPad
-  const bmCosLat    = Math.max(0.2, Math.cos(originLat * Math.PI / 180))
-  const bmLonPadDeg = (bmHalfExtentNm / 60 / bmCosLat) * bmDegPad
-  const bmClipBbox = [originLng - bmLonPadDeg, originLat - bmLatPadDeg, originLng + bmLonPadDeg, originLat + bmLatPadDeg]
-  const worldLandRings = worldLandFeatures ? extractLandRings(worldLandFeatures, bmClipBbox) : []
+  // to computeBmClipBbox's generous pad, centered on the theatre's own
+  // ORIGIN (not added on top of the bbox edges — that double-counted the
+  // bbox's own half-width on a previous pass and needlessly dragged in
+  // extra geography).
+  const { bbox: bmClipBbox } = computeBmClipBbox(conf.bbox)
+  const osmLand = readJson(path.join(dataDir, 'osmLand.json'))
+  const landSource = osmLand?.rings?.length ? 'osm' : (worldLandFeatures ? 'ne' : 'none')
+  const worldLandRings = osmLand?.rings?.length
+    ? osmLand.rings
+    : (worldLandFeatures ? extractLandRings(worldLandFeatures, bmClipBbox) : [])
 
   let basemapKB = null
   if (worldLandRings.length) {
     const basemapBuf = newBuffer(bmWidth, bmHeight, SEA_COLOR)
     const [r, g, b] = RAMP[0][1]
-    fillPolygonEvenOdd(basemapBuf, bmWidth, bmHeight, worldLandRings.map(bmProjectRing), r, g, b, 1)
+    // One fillPolygonEvenOdd call PER ring, not all rings batched into a
+    // single call (as every other user of this function does) — OSM's
+    // "split" land-polygon source deliberately overlaps adjacent chunks
+    // slightly at their seams (to avoid gaps in typical renderers), and
+    // even-odd parity across a batched multi-ring fill treats a doubly-
+    // covered seam strip as OUTSIDE (crossed twice = even), punching a thin
+    // sea-colored seam through real land along every chunk boundary —
+    // visible as a "dashed squares" tiling artifact (2026-08-11). Filling
+    // per-ring instead just repaints the same land color redundantly in
+    // overlap zones. Costs any legitimate hole semantics (an enclosed lake
+    // fully inside a landmass ring would incorrectly paint as land instead
+    // of being subtracted) — acceptable here since the water layer draws on
+    // top of basemap for anywhere within its own tighter extent, and this
+    // is a coarse silhouette layer to begin with.
+    for (const ring of worldLandRings) {
+      fillPolygonEvenOdd(basemapBuf, bmWidth, bmHeight, [bmProjectRing(ring)], r, g, b, 1)
+    }
     basemapKB = writeRaster(dataDir, 'basemap', basemapBuf, bmWidth, bmHeight, bmGridMeta) / 1024
   }
 
-  // ── terrain: relief bands + coastline/boundary strokes, transparent
-  // everywhere else ───────────────────────────────────────────────────────
+  // ── terrain: relief bands only, transparent everywhere else ──────────────
   // 2026-08-11: used to be fully opaque (SEA_COLOR background + geo.json's
   // land polygon as a flat base coat under the relief bands) so that true
   // sea-level land — relief has nothing to draw there, since vectorize() in
@@ -266,6 +286,15 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   // through cleanly instead of terrain's own default color masking it in
   // its own PAD_NM margin (the "background water fill" symptom this
   // replaces). Extent/resolution otherwise unchanged (bbox+PAD_NM, MAX_DIM).
+  //
+  // Coastline/boundary strokes used to be baked in here too — removed
+  // 2026-08-11: AbmScope.jsx already draws geo.json's boundaries/coastlines
+  // live every frame (drawGeo, toggled by the .geo command), on top of this
+  // raster. Baking a second copy was pure redundancy — and worse, wrong
+  // toggle semantics, since .geo OFF couldn't actually hide a copy that was
+  // permanently baked into terrain.png. geo.json itself (and its OSM
+  // coastline source, buildOsmLand.js) is still needed — just for that live
+  // layer, not for this raster.
   const terrainBuf = newBuffer(width, height, null)
   if (relief) {
     const sorted = [...relief].sort((a, b) => a.elev - b.elev)
@@ -274,12 +303,6 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
       const [r, g, b] = hypso(region.elev)
       fillPolygonEvenOdd(terrainBuf, width, height, rings, r, g, b, 1)
     }
-  }
-  if (geo?.coastlines) {
-    for (const c of geo.coastlines) strokeLine(terrainBuf, width, height, projectRing(c.coords), COASTLINE_COLOR[0], COASTLINE_COLOR[1], COASTLINE_COLOR[2], 0.8)
-  }
-  if (geo?.boundaries) {
-    for (const b of geo.boundaries) strokeLine(terrainBuf, width, height, projectRing(b.coords), BOUNDARY_COLOR[0], BOUNDARY_COLOR[1], BOUNDARY_COLOR[2], 0.5)
   }
   const terrainKB = writeRaster(dataDir, 'terrain', terrainBuf, width, height, gridMeta) / 1024
 
@@ -306,9 +329,8 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
 
   return {
     width, height, bmWidth, bmHeight, nmPerPixel, nmPerPixelBm,
-    terrainKB, waterKB, roadsKB, basemapKB,
+    terrainKB, waterKB, roadsKB, basemapKB, landSource,
     reliefCount: relief?.length ?? 0,
-    geoCount:    (geo?.boundaries?.length || 0) + (geo?.coastlines?.length || 0),
     mapctx,
   }
 }
@@ -341,14 +363,14 @@ async function main() {
     const result = await buildTheatre(name, conf, allParams[name], tm, worldLandFeatures)
     const ms = Number(process.hrtime.bigint() - t0) / 1e6
     if (!result) continue
-    const { width, height, bmWidth, bmHeight, nmPerPixel, nmPerPixelBm, terrainKB, waterKB, roadsKB, basemapKB, reliefCount, geoCount, mapctx } = result
+    const { width, height, bmWidth, bmHeight, nmPerPixel, nmPerPixelBm, terrainKB, waterKB, roadsKB, basemapKB, landSource, reliefCount, mapctx } = result
     console.log(
       `${name.padEnd(16)} ${String(width).padStart(4)}x${String(height).padEnd(4)}px  ` +
-      `${(nmPerPixel * 1852).toFixed(0)}m/px  relief:${reliefCount} geo:${geoCount}  ` +
+      `${(nmPerPixel * 1852).toFixed(0)}m/px  relief:${reliefCount}  ` +
       `terrain:${terrainKB.toFixed(0)}KB` +
       (waterKB != null ? ` water:${waterKB.toFixed(0)}KB(${mapctx.water.length})` : '') +
       (roadsKB != null ? ` roads:${roadsKB.toFixed(0)}KB(${(mapctx.roads?.length||0)+(mapctx.rail?.length||0)})` : '') +
-      (basemapKB != null ? `  ·  basemap ${bmWidth}x${bmHeight}px ${(nmPerPixelBm * 1852).toFixed(0)}m/px ${basemapKB.toFixed(0)}KB` : '') +
+      (basemapKB != null ? `  ·  basemap ${bmWidth}x${bmHeight}px ${(nmPerPixelBm * 1852).toFixed(0)}m/px ${basemapKB.toFixed(0)}KB [${landSource}]` : '') +
       `  ·  ${(ms / 1000).toFixed(1)}s`
     )
   }
