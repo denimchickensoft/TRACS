@@ -26,6 +26,8 @@ export function parseUnitName(unitName) {
  * Used when reverting a rename back to the original name.
  */
 export function resolveOriginalCallsign(unit) {
+  if (unit.customString) return stripAcid(unit.customString)
+
   if (useSessionStore.getState().useDcsNames) {
     const { acid } = parseUnitName(unit.unitName)
     return acid || stripAcid(unit.callsign || String(unit.id))
@@ -38,13 +40,20 @@ export function resolveOriginalCallsign(unit) {
  *
  * Priority:
  *   1. Controller-assigned callsign override
- *   2. If useDcsNames ON: unit.unitName (pipe-split left side if '|' present)
- *   3. If useDcsNames OFF: unit.callsign (mission editor name)
- *   4. Unit ID as last resort
+ *   2. unit.customString — real-world callsign pushed in by an external
+ *      tool (e.g. LogiSync mirroring VATSIM/ADS-B traffic; see that
+ *      project's architecture.md §A.3b). Not DCS mission data, so it takes
+ *      priority over useDcsNames' own source fields below rather than being
+ *      gated by that toggle.
+ *   3. If useDcsNames ON: unit.unitName (pipe-split left side if '|' present)
+ *   4. If useDcsNames OFF: unit.callsign (mission editor name)
+ *   5. Unit ID as last resort
  */
 export function resolveCallsign(unit) {
   const override = useAtcStore.getState().callsignOverrides[String(unit.id)]
   if (override) return stripAcid(override)
+
+  if (unit.customString) return stripAcid(unit.customString)
 
   if (useSessionStore.getState().useDcsNames) {
     const { acid } = parseUnitName(unit.unitName)
