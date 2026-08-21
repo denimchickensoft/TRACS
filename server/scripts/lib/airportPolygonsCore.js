@@ -24,8 +24,8 @@ const EARTH_R_M = 6371000
 
 // ── Transverse Mercator inverse projection ────────────────────────────────────
 //
-// The actual Karney-series math lives in client/src/utils/transverseMercator.js
-// (dynamic-imported by the caller, see buildAirportPolygons.js / terrainDataExe)
+// The actual Karney-series math lives in the shared tracs-geo-math workspace
+// package (dynamic-imported by the caller, see buildAirportPolygons.js / terrainDataExe)
 // and is passed in here as `tmInverse`, so taxiway geometry is generated with
 // the exact same projection used to render it — no second copy of the math to
 // drift out of sync.

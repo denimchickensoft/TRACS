@@ -104,7 +104,7 @@ async function main() {
   console.log('\nBuilding airport polygon data\n')
   console.log(`DCS path: ${dcsPath}\n`)
 
-  const { tmInverse } = await import('../../client/src/utils/transverseMercator.js')
+  const { tmInverse } = await import('tracs-geo-math')
 
   const theatres = only ? [only] : Object.keys(TM_PARAMS)
   for (const t of theatres) buildAndWriteTheatre(t, dcsPath, tmInverse)

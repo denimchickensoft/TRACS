@@ -138,7 +138,7 @@ async function main() {
 
   console.log('\nReprocessing airport polygons from cached raw taxiway data\n')
 
-  const { tmInverse } = await import('../../client/src/utils/transverseMercator.js')
+  const { tmInverse } = await import('tracs-geo-math')
   for (const t of theatreArgs) reprocessTheatre(t, tmInverse)
 
   console.log('\nDone.\n')

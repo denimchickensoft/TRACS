@@ -66,6 +66,16 @@ export default [
     },
   },
 
+  // Shared workspace packages — plain ESM, consumed by both client (browser)
+  // and server (Node dynamic import), so no environment-specific globals.
+  {
+    files: ['packages/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+  },
+
   // Server + mock-olympus — CommonJS, Node
   {
     files: ['server/**/*.js', 'mock-olympus/**/*.js'],

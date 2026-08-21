@@ -16,6 +16,9 @@
     },
     "mock-olympus": {
       "project": ["**/*.js"]
+    },
+    "packages/geo-math": {
+      "project": ["**/*.js"]
     }
   }
 }

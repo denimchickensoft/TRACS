@@ -4,7 +4,8 @@
   "workspaces": [
     "client",
     "server",
-    "mock-olympus"
+    "mock-olympus",
+    "packages/geo-math"
   ],
   "scripts": {
     "dev": "concurrently -n server,client -c cyan,green \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",

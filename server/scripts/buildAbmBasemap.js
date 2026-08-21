@@ -338,7 +338,7 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
 async function main() {
   const theatres   = JSON.parse(fs.readFileSync(THEATRES_PATH, 'utf8'))
   const allParams  = JSON.parse(fs.readFileSync(PARAMS_PATH, 'utf8'))
-  const tm         = await import('../../client/src/utils/transverseMercator.js')
+  const tm         = await import('tracs-geo-math')
 
   // Loaded once, reused across every theatre below — same pattern as
   // theatres.json/allParams/tm above. buildGeoData.js must have run at

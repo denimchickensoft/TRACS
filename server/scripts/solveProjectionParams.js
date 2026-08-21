@@ -17,8 +17,8 @@
 // -false_easting/-false_northing. Validate that candidate against every
 // airbase point; the one with ~zero round-trip error wins.
 //
-// Reuses this codebase's own Karney-series TM math (client/src/utils/
-// transverseMercator.js) rather than pyproj, so the solved params are exact
+// Reuses this codebase's own Karney-series TM math (the shared tracs-geo-math
+// workspace package) rather than pyproj, so the solved params are exact
 // for the same projection the app actually renders with — no second
 // implementation to drift out of sync. Axis convention (see dcsCoords.js):
 // DCS x (north-south) -> northing, DCS z -> easting.
@@ -91,7 +91,7 @@ async function main() {
   const only = process.argv[2]
 
   const existing = JSON.parse(fs.readFileSync(PARAMS_PATH, 'utf8'))
-  const { tmForward } = await import('../../client/src/utils/transverseMercator.js')
+  const { tmForward } = await import('tracs-geo-math')
 
   const candidates = only
     ? [only]

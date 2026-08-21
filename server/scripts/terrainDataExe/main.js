@@ -230,7 +230,7 @@ async function main() {
   console.log(`DCS terrains: ${terrainsDir}`)
   console.log(`Output:       ${outRoot}\n`)
 
-  const { tmInverse } = await import('../../../client/src/utils/transverseMercator.js')
+  const { tmInverse } = await import('tracs-geo-math')
 
   const list = only ? [only] : Object.keys(theatres)
   for (const t of list) {
