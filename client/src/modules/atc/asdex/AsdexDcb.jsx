@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }   from '../../../store/display.js'
 import { saveAsdexPrefs }   from '../../../store/asdexPrefs.js'

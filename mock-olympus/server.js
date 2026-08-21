@@ -521,7 +521,6 @@ function handleMission(req, res) {
   const m = Math.floor((totalS % 3600) / 60)
   const s = totalS % 60
 
-  const td = THEATRE_DEFAULTS[theatre] ?? THEATRE_DEFAULTS.Caucasus
   json(res, {
     mission: {
       theatre: theatre,

@@ -178,7 +178,7 @@ function useStabilityAlert(value, { threshold = 5, stabilityMs = 20000, circular
         }
       }, stabilityMs)
     }
-  }, [value])
+  }, [value, circular, threshold, stabilityMs])
 
   useEffect(() => () => clearTimeout(timerRef.current), [])
 

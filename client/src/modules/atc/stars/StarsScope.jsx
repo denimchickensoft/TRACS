@@ -154,7 +154,6 @@ export default function StarsScope() {
 
   const routeDisplayedUids = useMemo(
     () => new Set(windowSettings?.routeDisplayedUids ?? []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [windowSettings?.routeDisplayedUids]
   )
 
@@ -491,7 +490,7 @@ export default function StarsScope() {
       offCntr:       false,
     })
     autoCenteredRef.current = facilityDcsName
-  }, [airbases, facilityDcsName, centerlines, windowSettings, displayStore])
+  }, [airbases, facilityDcsName, centerlines, windowSettings, displayStore, facilityType])
 
   // ── Load runway data when theatre or facility changes ────────────
   useEffect(() => {
@@ -514,7 +513,7 @@ export default function StarsScope() {
     const facLat = match?.latitude  ?? null
     const facLng = match?.longitude ?? null
     useMapsStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, positionName)
-  }, [mission?.mission?.theatre, facilityDcsName, positionSuffix, airbases])
+  }, [mission?.mission?.theatre, facilityDcsName, positionSuffix, airbases, positionName])
 
   // ── Load new overlays when theatre changes ────────────────────────
   useEffect(() => {
@@ -573,7 +572,7 @@ export default function StarsScope() {
       )
     }, 200)
     return () => clearInterval(id)
-  }, []) // eslint-disable-line
+  }, [])
 
   // ── Render range rings ────────────────────────────────────────────
   useEffect(() => {
@@ -655,7 +654,8 @@ export default function StarsScope() {
         return next
       })
     })
-  }, [routeDisplayedUids])  // intentionally excludes routeProcData to avoid fetch loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally excludes routeProcData to avoid fetch loop
+  }, [routeDisplayedUids])
 
   // ── Render flight plan routes ──────────────────────────────────
   useEffect(() => {
@@ -749,7 +749,7 @@ export default function StarsScope() {
       ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
     }
 
-  }, [filteredUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick,
+  }, [filteredUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick, blinkOn,
       myControllerId, positionName,
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
@@ -792,7 +792,7 @@ export default function StarsScope() {
 
     rafId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(rafId)
-  }, []) // eslint-disable-line
+  }, [])
 
   // ── Command evaluation helper ─────────────────────────────────────
   const evaluateCommand = useCallback((trigger, canvasPos = null) => {
@@ -819,7 +819,7 @@ export default function StarsScope() {
       : null
 
     dispatchAction(parsed, slewTarget, { positionName, canvasPos, canvasSize, canvasLatLng, windowId: WINDOW_ID })
-  }, [positionName]) // eslint-disable-line
+  }, [positionName])
 
   // ── ENTER key handler (from InputHandler) ─────────────────────────
   const handleEnter = useCallback(() => {
@@ -863,7 +863,7 @@ export default function StarsScope() {
       return
     }
     evaluateCommand('ENTER')
-  }, [evaluateCommand, windowSettings?.pendingAction])
+  }, [evaluateCommand, windowSettings?.pendingAction, displayStore, windowSettings?.rbls])
 
   // ── ESC handler ───────────────────────────────────────────────────
   const handleEsc = useCallback(() => {
@@ -1196,7 +1196,7 @@ export default function StarsScope() {
       const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
       if (target) toggleHighlight(String(target.unitId))
     }
-  }, [evaluateCommand, windowSettings, displayStore])
+  }, [evaluateCommand, windowSettings, displayStore, handlePdbToggle, myControllerId, positionName, slewedPdbs])
 
   // ── Zoom ──────────────────────────────────────────────────────────
   const handleWheel = useCallback((e) => {

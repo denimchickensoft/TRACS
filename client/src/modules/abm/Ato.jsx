@@ -86,7 +86,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
   const clearFlights = useAbmMissionStore(s => s.clearFlights)
   const clearAllFlights = useAbmMissionStore(s => s.clearAllFlights)
   const removeFlight = useAbmMissionStore(s => s.removeFlight)
-  const taskOverrides = useAbmMissionStore(s => s.taskOverrides) ?? {}
+  const taskOverrides = useAbmMissionStore(s => s.taskOverrides)
   const sessionCoalition = useSessionStore(s => s.coalition)
   const liveUnits = useUnitsStore(s => s.units)
 
@@ -219,7 +219,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       callsignLabel,
       // FRAG's editable Task field (store/abmMission.js taskOverrides) wins
       // over the mission's own task string when a controller has set one.
-      taskLabel: taskOverrides[f.groupId] ?? (f.task || f.rawTask || '—'),
+      taskLabel: (taskOverrides ?? {})[f.groupId] ?? (f.task || f.rawTask || '—'),
       taskunitLabel: airfieldAbbrev(resolveBase(f), icaoMap),
       freqLabel: f.frequency != null ? f.frequency.toFixed(3) : '—',
       isReserve: f.lateActivation && !isLive,

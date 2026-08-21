@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { syncStore } from '../utils/storeSync.js'
 
 // What caused the auto-add — drives the highlight color
 export const STRIP_HIGHLIGHT = {

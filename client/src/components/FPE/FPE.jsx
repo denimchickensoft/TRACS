@@ -94,7 +94,8 @@ export function FPE({ scope = null }) {
     setTimeout(() => {
       aidInputRef.current?.focus()
     }, 0)
-  }, [open, prefillAid]) // intentionally not watching plans — live update handled below
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally not watching plans, live update handled below
+  }, [open, prefillAid])
 
   // Close on Escape
   useEffect(() => {

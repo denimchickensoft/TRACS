@@ -145,7 +145,6 @@ export function buildRaceFeature({ fix, radialDeg, turnDir = 'R', legNm, turnRad
   // Turn 2: at the far end, from outbound back onto inbound course.
   const c2Brg = (outboundCourseDeg + (turnDir === 'L' ? -90 : 90) + 360) % 360
   const c2    = destinationPoint(g.lat, g.lng, c2Brg, turnRadiusNm)
-  const e2    = destinationPoint(g.lat, g.lng, c2Brg, 2 * turnRadiusNm)
 
   const arc1 = turnArcPoints(c1, (c1Brg + 180) % 360, turnDir, turnRadiusNm) // fix -> e1
   const arc2 = turnArcPoints(c2, (c2Brg + 180) % 360, turnDir, turnRadiusNm) // g -> e2

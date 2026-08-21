@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { usePreviewStore }  from '../../../../store/preview.js'
-import { useSessionStore }  from '../../../../store/session.js'
 import { useFpeStore }      from '../../../../store/fpe.js'
 import { matchStarsKey, isTypedInput } from './starsKeys.js'
 
@@ -23,7 +22,6 @@ import { matchStarsKey, isTypedInput } from './starsKeys.js'
  */
 export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
   const preview     = usePreviewStore()
-  const positionName = useSessionStore((s) => s.positionName)
 
   useEffect(() => {
     function handleKeyDown(e) {
@@ -77,7 +75,7 @@ export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [preview, onEnter, onImmediateAction])
+  }, [preview, onEnter, onImmediateAction, onEsc])
 
   return null  // no DOM output — purely a side-effect component
 }

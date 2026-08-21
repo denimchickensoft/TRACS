@@ -9,7 +9,7 @@ import { resolveCallsign }      from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useRunwaysStore }       from '../../store/runways.js'
-import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../atc/stars/canvas/projection.js'
+import { rangeToPixelsPerNm, canvasToLatLng } from '../atc/stars/canvas/projection.js'
 import { resolveSlew }         from '../atc/stars/input/slewResolver.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
@@ -23,7 +23,6 @@ import { useReliefStore }      from '../../store/relief.js'
 import { useMapsStore }        from '../../store/maps.js'
 import { useBrevityStore }     from '../../store/brevity.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
-import { BraaList }            from './BraaList.jsx'
 import './AicScope.css'
 
 const WINDOW_ID = 'aic-main'
@@ -391,13 +390,13 @@ export default function AicScope() {
     const unsubGeo     = useGeoStore.subscribe(save)
     const unsubRelief  = useReliefStore.subscribe(save)
     return () => { clearTimeout(timer); unsubDisplay(); unsubGeo(); unsubRelief() }
-  }, []) // eslint-disable-line
+  }, [])
 
   // ── All state — declared before any effect that references them in deps ───────
 
   const [threatRings, setThreatRings] = useState(new Set())
-  const toggleThreatRing = (unitId) =>
-    setThreatRings(prev => { const n = new Set(prev); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
+  const toggleThreatRing = useCallback((unitId) =>
+    setThreatRings(prev => { const n = new Set(prev); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n }), [])
   const threatRadius = windowSettings?.threatRadius ?? 45
 
   // .autothreat (2026-07-10) — local UI toggle (not shared with other
@@ -557,7 +556,7 @@ export default function AicScope() {
       if (curr[id]) delete fadedRef.current[id]
     }
     prevVisibleRef.current = curr
-  }, [visibleUnits])
+  }, [visibleUnits, myCoalitionNum])
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -570,7 +569,7 @@ export default function AicScope() {
       setFadedTick(t => t + 1)
     }, 500)
     return () => clearInterval(id)
-  }, []) // eslint-disable-line
+  }, [])
 
   // GEO / RELIEF map canvas
   useEffect(() => {
@@ -665,7 +664,7 @@ export default function AicScope() {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup',   onUp)
     }
-  }, []) // eslint-disable-line
+  }, [])
 
   // ── Callbacks ──────────────────────────────────────────────────────────────────
 
@@ -1104,7 +1103,7 @@ export default function AicScope() {
       setDeclaration(target.unitId, pendingDeclaration)
       setPendingDeclaration(null)
     }
-  }, [pendingDeclaration, cmdBuffer, myCoalitionNum, setDeclaration, addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa, toggleThreatRing, displayStore]) // eslint-disable-line
+  }, [pendingDeclaration, cmdBuffer, myCoalitionNum, setDeclaration, addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa, toggleThreatRing, displayStore])
 
   const wheelHandlerRef = useRef(null)
   wheelHandlerRef.current = (e) => {
@@ -1167,7 +1166,7 @@ export default function AicScope() {
       cursorLatLng.lat, cursorLatLng.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
     )
     return `${String(brg).padStart(3, '0')} / ${range}`
-  }, [cursorLatLng, bullseyeLat, bullseyeLng, declinationDeg, bullseyeEntry])
+  }, [cursorLatLng, bullseyeLat, bullseyeLng, declinationDeg, bullseyeEntry, theatre])
 
   const isPictureAlert = useMemo(() => {
     if (!picture || picture.labelKey === 'CLEAN') return false

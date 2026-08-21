@@ -12,7 +12,7 @@ function init() {
     const Database = require('better-sqlite3')
     db = new Database(DB_PATH, { readonly: true, fileMustExist: true })
     console.log('[elevation] database ready')
-  } catch (err) {
+  } catch {
     console.warn('[elevation] no elevation database — AGL unavailable (run scripts/buildElevationDb.js)')
   }
 }

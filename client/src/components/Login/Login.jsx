@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSessionStore, MODULE, POSITION_MODE } from '../../store/session'
 import { useControllersStore } from '../../store/controllers'
 import { useUnitsStore } from '../../store/units'
-import { useAicStore } from '../../store/aic'
 import { useStatusBoardStore } from '../../store/statusBoard'
 import { wsClient } from '../../ws/client'
 import { initWebrtc } from '../../webrtc/client'
@@ -39,8 +38,8 @@ const COALITION_OPTIONS = [
 // ── Phase 1: Connect to Olympus ───────────────────────────────────────────────
 function ConnectPhase({ onConnected }) {
   const [profiles,   setProfiles]   = useState(() => loadServerProfiles())
-  const lastConnection = useMemo(() => loadLastConnection(), []) // eslint-disable-line
-  const lastProfile = useMemo(() => getMostRecentProfile(profiles), []) // eslint-disable-line
+  const lastConnection = useMemo(() => loadLastConnection(), [])
+  const lastProfile = useMemo(() => getMostRecentProfile(profiles), [profiles])
   const [name,       setName]       = useState(() => lastConnection?.name ?? lastProfile?.name ?? '')
   const [olympusUrl, setOlympusUrl] = useState(() => lastConnection?.url ?? lastProfile?.url ?? '')
   const [coalition,  setCoalition]  = useState(() => lastConnection?.coalition ?? lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
@@ -424,7 +423,6 @@ function PositionPhase({ onSignedIn }) {
   }, [airbases, runwayBaseNames])
 
   const landBases        = airbaseList.filter((ab) => !ab.isCarrier)
-  const carriers         = airbaseList.filter((ab) =>  ab.isCarrier)
   const airbasesReceived = airbases !== null
   const airbasesLoaded   = airbaseList.length > 0
 
@@ -479,22 +477,23 @@ function PositionPhase({ onSignedIn }) {
     }
   }, [catccCarriers])
 
-  // Lookup ICAO across all theatres
-  function resolveIcao(dcsName) {
-    const theatre = (mission?.mission?.theatre ?? '').toLowerCase()
-    if (theatre && icaoMap[theatre]?.[dcsName]) return icaoMap[theatre][dcsName]
-    for (const [key, map] of Object.entries(icaoMap)) {
-      if (key === '_note' || typeof map !== 'object') continue
-      if (map[dcsName]) return map[dcsName]
-    }
-    return ''
-  }
-
   // Auto-populate facility ID when base selection changes
   useEffect(() => {
     if (!selectedBase || isCtr) return
     const entry = airbaseList.find((ab) => ab.name === selectedBase)
     if (!entry) return
+
+    // Lookup ICAO across all theatres
+    function resolveIcao(dcsName) {
+      const theatre = (mission?.mission?.theatre ?? '').toLowerCase()
+      if (theatre && icaoMap[theatre]?.[dcsName]) return icaoMap[theatre][dcsName]
+      for (const [key, map] of Object.entries(icaoMap)) {
+        if (key === '_note' || typeof map !== 'object') continue
+        if (map[dcsName]) return map[dcsName]
+      }
+      return ''
+    }
+
     setFacilityId(entry.isCarrier ? '' : resolveIcao(entry.name))
   }, [selectedBase, airbaseList, icaoMap, mission, isCtr])
 
@@ -528,7 +527,7 @@ function PositionPhase({ onSignedIn }) {
       .catch((err) => { if (err?.name === 'AbortError') return; console.warn('[navdata] freq lookup failed', err); setSuggestedFreq(null) })
 
     return () => ac.abort()
-  }, [facilityId, suffix, selectedModule, selectedBase, airbaseList]) // eslint-disable-line
+  }, [facilityId, suffix, selectedModule, selectedBase, airbaseList])
 
   // Fetch CTR facility list for the current theatre when CTR is selected
   useEffect(() => {
@@ -541,7 +540,7 @@ function PositionPhase({ onSignedIn }) {
       .then((data) => { setCtrList(data); setCtrLoading(false) })
       .catch((err) => { if (err?.name === 'AbortError') return; setCtrList([]); setCtrLoading(false) })
     return () => ac.abort()
-  }, [isCtr, mission?.mission?.theatre]) // eslint-disable-line
+  }, [isCtr, mission?.mission?.theatre])
 
   const selectedEntry   = airbaseList.find((ab) => ab.name === selectedBase) ?? null
   const isCarrier       = selectedEntry?.isCarrier ?? false
@@ -1032,7 +1031,6 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
 // ── Root login shell ──────────────────────────────────────────────────────────
 export function Login() {
   const connected   = useSessionStore((s) => s.connected)
-  const positionSet = useSessionStore((s) => s.positionSet)
 
   const [phase, setPhase] = useState(connected ? 'position' : 'connect')
 

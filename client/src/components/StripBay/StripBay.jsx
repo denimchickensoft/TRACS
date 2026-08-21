@@ -1,12 +1,11 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
-import { useStripsStore, STRIP_HIGHLIGHT, CONFLICT_RESOLUTION } from '../../store/strips.js'
+import { useStripsStore, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useFpeStore }          from '../../store/fpe.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
 import { dispatchWebrtcEvent }  from '../../utils/commandChannel.js'
-import { resolveCallsign }      from '../../utils/callsign.js'
 import './StripBay.css'
 
 const SORT_OPTIONS = [

@@ -78,9 +78,6 @@ let selfId      = null
 
 let activePosition = ''
 let activeModule   = ''
-let activeFreq     = ''
-let activeFacility = ''
-let activeSuffix   = ''
 
 let clientList = []   // { peerId, position, module, frequency, connectedAt }[]
 let outSeq     = 0    // outgoing sequence counter
@@ -724,9 +721,6 @@ export function sendChatMessage({ text, toPosition = null, broadcast = false }) 
 export async function initWebrtc({ olympusUrl, password, position, module: mod, frequency, facility = '', suffix = '' }) {
   activePosition = position
   activeModule   = mod
-  activeFreq     = frequency
-  activeFacility = facility
-  activeSuffix   = suffix
   outSeq         = 0
   clientList     = []
   peerSeqs       = {}
@@ -856,8 +850,6 @@ export async function disconnectWebrtc() {
   outSeq         = 0
   peerSeqs       = {}
   handshakeAcked = false
-  activeFacility = ''
-  activeSuffix   = ''
 
   for (const t of Object.values(disconnectTimers)) clearTimeout(t)
   for (const k of Object.keys(disconnectTimers))   delete disconnectTimers[k]

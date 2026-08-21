@@ -51,7 +51,6 @@ export function App() {
   const webrtcStatus     = useSessionStore((s) => s.webrtcStatus)
   const peers            = useSessionStore((s) => s.peers)
   const resetPosition    = useSessionStore((s) => s.resetPosition)
-  const carrierUnitId    = useSessionStore((s) => s.carrierUnitId)
 
   const useDcsNames    = useSessionStore((s) => s.useDcsNames)
   const toggleDcsNames = useSessionStore((s) => s.toggleDcsNames)
@@ -287,7 +286,7 @@ export function App() {
     const id = setInterval(() => {
       if (popup.closed) { setParDocked(true); parPopupRef.current = null; clearInterval(id) }
     }, 500)
-  }, []) // eslint-disable-line
+  }, [])
 
   const handleClUndock = useCallback(() => {
     const { facilityId, facilityName: facName } = useSessionStore.getState()

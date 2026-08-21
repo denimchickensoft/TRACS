@@ -498,7 +498,7 @@ function writeBMP(filePath, width, height, rgbAt) {
 // mean of its runway reference points).
 function buildRunwayIndex() {
   const idx = {}
-  let files = []
+  let files
   try { files = fs.readdirSync(RUNWAYS_DIR).filter((f) => f.endsWith('.json')) } catch { return idx }
   for (const f of files) {
     let j

@@ -718,7 +718,7 @@ async function main() {
   console.log(`[extract] ${Object.keys(sectors).length} sectors`)
 
   // ctrs.json per theatre: airports in bbox with at least one ctr frequency
-  for (const [tName, tConf] of Object.entries(theatres)) {
+  for (const [_tName, tConf] of Object.entries(theatres)) {
     const folder = path.join(CACHE_DIR, tConf.folder)
     const ctrs = Object.entries(sectors)
       .filter(([, e]) => (e.freqs?.ctr?.length ?? 0) > 0 && inBbox(tConf.bbox, e.lon, e.lat))

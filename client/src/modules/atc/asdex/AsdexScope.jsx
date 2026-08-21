@@ -167,7 +167,7 @@ export default function AsdexScope() {
     if (!windowSettings) return
     centerLatRef.current = windowSettings.centerLat ?? 0
     centerLngRef.current = windowSettings.centerLng ?? 0
-  }, [windowSettings?.centerLat, windowSettings?.centerLng])
+  }, [windowSettings?.centerLat, windowSettings?.centerLng]) // eslint-disable-line
 
   // ── Load runway centerlines (own fetch — does not touch the shared runway store) ──
   useEffect(() => {
@@ -285,7 +285,7 @@ export default function AsdexScope() {
       )
     }, 500)
     return () => clearInterval(id)
-  }, []) // eslint-disable-line
+  }, [])
 
   // ── Surface canvas effect ────────────────────────────────────────────────────
   useEffect(() => {
@@ -314,7 +314,7 @@ export default function AsdexScope() {
     }
     rafRef.current = requestAnimationFrame(draw)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, []) // eslint-disable-line
+  }, [])
 
   // Keep centerline ref in sync for rAF loop
   useEffect(() => { centerlineVisibleRef.current = centerlineVisible }, [centerlineVisible])

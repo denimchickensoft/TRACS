@@ -93,7 +93,6 @@ function drawDugout(ctx, view, units, getDecl, rangeNm, symSize) {
   const { pixelsPerNm, width, height } = view
   const cx    = width  / 2
   const cy    = height / 2
-  const outerR = rangeNm * pixelsPerNm
   const innerR = Math.max(0, (rangeNm - 10) * pixelsPerNm)
   const D      = Math.max(4, 3 + symSize * 1.2)  // diamond half-size
 

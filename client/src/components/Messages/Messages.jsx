@@ -122,9 +122,9 @@ export function Messages({ visible, onClose, rightInset = 0 }) {
   const bodyRef  = useRef(null)
   const inputRef = useRef(null)
 
-  useEffect(() => { posRef.current = pos;   localStorage.setItem(lsPos,     JSON.stringify(pos))     }, [pos, lsPos])      // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { sizeRef.current = size; localStorage.setItem(lsSize,    JSON.stringify(size))    }, [size, lsSize])     // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {                         localStorage.setItem(lsOpacity, JSON.stringify(opacity)) }, [opacity, lsOpacity]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { posRef.current = pos;   localStorage.setItem(lsPos,     JSON.stringify(pos))     }, [pos, lsPos])
+  useEffect(() => { sizeRef.current = size; localStorage.setItem(lsSize,    JSON.stringify(size))    }, [size, lsSize])
+  useEffect(() => {                         localStorage.setItem(lsOpacity, JSON.stringify(opacity)) }, [opacity, lsOpacity])
 
   // Default position: docked flush to panel on first use
   useLayoutEffect(() => {

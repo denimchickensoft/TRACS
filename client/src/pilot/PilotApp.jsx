@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { connectPilotSession, disconnectPilotSession, fileFlightPlan, isPilotSessionConnected } from '../webrtc/pilotClient.js'
+import { connectPilotSession, disconnectPilotSession, fileFlightPlan } from '../webrtc/pilotClient.js'
 import './pilot.css'
 
 const BLANK_FIELDS = { typ: '', eq: '', dep: '', dest: '', spd: '', alt: '', rte: '', rmk: '' }

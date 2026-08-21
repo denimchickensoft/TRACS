@@ -38,6 +38,7 @@ const ODS_MAX_LINES = 5
 
 // Reserved for history trails and PTL re-enable — do not delete.
 // Colors and symbol dimensions for drawCatccContacts when those features are wired back in.
+// eslint-disable-next-line no-unused-vars -- kept for that re-enable, see comment above
 const CATCC_VISUAL = {
   colors: {
     contact:      '#FFD700',
@@ -355,7 +356,7 @@ export default function CatccScope() {
       )
     }, 200)
     return () => clearInterval(id)
-  }, []) // eslint-disable-line
+  }, [])
 
   // ── Render contacts + data blocks ─────────────────────────────────
   useEffect(() => {
@@ -400,7 +401,8 @@ export default function CatccScope() {
     )
   }, [visibleUnits, view, trackMap, effectiveCorrelations, ownership, handoffs, blinkTracks, blinkTick,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos,
-      windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca])
+      windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca,
+      windowSettings?.showHistory, windowSettings?.historyLength, windowSettings?.briteHst, windowSettings?.leaderDirs])
 
   // ── Marking MOMS — bullseye readout from carrier to cursor ───────
   const [momsReadout, setMomsReadout] = useState('')

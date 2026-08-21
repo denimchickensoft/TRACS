@@ -84,7 +84,7 @@ function useSize(ref) {
     })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [ref]) // eslint-disable-line
+  }, [ref])
   return size
 }
 
@@ -436,7 +436,7 @@ export function Par({
   useEffect(() => {
     if (docked) return
     document.title = 'PAR – TRACS'
-  }, [docked]) // eslint-disable-line
+  }, [docked])
 
   // ── Runway data (for airfield runway selector) ─────────────────────
   // When docked, AtcScope owns loadForTheatre — don't conflict with it.
@@ -449,7 +449,6 @@ export function Par({
   // ── Units + correlation ────────────────────────────────────────────
   const units        = useUnitsStore((s) => s.units)
   const correlations = useCorrelationStore((s) => s.correlations)
-  const useDcsNames  = useSessionStore((s) => s.useDcsNames)
   const carrierUnit  = initCarrierId != null ? (units[initCarrierId] ?? null) : null
 
   // ── Approach config state ──────────────────────────────────────────
@@ -506,7 +505,7 @@ export function Par({
     const magHdg = cl.magHead ?? ((cl.headingRad / D2R + 180 - cl.declinationDeg) % 360 + 360) % 360
     setManualHdg(Math.round(magHdg).toString())
     setThreshElev(Math.round(cl.elevFt))
-  }, [runwayId, centerlines]) // eslint-disable-line
+  }, [runwayId, centerlines])
 
   // Tolerances derived from standard angular FSD values — not user-configurable
   const vertTol = rangeNm * NM_TO_FEET * Math.tan(GS_TOL_DEG * D2R)
@@ -601,7 +600,7 @@ export function Par({
       results.push({ id, label, ...proj })
     }
     return results
-  }, [units, approachCfg, mode, correlations, useDcsNames])
+  }, [units, approachCfg, mode, correlations])
 
   // ── Centerlines sorted by distance to facility ────────────────────
   const sortedCenterlines = useMemo(() => {
@@ -630,7 +629,7 @@ export function Par({
     const { fb: fbRaw } = computeCarrierBrcFb(gridHdg, magvar, deckOff)
     const fb = Math.round(fbRaw)
     return fb === 0 ? 360 : fb
-  }, [carrierUnit, missionDate, initTheatre])
+  }, [carrierUnit, missionDate])
 
   const hasCarrierData = mode === 'carrier' && carrierUnit?.position != null
   const mirrored = approachCfg.valid && (approachCfg.finalBearingMag % 360) >= 180

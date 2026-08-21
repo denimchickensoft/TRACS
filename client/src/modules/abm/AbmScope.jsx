@@ -395,8 +395,8 @@ export default function AbmScope() {
   // effect and blink wiring below.
   const findRequest = useAbmMissionStore(s => s.findRequest)
   const findNonce    = useAbmMissionStore(s => s.findNonce)
-  const blinkIds     = useAbmMissionStore(s => s.blinkIds) ?? []
-  const blinkIdSet   = useMemo(() => new Set(blinkIds), [blinkIds])
+  const blinkIds     = useAbmMissionStore(s => s.blinkIds)
+  const blinkIdSet   = useMemo(() => new Set(blinkIds ?? []), [blinkIds])
 
   // BRAA line / bogey dope — ported from AIC, same keypresses/commands
   // (§11-adjacent — not in the original spec draft, added 2026-07-07).
@@ -1464,7 +1464,7 @@ export default function AbmScope() {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup',   onUp)
     }
-  }, []) // eslint-disable-line
+  }, [])
 
   // ── Scroll zoom ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -2454,8 +2454,11 @@ export default function AbmScope() {
       setCmdFeedback('')
       setCmdBuffer(b => b + e.key)
     }
+  // execCommand is a large per-render-redefined function only called from this handler; wrapping
+  // it in its own useCallback is a larger refactor than this cleanup pass, tracked separately.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cmdBuffer, pendingDeclaration, pendingBraaFighter, clearPendingBraa, rbl, findMarker, pendingDraw,
-      pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible]) // eslint-disable-line
+      pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible])
 
   // ── Click dispatch — ported from AIC's handleMouseUp, same modifier/command
   // precedence (2026-07-07): Shift+click removes BRAA pairs for the target;
@@ -2689,12 +2692,12 @@ export default function AbmScope() {
   }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getEffectiveDeclaration,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape,
-      pendingClearClick, drawingLayers, removeDrawingLayer]) // eslint-disable-line
+      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup])
 
   if (!windowSettings) return null
 
   // ── Command area preview — same pending-BRAA readout as AIC's cmdPreview.
-  let cmdPreview = ''
+  let cmdPreview
   if (pendingDeclaration) {
     cmdPreview = `${pendingDeclaration} +`
   } else if (pendingBraaFighter) {

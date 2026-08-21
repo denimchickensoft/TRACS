@@ -107,7 +107,7 @@ export function OPEN_FPE({ captures, slewTarget }) {
   ok()
 }
 
-export function INIT_CNTL_BY_ID({ captures, positionName }) {
+export function INIT_CNTL_BY_ID({ captures: _captures, positionName: _positionName }) {
   // TODO: resolve unit by callsign/FLID when flight plan store exists
   err('NOT YET SUPPORTED')
 }
@@ -440,7 +440,7 @@ export function RELOCATE_PREVIEW({ canvasPos }) {
   ok()
 }
 
-export function QUICK_LOOK_TCP({ captures, slewTarget }) {
+export function QUICK_LOOK_TCP({ captures: _captures, slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
   // TODO: implement quicklook
   ok()
@@ -454,7 +454,7 @@ export function QUICK_LOOK_ALL() {
 export function BARE_SLEW({ slewTarget }) {
   if (!slewTarget) return clearBuffer()
 
-  const { ownership, handoffs, pointOuts } = getAtc()
+  const { handoffs, pointOuts } = getAtc()
   const id = slewTarget.unitId
   const ho = handoffs[id]
   const po = pointOuts[id]

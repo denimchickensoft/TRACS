@@ -57,7 +57,7 @@ function drawPolyline(ctx, view, pts, missedDash) {
 }
 
 // Draw fix symbols and ident labels for named waypoints.
-function drawFixLabels(ctx, view, pts, fontSize) {
+function drawFixLabels(ctx, view, pts) {
   for (const pt of pts) {
     if (!pt.id) continue
     const { x, y } = latLngToCanvas(pt.lat, pt.lon, view)
@@ -121,7 +121,7 @@ export function drawProcedures(ctx, view, raw, sidGroups, starGroups, appchGroup
         if (!proc) continue
         for (const pts of Object.values(proc.transitions)) {
           drawPolyline(ctx, view, pts, missedDash)
-          if (csMap > 0) drawFixLabels(ctx, view, pts, fontSize)
+          if (csMap > 0) drawFixLabels(ctx, view, pts)
         }
       }
     }
@@ -142,7 +142,7 @@ export function drawProcedures(ctx, view, raw, sidGroups, starGroups, appchGroup
         if (alreadyDrawn) continue
         for (const pts of Object.values(proc.transitions)) {
           drawPolyline(ctx, view, pts, missedDash)
-          if (csMap > 0) drawFixLabels(ctx, view, pts, fontSize)
+          if (csMap > 0) drawFixLabels(ctx, view, pts)
         }
       }
     }

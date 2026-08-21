@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export const usePreviewStore = create((set, get) => ({
+export const usePreviewStore = create((set) => ({
   buffer:   '',       // command string accumulating in preview area
   response: '',       // system response / error line
   position: null,     // { x, y } screen coords | null = default position

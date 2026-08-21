@@ -3,7 +3,6 @@ import { resolveCallsign } from '../../../../utils/callsign.js'
 import { DIR_TO_ANGLE }    from '../../stars/constants.js'
 
 const M_PER_S_TO_KT       = 1.94384
-const MAX_HISTORY          = 10
 const SYMBOL_R             = 7
 const RIGHT_ALIGN_ANGLES   = new Set([90, 135, 180, 225])
 

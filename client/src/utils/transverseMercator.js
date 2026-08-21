@@ -71,7 +71,6 @@ const ECC = Math.sqrt(2 * F_WGS84 - F_WGS84 * F_WGS84)
 export function tmForward(latDeg, lngDeg, params) {
   const { central_meridian, false_easting, false_northing, scale_factor } = params
   const k0   = scale_factor
-  const lon0 = central_meridian * D2R
   const phi  = latDeg * D2R
   const lam  = (lngDeg - central_meridian) * D2R
 
