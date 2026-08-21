@@ -27,12 +27,6 @@ function TowerListPanel({ idx }) {
 
   const listKey = `tower${idx}`
 
-  if (!windowSettings || !activeProfile) return null
-
-  const { lists, briteLst, csLists } = windowSettings
-  const cfg = lists?.[listKey] ?? { visible: false, xPct: 2, yPct: 50, lines: 5 }
-  if (!cfg.visible) return null
-
   // Determine airport for this tower slot: slot 1 = facility airport, 2-3 = TBD
   // For now all three default to the facility airport
   const raw     = airbases?.airbases ?? airbases ?? {}
@@ -53,6 +47,12 @@ function TowerListPanel({ idx }) {
       .sort((a, b) => a.dist - b.dist)
       .map(({ p }) => `${p.aid.padEnd(10)} ${(p.typ || '----').padEnd(6)}`)
   }, [plans, units, airport, facilityId])
+
+  if (!windowSettings || !activeProfile) return null
+
+  const { lists, briteLst, csLists } = windowSettings
+  const cfg = lists?.[listKey] ?? { visible: false, xPct: 2, yPct: 50, lines: 5 }
+  if (!cfg.visible) return null
 
   const brite = (briteLst ?? 80) / 100
   const color = activeProfile.visual?.colors?.pdbText ?? '#00cc00'
