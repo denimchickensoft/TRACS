@@ -315,4 +315,4 @@ function decodeUnits(buffer) {
   return { updateTime, units }
 }
 
-module.exports = { decodeUnits }
+module.exports = { decodeUnits, DI }

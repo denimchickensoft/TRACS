@@ -27,6 +27,7 @@ const http     = require('http')
 const readline = require('readline')
 const fs       = require('fs')
 const path     = require('path')
+const { DI }   = require('../server/src/decoder.js')
 
 const PORT = 4001
 
@@ -81,22 +82,6 @@ const COALITION_MAP = { blu: 2, blue: 2, red: 1, neu: 0, neutral: 0 }
 
 function resolveType(input) {
   return TYPE_ALIASES[input.toLowerCase()] ?? input
-}
-
-// DataIndex enum — must match server/src/decoder.js
-const DI = {
-  category:  1,
-  alive:     2,
-  coalition: 7,
-  name:      9,
-  unitName:  10,
-  position:  18,
-  speed:     19,
-  heading:   22,
-  track:     23,
-  contacts:  44,
-  airborne:  65,
-  endOfData: 255,
 }
 
 // ─── World state ──────────────────────────────────────────────────────────────

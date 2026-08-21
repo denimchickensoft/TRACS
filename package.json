@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "client",
-    "server"
+    "server",
+    "mock-olympus"
   ],
   "scripts": {
     "dev": "concurrently -n server,client -c cyan,green \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",

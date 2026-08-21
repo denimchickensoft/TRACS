@@ -1,0 +1,9 @@
+{
+  "name": "tracs-mock-olympus",
+  "private": true,
+  "version": "0.1.0",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js"
+  }
+}

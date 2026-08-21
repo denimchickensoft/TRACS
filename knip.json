@@ -14,9 +14,8 @@
       ],
       "project": ["src/**/*.js", "scripts/**/*.js", "navdata/**/*.js"]
     },
-    ".": {
-      "entry": ["mock-olympus/server.js"],
-      "project": ["mock-olympus/**/*.js"]
+    "mock-olympus": {
+      "project": ["**/*.js"]
     }
   }
 }
