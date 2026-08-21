@@ -9,6 +9,8 @@
 // middleware, since only a subset of two different stores' fields need
 // saving here.
 
+import { makePrefsStore } from '../utils/prefsStore.js'
+
 const KEY = 'tracs-abm-prefs'
 
 const DEFAULTS = {
@@ -52,18 +54,5 @@ const DEFAULTS = {
   pinnedFixes:    {},    // { [theatre]: string[] } — .fix <name...> toggles, shown regardless of .fixes
 }
 
-export function loadAbmPrefs() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY))
-    return saved ? { ...DEFAULTS, ...saved } : { ...DEFAULTS }
-  } catch {
-    return { ...DEFAULTS }
-  }
-}
-
-export function saveAbmPrefs(patch) {
-  try {
-    const current = JSON.parse(localStorage.getItem(KEY)) ?? {}
-    localStorage.setItem(KEY, JSON.stringify({ ...current, ...patch }))
-  } catch {}
-}
+const { load: loadAbmPrefs, save: saveAbmPrefs } = makePrefsStore(KEY, DEFAULTS)
+export { loadAbmPrefs, saveAbmPrefs }

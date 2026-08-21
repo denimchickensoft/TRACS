@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 
 export const DECLARATION = {
   HOSTILE:  'HOSTILE',
@@ -7,11 +8,8 @@ export const DECLARATION = {
   FRIENDLY: 'FRIENDLY',
 }
 
-let _broadcastFn = null
-
-export function registerAbmBroadcast(fn) {
-  _broadcastFn = fn
-}
+const { register: registerAbmBroadcast, broadcast: _broadcastFn } = createBroadcastHook()
+export { registerAbmBroadcast }
 
 // autoClassify is a local UI preference, not session data — persisted to
 // localStorage (2026-07-09) so it survives a page refresh even when no other
@@ -56,7 +54,7 @@ export const useAbmStore = create((set, get) => ({
 
   setDeclaration: (unitId, classification) => {
     set(s => ({ declarations: { ...s.declarations, [unitId]: classification } }))
-    _broadcastFn?.('DECLARATION_SET', { unitId, classification })
+    _broadcastFn('DECLARATION_SET', { unitId, classification })
   },
 
   // .class (no args) — return every explicit declaration to its fog-of-war
@@ -65,14 +63,14 @@ export const useAbmStore = create((set, get) => ({
   // messages.
   resetDeclarations: () => {
     set({ declarations: {}, autoClassify: false })
-    _broadcastFn?.('DECLARATIONS_RESET', {})
+    _broadcastFn('DECLARATIONS_RESET', {})
   },
 
   // .autoclass (2026-07-08) — see aic.js's setAutoClassify for the full
   // rationale (ported as-is: toggle only, bulk apply lives in AbmScope).
   setAutoClassify: (enabled) => {
     set({ autoClassify: enabled })
-    _broadcastFn?.('AUTOCLASS_SET', { enabled })
+    _broadcastFn('AUTOCLASS_SET', { enabled })
   },
 
   addBraaPair: (fighterId, bogeyId) => {

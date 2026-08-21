@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 
 const SB_KEY = 'tracs.catcc.sb'
 
@@ -133,11 +134,16 @@ export const useStatusBoardStore = create((set) => ({
 // ── Persistence + cross-window sync ──────────────────────────────────────────
 // _syncing suppresses re-broadcast in all three cases: BroadcastChannel apply,
 // WebRTC apply (applyStatusBoardUpdate), and callsign rename (renameStatusBoardEntry).
+// Deliberately NOT utils/storeSync.js's syncStore — that helper's isSyncing flag
+// is private to its own subscribe/onmessage closure, with no way for external
+// callers to suppress a re-broadcast. This store needs one shared flag settable
+// from three places (the channel handler plus the two functions below), which
+// syncStore's API doesn't support without a broader API change of its own.
 let _syncing = false
 
 // WebRTC broadcast hook — registered by the WebRTC client after sign-in.
-let _webrtcBroadcast = null
-export function registerStatusBoardBroadcast(fn) { _webrtcBroadcast = fn }
+const { register: registerStatusBoardBroadcast, broadcast: _webrtcBroadcast } = createBroadcastHook()
+export { registerStatusBoardBroadcast }
 
 function buildPayload(s) {
   return {

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 
 export const DECLARATION = {
   HOSTILE:  'HOSTILE',
@@ -13,11 +14,8 @@ export const ROE_STATE = {
   HOLD:  'HOLD',
 }
 
-let _broadcastFn = null
-
-export function registerAicBroadcast(fn) {
-  _broadcastFn = fn
-}
+const { register: registerAicBroadcast, broadcast: _broadcastFn } = createBroadcastHook()
+export { registerAicBroadcast }
 
 // autoClassify is a local UI preference, not session data — persisted to
 // localStorage (2026-07-09) so it survives a page refresh even when no other
@@ -65,7 +63,7 @@ export const useAicStore = create((set, get) => ({
 
   setDeclaration: (unitId, classification) => {
     set(s => ({ declarations: { ...s.declarations, [unitId]: classification } }))
-    _broadcastFn?.('DECLARATION_SET', { unitId, classification })
+    _broadcastFn('DECLARATION_SET', { unitId, classification })
   },
 
   // .class (no args) — return every explicit declaration to its fog-of-war
@@ -74,12 +72,12 @@ export const useAicStore = create((set, get) => ({
   // messages.
   resetDeclarations: () => {
     set({ declarations: {}, autoClassify: false })
-    _broadcastFn?.('DECLARATIONS_RESET', {})
+    _broadcastFn('DECLARATIONS_RESET', {})
   },
 
   setRoe: (roe) => {
     set({ roe })
-    _broadcastFn?.('ROE_SET', { roe })
+    _broadcastFn('ROE_SET', { roe })
   },
 
   // .autoclass (2026-07-08) — when on, every unit is classified to its TRUE
@@ -89,7 +87,7 @@ export const useAicStore = create((set, get) => ({
   // existing declarations, it just stops future auto-declaration.
   setAutoClassify: (enabled) => {
     set({ autoClassify: enabled })
-    _broadcastFn?.('AUTOCLASS_SET', { enabled })
+    _broadcastFn('AUTOCLASS_SET', { enabled })
   },
 
   addBraaPair: (fighterId, bogeyId) => {

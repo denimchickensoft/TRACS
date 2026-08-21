@@ -4,6 +4,8 @@
 // reload, the rest (pan/zoom, marshal bearing, mission-specific values)
 // intentionally stays in store/display.js's session-only windows state.
 
+import { makePrefsStore } from '../utils/prefsStore.js'
+
 const KEY = 'tracs-catcc-prefs'
 
 const DEFAULTS = {
@@ -18,18 +20,5 @@ const DEFAULTS = {
   pinnedFixes:   {},    // { [theatre]: string[] } — .fix <name...> toggles, shown regardless of .fixes
 }
 
-export function loadCatccPrefs() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY))
-    return saved ? { ...DEFAULTS, ...saved } : { ...DEFAULTS }
-  } catch {
-    return { ...DEFAULTS }
-  }
-}
-
-export function saveCatccPrefs(patch) {
-  try {
-    const current = JSON.parse(localStorage.getItem(KEY)) ?? {}
-    localStorage.setItem(KEY, JSON.stringify({ ...current, ...patch }))
-  } catch {}
-}
+const { load: loadCatccPrefs, save: saveCatccPrefs } = makePrefsStore(KEY, DEFAULTS)
+export { loadCatccPrefs, saveCatccPrefs }

@@ -5,6 +5,8 @@
 // (store/display.js) — this only holds the handful of prefs that should
 // survive a reload independent of the active profile.
 
+import { makePrefsStore } from '../utils/prefsStore.js'
+
 const KEY = 'tracs-stars-prefs'
 
 const DEFAULTS = {
@@ -22,18 +24,5 @@ const DEFAULTS = {
   altFilterHighA: 600,
 }
 
-export function loadStarsPrefs() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY))
-    return saved ? { ...DEFAULTS, ...saved } : { ...DEFAULTS }
-  } catch {
-    return { ...DEFAULTS }
-  }
-}
-
-export function saveStarsPrefs(patch) {
-  try {
-    const current = JSON.parse(localStorage.getItem(KEY)) ?? {}
-    localStorage.setItem(KEY, JSON.stringify({ ...current, ...patch }))
-  } catch {}
-}
+const { load: loadStarsPrefs, save: saveStarsPrefs } = makePrefsStore(KEY, DEFAULTS)
+export { loadStarsPrefs, saveStarsPrefs }
