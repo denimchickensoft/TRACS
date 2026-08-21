@@ -16,7 +16,6 @@
     "seed-manifest": "node scripts/terrainDataExe/seedManifest.js"
   },
   "dependencies": {
-    "@trystero-p2p/ws-relay": "^0.24.0",
     "better-sqlite3": "^9.0.0",
     "d3-contour": "^4.0.2",
     "express": "^4.19.2",
