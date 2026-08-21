@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 /**
  * Layer 1 — static range rings.

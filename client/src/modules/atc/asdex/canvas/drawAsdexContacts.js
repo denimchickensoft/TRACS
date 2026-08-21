@@ -1,18 +1,11 @@
-import { latLngToCanvas }  from '../../stars/canvas/projection.js'
+import { latLngToCanvas }  from '../../../../utils/projection.js'
 import { resolveCallsign } from '../../../../utils/callsign.js'
+import { destinationPoint } from '../../../../utils/bearing.js'
 import { DIR_TO_ANGLE }    from '../../stars/constants.js'
 
 const M_PER_S_TO_KT       = 1.94384
 const SYMBOL_R             = 7
 const RIGHT_ALIGN_ANGLES   = new Set([90, 135, 180, 225])
-
-function projectLatLng(lat, lng, trackRad, distNm) {
-  const latRad = lat * Math.PI / 180
-  return [
-    lat + (distNm / 60) * Math.cos(trackRad),
-    lng + (distNm / (60 * Math.cos(latRad))) * Math.sin(trackRad),
-  ]
-}
 
 export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors) {
   ctx.clearRect(0, 0, view.width, view.height)
@@ -58,7 +51,7 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     // PTL
     if (ptlMinutes > 0 && unit.track != null && unit.speed) {
       const distNm = (unit.speed * M_PER_S_TO_KT * ptlMinutes) / 60
-      const [eLat, eLng] = projectLatLng(pos.lat, pos.lng, unit.track, distNm)
+      const { lat: eLat, lng: eLng } = destinationPoint(pos.lat, pos.lng, unit.track * 180 / Math.PI, distNm)
       const ep = latLngToCanvas(eLat, eLng, view)
       ctx.beginPath()
       ctx.strokeStyle = colors.contacts

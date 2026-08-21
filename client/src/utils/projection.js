@@ -18,8 +18,8 @@
  * view: { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg?, theatre? }
  */
 
-import { tmForward, tmInverse } from '../../../../utils/transverseMercator.js'
-import { getProjectionParams, getProjectionParamsVersion } from '../../../../utils/magvar.js'
+import { tmForward, tmInverse } from './transverseMercator.js'
+import { getProjectionParams, getProjectionParamsVersion } from './magvar.js'
 
 const NM_PER_DEGREE_LAT = 60
 const M_PER_NM = 1852

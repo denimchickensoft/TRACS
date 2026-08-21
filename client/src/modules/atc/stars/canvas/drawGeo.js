@@ -1,4 +1,4 @@
-import { latLngToCanvas, projectRingCached } from './projection.js'
+import { latLngToCanvas, projectRingCached } from '../../../../utils/projection.js'
 
 const COAST_FALLBACK    = '#6699AA'
 const BOUNDARY_FALLBACK = '#557788'

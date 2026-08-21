@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 import { HIGHLIGHT_TEAL } from '../constants.js'
 
 /**

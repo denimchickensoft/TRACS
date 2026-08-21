@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 const MVA_STROKE_FALLBACK = '#7788AA'
 const MVA_LABEL_FALLBACK  = '#AABBDD'

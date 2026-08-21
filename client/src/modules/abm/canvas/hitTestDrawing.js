@@ -7,7 +7,7 @@
  * small radius around the point itself, since they have no edge.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 const HIT_RADIUS_PX = 8
 

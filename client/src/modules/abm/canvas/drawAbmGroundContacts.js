@@ -12,7 +12,7 @@
  * rings should be suppressed.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 import { DECL_COLOR } from '../../aic/canvas/drawAicContacts.js'
 import { DECLARATION } from '../../../store/abm.js'
 import { HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'

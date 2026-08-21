@@ -1,4 +1,4 @@
-import { latLngToCanvas, canvasToLatLng } from './projection.js'
+import { latLngToCanvas, canvasToLatLng } from '../../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../../utils/bearing.js'
 
 const M_PER_S_TO_KT = 1.94384

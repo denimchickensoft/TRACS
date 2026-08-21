@@ -7,7 +7,7 @@
  * the separate BraaList side panel, which ABM does not port).
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 
 function computeBraa(fighter, bogey, declinationDeg, theatre) {

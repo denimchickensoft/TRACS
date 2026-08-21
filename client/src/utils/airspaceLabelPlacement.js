@@ -16,7 +16,7 @@
 // unlike datablocks' always-upright text). The least-bad candidate is kept
 // even if it still collides — nothing is ever dropped.
 
-import { latLngToCanvas } from '../modules/atc/stars/canvas/projection.js'
+import { latLngToCanvas } from './projection.js'
 
 const STACK_ATTEMPTS = 4
 

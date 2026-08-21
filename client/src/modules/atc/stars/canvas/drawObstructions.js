@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 export function drawObstructions(ctx, view, obstructions, visible, brite = 80) {
   if (!visible || !obstructions.length || brite <= 0) return

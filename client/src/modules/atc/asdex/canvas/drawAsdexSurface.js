@@ -1,4 +1,4 @@
-import { latLngToCanvas } from '../../stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 export function drawAsdexSurface(ctx, view, features, colors) {
   ctx.clearRect(0, 0, view.width, view.height)

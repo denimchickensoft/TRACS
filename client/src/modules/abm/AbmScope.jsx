@@ -3,6 +3,8 @@ import { useSessionStore }  from '../../store/session'
 import { useDisplayStore }  from '../../store/display.js'
 import { useUnitsStore }    from '../../store/units.js'
 import { useAbmStore, DECLARATION } from '../../store/abm.js'
+import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
+import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
@@ -16,7 +18,7 @@ import { useAirwaysStore }  from '../../store/airways.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { loadAbmPrefs, saveAbmPrefs } from '../../store/abmPrefs.js'
-import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../atc/stars/canvas/projection.js'
+import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
 import { DIR_TO_ANGLE }     from '../atc/stars/constants.js'
@@ -186,29 +188,6 @@ function getAbmVisibleGroundUnits(units, myCoalitionNum) {
 // Bogey dope helper — ported from AIC's AicScope.jsx findNearestBogey as-is.
 // Air contacts only, BOGEY/HOSTILE only (excludes FRIENDLY/NEUTRAL and,
 // per 2026-07-07 direction, ground/naval contacts — "bogey" means air).
-function nmBetween(a, b) {
-  const nmPerDegLng = 60 * Math.cos(a.lat * Math.PI / 180)
-  const dN = (b.lat - a.lat) * 60
-  const dE = (b.lng - a.lng) * nmPerDegLng
-  return Math.hypot(dN, dE)
-}
-
-function findNearestBogey(fighterId, fighterUnit, units, getDecl) {
-  if (!fighterUnit?.position) return null
-  let nearestId = null, nearestDist = Infinity
-  for (const [id, unit] of Object.entries(units)) {
-    if (id === fighterId || !unit.position) continue
-    const decl = getDecl(id, unit)
-    if (decl === DECLARATION.FRIENDLY || decl === DECLARATION.NEUTRAL) continue
-    const nmPerDegLng = 60 * Math.cos(fighterUnit.position.lat * Math.PI / 180)
-    const dN = (unit.position.lat - fighterUnit.position.lat) * 60
-    const dE = (unit.position.lng - fighterUnit.position.lng) * nmPerDegLng
-    const dist = Math.hypot(dN, dE)
-    if (dist < nearestDist) { nearestDist = dist; nearestId = id }
-  }
-  return nearestId
-}
-
 // Classification-only multi-select (2026-07-08) — local to ABM, not shared
 // with resolveSlew (used everywhere else: BRAA, threat rings, bogey dope,
 // leader-dir override) which always picks the single nearest hit. Dense
@@ -653,12 +632,7 @@ export default function AbmScope() {
 
   // FRAG roster "blink datablock" cue — same 200ms redraw tick / 500ms
   // on-off period StarsScope.jsx uses for handoff/point-out blink.
-  const [blinkTick, setBlinkTick] = useState(0)
-  useEffect(() => {
-    const id = setInterval(() => setBlinkTick(t => t + 1), 200)
-    return () => clearInterval(id)
-  }, [])
-  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0
+  const { blinkTick, blinkOn } = useBlink()
 
   // ── Navdata layers (§4) — reused directly from STARS's stores/draw functions ─
   const geoBoundaries   = useGeoStore(s => s.boundaries)

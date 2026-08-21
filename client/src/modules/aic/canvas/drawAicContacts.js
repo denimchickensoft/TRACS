@@ -6,8 +6,8 @@
  *   - BRAA intercept overlay lines
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
-import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
+import { gridBearingRangeNm, toMagneticFromTrue, destinationPoint } from '../../../utils/bearing.js'
 import { DECLARATION } from '../../../store/aic.js'
 import { computeAicIntercept } from '../aicGeometry.js'
 
@@ -252,9 +252,7 @@ function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize
     const elapsed     = (now - disappearedAt) / 1000
     const distNm      = (unit.speed ?? 0) * elapsed / 1852
     const track       = unit.track ?? 0
-    const nmPerDegLng = 60 * Math.cos(unit.position.lat * Math.PI / 180)
-    const coastLat    = unit.position.lat + (Math.cos(track) * distNm) / 60
-    const coastLng    = unit.position.lng + (Math.sin(track) * distNm) / nmPerDegLng
+    const { lat: coastLat, lng: coastLng } = destinationPoint(unit.position.lat, unit.position.lng, track * 180 / Math.PI, distNm)
     const { x, y }   = latLngToCanvas(coastLat, coastLng, view)
     if (Math.hypot(x - cx, y - cy) > clipR) continue
 

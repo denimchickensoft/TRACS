@@ -7,7 +7,7 @@
  * offset-right-of-symbol convention drawRoute.js's fix labels already do.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 import { fixSymbolType, drawFixSymbol } from '../../atc/stars/canvas/fixSymbol.js'
 
 const CULL_MARGIN = 20

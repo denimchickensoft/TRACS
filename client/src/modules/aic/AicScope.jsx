@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection }   from '../../utils/wheel.js'
+import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useUnitsStore }       from '../../store/units.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
@@ -9,7 +10,7 @@ import { resolveCallsign }      from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useRunwaysStore }       from '../../store/runways.js'
-import { rangeToPixelsPerNm, canvasToLatLng } from '../atc/stars/canvas/projection.js'
+import { rangeToPixelsPerNm, canvasToLatLng } from '../../utils/projection.js'
 import { resolveSlew }         from '../atc/stars/input/slewResolver.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
@@ -116,29 +117,6 @@ function picFillIns(g) {
   else if (g.isFast) parts.push('FAST')
   if (g.openingClosing) parts.push(g.openingClosing)
   return parts.join('  ')
-}
-
-function nmBetween(a, b) {
-  const nmPerDegLng = 60 * Math.cos(a.lat * Math.PI / 180)
-  const dN = (b.lat - a.lat) * 60
-  const dE = (b.lng - a.lng) * nmPerDegLng
-  return Math.hypot(dN, dE)
-}
-
-function findNearestBogey(fighterId, fighterUnit, units, declarations, myCoalitionNum) {
-  if (!fighterUnit?.position) return null
-  let nearestId = null, nearestDist = Infinity
-  for (const [id, unit] of Object.entries(units)) {
-    if (id === fighterId || !unit.position) continue
-    const decl = declarations[id] ?? (unit.coalition === myCoalitionNum ? 'FRIENDLY' : 'BOGEY')
-    if (decl === 'FRIENDLY' || decl === 'NEUTRAL') continue
-    const nmPerDegLng = 60 * Math.cos(fighterUnit.position.lat * Math.PI / 180)
-    const dN = (unit.position.lat - fighterUnit.position.lat) * 60
-    const dE = (unit.position.lng - fighterUnit.position.lng) * nmPerDegLng
-    const dist = Math.hypot(dN, dE)
-    if (dist < nearestDist) { nearestDist = dist; nearestId = id }
-  }
-  return nearestId
 }
 
 const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
@@ -1043,8 +1021,8 @@ export default function AicScope() {
     if (e.altKey && !e.ctrlKey) {
       if (!target) return
       const nearestId = findNearestBogey(
-        target.unitId, target.unit,
-        visibleUnitsRef.current, declarationsRef.current, myCoalitionNum,
+        target.unitId, target.unit, visibleUnitsRef.current,
+        (id, unit) => declarationsRef.current[id] ?? (unit.coalition === myCoalitionNum ? 'FRIENDLY' : 'BOGEY'),
       )
       if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
       else setCmdFeedback('NO BOGEY')
@@ -1086,8 +1064,8 @@ export default function AicScope() {
     if (buf === '.dope') {
       if (!target) return
       const nearestId = findNearestBogey(
-        target.unitId, target.unit,
-        visibleUnitsRef.current, declarationsRef.current, myCoalitionNum,
+        target.unitId, target.unit, visibleUnitsRef.current,
+        (id, unit) => declarationsRef.current[id] ?? (unit.coalition === myCoalitionNum ? 'FRIENDLY' : 'BOGEY'),
       )
       if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
       else setCmdFeedback('NO BOGEY')

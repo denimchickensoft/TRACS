@@ -30,7 +30,7 @@
  * polygonFill. 0 (the default) skips the pass entirely.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 import { placeAirspaceLabels } from '../../../utils/airspaceLabelPlacement.js'
 
 const FALLBACK_COLOR = '#556677'

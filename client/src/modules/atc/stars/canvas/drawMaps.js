@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 import { placeAirspaceLabels } from '../../../../utils/airspaceLabelPlacement.js'
 
 const FALLBACK_COLOR = '#556677'

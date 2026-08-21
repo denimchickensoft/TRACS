@@ -4,7 +4,7 @@
  * endpoint dots, bearing/range label at the midpoint.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 
 export function drawRbl(ctx, view, rbl, declinationDeg) {

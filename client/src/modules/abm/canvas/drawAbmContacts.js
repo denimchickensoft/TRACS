@@ -8,7 +8,8 @@
  * independent from AIC's, not shared (deferred, see abm-spec.md §1.2).
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
+import { destinationPoint } from '../../../utils/bearing.js'
 import { drawPtl, DECL_COLOR } from '../../aic/canvas/drawAicContacts.js'
 import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
 import { DECLARATION } from '../../../store/abm.js'
@@ -129,9 +130,7 @@ function drawFadedContacts(ctx, view, fadedContacts, now, ptlMinutes) {
     const elapsed     = (now - disappearedAt) / 1000
     const distNm      = (unit.speed ?? 0) * elapsed / 1852
     const track       = unit.track ?? 0
-    const nmPerDegLng = 60 * Math.cos(unit.position.lat * Math.PI / 180)
-    const coastLat    = unit.position.lat + (Math.cos(track) * distNm) / 60
-    const coastLng    = unit.position.lng + (Math.sin(track) * distNm) / nmPerDegLng
+    const { lat: coastLat, lng: coastLng } = destinationPoint(unit.position.lat, unit.position.lng, track * 180 / Math.PI, distNm)
     const { x, y }    = latLngToCanvas(coastLat, coastLng, view)
     if (x < -CULL_MARGIN || x > width + CULL_MARGIN || y < -CULL_MARGIN || y > height + CULL_MARGIN) continue
 

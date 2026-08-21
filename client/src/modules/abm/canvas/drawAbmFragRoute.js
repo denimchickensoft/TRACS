@@ -2,7 +2,7 @@
 // a polyline through its waypoints, with labels on whichever points the
 // mission designer actually named (unlabeled points just get a small tick).
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 const ROUTE_COLOR = '#00CFFF'
 const FIX_R = 2.5

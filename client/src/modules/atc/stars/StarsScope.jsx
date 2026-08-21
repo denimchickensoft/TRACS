@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
+import { useBlink } from '../../../utils/useBlink.js'
 
 const METERS_TO_FEET = 3.28084
 import { useUnitsStore }       from '../../../store/units.js'
@@ -10,7 +11,7 @@ import { useDisplayStore }  from '../../../store/display.js'
 import { useOdsStore }      from '../../../store/ods.js'
 import { usePreviewStore }  from '../../../store/preview.js'
 import { getVisibleUnits }      from './visibleUnits.js'
-import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from './canvas/projection.js'
+import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
 import { drawContacts }         from './canvas/drawContacts.js'
@@ -157,15 +158,10 @@ export default function StarsScope() {
     [windowSettings?.routeDisplayedUids]
   )
 
-  // Tick every 200ms to drive symbol blink redraws
-  const [blinkTick, setBlinkTick] = useState(0)
-  useEffect(() => {
-    const id = setInterval(() => setBlinkTick((t) => t + 1), 200)
-    return () => clearInterval(id)
-  }, [])
-  // Computed once per render — shared by both canvas effect (closure) and SVG overlay (prop)
-  // so the symbol letter and datablock always blink from the same value in the same frame.
-  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0
+  // Tick every 200ms to drive symbol blink redraws. blinkOn is computed once per
+  // render — shared by both canvas effect (closure) and SVG overlay (prop) so the
+  // symbol letter and datablock always blink from the same value in the same frame.
+  const { blinkTick, blinkOn } = useBlink()
 
   // ── Simulated squawk-standby wingmen ────────────────────────────────
   // Opt-in (.WNG / starsPrefs.simWingmenStandby) — see stca/formations.js.

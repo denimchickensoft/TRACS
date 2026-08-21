@@ -5,7 +5,7 @@
  *   - Threat sector wedge (two radials + arc)
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 export function drawAicLayers(ctx, view, rangeNm, ringSpacingNm, bullseyeLat, bullseyeLng, sector = null) {
   const { pixelsPerNm, width, height } = view

@@ -1,4 +1,4 @@
-import { latLngToCanvas } from '../canvas/projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 // Maximum pixel distance from cursor to contact centre to count as a hit
 const SLEW_THRESHOLD_PX = 20

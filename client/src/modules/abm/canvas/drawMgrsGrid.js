@@ -1,4 +1,4 @@
-import { latLngToCanvas, canvasToLatLng } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas, canvasToLatLng } from '../../../utils/projection.js'
 import { tmForward, tmInverse } from '../../../utils/transverseMercator.js'
 import { utmZoneNumber, utmZoneParams, mgrs100kSquareId, latBand } from '../../../utils/mgrs.js'
 

@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 const TOTAL_NM = 20
 const START_NM = 1   // first dash begins 1 NM from threshold

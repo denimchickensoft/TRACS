@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 const MSA_COLOR_FALLBACK = '#FF8800'
 const NM_TO_RAD = Math.PI / 10800.066  // 1 nm in radians (Earth radius 3440.065 nm)

@@ -13,7 +13,7 @@
  * house convention), rounded, with a dark drop-shadow behind the text.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 import { strokeLine, strokePolygon, drawPoint } from './drawAbmCustomDrawings.js'
 import {
   buildLineFeature, buildRectFeature, buildCircFeature,

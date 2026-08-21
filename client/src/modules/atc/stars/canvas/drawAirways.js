@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 const AIRWAY_FALLBACK = { V: '#66FF99', J: '#FFDD44', B: '#AABBCC' }
 

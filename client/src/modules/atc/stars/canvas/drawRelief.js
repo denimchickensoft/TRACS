@@ -1,4 +1,4 @@
-import { latLngToCanvas, projectRingCached } from './projection.js'
+import { latLngToCanvas, projectRingCached } from '../../../../utils/projection.js'
 
 const RELIEF_COLOR_FALLBACK = '#88AA88'
 

@@ -12,7 +12,7 @@
  * (drawRelief/drawGeo/etc), which reproject every point every frame.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 export function drawAbmRaster(ctx, view, raster, visible, brite = 100) {
   if (!visible || !raster?.img || brite <= 0) return

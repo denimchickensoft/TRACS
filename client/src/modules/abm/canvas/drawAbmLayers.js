@@ -5,7 +5,7 @@
  * AIC's bullseye-anchored dugout ring.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 export function drawAbmLayers(
   ctx, view, ringSpacingNm,

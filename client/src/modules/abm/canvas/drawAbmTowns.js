@@ -5,7 +5,7 @@
  * references for controllers building mental geography.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 const CULL_MARGIN = 20
 const LABEL_COLOR = 'rgba(180,180,180,0.8)'

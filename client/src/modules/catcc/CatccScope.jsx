@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
+import { useBlink } from '../../utils/useBlink.js'
 import { useUnitsStore }         from '../../store/units.js'
 import { useSessionStore }       from '../../store/session.js'
 import { useDisplayStore }       from '../../store/display.js'
@@ -8,7 +9,7 @@ import { useControllersStore }   from '../../store/controllers.js'
 
 import { useCorrelationStore }   from '../../store/correlation.js'
 import { getVisibleUnits }       from '../atc/stars/visibleUnits.js'
-import { rangeToPixelsPerNm }    from '../atc/stars/canvas/projection.js'
+import { rangeToPixelsPerNm }    from '../../utils/projection.js'
 import { resolveSlew }           from '../atc/stars/input/slewResolver.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
@@ -139,11 +140,7 @@ export default function CatccScope() {
     ? radNum
     : marshalBearing
 
-  const [blinkTick, setBlinkTick] = useState(0)
-  useEffect(() => {
-    const id = setInterval(() => setBlinkTick((t) => t + 1), 200)
-    return () => clearInterval(id)
-  }, [])
+  const { blinkTick, blinkOn } = useBlink()
 
   const [view, setView] = useState(null)
   const viewRef = useRef(null)
@@ -363,8 +360,7 @@ export default function CatccScope() {
     if (!view || !contactsCanvasRef.current) return
     const ctx = contactsCanvasRef.current.getContext('2d')
     ctx.clearRect(0, 0, view.width, view.height)
-    const now     = Date.now()
-    const blinkOn = Math.floor(now / 500) % 2 === 0
+    const now = Date.now()
 
     const blinkingUids = new Set()
     for (const [uid, ho] of Object.entries(handoffs)) {
@@ -399,7 +395,7 @@ export default function CatccScope() {
       windowSettings?.catccLeaderLen  ?? 16,
       windowSettings?.dbca ?? true,
     )
-  }, [visibleUnits, view, trackMap, effectiveCorrelations, ownership, handoffs, blinkTracks, blinkTick,
+  }, [visibleUnits, view, trackMap, effectiveCorrelations, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos,
       windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca,
       windowSettings?.showHistory, windowSettings?.historyLength, windowSettings?.briteHst, windowSettings?.leaderDirs])

@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 import { fixSymbolType, drawFixSymbol } from './fixSymbol.js'
 import { gridDestinationPoint } from '../../../../utils/bearing.js'
 

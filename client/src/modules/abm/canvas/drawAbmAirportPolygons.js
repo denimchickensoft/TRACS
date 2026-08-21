@@ -6,7 +6,7 @@
  * alongside geo/relief/airways/etc, so it only fills the polygons themselves.
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 export function drawAbmAirportPolygons(ctx, view, features, visible, taxiwayColor = '#3a3a3a', runwayColor = '#5a5a5a') {
   if (!visible || !features?.length) return

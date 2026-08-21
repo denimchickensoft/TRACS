@@ -1,4 +1,4 @@
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 const CIRCLE_RADIUS  = 5   // px — contact symbol
 const HISTORY_RADIUS = 3   // px — history dot

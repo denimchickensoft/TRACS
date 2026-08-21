@@ -1,4 +1,4 @@
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 import { DIR_TO_ANGLE }   from '../../atc/stars/constants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 

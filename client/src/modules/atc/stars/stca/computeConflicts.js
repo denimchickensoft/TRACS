@@ -25,6 +25,8 @@
 //     position samples, just done here since it's STCA-specific).
 //   - `latched` is the set of currently-active conflict pairs (see above).
 
+import { destinationPoint } from '../../../../utils/bearing.js'
+
 const AIRBORNE       = new Set(['Aircraft', 'Helicopter'])
 const M_PER_S_TO_KT  = 1.94384
 const M_TO_FT        = 3.28084
@@ -55,10 +57,7 @@ function nmBetween(lat1, lng1, lat2, lng2) {
 // uses (track: radians true, 0=N clockwise; speed: m/s).
 function predictLatLng(lat, lng, trackRad, speedMps, seconds) {
   const distNm = (speedMps * M_PER_S_TO_KT * seconds) / 3600
-  const latRad = lat * Math.PI / 180
-  const endLat = lat + (distNm / 60) * Math.cos(trackRad)
-  const endLng = lng + (distNm / (60 * Math.cos(latRad))) * Math.sin(trackRad)
-  return { lat: endLat, lng: endLng }
+  return destinationPoint(lat, lng, trackRad * 180 / Math.PI, distNm)
 }
 
 function updateVertRate(vertRates, id, altFt, now) {

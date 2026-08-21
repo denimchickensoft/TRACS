@@ -1,4 +1,4 @@
-import { latLngToCanvas } from './projection.js'
+import { latLngToCanvas } from '../../../../utils/projection.js'
 
 const MORA_STROKE_FALLBACK = '#667788'
 const MORA_FILL_FALLBACK   = '#99AABB'

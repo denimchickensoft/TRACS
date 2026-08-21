@@ -49,7 +49,7 @@
  * off).
  */
 
-import { latLngToCanvas } from '../../atc/stars/canvas/projection.js'
+import { latLngToCanvas } from '../../../utils/projection.js'
 
 const MARKER_RADIUS = 3
 
