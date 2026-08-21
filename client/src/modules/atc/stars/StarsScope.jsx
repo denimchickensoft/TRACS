@@ -163,6 +163,9 @@ export default function StarsScope() {
     const id = setInterval(() => setBlinkTick((t) => t + 1), 200)
     return () => clearInterval(id)
   }, [])
+  // Computed once per render — shared by both canvas effect (closure) and SVG overlay (prop)
+  // so the symbol letter and datablock always blink from the same value in the same frame.
+  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0
 
   // ── Simulated squawk-standby wingmen ────────────────────────────────
   // Opt-in (.WNG / starsPrefs.simWingmenStandby) — see stca/formations.js.
@@ -1247,10 +1250,6 @@ export default function StarsScope() {
 
   const dcbPos      = windowSettings.dcbPosition ?? 'top'
   const coordsVisible = windowSettings.coordsVisible ?? false
-
-  // Computed once per render — shared by both canvas effect (closure) and SVG overlay (prop)
-  // so the symbol letter and datablock always blink from the same value in the same frame.
-  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0
 
   return (
     <div className="atc-scope" data-dcb-pos={dcbVisible && activeProfile.dcb ? dcbPos : undefined} style={{ background: bgColor }}>
