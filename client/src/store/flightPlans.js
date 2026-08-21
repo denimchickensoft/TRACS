@@ -47,6 +47,7 @@ export const useFlightPlansStore = create(
             firstSeen:   Date.now(),
             ...plan,
             // AID always normalised; CID/BCN only overridden if explicitly provided
+            // eslint-disable-next-line no-dupe-keys -- intentional: this key wins over any `aid` in ...plan
             aid,
           },
         },

@@ -29,6 +29,15 @@ export default [
 
   js.configs.recommended,
 
+  // Empty catch blocks are a deliberate idiom throughout this codebase —
+  // try { JSON.parse(...) } catch {} / try { decodeXBlob(...) } catch {}
+  // swallowing a corrupt read/blob rather than treating it as fatal.
+  {
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+
   // Client — ESM, browser, React
   {
     files: ['client/src/**/*.{js,jsx}'],
