@@ -71,6 +71,7 @@ const COMMANDS = [
   { id: 'FIX_PIN',          pattern: /^\.fix\s+(.+)$/, captures: ['names'] },
   { id: 'FIND',             pattern: /^\.find\s+(.+)$/, captures: ['fix'] },
   { id: 'DEFINE',           pattern: /^\.define\s+(.+)$/, captures: ['term'] },
+  { id: 'DEFINE',           pattern: /^\.def\s+(.+)$/, captures: ['term'] },
   { id: 'WHERE',            pattern: /^\.where\s+(.+)$/, captures: ['callsign'] },
   { id: 'FRAG_FIND',        pattern: /^\.frag\s+(.+)$/, captures: ['callsign'] },
   { id: 'ROUTE_FIND',       pattern: /^\.route\s+(.+)$/, captures: ['callsign'] },

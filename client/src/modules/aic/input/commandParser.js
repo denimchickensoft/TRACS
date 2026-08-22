@@ -59,6 +59,7 @@ const COMMANDS = [
   { id: 'BE_LATLNG',        pattern: /^\.be\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/, captures: ['lat', 'lng'] },
   { id: 'BE_FIX',           pattern: /^\.be\s+(\S+)$/, captures: ['fix'] },
   { id: 'DEFINE',           pattern: /^\.define\s+(.+)$/, captures: ['term'] },
+  { id: 'DEFINE',           pattern: /^\.def\s+(.+)$/, captures: ['term'] },
 ]
 
 /**
