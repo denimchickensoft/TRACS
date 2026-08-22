@@ -77,8 +77,9 @@ const SCOPE_DEFAULTS = {
   defineEntry: null,        // { term, text } | null — .define brevity glossary readout
   bullseyeOverride: null,   // { lat, lng } | null — .be bullseye override
   // ABM-only session state (resources/specs/refactor-spec.md §10) — reuses
-  // threatRings/bullseyeOverride/findMarker/defineEntry above (same concept,
-  // independent per-window instance); only dbHiddenIds has no AIC equivalent.
+  // threatRings/rbl/bullseyeOverride/findMarker/defineEntry above (same
+  // concept, independent per-window instance); only dbHiddenIds has no AIC
+  // equivalent.
   dbHiddenIds: [],          // unitId[] — .db + click per-contact datablock hide override
   // Click-completion state, deliberately kept bespoke (not generalized into a
   // parser-level "trigger" mechanism, see §10.0/§10.3 of the refactor spec) —

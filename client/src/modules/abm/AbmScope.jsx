@@ -931,7 +931,11 @@ export default function AbmScope() {
   // ABM's right-click is already taken by pan (unlike AIC, which has no pan
   // and uses right-click for nothing), so RBL uses AIC's actual mechanism —
   // left-button drag past a 5px threshold — same as AIC, not a new binding.
-  const [rbl, setRbl] = useState(null)
+  // Lives in displayStore's windows[WINDOW_ID], same as AIC's own `rbl` —
+  // needed so .tclear's action (actions/index.js) can clear it without a
+  // closure, added 2026-08-22 alongside the actions module (see
+  // resources/specs/refactor-spec.md §10, phase 3 findings).
+  const rbl = windowSettings?.rbl ?? null
   const leftDragStartRef  = useRef(null)
   const rblDragActiveRef  = useRef(false)
 
@@ -1271,14 +1275,15 @@ export default function AbmScope() {
         const dist = Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY)
         if (dist <= 5) return
         rblDragActiveRef.current = true
-        setRbl({ anchor: { lat: start.lat, lng: start.lng }, end: null, fixed: false })
+        useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: { anchor: { lat: start.lat, lng: start.lng }, end: null, fixed: false } })
       }
       const rect = interactiveRef.current?.getBoundingClientRect()
       if (!rect || !viewRef.current) return
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
       const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
-      setRbl(prev => prev ? { ...prev, end: { lat, lng } } : null)
+      const prevRbl = useDisplayStore.getState().windows[WINDOW_ID]?.rbl
+      if (prevRbl) useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: { ...prevRbl, end: { lat, lng } } })
     }
     const onUp = (e) => {
       if (e.button !== 0) return
@@ -1286,7 +1291,8 @@ export default function AbmScope() {
       leftDragStartRef.current = null
       rblDragActiveRef.current = false
       if (!wasActive) return
-      setRbl(prev => prev?.end ? { ...prev, fixed: true } : null)
+      const prevRbl = useDisplayStore.getState().windows[WINDOW_ID]?.rbl
+      useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: prevRbl?.end ? { ...prevRbl, fixed: true } : null })
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
@@ -2063,8 +2069,7 @@ export default function AbmScope() {
     // behaviors, since drawings' `.clear` is the one users would reasonably
     // expect bare `.clear` to mean going forward.
     if (str === '.tclear') {
-      setRbl(null)
-      displayStore.updateWindow(WINDOW_ID, { threatRings: [] })
+      displayStore.updateWindow(WINDOW_ID, { rbl: null, threatRings: [] })
       useAbmStore.getState().braaList.forEach(p => useAbmStore.getState().removeBraaPair(p.id))
       setCmdFeedback('ALL CLEARED')
       return
@@ -2199,7 +2204,7 @@ export default function AbmScope() {
       if (routeVisible) { useAbmMissionStore.getState().clearRouteVisible(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
-      if (rbl) { setRbl(null); return }
+      if (rbl) { displayStore.updateWindow(WINDOW_ID, { rbl: null }); return }
       if (defineEntry) { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); return }
       clearCmd()
       return
