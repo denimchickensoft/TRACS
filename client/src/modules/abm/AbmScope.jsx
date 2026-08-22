@@ -17,12 +17,11 @@ import { useMoraStore }     from '../../store/mora.js'
 import { useAirwaysStore }  from '../../store/airways.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
-import { loadAbmPrefs, saveAbmPrefs } from '../../store/abmPrefs.js'
+import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { useAbmUiPrefsStore } from '../../store/abmUiPrefs.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
-import { DIR_TO_ANGLE }     from '../atc/stars/constants.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
 import { drawCompassRose }  from '../atc/stars/canvas/drawCompassRose.js'
@@ -52,13 +51,15 @@ import { drawAbmCustomDrawings } from './canvas/drawAbmCustomDrawings.js'
 import { drawPendingDraw } from './canvas/drawPendingDraw.js'
 import { hitTestDrawingLayer } from './canvas/hitTestDrawing.js'
 import {
-  parseDrawCommand, advancePendingDraw, rotatePendingDraw, supportsRotation, POLY_CLOSE_RADIUS_PX,
+  advancePendingDraw, rotatePendingDraw, supportsRotation, POLY_CLOSE_RADIUS_PX,
 } from './draw/drawCommands.js'
 import {
-  trueDeclaration, drawCmdTokens, getAbmVisibleUnits, getAbmVisibleGroundUnits,
+  trueDeclaration, getAbmVisibleUnits, getAbmVisibleGroundUnits,
   resolveClassifyTargets, buildReadoutFields, buildFriendlyAirFields,
   distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
 } from './abmScopeHelpers.js'
+import { parseCommand } from './input/commandParser.js'
+import { dispatch } from './actions/index.js'
 import './AbmScope.css'
 
 const WINDOW_ID  = 'abm-main'
@@ -86,32 +87,10 @@ const F_KEY_DECL = {
   F4: DECLARATION.FRIENDLY,
 }
 
-// .acq/.eng classification letters — same f/n/b/h convention as the F-key
-// declarations above (b for BOGEY, MTTP brevity — not "u" for unknown),
-// lowercase for command-line entry (2026-07-07).
-const CLASS_LETTER = {
-  f: DECLARATION.FRIENDLY,
-  n: DECLARATION.NEUTRAL,
-  b: DECLARATION.BOGEY,
-  h: DECLARATION.HOSTILE,
-}
-const ALL_DECLARATIONS = [DECLARATION.HOSTILE, DECLARATION.BOGEY, DECLARATION.NEUTRAL, DECLARATION.FRIENDLY]
-
-// Per-category airspace toggles (2026-07-08) — replaces the old single
-// .airspace bulk toggle. Categories mirror the displayCategory values in
-// server/navdata/config/airspace_colors.json, excluding procedures (no
-// PROC_SID/STAR/APPCH commands) and the non-airspace layers that already
-// have their own commands (HOLDS/.holds, AIRWAYS_*/.airways, MORA/.mora,
-// RELIEF/.relief, MVA, ROUTE, GEO_*).
-const AIRSPACE_CATEGORIES = [
-  'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
-  'CLASS A', 'CLASS B', 'CLASS C', 'CLASS D', 'CLASS E', 'CLASS F', 'CLASS G',
-]
-const AIRSPACE_CMD_CATEGORY = {
-  tma: 'TMA', ctr: 'CTR', cta: 'CTA', fir: 'FIR', uir: 'UIR', sua: 'SUA', mil: 'MIL', trsa: 'TRSA',
-  classa: 'CLASS A', classb: 'CLASS B', classc: 'CLASS C', classd: 'CLASS D',
-  classe: 'CLASS E', classf: 'CLASS F', classg: 'CLASS G',
-}
+// .acq/.eng classification letters, ALL_DECLARATIONS, and the per-category
+// airspace tables used to live here — moved to actions/index.js 2026-08-22
+// (resources/specs/refactor-spec.md §10 phase 4), execCommand was their only
+// call site in this file.
 
 // Phase 2 — real canvas + rAF PPI: pan (right-click drag), zoom (scroll),
 // range rings (toggle + anchor via .rr command), bullseye marker, command
@@ -160,7 +139,6 @@ export default function AbmScope() {
   const { timeStr, localTimeStr } = useMissionClock()
   const [showLocalTime, setShowLocalTime] = useState(false)
   const clockVisible    = useAbmUiPrefsStore(s => s.clockVisible)
-  const setClockVisible = useAbmUiPrefsStore(s => s.setClockVisible)
   const clockTime = showLocalTime ? localTimeStr : timeStr
 
   const displayStore   = useDisplayStore()
@@ -245,7 +223,6 @@ export default function AbmScope() {
   // and just union at draw time, so auto fully owns a contact's ring for as
   // long as the breach lasts.
   const autoThreat    = useAbmUiPrefsStore(s => s.autoThreat)
-  const setAutoThreat = useAbmUiPrefsStore(s => s.setAutoThreat)
   const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
 
   // Ground/naval acq/eng range-ring visibility (§7) — per-classification
@@ -253,9 +230,7 @@ export default function AbmScope() {
   // `.acq`/`.eng` toggles all four classes at once, `.acq h` etc. toggles
   // just that classification (2026-07-07).
   const acqHidden    = useAbmUiPrefsStore(s => s.acqHidden)
-  const setAcqHidden = useAbmUiPrefsStore(s => s.setAcqHidden)
   const engHidden    = useAbmUiPrefsStore(s => s.engHidden)
-  const setEngHidden = useAbmUiPrefsStore(s => s.setEngHidden)
 
   // IDs ever seen with the RWR detection bit (16) set — same "sticky" reveal
   // rule as AIC (AicScope.jsx rwrEverDetectedRef): once a non-friendly air
@@ -479,54 +454,39 @@ export default function AbmScope() {
   const airspaceFeatures = useAbmAirspaceStore(s => s.features)
   const airspacePalettes = useAbmAirspaceStore(s => s.palettes)
   const aspColorIdx   = useAbmAirspaceStore(s => s.paletteIdx)
-  const setPaletteIdx = useAbmAirspaceStore(s => s.setPaletteIdx)
   const asVisible       = useAbmUiPrefsStore(s => s.asVisible)
-  const setAsVisible    = useAbmUiPrefsStore(s => s.setAsVisible)
   const labelsVisible   = useAbmUiPrefsStore(s => s.labelsVisible)
-  const setLabelsVisible = useAbmUiPrefsStore(s => s.setLabelsVisible)
   const fillVisible     = useAbmUiPrefsStore(s => s.fillVisible)
-  const setFillVisible  = useAbmUiPrefsStore(s => s.setFillVisible)
   const fillPct         = useAbmUiPrefsStore(s => s.fillPct)
-  const setFillPct      = useAbmUiPrefsStore(s => s.setFillPct)
   const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
-  const toggleAllDrawings = useAbmDrawingsStore(s => s.toggleAll)
   const addDrawnShape = useAbmDrawingsStore(s => s.addDrawnShape)
   const removeDrawingLayer = useAbmDrawingsStore(s => s.removeLayer)
-  const removeDrawingsByName = useAbmDrawingsStore(s => s.removeLayersByName)
-  const toggleDrawingsByName = useAbmDrawingsStore(s => s.toggleLayersByName)
   const clearAllDrawings = useAbmDrawingsStore(s => s.clearTheatre)
   const airspaceColors = airspacePalettes[aspColorIdx]?.colors ?? airspacePalettes[0]?.colors ?? null
   const fixes   = useNavdataStore(s => s.fixes)
   const navaids = useNavdataStore(s => s.navaids)
   const fixesVisible      = useAbmUiPrefsStore(s => s.fixesVisible)
-  const setFixesVisible   = useAbmUiPrefsStore(s => s.setFixesVisible)
   const navaidsVisible    = useAbmUiPrefsStore(s => s.navaidsVisible)
-  const setNavaidsVisible = useAbmUiPrefsStore(s => s.setNavaidsVisible)
   // .fix <name...> — per-theatre pinned fixes, always shown regardless of
   // fixesVisible (see .fix handler below and drawAbmFixSymbols call).
   const pinnedFixes    = useAbmUiPrefsStore(s => s.pinnedFixes)
-  const setPinnedFixes = useAbmUiPrefsStore(s => s.setPinnedFixes)
   // Same useRunwaysStore.loadForTheatre(theatre) call as below (no facility
   // args) already yields theatre-wide unfiltered centerlines — see §4.3.
   const runwayCenterlines = useRunwaysStore(s => s.centerlines)
   const runwaysVisible    = useAbmUiPrefsStore(s => s.runwaysVisible)
-  const setRunwaysVisible = useAbmUiPrefsStore(s => s.setRunwaysVisible)
   // Local fetch mirroring ASDE-X's pattern — no shared store exists for this,
   // and unlike ASDE-X we want every airport in the theatre, not one facility.
   const [polygonFeatures, setPolygonFeatures] = useState([])
   const polygonsVisible    = useAbmUiPrefsStore(s => s.polygonsVisible)
-  const setPolygonsVisible = useAbmUiPrefsStore(s => s.setPolygonsVisible)
   // Real UTM/MGRS grid (see drawMgrsGrid.js) — matches DCS's own F10 map.
   // No shared store needed (ABM-only, like the toggles above), so plain
   // local state.
   const mgrsVisible    = useAbmUiPrefsStore(s => s.mgrsVisible)
-  const setMgrsVisible = useAbmUiPrefsStore(s => s.setMgrsVisible)
   // Town/city name labels (.towns) — local fetch straight from the public
   // static file, same as polygonFeatures below but no server API needed
   // since towns are pre-baked per-theatre JSON, not derived from mission data.
   const [towns, setTowns] = useState([])
   const townsVisible    = useAbmUiPrefsStore(s => s.townsVisible)
-  const setTownsVisible = useAbmUiPrefsStore(s => s.setTownsVisible)
   // Baked raster layers (.map/.terrain/.water/.roads/.base) — see server's
   // buildAbmBasemap.js + drawAbmRaster.js. Draw order (furthest-back first):
   // basemap (land/sea silhouette, wide/coarse), terrain (relief wash only,
@@ -540,16 +500,12 @@ export default function AbmScope() {
   // everywhere, and terrain (the former basemap) stopped being that source.
   const [basemap, setBasemap] = useState(null)
   const basemapVisible    = useAbmUiPrefsStore(s => s.basemapVisible)
-  const setBasemapVisible = useAbmUiPrefsStore(s => s.setBasemapVisible)
   const [terrain, setTerrain] = useState(null)
   const terrainVisible    = useAbmUiPrefsStore(s => s.terrainVisible)
-  const setTerrainVisible = useAbmUiPrefsStore(s => s.setTerrainVisible)
   const [water, setWater] = useState(null)
   const waterVisible    = useAbmUiPrefsStore(s => s.waterVisible)
-  const setWaterVisible = useAbmUiPrefsStore(s => s.setWaterVisible)
   const [roads, setRoads] = useState(null)
   const roadsVisible    = useAbmUiPrefsStore(s => s.roadsVisible)
-  const setRoadsVisible = useAbmUiPrefsStore(s => s.setRoadsVisible)
 
   // Cursor position readout (.coords) — DMS/DDS + real MGRS + terrain
   // elevation at the cursor. Position updates read straight off a ref
@@ -558,11 +514,8 @@ export default function AbmScope() {
   // /api/elevation endpoint (server/src/elevation.js, previously only used
   // internally for per-unit AGL) and throttled to once per ~100m cell.
   const coordsVisible    = useAbmUiPrefsStore(s => s.coordsVisible)
-  const setCoordsVisible = useAbmUiPrefsStore(s => s.setCoordsVisible)
   const coordFormat      = useAbmUiPrefsStore(s => s.coordFormat) // 'dms' | 'ddm'
-  const setCoordFormat   = useAbmUiPrefsStore(s => s.setCoordFormat)
   const elevUnit         = useAbmUiPrefsStore(s => s.elevUnit) // 'feet' | 'meters'
-  const setElevUnit      = useAbmUiPrefsStore(s => s.setElevUnit)
   const [coordsReadout, setCoordsReadout] = useState(null)
   const cursorLatLngRef  = useRef({ lat: null, lng: null })
   const elevRef          = useRef(null)
@@ -580,7 +533,6 @@ export default function AbmScope() {
   // is plain trig (no fetch to throttle) and needs to feel like it's
   // actually attached to the cursor.
   const becVisible    = useAbmUiPrefsStore(s => s.becVisible)
-  const setBecVisible = useAbmUiPrefsStore(s => s.setBecVisible)
   const [becReadout, setBecReadout] = useState(null)
 
   const handleCursorMove = useCallback((e) => {
@@ -645,7 +597,6 @@ export default function AbmScope() {
   // happens to share the same box/interval. Gated on the same 150ms
   // interval so it doesn't re-render on every raw mousemove.
   const unitReadoutVisible    = useAbmUiPrefsStore(s => s.unitReadoutVisible)
-  const setUnitReadoutVisible = useAbmUiPrefsStore(s => s.setUnitReadoutVisible)
   //
   // Airports/runways (2026-07-09) piggyback on the same interval and radius:
   // useRunwaysStore.centerlines emits two direction-entries per physical
@@ -1359,12 +1310,17 @@ export default function AbmScope() {
 
   function clearCmd() { setCmdBuffer(''); setCmdFeedback('') }
 
+  // Parses + dispatches via input/commandParser.js + actions/index.js (ported
+  // 2026-08-22, see resources/specs/refactor-spec.md §10 phase 4) — each
+  // action reads/writes state via .getState(), no closures, and returns its
+  // feedback string; this wrapper supplies the render-derived context values
+  // actions have no independent store to read from, plus the `.clear all`
+  // y/n confirmation intercept, which — like the three click-completion
+  // mechanisms handled in handleMouseUp/handleKeyDown — stays bespoke here
+  // rather than being generalized into the parser (§10.0/§10.3).
   async function execCommand(raw) {
-    const str = raw.trim().toLowerCase()
-
-    // .clear all's confirmation — intercepts the very next submitted line
-    // as a bare yes/no answer, not a new command, however it's routed.
     if (pendingClearAllConfirm) {
+      const str = raw.trim().toLowerCase()
       displayStore.updateWindow(WINDOW_ID, { pendingClearAllConfirm: false })
       if (str === 'y') {
         clearAllDrawings(theatre)
@@ -1375,802 +1331,17 @@ export default function AbmScope() {
       return
     }
 
-    if (str === '.rr') {
-      const on = !(windowSettings?.ringsVisible ?? false)
-      displayStore.updateWindow(WINDOW_ID, { ringsVisible: on })
-      saveAbmPrefs({ ringsVisible: on })
-      setCmdFeedback(on ? `RANGE RINGS ${windowSettings?.ringSpacingNm ?? 20}NM` : 'RANGE RINGS OFF')
-      return
-    }
-
-    const spacingOnly = str.match(/^\.rr\s+(\d+(?:\.\d+)?)$/)
-    if (spacingOnly) {
-      const nm = parseFloat(spacingOnly[1])
-      if (nm <= 0) {
-        displayStore.updateWindow(WINDOW_ID, { ringsVisible: false })
-        saveAbmPrefs({ ringsVisible: false })
-        setCmdFeedback('RANGE RINGS OFF')
-      } else {
-        displayStore.updateWindow(WINDOW_ID, { ringsVisible: true, ringSpacingNm: nm })
-        saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
-        setCmdFeedback(`RANGE RINGS ${nm}NM`)
-      }
-      return
-    }
-
-    const spacingAndAnchor = str.match(/^\.rr\s+(\d+(?:\.\d+)?)\s+(\S+)$/)
-    if (spacingAndAnchor) {
-      const nm     = parseFloat(spacingAndAnchor[1])
-      const anchor = spacingAndAnchor[2]
-      if (nm <= 0) {
-        displayStore.updateWindow(WINDOW_ID, { ringsVisible: false })
-        saveAbmPrefs({ ringsVisible: false })
-        setCmdFeedback('RANGE RINGS OFF')
-        return
-      }
-      if (anchor === 'bullseye' || anchor === 'bs') {
-        displayStore.updateWindow(WINDOW_ID, {
-          ringsVisible: true, ringSpacingNm: nm,
-          ringAnchorLat: null, ringAnchorLng: null, ringAnchorId: null,
-        })
-        saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
-        setCmdFeedback(`RANGE RINGS ${nm}NM @ BULLSEYE`)
-        return
-      }
-      const result = useNavdataStore.getState().lookupFix(anchor)
-      if (result) {
-        displayStore.updateWindow(WINDOW_ID, {
-          ringsVisible: true, ringSpacingNm: nm,
-          ringAnchorLat: result.lat, ringAnchorLng: result.lon, ringAnchorId: result.id,
-        })
-        // Anchor lat/lng/id intentionally excluded — mission-specific fix,
-        // not a persisted preference (see store/abmPrefs.js header).
-        saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
-        setCmdFeedback(`RANGE RINGS ${nm}NM @ ${result.id}`)
-      } else {
-        setCmdFeedback('FIX NOT FOUND')
-      }
-      return
-    }
-
-    // .be — bullseye override. Bare form (Enter, no click) clears the
-    // override and reverts to the mission bullseye; typed bare and then
-    // clicked instead (see pendingBe/handleMouseUp), it places the override
-    // at the clicked point. `.be <fix>` looks up a theatre fix/navaid/runway
-    // by name; `.be <lat> <lon>` takes explicit decimal-degree coordinates.
-    if (str === '.be') {
-      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: null })
-      setCmdFeedback('BULLSEYE RESET')
-      return
-    }
-
-    const beCoords = str.match(/^\.be\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/)
-    if (beCoords) {
-      const lat = parseFloat(beCoords[1])
-      const lng = parseFloat(beCoords[2])
-      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat, lng } })
-      setCmdFeedback(`BULLSEYE SET ${lat.toFixed(2)}/${lng.toFixed(2)}`)
-      return
-    }
-
-    const beFix = str.match(/^\.be\s+(\S+)$/)
-    if (beFix) {
-      const result = useNavdataStore.getState().lookupFix(beFix[1])
-      if (result) {
-        displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat: result.lat, lng: result.lon } })
-        setCmdFeedback(`BULLSEYE SET @ ${result.id}`)
-      } else {
-        setCmdFeedback('FIX NOT FOUND')
-      }
-      return
-    }
-
-    // ── Navdata layer toggles (§4.2) ──────────────────────────────────────────
-    if (str === '.time') {
-      const next = !clockVisible
-      setClockVisible(next)
-      setCmdFeedback(next ? 'TIME ON' : 'TIME OFF')
-      return
-    }
-
-    if (str === '.unitro') {
-      const next = !unitReadoutVisible
-      setUnitReadoutVisible(next)
-      setCmdFeedback(next ? 'UNIT READOUT ON' : 'UNIT READOUT OFF')
-      return
-    }
-
-    if (str === '.geo') {
-      useGeoStore.getState().toggleVisible()
-      setCmdFeedback(useGeoStore.getState().visible ? 'GEO ON' : 'GEO OFF')
-      return
-    }
-
-    if (str === '.relief') {
-      useReliefStore.getState().toggleVisible()
-      setCmdFeedback(useReliefStore.getState().visible ? 'RELIEF ON' : 'RELIEF OFF')
-      return
-    }
-
-    if (str === '.holds') {
-      useHoldingsStore.getState().toggleVisible()
-      setCmdFeedback(useHoldingsStore.getState().visible ? 'HOLDS ON' : 'HOLDS OFF')
-      return
-    }
-
-    if (str === '.mora') {
-      useMoraStore.getState().toggleVisible()
-      setCmdFeedback(useMoraStore.getState().visible ? 'MORA ON' : 'MORA OFF')
-      return
-    }
-
-    if (str === '.airways') {
-      const v = useAirwaysStore.getState().visible
-      const anyOn = v.V || v.J || v.B
-      useAirwaysStore.getState().setVisible({ V: !anyOn, J: !anyOn, B: !anyOn })
-      setCmdFeedback(anyOn ? 'AIRWAYS OFF' : 'AIRWAYS ON')
-      return
-    }
-
-    const airwayType = str.match(/^\.airways\s+([vjb])$/)
-    if (airwayType) {
-      const type = airwayType[1].toUpperCase()
-      useAirwaysStore.getState().toggleVisible(type)
-      setCmdFeedback(`AIRWAYS ${type} ${useAirwaysStore.getState().visible[type] ? 'ON' : 'OFF'}`)
-      return
-    }
-
-    // .asp — bulk toggle (was .airspace, 2026-07-08): on if any category is
-    // currently visible, off otherwise, same anyOn pattern as .airways.
-    if (str === '.asp') {
-      const anyOn = AIRSPACE_CATEGORIES.some(c => asVisible[c])
-      const next  = anyOn ? {} : Object.fromEntries(AIRSPACE_CATEGORIES.map(c => [c, true]))
-      setAsVisible(next)
-      setCmdFeedback(anyOn ? 'AIRSPACE OFF' : 'AIRSPACE ON')
-      return
-    }
-
-    // Per-category airspace toggles (2026-07-08) — .tma/.ctr/.cta/.fir/.uir/
-    // .sua/.mil/.trsa/.classa-.classg. No procedure commands (SID/STAR/APPCH
-    // stay display-only, per direction).
-    const airspaceCatMatch = str.match(/^\.(tma|ctr|cta|fir|uir|sua|mil|trsa|class[a-g])$/)
-    if (airspaceCatMatch) {
-      const cat  = AIRSPACE_CMD_CATEGORY[airspaceCatMatch[1]]
-      const next = !asVisible[cat]
-      setAsVisible(s => ({ ...s, [cat]: next }))
-      setCmdFeedback(`${cat} ${next ? 'ON' : 'OFF'}`)
-      return
-    }
-
-    // .aspcolors <name> / .refresh — same commands STARS uses for airspace
-    // palettes (input/commandParser.js SET_ASP_COLORS/REFRESH_ASP_COLORS),
-    // reimplemented against useAbmAirspaceStore's own palette state rather
-    // than useMapsStore's, which is STARS-only (see store/abmAirspace.js).
-    if (str.startsWith('.aspcolors ')) {
-      const name = str.slice('.aspcolors '.length).trim().toUpperCase()
-      await useAbmAirspaceStore.getState().refreshPalettes()
-      const palettes = useAbmAirspaceStore.getState().palettes
-      const idx = palettes.findIndex(p => p.name.toUpperCase() === name)
-      if (idx < 0) { setCmdFeedback('INVALID PALETTE'); return }
-      setPaletteIdx(idx)
-      saveAbmPrefs({ aspColorIdx: idx })
-      setCmdFeedback(`ASP COLORS: ${palettes[idx].name.toUpperCase()}`)
-      return
-    }
-
-    if (str === '.refresh') {
-      const success = await useAbmAirspaceStore.getState().refreshPalettes()
-      setCmdFeedback(success ? 'PALETTES REFRESHED' : 'REFRESH FAILED')
-      return
-    }
-
-    // .labels/.lbl/.label — name-label toggle for both airspace and
-    // custom-drawing layers. Airspace labels are drawn only for categories
-    // currently on via asVisible (.tma/.classc/etc); custom-drawing labels
-    // only for features that have one (parseGeojson's title/name
-    // convention). Either way this is purely a "show text too" layer on top
-    // of the geometry.
-    if (str === '.labels' || str === '.lbl' || str === '.label') {
-      const next = !labelsVisible
-      setLabelsVisible(next)
-      setCmdFeedback(next ? 'LABELS ON' : 'LABELS OFF')
-      return
-    }
-
-    // .fill — toggle airspace polygon fill, remembering the last percentage
-    // used. .fill <1-100> — set percentage and always turn it on.
-    if (str === '.fill') {
-      const next = !fillVisible
-      setFillVisible(next)
-      setCmdFeedback(next ? 'FILL ON' : 'FILL OFF')
-      return
-    }
-
-    const fillPctMatch = str.match(/^\.fill (\d{1,3})$/)
-    if (fillPctMatch) {
-      const pct = parseInt(fillPctMatch[1], 10)
-      if (pct < 1 || pct > 100) { setCmdFeedback('ILL VAL'); return }
-      setFillVisible(true)
-      setFillPct(pct)
-      setCmdFeedback(`FILL ${pct}%`)
-      return
-    }
-
-    // .custom/.cust — interchangeable: bare form is a bulk toggle for
-    // user-imported GeoJSON drawings (store/abmDrawings.js), same any-on
-    // pattern as .asp. `.custom <name>`/`.cust <name>` instead toggles just
-    // the drawing(s) matching that name (case-insensitive, could be more
-    // than one after manual renames — all matched layers toggle together,
-    // same any-on pattern). Individual drawings can otherwise be toggled
-    // from the Drawings panel's per-row checkbox.
-    if (str === '.custom' || str === '.cust') {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const anyOn = drawingLayers.some(l => l.visible)
-      toggleAllDrawings(theatre)
-      setCmdFeedback(anyOn ? 'CUSTOM OFF' : 'CUSTOM ON')
-      return
-    }
-    if (str.startsWith('.custom ') || str.startsWith('.cust ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const arg = drawCmdTokens(str, raw).join(' ').trim()
-      const matches = drawingLayers.filter(l => l.name.toUpperCase() === arg.toUpperCase())
-      if (!matches.length) { setCmdFeedback('NOT FOUND'); return }
-      const anyOn = matches.some(l => l.visible)
-      toggleDrawingsByName(theatre, arg)
-      setCmdFeedback(`${arg.toUpperCase()} ${anyOn ? 'OFF' : 'ON'}`)
-      return
-    }
-
-    // ── Draw commands ─────────────────────────────────────────────────────
-    // .line/.rect/.circ/.poly/.sect/.race/.text — fully-typed args commit
-    // immediately (addDrawnShape, store/abmDrawings.js); anything left
-    // unresolved arms pendingDraw and waits for click(s). See
-    // modules/abm/draw/drawCommands.js for the per-shape grammar/arity.
-    if (str === '.line' || str.startsWith('.line ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('line', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
-      if (result.error) { setCmdFeedback(result.error); return }
-      if (result.immediate) {
-        addDrawnShape(theatre, 'line', result.immediate)
-        setCmdFeedback('LINE DRAWN')
-      } else {
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
-        setCmdFeedback('LINE: CLICK TO PLACE')
-      }
-      return
-    }
-
-    if (str === '.rect' || str.startsWith('.rect ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('rect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
-      if (result.error) { setCmdFeedback(result.error); return }
-      displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
-      setCmdFeedback('RECT: CLICK TO PLACE')
-      return
-    }
-
-    if (str === '.circ' || str.startsWith('.circ ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('circ', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
-      if (result.error) { setCmdFeedback(result.error); return }
-      if (result.immediate) {
-        addDrawnShape(theatre, 'circ', result.immediate)
-        setCmdFeedback('CIRCLE DRAWN')
-      } else {
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
-        setCmdFeedback('CIRC: CLICK TO PLACE')
-      }
-      return
-    }
-
-    if (str === '.poly' || str.startsWith('.poly ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('poly', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
-      if (result.error) { setCmdFeedback(result.error); return }
-      if (result.immediate) {
-        addDrawnShape(theatre, 'poly', result.immediate)
-        setCmdFeedback('POLY DRAWN')
-      } else {
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
-        setCmdFeedback('POLY: CLICK VERTICES, CLICK NEAR START TO CLOSE')
-      }
-      return
-    }
-
-    if (str === '.sect' || str.startsWith('.sect ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('sect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
-      if (result.error) { setCmdFeedback(result.error); return }
-      if (result.immediate) {
-        // .sect <id> <brg1> <brg2>...<brgN> <radius> draws N-1 adjoining
-        // sectors sharing that radius — result.immediate is an array here
-        // (every other command's `immediate` is a single params object).
-        for (const sector of result.immediate) addDrawnShape(theatre, 'sect', sector)
-        setCmdFeedback(result.immediate.length > 1 ? `${result.immediate.length} SECTORS DRAWN` : 'SECTOR DRAWN')
-      } else {
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
-        setCmdFeedback('SECT: CLICK TO PLACE')
-      }
-      return
-    }
-
-    if (str === '.race' || str.startsWith('.race ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('race', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
-      if (result.error) { setCmdFeedback(result.error); return }
-      if (result.immediate) {
-        addDrawnShape(theatre, 'race', result.immediate)
-        setCmdFeedback('RACETRACK DRAWN')
-      } else {
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
-        setCmdFeedback('RACE: CLICK TO PLACE')
-      }
-      return
-    }
-
-    if (str === '.text' || str.startsWith('.text ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const result = parseDrawCommand('text', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
-      if (result.error) { setCmdFeedback(result.error); return }
-      displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
-      setCmdFeedback('TEXT: CLICK TO PLACE')
-      return
-    }
-
-    // .clear — bare/click removes whatever's hit-tested at the click point
-    // (handleMouseUp); .clear <name> removes every same-named drawing
-    // (case-insensitive, could be more than one after manual renames);
-    // .clear all confirms via the pendingClearAllConfirm intercept above.
-    if (str === '.clear' || str.startsWith('.clear ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const arg = drawCmdTokens(str, raw).join(' ').trim()
-      if (!arg) {
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: null, pendingClearClick: true })
-        setCmdFeedback('CLEAR: CLICK A DRAWING')
-        return
-      }
-      if (arg.toLowerCase() === 'all') {
-        if (!drawingLayers.length) { setCmdFeedback('NOTHING TO CLEAR'); return }
-        displayStore.updateWindow(WINDOW_ID, { pendingClearAllConfirm: true })
-        setCmdFeedback(`CLEAR ALL ${drawingLayers.length} DRAWINGS? Y TO CONFIRM`)
-        return
-      }
-      const matches = drawingLayers.filter(l => l.name.toUpperCase() === arg.toUpperCase())
-      if (!matches.length) { setCmdFeedback('NOT FOUND'); return }
-      removeDrawingsByName(theatre, arg)
-      setCmdFeedback(matches.length > 1 ? `CLEARED ${matches.length} ${arg.toUpperCase()}` : `CLEARED ${matches[0].name}`)
-      return
-    }
-
-    if (str === '.fixes') {
-      const next = !fixesVisible
-      setFixesVisible(next)
-      setCmdFeedback(next ? 'FIXES ON' : 'FIXES OFF')
-      return
-    }
-
-    if (str === '.navaids') {
-      const next = !navaidsVisible
-      setNavaidsVisible(next)
-      setCmdFeedback(next ? 'NAVAIDS ON' : 'NAVAIDS OFF')
-      return
-    }
-
-    // .fix — with no argument, clears all pinned fixes for this theatre.
-    if (str === '.fix') {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const merged = { ...pinnedFixes, [theatre]: [] }
-      setPinnedFixes(merged)
-      setCmdFeedback('FIX CLEARED')
-      return
-    }
-
-    // .fix <name...> — force-show one or more fixes regardless of .fixes
-    // visibility. Each name toggles independently (repeat to un-pin);
-    // persisted per-theatre so pins survive a reload.
-    if (str.startsWith('.fix ')) {
-      if (!theatre) { setCmdFeedback('NO THEATRE'); return }
-      const names = drawCmdTokens(str, raw).map(n => n.toUpperCase()).filter(Boolean)
-      if (!names.length) { setCmdFeedback('ILL VAL'); return }
-      // Pinning only affects rendering of the `fixes` layer (see the
-      // drawAbmFixSymbols call below), so validate against that list rather
-      // than lookupFix's broader fix/navaid/runway/airport search — a name
-      // that resolves elsewhere would never actually draw as pinned.
-      const knownIds = new Set(fixes.map(f => f.id.toUpperCase()))
-      const notFound = names.filter(n => !knownIds.has(n))
-      if (notFound.length) { setCmdFeedback(`${notFound.join(' ')} NOT FOUND`); return }
-      const current = new Set(pinnedFixes[theatre] ?? [])
-      for (const name of names) {
-        if (current.has(name)) current.delete(name)
-        else current.add(name)
-      }
-      const merged = { ...pinnedFixes, [theatre]: [...current] }
-      setPinnedFixes(merged)
-      setCmdFeedback(`FIX ${names.join(' ')}`)
-      return
-    }
-
-    // .find <fix> — ported from AIC (AicScope.jsx): drops a green square
-    // marker at the looked-up fix/navaid, cleared by Escape or another .find.
-    if (str.startsWith('.find ')) {
-      const result = useNavdataStore.getState().lookupFix(str.slice(6).trim())
-      if (result) {
-        displayStore.updateWindow(WINDOW_ID, { findMarker: result })
-        useAbmMissionStore.getState().clearFind() // this find isn't tied to a FRAG row
-        setCmdFeedback(`FIND ${result.id}`)
-      } else {
-        setCmdFeedback('NOT FOUND')
-      }
-      return
-    }
-
-    // .define <term> — tactical brevity glossary lookup (ATP 1-02.1, see
-    // store/brevity.js). Shown in its own readout, not cmdFeedback, so it
-    // doesn't disappear the instant the next incidental click fires.
-    if (str.startsWith('.define ')) {
-      const result = useBrevityStore.getState().lookup(str.slice(8).trim())
-      if (result) { displayStore.updateWindow(WINDOW_ID, { defineEntry: result }); setCmdFeedback('') }
-      else { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); setCmdFeedback('NOT FOUND') }
-      return
-    }
-
-    if (str === '.runways') {
-      const next = !runwaysVisible
-      setRunwaysVisible(next)
-      setCmdFeedback(next ? 'RUNWAYS ON' : 'RUNWAYS OFF')
-      return
-    }
-
-    if (str === '.polygons') {
-      const next = !polygonsVisible
-      setPolygonsVisible(next)
-      setCmdFeedback(next ? 'POLYGONS ON' : 'POLYGONS OFF')
-      return
-    }
-
-    if (str === '.mgrs') {
-      const next = !mgrsVisible
-      setMgrsVisible(next)
-      setCmdFeedback(next ? 'MGRS GRID ON' : 'MGRS GRID OFF')
-      return
-    }
-
-    if (str === '.towns') {
-      const next = !townsVisible
-      setTownsVisible(next)
-      setCmdFeedback(next ? 'TOWNS ON' : 'TOWNS OFF')
-      return
-    }
-
-    if (str === '.base') {
-      const next = !basemapVisible
-      setBasemapVisible(next)
-      setCmdFeedback(next ? 'BASE ON' : 'BASE OFF')
-      return
-    }
-
-    if (str === '.terrain') {
-      const next = !terrainVisible
-      setTerrainVisible(next)
-      setCmdFeedback(next ? 'TERRAIN ON' : 'TERRAIN OFF')
-      return
-    }
-
-    // .map — bulk toggle for all four raster layers (base/terrain/water/
-    // roads) plus .geo's live coastline/boundary layer, same any-on pattern
-    // as .asp: on if any is currently visible, off otherwise. .geo is
-    // included because terrain.png no longer bakes coastlines/boundaries
-    // into the raster (2026-08-11) — .geo is now the only source of that
-    // linework in ABM, so a bulk "hide the map" should hide it too.
-    if (str === '.map') {
-      const anyOn = basemapVisible || terrainVisible || waterVisible || roadsVisible || geoVisible
-      const next  = !anyOn
-      setBasemapVisible(next)
-      setTerrainVisible(next)
-      setWaterVisible(next)
-      setRoadsVisible(next)
-      useGeoStore.getState().setVisible(next)
-      setCmdFeedback(next ? 'MAP ON' : 'MAP OFF')
-      return
-    }
-
-    if (str === '.water') {
-      const next = !waterVisible
-      setWaterVisible(next)
-      setCmdFeedback(next ? 'WATER ON' : 'WATER OFF')
-      return
-    }
-
-    if (str === '.roads') {
-      const next = !roadsVisible
-      setRoadsVisible(next)
-      setCmdFeedback(next ? 'ROADS ON' : 'ROADS OFF')
-      return
-    }
-
-    // ── Cursor position readout (.coords) ─────────────────────────────────────
-    if (str === '.coords') {
-      const next = !coordsVisible
-      setCoordsVisible(next)
-      setCmdFeedback(next ? 'COORDS ON' : 'COORDS OFF')
-      return
-    }
-
-    if (str === '.bec') {
-      const next = !becVisible
-      setBecVisible(next)
-      setCmdFeedback(next ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF')
-      return
-    }
-
-    if (str === '.ddm') {
-      setCoordFormat('ddm')
-      setCmdFeedback('DDM — DEGREES DECIMAL MINUTES')
-      return
-    }
-
-    if (str === '.dms') {
-      setCoordFormat('dms')
-      setCmdFeedback('DMS — DEGREES MINUTES SECONDS')
-      return
-    }
-
-    if (str === '.meters') {
-      setElevUnit('meters')
-      setCmdFeedback('ELEV METERS')
-      return
-    }
-
-    if (str === '.feet') {
-      setElevUnit('feet')
-      setCmdFeedback('ELEV FEET')
-      return
-    }
-
-    // ── Contact display commands (§3, 2026-07-05) ─────────────────────────────
-    const ptlMatch = str.match(/^\.ptl\s+(\d+(?:\.\d+)?)$/)
-    if (ptlMatch) {
-      const mins = parseFloat(ptlMatch[1])
-      if (mins < 0 || mins > 5) { setCmdFeedback('INVALID: .PTL 0-5'); return }
-      displayStore.updateWindow(WINDOW_ID, { ptlMinutes: mins })
-      saveAbmPrefs({ ptlMinutes: mins })
-      setCmdFeedback(mins === 0 ? 'PTL OFF' : `PTL ${mins}MIN`)
-      return
-    }
-
-    const fadedMatch = str.match(/^\.faded\s+(\d+)$/)
-    if (fadedMatch) {
-      const s = parseInt(fadedMatch[1], 10)
-      displayStore.updateWindow(WINDOW_ID, { fadedSeconds: s })
-      saveAbmPrefs({ fadedSeconds: s })
-      setCmdFeedback(`FADED ${s}S`)
-      return
-    }
-
-    // .history — toggleable position-history trail, mirroring STARS'
-    // HISTORY/H_RATE DCB knobs but as a command and with ABM's own defaults
-    // (4 points / 4.5s) and colors (each contact's own classification color,
-    // not a separate gradient — see drawAbmContacts.js). Bare `.history`
-    // toggles visibility; `.history <len>` sets trail length (0 = off);
-    // `.history <len> <rate>` also sets capture rate (seconds).
-    if (str === '.history') {
-      const next = !(windowSettings?.historyVisible ?? true)
-      displayStore.updateWindow(WINDOW_ID, { historyVisible: next })
-      saveAbmPrefs({ historyVisible: next })
-      setCmdFeedback(next ? `HISTORY ${windowSettings?.historyLength ?? 4}/${windowSettings?.historyRate ?? 4.5}` : 'HISTORY OFF')
-      return
-    }
-
-    const historyLenRateMatch = str.match(/^\.history\s+(\d+)\s+(\d+(?:\.\d+)?)$/)
-    if (historyLenRateMatch) {
-      const len  = Math.min(MAX_HISTORY, parseInt(historyLenRateMatch[1], 10))
-      const rate = parseFloat(historyLenRateMatch[2])
-      if (len <= 0) {
-        displayStore.updateWindow(WINDOW_ID, { historyVisible: false })
-        saveAbmPrefs({ historyVisible: false })
-        setCmdFeedback('HISTORY OFF')
-        return
-      }
-      displayStore.updateWindow(WINDOW_ID, { historyVisible: true, historyLength: len, historyRate: rate })
-      saveAbmPrefs({ historyVisible: true, historyLength: len, historyRate: rate })
-      setCmdFeedback(`HISTORY ${len}/${rate}`)
-      return
-    }
-
-    const historyLenMatch = str.match(/^\.history\s+(\d+)$/)
-    if (historyLenMatch) {
-      const len = Math.min(MAX_HISTORY, parseInt(historyLenMatch[1], 10))
-      if (len <= 0) {
-        displayStore.updateWindow(WINDOW_ID, { historyVisible: false })
-        saveAbmPrefs({ historyVisible: false })
-        setCmdFeedback('HISTORY OFF')
-        return
-      }
-      displayStore.updateWindow(WINDOW_ID, { historyVisible: true, historyLength: len })
-      saveAbmPrefs({ historyVisible: true, historyLength: len })
-      setCmdFeedback(`HISTORY ${len}/${windowSettings?.historyRate ?? 4.5}`)
-      return
-    }
-
-    if (str === '.db') {
-      const next = !(windowSettings?.dbVisible ?? true)
-      displayStore.updateWindow(WINDOW_ID, { dbVisible: next })
-      saveAbmPrefs({ dbVisible: next })
-      setCmdFeedback(next ? 'DATABLOCKS ON' : 'DATABLOCKS OFF')
-      return
-    }
-
-    // .dbreset — clears every .db + click per-contact override (dbHiddenIds),
-    // returning all contacts to the global dbVisible/formation-suppression
-    // behavior. Enter-only, no click — same shape as .threat clearing threatRings.
-    if (str === '.dbreset') {
-      displayStore.updateWindow(WINDOW_ID, { dbHiddenIds: [] })
-      setCmdFeedback('DATABLOCKS RESET')
-      return
-    }
-
-    // .dbca — datablock collision avoidance (shared algorithm w/ CATCC, see
-    // utils/datablockPlacement.js). Off by default for ABM.
-    if (str === '.dbca') {
-      const next = !(windowSettings?.dbca ?? false)
-      displayStore.updateWindow(WINDOW_ID, { dbca: next })
-      saveAbmPrefs({ dbca: next })
-      setCmdFeedback(next ? 'DBCA ON' : 'DBCA OFF')
-      return
-    }
-
-    // .dbs — formation datablock suppression (§3, 2026-07-08): when two or
-    // more same-flight aircraft are within a 3NM box of the flight's lead
-    // (see drawAbmContacts.js), only the lead's datablock shows. On by default.
-    if (str === '.dbs') {
-      const next = !(windowSettings?.dbSuppress ?? true)
-      displayStore.updateWindow(WINDOW_ID, { dbSuppress: next })
-      saveAbmPrefs({ dbSuppress: next })
-      setCmdFeedback(next ? 'DB SUPPRESSION ON' : 'DB SUPPRESSION OFF')
-      return
-    }
-
-    const ldrMatch = str.match(/^\.ldr\s+([0-7])\s+([1-9])$/)
-    if (ldrMatch) {
-      const length = parseInt(ldrMatch[1], 10)
-      const dir    = ldrMatch[2]
-      displayStore.updateWindow(WINDOW_ID, { ldrLength: length, ldrAngleDeg: DIR_TO_ANGLE[dir] })
-      saveAbmPrefs({ ldrLength: length, ldrAngleDeg: DIR_TO_ANGLE[dir] })
-      setCmdFeedback(`LDR ${length} ${dir}`)
-      return
-    }
-
-    // ── BRAA line / bogey dope / threat rings — ported from AIC, same
-    // commands (2026-07-07). Ctrl+click/Alt+click/Ctrl+Alt+click/Shift+click
-    // and .dope + click are handled in handleMouseUp; these two are the
-    // Enter-only (no click) forms, matching AIC's execCommand exactly.
-    if (str === '.threat') {
-      displayStore.updateWindow(WINDOW_ID, { threatRings: [] })
-      setCmdFeedback('THREAT RINGS CLEARED')
-      return
-    }
-
-    const threatRadiusMatch = str.match(/^\.threat\s+(\d+(?:\.\d+)?)$/)
-    if (threatRadiusMatch) {
-      const nm = parseFloat(threatRadiusMatch[1])
-      displayStore.updateWindow(WINDOW_ID, { threatRadius: nm })
-      saveAbmPrefs({ threatRadius: nm })
-      setCmdFeedback(`THREAT RING ${nm}NM`)
-      return
-    }
-
-    // .tclear — clears RBL, BRAA/bogey-dope pairs, and threat rings (2026-07-07,
-    // renamed from .clear 2026-08-21). Originally bound to bare `.clear`, but
-    // the drawings `.clear`/`.clear <name>`/`.clear all` handler added
-    // 2026-08-03 (see above) already matches any bare `.clear` first and
-    // returns, making this unreachable — a real bug (typing `.clear` could
-    // never actually clear RBL/BRAA/threat rings), not a deliberate removal.
-    // Fixed by giving this its own command name rather than merging the two
-    // behaviors, since drawings' `.clear` is the one users would reasonably
-    // expect bare `.clear` to mean going forward.
-    if (str === '.tclear') {
-      displayStore.updateWindow(WINDOW_ID, { rbl: null, threatRings: [] })
-      useAbmStore.getState().braaList.forEach(p => useAbmStore.getState().removeBraaPair(p.id))
-      setCmdFeedback('ALL CLEARED')
-      return
-    }
-
-    // ── Bulk reclassification (2026-07-07) ────────────────────────────────────
-    // `.class` alone returns every explicit declaration to its fog-of-war
-    // default; `.class <old> <new>` (letters f/n/b/h) reclassifies every
-    // currently-visible contact whose *effective* declaration is <old> to
-    // <new> — e.g. `.class b h` turns every bogey into a hostile. Applies
-    // across air + ground/naval (allVisibleUnits).
-    if (str === '.class') {
-      useAbmStore.getState().resetDeclarations()
-      setCmdFeedback('CLASS RESET')
-      return
-    }
-
-    const classMatch = str.match(/^\.class\s+([fnbh])\s+([fnbh])$/)
-    if (classMatch) {
-      const oldDecl = CLASS_LETTER[classMatch[1]]
-      const newDecl = CLASS_LETTER[classMatch[2]]
-      for (const [id, unit] of Object.entries(allVisibleUnitsRef.current)) {
-        if (getEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
-          useAbmStore.getState().setDeclaration(id, newDecl)
-        }
-      }
-      setCmdFeedback(`CLASS ${oldDecl} → ${newDecl}`)
-      return
-    }
-
-    // .autoclass — toggles autoclassification (2026-07-08), same behavior as
-    // AIC's: ON sets every currently-visible air/ground/naval contact to its
-    // TRUE (coalition-based) classification right away, and the useEffect
-    // above keeps auto-declaring newly-visible units from then on. OFF does
-    // not revert anything already classified, it just stops future
-    // auto-declaration. `.class` (no args) overrides this and turns it off.
-    if (str === '.autoclass') {
-      const next = !autoClassify
-      useAbmStore.getState().setAutoClassify(next)
-      if (next) {
-        for (const [id, unit] of Object.entries(allVisibleUnitsRef.current)) {
-          useAbmStore.getState().setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
-        }
-        setCmdFeedback('AUTOCLASS ON')
-      } else {
-        setCmdFeedback('AUTOCLASS OFF')
-      }
-      return
-    }
-
-    // .autothreat — toggles automatic threat rings (2026-07-10): while on,
-    // every friendly aircraft within threatRadius of a HOSTILE/BOGEY aircraft
-    // gets its ring lit until the breach clears — see the useEffect above.
-    if (str === '.autothreat') {
-      const next = !autoThreat
-      setAutoThreat(next)
-      setCmdFeedback(next ? 'AUTOTHREAT ON' : 'AUTOTHREAT OFF')
-      return
-    }
-
-    // ── Ground/naval acq/eng range-ring visibility (§7, 2026-07-07) ───────────
-    // `.acq`/`.eng` toggle all four classifications' rings at once; `.acq h`/
-    // `.eng b` etc. toggle just that classification (f/n/b/h — matches the
-    // F-key declaration letters, b for BOGEY).
-    const acqClassMatch = str.match(/^\.acq\s+([fnbh])$/)
-    if (acqClassMatch) {
-      const decl = CLASS_LETTER[acqClassMatch[1]]
-      const wasHidden = acqHidden.has(decl)
-      const next = new Set(acqHidden)
-      wasHidden ? next.delete(decl) : next.add(decl)
-      setAcqHidden(next)
-      setCmdFeedback(`ACQ ${decl} ${wasHidden ? 'ON' : 'OFF'}`)
-      return
-    }
-
-    if (str === '.acq') {
-      const next = acqHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
-      setAcqHidden(next)
-      setCmdFeedback(next.size ? 'ACQ OFF' : 'ACQ ON')
-      return
-    }
-
-    const engClassMatch = str.match(/^\.eng\s+([fnbh])$/)
-    if (engClassMatch) {
-      const decl = CLASS_LETTER[engClassMatch[1]]
-      const wasHidden = engHidden.has(decl)
-      const next = new Set(engHidden)
-      wasHidden ? next.delete(decl) : next.add(decl)
-      setEngHidden(next)
-      setCmdFeedback(`ENG ${decl} ${wasHidden ? 'ON' : 'OFF'}`)
-      return
-    }
-
-    if (str === '.eng') {
-      const next = engHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
-      setEngHidden(next)
-      setCmdFeedback(next.size ? 'ENG OFF' : 'ENG ON')
-      return
-    }
-
-    setCmdFeedback('UNKNOWN COMMAND')
+    const parsed = parseCommand(raw)
+    if (!parsed) { setCmdFeedback('UNKNOWN COMMAND'); return }
+    const context = {
+      raw,
+      theatre,
+      declinationDeg: viewRef.current?.declinationDeg ?? 0,
+      myCoalitionNum,
+      allVisibleUnits: allVisibleUnitsRef.current,
+    }
+    const feedback = await dispatch(parsed, context)
+    setCmdFeedback(feedback)
   }
 
   // Ctrl+V into the command line — interactiveRef is a plain div (not a
