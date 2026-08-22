@@ -25,6 +25,8 @@ import { useReliefStore }      from '../../store/relief.js'
 import { useMapsStore }        from '../../store/maps.js'
 import { useBrevityStore }     from '../../store/brevity.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
+import { parseCommand }        from './input/commandParser.js'
+import { dispatch }            from './actions/index.js'
 import './AicScope.css'
 
 const WINDOW_ID = 'aic-main'
@@ -50,15 +52,6 @@ const DECL_LABEL = {
   [DECLARATION.BOGEY]:    'BO',
   [DECLARATION.NEUTRAL]:  'NE',
   [DECLARATION.FRIENDLY]: 'FR',
-}
-
-// .class classification letters — same f/n/b/h convention as ABM's
-// .acq/.eng (b for BOGEY, MTTP brevity — not "u" for unknown), 2026-07-07.
-const CLASS_LETTER = {
-  f: DECLARATION.FRIENDLY,
-  n: DECLARATION.NEUTRAL,
-  b: DECLARATION.BOGEY,
-  h: DECLARATION.HOSTILE,
 }
 
 // .autoclass (2026-07-08) — a unit's TRUE classification, straight off
@@ -175,7 +168,7 @@ export default function AicScope() {
   const braaList          = useAicStore(s => s.braaList)
   const pendingBraaFighter = useAicStore(s => s.pendingBraaFighter)
   const {
-    setDeclaration, setRoe, setAutoClassify, addBraaPair, removeBraaPair, removeBraaPairsForUnit,
+    setDeclaration, addBraaPair, removeBraaPairsForUnit,
     setPendingBraaFighter, clearPendingBraa, getEffectiveDeclaration,
   } = useAicStore()
 
@@ -398,7 +391,6 @@ export default function AicScope() {
   // click) and just union at draw time, so auto fully owns a contact's ring
   // for as long as the breach lasts.
   const autoThreat = useAicPrefsStore(s => s.autoThreat)
-  const setAutoThreat = useAicPrefsStore(s => s.setAutoThreat)
   const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
 
   useEffect(() => {
@@ -426,13 +418,11 @@ export default function AicScope() {
   // .picture — toggles visibility of the PICTURE readout panel. Local UI
   // preference (not shared with other controllers). Off by default.
   const showPicture = useAicPrefsStore(s => s.showPicture)
-  const setShowPicture = useAicPrefsStore(s => s.setShowPicture)
 
   // .bec — bullseye-on-cursor readout that tracks the mouse pixel-for-pixel
   // (unlike the always-on cursorBullseye readout below, pinned to the top-
   // right corner). Off by default.
   const becVisible = useAicPrefsStore(s => s.becVisible)
-  const setBecVisible = useAicPrefsStore(s => s.setBecVisible)
   const [cursorPixelPos, setCursorPixelPos] = useState(null)
 
   const fadedRef       = useRef({})
@@ -659,220 +649,22 @@ export default function AicScope() {
 
   function clearCmd() { setCmdBuffer(''); setCmdFeedback('') }
 
-  function execCommand(raw) {
-    const str = raw.trim().toLowerCase()
-
-    if (str === '.center') {
-      displayStore.updateWindow(WINDOW_ID, { centerOverridden: false })
-      setCmdFeedback('CENTERED ON BULLSEYE')
-    } else if (str.startsWith('.center ')) {
-      const arg   = str.slice(8).trim()
-      const parts = arg.split(/\s+/)
-      if (parts.length === 2) {
-        const brg = parseFloat(parts[0])
-        const rng = parseFloat(parts[1])
-        if (!isNaN(brg) && !isNaN(rng)) {
-          const nmPerDegLng = 60 * Math.cos(bullseyeLat * Math.PI / 180)
-          // brg is a user-typed magnetic bearing; convert to true for the lat/lng walk.
-          const trueRad = ((brg + declinationRef.current) % 360) * Math.PI / 180
-          const newLat  = bullseyeLat + (rng * Math.cos(trueRad)) / 60
-          const newLng  = bullseyeLng + (rng * Math.sin(trueRad)) / nmPerDegLng
-          displayStore.updateWindow(WINDOW_ID, { centerLat: newLat, centerLng: newLng, centerOverridden: true })
-          setCmdFeedback(`CENTER ${Math.round(brg)}/${Math.round(rng)}`)
-        } else { setCmdFeedback('INVALID: .CENTER <BRG> <RNG>') }
-      } else {
-        const result = useNavdataStore.getState().lookupFix(arg)
-        if (result) {
-          displayStore.updateWindow(WINDOW_ID, { centerLat: result.lat, centerLng: result.lon, centerOverridden: true })
-          setCmdFeedback(`CENTER ${arg.toUpperCase()}`)
-        } else { setCmdFeedback('NOT FOUND') }
-      }
-    } else if (str.startsWith('.find ')) {
-      const result = useNavdataStore.getState().lookupFix(str.slice(6).trim())
-      if (result) {
-        displayStore.updateWindow(WINDOW_ID, { findMarker: result })
-        setCmdFeedback(`FIND ${result.id}`)
-      } else { setCmdFeedback('NOT FOUND') }
-    } else if (str === '.rr') {
-      const next = ringSpacingNm > 0 ? 0 : 20
-      displayStore.updateWindow(WINDOW_ID, { ringSpacingNm: next })
-      setCmdFeedback(next === 0 ? 'RANGE RINGS OFF' : 'RANGE RINGS ON')
-    } else if (str.startsWith('.rr ')) {
-      const nm = parseFloat(str.slice(4))
-      if (!isNaN(nm) && nm >= 0) {
-        displayStore.updateWindow(WINDOW_ID, { ringSpacingNm: nm })
-        setCmdFeedback(nm === 0 ? 'RANGE RINGS OFF' : `RR ${nm}NM`)
-      } else { setCmdFeedback('INVALID: .RR <NM>') }
-    } else if (str.startsWith('.ptl ')) {
-      const s = parseInt(str.slice(5), 10)
-      if (!isNaN(s) && s >= 0 && s <= 300) {
-        displayStore.updateWindow(WINDOW_ID, { ptlSeconds: s })
-        setCmdFeedback(`PTL ${s}S`)
-      } else { setCmdFeedback('INVALID: .PTL 0-300') }
-    } else if (str.startsWith('.sym ')) {
-      const n = parseInt(str.slice(5), 10)
-      if (n >= 1 && n <= 5) {
-        displayStore.updateWindow(WINDOW_ID, { symSize: n })
-        setCmdFeedback(`SYM ${n}`)
-      } else { setCmdFeedback('INVALID: .SYM 1-5') }
-    } else if (str.match(/^\.faded\s+\d+$/)) {
-      const s = parseInt(str.split(/\s+/)[1], 10)
-      displayStore.updateWindow(WINDOW_ID, { fadedSeconds: s })
-      setCmdFeedback(`FADED ${s}S`)
-    } else if (str === '.threat') {
-      displayStore.updateWindow(WINDOW_ID, { threatRings: [] })
-      setCmdFeedback('THREAT RINGS CLEARED')
-    } else if (str.match(/^\.threat\s+\d+(\.\d+)?$/)) {
-      const nm = parseFloat(str.split(/\s+/)[1])
-      displayStore.updateWindow(WINDOW_ID, { threatRadius: nm })
-      setCmdFeedback(`THREAT RING ${nm}NM`)
-    } else if (str === '.clear') {
-      displayStore.updateWindow(WINDOW_ID, { threatRings: [], rbl: null, sector: null, sectorVisible: true, ackPicture: null })
-      useAicStore.getState().braaList.forEach(p => removeBraaPair(p.id))
-      setCmdFeedback('ALL CLEARED')
-    } else if (str === '.class') {
-      // Returns every explicit declaration to its fog-of-war default (2026-07-07).
-      useAicStore.getState().resetDeclarations()
-      setCmdFeedback('CLASS RESET')
-    } else if (str.match(/^\.class\s+([fnbh])\s+([fnbh])$/)) {
-      // `.class <old> <new>` reclassifies every currently-visible contact whose
-      // *effective* declaration is <old> to <new> — e.g. `.class b h` turns
-      // every bogey into a hostile (2026-07-07).
-      const [, oldLetter, newLetter] = str.match(/^\.class\s+([fnbh])\s+([fnbh])$/)
-      const oldDecl = CLASS_LETTER[oldLetter]
-      const newDecl = CLASS_LETTER[newLetter]
-      for (const [id, unit] of Object.entries(visibleUnitsRef.current)) {
-        if (getEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
-          setDeclaration(id, newDecl)
-        }
-      }
-      setCmdFeedback(`CLASS ${oldDecl} → ${newDecl}`)
-    } else if (str === '.autoclass') {
-      // Toggles autoclassification (2026-07-08). Turning it ON sets every
-      // currently-visible contact to its TRUE (coalition-based) classification
-      // right away; ongoing auto-declaration of newly-visible units happens in
-      // the useEffect above. Turning it OFF does not revert anything already
-      // classified, it just stops future auto-declaration. `.class` (no args)
-      // overrides this and turns it back off.
-      const next = !autoClassify
-      setAutoClassify(next)
-      if (next) {
-        for (const [id, unit] of Object.entries(visibleUnitsRef.current)) {
-          setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
-        }
-        setCmdFeedback('AUTOCLASS ON')
-      } else {
-        setCmdFeedback('AUTOCLASS OFF')
-      }
-    } else if (str === '.autothreat') {
-      // Toggles automatic threat rings (2026-07-10): while on, every friendly
-      // aircraft within threatRadius of a HOSTILE/BOGEY aircraft gets its ring
-      // lit until the breach clears — see the useEffect above.
-      const next = !autoThreat
-      setAutoThreat(next)
-      setCmdFeedback(next ? 'AUTOTHREAT ON' : 'AUTOTHREAT OFF')
-    } else if (str === '.roe free') {
-      setRoe(ROE_STATE.FREE)
-      setCmdFeedback('WEAPONS FREE')
-    } else if (str === '.roe tight') {
-      setRoe(ROE_STATE.TIGHT)
-      setCmdFeedback('WEAPONS TIGHT')
-    } else if (str === '.roe hold') {
-      setRoe(ROE_STATE.HOLD)
-      setCmdFeedback('WEAPONS HOLD')
-    } else if (str.startsWith('.aspcolors ')) {
-      const name = str.slice(11).trim().toUpperCase()
-      const loadAndApply = (palettes) => {
-        const idx = palettes.findIndex(p => p.name.toUpperCase() === name)
-        if (idx < 0) { setCmdFeedback('INVALID PALETTE'); return }
-        displayStore.updateWindow(WINDOW_ID, { aspColorIdx: idx })
-        setCmdFeedback(`COLORS ${palettes[idx].name.toUpperCase()}`)
-      }
-      const cached = useMapsStore.getState().palettes
-      if (cached.length) {
-        loadAndApply(cached)
-      } else {
-        fetch('/api/navdata/palettes')
-          .then(r => r.json())
-          .then(palettes => { useMapsStore.getState().setPalettes(palettes); loadAndApply(palettes) })
-          .catch(() => setCmdFeedback('PALETTE LOAD FAILED'))
-      }
-    } else if (str === '.geo') {
-      useGeoStore.getState().toggleVisible()
-      setCmdFeedback(useGeoStore.getState().visible ? 'GEO ON' : 'GEO OFF')
-    } else if (str === '.relief') {
-      useReliefStore.getState().toggleVisible()
-      setCmdFeedback(useReliefStore.getState().visible ? 'RELIEF ON' : 'RELIEF OFF')
-    } else if (str === '.centroid') {
-      displayStore.updateWindow(WINDOW_ID, { showCentroid: !showCentroid })
-      setCmdFeedback(!showCentroid ? 'CENTROID ON' : 'CENTROID OFF')
-    } else if (str === '.axis') {
-      displayStore.updateWindow(WINDOW_ID, { showAxis: !showAxis })
-      setCmdFeedback(!showAxis ? 'AXIS ON' : 'AXIS OFF')
-    } else if (str === '.picture') {
-      setShowPicture(!showPicture)
-      setCmdFeedback(!showPicture ? 'PICTURE ON' : 'PICTURE OFF')
-    } else if (str === '.bec') {
-      setBecVisible(!becVisible)
-      setCmdFeedback(!becVisible ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF')
-    } else if (str === '.sector') {
-      if (sectorRef.current) { displayStore.updateWindow(WINDOW_ID, { sectorVisible: true }); setCmdFeedback('SECTOR ON') }
-      else { setCmdFeedback('NO SECTOR') }
-    } else if (str === '.sector clear' || str === '.sector off') {
-      displayStore.updateWindow(WINDOW_ID, { sector: null, sectorVisible: true, sectorPreviewOrigin: null, ackPicture: null })
-      setCmdFeedback('SECTOR CLEARED')
-    } else if (str.match(/^\.sector\s+\d+(\.\d+)?\s+\d+(\.\d+)?\s+\d+(\.\d+)?$/)) {
-      // Place at bullseye when Enter pressed with no prior click
-      const parts = str.replace(/^\.sector\s+/, '').split(/\s+/)
-      const fromMag  = parseFloat(parts[0]) % 360
-      const toMag    = parseFloat(parts[1]) % 360
-      const rng      = parseFloat(parts[2])
-      // Same conversion as the pendingSector useMemo above (matching
-      // computePicture.js's grid-referenced comparisons).
-      const decl     = declinationRef.current
-      const fromTrue = toTrueFromMagnetic(fromMag, decl)
-      const toTrue   = toTrueFromMagnetic(toMag, decl)
-      displayStore.updateWindow(WINDOW_ID, {
-        sector: {
-          origin:      { lat: bullseyeLat, lng: bullseyeLng },
-          fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng,
-          axisBearing: sectorAxisBearing(fromTrue, toTrue),
-        },
-        sectorVisible: true,
-        sectorPreviewOrigin: null,
-      })
-      setCmdFeedback(`SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(rng)}NM @BE`)
-    } else if (str === '.be') {
-      // Bare form (Enter, no click) clears the override and reverts to the
-      // mission bullseye; typed bare and then clicked instead (see
-      // pendingBe/handleMouseUp), it places the override at the click.
-      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: null })
-      setCmdFeedback('BULLSEYE RESET')
-    } else if (str.match(/^\.be\s+-?\d+(\.\d+)?\s+-?\d+(\.\d+)?$/)) {
-      const m = str.match(/^\.be\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/)
-      const lat = parseFloat(m[1])
-      const lng = parseFloat(m[2])
-      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat, lng } })
-      setCmdFeedback(`BULLSEYE SET ${lat.toFixed(2)}/${lng.toFixed(2)}`)
-    } else if (str.match(/^\.be\s+(\S+)$/)) {
-      const fixName = str.match(/^\.be\s+(\S+)$/)[1]
-      const result  = useNavdataStore.getState().lookupFix(fixName)
-      if (result) {
-        displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat: result.lat, lng: result.lon } })
-        setCmdFeedback(`BULLSEYE SET @ ${result.id}`)
-      } else {
-        setCmdFeedback('FIX NOT FOUND')
-      }
-    } else if (str.startsWith('.define ')) {
-      // Tactical brevity glossary lookup (ATP 1-02.1, see store/brevity.js).
-      // Shown in its own readout, not cmdFeedback — see the comment at
-      // defineEntry's declaration for why.
-      const result = useBrevityStore.getState().lookup(str.slice(8).trim())
-      if (result) { displayStore.updateWindow(WINDOW_ID, { defineEntry: result }); setCmdFeedback('') }
-      else { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); setCmdFeedback('NOT FOUND') }
-    } else {
-      setCmdFeedback('UNKNOWN COMMAND')
+  // Parses + dispatches via input/commandParser.js + actions/index.js (ported
+  // 2026-08-21, see resources/specs/refactor-spec.md §9 phase 4) — each
+  // action reads/writes state via .getState(), no closures, and returns its
+  // feedback string; this wrapper just supplies the render-derived context
+  // values actions have no independent store to read from.
+  async function execCommand(raw) {
+    const parsed = parseCommand(raw)
+    if (!parsed) { setCmdFeedback('UNKNOWN COMMAND'); return }
+    const context = {
+      bullseyeLat, bullseyeLng,
+      declinationDeg: declinationRef.current,
+      myCoalitionNum,
+      visibleUnits: visibleUnitsRef.current,
     }
+    const feedback = await dispatch(parsed, context)
+    setCmdFeedback(feedback)
   }
 
   const handleKeyDown = useCallback((e) => {
