@@ -18,6 +18,7 @@ import { useAirwaysStore }  from '../../store/airways.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { loadAbmPrefs, saveAbmPrefs } from '../../store/abmPrefs.js'
+import { useAbmUiPrefsStore } from '../../store/abmUiPrefs.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
@@ -157,7 +158,8 @@ export default function AbmScope() {
   // ── Mission clock — click to toggle Zulu/Local, .time to toggle visibility ─────
   const { timeStr, localTimeStr } = useMissionClock()
   const [showLocalTime, setShowLocalTime] = useState(false)
-  const [clockVisible,  setClockVisible]  = useState(abmPrefs.timeVisible)
+  const clockVisible    = useAbmUiPrefsStore(s => s.clockVisible)
+  const setClockVisible = useAbmUiPrefsStore(s => s.setClockVisible)
   const clockTime = showLocalTime ? localTimeStr : timeStr
 
   const displayStore   = useDisplayStore()
@@ -226,19 +228,18 @@ export default function AbmScope() {
   // tracked separately from threatRings (manual Ctrl+Alt+click/.threat+click)
   // and just union at draw time, so auto fully owns a contact's ring for as
   // long as the breach lasts.
-  const [autoThreat, setAutoThreatState] = useState(abmPrefs.autoThreat)
-  const setAutoThreat = (enabled) => {
-    setAutoThreatState(enabled)
-    saveAbmPrefs({ autoThreat: enabled })
-  }
+  const autoThreat    = useAbmUiPrefsStore(s => s.autoThreat)
+  const setAutoThreat = useAbmUiPrefsStore(s => s.setAutoThreat)
   const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
 
   // Ground/naval acq/eng range-ring visibility (§7) — per-classification
   // hide sets (.acq/.eng commands). Empty set = everything shown; bare
   // `.acq`/`.eng` toggles all four classes at once, `.acq h` etc. toggles
   // just that classification (2026-07-07).
-  const [acqHidden, setAcqHidden] = useState(new Set(abmPrefs.acqHidden))
-  const [engHidden, setEngHidden] = useState(new Set(abmPrefs.engHidden))
+  const acqHidden    = useAbmUiPrefsStore(s => s.acqHidden)
+  const setAcqHidden = useAbmUiPrefsStore(s => s.setAcqHidden)
+  const engHidden    = useAbmUiPrefsStore(s => s.engHidden)
+  const setEngHidden = useAbmUiPrefsStore(s => s.setEngHidden)
 
   // IDs ever seen with the RWR detection bit (16) set — same "sticky" reveal
   // rule as AIC (AicScope.jsx rwrEverDetectedRef): once a non-friendly air
@@ -463,10 +464,14 @@ export default function AbmScope() {
   const airspacePalettes = useAbmAirspaceStore(s => s.palettes)
   const aspColorIdx   = useAbmAirspaceStore(s => s.paletteIdx)
   const setPaletteIdx = useAbmAirspaceStore(s => s.setPaletteIdx)
-  const [asVisible, setAsVisible] = useState(abmPrefs.asVisible)
-  const [labelsVisible, setLabelsVisible] = useState(abmPrefs.labelsVisible)
-  const [fillVisible, setFillVisible] = useState(abmPrefs.fillVisible)
-  const [fillPct, setFillPct] = useState(abmPrefs.fillPct)
+  const asVisible       = useAbmUiPrefsStore(s => s.asVisible)
+  const setAsVisible    = useAbmUiPrefsStore(s => s.setAsVisible)
+  const labelsVisible   = useAbmUiPrefsStore(s => s.labelsVisible)
+  const setLabelsVisible = useAbmUiPrefsStore(s => s.setLabelsVisible)
+  const fillVisible     = useAbmUiPrefsStore(s => s.fillVisible)
+  const setFillVisible  = useAbmUiPrefsStore(s => s.setFillVisible)
+  const fillPct         = useAbmUiPrefsStore(s => s.fillPct)
+  const setFillPct      = useAbmUiPrefsStore(s => s.setFillPct)
   const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
   const toggleAllDrawings = useAbmDrawingsStore(s => s.toggleAll)
   const addDrawnShape = useAbmDrawingsStore(s => s.addDrawnShape)
@@ -477,28 +482,35 @@ export default function AbmScope() {
   const airspaceColors = airspacePalettes[aspColorIdx]?.colors ?? airspacePalettes[0]?.colors ?? null
   const fixes   = useNavdataStore(s => s.fixes)
   const navaids = useNavdataStore(s => s.navaids)
-  const [fixesVisible,   setFixesVisible]   = useState(abmPrefs.fixesVisible)
-  const [navaidsVisible, setNavaidsVisible] = useState(abmPrefs.navaidsVisible)
+  const fixesVisible      = useAbmUiPrefsStore(s => s.fixesVisible)
+  const setFixesVisible   = useAbmUiPrefsStore(s => s.setFixesVisible)
+  const navaidsVisible    = useAbmUiPrefsStore(s => s.navaidsVisible)
+  const setNavaidsVisible = useAbmUiPrefsStore(s => s.setNavaidsVisible)
   // .fix <name...> — per-theatre pinned fixes, always shown regardless of
   // fixesVisible (see .fix handler below and drawAbmFixSymbols call).
-  const [pinnedFixes, setPinnedFixes] = useState(abmPrefs.pinnedFixes ?? {})
+  const pinnedFixes    = useAbmUiPrefsStore(s => s.pinnedFixes)
+  const setPinnedFixes = useAbmUiPrefsStore(s => s.setPinnedFixes)
   // Same useRunwaysStore.loadForTheatre(theatre) call as below (no facility
   // args) already yields theatre-wide unfiltered centerlines — see §4.3.
   const runwayCenterlines = useRunwaysStore(s => s.centerlines)
-  const [runwaysVisible, setRunwaysVisible] = useState(abmPrefs.runwaysVisible)
+  const runwaysVisible    = useAbmUiPrefsStore(s => s.runwaysVisible)
+  const setRunwaysVisible = useAbmUiPrefsStore(s => s.setRunwaysVisible)
   // Local fetch mirroring ASDE-X's pattern — no shared store exists for this,
   // and unlike ASDE-X we want every airport in the theatre, not one facility.
   const [polygonFeatures, setPolygonFeatures] = useState([])
-  const [polygonsVisible, setPolygonsVisible] = useState(abmPrefs.polygonsVisible)
+  const polygonsVisible    = useAbmUiPrefsStore(s => s.polygonsVisible)
+  const setPolygonsVisible = useAbmUiPrefsStore(s => s.setPolygonsVisible)
   // Real UTM/MGRS grid (see drawMgrsGrid.js) — matches DCS's own F10 map.
   // No shared store needed (ABM-only, like the toggles above), so plain
   // local state.
-  const [mgrsVisible, setMgrsVisible] = useState(abmPrefs.mgrsVisible)
+  const mgrsVisible    = useAbmUiPrefsStore(s => s.mgrsVisible)
+  const setMgrsVisible = useAbmUiPrefsStore(s => s.setMgrsVisible)
   // Town/city name labels (.towns) — local fetch straight from the public
   // static file, same as polygonFeatures below but no server API needed
   // since towns are pre-baked per-theatre JSON, not derived from mission data.
   const [towns, setTowns] = useState([])
-  const [townsVisible, setTownsVisible] = useState(abmPrefs.townsVisible)
+  const townsVisible    = useAbmUiPrefsStore(s => s.townsVisible)
+  const setTownsVisible = useAbmUiPrefsStore(s => s.setTownsVisible)
   // Baked raster layers (.map/.terrain/.water/.roads/.base) — see server's
   // buildAbmBasemap.js + drawAbmRaster.js. Draw order (furthest-back first):
   // basemap (land/sea silhouette, wide/coarse), terrain (relief wash only,
@@ -511,13 +523,17 @@ export default function AbmScope() {
   // theatre preview to the layer actually responsible for land/sea color
   // everywhere, and terrain (the former basemap) stopped being that source.
   const [basemap, setBasemap] = useState(null)
-  const [basemapVisible, setBasemapVisible] = useState(abmPrefs.basemapVisible)
+  const basemapVisible    = useAbmUiPrefsStore(s => s.basemapVisible)
+  const setBasemapVisible = useAbmUiPrefsStore(s => s.setBasemapVisible)
   const [terrain, setTerrain] = useState(null)
-  const [terrainVisible, setTerrainVisible] = useState(abmPrefs.terrainVisible)
+  const terrainVisible    = useAbmUiPrefsStore(s => s.terrainVisible)
+  const setTerrainVisible = useAbmUiPrefsStore(s => s.setTerrainVisible)
   const [water, setWater] = useState(null)
-  const [waterVisible, setWaterVisible] = useState(abmPrefs.waterVisible)
+  const waterVisible    = useAbmUiPrefsStore(s => s.waterVisible)
+  const setWaterVisible = useAbmUiPrefsStore(s => s.setWaterVisible)
   const [roads, setRoads] = useState(null)
-  const [roadsVisible, setRoadsVisible] = useState(abmPrefs.roadsVisible)
+  const roadsVisible    = useAbmUiPrefsStore(s => s.roadsVisible)
+  const setRoadsVisible = useAbmUiPrefsStore(s => s.setRoadsVisible)
 
   // Cursor position readout (.coords) — DMS/DDS + real MGRS + terrain
   // elevation at the cursor. Position updates read straight off a ref
@@ -525,9 +541,12 @@ export default function AbmScope() {
   // re-render on every raw mousemove; elevation is fetched from the new
   // /api/elevation endpoint (server/src/elevation.js, previously only used
   // internally for per-unit AGL) and throttled to once per ~100m cell.
-  const [coordsVisible, setCoordsVisible] = useState(abmPrefs.coordsVisible)
-  const [coordFormat,   setCoordFormat]   = useState(abmPrefs.coordFormat) // 'dms' | 'ddm'
-  const [elevUnit,      setElevUnit]      = useState(abmPrefs.elevUnit) // 'feet' | 'meters'
+  const coordsVisible    = useAbmUiPrefsStore(s => s.coordsVisible)
+  const setCoordsVisible = useAbmUiPrefsStore(s => s.setCoordsVisible)
+  const coordFormat      = useAbmUiPrefsStore(s => s.coordFormat) // 'dms' | 'ddm'
+  const setCoordFormat   = useAbmUiPrefsStore(s => s.setCoordFormat)
+  const elevUnit         = useAbmUiPrefsStore(s => s.elevUnit) // 'feet' | 'meters'
+  const setElevUnit      = useAbmUiPrefsStore(s => s.setElevUnit)
   const [coordsReadout, setCoordsReadout] = useState(null)
   const cursorLatLngRef  = useRef({ lat: null, lng: null })
   const elevRef          = useRef(null)
@@ -544,7 +563,8 @@ export default function AbmScope() {
   // every mousemove instead of the 150ms interval .coords uses, since this
   // is plain trig (no fetch to throttle) and needs to feel like it's
   // actually attached to the cursor.
-  const [becVisible, setBecVisible] = useState(abmPrefs.becVisible)
+  const becVisible    = useAbmUiPrefsStore(s => s.becVisible)
+  const setBecVisible = useAbmUiPrefsStore(s => s.setBecVisible)
   const [becReadout, setBecReadout] = useState(null)
 
   const handleCursorMove = useCallback((e) => {
@@ -608,7 +628,8 @@ export default function AbmScope() {
   // below, not the airport readout, which is a separate concern that
   // happens to share the same box/interval. Gated on the same 150ms
   // interval so it doesn't re-render on every raw mousemove.
-  const [unitReadoutVisible, setUnitReadoutVisible] = useState(abmPrefs.unitReadoutVisible)
+  const unitReadoutVisible    = useAbmUiPrefsStore(s => s.unitReadoutVisible)
+  const setUnitReadoutVisible = useAbmUiPrefsStore(s => s.setUnitReadoutVisible)
   //
   // Airports/runways (2026-07-09) piggyback on the same interval and radius:
   // useRunwaysStore.centerlines emits two direction-entries per physical
@@ -1417,7 +1438,6 @@ export default function AbmScope() {
     if (str === '.time') {
       const next = !clockVisible
       setClockVisible(next)
-      saveAbmPrefs({ timeVisible: next })
       setCmdFeedback(next ? 'TIME ON' : 'TIME OFF')
       return
     }
@@ -1425,7 +1445,6 @@ export default function AbmScope() {
     if (str === '.unitro') {
       const next = !unitReadoutVisible
       setUnitReadoutVisible(next)
-      saveAbmPrefs({ unitReadoutVisible: next })
       setCmdFeedback(next ? 'UNIT READOUT ON' : 'UNIT READOUT OFF')
       return
     }
@@ -1476,7 +1495,6 @@ export default function AbmScope() {
       const anyOn = AIRSPACE_CATEGORIES.some(c => asVisible[c])
       const next  = anyOn ? {} : Object.fromEntries(AIRSPACE_CATEGORIES.map(c => [c, true]))
       setAsVisible(next)
-      saveAbmPrefs({ asVisible: next })
       setCmdFeedback(anyOn ? 'AIRSPACE OFF' : 'AIRSPACE ON')
       return
     }
@@ -1488,11 +1506,7 @@ export default function AbmScope() {
     if (airspaceCatMatch) {
       const cat  = AIRSPACE_CMD_CATEGORY[airspaceCatMatch[1]]
       const next = !asVisible[cat]
-      setAsVisible(s => {
-        const merged = { ...s, [cat]: next }
-        saveAbmPrefs({ asVisible: merged })
-        return merged
-      })
+      setAsVisible(s => ({ ...s, [cat]: next }))
       setCmdFeedback(`${cat} ${next ? 'ON' : 'OFF'}`)
       return
     }
@@ -1528,7 +1542,6 @@ export default function AbmScope() {
     if (str === '.labels' || str === '.lbl' || str === '.label') {
       const next = !labelsVisible
       setLabelsVisible(next)
-      saveAbmPrefs({ labelsVisible: next })
       setCmdFeedback(next ? 'LABELS ON' : 'LABELS OFF')
       return
     }
@@ -1538,7 +1551,6 @@ export default function AbmScope() {
     if (str === '.fill') {
       const next = !fillVisible
       setFillVisible(next)
-      saveAbmPrefs({ fillVisible: next })
       setCmdFeedback(next ? 'FILL ON' : 'FILL OFF')
       return
     }
@@ -1549,7 +1561,6 @@ export default function AbmScope() {
       if (pct < 1 || pct > 100) { setCmdFeedback('ILL VAL'); return }
       setFillVisible(true)
       setFillPct(pct)
-      saveAbmPrefs({ fillVisible: true, fillPct: pct })
       setCmdFeedback(`FILL ${pct}%`)
       return
     }
@@ -1704,7 +1715,6 @@ export default function AbmScope() {
     if (str === '.fixes') {
       const next = !fixesVisible
       setFixesVisible(next)
-      saveAbmPrefs({ fixesVisible: next })
       setCmdFeedback(next ? 'FIXES ON' : 'FIXES OFF')
       return
     }
@@ -1712,7 +1722,6 @@ export default function AbmScope() {
     if (str === '.navaids') {
       const next = !navaidsVisible
       setNavaidsVisible(next)
-      saveAbmPrefs({ navaidsVisible: next })
       setCmdFeedback(next ? 'NAVAIDS ON' : 'NAVAIDS OFF')
       return
     }
@@ -1722,7 +1731,6 @@ export default function AbmScope() {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
       const merged = { ...pinnedFixes, [theatre]: [] }
       setPinnedFixes(merged)
-      saveAbmPrefs({ pinnedFixes: merged })
       setCmdFeedback('FIX CLEARED')
       return
     }
@@ -1748,7 +1756,6 @@ export default function AbmScope() {
       }
       const merged = { ...pinnedFixes, [theatre]: [...current] }
       setPinnedFixes(merged)
-      saveAbmPrefs({ pinnedFixes: merged })
       setCmdFeedback(`FIX ${names.join(' ')}`)
       return
     }
@@ -1780,7 +1787,6 @@ export default function AbmScope() {
     if (str === '.runways') {
       const next = !runwaysVisible
       setRunwaysVisible(next)
-      saveAbmPrefs({ runwaysVisible: next })
       setCmdFeedback(next ? 'RUNWAYS ON' : 'RUNWAYS OFF')
       return
     }
@@ -1788,7 +1794,6 @@ export default function AbmScope() {
     if (str === '.polygons') {
       const next = !polygonsVisible
       setPolygonsVisible(next)
-      saveAbmPrefs({ polygonsVisible: next })
       setCmdFeedback(next ? 'POLYGONS ON' : 'POLYGONS OFF')
       return
     }
@@ -1796,7 +1801,6 @@ export default function AbmScope() {
     if (str === '.mgrs') {
       const next = !mgrsVisible
       setMgrsVisible(next)
-      saveAbmPrefs({ mgrsVisible: next })
       setCmdFeedback(next ? 'MGRS GRID ON' : 'MGRS GRID OFF')
       return
     }
@@ -1804,7 +1808,6 @@ export default function AbmScope() {
     if (str === '.towns') {
       const next = !townsVisible
       setTownsVisible(next)
-      saveAbmPrefs({ townsVisible: next })
       setCmdFeedback(next ? 'TOWNS ON' : 'TOWNS OFF')
       return
     }
@@ -1812,7 +1815,6 @@ export default function AbmScope() {
     if (str === '.base') {
       const next = !basemapVisible
       setBasemapVisible(next)
-      saveAbmPrefs({ basemapVisible: next })
       setCmdFeedback(next ? 'BASE ON' : 'BASE OFF')
       return
     }
@@ -1820,7 +1822,6 @@ export default function AbmScope() {
     if (str === '.terrain') {
       const next = !terrainVisible
       setTerrainVisible(next)
-      saveAbmPrefs({ terrainVisible: next })
       setCmdFeedback(next ? 'TERRAIN ON' : 'TERRAIN OFF')
       return
     }
@@ -1839,7 +1840,6 @@ export default function AbmScope() {
       setWaterVisible(next)
       setRoadsVisible(next)
       useGeoStore.getState().setVisible(next)
-      saveAbmPrefs({ basemapVisible: next, terrainVisible: next, waterVisible: next, roadsVisible: next })
       setCmdFeedback(next ? 'MAP ON' : 'MAP OFF')
       return
     }
@@ -1847,7 +1847,6 @@ export default function AbmScope() {
     if (str === '.water') {
       const next = !waterVisible
       setWaterVisible(next)
-      saveAbmPrefs({ waterVisible: next })
       setCmdFeedback(next ? 'WATER ON' : 'WATER OFF')
       return
     }
@@ -1855,7 +1854,6 @@ export default function AbmScope() {
     if (str === '.roads') {
       const next = !roadsVisible
       setRoadsVisible(next)
-      saveAbmPrefs({ roadsVisible: next })
       setCmdFeedback(next ? 'ROADS ON' : 'ROADS OFF')
       return
     }
@@ -1864,7 +1862,6 @@ export default function AbmScope() {
     if (str === '.coords') {
       const next = !coordsVisible
       setCoordsVisible(next)
-      saveAbmPrefs({ coordsVisible: next })
       setCmdFeedback(next ? 'COORDS ON' : 'COORDS OFF')
       return
     }
@@ -1872,35 +1869,30 @@ export default function AbmScope() {
     if (str === '.bec') {
       const next = !becVisible
       setBecVisible(next)
-      saveAbmPrefs({ becVisible: next })
       setCmdFeedback(next ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF')
       return
     }
 
     if (str === '.ddm') {
       setCoordFormat('ddm')
-      saveAbmPrefs({ coordFormat: 'ddm' })
       setCmdFeedback('DDM — DEGREES DECIMAL MINUTES')
       return
     }
 
     if (str === '.dms') {
       setCoordFormat('dms')
-      saveAbmPrefs({ coordFormat: 'dms' })
       setCmdFeedback('DMS — DEGREES MINUTES SECONDS')
       return
     }
 
     if (str === '.meters') {
       setElevUnit('meters')
-      saveAbmPrefs({ elevUnit: 'meters' })
       setCmdFeedback('ELEV METERS')
       return
     }
 
     if (str === '.feet') {
       setElevUnit('feet')
-      saveAbmPrefs({ elevUnit: 'feet' })
       setCmdFeedback('ELEV FEET')
       return
     }
@@ -2120,7 +2112,6 @@ export default function AbmScope() {
       const next = new Set(acqHidden)
       wasHidden ? next.delete(decl) : next.add(decl)
       setAcqHidden(next)
-      saveAbmPrefs({ acqHidden: [...next] })
       setCmdFeedback(`ACQ ${decl} ${wasHidden ? 'ON' : 'OFF'}`)
       return
     }
@@ -2128,7 +2119,6 @@ export default function AbmScope() {
     if (str === '.acq') {
       const next = acqHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
       setAcqHidden(next)
-      saveAbmPrefs({ acqHidden: [...next] })
       setCmdFeedback(next.size ? 'ACQ OFF' : 'ACQ ON')
       return
     }
@@ -2140,7 +2130,6 @@ export default function AbmScope() {
       const next = new Set(engHidden)
       wasHidden ? next.delete(decl) : next.add(decl)
       setEngHidden(next)
-      saveAbmPrefs({ engHidden: [...next] })
       setCmdFeedback(`ENG ${decl} ${wasHidden ? 'ON' : 'OFF'}`)
       return
     }
@@ -2148,7 +2137,6 @@ export default function AbmScope() {
     if (str === '.eng') {
       const next = engHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
       setEngHidden(next)
-      saveAbmPrefs({ engHidden: [...next] })
       setCmdFeedback(next.size ? 'ENG OFF' : 'ENG ON')
       return
     }
