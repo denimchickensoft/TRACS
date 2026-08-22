@@ -1,5 +1,5 @@
 /**
- * .clear + click's hit-test — finds the visible custom-drawing layer whose
+ * .dclear + click's hit-test — finds the visible custom-drawing layer whose
  * nearest EDGE (never a filled polygon's interior — clicking deep inside a
  * big circle away from its outline does not match it) is within
  * HIT_RADIUS_PX of the click, in screen pixels so it feels the same at any

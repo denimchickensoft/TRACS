@@ -22,6 +22,7 @@ function serialize(s) {
     findRequest: s.findRequest, findNonce: s.findNonce, findKey: s.findKey,
     blinkIds: s.blinkIds,
     routeVisible: s.routeVisible,
+    routeGroupIds: s.routeGroupIds,
     taskOverrides: s.taskOverrides,
     nextManualId: s.nextManualId,
   }
@@ -69,6 +70,14 @@ export const useAbmMissionStore = create((set) => ({
   // the route hidden until the controller explicitly asks for it.
   routeVisible: saved.routeVisible ?? false,
 
+  // Ctrl+right-click / .route + click / .route <callsign> — independent of
+  // FRAG's own routeVisible+selectedGroupId toggle above (that one always
+  // resets on selectGroup() and is tied to whichever flight the panel has
+  // open). This is a Set of groupIds, same "multiple independent targets"
+  // shape as blinkIds, so several contacts' routes can be shown on the scope
+  // at once without opening FRAG or disturbing its own route toggle.
+  routeGroupIds: saved.routeGroupIds ?? [],
+
   // FRAG's editable TASKING/Task field — a controller override of the
   // mission's own task string, keyed by groupId. ATO's TASK column reads
   // the same map so an edit in FRAG is immediately reflected there too.
@@ -104,6 +113,7 @@ export const useAbmMissionStore = create((set) => ({
       importedAt: null,
       selectedGroupId: keep.has(s.selectedGroupId) ? s.selectedGroupId : null,
       findRequest: null, findKey: null, blinkIds: [],
+      routeGroupIds: s.routeGroupIds.filter(gid => keep.has(gid)),
       taskOverrides: overrides,
     }
   }),
@@ -112,7 +122,7 @@ export const useAbmMissionStore = create((set) => ({
   // manually-added flights. Gated behind a confirm step in the UI.
   clearAllFlights: () => set({
     flights: [], importedAt: null, selectedGroupId: null,
-    findRequest: null, findKey: null, blinkIds: [], taskOverrides: {},
+    findRequest: null, findKey: null, blinkIds: [], routeGroupIds: [], taskOverrides: {},
   }),
 
   // Appends one hand-entered flight (AddAtoFlight.jsx) — additive, unlike
@@ -158,6 +168,14 @@ export const useAbmMissionStore = create((set) => ({
   }),
 
   clearBlink: () => set({ blinkIds: [] }),
+
+  toggleRouteGroup: (groupId) => set((s) => {
+    const next = new Set(s.routeGroupIds)
+    next.has(groupId) ? next.delete(groupId) : next.add(groupId)
+    return { routeGroupIds: [...next] }
+  }),
+
+  clearRouteGroups: () => set({ routeGroupIds: [] }),
 }))
 
 // ── Cross-window sync (main window + undocked ATO/FRAG popups) ─────────────

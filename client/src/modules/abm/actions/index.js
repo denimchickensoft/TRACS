@@ -35,10 +35,11 @@
  * matching AIC's own precedent — they're read directly off cmdBuffer inside
  * AbmScope.jsx's handleMouseUp/handleKeyDown, not routed through
  * parseCommand/dispatch: the BRAA/bogey-dope/threat-ring/highlight/rename/
- * leader-direction click-modifier commands (Ctrl/Alt/Shift/Ctrl+Alt+click,
- * `.dope`/`.rename`/bare-digit + click), and the three click-completion
+ * FRAG/route/leader-direction click-modifier commands (Ctrl/Alt/Shift/
+ * Ctrl+Alt+click, Ctrl+right-click, `.dope`/`.rename`/`.frag`/`.route`/
+ * bare-digit + click), and the three click-completion
  * mechanisms (pendingDraw/pendingClearClick/pendingClearAllConfirm) plus the
- * `.clear all` y/n confirmation intercept, which stays bespoke at the top of
+ * `.dclear all` y/n confirmation intercept, which stays bespoke at the top of
  * AbmScope.jsx's execCommand wrapper per §10.0/§10.3 of the refactor spec.
  *
  * Some persisted fields also get an explicit saveAbmPrefs(...) call here
@@ -63,6 +64,8 @@ import { useAbmAirspaceStore } from '../../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../../store/abmDrawings.js'
 import { useAbmMissionStore } from '../../../store/abmMission.js'
 import { useBrevityStore } from '../../../store/brevity.js'
+import { useSessionStore } from '../../../store/session.js'
+import { matchLiveByPrefix } from '../../../utils/callsign.js'
 import { DIR_TO_ANGLE } from '../../atc/stars/constants.js'
 import { trueDeclaration, drawCmdTokens } from '../abmScopeHelpers.js'
 import { parseDrawCommand } from '../draw/drawCommands.js'
@@ -368,19 +371,22 @@ export function TEXT({ context }) { return handleDrawCommand('text', { context }
 
 // ── Clear (drawings only — post-§10.3 fix; RBL/BRAA/threat-ring bulk-clear
 // is TCLEAR below) ───────────────────────────────────────────────────────────
-// Bare/click form arms pendingClearClick (handled in AbmScope.jsx's
-// handleMouseUp, bespoke); `.clear all` arms pendingClearAllConfirm instead,
-// intercepted by AbmScope.jsx's execCommand wrapper on the NEXT submitted
-// line as a bare yes/no answer (also bespoke — see this file's header).
+// Renamed .clear → .dclear (2026-08-22) to read distinctly from TCLEAR's own
+// tactical-clear command — `d`/`t` prefix now segments "clear a drawing" from
+// "clear RBL/BRAA/threat rings" at a glance. Bare/click form arms
+// pendingClearClick (handled in AbmScope.jsx's handleMouseUp, bespoke);
+// `.dclear all` arms pendingClearAllConfirm instead, intercepted by
+// AbmScope.jsx's execCommand wrapper on the NEXT submitted line as a bare
+// yes/no answer (also bespoke — see this file's header).
 
-export function CLEAR_BARE({ context }) {
+export function DCLEAR_BARE({ context }) {
   const { theatre } = context
   if (!theatre) return 'NO THEATRE'
   updateWin({ pendingDraw: null, pendingClearClick: true })
   return 'CLEAR: CLICK A DRAWING'
 }
 
-export function CLEAR_ALL({ context }) {
+export function DCLEAR_ALL({ context }) {
   const { theatre } = context
   if (!theatre) return 'NO THEATRE'
   const drawingLayers = useAbmDrawingsStore.getState().byTheatre[theatre] ?? []
@@ -389,7 +395,7 @@ export function CLEAR_ALL({ context }) {
   return `CLEAR ALL ${drawingLayers.length} DRAWINGS? Y TO CONFIRM`
 }
 
-export function CLEAR_NAME({ captures, context }) {
+export function DCLEAR_NAME({ captures, context }) {
   const { theatre } = context
   if (!theatre) return 'NO THEATRE'
   // Collapse internal whitespace, matching the original's tokenize-then-
@@ -473,6 +479,79 @@ export function DEFINE({ captures }) {
   }
   updateWin({ defineEntry: result })
   return ''
+}
+
+// `.where <callsign>` — same effect as clicking a roster row's callsign in
+// FRAG (Frag.jsx's toggleBlink): blinks that live contact's datablock on the
+// scope so the controller can spot it. Prefix-matched against every live
+// contact's resolveCallsign() output (matchLiveByPrefix, utils/callsign.js —
+// the same helper manual ATO flights use to find their own roster), so it
+// responds to a controller's own .rename override, not just the mission-file
+// callsign. Ambiguous (multiple contacts share the prefix) or empty matches
+// give NOT FOUND/AMBIGUOUS feedback and do nothing, rather than guessing —
+// same terse feedback convention FIND/DEFINE already use.
+export function WHERE({ captures, context }) {
+  const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
+  if (matches.length === 0) return 'NOT FOUND'
+  if (matches.length > 1) return 'AMBIGUOUS'
+  useAbmMissionStore.getState().toggleBlink(matches[0].key)
+  return `WHERE ${matches[0].callsign}`
+}
+
+// `.frag <callsign>` — text-argument sibling of the click-based `.frag` +
+// click / Ctrl+Shift+click handlers in AbmScope.jsx's handleMouseUp: opens
+// the FRAG panel for the flight that contact belongs to, without needing a
+// click. Same prefix-match/ambiguity rules as WHERE above; the live contact's
+// DCS groupID is then joined against useAbmMissionStore's flights (same join
+// the click handlers use) and gated by the same own-coalition check (GM/admin
+// sees every flight, blue/red sessions only their own side's).
+export function FRAG_FIND({ captures, context }) {
+  const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
+  if (matches.length === 0) return 'NOT FOUND'
+  if (matches.length > 1) return 'AMBIGUOUS'
+  const groupId = matches[0].unit?.groupID
+  const flight = groupId != null
+    ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
+    : null
+  const coalition = useSessionStore.getState().coalition
+  const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
+  if (!flight || !ownSide) return 'NO FRAG'
+  useAbmMissionStore.getState().selectGroup(flight.groupId)
+  return `FRAG ${matches[0].callsign}`
+}
+
+// `.route <callsign>` — text-argument sibling of the Ctrl+right-click/.route
+// + click handlers in AbmScope.jsx. Same prefix-match/ambiguity/coalition
+// rules as FRAG_FIND, but toggles routeGroupIds instead of calling
+// selectGroup — this one deliberately never opens the FRAG panel.
+export function ROUTE_FIND({ captures, context }) {
+  const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
+  if (matches.length === 0) return 'NOT FOUND'
+  if (matches.length > 1) return 'AMBIGUOUS'
+  const groupId = matches[0].unit?.groupID
+  const flight = groupId != null
+    ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
+    : null
+  const coalition = useSessionStore.getState().coalition
+  const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
+  if (!flight || !ownSide) return 'NO ROUTE'
+  const mission = useAbmMissionStore.getState()
+  const wasOn = mission.routeGroupIds.includes(flight.groupId)
+  mission.toggleRouteGroup(flight.groupId)
+  return `ROUTE ${wasOn ? 'OFF' : 'ON'} ${matches[0].callsign}`
+}
+
+// `.rclear` — clears every route currently shown on the scope: both
+// routeGroupIds (Ctrl+right-click/.route/.route <callsign>) and FRAG's own
+// routeVisible toggle, so this is a full "hide all routes" regardless of
+// which mechanism turned each one on. Separate from TCLEAR (RBL/BRAA/threat
+// rings) by design — routes aren't tactical-picture clutter in the same
+// sense, so they get their own dedicated clear command.
+export function RCLEAR() {
+  const mission = useAbmMissionStore.getState()
+  mission.clearRouteGroups()
+  mission.clearRouteVisible()
+  return 'ROUTES CLEARED'
 }
 
 // ── Runways / polygons / grid / towns / raster layers ───────────────────────
@@ -806,8 +885,8 @@ const ACTION_MAP = {
   AIRWAYS_TOGGLE, AIRWAYS_TYPE, ASP_TOGGLE, ASP_CATEGORY, ASPCOLORS, REFRESH,
   LABELS_TOGGLE, FILL_TOGGLE, FILL_SET, CUSTOM_TOGGLE, CUSTOM_NAME,
   LINE, RECT, CIRC, POLY, SECT, RACE, TEXT,
-  CLEAR_BARE, CLEAR_ALL, CLEAR_NAME,
-  FIXES_TOGGLE, NAVAIDS_TOGGLE, FIX_CLEAR, FIX_PIN, FIND, DEFINE,
+  DCLEAR_BARE, DCLEAR_ALL, DCLEAR_NAME,
+  FIXES_TOGGLE, NAVAIDS_TOGGLE, FIX_CLEAR, FIX_PIN, FIND, DEFINE, WHERE, FRAG_FIND, ROUTE_FIND, RCLEAR,
   RUNWAYS_TOGGLE, POLYGONS_TOGGLE, MGRS_TOGGLE, TOWNS_TOGGLE, BASE_TOGGLE, TERRAIN_TOGGLE,
   MAP_TOGGLE, WATER_TOGGLE, ROADS_TOGGLE,
   COORDS_TOGGLE, BEC_TOGGLE, DDM, DMS, METERS, FEET,

@@ -162,6 +162,19 @@ export default function AbmScope() {
     [atoFlights, selectedGroupId, routeVisible]
   )
 
+  // Ctrl+right-click / .route + click / .route <callsign> — independent of
+  // the FRAG-panel route toggle above (routeVisible/selectedGroupId): a Set
+  // of groupIds so several contacts' routes can be shown at once without
+  // opening FRAG. See store/abmMission.js's routeGroupIds header comment.
+  const routeGroupIds   = useAbmMissionStore(s => s.routeGroupIds)
+  const toggleRouteGroup = useAbmMissionStore(s => s.toggleRouteGroup)
+  const extraRoutes = useMemo(
+    () => routeGroupIds
+      .map(gid => atoFlights.find(f => f.groupId === gid)?.route)
+      .filter(r => r && r.length > 0),
+    [atoFlights, routeGroupIds]
+  )
+
   // FRAG BASE/waypoint click (requestFind) and roster click (toggleBlink) —
   // store/abmMission.js. AbmScope is the only place holding theatre navdata/
   // runway/live-unit data, so it resolves these refs; see the findRequest
@@ -1064,9 +1077,9 @@ export default function AbmScope() {
   const pendingDraw = windowSettings?.pendingDraw ?? null
   const [drawCursor,  setDrawCursor]  = useState(null)
 
-  // .clear — bare/click form arms pendingClearClick (one-shot: the next
+  // .dclear — bare/click form arms pendingClearClick (one-shot: the next
   // click hit-tests via hitTestDrawingLayer and removes whatever it finds,
-  // then disarms regardless of a hit). .clear all arms
+  // then disarms regardless of a hit). .dclear all arms
   // pendingClearAllConfirm instead, which execCommand intercepts at the top
   // on the NEXT submitted line as a bare yes/no answer (not a new command).
   // Both live in displayStore's windows[WINDOW_ID], same as pendingDraw above.
@@ -1123,8 +1136,10 @@ export default function AbmScope() {
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
 
-    // Selected FRAG flight's route, if any.
+    // Selected FRAG flight's route, if any, plus any routes toggled on via
+    // Ctrl+right-click/.route independent of FRAG.
     drawAbmFragRoute(ctx, view, selectedRoute)
+    for (const route of extraRoutes) drawAbmFragRoute(ctx, view, route)
 
     // RBL on top of everything — same layering AIC uses.
     drawRbl(ctx, view, rbl, view.declinationDeg)
@@ -1143,12 +1158,35 @@ export default function AbmScope() {
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
-      threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute,
+      threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, extraRoutes,
       blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {
     if (e.button === 2) {
+      // Ctrl+right-click — toggle that contact's route on the scope without
+      // opening FRAG (same target/coalition resolution as Ctrl+Shift+click's
+      // FRAG-open, but writes to routeGroupIds instead of selectGroup, since
+      // selectGroup would bump selectNonce and pop the FRAG panel open —
+      // see App.jsx's "open FRAG on selection" effect). Takes priority over
+      // starting a pan-drag; a plain right-click (no Ctrl) still pans.
+      if (e.ctrlKey) {
+        const rect = interactiveRef.current?.getBoundingClientRect()
+        if (rect && viewRef.current) {
+          const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+          const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
+          if (target?.unit?.groupID != null) {
+            const flight = useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
+            const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
+            if (flight && ownSide) {
+              const wasOn = useAbmMissionStore.getState().routeGroupIds.includes(flight.groupId)
+              toggleRouteGroup(flight.groupId)
+              setCmdFeedback(`ROUTE ${wasOn ? 'OFF' : 'ON'} ${resolveCallsign(target.unit).toUpperCase()}`)
+            }
+          }
+        }
+        return
+      }
       dragRef.current = {
         startX: e.clientX, startY: e.clientY,
         startLat: centerLatRef.current, startLng: centerLngRef.current,
@@ -1166,7 +1204,7 @@ export default function AbmScope() {
       const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
       leftDragStartRef.current = { clientX: e.clientX, clientY: e.clientY, lat, lng }
     }
-  }, [])
+  }, [coalition, toggleRouteGroup])
 
   const handleMouseMove = useCallback((e) => {
     if (!dragRef.current || !viewRef.current) return
@@ -1314,7 +1352,7 @@ export default function AbmScope() {
   // 2026-08-22, see resources/specs/refactor-spec.md §10 phase 4) — each
   // action reads/writes state via .getState(), no closures, and returns its
   // feedback string; this wrapper supplies the render-derived context values
-  // actions have no independent store to read from, plus the `.clear all`
+  // actions have no independent store to read from, plus the `.dclear all`
   // y/n confirmation intercept, which — like the three click-completion
   // mechanisms handled in handleMouseUp/handleKeyDown — stays bespoke here
   // rather than being generalized into the parser (§10.0/§10.3).
@@ -1478,7 +1516,7 @@ export default function AbmScope() {
       return
     }
 
-    // .clear + click — one-shot: disarms on this click regardless of
+    // .dclear + click — one-shot: disarms on this click regardless of
     // whether anything was actually under it.
     if (pendingClearClick) {
       if (e.button === 1) return
@@ -1604,6 +1642,46 @@ export default function AbmScope() {
       return
     }
 
+    // .frag + click — same target resolution/coalition guard as the
+    // Ctrl+Shift+click FRAG shortcut above (line ~1540), offered as a
+    // buffered-command alternative for controllers already in the habit of
+    // typing `.dope`/`.db`/`.threat` + click.
+    if (buf === '.frag') {
+      if (!target) return
+      const flight = target.unit?.groupID != null
+        ? useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
+        : null
+      const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
+      if (flight && ownSide) {
+        selectAtoGroup(flight.groupId)
+        setCmdFeedback('FRAG OPENED')
+      } else {
+        setCmdFeedback('NO FRAG')
+      }
+      setCmdBuffer('')
+      return
+    }
+
+    // .route + click — toggles that contact's route independently of FRAG's
+    // own route toggle (routeGroupIds, not routeVisible/selectGroup — see
+    // the Ctrl+right-click handler in handleMouseDown for why).
+    if (buf === '.route') {
+      if (!target) return
+      const flight = target.unit?.groupID != null
+        ? useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
+        : null
+      const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
+      if (flight && ownSide) {
+        const wasOn = useAbmMissionStore.getState().routeGroupIds.includes(flight.groupId)
+        toggleRouteGroup(flight.groupId)
+        setCmdFeedback(`ROUTE ${wasOn ? 'OFF' : 'ON'}`)
+      } else {
+        setCmdFeedback('NO ROUTE')
+      }
+      setCmdBuffer('')
+      return
+    }
+
     if (buf === '.rename' || buf.startsWith('.rename ')) {
       if (target) {
         const newCallsign = buf.slice(7).trim().toUpperCase() || null
@@ -1675,7 +1753,7 @@ export default function AbmScope() {
   }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getEffectiveDeclaration,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
-      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup])
+      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup])
 
   if (!windowSettings) return null
 

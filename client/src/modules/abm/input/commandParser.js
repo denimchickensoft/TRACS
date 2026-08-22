@@ -7,7 +7,7 @@
  *   captures — names for capture groups (optional)
  *
  * Order matters — more specific patterns must precede broader ones (e.g.
- * CLEAR_ALL's literal "all" before CLEAR_NAME's catch-all).
+ * DCLEAR_ALL's literal "all" before DCLEAR_NAME's catch-all).
  *
  * Same shape as AIC's parser (modules/aic/input/commandParser.js) and, like
  * that one, deliberately has no STARS-style ENTER/SLEW `trigger` field — the
@@ -62,15 +62,19 @@ const COMMANDS = [
   { id: 'SECT',             pattern: /^\.sect(?:\s.*)?$/ },
   { id: 'RACE',             pattern: /^\.race(?:\s.*)?$/ },
   { id: 'TEXT',             pattern: /^\.text(?:\s.*)?$/ },
-  { id: 'CLEAR_BARE',       pattern: /^\.clear$/ },
-  { id: 'CLEAR_ALL',        pattern: /^\.clear\s+all$/ },
-  { id: 'CLEAR_NAME',       pattern: /^\.clear\s+(.+)$/, captures: ['name'] },
+  { id: 'DCLEAR_BARE',      pattern: /^\.dclear$/ },
+  { id: 'DCLEAR_ALL',       pattern: /^\.dclear\s+all$/ },
+  { id: 'DCLEAR_NAME',      pattern: /^\.dclear\s+(.+)$/, captures: ['name'] },
   { id: 'FIXES_TOGGLE',     pattern: /^\.fixes$/ },
   { id: 'NAVAIDS_TOGGLE',   pattern: /^\.navaids$/ },
   { id: 'FIX_CLEAR',        pattern: /^\.fix$/ },
   { id: 'FIX_PIN',          pattern: /^\.fix\s+(.+)$/, captures: ['names'] },
   { id: 'FIND',             pattern: /^\.find\s+(.+)$/, captures: ['fix'] },
   { id: 'DEFINE',           pattern: /^\.define\s+(.+)$/, captures: ['term'] },
+  { id: 'WHERE',            pattern: /^\.where\s+(.+)$/, captures: ['callsign'] },
+  { id: 'FRAG_FIND',        pattern: /^\.frag\s+(.+)$/, captures: ['callsign'] },
+  { id: 'ROUTE_FIND',       pattern: /^\.route\s+(.+)$/, captures: ['callsign'] },
+  { id: 'RCLEAR',           pattern: /^\.rclear$/ },
   { id: 'RUNWAYS_TOGGLE',   pattern: /^\.runways$/ },
   { id: 'POLYGONS_TOGGLE',  pattern: /^\.polygons$/ },
   { id: 'MGRS_TOGGLE',      pattern: /^\.mgrs$/ },
