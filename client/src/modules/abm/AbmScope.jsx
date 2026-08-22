@@ -2037,8 +2037,16 @@ export default function AbmScope() {
       return
     }
 
-    // .clear — clears RBL, BRAA/bogey-dope pairs, and threat rings (2026-07-07).
-    if (str === '.clear') {
+    // .tclear — clears RBL, BRAA/bogey-dope pairs, and threat rings (2026-07-07,
+    // renamed from .clear 2026-08-21). Originally bound to bare `.clear`, but
+    // the drawings `.clear`/`.clear <name>`/`.clear all` handler added
+    // 2026-08-03 (see above) already matches any bare `.clear` first and
+    // returns, making this unreachable — a real bug (typing `.clear` could
+    // never actually clear RBL/BRAA/threat rings), not a deliberate removal.
+    // Fixed by giving this its own command name rather than merging the two
+    // behaviors, since drawings' `.clear` is the one users would reasonably
+    // expect bare `.clear` to mean going forward.
+    if (str === '.tclear') {
       setRbl(null)
       setThreatRings(new Set())
       useAbmStore.getState().braaList.forEach(p => useAbmStore.getState().removeBraaPair(p.id))
