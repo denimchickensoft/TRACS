@@ -5,6 +5,7 @@ import { useUnitsStore }       from '../../store/units.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { useAicStore, DECLARATION, ROE_STATE } from '../../store/aic.js'
+import { useAicPrefsStore }    from '../../store/aicPrefs.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
@@ -28,9 +29,6 @@ import './AicScope.css'
 
 const WINDOW_ID = 'aic-main'
 const AIC_SETTINGS_KEY = 'aic-settings'
-const AIC_AUTOTHREAT_KEY = 'tracs-aic-autothreat'
-const AIC_PICTURE_KEY = 'tracs-aic-showpicture'
-const AIC_BEC_KEY = 'tracs-aic-bec'
 const AIC_WIN_FIELDS = [
   'rangeNm', 'ringSpacingNm', 'ptlSeconds', 'symSize',
   'fadedSeconds', 'threatRadius', 'centerLat', 'centerLng',
@@ -38,6 +36,7 @@ const AIC_WIN_FIELDS = [
 ]
 
 const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
+const EMPTY_ARRAY = []
 
 const F_KEY_DECL = {
   F1: DECLARATION.HOSTILE,
@@ -210,8 +209,11 @@ export default function AicScope() {
 
   // .be override — lets the operator relocate bullseye off the mission's
   // real one (fix, explicit lat/lon, or a map click). Not persisted: it's a
-  // mission-specific placement, not a saved preference.
-  const [bullseyeOverride, setBullseyeOverride] = useState(null) // { lat, lng } | null
+  // mission-specific placement, not a saved preference. Lives in
+  // displayStore's windows[WINDOW_ID] (not local state) so it's reachable
+  // from actions/index.js-style standalone command handlers — see
+  // resources/specs/refactor-spec.md §9.
+  const bullseyeOverride = windowSettings?.bullseyeOverride ?? null // { lat, lng } | null
 
   const bullseyeLat = bullseyeOverride?.lat ?? bullseyeEntry?.latitude  ?? 0
   const bullseyeLng = bullseyeOverride?.lng ?? bullseyeEntry?.longitude ?? 0
@@ -372,25 +374,31 @@ export default function AicScope() {
 
   // ── All state — declared before any effect that references them in deps ───────
 
-  const [threatRings, setThreatRings] = useState(new Set())
-  const toggleThreatRing = useCallback((unitId) =>
-    setThreatRings(prev => { const n = new Set(prev); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n }), [])
+  // threatRings/showCentroid/showAxis/sector/sectorVisible/sectorPreviewOrigin/
+  // ackPicture/rbl/findMarker/defineEntry now live in displayStore's
+  // windows[WINDOW_ID] (not local useState) so they're reachable from
+  // actions/index.js-style standalone command handlers — see
+  // resources/specs/refactor-spec.md §9. autoThreat/showPicture/becVisible
+  // similarly moved to their own reactive store (store/aicPrefs.js) since,
+  // unlike ABM/STARS/CATCC/ASDE-X's equivalent prefs, these need to be
+  // readable/writable without a closure too.
+  const threatRings = windowSettings?.threatRings ?? EMPTY_ARRAY
+  const threatRingSet = useMemo(() => new Set(threatRings), [threatRings])
+  const toggleThreatRing = useCallback((unitId) => {
+    const current = useDisplayStore.getState().windows[WINDOW_ID]?.threatRings ?? []
+    const next = current.includes(unitId) ? current.filter(id => id !== unitId) : [...current, unitId]
+    useDisplayStore.getState().updateWindow(WINDOW_ID, { threatRings: next })
+  }, [])
   const threatRadius = windowSettings?.threatRadius ?? 45
 
   // .autothreat (2026-07-10) — local UI toggle (not shared with other
-  // controllers), persisted to its own localStorage key rather than via
-  // AIC_SETTINGS_KEY since it isn't backed by a subscribed store. While on,
-  // rings light automatically on every friendly aircraft within threatRadius
-  // of a HOSTILE/BOGEY aircraft; auto-lit rings are tracked separately from
-  // threatRings (manual Ctrl+Alt+click/.threat+click) and just union at draw
-  // time, so auto fully owns a contact's ring for as long as the breach lasts.
-  const [autoThreat, setAutoThreatState] = useState(() => {
-    try { return localStorage.getItem(AIC_AUTOTHREAT_KEY) === 'true' } catch { return false }
-  })
-  const setAutoThreat = (enabled) => {
-    setAutoThreatState(enabled)
-    try { localStorage.setItem(AIC_AUTOTHREAT_KEY, String(enabled)) } catch {}
-  }
+  // controllers). While on, rings light automatically on every friendly
+  // aircraft within threatRadius of a HOSTILE/BOGEY aircraft; auto-lit rings
+  // are tracked separately from threatRings (manual Ctrl+Alt+click/.threat+
+  // click) and just union at draw time, so auto fully owns a contact's ring
+  // for as long as the breach lasts.
+  const autoThreat = useAicPrefsStore(s => s.autoThreat)
+  const setAutoThreat = useAicPrefsStore(s => s.setAutoThreat)
   const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
 
   useEffect(() => {
@@ -412,50 +420,38 @@ export default function AicScope() {
 
   // .centroid / .axis — debug toggles for the hostile-picture centroid and
   // the dynamic threat axis line derived from it (see computePicture.js).
-  const [showCentroid, setShowCentroid] = useState(false)
-  const [showAxis, setShowAxis] = useState(false)
+  const showCentroid = windowSettings?.showCentroid ?? false
+  const showAxis = windowSettings?.showAxis ?? false
 
   // .picture — toggles visibility of the PICTURE readout panel. Local UI
-  // preference (not shared with other controllers), persisted to its own
-  // localStorage key like .autothreat. Off by default.
-  const [showPicture, setShowPictureState] = useState(() => {
-    try { return localStorage.getItem(AIC_PICTURE_KEY) === 'true' } catch { return false }
-  })
-  const setShowPicture = (enabled) => {
-    setShowPictureState(enabled)
-    try { localStorage.setItem(AIC_PICTURE_KEY, String(enabled)) } catch {}
-  }
+  // preference (not shared with other controllers). Off by default.
+  const showPicture = useAicPrefsStore(s => s.showPicture)
+  const setShowPicture = useAicPrefsStore(s => s.setShowPicture)
 
   // .bec — bullseye-on-cursor readout that tracks the mouse pixel-for-pixel
   // (unlike the always-on cursorBullseye readout below, pinned to the top-
-  // right corner). Off by default, persisted to its own localStorage key
-  // like .autothreat/.picture above.
-  const [becVisible, setBecVisibleState] = useState(() => {
-    try { return localStorage.getItem(AIC_BEC_KEY) === 'true' } catch { return false }
-  })
-  const setBecVisible = (enabled) => {
-    setBecVisibleState(enabled)
-    try { localStorage.setItem(AIC_BEC_KEY, String(enabled)) } catch {}
-  }
+  // right corner). Off by default.
+  const becVisible = useAicPrefsStore(s => s.becVisible)
+  const setBecVisible = useAicPrefsStore(s => s.setBecVisible)
   const [cursorPixelPos, setCursorPixelPos] = useState(null)
 
   const fadedRef       = useRef({})
   const prevVisibleRef = useRef({})
   const [fadedTick, setFadedTick] = useState(0)
 
-  const [findMarker, setFindMarker] = useState(null)
+  const findMarker = windowSettings?.findMarker ?? null
 
   // Sector: stored as TRUE bearings; input is magnetic, converted on entry.
-  const [sector, setSector] = useState(null)
+  const sector = windowSettings?.sector ?? null
   const sectorRef = useRef(null)
   useEffect(() => { sectorRef.current = sector }, [sector])
-  const [sectorVisible, setSectorVisible] = useState(true)
-  const [sectorPreviewOrigin, setSectorPreviewOrigin] = useState(null)
+  const sectorVisible = windowSettings?.sectorVisible ?? true
+  const sectorPreviewOrigin = windowSettings?.sectorPreviewOrigin ?? null
 
   // Picture acknowledgment baseline
-  const [ackPicture, setAckPicture] = useState(null)   // { labelKey, totalGroups }
+  const ackPicture = windowSettings?.ackPicture ?? null   // { labelKey, totalGroups }
 
-  const [rbl, setRbl] = useState(null)
+  const rbl = windowSettings?.rbl ?? null
 
   const [hoveredUnit, setHoveredUnit] = useState(null)
   const [cursorLatLng, setCursorLatLng] = useState(null)
@@ -471,7 +467,7 @@ export default function AicScope() {
   // overwritten by every incidental click/command ack and a brevity
   // definition is meant to be read, not flashed. Dismissed only by Escape,
   // another .define, or clicking the readout itself.
-  const [defineEntry, setDefineEntry] = useState(null) // { term, text }
+  const defineEntry = windowSettings?.defineEntry ?? null // { term, text }
   useEffect(() => { useBrevityStore.getState().load() }, [])
   const [cmdHistory, setCmdHistory] = useState([])
   const cmdHistoryRef = useRef([])
@@ -594,8 +590,8 @@ export default function AicScope() {
     const ctx = contactsRef.current.getContext('2d')
     const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
     const mergedThreatRings = autoThreatRingIds.size
-      ? new Set([...threatRings, ...autoThreatRingIds])
-      : threatRings
+      ? new Set([...threatRingSet, ...autoThreatRingIds])
+      : threatRingSet
     drawAicContacts(ctx, view, visibleUnits, getDecl, ptlSeconds, symSize, braaList, rangeNm, rbl, declinationDeg,
       mergedThreatRings, threatRadius, fadedRef.current, Date.now(), findMarker,
       showCentroid ? picture?.centroid : null,
@@ -603,7 +599,7 @@ export default function AicScope() {
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }
-  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRings, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
+  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRingSet, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
 
   // RBL drag (left-click) — only arms once the drag clears a threshold, so
   // plain left-clicks used for declare/BRAA/sector/etc. don't touch the RBL
@@ -619,14 +615,15 @@ export default function AicScope() {
         const dist = Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY)
         if (dist <= 5) return
         rblDragActiveRef.current = true
-        setRbl({ anchor: { lat: start.lat, lng: start.lng }, end: null, fixed: false })
+        useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: { anchor: { lat: start.lat, lng: start.lng }, end: null, fixed: false } })
       }
       const rect = interactiveRef.current?.getBoundingClientRect()
       if (!rect || !viewRef.current) return
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
       const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
-      setRbl(prev => prev ? { ...prev, end: { lat, lng } } : null)
+      const prevRbl = useDisplayStore.getState().windows[WINDOW_ID]?.rbl
+      if (prevRbl) useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: { ...prevRbl, end: { lat, lng } } })
     }
     const onUp = (e) => {
       if (e.button !== 0) return
@@ -634,7 +631,8 @@ export default function AicScope() {
       leftDragStartRef.current = null
       rblDragActiveRef.current = false
       if (!wasActive) return
-      setRbl(prev => prev?.end ? { ...prev, fixed: true } : null)
+      const prevRbl = useDisplayStore.getState().windows[WINDOW_ID]?.rbl
+      useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: prevRbl?.end ? { ...prevRbl, fixed: true } : null })
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
@@ -656,7 +654,7 @@ export default function AicScope() {
     const ll = canvasToLatLng(x, y, viewRef.current)
     setCursorLatLng(ll)
     setCursorPixelPos({ x, y })
-    if (pendingSectorRef.current) setSectorPreviewOrigin(ll)
+    if (pendingSectorRef.current) useDisplayStore.getState().updateWindow(WINDOW_ID, { sectorPreviewOrigin: ll })
   }, [])
 
   function clearCmd() { setCmdBuffer(''); setCmdFeedback('') }
@@ -692,7 +690,7 @@ export default function AicScope() {
     } else if (str.startsWith('.find ')) {
       const result = useNavdataStore.getState().lookupFix(str.slice(6).trim())
       if (result) {
-        setFindMarker(result)
+        displayStore.updateWindow(WINDOW_ID, { findMarker: result })
         setCmdFeedback(`FIND ${result.id}`)
       } else { setCmdFeedback('NOT FOUND') }
     } else if (str === '.rr') {
@@ -722,18 +720,14 @@ export default function AicScope() {
       displayStore.updateWindow(WINDOW_ID, { fadedSeconds: s })
       setCmdFeedback(`FADED ${s}S`)
     } else if (str === '.threat') {
-      setThreatRings(new Set())
+      displayStore.updateWindow(WINDOW_ID, { threatRings: [] })
       setCmdFeedback('THREAT RINGS CLEARED')
     } else if (str.match(/^\.threat\s+\d+(\.\d+)?$/)) {
       const nm = parseFloat(str.split(/\s+/)[1])
       displayStore.updateWindow(WINDOW_ID, { threatRadius: nm })
       setCmdFeedback(`THREAT RING ${nm}NM`)
     } else if (str === '.clear') {
-      setThreatRings(new Set())
-      setRbl(null)
-      setSector(null)
-      setSectorVisible(true)
-      setAckPicture(null)
+      displayStore.updateWindow(WINDOW_ID, { threatRings: [], rbl: null, sector: null, sectorVisible: true, ackPicture: null })
       useAicStore.getState().braaList.forEach(p => removeBraaPair(p.id))
       setCmdFeedback('ALL CLEARED')
     } else if (str === '.class') {
@@ -810,10 +804,10 @@ export default function AicScope() {
       useReliefStore.getState().toggleVisible()
       setCmdFeedback(useReliefStore.getState().visible ? 'RELIEF ON' : 'RELIEF OFF')
     } else if (str === '.centroid') {
-      setShowCentroid(!showCentroid)
+      displayStore.updateWindow(WINDOW_ID, { showCentroid: !showCentroid })
       setCmdFeedback(!showCentroid ? 'CENTROID ON' : 'CENTROID OFF')
     } else if (str === '.axis') {
-      setShowAxis(!showAxis)
+      displayStore.updateWindow(WINDOW_ID, { showAxis: !showAxis })
       setCmdFeedback(!showAxis ? 'AXIS ON' : 'AXIS OFF')
     } else if (str === '.picture') {
       setShowPicture(!showPicture)
@@ -822,13 +816,10 @@ export default function AicScope() {
       setBecVisible(!becVisible)
       setCmdFeedback(!becVisible ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF')
     } else if (str === '.sector') {
-      if (sectorRef.current) { setSectorVisible(true); setCmdFeedback('SECTOR ON') }
+      if (sectorRef.current) { displayStore.updateWindow(WINDOW_ID, { sectorVisible: true }); setCmdFeedback('SECTOR ON') }
       else { setCmdFeedback('NO SECTOR') }
     } else if (str === '.sector clear' || str === '.sector off') {
-      setSector(null)
-      setSectorVisible(true)
-      setSectorPreviewOrigin(null)
-      setAckPicture(null)
+      displayStore.updateWindow(WINDOW_ID, { sector: null, sectorVisible: true, sectorPreviewOrigin: null, ackPicture: null })
       setCmdFeedback('SECTOR CLEARED')
     } else if (str.match(/^\.sector\s+\d+(\.\d+)?\s+\d+(\.\d+)?\s+\d+(\.\d+)?$/)) {
       // Place at bullseye when Enter pressed with no prior click
@@ -841,31 +832,33 @@ export default function AicScope() {
       const decl     = declinationRef.current
       const fromTrue = toTrueFromMagnetic(fromMag, decl)
       const toTrue   = toTrueFromMagnetic(toMag, decl)
-      setSector({
-        origin:      { lat: bullseyeLat, lng: bullseyeLng },
-        fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng,
-        axisBearing: sectorAxisBearing(fromTrue, toTrue),
+      displayStore.updateWindow(WINDOW_ID, {
+        sector: {
+          origin:      { lat: bullseyeLat, lng: bullseyeLng },
+          fromBearing: fromTrue, toBearing: toTrue, rangeNm: rng,
+          axisBearing: sectorAxisBearing(fromTrue, toTrue),
+        },
+        sectorVisible: true,
+        sectorPreviewOrigin: null,
       })
-      setSectorVisible(true)
-      setSectorPreviewOrigin(null)
       setCmdFeedback(`SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(rng)}NM @BE`)
     } else if (str === '.be') {
       // Bare form (Enter, no click) clears the override and reverts to the
       // mission bullseye; typed bare and then clicked instead (see
       // pendingBe/handleMouseUp), it places the override at the click.
-      setBullseyeOverride(null)
+      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: null })
       setCmdFeedback('BULLSEYE RESET')
     } else if (str.match(/^\.be\s+-?\d+(\.\d+)?\s+-?\d+(\.\d+)?$/)) {
       const m = str.match(/^\.be\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/)
       const lat = parseFloat(m[1])
       const lng = parseFloat(m[2])
-      setBullseyeOverride({ lat, lng })
+      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat, lng } })
       setCmdFeedback(`BULLSEYE SET ${lat.toFixed(2)}/${lng.toFixed(2)}`)
     } else if (str.match(/^\.be\s+(\S+)$/)) {
       const fixName = str.match(/^\.be\s+(\S+)$/)[1]
       const result  = useNavdataStore.getState().lookupFix(fixName)
       if (result) {
-        setBullseyeOverride({ lat: result.lat, lng: result.lon })
+        displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat: result.lat, lng: result.lon } })
         setCmdFeedback(`BULLSEYE SET @ ${result.id}`)
       } else {
         setCmdFeedback('FIX NOT FOUND')
@@ -875,8 +868,8 @@ export default function AicScope() {
       // Shown in its own readout, not cmdFeedback — see the comment at
       // defineEntry's declaration for why.
       const result = useBrevityStore.getState().lookup(str.slice(8).trim())
-      if (result) { setDefineEntry(result); setCmdFeedback('') }
-      else { setDefineEntry(null); setCmdFeedback('NOT FOUND') }
+      if (result) { displayStore.updateWindow(WINDOW_ID, { defineEntry: result }); setCmdFeedback('') }
+      else { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); setCmdFeedback('NOT FOUND') }
     } else {
       setCmdFeedback('UNKNOWN COMMAND')
     }
@@ -893,18 +886,16 @@ export default function AicScope() {
 
     if (e.key === 'Escape') {
       e.preventDefault()
-      if (findMarker) { setFindMarker(null); return }
-      if (defineEntry) { setDefineEntry(null); return }
+      if (findMarker) { displayStore.updateWindow(WINDOW_ID, { findMarker: null }); return }
+      if (defineEntry) { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); return }
       const previewClear = !pendingDeclaration && !pendingBraaFighter && !cmdBuffer && !cmdFeedback
       if (previewClear) {
-        setRbl(null)
-        setSectorVisible(false)
-        setSectorPreviewOrigin(null)
+        displayStore.updateWindow(WINDOW_ID, { rbl: null, sectorVisible: false, sectorPreviewOrigin: null })
       } else {
         setPendingDeclaration(null)
         clearPendingBraa()
         clearCmd()
-        setSectorPreviewOrigin(null)
+        displayStore.updateWindow(WINDOW_ID, { sectorPreviewOrigin: null })
       }
       return
     }
@@ -928,7 +919,7 @@ export default function AicScope() {
     if (defineEntry && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault()
       const result = useBrevityStore.getState().neighbor(defineEntry.term, e.key === 'ArrowUp' ? -1 : 1)
-      if (result) setDefineEntry(result)
+      if (result) displayStore.updateWindow(WINDOW_ID, { defineEntry: result })
       return
     }
 
@@ -980,9 +971,11 @@ export default function AicScope() {
     // .sector + click: place sector origin at cursor
     if (pendingSectorRef.current) {
       const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
-      setSector({ ...pendingSectorRef.current, origin: ll })
-      setSectorVisible(true)
-      setSectorPreviewOrigin(null)
+      displayStore.updateWindow(WINDOW_ID, {
+        sector: { ...pendingSectorRef.current, origin: ll },
+        sectorVisible: true,
+        sectorPreviewOrigin: null,
+      })
       clearCmd()
       return
     }
@@ -993,7 +986,7 @@ export default function AicScope() {
     // instead resolves on Enter via execCommand.
     if (pendingBeRef.current) {
       const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
-      setBullseyeOverride({ lat: ll.lat, lng: ll.lng })
+      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat: ll.lat, lng: ll.lng } })
       clearCmd()
       setCmdFeedback(`BULLSEYE SET ${ll.lat.toFixed(2)}/${ll.lng.toFixed(2)}`)
       return
@@ -1259,7 +1252,7 @@ export default function AicScope() {
             className="aic-picture"
             onClick={() => {
               if (picture.labelKey !== 'CLEAN' && picture.totalGroups > 0)
-                setAckPicture({ labelKey: picture.labelKey, totalGroups: picture.totalGroups })
+                displayStore.updateWindow(WINDOW_ID, { ackPicture: { labelKey: picture.labelKey, totalGroups: picture.totalGroups } })
               interactiveRef.current?.focus()
             }}
           >
@@ -1312,7 +1305,7 @@ export default function AicScope() {
         )}
 
         {defineEntry && (
-          <div className="aic-define" onClick={() => { setDefineEntry(null); interactiveRef.current?.focus() }}>
+          <div className="aic-define" onClick={() => { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); interactiveRef.current?.focus() }}>
             <div className="aic-define-term">{defineEntry.term}</div>
             <div className="aic-define-text">{defineEntry.text}</div>
           </div>

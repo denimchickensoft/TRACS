@@ -62,6 +62,20 @@ const SCOPE_DEFAULTS = {
   altFilterHighA: 600,
   qnh: '29.92',
   tdmMode: false,
+  // AIC-only session state (§9.2 of resources/specs/refactor-spec.md) —
+  // present in every window's shape like STARS's rbls/minSep above, but only
+  // read/written by AicScope.
+  threatRings: [],          // unitId[] — .threat/Ctrl+Alt+click manual threat rings
+  showCentroid: false,      // .centroid — debug: hostile-picture centroid dot
+  showAxis: false,          // .axis — debug: dynamic threat axis line
+  sector: null,             // { origin, fromBearing, toBearing, rangeNm, axisBearing } | null
+  sectorVisible: true,      // whether the defined sector renders
+  sectorPreviewOrigin: null, // { lat, lng } | null — live preview origin awaiting a click to complete .sector
+  ackPicture: null,         // { labelKey, totalGroups } | null — PICTURE acknowledgment baseline
+  rbl: null,                // AIC's own RBL line state (distinct from STARS's rbls[] list above)
+  findMarker: null,         // { lat, lng, id } | null — .find fix marker
+  defineEntry: null,        // { term, text } | null — .define brevity glossary readout
+  bullseyeOverride: null,   // { lat, lng } | null — .be bullseye override
   lists: {
     ssa:    {                   xPct:  2, yPct:  2 },
     signOn: { visible: true,   xPct: 88, yPct: 88 },
