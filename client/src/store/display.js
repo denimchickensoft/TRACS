@@ -76,6 +76,16 @@ const SCOPE_DEFAULTS = {
   findMarker: null,         // { lat, lng, id } | null — .find fix marker
   defineEntry: null,        // { term, text } | null — .define brevity glossary readout
   bullseyeOverride: null,   // { lat, lng } | null — .be bullseye override
+  // ABM-only session state (resources/specs/refactor-spec.md §10) — reuses
+  // threatRings/bullseyeOverride/findMarker/defineEntry above (same concept,
+  // independent per-window instance); only dbHiddenIds has no AIC equivalent.
+  dbHiddenIds: [],          // unitId[] — .db + click per-contact datablock hide override
+  // Click-completion state, deliberately kept bespoke (not generalized into a
+  // parser-level "trigger" mechanism, see §10.0/§10.3 of the refactor spec) —
+  // migrated here only so actions/index.js-style handlers can read/write it.
+  pendingDraw: null,          // in-progress .line/.rect/.circ/.poly/.sect/.race/.text — see draw/drawCommands.js
+  pendingClearClick: false,   // bare `.clear`/click armed — next click hit-tests a drawing to remove
+  pendingClearAllConfirm: false, // `.clear all` awaiting a y/n answer on the next submitted line
   lists: {
     ssa:    {                   xPct:  2, yPct:  2 },
     signOn: { visible: true,   xPct: 88, yPct: 88 },

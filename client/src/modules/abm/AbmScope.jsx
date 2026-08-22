@@ -62,6 +62,7 @@ import {
 import './AbmScope.css'
 
 const WINDOW_ID  = 'abm-main'
+const EMPTY_ARRAY = []
 const RANGE_MIN  = 1
 const RANGE_MAX  = 600
 const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
@@ -200,9 +201,20 @@ export default function AbmScope() {
     addBraaPair, removeBraaPairsForUnit,
     setPendingBraaFighter, clearPendingBraa,
   } = useAbmStore()
-  const [threatRings, setThreatRings] = useState(new Set())
-  const toggleThreatRing = (unitId) =>
-    setThreatRings(s => { const n = new Set(s); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
+  // threatRings/dbHiddenIds/bullseyeOverride/findMarker/defineEntry live in
+  // displayStore's windows[WINDOW_ID] (not local useState), same as AIC's
+  // equivalents (threatRings/bullseyeOverride/findMarker/defineEntry are
+  // literally the same shared per-window fields, reused under ABM's own
+  // window key — see store/display.js's "ABM-only session state" comment) —
+  // reachable from actions/index.js-style standalone command handlers, see
+  // resources/specs/refactor-spec.md §10.
+  const threatRings = windowSettings?.threatRings ?? EMPTY_ARRAY
+  const threatRingSet = useMemo(() => new Set(threatRings), [threatRings])
+  const toggleThreatRing = useCallback((unitId) => {
+    const current = useDisplayStore.getState().windows[WINDOW_ID]?.threatRings ?? []
+    const next = current.includes(unitId) ? current.filter(id => id !== unitId) : [...current, unitId]
+    useDisplayStore.getState().updateWindow(WINDOW_ID, { threatRings: next })
+  }, [])
   const threatRadius = windowSettings?.threatRadius ?? 45
 
   // .db + click (2026-07-29) — per-contact datablock override, same
@@ -210,9 +222,13 @@ export default function AbmScope() {
   // bare `.db` in execCommand toggles the global dbVisible window setting
   // instead, that one *is* persisted via abmPrefs). Checked in addition to
   // dbVisible/formation suppression in drawAbmContacts, never in place of them.
-  const [dbHiddenIds, setDbHiddenIds] = useState(new Set())
-  const toggleDbHidden = (unitId) =>
-    setDbHiddenIds(s => { const n = new Set(s); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
+  const dbHiddenIds = windowSettings?.dbHiddenIds ?? EMPTY_ARRAY
+  const dbHiddenIdSet = useMemo(() => new Set(dbHiddenIds), [dbHiddenIds])
+  const toggleDbHidden = useCallback((unitId) => {
+    const current = useDisplayStore.getState().windows[WINDOW_ID]?.dbHiddenIds ?? []
+    const next = current.includes(unitId) ? current.filter(id => id !== unitId) : [...current, unitId]
+    useDisplayStore.getState().updateWindow(WINDOW_ID, { dbHiddenIds: next })
+  }, [])
 
   // Middle-click highlight (STARS/AbmScope shared behaviour) — session-local,
   // not persisted; toggles a contact's symbol/datablock to HIGHLIGHT_TEAL
@@ -840,7 +856,7 @@ export default function AbmScope() {
   // .be override — lets the operator relocate bullseye off the mission's
   // real one (fix, explicit lat/lon, or a map click). Not persisted: like
   // ringAnchor*, it's a mission-specific placement, not a saved preference.
-  const [bullseyeOverride, setBullseyeOverride] = useState(null) // { lat, lng } | null
+  const bullseyeOverride = windowSettings?.bullseyeOverride ?? null // { lat, lng } | null
 
   const bullseyeLat = bullseyeOverride?.lat ?? bullseyeEntry?.latitude  ?? 0
   const bullseyeLng = bullseyeOverride?.lng ?? bullseyeEntry?.longitude ?? 0
@@ -920,7 +936,7 @@ export default function AbmScope() {
   const rblDragActiveRef  = useRef(false)
 
   // .find <fix> — ported from AIC (AicScope.jsx), same green-square marker.
-  const [findMarker, setFindMarker] = useState(null)
+  const findMarker = windowSettings?.findMarker ?? null
 
   // FRAG BASE/waypoint click → requestFind (store/abmMission.js) — resolves
   // the ref into a lat/lon and drops it into the same findMarker the local
@@ -934,22 +950,22 @@ export default function AbmScope() {
   // instead, purely to desync FRAG's row highlight).
   useEffect(() => {
     const ref = findRequest
-    if (!ref) { setFindMarker(null); return }
+    if (!ref) { displayStore.updateWindow(WINDOW_ID, { findMarker: null }); return }
 
     if (ref.type === 'point') {
-      if (ref.lat != null && ref.lng != null) setFindMarker({ lat: ref.lat, lon: ref.lng, id: ref.id })
+      if (ref.lat != null && ref.lng != null) displayStore.updateWindow(WINDOW_ID, { findMarker: { lat: ref.lat, lon: ref.lng, id: ref.id } })
       return
     }
     if (ref.type === 'carrier') {
       const unit = Object.values(useUnitsStore.getState().units).find(u => u.unitID === ref.carrierUnitId)
-      if (unit?.position) setFindMarker({ lat: unit.position.lat, lon: unit.position.lng, id: ref.carrierName })
+      if (unit?.position) displayStore.updateWindow(WINDOW_ID, { findMarker: { lat: unit.position.lat, lon: unit.position.lng, id: ref.carrierName } })
       return
     }
     if (ref.type === 'airbase') {
       preloadAirdromes(ref.theatre).then((names) => {
         const name = names?.[String(ref.airdromeId)] ?? null
         const pos  = name ? airbaseCenterFromStrips(airportStripsRef.current, name) : null
-        if (pos) setFindMarker({ lat: pos.lat, lon: pos.lng, id: name })
+        if (pos) displayStore.updateWindow(WINDOW_ID, { findMarker: { lat: pos.lat, lon: pos.lng, id: name } })
       })
     }
   }, [findNonce]) // eslint-disable-line
@@ -1077,15 +1093,20 @@ export default function AbmScope() {
   // .line/.rect/.circ/.poly/.sect/.race/.text click-driven drawing —
   // pendingDraw is null when no draw command is armed; see
   // modules/abm/draw/drawCommands.js for the per-shape state shape/arity.
-  // drawCursor tracks the live mouse position (map lat/lng) only while a
-  // draw command is pending, driving the preview redraw the same way RBL's
-  // `rbl.end` already does. Declared here (ahead of the contactsRef draw
-  // effect below, which reads both) rather than down by cmdBuffer/
-  // cmdFeedback where the rest of the command-line state lives, since a
-  // useEffect's dependency array is evaluated during this render pass and a
-  // `const` referenced before its own declaration line throws (TDZ), even
-  // though the effect body itself only runs after render.
-  const [pendingDraw, setPendingDraw] = useState(null)
+  // Lives in displayStore's windows[WINDOW_ID] (not local useState), same as
+  // threatRings/bullseyeOverride/etc above — see store/display.js's
+  // "click-completion state" comment and resources/specs/refactor-spec.md
+  // §10.0/§10.2. drawCursor tracks the live mouse position (map lat/lng)
+  // only while a draw command is pending, driving the preview redraw the
+  // same way RBL's `rbl.end` already does — stays local useState (high-
+  // frequency mousemove updates, not itself command state). Declared here
+  // (ahead of the contactsRef draw effect below, which reads both) rather
+  // than down by cmdBuffer/cmdFeedback where the rest of the command-line
+  // state lives, since a useEffect's dependency array is evaluated during
+  // this render pass and a `const` referenced before its own declaration
+  // line throws (TDZ), even though the effect body itself only runs after
+  // render.
+  const pendingDraw = windowSettings?.pendingDraw ?? null
   const [drawCursor,  setDrawCursor]  = useState(null)
 
   // .clear — bare/click form arms pendingClearClick (one-shot: the next
@@ -1093,8 +1114,9 @@ export default function AbmScope() {
   // then disarms regardless of a hit). .clear all arms
   // pendingClearAllConfirm instead, which execCommand intercepts at the top
   // on the NEXT submitted line as a bare yes/no answer (not a new command).
-  const [pendingClearClick, setPendingClearClick] = useState(false)
-  const [pendingClearAllConfirm, setPendingClearAllConfirm] = useState(false)
+  // Both live in displayStore's windows[WINDOW_ID], same as pendingDraw above.
+  const pendingClearClick = windowSettings?.pendingClearClick ?? false
+  const pendingClearAllConfirm = windowSettings?.pendingClearAllConfirm ?? false
 
   useEffect(() => {
     if (!pendingDraw) { setDrawCursor(null); return }
@@ -1119,8 +1141,8 @@ export default function AbmScope() {
     ctx.clearRect(0, 0, view.width, view.height)
 
     const mergedThreatRings = autoThreatRingIds.size
-      ? new Set([...threatRings, ...autoThreatRingIds])
-      : threatRings
+      ? new Set([...threatRingSet, ...autoThreatRingIds])
+      : threatRingSet
     drawThreatRings(ctx, view, allVisibleUnits, mergedThreatRings, threatRadius, getDecl)
     drawBraaOverlays(ctx, view, braaList, allVisibleUnits, view.declinationDeg)
 
@@ -1139,7 +1161,7 @@ export default function AbmScope() {
       myCoalitionNum,
       rwrEverDetectedRef.current,
       windowSettings?.dbca ?? false,
-      dbHiddenIds,
+      dbHiddenIdSet,
       highlightedIds,
       blinkIdSet,
       blinkOn,
@@ -1166,7 +1188,7 @@ export default function AbmScope() {
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
-      threatRings, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIds, highlightedIds, selectedRoute,
+      threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute,
       blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
@@ -1285,7 +1307,10 @@ export default function AbmScope() {
       // heading lattice — see ROTATION_STEP_DEG) instead of zooming.
       if (pendingDraw && supportsRotation(pendingDraw.type)) {
         const declinationDeg = viewRef.current?.declinationDeg ?? 0
-        setPendingDraw(pd => pd && rotatePendingDraw(pd, e.deltaY < 0 ? 1 : -1, declinationDeg))
+        const pd = useDisplayStore.getState().windows[WINDOW_ID]?.pendingDraw
+        if (pd) {
+          displayStore.updateWindow(WINDOW_ID, { pendingDraw: rotatePendingDraw(pd, e.deltaY < 0 ? 1 : -1, declinationDeg) })
+        }
         return
       }
       const ws = useDisplayStore.getState().windows[WINDOW_ID]
@@ -1309,7 +1334,7 @@ export default function AbmScope() {
   // cmdFeedback gets overwritten by every incidental click/command ack and a
   // brevity definition is meant to be read, not flashed. Dismissed only by
   // Escape, another .define, or clicking the readout itself.
-  const [defineEntry, setDefineEntry] = useState(null) // { term, text }
+  const defineEntry = windowSettings?.defineEntry ?? null // { term, text }
   const [cmdHistory,  setCmdHistory]  = useState([])
   const cmdHistoryRef = useRef([])
 
@@ -1334,7 +1359,7 @@ export default function AbmScope() {
     // .clear all's confirmation — intercepts the very next submitted line
     // as a bare yes/no answer, not a new command, however it's routed.
     if (pendingClearAllConfirm) {
-      setPendingClearAllConfirm(false)
+      displayStore.updateWindow(WINDOW_ID, { pendingClearAllConfirm: false })
       if (str === 'y') {
         clearAllDrawings(theatre)
         setCmdFeedback('ALL DRAWINGS CLEARED')
@@ -1408,7 +1433,7 @@ export default function AbmScope() {
     // at the clicked point. `.be <fix>` looks up a theatre fix/navaid/runway
     // by name; `.be <lat> <lon>` takes explicit decimal-degree coordinates.
     if (str === '.be') {
-      setBullseyeOverride(null)
+      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: null })
       setCmdFeedback('BULLSEYE RESET')
       return
     }
@@ -1417,7 +1442,7 @@ export default function AbmScope() {
     if (beCoords) {
       const lat = parseFloat(beCoords[1])
       const lng = parseFloat(beCoords[2])
-      setBullseyeOverride({ lat, lng })
+      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat, lng } })
       setCmdFeedback(`BULLSEYE SET ${lat.toFixed(2)}/${lng.toFixed(2)}`)
       return
     }
@@ -1426,7 +1451,7 @@ export default function AbmScope() {
     if (beFix) {
       const result = useNavdataStore.getState().lookupFix(beFix[1])
       if (result) {
-        setBullseyeOverride({ lat: result.lat, lng: result.lon })
+        displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat: result.lat, lng: result.lon } })
         setCmdFeedback(`BULLSEYE SET @ ${result.id}`)
       } else {
         setCmdFeedback('FIX NOT FOUND')
@@ -1603,7 +1628,7 @@ export default function AbmScope() {
         addDrawnShape(theatre, 'line', result.immediate)
         setCmdFeedback('LINE DRAWN')
       } else {
-        setPendingDraw(result.pending)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
         setCmdFeedback('LINE: CLICK TO PLACE')
       }
       return
@@ -1613,7 +1638,7 @@ export default function AbmScope() {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
       const result = parseDrawCommand('rect', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
-      setPendingDraw(result.pending)
+      displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
       setCmdFeedback('RECT: CLICK TO PLACE')
       return
     }
@@ -1626,7 +1651,7 @@ export default function AbmScope() {
         addDrawnShape(theatre, 'circ', result.immediate)
         setCmdFeedback('CIRCLE DRAWN')
       } else {
-        setPendingDraw(result.pending)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
         setCmdFeedback('CIRC: CLICK TO PLACE')
       }
       return
@@ -1640,7 +1665,7 @@ export default function AbmScope() {
         addDrawnShape(theatre, 'poly', result.immediate)
         setCmdFeedback('POLY DRAWN')
       } else {
-        setPendingDraw(result.pending)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
         setCmdFeedback('POLY: CLICK VERTICES, CLICK NEAR START TO CLOSE')
       }
       return
@@ -1657,7 +1682,7 @@ export default function AbmScope() {
         for (const sector of result.immediate) addDrawnShape(theatre, 'sect', sector)
         setCmdFeedback(result.immediate.length > 1 ? `${result.immediate.length} SECTORS DRAWN` : 'SECTOR DRAWN')
       } else {
-        setPendingDraw(result.pending)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
         setCmdFeedback('SECT: CLICK TO PLACE')
       }
       return
@@ -1671,7 +1696,7 @@ export default function AbmScope() {
         addDrawnShape(theatre, 'race', result.immediate)
         setCmdFeedback('RACETRACK DRAWN')
       } else {
-        setPendingDraw(result.pending)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
         setCmdFeedback('RACE: CLICK TO PLACE')
       }
       return
@@ -1681,7 +1706,7 @@ export default function AbmScope() {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
       const result = parseDrawCommand('text', drawCmdTokens(str, raw), useNavdataStore.getState().lookupFix, viewRef.current?.declinationDeg ?? 0, theatre)
       if (result.error) { setCmdFeedback(result.error); return }
-      setPendingDraw(result.pending)
+      displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
       setCmdFeedback('TEXT: CLICK TO PLACE')
       return
     }
@@ -1694,14 +1719,13 @@ export default function AbmScope() {
       if (!theatre) { setCmdFeedback('NO THEATRE'); return }
       const arg = drawCmdTokens(str, raw).join(' ').trim()
       if (!arg) {
-        setPendingDraw(null)
-        setPendingClearClick(true)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: null, pendingClearClick: true })
         setCmdFeedback('CLEAR: CLICK A DRAWING')
         return
       }
       if (arg.toLowerCase() === 'all') {
         if (!drawingLayers.length) { setCmdFeedback('NOTHING TO CLEAR'); return }
-        setPendingClearAllConfirm(true)
+        displayStore.updateWindow(WINDOW_ID, { pendingClearAllConfirm: true })
         setCmdFeedback(`CLEAR ALL ${drawingLayers.length} DRAWINGS? Y TO CONFIRM`)
         return
       }
@@ -1765,7 +1789,7 @@ export default function AbmScope() {
     if (str.startsWith('.find ')) {
       const result = useNavdataStore.getState().lookupFix(str.slice(6).trim())
       if (result) {
-        setFindMarker(result)
+        displayStore.updateWindow(WINDOW_ID, { findMarker: result })
         useAbmMissionStore.getState().clearFind() // this find isn't tied to a FRAG row
         setCmdFeedback(`FIND ${result.id}`)
       } else {
@@ -1779,8 +1803,8 @@ export default function AbmScope() {
     // doesn't disappear the instant the next incidental click fires.
     if (str.startsWith('.define ')) {
       const result = useBrevityStore.getState().lookup(str.slice(8).trim())
-      if (result) { setDefineEntry(result); setCmdFeedback('') }
-      else { setDefineEntry(null); setCmdFeedback('NOT FOUND') }
+      if (result) { displayStore.updateWindow(WINDOW_ID, { defineEntry: result }); setCmdFeedback('') }
+      else { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); setCmdFeedback('NOT FOUND') }
       return
     }
 
@@ -1974,7 +1998,7 @@ export default function AbmScope() {
     // returning all contacts to the global dbVisible/formation-suppression
     // behavior. Enter-only, no click — same shape as .threat clearing threatRings.
     if (str === '.dbreset') {
-      setDbHiddenIds(new Set())
+      displayStore.updateWindow(WINDOW_ID, { dbHiddenIds: [] })
       setCmdFeedback('DATABLOCKS RESET')
       return
     }
@@ -2015,7 +2039,7 @@ export default function AbmScope() {
     // and .dope + click are handled in handleMouseUp; these two are the
     // Enter-only (no click) forms, matching AIC's execCommand exactly.
     if (str === '.threat') {
-      setThreatRings(new Set())
+      displayStore.updateWindow(WINDOW_ID, { threatRings: [] })
       setCmdFeedback('THREAT RINGS CLEARED')
       return
     }
@@ -2040,7 +2064,7 @@ export default function AbmScope() {
     // expect bare `.clear` to mean going forward.
     if (str === '.tclear') {
       setRbl(null)
-      setThreatRings(new Set())
+      displayStore.updateWindow(WINDOW_ID, { threatRings: [] })
       useAbmStore.getState().braaList.forEach(p => useAbmStore.getState().removeBraaPair(p.id))
       setCmdFeedback('ALL CLEARED')
       return
@@ -2168,15 +2192,15 @@ export default function AbmScope() {
 
     if (e.key === 'Escape') {
       e.preventDefault()
-      if (pendingClearClick) { setPendingClearClick(false); return }
-      if (pendingClearAllConfirm) { setPendingClearAllConfirm(false); setCmdFeedback('CLEAR ALL CANCELLED'); return }
-      if (pendingDraw) { setPendingDraw(null); return }
-      if (findMarker) { setFindMarker(null); useAbmMissionStore.getState().clearFind(); return }
+      if (pendingClearClick) { displayStore.updateWindow(WINDOW_ID, { pendingClearClick: false }); return }
+      if (pendingClearAllConfirm) { displayStore.updateWindow(WINDOW_ID, { pendingClearAllConfirm: false }); setCmdFeedback('CLEAR ALL CANCELLED'); return }
+      if (pendingDraw) { displayStore.updateWindow(WINDOW_ID, { pendingDraw: null }); return }
+      if (findMarker) { displayStore.updateWindow(WINDOW_ID, { findMarker: null }); useAbmMissionStore.getState().clearFind(); return }
       if (routeVisible) { useAbmMissionStore.getState().clearRouteVisible(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
       if (rbl) { setRbl(null); return }
-      if (defineEntry) { setDefineEntry(null); return }
+      if (defineEntry) { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); return }
       clearCmd()
       return
     }
@@ -2200,7 +2224,7 @@ export default function AbmScope() {
     if (defineEntry && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault()
       const result = useBrevityStore.getState().neighbor(defineEntry.term, e.key === 'ArrowUp' ? -1 : 1)
-      if (result) setDefineEntry(result)
+      if (result) displayStore.updateWindow(WINDOW_ID, { defineEntry: result })
       return
     }
 
@@ -2272,7 +2296,7 @@ export default function AbmScope() {
     if (pendingBeRef.current) {
       if (e.button === 1) return
       const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
-      setBullseyeOverride({ lat: ll.lat, lng: ll.lng })
+      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat: ll.lat, lng: ll.lng } })
       clearCmd()
       setCmdFeedback(`BULLSEYE SET ${ll.lat.toFixed(2)}/${ll.lng.toFixed(2)}`)
       return
@@ -2282,7 +2306,7 @@ export default function AbmScope() {
     // whether anything was actually under it.
     if (pendingClearClick) {
       if (e.button === 1) return
-      setPendingClearClick(false)
+      displayStore.updateWindow(WINDOW_ID, { pendingClearClick: false })
       const hit = hitTestDrawingLayer(viewRef.current, drawingLayers, pos.x, pos.y)
       if (hit) {
         removeDrawingLayer(theatre, hit.id)
@@ -2313,7 +2337,7 @@ export default function AbmScope() {
             addDrawnShape(theatre, 'poly', { vertices: pendingDraw.vertices })
             setCmdFeedback('POLY DRAWN')
           }
-          setPendingDraw(null)
+          displayStore.updateWindow(WINDOW_ID, { pendingDraw: null })
           return
         }
       }
@@ -2325,9 +2349,9 @@ export default function AbmScope() {
           addDrawnShape(theatre, pendingDraw.type, result.immediate)
           setCmdFeedback(`${pendingDraw.type.toUpperCase()} DRAWN`)
         }
-        setPendingDraw(null)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: null })
       } else {
-        setPendingDraw(result.pending)
+        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
       }
       return
     }
@@ -2474,7 +2498,7 @@ export default function AbmScope() {
     }
   }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getEffectiveDeclaration,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
-      pendingDraw, theatre, addDrawnShape,
+      pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
       pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup])
 
   if (!windowSettings) return null
@@ -2574,7 +2598,7 @@ export default function AbmScope() {
         )}
 
         {defineEntry && (
-          <div className="abm-define" onClick={() => { setDefineEntry(null); interactiveRef.current?.focus() }}>
+          <div className="abm-define" onClick={() => { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); interactiveRef.current?.focus() }}>
             <div className="abm-define-term">{defineEntry.term}</div>
             <div className="abm-define-text">{defineEntry.text}</div>
           </div>
