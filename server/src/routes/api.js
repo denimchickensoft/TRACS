@@ -12,34 +12,77 @@ const ABM_RASTER_LAYERS = new Set(['basemap', 'terrain', 'water', 'roads'])
 // Registers every REST endpoint onto `app`. `broadcast` comes from the
 // app-WS layer (server/src/wsBroadcast.js) so /api/connect can push
 // units_delta/mission/airbases/bullseyes/status events to connected clients.
-function registerApiRoutes(app, { olympus, state, stateFiles, navdata, elevation, broadcast, getWsClientCount, presetsPath }) {
-  // POST /api/connect — start Olympus polling with supplied credentials
+function registerApiRoutes(app, { sourceRegistry, srs, state, stateFiles, navdata, elevation, broadcast, getWsClientCount, presetsPath }) {
+  // POST /api/connect — start a primary data source with supplied credentials.
+  // sourceType defaults to 'olympus' so older client builds that never send it
+  // keep working unchanged. See resources/specs/data-sources/pluggable-source-architecture-spec.md.
   app.post('/api/connect', async (req, res) => {
-    const { olympusUrl, password, coalition } = req.body ?? {}
+    const { sourceType = 'olympus', relayUrl, ...sourceCfg } = req.body ?? {}
 
-    if (!olympusUrl) {
-      return res.status(400).json({ error: 'olympusUrl is required' })
+    // SRS relay — best-effort and optional, never probed and never blocks/fails
+    // this request. A truthy relayUrl (re)starts the relay-client; an empty one
+    // is treated as "no opinion" and leaves whatever's already running alone,
+    // so a server-side default (TRACS_RELAY_URL) isn't silently undone by a
+    // browser that never filled in the field.
+    // Skip restarting when already connected with this exact relayUrl+password —
+    // otherwise every login to a shared backend (any number of browsers can be
+    // logged into one) would tear down and rebuild a perfectly working relay
+    // connection for no reason, same class of check olympus.js's
+    // alreadyOnSameSource does below.
+    // See resources/specs/data-sources/tracs-relay-architecture-spec.md.
+    const relayConfig = srs.getConfig()
+    const alreadyOnSameRelay = srs.isConnected()
+      && relayConfig?.relayUrl === relayUrl
+      && relayConfig?.password === sourceCfg.password
+    if (relayUrl && !alreadyOnSameRelay) {
+      srs.start(
+        { relayUrl, password: sourceCfg.password },
+        { onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }) },
+      )
     }
 
-    // Skip probe + restart only when already polling the same Olympus URL — a
-    // simultaneous probe to the same server triggers a 426 from Olympus.
-    // If the URL differs this is a reconnect to a different server, so probe and restart.
-    const alreadyOnSameServer = olympus.isPolling() && olympus.getConfig()?.olympusUrl === olympusUrl
-    if (!alreadyOnSameServer) {
+    const source = sourceRegistry.get(sourceType)
+    if (!source) {
+      return res.status(400).json({ error: `unknown sourceType: ${sourceType}` })
+    }
+
+    // Olympus-specific defaults — harmless no-ops for any future source that
+    // doesn't use these fields.
+    if (sourceType === 'olympus' && !sourceCfg.olympusUrl) {
+      return res.status(400).json({ error: 'olympusUrl is required' })
+    }
+    sourceCfg.password   = sourceCfg.password   ?? ''
+    sourceCfg.coalition  = sourceCfg.coalition  ?? 'blue'
+
+    // Skip probe + restart only when already polling the same source with the
+    // same config — a simultaneous probe to the same server triggers a 426
+    // from Olympus. A different config is a reconnect, so probe and restart.
+    const alreadyOnSameSource = state.getSourceType() === sourceType
+      && source.isPolling()
+      && source.getConfig()?.olympusUrl === sourceCfg.olympusUrl
+    if (!alreadyOnSameSource) {
       try {
-        await olympus.probe({ olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' })
+        await source.probe(sourceCfg)
       } catch (err) {
-        return res.status(502).json({ error: `Cannot reach Olympus: ${err.message}` })
+        return res.status(502).json({ error: `Cannot reach ${sourceType} source: ${err.message}` })
       }
 
-      olympus.start(
-        { olympusUrl, password: password ?? '', coalition: coalition ?? 'blue' },
+      // Mutual exclusivity — stop every other source before starting this one.
+      for (const otherType of sourceRegistry.SOURCE_TYPES) {
+        if (otherType === sourceType) continue
+        const other = sourceRegistry.get(otherType)
+        if (other.isPolling()) other.stop()
+      }
+
+      state.setSourceType(sourceType)
+      source.start(
+        sourceCfg,
         {
           onUnitsDelta:   (delta) => broadcast({ type: 'units_delta', data: delta }),
           onMission:      (data)  => broadcast({ type: 'mission',    data }),
           onAirbases:     (data)  => broadcast({ type: 'airbases',  data }),
           onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
-          onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: 'olympus_unreachable' } }),
+          onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: `${sourceType}_unreachable` } }),
         }
       )
       broadcast({ type: 'units_clear' })
@@ -47,7 +90,7 @@ function registerApiRoutes(app, { olympus, state, stateFiles, navdata, elevation
 
     // Notify all currently-connected WS clients that polling has started (or is
     // already running). This covers new browser windows joining an active session.
-    broadcast({ type: 'status', data: { polling: true } })
+    broadcast({ type: 'status', data: { polling: true, sourceType } })
 
     res.json({ ok: true })
   })
@@ -165,7 +208,8 @@ function registerApiRoutes(app, { olympus, state, stateFiles, navdata, elevation
 
   // GET /api/status
   app.get('/api/status', (req, res) => {
-    res.json({ polling: olympus.isPolling() })
+    const sourceType = state.getSourceType()
+    res.json({ polling: sourceRegistry.get(sourceType)?.isPolling() ?? false, sourceType })
   })
 
   // GET /api/debug — inspect current in-memory state (dev only)
@@ -173,7 +217,7 @@ function registerApiRoutes(app, { olympus, state, stateFiles, navdata, elevation
     const snapshot = state.getSnapshot()
     const unitList = Object.values(snapshot.updated)
     res.json({
-      polling: olympus.isPolling(),
+      polling: sourceRegistry.get(state.getSourceType())?.isPolling() ?? false,
       wsClients: getWsClientCount(),
       unitCount: unitList.length,
       lastUpdateTime: snapshot.time,

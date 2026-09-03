@@ -4,7 +4,7 @@
 // events (unit deltas, mission/airbases/bullseyes updates, status) to all of
 // them. Also hydrates a newly-connected client with the current snapshot +
 // persisted state files.
-function createWsBroadcast(wss, { state, stateFiles, olympus, serverInstanceId }) {
+function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, serverInstanceId }) {
   const clients = new Set()
 
   wss.on('connection', (ws) => {
@@ -29,7 +29,9 @@ function createWsBroadcast(wss, { state, stateFiles, olympus, serverInstanceId }
     if (bullseyes) ws.send(JSON.stringify({ type: 'bullseyes', data: bullseyes }))
 
     // Status — includes instanceId so clients can detect server restarts
-    ws.send(JSON.stringify({ type: 'status', data: { polling: olympus.isPolling(), instanceId: serverInstanceId } }))
+    const sourceType = state.getSourceType()
+    const polling = sourceRegistry.get(sourceType)?.isPolling() ?? false
+    ws.send(JSON.stringify({ type: 'status', data: { polling, sourceType, instanceId: serverInstanceId } }))
 
     // Send persisted state files so the browser can hydrate after refresh.
     // If intentionalReset is true (deliberate position change), send defaults

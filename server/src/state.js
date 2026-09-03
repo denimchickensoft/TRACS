@@ -5,6 +5,7 @@ let mission   = null
 let airbases  = []
 let bullseyes = null
 let lastUpdateTime = 0
+let sourceType = 'olympus'
 
 function applyDelta(delta) {
   if (delta.updated) {
@@ -45,4 +46,6 @@ module.exports = {
   getBullseyes:     ()   => bullseyes,
   setBullseyes:     (b)  => { bullseyes = b },
   getLastUpdateTime: ()  => lastUpdateTime,
+  getSourceType:    ()   => sourceType,
+  setSourceType:    (t)  => { sourceType = t },
 }

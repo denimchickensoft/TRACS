@@ -4,7 +4,8 @@ const http = require('http')
 const path = require('path')
 const express = require('express')
 const { WebSocketServer } = require('ws')
-const olympus    = require('./olympus')
+const sourceRegistry = require('./sourceRegistry')
+const srs        = require('./srs')
 const state      = require('./state')
 const stateFiles = require('./stateFiles')
 const navdata    = require('../navdata')
@@ -45,15 +46,31 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 const { broadcast, getWsClientCount } = createWsBroadcast(wss, {
-  state, stateFiles, olympus, serverInstanceId: SERVER_INSTANCE_ID,
+  state, stateFiles, sourceRegistry, serverInstanceId: SERVER_INSTANCE_ID,
 })
 
 createSignalRelay(signalWss)
 
 registerApiRoutes(app, {
-  olympus, state, stateFiles, navdata, elevation, broadcast, getWsClientCount,
+  sourceRegistry, srs, state, stateFiles, navdata, elevation, broadcast, getWsClientCount,
   presetsPath: PRESETS_PATH,
 })
+
+// SRS transponder enrichment — orthogonal to whichever primary source is
+// active, not part of sourceRegistry. Connects OUT to a standalone TRACS
+// relay (relay/) as a client — this backend never listens for SRS's UDP
+// export directly, since that would only ever reach one controller's own
+// backend. Optional server-side default — normally set per-session from the
+// browser's Login screen instead (routes/api.js's /api/connect), which is
+// where most controllers would actually configure this.
+// See resources/specs/data-sources/tracs-relay-architecture-spec.md and
+// resources/specs/data-sources/custom-datasource-srs-transponder-spec.md.
+if (process.env.TRACS_RELAY_URL) {
+  srs.start(
+    { relayUrl: process.env.TRACS_RELAY_URL },
+    { onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }) },
+  )
+}
 
 // Fallback: serve index.html for SPA routes (production only)
 app.get('*', (req, res) => {

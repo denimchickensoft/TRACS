@@ -13,6 +13,7 @@ specs/
 # Environment and local config
 .env
 .env.local
+relay/config.json
 
 # OS files
 .DS_Store
