@@ -18,7 +18,15 @@ import * as nostrStrategy from '@trystero-p2p/nostr'
 import { deriveRoomId } from './client.js'
 
 const NOSTR_REDUNDANCY   = 5
-const REQUEST_TIMEOUT_MS = 8_000
+// Per-attempt timeout, and total attempts before giving up -- Nostr-relay-
+// mediated WebRTC negotiation is higher-latency than direct signaling (the
+// request has to round-trip through a public relay before the ICE/SDP
+// exchange even starts), so a single 8s attempt was surfacing "No controller
+// responded" for connections that just needed more time. A silent resend on
+// the same already-joined room is cheap and safe -- the host-side aid-exists
+// check already makes duplicate creates idempotent.
+const REQUEST_TIMEOUT_MS   = 15_000
+const MAX_REQUEST_ATTEMPTS = 3
 
 const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -145,13 +153,31 @@ export function disconnectPilotSession() {
   outSeq     = 0
 }
 
+// Fires when a single attempt's timer expires. Retries in place (same room,
+// same request) up to MAX_REQUEST_ATTEMPTS before finally giving up -- see
+// the constants above for why.
+function onAttemptTimeout(aid) {
+  const waiter = pending.get(aid)
+  if (!waiter) return
+  if (waiter.attemptsLeft > 0) {
+    waiter.attemptsLeft -= 1
+    logMsg('→ module (retry)', waiter.msg)
+    sendModule(waiter.msg)
+    waiter.timer = setTimeout(() => onAttemptTimeout(aid), REQUEST_TIMEOUT_MS)
+    return
+  }
+  pending.delete(aid)
+  waiter.reject(new Error('No controller responded — is anyone signed in to ATC?'))
+}
+
 // Sends a create request and resolves with the host-assigned plan (including
 // its CID/BCN) once the resulting FLIGHT_PLAN_CREATE for this AID is observed.
 // Rejects immediately if the host reports the AID already has a plan
-// (PILOT_FLIGHT_PLAN_REJECTED), or on timeout if nothing responds at all --
-// the most likely cause of a timeout is that no ATC controller is currently
-// connected to resolve the request (see resources/specs/pilot-filed-flight-plans.md
-// §6/§9 -- there is no fallback for this without a central server).
+// (PILOT_FLIGHT_PLAN_REJECTED), or after MAX_REQUEST_ATTEMPTS timeouts if
+// nothing responds at all -- the most likely cause is that no ATC controller
+// is currently connected to resolve the request (see
+// resources/specs/pilot-filed-flight-plans.md §6/§9 -- there is no fallback
+// for this without a central server).
 export function fileFlightPlan(fields) {
   return new Promise((resolve, reject) => {
     if (!sendModule) { reject(new Error('Not connected')); return }
@@ -160,11 +186,9 @@ export function fileFlightPlan(fields) {
     if (pending.has(aid)) { reject(new Error('A request for this AID is already in flight')); return }
 
     const msg = envelope('PILOT_FLIGHT_PLAN_REQUEST', { ...fields, aid })
-    const timer = setTimeout(() => {
-      pending.delete(aid)
-      reject(new Error('No controller responded — is anyone signed in to ATC?'))
-    }, REQUEST_TIMEOUT_MS)
-    pending.set(aid, { resolve, reject, timer, msg, acked: false })
+    const waiter = { resolve, reject, msg, acked: false, attemptsLeft: MAX_REQUEST_ATTEMPTS - 1 }
+    waiter.timer = setTimeout(() => onAttemptTimeout(aid), REQUEST_TIMEOUT_MS)
+    pending.set(aid, waiter)
 
     logMsg('→ module', msg)
     sendModule(msg)
