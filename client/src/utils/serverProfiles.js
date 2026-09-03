@@ -33,7 +33,9 @@ export function findProfileByName(profiles, name) {
 
 // Upserts by case-insensitive name match: overwrites url, sets passwords[coalition],
 // bumps lastUsed and lastCoalition, preserves favorite. Persists and returns the new (trimmed) list.
-export function upsertServerProfile(profiles, { name, url, coalition, password }) {
+// relayUrl is optional and not coalition-scoped (unlike password) — it's a property of
+// the DCS-side deployment, not the controller's role on it.
+export function upsertServerProfile(profiles, { name, url, coalition, password, relayUrl }) {
   const key = name.trim().toLowerCase()
   const idx = profiles.findIndex((p) => p.name.toLowerCase() === key)
 
@@ -42,6 +44,7 @@ export function upsertServerProfile(profiles, { name, url, coalition, password }
     next = [...profiles, {
       name:      name.trim(),
       url,
+      relayUrl:      relayUrl ?? '',
       favorite:      false,
       lastUsed:      Date.now(),
       lastCoalition: coalition,
@@ -52,6 +55,7 @@ export function upsertServerProfile(profiles, { name, url, coalition, password }
     const updated  = {
       ...existing,
       url,
+      relayUrl:      relayUrl ?? existing.relayUrl ?? '',
       lastUsed:      Date.now(),
       lastCoalition: coalition,
       passwords: { ...existing.passwords, [coalition]: password },
@@ -91,8 +95,8 @@ export function loadLastConnection() {
   }
 }
 
-export function saveLastConnection({ name, url, coalition, password }) {
-  localStorage.setItem(LAST_CONN_KEY, JSON.stringify({ name, url, coalition, password }))
+export function saveLastConnection({ name, url, coalition, password, relayUrl }) {
+  localStorage.setItem(LAST_CONN_KEY, JSON.stringify({ name, url, coalition, password, relayUrl: relayUrl ?? '' }))
 }
 
 // Favorites first, then up to MAX_RECENTS non-favorites, both by most-recently-used;

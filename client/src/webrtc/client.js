@@ -1,5 +1,6 @@
 import * as nostrStrategy    from '@trystero-p2p/nostr'
 import * as wsRelayStrategy  from '@trystero-p2p/ws-relay'
+import * as syncClient       from './syncClient.js'
 import { useSessionStore }    from '../store/session.js'
 import { useAtcStore }        from '../store/atc.js'
 import { useFlightPlansStore } from '../store/flightPlans.js'
@@ -79,6 +80,13 @@ let selfId      = null
 let activePosition = ''
 let activeModule   = ''
 
+// True when this session is using the relay's centralized /sync transport
+// instead of Trystero P2P -- drives the 'relay' vs 'webrtc' transportStatus
+// distinction so the status dot stays an always-visible indicator of which
+// transport is active, not just a one-time Login warning.
+let usingSyncRelay = false
+function activeTransportStatus() { return usingSyncRelay ? 'relay' : 'webrtc' }
+
 let clientList = []   // { peerId, position, module, frequency, connectedAt }[]
 let outSeq     = 0    // outgoing sequence counter
 let peerSeqs   = {}   // peerId → last received sequence (for STATE_DUMP peerSequences)
@@ -115,7 +123,11 @@ export async function deriveRoomId(olympusAddress, password = '') {
 function logMsg(direction, msg, targetPeerId) {
   const target = targetPeerId ? ` → ${targetPeerId.slice(0, 6)}` : ''
   const from   = msg.fromPosition || msg.fromPeerId?.slice(0, 6) || '?'
-  console.debug(`[webrtc] ${direction}${target} [${msg.type}] seq=${msg.sequence} from=${from}`, msg.payload)
+  // Reflects the actual active transport, not just this module's name — a
+  // relay-hosted sync session never opens a real RTCPeerConnection, and the
+  // '[webrtc]' label was confusingly claiming otherwise.
+  const tag = usingSyncRelay ? '[sync]' : '[webrtc]'
+  console.debug(`${tag} ${direction}${target} [${msg.type}] seq=${msg.sequence} from=${from}`, msg.payload)
 }
 
 // ── Message envelope ──────────────────────────────────────────────────────────
@@ -520,7 +532,7 @@ async function onSessionMessage(msg, fromPeerId) {
         activePosition = msg.payload.resolvedPosition
         useSessionStore.setState({ positionName: activePosition })
       }
-      useSessionStore.getState().setWebrtcStatus('connected')
+      useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
       break
     }
 
@@ -539,7 +551,7 @@ async function onSessionMessage(msg, fromPeerId) {
 
     case 'STATE_DUMP': {
       applyDump(activeModule, msg.payload)
-      useSessionStore.getState().setWebrtcStatus('connected')
+      useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
       break
     }
 
@@ -770,20 +782,35 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
     ...(password ? { password } : {}),
   }
 
-  // Try the public Nostr relay network first (no port forwarding required).
-  // Fall back to this deployment's self-hosted ws-relay if no relay socket opens
-  // within the timeout -- e.g. an air-gapped LAN with no internet route at all.
-  let strategy = nostrStrategy
-  let cfg      = { ...baseCfg, relayConfig: { redundancy: NOSTR_REDUNDANCY } }
-  sessionRoom  = strategy.joinRoom(cfg, sessionRoomId)
-
-  const nostrReachable = await waitForRelayConnection(strategy.getRelaySockets, RELAY_PROBE_TIMEOUT_MS)
-  if (!nostrReachable) {
-    console.warn('[webrtc] Public Nostr relays unreachable within timeout; falling back to self-hosted relay')
-    await sessionRoom.leave()
-    strategy = wsRelayStrategy
-    cfg      = { ...baseCfg, relayConfig: { urls: [getSignalUrl()] } }
+  let strategy, cfg
+  usingSyncRelay = useSessionStore.getState().syncCapable
+  if (usingSyncRelay) {
+    // Login's ConnectPhase already proved the relay's /sync is reachable and
+    // authenticated (checkSyncCapable) before sign-in completed, so no
+    // runtime probing is needed here -- go straight to it. See
+    // resources/specs/data-sources/webrtc-centralized-sync-spec.md §1/§3.
+    strategy    = syncClient
+    cfg         = { relayUrl: useSessionStore.getState().relayUrl, password }
     sessionRoom = strategy.joinRoom(cfg, sessionRoomId)
+  } else {
+    // Try the public Nostr relay network first (no port forwarding needed).
+    // Fall back to this deployment's self-hosted ws-relay if no relay socket
+    // opens within the timeout -- e.g. an air-gapped LAN with no internet route.
+    // Relay selection is left entirely to Trystero's own appId-seeded shuffle
+    // (no TRACS-side relay list to curate) -- every install still lands on the
+    // identical deterministic subset since `appId: 'tracs'` is a fixed seed.
+    strategy    = nostrStrategy
+    cfg         = { ...baseCfg, relayConfig: { redundancy: NOSTR_REDUNDANCY } }
+    sessionRoom = strategy.joinRoom(cfg, sessionRoomId)
+
+    const nostrReachable = await waitForRelayConnection(strategy.getRelaySockets, RELAY_PROBE_TIMEOUT_MS)
+    if (!nostrReachable) {
+      console.warn('[webrtc] Public Nostr relays unreachable within timeout; falling back to self-hosted relay')
+      await sessionRoom.leave()
+      strategy    = wsRelayStrategy
+      cfg         = { ...baseCfg, relayConfig: { urls: [getSignalUrl()] } }
+      sessionRoom = strategy.joinRoom(cfg, sessionRoomId)
+    }
   }
   moduleRoom = strategy.joinRoom(cfg, moduleRoomId)
   selfId     = strategy.selfId
@@ -810,7 +837,7 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   // Add self immediately — if first peer, we're already "connected"
   upsertClient({ peerId: selfId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt })
   syncPeers()
-  useSessionStore.getState().setWebrtcStatus('connected')
+  useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
   persistSession()
 
   // onPeerJoin fires on BOTH sides when a connection is established. We send
@@ -850,6 +877,7 @@ export async function disconnectWebrtc() {
   outSeq         = 0
   peerSeqs       = {}
   handshakeAcked = false
+  usingSyncRelay = false
 
   for (const t of Object.values(disconnectTimers)) clearTimeout(t)
   for (const k of Object.keys(disconnectTimers))   delete disconnectTimers[k]

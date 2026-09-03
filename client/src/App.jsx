@@ -34,9 +34,12 @@ function getSavedProfile() {
   return localStorage.getItem(PROFILE_STORAGE_KEY) ?? DEFAULT_PROFILE
 }
 
+// 'relay' (centralized sync, more reliable) is green; 'webrtc' (P2P WebRTC
+// mesh, the fallback) is yellow — the more reliable transport gets the "good"
+// color, not whichever one happens to be the original/default path.
 const WEBRTC_COLOR = {
-  connected:    '#00cc66',
-  relay:        '#ccaa00',
+  webrtc:       '#ccaa00',
+  relay:        '#00cc66',
   disconnected: '#555555',
 }
 

@@ -361,6 +361,17 @@
   background: rgba(230, 57, 70, 0.08);
 }
 
+/* Non-blocking — relay sync fell back to peer-to-peer, connecting still
+   proceeds. Amber matches WEBRTC_COLOR.relay's status-dot color in App.jsx. */
+.login-warning {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #ccaa00;
+  border: 1px solid #ccaa00;
+  background: rgba(204, 170, 0, 0.08);
+}
+
 .connect-btn {
   margin-top: 8px;
   padding: 10px;

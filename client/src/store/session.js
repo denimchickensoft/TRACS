@@ -17,6 +17,8 @@ export const useSessionStore = create((set) => ({
   // Olympus connection
   olympusUrl: '',
   coalition: '',
+  relayUrl: '',   // SRS relay — optional, empty means none configured/reachable
+  syncCapable: false,   // relay's /sync reachable + authenticated (checked in Login's ConnectPhase)
   connected: false,
 
   // Position identity
@@ -47,7 +49,7 @@ export const useSessionStore = create((set) => ({
   aicUnitName: '',
 
   // WebRTC / session
-  webrtcStatus: 'disconnected',  // 'connected' | 'relay' | 'disconnected' | 'rejected'
+  webrtcStatus: 'disconnected',  // 'webrtc' | 'relay' | 'disconnected' | 'rejected'
   sessionCode: null,
   isHost: false,
   peers: [],
@@ -63,10 +65,12 @@ export const useSessionStore = create((set) => ({
   airbases:  null,
   bullseyes: null,
 
-  setConnection: ({ olympusUrl, coalition }) =>
-    set({ olympusUrl, coalition }),
+  setConnection: ({ olympusUrl, coalition, relayUrl }) =>
+    set({ olympusUrl, coalition, relayUrl: relayUrl ?? '' }),
 
   setConnected: (connected) => set({ connected }),
+
+  setSyncCapable: (syncCapable) => set({ syncCapable }),
 
   setPosition: ({ mode, name, config = null }) =>
     set({ positionMode: mode, positionName: name, positionConfig: config }),
@@ -178,6 +182,8 @@ export const useSessionStore = create((set) => ({
     set({
       olympusUrl:          '',
       coalition:           '',
+      relayUrl:            '',
+      syncCapable:         false,
       connected:           false,
       positionMode:        POSITION_MODE.FREEFORM,
       positionName:        '',

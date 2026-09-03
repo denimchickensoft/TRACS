@@ -5,6 +5,7 @@ import { useUnitsStore } from '../../store/units'
 import { useStatusBoardStore } from '../../store/statusBoard'
 import { wsClient } from '../../ws/client'
 import { initWebrtc } from '../../webrtc/client'
+import { checkSyncCapable } from '../../webrtc/syncClient'
 import { CARRIER_TYPES } from '../../utils/carriers'
 import {
   loadServerProfiles, upsertServerProfile, toggleFavoriteProfile,
@@ -35,17 +36,45 @@ const COALITION_OPTIONS = [
   { value: 'admin', label: 'Admin'          },
 ]
 
+// Splits a stored "http://host:port"-shaped string (or a bare host) back into
+// its host and port, for editing as separate fields. The server URL and the
+// relay URL always share the same host by construction — the relay only ever
+// runs alongside Olympus/SRS/Tacview — so this is the only place a URL string
+// gets parsed; everywhere else just composes host+port back together.
+function parseHostPort(raw) {
+  if (!raw) return { host: '', port: '' }
+  try {
+    const u = new URL(raw.includes('://') ? raw : `http://${raw}`)
+    return { host: u.hostname, port: u.port }
+  } catch {
+    return { host: '', port: '' }
+  }
+}
+
 // ── Phase 1: Connect to Olympus ───────────────────────────────────────────────
 function ConnectPhase({ onConnected }) {
   const [profiles,   setProfiles]   = useState(() => loadServerProfiles())
   const lastConnection = useMemo(() => loadLastConnection(), [])
   const lastProfile = useMemo(() => getMostRecentProfile(profiles), [profiles])
   const [name,       setName]       = useState(() => lastConnection?.name ?? lastProfile?.name ?? '')
-  const [olympusUrl, setOlympusUrl] = useState(() => lastConnection?.url ?? lastProfile?.url ?? '')
+  const [serverHost, setServerHost] = useState(() => parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '').host)
+  const [sourcePort, setSourcePort] = useState(() => parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '').port)
   const [coalition,  setCoalition]  = useState(() => lastConnection?.coalition ?? lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
   const [password,   setPassword]   = useState(() => lastConnection?.password ?? lastProfile?.passwords?.[coalition] ?? '')
-  const [error,      setError]      = useState(null)
-  const [connecting, setConnecting] = useState(false)
+  // XPNDR port is optional — most deployments have no relay at all. Same host
+  // as the server above by construction (the relay only ever runs alongside
+  // Olympus/SRS), so there's nothing to guess or type separately except the port.
+  const [xpndrPort,  setXpndrPort]  = useState(() => parseHostPort(lastConnection?.relayUrl ?? lastProfile?.relayUrl ?? '').port)
+  const [error,        setError]        = useState(null)
+  // Non-blocking — a relay-sync problem never prevents connecting, unlike
+  // `error` above (which is exclusively for Olympus failures). Distinct
+  // state so the two can never be conflated into one blocking/non-blocking
+  // decision by accident.
+  const [relayWarning, setRelayWarning] = useState(null)
+  const [connecting,   setConnecting]   = useState(false)
+  // True once the Olympus connect has succeeded but a relay warning needs to
+  // be shown before advancing — set alongside relayWarning, never independently.
+  const [awaitingContinue, setAwaitingContinue] = useState(false)
 
   const [showDropdown,      setShowDropdown]      = useState(false)
   const [confirmDeleteName, setConfirmDeleteName] = useState(null)
@@ -54,7 +83,7 @@ function ConnectPhase({ onConnected }) {
   const saveStatusTimer = useRef(null)
   useEffect(() => () => clearTimeout(saveStatusTimer.current), [])
 
-  const { setConnection } = useSessionStore()
+  const { setConnection, setSyncCapable } = useSessionStore()
 
   // Always show the full favorites+recents list — typing shouldn't filter it out from under the user.
   const filteredProfiles = useMemo(
@@ -68,19 +97,30 @@ function ConnectPhase({ onConnected }) {
     if (match) setPassword(match.passwords[coalition] ?? '')
   }, [coalition]) // eslint-disable-line
 
-  function normalizeUrl(raw) {
-    let url = raw.trim()
-    if (!/^https?:\/\//i.test(url)) url = 'http://' + url
-    url = url.replace(/\/+$/, '')
-    return url
+  // serverHost + sourcePort → the composed olympusUrl the backend expects.
+  function composedOlympusUrl(host = serverHost, port = sourcePort) {
+    const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+    return port ? `http://${cleanHost}:${port}` : `http://${cleanHost}`
+  }
+
+  // Same host, XPNDR port instead — empty port means "no relay configured",
+  // never a guess, since the relay always lives alongside Olympus/Tacview.
+  function composedRelayUrl(host = serverHost, port = xpndrPort) {
+    if (!port) return ''
+    const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+    return `ws://${cleanHost}:${port}`
   }
 
   function handleSelectProfile(profile) {
     const profileCoalition = profile.lastCoalition ?? coalition
+    const source = parseHostPort(profile.url)
+    const relay  = parseHostPort(profile.relayUrl)
     setName(profile.name)
-    setOlympusUrl(profile.url)
+    setServerHost(source.host)
+    setSourcePort(source.port)
     setCoalition(profileCoalition)
     setPassword(profile.passwords[profileCoalition] ?? '')
+    setXpndrPort(relay.port)
     setShowDropdown(false)
   }
 
@@ -94,9 +134,8 @@ function ConnectPhase({ onConnected }) {
   }
 
   function persistProfile() {
-    const normalizedUrl = normalizeUrl(olympusUrl)
-    setOlympusUrl(normalizedUrl)
-    setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password }))
+    const normalizedUrl = composedOlympusUrl()
+    setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password, relayUrl: composedRelayUrl() }))
     setConfirmOverwrite(false)
     setSaveStatus('saved')
     clearTimeout(saveStatusTimer.current)
@@ -115,31 +154,64 @@ function ConnectPhase({ onConnected }) {
   async function handleConnect(e) {
     e.preventDefault()
     setError(null)
+    setRelayWarning(null)
     setConnecting(true)
 
-    const normalizedUrl = normalizeUrl(olympusUrl)
-    setOlympusUrl(normalizedUrl)
+    const normalizedUrl = composedOlympusUrl()
+    const relayUrl = composedRelayUrl()
+
+    // Checked in parallel with the Olympus connect below, not after sign-in —
+    // this is the one place in the flow that already has password/relayUrl in
+    // hand, already gates on an async check, and already has somewhere to show
+    // a result. See resources/specs/data-sources/webrtc-centralized-sync-spec.md §1.
+    const syncCheck = relayUrl
+      ? checkSyncCapable({ relayUrl, password })
+      : Promise.resolve({ capable: false })
 
     try {
-      const res = await fetch('/api/connect', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ olympusUrl: normalizedUrl, password, coalition }),
-      })
+      const [res, syncResult] = await Promise.all([
+        fetch('/api/connect', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ olympusUrl: normalizedUrl, password, coalition, relayUrl }),
+        }),
+        syncCheck,
+      ])
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? `Server responded ${res.status}`)
       }
 
+      // Relay-sync outcome never blocks connecting (unlike the Olympus check
+      // above) — P2P remains fully functional as a fallback. Only "no relay
+      // configured" stays silent; a rejected password or an unreachable relay
+      // are both surfaced so the controller isn't left unknowingly on the
+      // fallback transport.
+      setSyncCapable(!!relayUrl && syncResult.capable)
+
       localStorage.setItem('tracs.lastCoalition', coalition)
-      saveLastConnection({ name, url: normalizedUrl, coalition, password })
+      saveLastConnection({ name, url: normalizedUrl, coalition, password, relayUrl })
       if (name.trim()) {
-        setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password }))
+        setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password, relayUrl }))
       }
-      setConnection({ olympusUrl: normalizedUrl, coalition })
+      setConnection({ olympusUrl: normalizedUrl, coalition, relayUrl })
       wsClient.connect()
-      onConnected()
+
+      // A relay warning holds the phase transition here so the banner has a
+      // chance to actually paint — calling onConnected() in the same handler
+      // unmounts ConnectPhase before React ever renders it. The Olympus-connect
+      // side effects above still run immediately either way.
+      if (relayUrl && !syncResult.capable) {
+        setRelayWarning(
+          syncResult.reason === 'password'
+            ? 'Relay password rejected — using peer-to-peer.'
+            : 'Relay unreachable — using peer-to-peer.'
+        )
+        setAwaitingContinue(true)
+      } else {
+        onConnected()
+      }
     } catch (err) {
       const msg = err instanceof TypeError && err.message === 'Failed to fetch'
         ? 'Cannot reach TRACS server — is it running?'
@@ -233,15 +305,34 @@ function ConnectPhase({ onConnected }) {
       </section>
 
       <section>
-        <label>Olympus Server URL &amp; Port</label>
+        <label>Server URL</label>
         <input
           type="text"
-          value={olympusUrl}
-          onChange={(e) => setOlympusUrl(e.target.value)}
-          placeholder="http://dcs-server-address:4513"
+          value={serverHost}
+          onChange={(e) => setServerHost(e.target.value)}
+          placeholder="dcs-server-address"
           required
           disabled={connecting}
         />
+        <div className="position-fields">
+          <input
+            type="text"
+            style={{ flex: 1 }}
+            value={sourcePort}
+            onChange={(e) => setSourcePort(e.target.value)}
+            placeholder="Source Port"
+            required
+            disabled={connecting}
+          />
+          <input
+            type="text"
+            style={{ flex: 1 }}
+            value={xpndrPort}
+            onChange={(e) => setXpndrPort(e.target.value)}
+            placeholder="Relay Port"
+            disabled={connecting}
+          />
+        </div>
       </section>
 
       <section>
@@ -269,10 +360,17 @@ function ConnectPhase({ onConnected }) {
       </section>
 
       {error && <p className="login-error">{error}</p>}
+      {!error && relayWarning && <p className="login-warning">{relayWarning}</p>}
 
-      <button type="submit" className="connect-btn" disabled={connecting}>
-        {connecting ? 'Connecting…' : 'Connect to Network'}
-      </button>
+      {awaitingContinue ? (
+        <button type="button" className="connect-btn" onClick={onConnected}>
+          Continue
+        </button>
+      ) : (
+        <button type="submit" className="connect-btn" disabled={connecting}>
+          {connecting ? 'Connecting…' : 'Connect to Network'}
+        </button>
+      )}
     </form>
   )
 }
