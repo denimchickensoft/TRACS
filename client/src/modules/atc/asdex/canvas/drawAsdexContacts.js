@@ -2,12 +2,14 @@ import { latLngToCanvas }  from '../../../../utils/projection.js'
 import { resolveCallsign } from '../../../../utils/callsign.js'
 import { destinationPoint } from '../../../../utils/bearing.js'
 import { DIR_TO_ANGLE }    from '../../stars/constants.js'
+import { hasLiveSquawk }   from '../../../../utils/transponder.js'
 
 const M_PER_S_TO_KT       = 1.94384
 const SYMBOL_R             = 7
 const RIGHT_ALIGN_ANGLES   = new Set([90, 135, 180, 225])
+const UNKNOWN_TARGET_COLOR = '#00e0d0' // teal — real transponder standby (status 0), see transponder-correlation-spec.md §5
 
-export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors) {
+export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors, associated = {}, manualTags = {}) {
   ctx.clearRect(0, 0, view.width, view.height)
 
   // Runway centerlines
@@ -86,6 +88,15 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     // DCS's own raw engine-frame heading, in the same true-bearing frame as
     // track (see utils/bearing.js), so it's a direct substitute — no
     // separate correction needed beyond the same declination term below.
+    // Unknown Target: real transponder standby, or status normal/ident with
+    // no mode3 code set (e.g. military mode4-only) — either way "no
+    // information is known about a Target." Symbol still shows (ASDE-X is
+    // surface radar, sees the physical return regardless of transponder
+    // state) but in teal, with no datablock at all. Only for srsCapable
+    // units — AI/non-SRS units keep the old full-identity fallback. See
+    // resources/specs/transponder-correlation-spec.md §5.
+    const isUnknownTarget = !!unit.srsCapable && !hasLiveSquawk(unit)
+
     const useHeading = unit.speed != null && unit.speed < 1 && unit.heading != null
     const symbolTrack = useHeading ? unit.heading : (unit.track ?? 0)
     ctx.save()
@@ -96,9 +107,11 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     ctx.lineTo(5, 5)
     ctx.lineTo(-5, 5)
     ctx.closePath()
-    ctx.fillStyle = colors.contacts
+    ctx.fillStyle = isUnknownTarget ? UNKNOWN_TARGET_COLOR : colors.contacts
     ctx.fill()
     ctx.restore()
+
+    if (isUnknownTarget) continue // no leader line, no datablock
 
     // Leader line
     const unitDir    = leaderDirs[String(id)]
@@ -119,18 +132,28 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     ctx.lineTo(lx1, ly1)
     ctx.stroke()
 
-    // Datablock
-    const cs    = resolveCallsign(unit).toUpperCase()
-    const plan  = plansByUnit[String(id)]
-    const typ   = plan?.typ  ? plan.typ.trim()  : ''
-    const dest  = plan?.dest ? plan.dest.trim() : ''
-    const line2 = [typ, dest].filter(Boolean).join(' ')
-    const tx    = lx1 + (rightAlign ? -2 : 2)
+    // Datablock — Partial Data Block: field B (aircraft ID) once associated
+    // (real match, or manually tagged) or field C (beacon code only)
+    // otherwise. Non-srsCapable units keep the old always-full-ID behavior.
+    // Real safety-logic-alert-driven Full Data Blocks aren't implemented —
+    // no such alert logic exists in TRACS yet. See
+    // resources/specs/transponder-correlation-spec.md §5.
+    const isKnown = !unit.srsCapable || !!associated[String(id)] || !!manualTags[String(id)]
+    const beacon  = unit.transponder?.mode3 != null ? String(unit.transponder.mode3).padStart(4, '0') : null
+    const line1   = isKnown ? resolveCallsign(unit).toUpperCase() : beacon
 
-    ctx.fillStyle    = colors.datablock
-    ctx.textAlign    = rightAlign ? 'right' : 'left'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillText(cs, tx, ly1)
-    if (line2) ctx.fillText(line2, tx, ly1 + 13)
+    if (line1) {
+      const plan  = plansByUnit[String(id)]
+      const typ   = plan?.typ  ? plan.typ.trim()  : ''
+      const dest  = plan?.dest ? plan.dest.trim() : ''
+      const line2 = isKnown ? [typ, dest].filter(Boolean).join(' ') : ''
+      const tx    = lx1 + (rightAlign ? -2 : 2)
+
+      ctx.fillStyle    = colors.datablock
+      ctx.textAlign    = rightAlign ? 'right' : 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(line1, tx, ly1)
+      if (line2) ctx.fillText(line2, tx, ly1 + 13)
+    }
   }
 }

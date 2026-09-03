@@ -127,24 +127,31 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
       ctx.stroke()
     }
 
-    // --- Primary-only wingman: small diamond, no letter/asterisk, no datablock ---
+    // --- Primary-only wingman: small hollow diamond, no letter/asterisk, no datablock ---
     if (wingmanUids?.has(String(id))) {
-      ctx.fillStyle = colors.ldbText
-      drawDiamond(ctx, x, y, radius * 0.35)
-      ctx.fill()
+      ctx.strokeStyle = colors.ldbText
+      ctx.lineWidth = 1.3
+      drawDiamond(ctx, x, y, radius * 0.5)
+      ctx.stroke()
       continue
     }
 
     // --- Interior symbol: '*' unassociated, position letter if owned ---
     const entry      = symbolMap[id] ?? { sym: '*', mine: false }
+    // Only '*' needs the size boost — the glyph renders visually smaller
+    // than a letter at the same point size. 'V' (1200/VFR, also
+    // unassociated — see StarsScope.jsx's symbolMap comment) is a normal
+    // capital letter already, same size as a position letter.
     const isAsterisk = entry.sym === '*'
     const letterPx   = 10 + csPos * 2
-    const fontPx     = isAsterisk ? Math.round(letterPx * 1.76) : letterPx
+    const fontPx     = isAsterisk ? Math.round(letterPx * 1.68) : letterPx
     const baseColor  = entry.mine ? colors.fdbText : colors.ldbText
     const letColor   = isHighlighted ? HIGHLIGHT_TEAL
                      : isPoUnit      ? (blinkOn ? PO_BLINK_ON : PO_BLINK_OFF)
                      : isBlinkUnit   ? (blinkOn ? colors.fdbText : BLINK_DIM)
                      : baseColor
+    // IDENT is a datablock-text-only indicator (just the "ID" suffix) —
+    // the contact symbol/interior letter never blinks for it.
     ctx.font         = `bold ${fontPx}px "Roboto Mono", monospace`
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'alphabetic'

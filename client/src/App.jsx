@@ -2,6 +2,11 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSessionStore, MODULE } from './store/session'
 import { useOdsStore }        from './store/ods'
 import { useControllersStore } from './store/controllers'
+import { useUnitsStore }       from './store/units'
+import { useFlightPlansStore } from './store/flightPlans'
+import { useAssociationStore } from './store/association'
+import { computeAssociations } from './modules/atc/shared/associationEngine.js'
+import { useAtcStore }         from './store/atc.js'
 import { Login }         from './components/Login/Login'
 import StarsScope        from './modules/atc/stars/StarsScope'
 import AsdexScope        from './modules/atc/asdex/AsdexScope'
@@ -84,6 +89,41 @@ export function App() {
   useEffect(() => {
     if (activeProfileId) localStorage.setItem(PROFILE_STORAGE_KEY, activeProfileId)
   }, [activeProfileId])
+
+  // ── Transponder-based association — single compute owner ─────────────
+  // Mounted here, not inside StarsScope/AsdexScope, because App is the one
+  // component always mounted regardless of which ODS is active. Neither
+  // units.js nor flightPlans.js needs to know association exists — this is
+  // the only place they're read together. See
+  // resources/specs/transponder-correlation-spec.md §7.
+  const unitsForAssoc     = useUnitsStore((s) => s.units)
+  const plansForAssoc     = useFlightPlansStore((s) => s.plans)
+  const ownershipForAssoc = useAtcStore((s) => s.ownership)
+  useEffect(() => {
+    const previous = useAssociationStore.getState().associated
+    const next = computeAssociations({
+      units: unitsForAssoc, flightPlans: plansForAssoc, ownership: ownershipForAssoc, previousAssociated: previous,
+    })
+    useAssociationStore.getState().setAssociated(next)
+  }, [unitsForAssoc, plansForAssoc, ownershipForAssoc])
+
+  // ── IDENT onset detection ─────────────────────────────────────────────
+  // Latches identUnacked on the edge (status becomes 2) — same blink
+  // treatment as a handoff, cleared only by slewing the contact (see
+  // StarsScope.jsx's bare-slew handler and dispatch call), not by a timer
+  // and not just because status reverts. See
+  // resources/specs/transponder-correlation-spec.md §4.
+  const prevIdentStatusRef = useRef({})
+  useEffect(() => {
+    const prev = prevIdentStatusRef.current
+    const nextStatus = {}
+    for (const [uid, unit] of Object.entries(unitsForAssoc)) {
+      const status = unit.transponder?.status
+      if (status === 2 && prev[uid] !== 2) useAtcStore.getState().markIdent(uid)
+      if (status != null) nextStatus[uid] = status
+    }
+    prevIdentStatusRef.current = nextStatus
+  }, [unitsForAssoc])
 
   // Chromium suspends AudioContexts until a user gesture — resume once on
   // the first interaction anywhere in the app so alert tones can play later.

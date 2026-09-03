@@ -587,7 +587,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
             value={addAid}
             onChange={(e) => setAddAid(e.target.value.toUpperCase())}
             placeholder="Callsign"
-            maxLength={10}
+            maxLength={8}
           />
           <button type="submit" className="sb-btn-add" disabled={!addAid.trim()}>
             Add Strip

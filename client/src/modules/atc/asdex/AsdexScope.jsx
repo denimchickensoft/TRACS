@@ -7,6 +7,8 @@ import { useControllersStore } from '../../../store/controllers.js'
 import { useAtcStore }         from '../../../store/atc.js'
 import { useFpeStore }         from '../../../store/fpe.js'
 import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
+import { useAssociationStore }  from '../../../store/association.js'
+import { useAsdexManualTagsStore } from '../../../store/asdexManualTags.js'
 import { loadAsdexPrefs } from '../../../store/asdexPrefs.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../../../utils/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
@@ -56,6 +58,8 @@ export default function AsdexScope() {
   const positionName    = useSessionStore(s => s.positionName)
   const units           = useUnitsStore(s => s.units)
   const plans           = useFlightPlansStore(s => s.plans)
+  const associated      = useAssociationStore(s => s.associated)
+  const manualTags      = useAsdexManualTagsStore(s => s.tagged)
   const [centerlines, setCenterlines] = useState([])
   const myControllerId  = useControllersStore(s => s.registry[positionName]?.controllerId ?? null)
   const displayStore    = useDisplayStore()
@@ -68,6 +72,8 @@ export default function AsdexScope() {
   const viewRef            = useRef(null)
   const unitsRef           = useRef(units)
   const plansRef           = useRef(plans)
+  const associatedRef      = useRef(associated)
+  const manualTagsRef      = useRef(manualTags)
   const historyRef         = useRef({})
   const histRateRef          = useRef(4.5)
   const myControllerIdRef    = useRef(myControllerId)
@@ -77,6 +83,8 @@ export default function AsdexScope() {
 
   useEffect(() => { unitsRef.current          = units          }, [units])
   useEffect(() => { plansRef.current          = plans          }, [plans])
+  useEffect(() => { associatedRef.current     = associated     }, [associated])
+  useEffect(() => { manualTagsRef.current     = manualTags     }, [manualTags])
   useEffect(() => { myControllerIdRef.current = myControllerId }, [myControllerId])
   useEffect(() => { centerlinesRef.current    = centerlines    }, [centerlines])
   useEffect(() => { histRateRef.current       = windowSettings?.historyRate ?? 4.5 }, [windowSettings?.historyRate])
@@ -308,6 +316,7 @@ export default function AsdexScope() {
           plansRef.current, historyRef.current,
           centerlinesRef.current, centerlineVisibleRef.current,
           colorsRef.current,
+          associatedRef.current, manualTagsRef.current,
         )
       }
       rafRef.current = requestAnimationFrame(draw)
@@ -480,6 +489,20 @@ export default function AsdexScope() {
       else next[String(nearest.id)] = dir
       useDisplayStore.getState().updateWindow(ASDEX_WINDOW_ID, { leaderDirs: next })
       useAsdexPreviewStore.getState().clearAfterCommand()
+    }
+    if (parsed.command.id === 'TAG_TARGET') {
+      // TRACS already knows the truth (Olympus ground-truth callsign) —
+      // unlike CRC/VATSIM this isn't a guess needing a guardrail, it's a
+      // correctness check: a mismatch just fails. See
+      // resources/specs/transponder-correlation-spec.md §5.
+      const typedAid = parsed.captures.aid?.trim().toUpperCase()
+      const trueAid  = resolveCallsign(nearest.unit).toUpperCase()
+      if (typedAid === trueAid) {
+        useAsdexManualTagsStore.getState().tag(String(nearest.id))
+        useAsdexPreviewStore.getState().clearAfterCommand()
+      } else {
+        useAsdexPreviewStore.getState().setResponse('ILL TRK')
+      }
     }
   }, [])
 

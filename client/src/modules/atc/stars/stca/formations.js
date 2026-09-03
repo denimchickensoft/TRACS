@@ -23,6 +23,7 @@
 // unioned in on top of the automatic detection below.
 
 import { resolveCallsign } from '../../../../utils/callsign.js'
+import { hasLiveSquawk }  from '../../../../utils/transponder.js'
 
 /**
  * @param {Object} units      live units keyed by id (useUnitsStore().units)
@@ -65,4 +66,30 @@ export function computeWingmanIds(units, ownership, manualWingmenIds = []) {
   }
 
   return wingmen
+}
+
+/**
+ * Blends the groupID-based guess above with real transponder data, per
+ * resources/specs/transponder-correlation-spec.md §4.3: once a unit has
+ * ever reported real SRS transponder data (unit.srsCapable), its real
+ * status supersedes the guess — the guess remains the only signal for any
+ * unit that isn't srsCapable (AI, non-SRS humans), unchanged. Unlike the
+ * opt-in guess, real standby is ground truth and is not gated behind the
+ * .WNG preference.
+ *
+ * @returns {Set<string>} ids that should render as primary-only (no datablock)
+ */
+export function resolvePrimaryOnlyIds(units, ownership, manualWingmenIds, guessEnabled) {
+  const guessed = guessEnabled ? computeWingmanIds(units, ownership, manualWingmenIds) : null
+  const result = new Set()
+  for (const [id, unit] of Object.entries(units)) {
+    if (unit.srsCapable) {
+      // Also covers status normal/ident with no mode3 code set (e.g.
+      // military mode4-only) — no code to correlate, same as true standby.
+      if (!hasLiveSquawk(unit)) result.add(id)
+      continue
+    }
+    if (guessed?.has(id)) result.add(id)
+  }
+  return result
 }

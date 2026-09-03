@@ -5,6 +5,10 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../../store/strips.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import './FPE.css'
 
+// 4 octal digits (0-7) — matches utils/bcn.js's generateBcn() output shape.
+// A partial code (e.g. "634") or one containing 8/9 is never a valid squawk.
+const BCN_RE = /^[0-7]{4}$/
+
 // ── Draggable panel ───────────────────────────────────────────────────────────
 function useDrag(panelRef) {
   const dragState = useRef({ dragging: false, ox: 0, oy: 0 })
@@ -71,7 +75,12 @@ export function FPE({ scope = null }) {
   useEffect(() => {
     if (!open) return
     setConfirmDelete(false)
-    const upperAid = prefillAid?.toUpperCase() ?? ''
+    // Match the AID field's own maxLength={8} — otherwise a ctrl-click
+    // prefill (which sets this state programmatically, bypassing the
+    // input's typing limit) can produce a longer AID than a controller
+    // could ever type by hand for the same aircraft, silently diverging
+    // into two different flight plans for one contact.
+    const upperAid = (prefillAid?.toUpperCase() ?? '').slice(0, 8)
     const plan = plans[upperAid]
 
     setAid(upperAid)
@@ -128,13 +137,29 @@ export function FPE({ scope = null }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, aid])
 
-  function clearOnEscape(setter) {
-    return (e) => { if (e.key === 'Escape') { e.preventDefault(); setter('') } }
+  // Explicit, rather than relying on the browser's implicit form-submission
+  // behavior (which button it picks can be inconsistent when a form has
+  // several type="button" siblings, e.g. BCN's Recycle button) — Enter here
+  // always amends, never anything else, matching textareaKeyDown below.
+  function inputKeyDown(setter) {
+    return (e) => {
+      // stopPropagation, not just preventDefault: handleAmend closes the FPE
+      // (useFpeStore's open -> false) before this event finishes bubbling to
+      // InputHandler.jsx's document-level listener, so its "FPE takes
+      // precedence while open" guard no longer holds by the time it checks —
+      // without this the same Enter gets re-evaluated as a STARS command.
+      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); handleAmend(e); return }
+      // Escape deliberately does NOT stopPropagation — it's meant to both
+      // clear this field and (via bubbling to the document-level "Close on
+      // Escape" listener below) close the whole FPE in the same keypress.
+      if (e.key === 'Escape') { e.preventDefault(); setter('') }
+    }
   }
 
   function textareaKeyDown(setter) {
     return (e) => {
-      if (e.key === 'Enter') { handleAmend(e); return }
+      if (e.key === 'Enter') { e.stopPropagation(); handleAmend(e); return }
+      // No stopPropagation — same dual clear-and-close as inputKeyDown's Escape.
       if (e.key === 'Escape') { e.preventDefault(); setter('') }
     }
   }
@@ -164,17 +189,30 @@ export function FPE({ scope = null }) {
     e.preventDefault()
     const normalizedAid = aid.trim().toUpperCase()
     if (!normalizedAid) return
+    // Empty is fine (auto-generates on create, leaves it unchanged on
+    // amend) — anything else must be a complete, valid code. A partial
+    // digit count or an 8/9 sneaking in some other way (e.g. a synced
+    // value) must never be saved.
+    if (bcn && !BCN_RE.test(bcn)) return
 
     const cleanRte = rte.replace(/\s+DCT\s+/g, ' ').trim()
 
     if (plans[normalizedAid]) {
-      amend(normalizedAid, { typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk })
+      // Backfill/update unitId when the FPE was opened via ctrl-click on a
+      // specific contact — otherwise a plan filed without a unit link (e.g.
+      // pilot-filed before radar correlation) never gains one just by a
+      // controller later ctrl-clicking the matching target into an amend.
+      amend(normalizedAid, { typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk, bcn,
+             ...(unitId ? { unitId } : {}) })
       setHighlight(normalizedAid, STRIP_HIGHLIGHT.AMENDED)
       // Broadcast the resolved plan (not the raw form fields) so every peer
       // converges on the same object rather than each applying its own patch.
       sendWebrtcEvent('FLIGHT_PLAN_AMEND', useFlightPlansStore.getState().plans[normalizedAid])
     } else {
+      // bcn included so a controller's typed code on a brand-new plan isn't
+      // silently discarded in favor of add()'s auto-generated one.
       add({ aid: normalizedAid, typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk,
+            ...(bcn ? { bcn } : {}),
             ...(unitId ? { unitId } : {}) })
       addStrip(normalizedAid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: unitId ?? null })
       // Broadcast the resolved plan so receivers reuse this instance's
@@ -216,6 +254,7 @@ export function FPE({ scope = null }) {
                 className="fpe-input"
                 value={aid}
                 onChange={(e) => setAid(e.target.value.toUpperCase())}
+                onKeyDown={inputKeyDown(setAid)}
                 readOnly={isExisting || disabled}
                 placeholder="ACID"
                 maxLength={8}
@@ -234,7 +273,7 @@ export function FPE({ scope = null }) {
                   className="fpe-input"
                   value={bcn}
                   onChange={(e) => setBcn(e.target.value.replace(/[^0-7]/g, '').slice(0, 4))}
-                  onKeyDown={clearOnEscape(setBcn)}
+                  onKeyDown={inputKeyDown(setBcn)}
                   readOnly={disabled}
                   placeholder="----"
                   maxLength={4}
@@ -255,7 +294,7 @@ export function FPE({ scope = null }) {
                 className="fpe-input"
                 value={typ}
                 onChange={(e) => setTyp(e.target.value.toUpperCase())}
-                onKeyDown={clearOnEscape(setTyp)}
+                onKeyDown={inputKeyDown(setTyp)}
                 readOnly={disabled}
                 placeholder="F16"
                 maxLength={4}
@@ -268,7 +307,7 @@ export function FPE({ scope = null }) {
                 className="fpe-input"
                 value={eq}
                 onChange={(e) => setEq(e.target.value.toUpperCase())}
-                onKeyDown={clearOnEscape(setEq)}
+                onKeyDown={inputKeyDown(setEq)}
                 readOnly={disabled}
                 placeholder="S"
                 maxLength={1}
@@ -281,7 +320,7 @@ export function FPE({ scope = null }) {
                 className="fpe-input"
                 value={dep}
                 onChange={(e) => setDep(e.target.value.toUpperCase())}
-                onKeyDown={clearOnEscape(setDep)}
+                onKeyDown={inputKeyDown(setDep)}
                 readOnly={disabled}
                 placeholder="KDEP"
                 maxLength={4}
@@ -294,7 +333,7 @@ export function FPE({ scope = null }) {
                 className="fpe-input"
                 value={dest}
                 onChange={(e) => setDest(e.target.value.toUpperCase())}
-                onKeyDown={clearOnEscape(setDest)}
+                onKeyDown={inputKeyDown(setDest)}
                 readOnly={disabled}
                 placeholder="KDST"
                 maxLength={4}
@@ -307,7 +346,7 @@ export function FPE({ scope = null }) {
                 className="fpe-input"
                 value={spd}
                 onChange={(e) => setSpd(e.target.value.toUpperCase())}
-                onKeyDown={clearOnEscape(setSpd)}
+                onKeyDown={inputKeyDown(setSpd)}
                 readOnly={disabled}
                 placeholder="280"
                 maxLength={3}
@@ -320,7 +359,7 @@ export function FPE({ scope = null }) {
                 className="fpe-input"
                 value={alt}
                 onChange={(e) => setAlt(e.target.value.toUpperCase())}
-                onKeyDown={clearOnEscape(setAlt)}
+                onKeyDown={inputKeyDown(setAlt)}
                 onBlur={handleAltBlur}
                 readOnly={disabled}
                 placeholder="350"
@@ -370,7 +409,7 @@ export function FPE({ scope = null }) {
             ) : (
               <>
                 <button type="button" className="fpe-btn-cancel" onClick={closeFpe}>Cancel</button>
-                <button type="submit" className="fpe-btn-amend" disabled={disabled || !aid.trim()}>
+                <button type="submit" className="fpe-btn-amend" disabled={disabled || !aid.trim() || (bcn && !BCN_RE.test(bcn))}>
                   {isExisting ? 'Amend' : 'Create'}
                 </button>
                 {isExisting && !disabled && (

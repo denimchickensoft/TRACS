@@ -44,6 +44,12 @@ export const useAtcStore = create(
   // Blink-white after accepting a handoff: unitId → expiresAt (ms timestamp)
   blinkTracks: {},
 
+  // Real transponder IDENT (status 2) — latched, same blink treatment as a
+  // handoff, cleared only when the controller slews the contact (not on a
+  // timer, not just because status reverts). unitId → true. See
+  // resources/specs/transponder-correlation-spec.md §4.
+  identUnacked: {},
+
   // Acknowledged conflict-alert pairs: pairId → true. Pruned each STCA
   // compute cycle (StarsScope.jsx) when a pairId drops out of the active
   // conflict set, so a resolved-then-recurring conflict re-alerts.
@@ -135,6 +141,16 @@ export const useAtcStore = create(
       return { blinkTracks: next }
     }),
 
+  markIdent: (unitId) =>
+    set((state) => ({ identUnacked: { ...state.identUnacked, [unitId]: true } })),
+
+  clearIdent: (unitId) =>
+    set((state) => {
+      const next = { ...state.identUnacked }
+      delete next[unitId]
+      return { identUnacked: next }
+    }),
+
   ackConflict: (pairId) =>
     set((state) => ({
       conflictAcks: { ...state.conflictAcks, [pairId]: true },
@@ -151,7 +167,7 @@ export const useAtcStore = create(
     }),
 
   reset: () =>
-    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {}, conflictAcks: {} }),
+    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {}, identUnacked: {}, conflictAcks: {} }),
     }),
     {
       name: 'tracs.atc',

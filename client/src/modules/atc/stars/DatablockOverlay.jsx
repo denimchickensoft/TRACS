@@ -1,13 +1,15 @@
-import { memo, useMemo, useState, useEffect } from 'react'
+import { memo, useMemo, useState, useEffect, useCallback } from 'react'
 import { useAtcStore, POINTOUT_STATE } from '../../../store/atc.js'
 import { useStcaStore }        from '../../../store/stca.js'
 import { useSessionStore }     from '../../../store/session.js'
 import { useControllersStore } from '../../../store/controllers.js'
 import { useDisplayStore }     from '../../../store/display.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
+import { useAssociationStore } from '../../../store/association.js'
 import { useOdsStore }         from '../../../store/ods.js'
 import { latLngToCanvas }      from '../../../utils/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
+import { hasLiveSquawk }       from '../../../utils/transponder.js'
 import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from './constants.js'
 import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
 
@@ -57,9 +59,14 @@ function getClockPhase(sequence, intervals) {
 
 // ── Datablock type ───────────────────────────────────────────────────────────
 
-function resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId) {
+// assoc — true unless the unit is srsCapable and genuinely unassociated (see
+// resources/specs/transponder-correlation-spec.md §3–§4.1). Always true for
+// non-srsCapable units, which preserves today's !owner-only LDB behavior
+// exactly — this only adds a new way to land on LDB, it never removes the
+// old one.
+function resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId, assoc = true) {
   const owner = ownership[uid]
-  if (!owner) return 'LDB'
+  if (!owner || !assoc) return 'LDB'
   if (owner === myId) return 'FDB'
   if (handoffs[uid]?.to === myId) return 'FDB'
   if (displayFdb[uid]) return 'FDB'
@@ -118,7 +125,7 @@ const Datablock = memo(function Datablock({
   ownership, handoffs, pointOuts, quickLook, displayFdb, scratchpads,
   myId, unitLeaderDir, globalLeaderDir, placement,
   clockPhase, actype, slewed, isBlinking, blinkOn, isHighlighted,
-  conflict, wingman,
+  conflict, wingman, assoc, assignedBcn, isIdent, beaconReadout,
 }) {
   const pos = unit.position
   if (!pos) return null
@@ -173,7 +180,30 @@ const Datablock = memo(function Datablock({
   const style = { font, dominantBaseline: 'alphabetic' }
 
   // ── Data ────────────────────────────────────────────────────────────
-  const dbType    = resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId)
+  const rawDbType = resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId, assoc)
+  // Beacon code readout ("Beaconator", press-and-hold F1) — real STARS
+  // forces PDB up to FDB and swaps the callsign for the code. An FDB
+  // already shows everything needed — regardless of *why* it's FDB
+  // (owned, handoff, point-out, quick look, displayFdb) — so this must
+  // only ever touch a track that was genuinely PDB to begin with. LDB
+  // already shows the code by default, so it needs no override either —
+  // see resources/specs/transponder-correlation-spec.md §4.
+  const isBeaconTrack = !!unit.srsCapable && hasLiveSquawk(unit)
+  const readoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'PDB'
+  // A PDB that's IDENTing temporarily displays as an LDB for as long as the
+  // IDENT is unacknowledged (not just the "on" half of the blink cycle) —
+  // takes priority over Beaconator's PDB->FDB promotion if both apply.
+  // Only the datablock type/content changes; the contact symbol/position
+  // letter is untouched. See resources/specs/transponder-correlation-spec.md §4.
+  const identForcesLdb = isIdent && rawDbType === 'PDB'
+  const dbType    = identForcesLdb ? 'LDB' : readoutActive ? 'FDB' : rawDbType
+  const beaconLine1 = (readoutActive && unit.transponder?.mode3 != null)
+    ? String(unit.transponder.mode3).padStart(4, '0') : null
+  // IDENT — only the "ID" suffix itself blinks (its own tspan opacity),
+  // never the whole line/color scheme. Appended to line 2 (groundspeed) for
+  // FDB/PDB (both share that layout), or to the squawk code for LDB — see
+  // the LDB block below and resources/specs/transponder-correlation-spec.md §4.
+  const identTspan = isIdent ? <tspan opacity={blinkOn ? 1 : 0.25}>ID</tspan> : null
   const alt       = fmtAlt(pos.alt)
   const gs        = fmtSpd(unit.speed)
   const sp1       = scratchpads[uid]?.sp1 ?? ''
@@ -211,11 +241,39 @@ const Datablock = memo(function Datablock({
   // ── LDB ─────────────────────────────────────────────────────────────
   if (dbType === 'LDB') {
     const ldbColor = isHighlighted ? HIGHLIGHT_TEAL : colors.ldbText
+    // Genuinely unassociated (real transponder data, no flight-plan match
+    // yet): CRC's actual LDB layout is beacon code on line 1, altitude on
+    // line 2 by default — ground speed appears alongside it (same position
+    // as FDB's line 2, "alt gs") temporarily while slewed, not in place of
+    // altitude (same slewedPdbs toggle every other track already uses on
+    // click — see StarsScope.jsx's bare-slew handler). Otherwise this is
+    // the pre-existing unowned-but-associated case — unchanged, single line.
+    // IDENT appends "ID" to the squawk code (line 1) here — LDBs have no
+    // callsign — via its own blinking tspan, not the whole line. Any
+    // associated-but-LDB track that's IDENTing (whether it's an unowned
+    // track via the legacy !owner path, or a PDB forced here by
+    // identForcesLdb) shows the real squawk-code layout too, not the
+    // legacy single alt/gs line — "turns into an LDB" means it actually
+    // looks like one, code and all.
+    if (!assoc || isIdent) {
+      const beacon = String(unit.transponder?.mode3 ?? '').padStart(4, '0')
+      return (
+        <g>
+          {leader}
+          <text x={tx} y={ty}      fill={ldbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
+            <tspan>{beacon}</tspan>{identTspan}
+          </text>
+          <text x={tx} y={ty + lh} fill={ldbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
+            {slewed ? `${alt} ${gs}` : alt}
+          </text>
+        </g>
+      )
+    }
     return (
       <g>
         {leader}
         <text x={tx} y={ty} fill={ldbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
-          {`${alt} ${gs}`}
+          <tspan>{`${alt} ${gs}`}</tspan>{identTspan}
         </text>
       </g>
     )
@@ -224,6 +282,8 @@ const Datablock = memo(function Datablock({
   // ── PDB ─────────────────────────────────────────────────────────────
   // Unslewed: leader attaches at the data line (single line).
   // Slewed: leader attaches at ACID line; data line drops below — same layout as FDB.
+  // IDENT appends "ID" to line 2 (the groundspeed) here, same as FDB, not
+  // the callsign — via its own blinking tspan, not the whole line/color.
   if (dbType === 'PDB') {
     const pdbColor = isHighlighted ? HIGHLIGHT_TEAL : colors.pdbText
     if (slewed) {
@@ -235,7 +295,7 @@ const Datablock = memo(function Datablock({
             {cs}
           </text>
           <text x={tx} y={ty + lh} fill={pdbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
-            {line2}
+            <tspan>{line2}</tspan>{identTspan}
           </text>
         </g>
       )
@@ -245,7 +305,7 @@ const Datablock = memo(function Datablock({
         {leader}
         {conflictEl(briteLdb)}
         <text x={tx} y={ty} fill={pdbColor} opacity={briteLdb} textAnchor={anchor} style={style}>
-          {line2}
+          <tspan>{line2}</tspan>{identTspan}
         </text>
       </g>
     )
@@ -261,10 +321,21 @@ const Datablock = memo(function Datablock({
     : isPoReceiving
     ? (blinkOn ? '#FFFF00' : '#808000')
     : shouldBlink ? (blinkOn ? '#FFFFFF' : '#C0C0C0') : colors.fdbText
-  const acidLine      = isPoReceiving ? cs + ' PO'
+  const acidLine      = beaconLine1 ??
+                      ( isPoReceiving ? cs + ' PO'
                       : isPoSent      ? cs + ' PO' + po.to
                       : isPoRejected  ? cs + ' UN'
-                      : cs
+                      : cs )
+
+  // ── Line 3: reported vs. assigned beacon code, shown only on mismatch ──
+  // Association is sticky (see associationEngine.js) — a live code drifting
+  // from the assigned one doesn't drop the association, it just surfaces
+  // here, matching real STARS Line 3 verbatim (a deliberate VATSIMism).
+  const reportedCode = unit.transponder?.mode3 != null ? String(unit.transponder.mode3).padStart(4, '0') : null
+  const assignedCode = assignedBcn != null ? String(assignedBcn).padStart(4, '0') : null
+  const codeMismatch = reportedCode != null && assignedCode != null && reportedCode !== assignedCode
+  const line3 = codeMismatch ? `${reportedCode} ${assignedCode}` : null
+
   return (
     <g>
       {leader}
@@ -273,15 +344,20 @@ const Datablock = memo(function Datablock({
         {acidLine}
       </text>
       <text x={tx} y={ty + lh} fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
-        {line2}
+        <tspan>{line2}</tspan>{identTspan}
       </text>
+      {line3 && (
+        <text x={tx} y={ty + lh * 2} fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
+          {line3}
+        </text>
+      )}
     </g>
   )
 })
 
 // ── Overlay ──────────────────────────────────────────────────────────────────
 
-export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn, highlightedUids, wingmanIds }) {
+export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn, highlightedUids, wingmanIds, beaconReadout }) {
   const ownership   = useAtcStore((s) => s.ownership)
   const handoffs    = useAtcStore((s) => s.handoffs)
   const pointOuts   = useAtcStore((s) => s.pointOuts)
@@ -289,6 +365,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   const displayFdb  = useAtcStore((s) => s.displayFdb)
   const scratchpads = useAtcStore((s) => s.scratchpads)
   const blinkTracks = useAtcStore((s) => s.blinkTracks)
+  const identUnacked = useAtcStore((s) => s.identUnacked)
   const conflictAcks = useAtcStore((s) => s.conflictAcks)
   const conflicts     = useStcaStore((s) => s.conflicts)
 
@@ -320,6 +397,15 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
     }
     return map
   }, [plans])
+
+  // Reveal gate on top of ownership — see resolveDbType's comment and
+  // transponder-correlation-spec.md §3–§4.1. True (old behavior, unchanged)
+  // for any unit that isn't srsCapable.
+  const associatedMap = useAssociationStore((s) => s.associated)
+  const isAssociated = useCallback(
+    (uid, unit) => !unit?.srsCapable || !!associatedMap[uid],
+    [associatedMap]
+  )
 
   const clockSeq  = useOdsStore((s) => s.activeProfile?.datablocks?.clockPhase?.sequence  ?? DEFAULT_SEQUENCE)
   const clockInts = useOdsStore((s) => s.activeProfile?.datablocks?.clockPhase?.intervals ?? DEFAULT_INTERVALS)
@@ -353,8 +439,17 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       if (x < -100 || x > view.width + 100 || y < -100 || y > view.height + 100) continue
 
       const uid    = String(id)
-      const dbType = resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId)
-      const cs     = resolveCallsign(unit).toUpperCase()
+      const assoc  = isAssociated(uid, unit)
+      const rawDbType = resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId, assoc)
+      const isBeaconTrack = !!unit.srsCapable && hasLiveSquawk(unit)
+      // Only a genuinely-PDB track gets promoted+swapped — see the matching
+      // comment in Datablock above.
+      const readoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'PDB'
+      const identForcesLdb = !!identUnacked[uid] && rawDbType === 'PDB'
+      const dbType = identForcesLdb ? 'LDB' : readoutActive ? 'FDB' : rawDbType
+      const cs     = (readoutActive && unit.transponder?.mode3 != null)
+        ? String(unit.transponder.mode3).padStart(4, '0')
+        : resolveCallsign(unit).toUpperCase()
       const alt    = fmtAlt(pos.alt)
       const gs     = fmtSpd(unit.speed)
       const sp1    = scratchpads[uid]?.sp1 ?? ''
@@ -364,9 +459,16 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       const line2  = computeLine2(clockPhase, alt, sp1, sp2, handoffId, gs, actype)
 
       let lines
-      if (dbType === 'LDB') lines = [`${alt} ${gs}`]
+      if (dbType === 'LDB') {
+        if (!assoc || identUnacked[uid]) {
+          const beacon = String(unit.transponder?.mode3 ?? '').padStart(4, '0')
+          lines = [beacon, slewedPdbs?.has(uid) ? `${alt} ${gs}` : alt]
+        } else {
+          lines = [`${alt} ${gs}`]
+        }
+      }
       else if (dbType === 'PDB') lines = slewedPdbs?.has(uid) ? [cs, line2] : [line2]
-      else lines = [cs, line2] // FDB
+      else lines = [cs, line2] // FDB — Line 3 mismatch (rare) isn't accounted for in bbox sizing, same tradeoff as the conflict indicator above
 
       const unitDir = leaderDirs[uid] ?? null
       contacts.push({
@@ -392,7 +494,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
     })
   }, [dbca, view, entries, ownership, handoffs, pointOuts, quickLook, displayFdb, myId,
       scratchpads, clockPhase, plansByUnit, slewedPdbs, leaderDirs, globalLeaderDir,
-      ldrLength, csDatablocks, visual])
+      ldrLength, csDatablocks, visual, isAssociated, beaconReadout, identUnacked])
 
   if (!view) return null
 
@@ -420,6 +522,8 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
           pointOuts={pointOuts}
           quickLook={quickLook}
           displayFdb={displayFdb}
+          assoc={isAssociated(String(id), unit)}
+          assignedBcn={plansByUnit[String(id)]?.bcn ?? null}
           scratchpads={scratchpads}
           myId={myId}
           unitLeaderDir={leaderDirs[String(id)] ?? null}
@@ -429,10 +533,12 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
           actype={plansByUnit[String(id)]?.typ ?? ''}
           slewed={slewedPdbs?.has(String(id)) ?? false}
           isBlinking={!!blinkTracks[String(id)] && now < blinkTracks[String(id)]}
+          isIdent={!!identUnacked[String(id)]}
           blinkOn={blinkOn}
           isHighlighted={highlightedUids?.has(String(id)) ?? false}
           conflict={conflictByUnit[String(id)] ?? null}
           wingman={wingmanIds?.has(String(id)) ?? false}
+          beaconReadout={beaconReadout}
         />
       ))}
     </svg>

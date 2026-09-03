@@ -59,7 +59,8 @@ import { dispatch as dispatchAction, INIT_CNTL, ackConflict } from '../actions/i
 import { useStcaStore }         from '../../../store/stca.js'
 import { computeConflicts }     from './stca/computeConflicts.js'
 import { buildSuppressionZones, isSuppressed } from './stca/suppressionZones.js'
-import { computeWingmanIds }    from './stca/formations.js'
+import { resolvePrimaryOnlyIds } from './stca/formations.js'
+import { useAssociationStore }  from '../../../store/association.js'
 import { startAlertTone, stopAlertTone } from '../../../audio/alertTone.js'
 import { usePresetsStore }  from '../../../store/presets.js'
 import { useFpeStore }      from '../../../store/fpe.js'
@@ -67,13 +68,13 @@ import { useNavdataStore }      from '../../../store/navdata.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { formatElevation } from '../../../utils/coords.js'
+import { hasLiveSquawk }  from '../../../utils/transponder.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
 import { loadStarsPrefs, saveStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
 
 const WINDOW_ID  = 'atc-main'
 const MAX_HISTORY = 10  // absolute max; display capped by historyLength setting
-const EMPTY_SET = new Set()
 const STCA_TICK_MS = 1000
 
 export default function StarsScope() {
@@ -163,11 +164,13 @@ export default function StarsScope() {
   // symbol letter and datablock always blink from the same value in the same frame.
   const { blinkTick, blinkOn } = useBlink()
 
-  // ── Simulated squawk-standby wingmen ────────────────────────────────
-  // Opt-in (.WNG / starsPrefs.simWingmenStandby) — see stca/formations.js.
+  // ── Primary-only (no datablock) contacts ────────────────────────────
+  // Real transponder standby (srsCapable units reporting status 0) is
+  // always shown regardless of .WNG — it's ground truth, not a simulation.
+  // The groupID-based guess remains opt-in (.WNG / starsPrefs.simWingmenStandby)
+  // and only ever applies to non-srsCapable units. See stca/formations.js.
   const wingmanIds = useMemo(() => {
-    if (!windowSettings?.simWingmenStandby) return EMPTY_SET
-    return computeWingmanIds(units, ownership, windowSettings?.manualWingmen)
+    return resolvePrimaryOnlyIds(units, ownership, windowSettings?.manualWingmen, !!windowSettings?.simWingmenStandby)
   }, [units, ownership, windowSettings?.simWingmenStandby, windowSettings?.manualWingmen])
 
   // ── STCA compute loop ────────────────────────────────────────────────
@@ -196,9 +199,9 @@ export default function StarsScope() {
       // two-click flow below) don't restart this effect, so a stale closure
       // here would miss them until something else happened to re-arm it.
       const liveWinSettings = useDisplayStore.getState().windows[WINDOW_ID]
-      const liveWingmen   = liveWinSettings?.simWingmenStandby
-        ? computeWingmanIds(liveUnits, liveOwnership, liveWinSettings?.manualWingmen)
-        : null
+      const liveWingmen = resolvePrimaryOnlyIds(
+        liveUnits, liveOwnership, liveWinSettings?.manualWingmen, !!liveWinSettings?.simWingmenStandby
+      )
       const result = computeConflicts({
         units:            liveUnits,
         ownership:        liveOwnership,
@@ -278,26 +281,62 @@ export default function StarsScope() {
 
   // ── Contact symbol map ────────────────────────────────────────────
   // Each entry: { sym: string, mine: boolean }
-  // sym  — '*' unassociated, position letter (e.g. 'T') when associated
+  // sym  — '*' unassociated (beacon code received), 'V' unassociated
+  // squawking 1200, position letter (e.g. 'T') when associated
   // mine — true when owned by this controller (drives white vs green)
+  //
+  // "Unassociated" here always meant "unowned" — this is the first time it
+  // reflects a real transponder-based association check too (only for
+  // srsCapable units; unchanged for everything else). See
+  // resources/specs/transponder-correlation-spec.md §4.1.
+  const associated = useAssociationStore((s) => s.associated)
   const symbolMap = useMemo(() => {
     const map = {}
-    for (const id of Object.keys(visibleUnits)) {
+    for (const [id, unit] of Object.entries(visibleUnits)) {
       const owner = ownership[String(id)]
+      const assoc = !unit?.srsCapable || !!associated[String(id)]
       // Treat as "mine" if owned by me, or if I have a sticky FDB (post-handoff sender)
       const mine  = owner === myControllerId || !!displayFdb[String(id)]
       // 2-char ID in either order (e.g. "1A" or "A1") — extract the letter
-      const m   = owner?.length === 2 ? owner.match(/[A-Z]/) : null
-      const sym = m ? m[0] : '*'
+      const m   = (assoc && owner?.length === 2) ? owner.match(/[A-Z]/) : null
+      const isVfrCode = unit?.srsCapable && !assoc && Number(unit.transponder?.mode3) === 1200
+      const sym = m ? m[0] : isVfrCode ? 'V' : '*'
       map[id] = { sym, mine }
     }
     return map
-  }, [visibleUnits, ownership, displayFdb, myControllerId])
+  }, [visibleUnits, ownership, displayFdb, myControllerId, associated])
+
+  // ── Beacon code readout ("Beaconator") — press-and-hold F1 ──────────
+  // Momentary: forces every beacon track (real, active squawk) to appear
+  // regardless of the altitude filter, forces PDB->FDB, and swaps the
+  // callsign for the beacon code — see DatablockOverlay.jsx for the
+  // datablock-content half of this.
+  const [beaconReadout, setBeaconReadout] = useState(false)
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'F1' && !e.ctrlKey) { e.preventDefault(); setBeaconReadout(true) }
+    }
+    function onKeyUp(e) {
+      if (e.key === 'F1') setBeaconReadout(false)
+    }
+    // Also release on window blur — otherwise alt-tabbing away mid-hold
+    // leaves the readout stuck on with no keyup ever delivered.
+    function onBlur() { setBeaconReadout(false) }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
 
   // ── Altitude filter (MULTI FUNC F / FC) ───────────────────────────
   // Suppresses tracks whose altitude falls outside the filter range for
   // their association status (symbolMap sym === '*' means unassociated).
   // Units with no altitude data (elevation unavailable) are never filtered.
+  // Beacon readout (above) forces beacon tracks through regardless.
   const filteredUnits = useMemo(() => {
     const loU = windowSettings?.altFilterLowU  ?? 1
     const hiU = windowSettings?.altFilterHighU ?? 600
@@ -308,12 +347,14 @@ export default function StarsScope() {
       const alt = unit.position?.alt
       if (alt == null) { out[id] = unit; continue }
       const hundreds   = (alt * METERS_TO_FEET) / 100
-      const associated = symbolMap[id]?.sym !== '*'
+      const sym        = symbolMap[id]?.sym
+      const associated = sym !== '*' && sym !== 'V'
       const [lo, hi]   = associated ? [loA, hiA] : [loU, hiU]
-      if (hundreds >= lo && hundreds <= hi) out[id] = unit
+      if (hundreds >= lo && hundreds <= hi) { out[id] = unit; continue }
+      if (beaconReadout && hasLiveSquawk(unit)) out[id] = unit
     }
     return out
-  }, [visibleUnits, symbolMap,
+  }, [visibleUnits, symbolMap, beaconReadout,
       windowSettings?.altFilterLowU, windowSettings?.altFilterHighU,
       windowSettings?.altFilterLowA, windowSettings?.altFilterHighA])
 
@@ -809,6 +850,13 @@ export default function StarsScope() {
       ? resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
       : null
 
+    // Any typed SLEW command targeting a contact acknowledges its IDENT
+    // blink too — same gesture as the bare-click handler above.
+    if (slewTarget) {
+      const uid = String(slewTarget.unitId)
+      if (useAtcStore.getState().identUnacked[uid]) useAtcStore.getState().clearIdent(uid)
+    }
+
     const canvasLatLng = (trigger === 'SLEW' && canvasPos && viewRef.current)
       ? canvasToLatLng(canvasPos.x, canvasPos.y, viewRef.current)
       : null
@@ -1149,6 +1197,11 @@ export default function StarsScope() {
           const atcState = useAtcStore.getState()
           const uid      = String(target.unitId)
 
+          // Slewing acknowledges an active IDENT blink — same gesture as
+          // dismissing other slew-driven states below, regardless of which
+          // branch handles the rest of this click.
+          if (atcState.identUnacked[uid]) atcState.clearIdent(uid)
+
           // Acknowledging an active conflict is the click's sole effect —
           // it does not also fall through to the PDB toggle below.
           const activeConflict = useStcaStore.getState().conflicts
@@ -1268,6 +1321,7 @@ export default function StarsScope() {
           blinkOn={blinkOn}
           highlightedUids={highlightedUids}
           wingmanIds={wingmanIds}
+          beaconReadout={beaconReadout}
         />
 
         <div

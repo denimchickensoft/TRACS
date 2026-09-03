@@ -30,6 +30,7 @@ import { useMvaStore }         from '../../../store/mva.js'
 import { useRunwaysStore }     from '../../../store/runways.js'
 import { useProceduresStore }  from '../../../store/procedures.js'
 import { useUnitsStore }       from '../../../store/units.js'
+import { useAssociationStore } from '../../../store/association.js'
 import { computeWingmanIds }   from '../stars/stca/formations.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
@@ -67,6 +68,14 @@ export function INIT_CNTL({ slewTarget }) {
   if (win?.simWingmenStandby) {
     const wingmen = computeWingmanIds(useUnitsStore.getState().units, ownership, win?.manualWingmen)
     if (wingmen.has(String(slewTarget.unitId))) return err('ILL TRK')
+  }
+  // Unassociated tracks can't be put under control either — real STARS:
+  // "All unassociated tracks are unowned tracks." Only meaningful for
+  // srsCapable units; unchanged for everything else. See
+  // resources/specs/transponder-correlation-spec.md §4.2.
+  const targetUnit = useUnitsStore.getState().units[slewTarget.unitId]
+  if (targetUnit?.srsCapable && !useAssociationStore.getState().associated[String(slewTarget.unitId)]) {
+    return err('ILL TRK')
   }
   claimTrack(slewTarget.unitId, controllerId)
   sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, controllerId })
