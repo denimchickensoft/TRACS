@@ -6,6 +6,7 @@ const express = require('express')
 const { WebSocketServer } = require('ws')
 const sourceRegistry = require('./sourceRegistry')
 const srs        = require('./srs')
+const tacviewRelayClient = require('./tacviewRelayClient')
 const state      = require('./state')
 const stateFiles = require('./stateFiles')
 const navdata    = require('../navdata')
@@ -46,13 +47,13 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 const { broadcast, getWsClientCount } = createWsBroadcast(wss, {
-  state, stateFiles, sourceRegistry, serverInstanceId: SERVER_INSTANCE_ID,
+  state, stateFiles, sourceRegistry, tacviewRelayClient, serverInstanceId: SERVER_INSTANCE_ID,
 })
 
 createSignalRelay(signalWss)
 
 registerApiRoutes(app, {
-  sourceRegistry, srs, state, stateFiles, navdata, elevation, broadcast, getWsClientCount,
+  sourceRegistry, srs, tacviewRelayClient, state, stateFiles, navdata, elevation, broadcast, getWsClientCount,
   presetsPath: PRESETS_PATH,
 })
 

@@ -86,6 +86,7 @@ function dispatch(message) {
 
     case 'status': {
       useSessionStore.getState().setConnected(message.data.polling === true)
+      useSessionStore.getState().setSourceType(message.data.sourceType ?? null)
       const instanceId = message.data.instanceId
       if (instanceId) {
         const prev = sessionStorage.getItem('tracs.serverInstanceId')

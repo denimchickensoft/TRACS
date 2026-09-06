@@ -1,5 +1,8 @@
 {
   "srsLotatcPort": 10712,
   "wsPort": 8765,
+  "tacviewHost": "",
+  "tacviewPort": 42674,
+  "tacviewPassword": "",
   "passwords": []
 }

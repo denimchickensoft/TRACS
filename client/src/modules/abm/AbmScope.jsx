@@ -1175,8 +1175,9 @@ export default function AbmScope() {
         if (rect && viewRef.current) {
           const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
           const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
-          if (target?.unit?.groupID != null) {
-            const flight = useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
+          {
+            const groupId = target?.unit ? useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit) : null
+            const flight = groupId != null ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId) : null
             const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
             if (flight && ownSide) {
               const wasOn = useAbmMissionStore.getState().routeGroupIds.includes(flight.groupId)
@@ -1576,8 +1577,9 @@ export default function AbmScope() {
     }
 
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
-      if (target?.unit?.groupID != null) {
-        const flight = useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
+      const groupId = target?.unit ? useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit) : null
+      if (groupId != null) {
+        const flight = useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
         // FRAG is coalition-restricted like ATO — GM/admin sees everything,
         // blue/red sessions only their own side's flights.
         const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
@@ -1648,8 +1650,9 @@ export default function AbmScope() {
     // typing `.dope`/`.db`/`.threat` + click.
     if (buf === '.frag') {
       if (!target) return
-      const flight = target.unit?.groupID != null
-        ? useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
+      const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit)
+      const flight = groupId != null
+        ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
         : null
       const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
       if (flight && ownSide) {
@@ -1667,8 +1670,9 @@ export default function AbmScope() {
     // the Ctrl+right-click handler in handleMouseDown for why).
     if (buf === '.route') {
       if (!target) return
-      const flight = target.unit?.groupID != null
-        ? useAbmMissionStore.getState().flights.find(f => f.groupId === target.unit.groupID)
+      const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit)
+      const flight = groupId != null
+        ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
         : null
       const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
       if (flight && ownSide) {

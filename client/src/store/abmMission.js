@@ -13,6 +13,7 @@
 // one mission), so that word never described what this data actually is.
 
 import { create } from 'zustand'
+import { resolveCallsign, stripAcid } from '../utils/callsign.js'
 
 const SB_KEY = 'tracs.abm.mission'
 
@@ -34,7 +35,7 @@ function loadSaved() {
 
 const saved = loadSaved() ?? {}
 
-export const useAbmMissionStore = create((set) => ({
+export const useAbmMissionStore = create((set, get) => ({
   flights:         saved.flights         ?? [],
   importedAt:      saved.importedAt      ?? null,
   selectedGroupId: saved.selectedGroupId ?? null,
@@ -176,6 +177,28 @@ export const useAbmMissionStore = create((set) => ({
   }),
 
   clearRouteGroups: () => set({ routeGroupIds: [] }),
+
+  // Live-unit-to-flight correlation. Olympus's unit.groupID is already a
+  // real numeric DCS group ID (decoder.js) that matches flight.groupId
+  // directly. Tacview's unit.groupID is free text (the ACMI `Group`
+  // property — see tacviewCore.js), which can never equal a real numeric
+  // groupId, so for that case this falls back to per-unit correlation
+  // instead: NOT via unit.unitID (confirmed 2026-09-06 to have zero
+  // relationship to the mission file's unitId for statically-placed/AI
+  // units — Tacview assigns its own object IDs from an internal enumeration
+  // counter; see utils/callsign.js's buildLiveUnitLookup for the full
+  // account and the real data that disproved the unitID approach), but via
+  // normalized-callsign text matching, which does reliably correlate. Works
+  // for any unit that existed in the original mission file; a unit spawned
+  // only at runtime (never in the .miz) has no match either way, same as it
+  // would for Olympus.
+  resolveGroupIdForUnit: (unit) => {
+    if (typeof unit?.groupID === 'number') return unit.groupID
+    const liveCallsign = resolveCallsign(unit)
+    if (!liveCallsign) return null
+    const match = get().flights.find((f) => f.units?.some((u) => stripAcid(u.callsign ?? '') === liveCallsign))
+    return match?.groupId ?? null
+  },
 }))
 
 // ── Cross-window sync (main window + undocked ATO/FRAG popups) ─────────────

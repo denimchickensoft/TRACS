@@ -1,0 +1,406 @@
+'use strict'
+
+// ACMI (Tacview Real-Time Telemetry) parsing/mapping core, used by
+// server/src/tacview.js (direct-mode connection). Pure parsing/mapping, no
+// socket I/O.
+//
+// relay/tacview.js (the relay-hosted connection mode) needs the identical
+// parsing logic, but relay/ is a genuinely standalone-packaged app (its own
+// package.json, no cross-directory requires anywhere in it) — so it can't
+// require this file directly without breaking standalone deployment.
+// relay/tacviewCore.js is therefore a deliberate duplicate of this file, not
+// a shared import; keep them in sync by hand. This mirrors the project's
+// existing posture for transponders.js/srs.js, which also produce a parallel
+// shape without sharing a literal file. If this drifts out of sync often
+// enough to be painful, revisit — a small shared npm package or a build-time
+// copy step would be the fix, neither of which exists elsewhere in this repo
+// today.
+//
+// See resources/specs/data-sources/custom-datasource-tacview-spec.md for the
+// full protocol research this implements (§1 handshake/format, §2.1
+// reference-offset, §4.1 unitId correlation, §7 detection — handled by a
+// separate module, tacviewDetection.js, not here).
+
+// unitId = tacviewObjectId + 0xFFFFFF — confirmed live 2026-09-06 against 34
+// real aircraft (custom-datasource-tacview-spec.md §4.1). Normalizing here
+// means server/src/srs.js's existing merge-by-unitId logic works unchanged
+// for Tacview-sourced units — no new SRS-correlation code needed anywhere.
+const UNIT_ID_OFFSET = 0xFFFFFF
+
+// Confirmed absolute-ish coalition value (§2/§3 correction: map from Color,
+// not the viewer-relative Coalition property). Anything not Blue/Red is
+// treated as neutral (0) — the official Color enum doesn't even list `Grey`,
+// which DCS uses for neutral in practice, so unknown values must not error.
+const COLOR_TO_COALITION = { Blue: 2, Red: 1 }
+
+// T= syntax field maps — index into a fixed 9-slot
+// [lon, lat, alt, roll, pitch, yaw, u, v, heading] array. Which map applies
+// is inferred from how many pipe-separated segments a given line's T= value
+// has (confirmed consistent per-object for its lifetime).
+const SYNTAX_SLOTS = {
+  3: [0, 1, 2],
+  5: [0, 1, 2, 6, 7],
+  6: [0, 1, 2, 3, 4, 5],
+  9: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+}
+
+const NUMERIC_PROPS = new Set(['AGL', 'Health', 'IAS', 'CAS', 'TAS', 'HDM', 'Importance'])
+
+const HEX_ID_RE = /^[0-9a-fA-F]+$/
+
+const EARTH_RADIUS_M = 6371008.8
+
+// Great-circle distance (metres) between two tParts-space lat/lng pairs. Both
+// points share the same additive ReferenceLatitude/ReferenceLongitude offset
+// (§2.1), which cancels out in a distance calculation, so raw tParts values
+// (never offset-adjusted) are fine to use directly here.
+function distanceM(lat1, lon1, lat2, lon2) {
+  const toRad = (d) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+function classify(typeTag) {
+  if (!typeTag) return null
+  const tags = typeTag.split('+')
+  if (tags.includes('Bullseye')) return 'bullseye'
+  // Static scenery (Building/Aerodrome/etc.) — confirmed present but not
+  // consumed by any current TRACS feature from either source (§6.2).
+  if (tags.includes('Static')) return null
+  if (tags.includes('Air')) return tags.includes('Rotorcraft') ? 'Helicopter' : 'Aircraft'
+  if (tags.includes('Ground')) return 'GroundUnit'
+  if (tags.includes('Sea')) return 'NavyUnit'
+  return null // Weapon/Sensor/Misc/non-bullseye Navaid — not real units
+}
+
+// ACMI properties are comma-separated; text values may contain
+// backslash-escaped commas (e.g. `Briefing=Text\, more text`), so split only
+// on unescaped commas.
+function splitProps(rest) {
+  const parts = []
+  let current = ''
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === '\\' && rest[i + 1] === ',') { current += ','; i++; continue }
+    if (rest[i] === ',') { parts.push(current); current = ''; continue }
+    current += rest[i]
+  }
+  if (current) parts.push(current)
+
+  return parts.map((part) => {
+    const eq = part.indexOf('=')
+    if (eq === -1) return { key: part, value: '' }
+    return { key: part.slice(0, eq), value: part.slice(eq + 1) }
+  })
+}
+
+function coercePropValue(key, value) {
+  if (!NUMERIC_PROPS.has(key)) return value
+  const n = parseFloat(value)
+  return Number.isNaN(n) ? undefined : n
+}
+
+// Minimum ACMI stream time (seconds, per the `#<offset>` frame markers, NOT
+// wall-clock) between two position samples before groundspeed is recomputed.
+// Using stream time rather than Date.now() is load-bearing, not cosmetic —
+// multiple ACMI frames can arrive in a single TCP chunk (network/processing
+// jitter), which would otherwise timestamp two real, seconds-apart position
+// samples only milliseconds apart by wall-clock and divide by a near-zero
+// delta, producing wildly inflated speeds (confirmed live, 2026-09-06).
+// Widened from 1 to 3, 2026-09-06: at 1s, a steady real aircraft's displayed
+// speed visibly hovered between two adjacent tens-of-knots values — the
+// window's actual length varies (~1.0-1.1s, tied to the ~9Hz frame cadence,
+// not exactly 1.000s), and real flight isn't perfectly constant at that
+// timescale (physics-tick numerics, autopilot/trim micro-corrections), so a
+// short window is sensitive to a beat/aliasing pattern against that
+// micro-variation. A longer window averages more of it out, the same role a
+// real instrument's needle damping plays — trades responsiveness (the
+// computed value itself only changes roughly every 3s now, though it still
+// gets rebroadcast at the existing ~1Hz cadence in between) for a steadier
+// displayed value.
+const SPEED_SAMPLE_INTERVAL_S = 3
+
+// ≈100ft — matches abmScopeHelpers.js's AGL_FLOOR_M, the existing
+// ground-contact-suppression threshold. Used to derive `airborne` (see
+// buildCanonicalUnit) since Tacview has no OnGround-equivalent signal.
+const AIRBORNE_AGL_THRESHOLD_M = 30
+
+// One parser instance per live connection — holds per-object delta/frame
+// state (ACMI lines only carry properties changed since that object's last
+// frame) and the global reference-point offset.
+function createParser() {
+  const objects = new Map() // rawHexId → { tParts, props, category, emitted }
+  let refLon = 0
+  let refLat = 0
+  let currentTime = 0 // most recent `#<offset>` frame marker — ACMI's own relative clock
+  // The mission's actual simulated date/time (UTC — confirmed by the real
+  // wire's trailing 'Z', e.g. "2011-06-25T09:30:01Z"), NOT RecordingTime
+  // (real-world wall-clock time the connection happened, unrelated). Set
+  // once from the global object; `currentTime` seconds past it gives the
+  // live current mission moment — see getCurrentMissionUtcMs().
+  let referenceTimeMs = null
+  const bullseyes = {} // 'blue' | 'red' | 'neutral' → { coalition, latitude, longitude }
+
+  function updateTParts(obj, rawT) {
+    const segs = rawT.split('|')
+    const slots = SYNTAX_SLOTS[segs.length] ?? SYNTAX_SLOTS[9]
+    if (!obj.tParts) obj.tParts = new Array(9).fill(null)
+    segs.forEach((seg, i) => {
+      if (seg === '') return // unchanged — keep prior value
+      const slot = slots[i]
+      if (slot === undefined) return
+      const n = parseFloat(seg)
+      if (!Number.isNaN(n)) obj.tParts[slot] = n
+    })
+  }
+
+  // unitID: an INLINE property on the unit object, separate from the outer
+  // map key — Olympus's decoder.js sets both (decoder.js:236), and real
+  // client code reads unit.unitID directly (ABM's AddAtoFlight.jsx/Ato.jsx/
+  // Frag.jsx carrier correlation, STARS' formations.js tiebreaker). This was
+  // never set here at all, silently breaking carrier/ATO correlation for
+  // every Tacview-sourced unit — found 2026-09-06 during a full audit against
+  // Olympus's decoder, not caught by the original per-field spec pass.
+  function buildCanonicalUnit(obj, unitID) {
+    const unit = { unitID }
+    const p = obj.props
+    if (p.Name !== undefined) unit.name = p.Name
+    if (p.Pilot !== undefined) unit.unitName = p.Pilot
+    if (p.CallSign !== undefined) unit.callsign = p.CallSign
+    // `Group` is free text (e.g. "Iran Mig-29 1"), not a numeric ID — real
+    // captured evidence confirms flight-mates DO share the same string
+    // (custom-datasource-tacview-spec.md §2), so it correctly identifies
+    // formations for STARS' formations.js (a plain Map key, string works
+    // identically to a number). It will never equal ABM's real numeric
+    // mission-group IDs (AddAtoFlight.jsx/Ato.jsx/Frag.jsx's `===` matches
+    // against .miz-derived groupId), so that correlation stays unavailable —
+    // safely, since a string can never strictly-equal a number, not a
+    // regression risk.
+    if (p.Group !== undefined) unit.groupID = p.Group
+    if (p.Color !== undefined) unit.coalition = COLOR_TO_COALITION[p.Color] ?? 0
+    if (p.AGL !== undefined) {
+      unit.agl = p.AGL
+      // Olympus's `airborne` is a genuine boolean DCS reports directly
+      // (decoder.js:289) — never set here at all, which silently broke
+      // ABM's Ato.jsx/Frag.jsx status column (`lu.airborne ? 'AIR' :
+      // groundState(...)`, always falling through to groundState() for
+      // every Tacview unit, which only distinguishes TAXI/GROUND by speed —
+      // a fast airborne jet reads as "moving fast on the ground" = TAXI).
+      // ACMI's documented `OnGround` property would be the direct
+      // equivalent, but — same pattern as `Squawk`/`Registration`/
+      // `CallSign` — DCS's exporter doesn't populate it (zero occurrences
+      // in the real capture), so this derives it from AGL instead, same
+      // threshold already used for ground-contact suppression elsewhere
+      // (abmScopeHelpers.js's AGL_FLOOR_M).
+      unit.airborne = p.AGL > AIRBORNE_AGL_THRESHOLD_M
+    }
+    if (p.Health !== undefined) unit.health = p.Health
+    // `unit.speed` is contractually metres/second, matching Olympus (see
+    // client/src/modules/atc/stars/DatablockOverlay.jsx's fmtSpd(mps) and its
+    // M_PER_S_TO_KNOTS conversion) — NOT knots. An earlier version of this
+    // stored knots directly, which fmtSpd then converted *again*, inflating
+    // the displayed speed by ~1.94x (confirmed live, 2026-09-06: a real
+    // 474kt aircraft displayed near STARS' 990kt display cap).
+    if (obj.groundSpeedMps !== undefined) unit.speed = obj.groundSpeedMps
+    if (obj.category) unit.category = obj.category
+
+    const t = obj.tParts
+    if (t && t[0] !== null && t[1] !== null) {
+      unit.position = { lat: refLat + t[1], lng: refLon + t[0], alt: t[2] ?? 0 }
+    }
+    // Heading is not fully resolved (custom-datasource-tacview-spec.md §3/§5
+    // item 2) — prefer the T= trailing Heading field (Syntax #4), fall back
+    // to HDM, then raw yaw as a last resort.
+    const heading = t?.[8] ?? (p.HDM !== undefined ? p.HDM : t?.[5])
+    if (heading !== undefined && heading !== null) unit.heading = heading
+
+    return unit
+  }
+
+  function bullseyeColorName(color) {
+    const c = COLOR_TO_COALITION[color]
+    if (c === 2) return 'blue'
+    if (c === 1) return 'red'
+    return 'neutral'
+  }
+
+  // Parses one chunk of raw ACMI text (may contain any number of complete or
+  // partial lines — callers are expected to buffer until a newline boundary;
+  // see tacview.js's line-buffering wrapper). Returns:
+  //   updated    — { [unitId]: partialUnit } for state.js's applyDelta
+  //   removed    — [unitId, ...]
+  //   bullseyes  — { bullseyes: {...} } (Login.jsx/AicScope.jsx shape) or null
+  //   positions  — [{lat,lng}, ...] every real unit position seen this chunk,
+  //                for theatre bbox-vote sampling (tacview.js's job to use)
+  function parseLines(lines) {
+    const updated = {}
+    const removed = []
+    const positions = []
+
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/\r$/, '')
+      if (!line || line.startsWith('//')) continue
+
+      if (line[0] === '#') {
+        const t = parseFloat(line.slice(1))
+        if (!Number.isNaN(t)) currentTime = t
+        continue
+      }
+
+      if (line[0] === '-') {
+        const rawId = line.slice(1).trim()
+        const obj = objects.get(rawId)
+        if (obj?.emitted) removed.push(String(parseInt(rawId, 16) + UNIT_ID_OFFSET))
+        objects.delete(rawId)
+        continue
+      }
+
+      const commaIdx = line.indexOf(',')
+      const rawId = commaIdx === -1 ? line : line.slice(0, commaIdx)
+      if (!HEX_ID_RE.test(rawId)) continue // header lines (FileType=/FileVersion=) etc.
+      const rest = commaIdx === -1 ? '' : line.slice(commaIdx + 1)
+      const props = splitProps(rest)
+
+      if (rawId === '0') {
+        for (const prop of props) {
+          if (prop.key === 'ReferenceLongitude') refLon = parseFloat(prop.value) || 0
+          else if (prop.key === 'ReferenceLatitude') refLat = parseFloat(prop.value) || 0
+          else if (prop.key === 'ReferenceTime') {
+            const ms = Date.parse(prop.value)
+            if (!Number.isNaN(ms)) referenceTimeMs = ms
+          }
+        }
+        continue
+      }
+
+      let obj = objects.get(rawId)
+      if (!obj) {
+        obj = {
+          tParts: null, props: {}, category: null, emitted: false,
+          groundSpeedMps: undefined,
+          speedSampleLat: null, speedSampleLon: null, speedSampleTime: null,
+        }
+        objects.set(rawId, obj)
+      }
+
+      for (const prop of props) {
+        if (prop.key === 'T') {
+          // Groundspeed for EVERY object is derived from consecutive position
+          // samples, never read from a wire field — `IAS` (indicated airspeed,
+          // not groundspeed) is confirmed present only on whichever aircraft
+          // belongs to the DCS client hosting the export (custom-datasource-
+          // tacview-spec.md §5 item 2/9), an arbitrary aircraft from a
+          // controller's perspective, and using it just for that one aircraft
+          // while deriving for everyone else would be an inconsistent
+          // "airspeed vs. groundspeed" mix on the same field. Matches
+          // Olympus's own `speed` field, which is always groundspeed for
+          // every unit.
+          //
+          // Sampled over SPEED_SAMPLE_INTERVAL_S of ACMI stream time (not
+          // wall-clock — see that constant's comment for why), not every
+          // frame: the reference sample only advances once that much time
+          // has actually elapsed, so `groundSpeedMps` holds its last value
+          // in between rather than recomputing on every delta line.
+          updateTParts(obj, prop.value)
+          const newLat = obj.tParts?.[1]
+          const newLon = obj.tParts?.[0]
+          if (newLat != null && newLon != null) {
+            if (obj.speedSampleTime === null) {
+              obj.speedSampleLat = newLat
+              obj.speedSampleLon = newLon
+              obj.speedSampleTime = currentTime
+            } else {
+              const dt = currentTime - obj.speedSampleTime
+              if (dt >= SPEED_SAMPLE_INTERVAL_S) {
+                if (dt > 0) obj.groundSpeedMps = distanceM(obj.speedSampleLat, obj.speedSampleLon, newLat, newLon) / dt
+                obj.speedSampleLat = newLat
+                obj.speedSampleLon = newLon
+                obj.speedSampleTime = currentTime
+              }
+            }
+          }
+          continue
+        }
+        if (prop.key === 'Type') {
+          obj.category = classify(prop.value)
+          continue
+        }
+        const coerced = coercePropValue(prop.key, prop.value)
+        if (coerced !== undefined) obj.props[prop.key] = coerced
+      }
+
+      if (obj.category === 'bullseye') {
+        const t = obj.tParts
+        if (t && t[0] !== null && t[1] !== null) {
+          const coalition = bullseyeColorName(obj.props.Color)
+          bullseyes[coalition] = { coalition, latitude: refLat + t[1], longitude: refLon + t[0] }
+        }
+        continue
+      }
+
+      if (!obj.category) continue // weapon/sensor/static/etc. — not a tracked unit
+
+      const unitID = parseInt(rawId, 16) + UNIT_ID_OFFSET
+      const canonical = buildCanonicalUnit(obj, unitID)
+      if (canonical.position) positions.push(canonical.position)
+      updated[String(unitID)] = canonical
+      obj.emitted = true
+    }
+
+    const hasBullseyes = Object.keys(bullseyes).length > 0
+    return { updated, removed, bullseyes: hasBullseyes ? { bullseyes: { ...bullseyes } } : null, positions }
+  }
+
+  // The mission's live current simulated UTC moment (ms since epoch), or
+  // null if the wire hasn't sent a ReferenceTime yet (or ever — some
+  // exporters might omit it, though the real 2026-09-06 capture always
+  // included it). tacview.js calls this once, at theatre-finalization time,
+  // to synthesize the dateAndTime payload Login.jsx/useMissionClock expect.
+  function getCurrentMissionUtcMs() {
+    return referenceTimeMs === null ? null : referenceTimeMs + currentTime * 1000
+  }
+
+  return { parseLines, getCurrentMissionUtcMs }
+}
+
+// Standard CRC-32 (IEEE 802.3 / zlib polynomial 0xEDB88320, reflected,
+// init/xorout 0xFFFFFFFF) — NOT the CRC-64/WE the current public RTT
+// protocol docs describe. Confirmed live, 2026-09-06, against a real DCS
+// dedicated server with an RTT password set: CRC-64/WE (in every hex-string
+// framing tried: padded/unpadded, upper/lower, 0x-prefixed, decimal) was
+// rejected every time, while plain 32-bit CRC-32 of the UTF-16LE password
+// text, lowercase hex, was accepted immediately. This matches an
+// independently-found community note that DCS's bundled Tacview exporter
+// ("DCS2ACMI") still uses the older 32-bit CRC scheme Tacview's own
+// documentation says it falls back to for legacy exporters — the public
+// docs describe the *current* protocol, not what this exporter actually
+// implements. See custom-datasource-tacview-spec.md §1 for the full story.
+function crc32(bytes) {
+  let crc = 0xFFFFFFFF
+  for (const b of bytes) {
+    crc ^= b
+    for (let i = 0; i < 8; i++) {
+      crc = (crc & 1) ? (crc >>> 1) ^ 0xEDB88320 : (crc >>> 1)
+    }
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0
+}
+
+// Handshake password line — CRC-32 of the UTF-16 password text, or of the
+// UTF-16 string "0" when no password is set (mirroring the documented "hash
+// the UTF-16 string 0" convention for the no-password case, just with the
+// actually-correct algorithm). Hex-encoded, lowercase, zero-padded to 8
+// digits — confirmed accepted live; uppercase of the identical value was
+// confirmed REJECTED in the same test, so case is load-bearing, not cosmetic.
+function hashPassword(password) {
+  return crc32(Buffer.from(password || '0', 'utf16le')).toString(16).padStart(8, '0')
+}
+
+// Client handshake per §1 — three lines + password-hash line + null
+// terminator.
+function buildClientHandshake(clientName, password = '') {
+  return `XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n${clientName}\n${hashPassword(password)}\0`
+}
+
+module.exports = { createParser, buildClientHandshake, UNIT_ID_OFFSET }

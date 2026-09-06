@@ -354,7 +354,7 @@ function ConnectPhase({ onConnected }) {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Olympus coalition password"
+          placeholder="Coalition password (also used as Tacview RTT password, direct mode)"
           disabled={connecting}
         />
       </section>
@@ -378,8 +378,9 @@ function ConnectPhase({ onConnected }) {
 // ── Phase 2: Sign in to position ──────────────────────────────────────────────
 function PositionPhase({ onSignedIn }) {
   const {
-    airbases, mission,
+    airbases, mission, sourceType,
     setPosition, setFacility, setActiveModule, setPositionSet, setAicConfig, reset,
+    overrideTheatre,
     webrtcRejection, clearWebrtcRejection,
   } = useSessionStore()
   const { positionTypes, loadPositionTypes, registerController } = useControllersStore()
@@ -405,6 +406,33 @@ function PositionPhase({ onSignedIn }) {
   const [suggestedFreq,  setSuggestedFreq]  = useState(null)
   const [ctrList,        setCtrList]        = useState([])
   const [ctrLoading,     setCtrLoading]     = useState(false)
+
+  // Manual theatre override — Tacview-only (gated on sourceType below): it
+  // has no reliable auto-detected theatre signal at all
+  // (custom-datasource-tacview-spec.md §4.2), and even its majority-vote
+  // mitigation can never disambiguate MarianaIslands vs. MarianaIslandsWWII
+  // (identical bboxes). Olympus reports its own theatre directly and
+  // reliably, so this control would be pure clutter for that source — the
+  // whole reason this needs sourceType at all rather than always showing.
+  // theatreList is fetched once regardless of source (cheap, small); the
+  // sourceType gate below is what actually decides whether to show anything.
+  const [theatreList, setTheatreList] = useState([])
+  // Collapsed by default — a rare-use escape hatch, not a permanent control.
+  const [theatreOverrideOpen, setTheatreOverrideOpen] = useState(false)
+  // Tracks only "did I click Override this page-load" — not whether the
+  // server's current theatre came from an override versus a plain auto-vote
+  // (that distinction isn't tracked server-side, and doesn't need to be: a
+  // fresh page load always starts back at the plain "Override" control, and
+  // "Reset to auto-detect" only needs to undo what *this* session just did).
+  const [theatreOverridden, setTheatreOverridden] = useState(false)
+  useEffect(() => {
+    const ac = new AbortController()
+    fetch('/api/navdata/theatres', { signal: ac.signal })
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data) => setTheatreList(data.theatres ?? []))
+      .catch((err) => { if (err?.name === 'AbortError') return })
+    return () => ac.abort()
+  }, [])
 
   // ── CATCC state ────────────────────────────────────────────────────
   const [selectedCarrierId, setSelectedCarrierId] = useState(
@@ -451,6 +479,20 @@ function PositionPhase({ onSignedIn }) {
 
   const [runwayBaseNames, setRunwayBaseNames] = useState(null)
 
+  // Synthetic airbases fallback — Tacview has no live airbases feed at all
+  // (DCS's exporter emits no Aerodrome objects, confirmed in
+  // custom-datasource-tacview-spec.md §6.0), so `airbases` from the live WS
+  // feed never arrives and the facility picker below would otherwise be
+  // stuck on "Waiting for data…" forever for a Tacview-sourced connection.
+  // Built from the same runways/<theatre>.json already fetched just below
+  // for the helipad filter — position is the mean of each airbase's runway
+  // reference points, same derivation `buildMvaMap.js`'s buildRunwayIndex()
+  // already uses server-side for the same file. No live coalition-ownership
+  // data exists for this source, so every entry is unowned (`coalition:
+  // null`) — the facility picker itself doesn't filter by coalition, so this
+  // only affects ownership-tinted rendering elsewhere, not selection.
+  const [staticAirbaseFallback, setStaticAirbaseFallback] = useState(null)
+
   // Load position types + ICAO mapping
   useEffect(() => {
     loadPositionTypes()
@@ -475,6 +517,20 @@ function PositionPhase({ onSignedIn }) {
             .map((ab) => ab.airbase.toLowerCase())
         )
         setRunwayBaseNames(names)
+
+        const fallback = {}
+        for (const ab of data.airbases ?? []) {
+          let sumLat = 0, sumLon = 0, n = 0
+          for (const rw of Array.isArray(ab.runways) ? ab.runways : []) {
+            let lat = rw.lat, lon = rw.lon
+            if (lat == null && rw.end1 && rw.end2) { lat = (rw.end1.lat + rw.end2.lat) / 2; lon = (rw.end1.lon + rw.end2.lon) / 2 }
+            if (lat == null || lon == null) continue
+            sumLat += lat; sumLon += lon; n++
+          }
+          if (!n) continue
+          fallback[ab.airbase] = { callsign: ab.airbase, latitude: sumLat / n, longitude: sumLon / n, coalition: null, unitId: null }
+        }
+        setStaticAirbaseFallback({ airbases: fallback })
       })
       .catch(() => {})
     return () => ac.abort()
@@ -495,10 +551,15 @@ function PositionPhase({ onSignedIn }) {
   // Skip the first run of the CTR-toggle clear so restored CTR facilityId isn't wiped on mount
   const isCtrMountRef = useRef(true)
 
+  // Live feed takes priority the moment it arrives; the static fallback only
+  // covers the source-has-no-airbases-feed-at-all case (Tacview) and the
+  // brief window before a real feed (Olympus) lands.
+  const effectiveAirbases = airbases ?? staticAirbaseFallback
+
   // Normalise Olympus airbases into a flat list, deduplicating by name.
   // When runway data is loaded, filter out helicopter pads and FOBs (no runway geometry).
   const airbaseList = useMemo(() => {
-    const raw  = airbases?.airbases ?? airbases ?? {}
+    const raw  = effectiveAirbases?.airbases ?? effectiveAirbases ?? {}
     const seen = new Set()
     return Object.values(raw)
       .filter((ab) => ab.latitude && ab.longitude)
@@ -518,10 +579,10 @@ function PositionPhase({ onSignedIn }) {
         return true
       })
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [airbases, runwayBaseNames])
+  }, [effectiveAirbases, runwayBaseNames])
 
   const landBases        = airbaseList.filter((ab) => !ab.isCarrier)
-  const airbasesReceived = airbases !== null
+  const airbasesReceived = effectiveAirbases !== null
   const airbasesLoaded   = airbaseList.length > 0
 
   // CATCC: carriers derived from units store, not airbases — NavyUnits in the carrier table only.
@@ -878,6 +939,73 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
         </div>
       </section>
 
+      {/* ── Theatre override (Tacview only — Olympus reports its own theatre
+           directly, no ambiguity to override) ────────────────────────── */}
+      {sourceType === 'tacview' && theatreList.length > 0 && (
+        <section>
+          <label>
+            Theatre {mission?.mission?.theatre
+              ? `(${theatreOverridden ? 'overridden' : 'detected'}: ${mission.mission.theatre})`
+              : '(detecting…)'}
+            {theatreOverridden ? (
+              <button
+                type="button"
+                className="theatre-override-toggle"
+                onClick={() => {
+                  setTheatreOverridden(false)
+                  overrideTheatre(null)
+                  fetch('/api/tacview/theatre-reset', { method: 'POST' }).catch(() => {})
+                }}
+                disabled={signingIn}
+              >
+                ⟲ Reset to auto-detect
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="theatre-override-toggle"
+                onClick={() => setTheatreOverrideOpen((o) => !o)}
+                disabled={signingIn}
+              >
+                {theatreOverrideOpen ? '▾' : '▸'} Override
+              </button>
+            )}
+          </label>
+          {theatreOverrideOpen && !theatreOverridden && (
+            <select
+              className="facility-input"
+              value=""
+              onChange={(e) => {
+                const theatre = e.target.value
+                if (theatre) {
+                  // Local patch for immediate feedback (label text, airbase
+                  // re-fetch effect below) — but the server is the one with
+                  // the live theatreDecided/theatreTimer state, and its own
+                  // pending auto-vote result would otherwise clobber this
+                  // choice a few seconds later (THEATRE_VOTE_WINDOW_MS in
+                  // tacview.js/tacviewRelayClient.js). This POST is what
+                  // actually latches the override server-side and stops that.
+                  overrideTheatre(theatre)
+                  setTheatreOverrideOpen(false)
+                  setTheatreOverridden(true)
+                  fetch('/api/tacview/theatre-override', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ theatre }),
+                  }).catch(() => {})
+                }
+              }}
+              disabled={signingIn}
+            >
+              <option value="">— Override only if detected theatre is wrong —</option>
+              {theatreList.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          )}
+        </section>
+      )}
+
       {/* ── ATC ──────────────────────────────────────────────────────── */}
       {selectedModule === MODULE.ATC && (
         <>
@@ -909,7 +1037,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
                   />
                 )
               ) : !airbasesReceived ? (
-                <div className="login-loading">Waiting for Olympus data…</div>
+                <div className="login-loading">Waiting for data…</div>
               ) : !airbasesLoaded ? (
                 <div className="login-loading">{mission?.mission?.theatre ? `No airbases for theatre: ${mission.mission.theatre}` : 'Waiting for mission data…'}</div>
               ) : (

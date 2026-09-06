@@ -1,58 +1,72 @@
 {
   "Caucasus": {
     "folder": "caucasus",
-    "bbox": [33.0, 40.0, 50.0, 47.0]
+    "bbox": [33.0, 40.0, 50.0, 47.0],
+    "utcOffset": 4
   },
   "PersianGulf": {
     "folder": "persian_gulf",
-    "bbox": [46.0, 20.0, 65.0, 33.0]
+    "bbox": [46.0, 20.0, 65.0, 33.0],
+    "utcOffset": 4,
+    "tacviewRealUtcOffset": 3.5
   },
   "Syria": {
     "folder": "syria",
-    "bbox": [28.0, 30.0, 42.0, 39.0]
+    "bbox": [28.0, 30.0, 42.0, 39.0],
+    "utcOffset": 3
   },
   "MarianaIslands": {
     "folder": "marianas",
-    "bbox": [140.0, 12.0, 148.0, 22.0]
+    "bbox": [140.0, 12.0, 148.0, 22.0],
+    "utcOffset": 10
   },
   "MarianaIslandsWWII": {
     "folder": "marianas_wwii",
     "bbox": [140.0, 12.0, 148.0, 22.0],
-    "terrainsFolder": "MarianasWWII"
+    "terrainsFolder": "MarianasWWII",
+    "utcOffset": 10
   },
   "Nevada": {
     "folder": "nevada",
-    "bbox": [-120.0, 34.0, -112.0, 40.0]
+    "bbox": [-120.0, 34.0, -112.0, 40.0],
+    "utcOffset": -8
   },
   "SouthAtlantic": {
     "folder": "south_atlantic",
     "bbox": [-74.0, -56.0, -55.0, -45.0],
-    "terrainsFolder": "Falklands"
+    "terrainsFolder": "Falklands",
+    "utcOffset": -3
   },
   "Sinai": {
     "folder": "sinai",
     "bbox": [28.0, 25.0, 40.0, 35.0],
-    "runwayKey": "SinaiMap"
+    "runwayKey": "SinaiMap",
+    "utcOffset": 2
   },
   "Kola": {
     "folder": "kola",
-    "bbox": [12.0, 63.0, 41.0, 73.0]
+    "bbox": [12.0, 63.0, 41.0, 73.0],
+    "utcOffset": 3
   },
   "Iraq": {
     "folder": "iraq",
-    "bbox": [38.0, 25.0, 53.0, 38.0]
+    "bbox": [38.0, 25.0, 53.0, 38.0],
+    "utcOffset": 0
   },
   "Afghanistan": {
     "folder": "afghanistan",
-    "bbox": [60.0, 23.0, 75.0, 39.0]
+    "bbox": [60.0, 23.0, 75.0, 39.0],
+    "utcOffset": 0
   },
   "Germany": {
     "folder": "germany",
     "bbox": [5.0, 46.0, 20.0, 57.0],
-    "terrainsFolder": "GermanyColdWar"
+    "terrainsFolder": "GermanyColdWar",
+    "utcOffset": 2
   },
   "Normandy": {
     "folder": "normandy",
-    "bbox": [-6.0, 47.0, 4.0, 53.0]
+    "bbox": [-6.0, 47.0, 4.0, 53.0],
+    "utcOffset": 0
   }
 }

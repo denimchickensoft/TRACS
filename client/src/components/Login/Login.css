@@ -222,6 +222,21 @@
   color: var(--error);
 }
 
+.theatre-override-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  margin-left: 6px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.theatre-override-toggle:hover {
+  color: var(--accent);
+}
+
 .profile-delete-confirm {
   display: flex;
   align-items: center;

@@ -18,6 +18,52 @@ function theatreFolder(theatre) {
   return loadTheatres()[theatre]?.folder ?? null
 }
 
+// Fixed per-terrain offset from DCS's own INTERNAL Zulu clock to theatre-local
+// time — mirrors client/src/utils/theatreTime.js's THEATRE_UTC_OFFSETS
+// (same values, kept in sync by hand). This is what toUtcDateTime() uses to
+// recover DCS-internal Zulu from a theatre-local dateAndTime reading — valid
+// for Olympus's dateAndTime (already expressed in DCS's own internal clock)
+// and, downstream, for Tacview's synthesized dateAndTime too, ONCE it's
+// already in theatre-local form. Do NOT use this to convert Tacview's raw
+// ReferenceTime into local — that's a different, real-world-anchored clock;
+// see theatreTacviewRealUtcOffset() for that leg.
+function theatreUtcOffset(theatre) {
+  return loadTheatres()[theatre]?.utcOffset ?? 0
+}
+
+// Fixed per-terrain offset from REAL-WORLD UTC (Tacview's `ReferenceTime`,
+// confirmed live to be true calendar UTC, e.g. "2011-06-25T09:30:01Z") to
+// theatre-local time — a genuinely different constant from theatreUtcOffset()
+// above, discovered 2026-09-06 via a live DCS-clock-vs-Tacview cross-check on
+// PersianGulf (real UTC → local needed +3.5, not the existing table's +4,
+// which is correct only for the separate DCS-internal-Zulu → local leg).
+// DCS's own internal mission clock is evidently skewed from real-world UTC by
+// its own fixed amount, independent of the terrain's local-time offset — a
+// real, non-obvious quirk, not a bug in either constant. Only PersianGulf has
+// been empirically verified; every other theatre falls back to its regular
+// utcOffset, which is an unverified assumption (the two constants happening
+// to match), not a confirmed value — expect other theatres to need their own
+// real correction once live-tested with Tacview.
+function theatreTacviewRealUtcOffset(theatre) {
+  const cfg = loadTheatres()[theatre]
+  return cfg?.tacviewRealUtcOffset ?? cfg?.utcOffset ?? 0
+}
+
+// bbox format [minLon, minLat, maxLon, maxLat], same convention as
+// extract-navdata.js's inBbox and the other build scripts that duplicate it.
+// Returns every theatre whose bbox contains the point — usually one, more in
+// an overlap zone (Syria/Sinai/Iraq, PersianGulf/Iraq/Afghanistan). Used by
+// tacview.js's majority-vote theatre detection — see
+// resources/specs/data-sources/custom-datasource-tacview-spec.md §4.2.
+function theatresContaining(lat, lng) {
+  const names = []
+  for (const [name, cfg] of Object.entries(loadTheatres())) {
+    const [minLon, minLat, maxLon, maxLat] = cfg.bbox ?? []
+    if (lng >= minLon && lng <= maxLon && lat >= minLat && lat <= maxLat) names.push(name)
+  }
+  return names
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -58,6 +104,16 @@ function handleStatus(req, res) {
     ready:   _ready,
     builtAt: _manifest?.builtAt ?? null,
   })
+}
+
+// GET /api/navdata/theatres — every known theatre name, for the manual
+// theatre-override control (Login.jsx). Needed regardless of which primary
+// source is active: Tacview has no reliable auto-detected theatre signal at
+// all (custom-datasource-tacview-spec.md §4.2), and even the majority-vote
+// mitigation can never disambiguate MarianaIslands/MarianaIslandsWWII, whose
+// bboxes are identical.
+function handleTheatres(req, res) {
+  res.json({ theatres: Object.keys(loadTheatres()) })
 }
 
 function handleAirspace(req, res) {
@@ -237,6 +293,10 @@ function handleMva(req, res) {
 module.exports = {
   init,
   theatreFolder,
+  theatreUtcOffset,
+  theatreTacviewRealUtcOffset,
+  theatresContaining,
+  handleTheatres,
   handleStatus,
   handleAirspace,
   handleFixes,

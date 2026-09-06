@@ -3,7 +3,7 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
-import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
+import { resolveCallsign, matchLiveByPrefix, buildLiveUnitLookup } from '../../utils/callsign.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 import { getOrdnanceName, preloadOrdnanceDb } from '../../utils/ordnance.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
@@ -102,25 +102,24 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   const setTaskOverride = useAbmMissionStore(s => s.setTaskOverride)
   const liveUnits = useUnitsStore(s => s.units)
 
-  // Mission-file unit -> live Olympus unit, matched on DCS's own numeric
-  // unit ID (mission file's unitId === live unit's unitID). Lets the roster
+  // Mission-file unit -> live track. See utils/callsign.js's
+  // buildLiveUnitLookup for the two-tier strategy (numeric unitId for
+  // Olympus, normalized-callsign text for Tacview — confirmed 2026-09-06
+  // that Tacview's unitID has no relationship to the mission file's unitId
+  // for AI-placed units, so the numeric-only version of this lookup this
+  // used to be silently failed for every Tacview session). Lets the roster
   // show how TRACS is actually resolving each aircraft's callsign right
   // next to what the mission designer named it.
+  const findLiveUnit = useMemo(() => buildLiveUnitLookup(liveUnits), [liveUnits])
+
+  // Raw numeric-only map, kept only for the carrier lookup below — a bare
+  // carrierUnitId number has no callsign to fall back on, so that one case
+  // still can't be fixed the same way (a separate, not-yet-solved problem
+  // for Tacview-sourced carrier flights specifically).
   const liveByDcsId = useMemo(() => {
     const m = new Map()
     for (const u of Object.values(liveUnits)) {
       if (u.unitID != null) m.set(u.unitID, u)
-    }
-    return m
-  }, [liveUnits])
-
-  // Live unit -> its units-store key (the id drawAbmContacts/AbmScope key
-  // everything off of, e.g. highlightedIds) — separate from liveByDcsId
-  // above since that map's value is the unit object itself, not its key.
-  const keyByDcsId = useMemo(() => {
-    const m = new Map()
-    for (const [key, u] of Object.entries(liveUnits)) {
-      if (u.unitID != null) m.set(u.unitID, key)
     }
     return m
   }, [liveUnits])
@@ -283,17 +282,17 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                 // every live unit in the flight.
                 const liveLead  = flight.manual
                   ? (flightLiveMatches[0]?.unit ?? null)
-                  : (flight.units[0] ? liveByDcsId.get(flight.units[0].unitId) : null)
+                  : (flight.units[0] ? findLiveUnit(flight.units[0])?.unit ?? null : null)
                 const isReserve = flight.lateActivation && !(flight.manual
                   ? flightLiveMatches.length > 0
-                  : flight.units.some(u => liveByDcsId.get(u.unitId)))
+                  : flight.units.some(u => findLiveUnit(u)))
                 let statusLabel = 'ACTIVE'
                 if (isReserve) {
                   statusLabel = 'RESERVE'
                 } else if (liveLead) {
                   const liveUnitsForRollup = flight.manual
                     ? flightLiveMatches.map(m => m.unit)
-                    : flight.units.map(u => liveByDcsId.get(u.unitId)).filter(Boolean)
+                    : flight.units.map(u => findLiveUnit(u)?.unit).filter(Boolean)
                   let rollup = null
                   for (const lu of liveUnitsForRollup) {
                     const state = unitState(lu, flightIsCarrierBase, flightCarrierUnit)
@@ -341,8 +340,9 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                 <>
                   <div className="frag-section-label">ROSTER ({flight.units.length})</div>
                   {flight.units.map(u => {
-                    const liveUnit = liveByDcsId.get(u.unitId)
-                    const liveKey = keyByDcsId.get(u.unitId)
+                    const found = findLiveUnit(u)
+                    const liveUnit = found?.unit ?? null
+                    const liveKey = found?.key ?? null
                     const tracsCallsign = liveUnit ? resolveCallsign(liveUnit) : null
                     const findable = liveKey != null
                     const isBlinking = findable && blinkIds.includes(liveKey)

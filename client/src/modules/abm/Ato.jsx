@@ -3,7 +3,7 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
-import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
+import { resolveCallsign, matchLiveByPrefix, buildLiveUnitLookup } from '../../utils/callsign.js'
 import { parseFlightElement } from './canvas/drawAbmContacts.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
 import { computeAirbaseLabels } from '../../store/runways.js'
@@ -90,10 +90,15 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
   const sessionCoalition = useSessionStore(s => s.coalition)
   const liveUnits = useUnitsStore(s => s.units)
 
-  // Mission-file unit -> live Olympus unit, matched on DCS's own numeric
-  // unit ID — same pattern Frag.jsx's roster uses (liveByDcsId) — so
-  // CALLSIGN reflects TRACS's actual resolved callsign (rename overrides,
-  // useDcsNames pilot-name convention, etc.), not just the mission file's.
+  // Mission-file unit -> live track — same two-tier lookup Frag.jsx's roster
+  // uses (see utils/callsign.js's buildLiveUnitLookup) — so CALLSIGN
+  // reflects TRACS's actual resolved callsign (rename overrides, useDcsNames
+  // pilot-name convention, etc.), not just the mission file's.
+  const findLiveUnit = useMemo(() => buildLiveUnitLookup(liveUnits), [liveUnits])
+
+  // Raw numeric-only map, kept only for the carrier lookup below — see
+  // Frag.jsx's identical comment for why that one case can't use the
+  // callsign fallback.
   const liveByDcsId = useMemo(() => {
     const m = new Map()
     for (const u of Object.values(liveUnits)) {
@@ -172,7 +177,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
     const liveMatches = f.manual ? matchLiveByPrefix(f.callsignPrefix, liveUnits) : null
     const liveLead = f.manual
       ? (liveMatches[0]?.unit ?? null)
-      : (f.units[0] ? liveByDcsId.get(f.units[0].unitId) : null)
+      : (f.units[0] ? findLiveUnit(f.units[0])?.unit ?? null : null)
 
     // CALLSIGN is the flight's, not the lead aircraft's — drop the element
     // digit ("SHELL11" -> "SHELL1") via the same flight/element split
@@ -187,7 +192,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
     // ACTIVE, live or not (matches DCS's own lateActivation semantics).
     // Manual flights are never late-activation, so this is always live once
     // a callsign match is found.
-    const isLive = f.manual ? liveMatches.length > 0 : f.units.some(u => liveByDcsId.get(u.unitId))
+    const isLive = f.manual ? liveMatches.length > 0 : f.units.some(u => findLiveUnit(u))
 
     // Once the lead is live (CALLSIGN populated), ACTIVE is replaced by the
     // flight's actual air/ground picture — AIR beats TAXI beats GROUND
@@ -204,7 +209,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       const carrierUnit = isCarrierBase ? liveByDcsId.get(base.carrierUnitId) : null
       const liveUnitsForRollup = f.manual
         ? liveMatches.map(m => m.unit)
-        : f.units.map(u => liveByDcsId.get(u.unitId)).filter(Boolean)
+        : f.units.map(u => findLiveUnit(u)?.unit).filter(Boolean)
       let rollup = null
       for (const lu of liveUnitsForRollup) {
         const state = lu.airborne ? 'AIR' : groundState(lu, isCarrierBase, carrierUnit)
@@ -225,7 +230,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       isReserve: f.lateActivation && !isLive,
       statusLabel,
     }
-  }), [flights, icaoMap, liveByDcsId, liveUnits, taskOverrides])
+  }), [flights, icaoMap, liveByDcsId, findLiveUnit, liveUnits, taskOverrides])
 
   const sortedRows = useMemo(() => {
     if (!sortKey) return rows

@@ -4,7 +4,7 @@
 // events (unit deltas, mission/airbases/bullseyes updates, status) to all of
 // them. Also hydrates a newly-connected client with the current snapshot +
 // persisted state files.
-function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, serverInstanceId }) {
+function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRelayClient, serverInstanceId }) {
   const clients = new Set()
 
   wss.on('connection', (ws) => {
@@ -30,7 +30,7 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, serverInsta
 
     // Status — includes instanceId so clients can detect server restarts
     const sourceType = state.getSourceType()
-    const polling = sourceRegistry.get(sourceType)?.isPolling() ?? false
+    const polling = (sourceRegistry.get(sourceType)?.isPolling() ?? false) || tacviewRelayClient.isConnected()
     ws.send(JSON.stringify({ type: 'status', data: { polling, sourceType, instanceId: serverInstanceId } }))
 
     // Send persisted state files so the browser can hydrate after refresh.

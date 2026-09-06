@@ -509,7 +509,7 @@ export function FRAG_FIND({ captures, context }) {
   const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
   if (matches.length === 0) return 'NOT FOUND'
   if (matches.length > 1) return 'AMBIGUOUS'
-  const groupId = matches[0].unit?.groupID
+  const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(matches[0].unit)
   const flight = groupId != null
     ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
     : null
@@ -528,7 +528,7 @@ export function ROUTE_FIND({ captures, context }) {
   const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
   if (matches.length === 0) return 'NOT FOUND'
   if (matches.length > 1) return 'AMBIGUOUS'
-  const groupId = matches[0].unit?.groupID
+  const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(matches[0].unit)
   const flight = groupId != null
     ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
     : null

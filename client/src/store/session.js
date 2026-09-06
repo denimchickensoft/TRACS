@@ -20,6 +20,7 @@ export const useSessionStore = create((set) => ({
   relayUrl: '',   // SRS relay — optional, empty means none configured/reachable
   syncCapable: false,   // relay's /sync reachable + authenticated (checked in Login's ConnectPhase)
   connected: false,
+  sourceType: null,     // 'olympus' | 'tacview' — from the WS status broadcast, see ws/client.js
 
   // Position identity
   positionMode: POSITION_MODE.FREEFORM,
@@ -70,6 +71,8 @@ export const useSessionStore = create((set) => ({
 
   setConnected: (connected) => set({ connected }),
 
+  setSourceType: (sourceType) => set({ sourceType }),
+
   setSyncCapable: (syncCapable) => set({ syncCapable }),
 
   setPosition: ({ mode, name, config = null }) =>
@@ -92,6 +95,15 @@ export const useSessionStore = create((set) => ({
     set({ aicCallsign: callsign, aicUnitId: unitId, aicUnitName: unitName }),
 
   setMission:    (mission)    => set({ mission }),
+  // Manual theatre override — needed regardless of source, since Tacview has
+  // no reliable auto-detected theatre signal at all, and even its
+  // majority-vote mitigation can never disambiguate MarianaIslands vs.
+  // MarianaIslandsWWII (identical bboxes). Patches mission.mission.theatre
+  // in place so every consumer that already reads mission?.mission?.theatre
+  // sees the override with no other code changes.
+  overrideTheatre: (theatre) => set((s) => ({
+    mission: { ...s.mission, mission: { ...s.mission?.mission, theatre } },
+  })),
   setAirbases:   (airbases)   => set({ airbases }),
   setBullseyes:  (bullseyes)  => set({ bullseyes }),
 

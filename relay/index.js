@@ -15,6 +15,7 @@ const http = require('http')
 const { WebSocketServer } = require('ws')
 const { createTransponderRelay } = require('./transponders')
 const { createSyncRelay }        = require('./syncRelay')
+const { createTacviewRelay }     = require('./tacview')
 
 // config.json (gitignored — holds passwords) overrides env vars, which
 // override the built-in defaults. See config.example.json for the shape.
@@ -30,6 +31,17 @@ const fileConfig = loadConfig()
 const config = {
   srsLotatcPort: Number(fileConfig.srsLotatcPort ?? process.env.SRS_LOTATC_PORT ?? 10712),
   wsPort:        Number(fileConfig.wsPort ?? process.env.RELAY_WS_PORT ?? 8765),
+  // Tacview relay-hosted mode — optional. Left unset (both empty), the
+  // capability stays idle (see tacview.js's own guard) rather than trying to
+  // connect anywhere. Same posture as SRS: an operator opts in by setting
+  // both, defaulting the port to Tacview's own DCS-side default (42674).
+  tacviewHost: fileConfig.tacviewHost ?? process.env.TACVIEW_HOST ?? '',
+  tacviewPort: Number(fileConfig.tacviewPort ?? process.env.TACVIEW_PORT ?? 42674),
+  // Tacview RTT's own export password (its "Real-Time Telemetry password" in
+  // options.lua) — a relay-operator secret, since the relay is the only thing
+  // that ever connects out to the real DCS server in this mode. Distinct from
+  // `passwords` above (which gates browsers/backends connecting IN to this relay).
+  tacviewPassword: fileConfig.tacviewPassword ?? process.env.TACVIEW_PASSWORD ?? '',
   // Any one of these unlocks the relay — not coalition-scoped, since neither
   // transponder data nor room membership depend on which specific password
   // was used (room privacy for sync comes from the room ID being derived
@@ -41,6 +53,7 @@ const config = {
 const server = http.createServer()
 const transpondersWss = new WebSocketServer({ noServer: true })
 const syncWss          = new WebSocketServer({ noServer: true })
+const tacviewWss       = new WebSocketServer({ noServer: true })
 
 server.on('upgrade', (req, socket, head) => {
   const { pathname } = new URL(req.url, 'http://localhost')
@@ -48,6 +61,8 @@ server.on('upgrade', (req, socket, head) => {
     transpondersWss.handleUpgrade(req, socket, head, (ws) => transpondersWss.emit('connection', ws, req))
   } else if (pathname === '/sync') {
     syncWss.handleUpgrade(req, socket, head, (ws) => syncWss.emit('connection', ws, req))
+  } else if (pathname === '/tacview') {
+    tacviewWss.handleUpgrade(req, socket, head, (ws) => tacviewWss.emit('connection', ws, req))
   } else {
     socket.destroy()
   }
@@ -55,7 +70,8 @@ server.on('upgrade', (req, socket, head) => {
 
 createTransponderRelay(transpondersWss, config)
 createSyncRelay(syncWss, config)
+createTacviewRelay(tacviewWss, config)
 
 server.listen(config.wsPort, () => {
-  console.log(`[relay] listening on :${config.wsPort} (/transponders, /sync)`)
+  console.log(`[relay] listening on :${config.wsPort} (/transponders, /sync, /tacview)`)
 })
