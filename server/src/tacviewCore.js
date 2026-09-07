@@ -7,14 +7,15 @@
 // relay/tacview.js (the relay-hosted connection mode) needs the identical
 // parsing logic, but relay/ is a genuinely standalone-packaged app (its own
 // package.json, no cross-directory requires anywhere in it) — so it can't
-// require this file directly without breaking standalone deployment.
-// relay/tacviewCore.js is therefore a deliberate duplicate of this file, not
-// a shared import; keep them in sync by hand. This mirrors the project's
-// existing posture for transponders.js/srs.js, which also produce a parallel
-// shape without sharing a literal file. If this drifts out of sync often
-// enough to be painful, revisit — a small shared npm package or a build-time
-// copy step would be the fix, neither of which exists elsewhere in this repo
-// today.
+// require this file directly without breaking standalone deployment, and
+// can't join this repo's npm workspaces (packages/geo-math's mechanism)
+// without losing that same standalone-copy-anywhere deployment story.
+// relay/tacviewCore.js is instead a generated, verbatim copy of this file —
+// this file is canonical. After editing it, run `npm run sync:tacview-core`
+// (see scripts/sync-tacview-core.js); `npm run check:tacview-core` (wired
+// into `npm run lint`) fails if the two have drifted apart. This mirrors the
+// project's existing posture for transponders.js/srs.js, which also produce
+// a parallel shape without sharing a literal file.
 //
 // See resources/specs/data-sources/custom-datasource-tacview-spec.md for the
 // full protocol research this implements (§1 handshake/format, §2.1

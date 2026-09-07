@@ -11,8 +11,11 @@
     "dev": "concurrently -n server,client -c cyan,green \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
     "build": "npm run build --workspace=client",
     "start": "npm run start --workspace=server",
-    "lint": "eslint .",
-    "knip": "knip"
+    "lint": "eslint . && npm run check:tacview-core",
+    "knip": "knip",
+    "sync:tacview-core": "node scripts/sync-tacview-core.js",
+    "check:tacview-core": "node scripts/sync-tacview-core.js --check",
+    "postinstall": "git config core.hooksPath .githooks || exit 0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

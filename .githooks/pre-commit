@@ -1,0 +1,10 @@
+#!/bin/sh
+# Auto-regenerates relay/tacviewCore.js from server/src/tacviewCore.js before
+# every commit and stages the result -- makes it impossible to commit them
+# out of sync, rather than relying on anyone remembering to run the check.
+# See scripts/sync-tacview-core.js. Activated repo-wide via `core.hooksPath`
+# (root package.json's postinstall) rather than the default .git/hooks/,
+# which isn't tracked by git and wouldn't survive a fresh clone.
+
+node scripts/sync-tacview-core.js || exit 1
+git add relay/tacviewCore.js
