@@ -21,6 +21,15 @@
  *   <n> h <hdg>       — turn shortest direction to heading
  *   <n> s <spd>       — set speed in KTAS (e.g. "2 s 280")
  *   create <cs> [<type>] [<coal>] [H<hdg>] [S<spd>] [A<alt>]  — spawn unit (type defaults to FA-18C, coal defaults to BLU)
+ *   ident <n>              — squawk IDENT (blinks for a few seconds, then reverts to NORMAL)
+ *   stby <n>                — transponder to STANDBY/OFF (blanks the squawk code, same as real SRS)
+ *   norm <n>                — transponder to NORMAL (restores the unit's assigned squawk code)
+ *   squawk <code> <n>       — set unit <n>'s squawk code (4 octal digits, e.g. "squawk 2000 1")
+ *
+ * Also serves a relay-compatible `/transponders` WebSocket on the same port (any password
+ * accepted, matching the REST API) — point a real TRACS backend's "Relay Port" field at this
+ * same host:port to receive live squawk data for correlation/Beaconator/IDENT testing without
+ * a real SRS/relay/DCS session.
  */
 
 const http     = require('http')
@@ -28,8 +37,14 @@ const readline = require('readline')
 const fs       = require('fs')
 const path     = require('path')
 const { DI }   = require('../server/src/decoder.js')
+const { WebSocketServer } = require('ws')
 
 const PORT = 4001
+
+// ─── Transponder (synthetic SRS/IFF) constants ─────────────────────────────────
+
+const IFF_STATUS = { OFF: 0, NORMAL: 1, IDENT: 2 }
+const IDENT_DURATION_MS = 8000
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -176,6 +191,49 @@ const unitDefs = [
   },
 ]
 
+// ─── Synthetic transponder (SRS/IFF) state ─────────────────────────────────────
+// Aircraft only — mirrors real SRS: mode1/mode2 unused for civilian correlation,
+// mode3 is the 4-digit octal-style squawk (-1/blanked while OFF, same as real SRS
+// resetting `iff` to a blank Transponder on status OFF), mode4 unused, status is
+// 0 OFF / 1 NORMAL / 2 IDENT (see resources/specs/data-sources/
+// custom-datasource-srs-transponder-spec.md).
+
+function randomSquawk() {
+  return parseInt(Array.from({ length: 4 }, () => Math.floor(Math.random() * 8)).join(''), 10)
+}
+
+// The outgoing wire shape for a unit's transponder — squawk is remembered even
+// while OFF so `norm` can restore it, but the transponder object itself blanks
+// mode3 while OFF, matching real SRS's ServerState.cs behavior.
+function transponderOf(unit) {
+  if (unit.iffStatus === IFF_STATUS.OFF) {
+    return { mode1: -1, mode2: -1, mode3: -1, mode4: false, status: IFF_STATUS.OFF }
+  }
+  return { mode1: -1, mode2: -1, mode3: unit.squawk, mode4: false, status: unit.iffStatus }
+}
+
+// Relay-compatible `/transponders` WebSocket clients (wired up near the HTTP
+// server below) — same wire protocol as relay/transponders.js:
+// {type:'transponders', data:{unitId: {...}}}.
+const transponderClients = new Set()
+
+function buildTransponderSnapshot() {
+  const data = {}
+  for (const u of units.values()) {
+    if (u.category !== 'Aircraft') continue
+    data[String(u.id)] = transponderOf(u)
+  }
+  return data
+}
+
+function broadcastTransponders() {
+  if (transponderClients.size === 0) return
+  const payload = JSON.stringify({ type: 'transponders', data: buildTransponderSnapshot() })
+  for (const ws of transponderClients) {
+    if (ws.readyState === ws.OPEN) ws.send(payload)
+  }
+}
+
 // Add flight control state to each unit
 const units = new Map(unitDefs.map((u) => [u.id, {
   ...u,
@@ -184,6 +242,7 @@ const units = new Map(unitDefs.map((u) => [u.id, {
   targetHdg: null,   // radians, null = no turn commanded
   targetAlt: null,   // meters, null = no altitude commanded
   targetSpd: null,   // knots, null = no speed commanded
+  ...(u.category === 'Aircraft' ? { squawk: randomSquawk(), iffStatus: IFF_STATUS.NORMAL, identTimer: null } : {}),
 }]))
 
 let serverTime  = BigInt(Date.now())
@@ -383,11 +442,14 @@ function moveUnits() {
     }
   }
 
-  for (const id of toDelete) {
-    const u = units.get(id)
-    units.delete(id)
-    console.log(`\n  ${u?.unitName ?? id}: on deck — removed`)
-    rl.prompt()
+  if (toDelete.length) {
+    for (const id of toDelete) {
+      const u = units.get(id)
+      units.delete(id)
+      console.log(`\n  ${u?.unitName ?? id}: on deck — removed`)
+      rl.prompt()
+    }
+    broadcastTransponders()
   }
 
   serverTime = BigInt(now)
@@ -593,6 +655,13 @@ function unitStatus(unit) {
   return parts.length ? `  [${parts.join(', ')}]` : ''
 }
 
+function sqkStr(unit) {
+  if (unit.iffStatus === undefined) return ''
+  if (unit.iffStatus === IFF_STATUS.OFF) return 'SQK OFF '
+  const code = String(unit.squawk).padStart(4, '0')
+  return unit.iffStatus === IFF_STATUS.IDENT ? `SQK ${code}*` : `SQK ${code} `
+}
+
 function printList() {
   // Carriers
   for (const unit of units.values()) {
@@ -619,7 +688,8 @@ function printList() {
     const spd  = Math.round(u.spd).toString().padStart(3)
     const alt  = altFt(u).toString().padStart(6)
     const coal = u.coalition === 2 ? 'BLU' : u.coalition === 1 ? 'RED' : 'NEU'
-    console.log(`  ${num}  ${name}  ${type}  ${coal}  HDG ${hdg}  SPD ${spd}kt  ALT ${alt}ft${unitStatus(u)}`)
+    const sqk  = sqkStr(u).padEnd(9)
+    console.log(`  ${num}  ${name}  ${type}  ${coal}  ${sqk} HDG ${hdg}  SPD ${spd}kt  ALT ${alt}ft${unitStatus(u)}`)
   })
   console.log('')
 }
@@ -771,10 +841,12 @@ function cmdCreate(parts) {
     spd:       spdKts,
     contacts:  [],
     turnDir:   null, targetHdg: null, targetAlt: null, targetSpd: null,
+    squawk: randomSquawk(), iffStatus: IFF_STATUS.NORMAL, identTimer: null,
   })
 
   console.log(`  Created: ${callsign} (${typeName}) ${coalStr} HDG ${String(hdgDegNew).padStart(3,'0')} SPD ${spdKts}kt ALT ${altHundreds * 100}ft`)
   printList()
+  broadcastTransponders()
 }
 
 // ── theatre <name> ────────────────────────────────────────────────────────────
@@ -826,9 +898,11 @@ function cmdDelete(parts) {
     return
   }
   const unit = units.get(ids[idx])
+  clearTimeout(unit.identTimer)
   units.delete(ids[idx])
   console.log(`  Deleted: ${unit.unitName}`)
   printList()
+  broadcastTransponders()
 }
 
 // ── rename <n> <callsign> ─────────────────────────────────────────────────────
@@ -846,6 +920,70 @@ function cmdRename(parts) {
   unit.unitName = parts.slice(2).join(' ').toUpperCase()
   console.log(`  Renamed: ${oldName} → ${unit.unitName}`)
   printList()
+}
+
+// ── ident/stby/norm <n>, squawk <code> <n> — synthetic transponder control ───
+
+function resolveAircraft(idxStr) {
+  const ids = getAircraftIds()
+  const idx = parseInt(idxStr, 10) - 1
+  if (isNaN(idx) || idx < 0 || idx >= ids.length) return null
+  return units.get(ids[idx])
+}
+
+function cmdIdent(parts) {
+  const unit = resolveAircraft(parts[1])
+  if (!unit) { console.log(`  Unknown unit number: ${parts[1]}`); return }
+  if (unit.iffStatus === undefined) { console.log(`  ${unit.unitName}: no transponder`); return }
+
+  clearTimeout(unit.identTimer)
+  unit.iffStatus = IFF_STATUS.IDENT
+  console.log(`  ${unit.unitName}: IDENT (squawk ${String(unit.squawk).padStart(4, '0')})`)
+  broadcastTransponders()
+
+  unit.identTimer = setTimeout(() => {
+    if (unit.iffStatus !== IFF_STATUS.IDENT) return // manually changed during the hold — don't clobber
+    unit.iffStatus = IFF_STATUS.NORMAL
+    console.log(`\n  ${unit.unitName}: IDENT ended`)
+    broadcastTransponders()
+    rl.prompt()
+  }, IDENT_DURATION_MS)
+}
+
+function cmdStby(parts) {
+  const unit = resolveAircraft(parts[1])
+  if (!unit) { console.log(`  Unknown unit number: ${parts[1]}`); return }
+  if (unit.iffStatus === undefined) { console.log(`  ${unit.unitName}: no transponder`); return }
+
+  clearTimeout(unit.identTimer)
+  unit.iffStatus = IFF_STATUS.OFF
+  console.log(`  ${unit.unitName}: transponder STANDBY (squawk blanked)`)
+  broadcastTransponders()
+}
+
+function cmdNorm(parts) {
+  const unit = resolveAircraft(parts[1])
+  if (!unit) { console.log(`  Unknown unit number: ${parts[1]}`); return }
+  if (unit.iffStatus === undefined) { console.log(`  ${unit.unitName}: no transponder`); return }
+
+  clearTimeout(unit.identTimer)
+  unit.iffStatus = IFF_STATUS.NORMAL
+  console.log(`  ${unit.unitName}: transponder NORMAL (squawk ${String(unit.squawk).padStart(4, '0')})`)
+  broadcastTransponders()
+}
+
+function cmdSquawk(parts) {
+  if (!/^[0-7]{1,4}$/.test(parts[1] ?? '')) {
+    console.log('  Usage: squawk <code> <n>  — code is 1-4 octal digits (0-7), e.g. squawk 2000 1')
+    return
+  }
+  const unit = resolveAircraft(parts[2])
+  if (!unit) { console.log(`  Unknown unit number: ${parts[2]}`); return }
+  if (unit.iffStatus === undefined) { console.log(`  ${unit.unitName}: no transponder`); return }
+
+  unit.squawk = parseInt(parts[1], 10)
+  console.log(`  ${unit.unitName}: squawk set to ${String(unit.squawk).padStart(4, '0')}`)
+  broadcastTransponders()
 }
 
 // ── <n> par [at <nm>] [gs <°>] [spd <kt>] [dev <0-1>] ────────────────────────
@@ -1007,6 +1145,10 @@ function parseCommand(line) {
   if (first === 'theatre') { cmdTheatre(parts); return }
   if (first === 'delete')  { cmdDelete(parts);  return }
   if (first === 'rename')  { cmdRename(parts);  return }
+  if (first === 'ident')   { cmdIdent(parts);   return }
+  if (first === 'stby')    { cmdStby(parts);    return }
+  if (first === 'norm')    { cmdNorm(parts);    return }
+  if (first === 'squawk')  { cmdSquawk(parts);  return }
   if (first === 'brc')     { cmdBrc(parts);     return }
   if (first === 'fb')      { cmdFb(parts);      return }
   if (first === 'magvar')  { cmdMagvar(parts);  return }
@@ -1028,6 +1170,10 @@ function startConsole() {
   console.log('  create <cs> [<type>] [<coal>] [H S A]  e.g. create HORNET41 FA-18C BLU H210 S310 A250')
   console.log('  delete <n>                  remove a unit')
   console.log('  rename <n> <callsign>       rename a unit')
+  console.log('  ident <n>                   squawk IDENT (blinks a few seconds, then reverts to NORMAL)')
+  console.log('  stby <n>                    transponder to STANDBY/OFF (blanks squawk)')
+  console.log('  norm <n>                    transponder to NORMAL (restores squawk)')
+  console.log('  squawk <code> <n>           set squawk code (4 octal digits, e.g. squawk 2000 1)')
   console.log('  theatre [name]              show or set theatre (translates carrier + aircraft to default position)')
   console.log('  <n> par [at <nm>] [gs <°>] [spd <kt>] [dev <0-1>]   fly PAR to carrier (dev=0 perfect)')
   console.log('  <n> par rwy <lat> <lng> <hdg> [...]                  fly PAR to airfield')
@@ -1071,8 +1217,45 @@ const server = http.createServer((req, res) => {
   json(res, { error: 'Not found' }, 404)
 })
 
+// ─── Relay-compatible `/transponders` WebSocket ────────────────────────────────
+// Same wire protocol as relay/transponders.js (client sends {type:'auth',password},
+// server replies with a snapshot then pushes updates) — any password accepted,
+// same posture as the REST API above. Point a real TRACS backend's "Relay Port"
+// at this same host:port to test transponder correlation/Beaconator/IDENT without
+// a real SRS/relay/DCS session.
+const transpondersWss = new WebSocketServer({ noServer: true })
+
+server.on('upgrade', (req, socket, head) => {
+  const { pathname } = new URL(req.url, `http://localhost:${PORT}`)
+  if (pathname !== '/transponders') { socket.destroy(); return }
+  transpondersWss.handleUpgrade(req, socket, head, (ws) => transpondersWss.emit('connection', ws))
+})
+
+transpondersWss.on('connection', (ws) => {
+  ws.once('message', () => {
+    // Any auth message is accepted — mirrors the REST API's "any password accepted".
+    transponderClients.add(ws)
+    console.log(`\n[transponders] client authenticated (total: ${transponderClients.size})`)
+    rl?.prompt()
+    ws.send(JSON.stringify({ type: 'transponders', data: buildTransponderSnapshot() }))
+  })
+
+  ws.on('close', () => {
+    if (transponderClients.delete(ws)) {
+      console.log(`\n[transponders] client disconnected (total: ${transponderClients.size})`)
+      rl?.prompt()
+    }
+  })
+
+  ws.on('error', (err) => {
+    if (err.code === 'ECONNRESET') return
+    console.error('[transponders] client socket error:', err.message)
+  })
+})
+
 server.listen(PORT, () => {
   console.log(`Mock Olympus running on http://localhost:${PORT}`)
-  console.log(`Any password accepted\n`)
+  console.log(`Any password accepted`)
+  console.log(`Transponder relay (for correlation testing) at ws://localhost:${PORT}/transponders\n`)
   startConsole()
 })
