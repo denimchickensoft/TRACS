@@ -92,13 +92,21 @@ function registerApiRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state
     // connection for no reason, same class of check olympus.js's
     // alreadyOnSameSource does below.
     // See resources/specs/data-sources/tracs-relay-architecture-spec.md.
+    // relayPassword is only ever distinct from `password` in Tacview-Direct
+    // mode with a relay also configured (Tacview's RTT password is flat, not
+    // coalition-scoped, so it can't double as the relay's per-coalition
+    // secret there) -- every other source mode leaves relayPassword unset
+    // client-side, falling back to `password` here. See
+    // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
     const relayConfig = srs.getConfig()
+    const relayAuthPassword = sourceCfg.relayPassword || sourceCfg.password
     const alreadyOnSameRelay = srs.isConnected()
       && relayConfig?.relayUrl === relayUrl
-      && relayConfig?.password === sourceCfg.password
+      && relayConfig?.password === relayAuthPassword
+      && relayConfig?.coalition === sourceCfg.coalition
     if (relayUrl && !alreadyOnSameRelay) {
       srs.start(
-        { relayUrl, password: sourceCfg.password },
+        { relayUrl, password: relayAuthPassword, coalition: sourceCfg.coalition },
         { onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }) },
       )
     }
@@ -137,9 +145,21 @@ function registerApiRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state
       const alreadyOnSameTvRelay = tacviewRelayClient.isConnected()
         && tvConfig?.relayUrl === relayUrl
         && tvConfig?.password === sourceCfg.password
+        && tvConfig?.coalition === (sourceCfg.coalition ?? 'blue')
       if (!alreadyOnSameTvRelay) {
         if (tacviewReconnectTooSoon()) {
           return res.status(429).json({ error: 'Reconnected to Tacview too recently — wait a few seconds before trying again (rapid reconnects can crash Tacview’s DCS export)' })
+        }
+        // start() itself is fire-and-forget and never used to be checked here
+        // at all -- a wrong coalition/password used to return {ok:true}
+        // regardless, since nothing awaited whether the connection actually
+        // authenticated. probe() (a separate, throwaway connection, same
+        // pattern tacview.js's direct-mode probe already uses) catches that
+        // before committing to a live connection.
+        try {
+          await tacviewRelayClient.probe({ relayUrl, password: sourceCfg.password ?? '', coalition: sourceCfg.coalition ?? 'blue' })
+        } catch (err) {
+          return res.status(502).json({ error: err.identified ? err.message : 'Cannot reach the relay for Tacview data — check the Relay Port and coalition password' })
         }
         lastTacviewConnectAt = Date.now()
         stopAllSources(sourceRegistry)

@@ -10,7 +10,7 @@ import { CARRIER_TYPES } from '../../utils/carriers'
 import {
   loadServerProfiles, upsertServerProfile, toggleFavoriteProfile,
   removeServerProfile, findProfileByName, filterServerProfiles, getMostRecentProfile,
-  loadLastConnection, saveLastConnection,
+  loadLastConnection, saveLastConnection, parseHostPort, inferLegacySourceType,
 } from '../../utils/serverProfiles'
 import './Login.css'
 
@@ -36,35 +36,42 @@ const COALITION_OPTIONS = [
   { value: 'admin', label: 'Admin'          },
 ]
 
-// Splits a stored "http://host:port"-shaped string (or a bare host) back into
-// its host and port, for editing as separate fields. The server URL and the
-// relay URL always share the same host by construction — the relay only ever
-// runs alongside Olympus/SRS/Tacview — so this is the only place a URL string
-// gets parsed; everywhere else just composes host+port back together.
-function parseHostPort(raw) {
-  if (!raw) return { host: '', port: '' }
-  try {
-    const u = new URL(raw.includes('://') ? raw : `http://${raw}`)
-    return { host: u.hostname, port: u.port }
-  } catch {
-    return { host: '', port: '' }
-  }
-}
+// Primary data source — an explicit choice, not auto-detected (superseded
+// 2026-09-07; see resources/specs/data-sources/pluggable-source-architecture-spec.md
+// §5's correction). 'relay' is named for the relay itself, not for Tacview —
+// what it forwards today is a relay-operator config choice
+// (dataminer-architecture-placeholder-spec.md §4), invisible to the controller.
+const SOURCE_MODES = [
+  { value: 'olympus',        label: 'Olympus' },
+  { value: 'tacview-direct', label: 'Tacview' },
+  { value: 'relay',          label: 'Relay' },
+]
 
 // ── Phase 1: Connect to Olympus ───────────────────────────────────────────────
 function ConnectPhase({ onConnected }) {
   const [profiles,   setProfiles]   = useState(() => loadServerProfiles())
   const lastConnection = useMemo(() => loadLastConnection(), [])
   const lastProfile = useMemo(() => getMostRecentProfile(profiles), [profiles])
+  const [sourceMode, setSourceMode] = useState(() => lastConnection?.sourceType ?? inferLegacySourceType(lastProfile))
   const [name,       setName]       = useState(() => lastConnection?.name ?? lastProfile?.name ?? '')
   const [serverHost, setServerHost] = useState(() => parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '').host)
   const [sourcePort, setSourcePort] = useState(() => parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '').port)
   const [coalition,  setCoalition]  = useState(() => lastConnection?.coalition ?? lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
-  const [password,   setPassword]   = useState(() => lastConnection?.password ?? lastProfile?.passwords?.[coalition] ?? '')
+  // Meaning depends on sourceMode: Olympus/Relay -> genuinely per-coalition
+  // (profile.passwords[coalition]); Tacview-Direct -> Tacview's own flat RTT
+  // password (profile.tacviewPassword), never coalition-keyed. See
+  // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+  const [password,   setPassword]   = useState(() => lastConnection?.password
+    ?? (sourceMode === 'tacview-direct' ? lastProfile?.tacviewPassword : lastProfile?.passwords?.[coalition]) ?? '')
   // XPNDR port is optional — most deployments have no relay at all. Same host
   // as the server above by construction (the relay only ever runs alongside
   // Olympus/SRS), so there's nothing to guess or type separately except the port.
   const [xpndrPort,  setXpndrPort]  = useState(() => parseHostPort(lastConnection?.relayUrl ?? lastProfile?.relayUrl ?? '').port)
+  // Only meaningful (and only ever shown) in Tacview-Direct mode with Relay
+  // Port also filled — the relay's genuinely per-coalition secret, distinct
+  // from the flat Tacview RTT password above in that one combination. See
+  // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+  const [relayPassword, setRelayPassword] = useState(() => lastConnection?.relayPassword ?? lastProfile?.relayPasswords?.[coalition] ?? '')
   const [error,        setError]        = useState(null)
   // Non-blocking — a relay-sync problem never prevents connecting, unlike
   // `error` above (which is exclusively for Olympus failures). Distinct
@@ -91,14 +98,41 @@ function ConnectPhase({ onConnected }) {
     [profiles]
   )
 
-  // Re-fill the password when the role changes, if the current name matches a saved profile
+  // Re-fill the password when the role changes, if the current name matches a
+  // saved profile — skipped in Tacview-Direct mode, where the primary
+  // password is Tacview's flat RTT password, not coalition-keyed at all;
+  // re-running this there would silently stomp it with an unrelated lookup.
   useEffect(() => {
+    if (sourceMode === 'tacview-direct') return
     const match = findProfileByName(profiles, name)
     if (match) setPassword(match.passwords[coalition] ?? '')
   }, [coalition]) // eslint-disable-line
 
   // serverHost + sourcePort → the composed olympusUrl the backend expects.
+  // An empty port means "no direct source" — left blank on purpose so the
+  // backend's usingRelayAsPrimary dispatch (routes/api.js) can fire when
+  // Relay Port is filled instead. Never fabricate a portless URL here.
+  // NOTE: this is for the /api/connect payload only — see composedStorageUrl
+  // below for saved-profile/last-connection persistence, which must keep
+  // remembering the host even when Source Port is intentionally blank.
   function composedOlympusUrl(host = serverHost, port = sourcePort) {
+    // Forced blank in Relay mode regardless of `port`'s actual value — Source
+    // Port is hidden in this mode, but its state could still hold a stale
+    // value from before a mode switch; relying on "happens to be blank" is
+    // exactly the implicit-inference pattern this selector replaces.
+    if (sourceMode === 'relay' || !port) return ''
+    const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+    return `http://${cleanHost}:${port}`
+  }
+
+  // Same composition, but for persistence (saved profiles, last-connection) —
+  // always keeps the host, with or without a port, unlike composedOlympusUrl()
+  // above. A relay-hosted-primary profile (blank Source Port) still has a
+  // real Server URL the user typed and expects to see again on reload; it's
+  // only the /api/connect payload that needs it blank, to signal
+  // usingRelayAsPrimary to the backend. parseHostPort() round-trips a
+  // portless "http://host" back into { host, port: '' } correctly.
+  function composedStorageUrl(host = serverHost, port = sourcePort) {
     const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
     return port ? `http://${cleanHost}:${port}` : `http://${cleanHost}`
   }
@@ -113,13 +147,16 @@ function ConnectPhase({ onConnected }) {
 
   function handleSelectProfile(profile) {
     const profileCoalition = profile.lastCoalition ?? coalition
+    const profileMode = inferLegacySourceType(profile)
     const source = parseHostPort(profile.url)
     const relay  = parseHostPort(profile.relayUrl)
     setName(profile.name)
+    setSourceMode(profileMode)
     setServerHost(source.host)
     setSourcePort(source.port)
     setCoalition(profileCoalition)
-    setPassword(profile.passwords[profileCoalition] ?? '')
+    setPassword(profileMode === 'tacview-direct' ? (profile.tacviewPassword ?? '') : (profile.passwords?.[profileCoalition] ?? ''))
+    setRelayPassword(profile.relayPasswords?.[profileCoalition] ?? '')
     setXpndrPort(relay.port)
     setShowDropdown(false)
   }
@@ -134,8 +171,12 @@ function ConnectPhase({ onConnected }) {
   }
 
   function persistProfile() {
-    const normalizedUrl = composedOlympusUrl()
-    setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password, relayUrl: composedRelayUrl() }))
+    const normalizedUrl = composedStorageUrl()
+    const effectiveRelayPassword = (sourceMode === 'tacview-direct' && xpndrPort) ? relayPassword : ''
+    setProfiles((prev) => upsertServerProfile(prev, {
+      name, url: normalizedUrl, coalition, password, relayUrl: composedRelayUrl(),
+      sourceType: sourceMode, relayPassword: effectiveRelayPassword,
+    }))
     setConfirmOverwrite(false)
     setSaveStatus('saved')
     clearTimeout(saveStatusTimer.current)
@@ -158,14 +199,26 @@ function ConnectPhase({ onConnected }) {
     setConnecting(true)
 
     const normalizedUrl = composedOlympusUrl()
+    const storageUrl    = composedStorageUrl()
     const relayUrl = composedRelayUrl()
+    // Sent explicitly now instead of relying on the backend's probe-race
+    // auto-detect (which still exists and still works as a fallback, but
+    // Login no longer needs it) — collapses to the 2-way dispatch distinction
+    // routes/api.js actually cares about; Relay mode needs neither field, its
+    // dispatch is already driven purely by relayUrl + blank olympusUrl.
+    const requestedSourceType = sourceMode === 'olympus' ? 'olympus' : 'tacview'
+    // Only genuinely distinct from `password` in Tacview-Direct mode with a
+    // relay also configured — see resources/specs/data-sources/
+    // pluggable-source-architecture-spec.md §7 for the full reasoning.
+    const effectiveRelayPassword = (sourceMode === 'tacview-direct' && xpndrPort) ? relayPassword : ''
+    const syncPassword = effectiveRelayPassword || password
 
     // Checked in parallel with the Olympus connect below, not after sign-in —
     // this is the one place in the flow that already has password/relayUrl in
     // hand, already gates on an async check, and already has somewhere to show
     // a result. See resources/specs/data-sources/webrtc-centralized-sync-spec.md §1.
     const syncCheck = relayUrl
-      ? checkSyncCapable({ relayUrl, password })
+      ? checkSyncCapable({ relayUrl, coalition, password: syncPassword })
       : Promise.resolve({ capable: false })
 
     try {
@@ -173,7 +226,11 @@ function ConnectPhase({ onConnected }) {
         fetch('/api/connect', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ olympusUrl: normalizedUrl, password, coalition, relayUrl }),
+          body:    JSON.stringify({
+            sourceType: sourceMode === 'relay' ? undefined : requestedSourceType,
+            olympusUrl: normalizedUrl, password, coalition, relayUrl,
+            relayPassword: effectiveRelayPassword,
+          }),
         }),
         syncCheck,
       ])
@@ -191,11 +248,14 @@ function ConnectPhase({ onConnected }) {
       setSyncCapable(!!relayUrl && syncResult.capable)
 
       localStorage.setItem('tracs.lastCoalition', coalition)
-      saveLastConnection({ name, url: normalizedUrl, coalition, password, relayUrl })
+      saveLastConnection({ name, url: storageUrl, coalition, password, relayUrl, sourceType: sourceMode, relayPassword: effectiveRelayPassword })
       if (name.trim()) {
-        setProfiles((prev) => upsertServerProfile(prev, { name, url: normalizedUrl, coalition, password, relayUrl }))
+        setProfiles((prev) => upsertServerProfile(prev, {
+          name, url: storageUrl, coalition, password, relayUrl,
+          sourceType: sourceMode, relayPassword: effectiveRelayPassword,
+        }))
       }
-      setConnection({ olympusUrl: normalizedUrl, coalition, relayUrl })
+      setConnection({ olympusUrl: normalizedUrl, coalition, password, relayUrl, relayPassword: syncPassword, sourceType: requestedSourceType })
       wsClient.connect()
 
       // A relay warning holds the phase transition here so the banner has a
@@ -209,6 +269,11 @@ function ConnectPhase({ onConnected }) {
             : 'Relay unreachable — using peer-to-peer.'
         )
         setAwaitingContinue(true)
+        // connecting must clear here too, not just in the catch block below —
+        // this isn't an error path (Olympus connected fine), so nothing else
+        // resets it, and every field's `disabled={connecting}` left the whole
+        // form stuck for good, Continue button included, if left set forever.
+        setConnecting(false)
       } else {
         onConnected()
       }
@@ -232,6 +297,15 @@ function ConnectPhase({ onConnected }) {
             value={name}
             onChange={(e) => { setName(e.target.value); setConfirmOverwrite(false) }}
             onFocus={() => setShowDropdown(true)}
+            // Selecting a profile (handleSelectProfile) closes the dropdown
+            // but never blurs this input -- the dropdown's own onMouseDown
+            // preventDefault (below) deliberately keeps focus here so the
+            // click registers before any blur-close race. That means a
+            // second click, while still focused, fires no onFocus at all
+            // (only a genuine blur→focus transition does) and the dropdown
+            // stayed closed until the user clicked away and back. onClick
+            // covers that case; onFocus alone left it needing a blur+refocus.
+            onClick={() => setShowDropdown(true)}
             onBlur={() => setShowDropdown(false)}
             placeholder="DCS Server Name"
             disabled={connecting}
@@ -305,6 +379,23 @@ function ConnectPhase({ onConnected }) {
       </section>
 
       <section>
+        <label>Primary Data Source</label>
+        <div className="module-toggles">
+          {SOURCE_MODES.map((m) => (
+            <button
+              type="button"
+              key={m.value}
+              className={`module-btn ${sourceMode === m.value ? 'active' : ''}`}
+              onClick={() => setSourceMode(m.value)}
+              disabled={connecting}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section>
         <label>Server URL</label>
         <input
           type="text"
@@ -315,21 +406,24 @@ function ConnectPhase({ onConnected }) {
           disabled={connecting}
         />
         <div className="position-fields">
-          <input
-            type="text"
-            style={{ flex: 1 }}
-            value={sourcePort}
-            onChange={(e) => setSourcePort(e.target.value)}
-            placeholder="Source Port"
-            required
-            disabled={connecting}
-          />
+          {sourceMode !== 'relay' && (
+            <input
+              type="text"
+              style={{ flex: 1 }}
+              value={sourcePort}
+              onChange={(e) => setSourcePort(e.target.value)}
+              placeholder="Source Port"
+              required
+              disabled={connecting}
+            />
+          )}
           <input
             type="text"
             style={{ flex: 1 }}
             value={xpndrPort}
             onChange={(e) => setXpndrPort(e.target.value)}
             placeholder="Relay Port"
+            required={sourceMode === 'relay'}
             disabled={connecting}
           />
         </div>
@@ -348,13 +442,31 @@ function ConnectPhase({ onConnected }) {
         </select>
       </section>
 
+      {sourceMode === 'tacview-direct' && xpndrPort && (
+        // Same field, same label/placeholder/position as Olympus's Coalition
+        // Password below -- to the user this *is* their coalition password,
+        // it just happens to authenticate to the relay instead of the
+        // primary source in this one mode (the primary source, Tacview,
+        // needs a separate flat RTT password instead -- see the next field).
+        <section>
+          <label>Coalition Password</label>
+          <input
+            type="password"
+            value={relayPassword}
+            onChange={(e) => setRelayPassword(e.target.value)}
+            placeholder="Coalition password"
+            disabled={connecting}
+          />
+        </section>
+      )}
+
       <section>
-        <label>Coalition Password</label>
+        <label>{sourceMode === 'tacview-direct' ? 'Tacview RTT Password' : 'Coalition Password'}</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Coalition password (also used as Tacview RTT password, direct mode)"
+          placeholder={sourceMode === 'tacview-direct' ? "Tacview's own RTT export password (flat, not per-coalition)" : 'Coalition password'}
           disabled={connecting}
         />
       </section>
@@ -378,7 +490,7 @@ function ConnectPhase({ onConnected }) {
 // ── Phase 2: Sign in to position ──────────────────────────────────────────────
 function PositionPhase({ onSignedIn }) {
   const {
-    airbases, mission, sourceType,
+    airbases, mission, sourceType, syncCapable,
     setPosition, setFacility, setActiveModule, setPositionSet, setAicConfig, reset,
     overrideTheatre,
     webrtcRejection, clearWebrtcRejection,
@@ -884,7 +996,15 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
     setPositionSet(true)
     onSignedIn()
 
-    const { olympusUrl } = useSessionStore.getState()
+    // coalition/relayPassword here are ConnectPhase's Coalition Role and the
+    // effective relay-auth password (already resolved per source mode --
+    // usually equal to Coalition Password, but a distinct value in
+    // Tacview-Direct mode with a relay configured) -- PositionPhase has no
+    // closure over ConnectPhase's local state (separate components), so
+    // these ride through the session store instead, same as olympusUrl
+    // already does. See store/session.js's setConnection and
+    // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+    const { olympusUrl, coalition, relayPassword } = useSessionStore.getState()
     let rtcPosition  = ''
     let rtcFrequency = ''
     if (selectedModule === MODULE.ATC) {
@@ -915,7 +1035,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
       rtcFacility = abmCallsign.trim().toUpperCase()
       rtcSuffix   = 'ABM'
     }
-    initWebrtc({ olympusUrl, password: sessionPassword, position: rtcPosition, module: selectedModule, frequency: rtcFrequency, facility: rtcFacility, suffix: rtcSuffix })
+    initWebrtc({ olympusUrl, password: sessionPassword, relayPassword, coalition, position: rtcPosition, module: selectedModule, frequency: rtcFrequency, facility: rtcFacility, suffix: rtcSuffix })
   }
 
   return (
@@ -1228,17 +1348,20 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
         </>
       )}
 
-      {/* ── Session password (all modules) ───────────────────────────── */}
-      <section>
-        <label>Session Password</label>
-        <input
-          type="password"
-          value={sessionPassword}
-          onChange={(e) => setSessionPassword(e.target.value)}
-          placeholder="Optional — leave blank for open session"
-          disabled={signingIn}
-        />
-      </section>
+      {/* ── Session password (P2P fallback only — no function for relay-hosted
+          sync, see webrtc-centralized-sync-spec.md) ─────────────────────── */}
+      {!syncCapable && (
+        <section>
+          <label>Session Password</label>
+          <input
+            type="password"
+            value={sessionPassword}
+            onChange={(e) => setSessionPassword(e.target.value)}
+            placeholder="Optional — leave blank for open session"
+            disabled={signingIn}
+          />
+        </section>
+      )}
 
       {error && <p className="login-error">{error}</p>}
 

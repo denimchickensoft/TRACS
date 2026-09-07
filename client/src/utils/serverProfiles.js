@@ -2,6 +2,37 @@ const STORAGE_KEY       = 'tracs.serverProfiles'
 const LAST_CONN_KEY     = 'tracs.lastConnection'
 const MAX_RECENTS  = 5
 
+// Splits a stored "http://host:port"-shaped string (or a bare host) back into
+// its host and port, for editing as separate fields. Moved here from
+// Login.jsx since inferLegacySourceType() below needs it too. Malformed
+// input returns blanks rather than throwing.
+export function parseHostPort(raw) {
+  if (!raw) return { host: '', port: '' }
+  try {
+    const u = new URL(raw.includes('://') ? raw : `http://${raw}`)
+    return { host: u.hostname, port: u.port }
+  } catch {
+    return { host: '', port: '' }
+  }
+}
+
+// Pre-source-selector profiles (and last-connection records) have no
+// sourceType at all. A blank Source Port + a configured relay was always,
+// deterministically, "relay is the primary source" (the old auto-detect
+// rule) — recoverable with certainty. A port being set was historically
+// ambiguous (could've meant Olympus or direct Tacview, indistinguishable —
+// that was the whole point of auto-detect), so it defaults to Olympus, the
+// pre-existing majority case; a wrong guess surfaces immediately as a failed
+// connect and the user flips the selector once. See
+// resources/specs/data-sources/pluggable-source-architecture-spec.md §5.
+export function inferLegacySourceType(record) {
+  if (!record) return 'olympus'
+  if (record.sourceType) return record.sourceType
+  const hasPort = !!parseHostPort(record.url).port
+  if (!hasPort && record.relayUrl) return 'relay'
+  return 'olympus'
+}
+
 export function loadServerProfiles() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY))
@@ -31,37 +62,58 @@ export function findProfileByName(profiles, name) {
   return profiles.find((p) => p.name.toLowerCase() === key) ?? null
 }
 
-// Upserts by case-insensitive name match: overwrites url, sets passwords[coalition],
-// bumps lastUsed and lastCoalition, preserves favorite. Persists and returns the new (trimmed) list.
+// Upserts by case-insensitive name match: overwrites url, bumps lastUsed and
+// lastCoalition, preserves favorite. Persists and returns the new (trimmed) list.
 // relayUrl is optional and not coalition-scoped (unlike password) — it's a property of
 // the DCS-side deployment, not the controller's role on it.
-export function upsertServerProfile(profiles, { name, url, coalition, password, relayUrl }) {
+//
+// Which password slot `password`/`relayPassword` land in depends on
+// `sourceType`, since the three primary-source modes have structurally
+// different password semantics (see
+// resources/specs/data-sources/pluggable-source-architecture-spec.md §7):
+//   - 'olympus' / 'relay': `password` is genuinely per-coalition -> merged into
+//     the `passwords` map, same slot reused by both modes (a profile only
+//     has one active sourceType at a time, same pattern lastCoalition uses).
+//   - 'tacview-direct': `password` is Tacview's own flat RTT password, not
+//     coalition-scoped at all -> stored plainly as `tacviewPassword`, never
+//     put in the `passwords` map. `relayPassword` (only meaningful when this
+//     mode also has a relay configured) is the *separate*, genuinely
+//     per-coalition secret the relay itself needs -> its own `relayPasswords`
+//     map, independent of `tacviewPassword`.
+// Whichever slot(s) don't apply to the current sourceType are left untouched
+// from `existing`, so switching modes on a saved profile never clobbers the
+// other mode's remembered password(s).
+export function upsertServerProfile(profiles, { name, url, coalition, password, relayUrl, sourceType, relayPassword }) {
   const key = name.trim().toLowerCase()
   const idx = profiles.findIndex((p) => p.name.toLowerCase() === key)
+  const existing = idx === -1 ? null : profiles[idx]
 
-  let next
-  if (idx === -1) {
-    next = [...profiles, {
-      name:      name.trim(),
-      url,
-      relayUrl:      relayUrl ?? '',
-      favorite:      false,
-      lastUsed:      Date.now(),
-      lastCoalition: coalition,
-      passwords: { [coalition]: password },
-    }]
-  } else {
-    const existing = profiles[idx]
-    const updated  = {
-      ...existing,
-      url,
-      relayUrl:      relayUrl ?? existing.relayUrl ?? '',
-      lastUsed:      Date.now(),
-      lastCoalition: coalition,
-      passwords: { ...existing.passwords, [coalition]: password },
-    }
-    next = [...profiles.slice(0, idx), updated, ...profiles.slice(idx + 1)]
+  const passwords = sourceType === 'tacview-direct'
+    ? (existing?.passwords ?? {})
+    : { ...existing?.passwords, [coalition]: password }
+  const tacviewPassword = sourceType === 'tacview-direct'
+    ? password
+    : (existing?.tacviewPassword ?? '')
+  const relayPasswords = (sourceType === 'tacview-direct' && relayUrl)
+    ? { ...existing?.relayPasswords, [coalition]: relayPassword ?? '' }
+    : (existing?.relayPasswords ?? {})
+
+  const record = {
+    name:      name.trim(),
+    url,
+    relayUrl:      relayUrl ?? existing?.relayUrl ?? '',
+    favorite:      existing?.favorite ?? false,
+    lastUsed:      Date.now(),
+    lastCoalition: coalition,
+    sourceType,
+    passwords,
+    tacviewPassword,
+    relayPasswords,
   }
+
+  const next = idx === -1
+    ? [...profiles, record]
+    : [...profiles.slice(0, idx), record, ...profiles.slice(idx + 1)]
 
   const trimmed = trim(next)
   saveServerProfiles(trimmed)
@@ -95,8 +147,11 @@ export function loadLastConnection() {
   }
 }
 
-export function saveLastConnection({ name, url, coalition, password, relayUrl }) {
-  localStorage.setItem(LAST_CONN_KEY, JSON.stringify({ name, url, coalition, password, relayUrl: relayUrl ?? '' }))
+export function saveLastConnection({ name, url, coalition, password, relayUrl, sourceType, relayPassword }) {
+  localStorage.setItem(LAST_CONN_KEY, JSON.stringify({
+    name, url, coalition, password, relayUrl: relayUrl ?? '',
+    sourceType, relayPassword: relayPassword ?? '',
+  }))
 }
 
 // Favorites first, then up to MAX_RECENTS non-favorites, both by most-recently-used;

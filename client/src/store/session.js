@@ -17,10 +17,33 @@ export const useSessionStore = create((set) => ({
   // Olympus connection
   olympusUrl: '',
   coalition: '',
+  // Coalition Password — stored here (unlike Session Password, which stays
+  // local PositionPhase state) specifically so PositionPhase's initWebrtc()
+  // call can reach it for relay auth; ConnectPhase and PositionPhase are
+  // separate components with no shared closure, same reason olympusUrl/
+  // coalition/relayUrl already flow through here instead of props. See
+  // resources/specs/data-sources/webrtc-centralized-sync-spec.md.
+  password: '',
+  // The password actually used to authenticate to the relay (SRS/sync/relay-
+  // primary auth) — usually equal to `password` (Olympus and Relay-mode
+  // source-selector modes are both genuinely per-coalition, matching the
+  // relay's own per-coalition model), but a distinct value in Tacview-Direct
+  // mode with a relay also configured: Tacview's own RTT password is flat/
+  // not coalition-scoped, so it can't double as the relay's per-coalition
+  // secret there. Set by ConnectPhase's handleConnect, read by PositionPhase's
+  // initWebrtc() call — same no-shared-closure reason as `password` above.
+  // See resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+  relayPassword: '',
   relayUrl: '',   // SRS relay — optional, empty means none configured/reachable
   syncCapable: false,   // relay's /sync reachable + authenticated (checked in Login's ConnectPhase)
   connected: false,
-  sourceType: null,     // 'olympus' | 'tacview' — from the WS status broadcast, see ws/client.js
+  // 'olympus' | 'tacview' — set optimistically by ConnectPhase's setConnection
+  // (matching the source-selector's mode, collapsing 'tacview-direct'/'relay'
+  // both to 'tacview' here since that's the dispatch-level distinction this
+  // field represents), then confirmed authoritatively moments later by the WS
+  // status broadcast (see ws/client.js). Not the same enum as the selector's
+  // 3-way sourceMode — this only ever needs the 2-way dispatch distinction.
+  sourceType: null,
 
   // Position identity
   positionMode: POSITION_MODE.FREEFORM,
@@ -66,8 +89,12 @@ export const useSessionStore = create((set) => ({
   airbases:  null,
   bullseyes: null,
 
-  setConnection: ({ olympusUrl, coalition, relayUrl }) =>
-    set({ olympusUrl, coalition, relayUrl: relayUrl ?? '' }),
+  setConnection: ({ olympusUrl, coalition, password, relayUrl, relayPassword, sourceType }) =>
+    set({
+      olympusUrl, coalition, password: password ?? '', relayUrl: relayUrl ?? '',
+      relayPassword: relayPassword ?? '',
+      ...(sourceType ? { sourceType } : {}),
+    }),
 
   setConnected: (connected) => set({ connected }),
 
@@ -194,6 +221,8 @@ export const useSessionStore = create((set) => ({
     set({
       olympusUrl:          '',
       coalition:           '',
+      password:            '',
+      relayPassword:       '',
       relayUrl:            '',
       syncCapable:         false,
       connected:           false,
