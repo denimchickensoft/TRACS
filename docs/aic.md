@@ -1,5 +1,7 @@
 # AIC (Air Intercept Controller)
 
+[← All docs](index.md)
+
 Tactical display for airborne intercept control — AWACS/GCI style: bullseye-centered scope, hostile/friendly classification, BRAA pairing, ROE tracking, and a doctrinal PICTURE readout (formation/group detection modeled on AWACS brevity doctrine).
 
 Sign-in requires a Callsign and Frequency — see [Getting Started](getting-started.md). AIC does not use SRS transponder data (unlike ATC's association/IDENT features) — that's undecided/not planned for this module.

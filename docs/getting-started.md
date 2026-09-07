@@ -1,5 +1,7 @@
 # Getting Started
 
+[← All docs](index.md)
+
 ## 1. Connect
 
 On first launch you're prompted to connect. Pick a **Primary Data Source** first — this changes which of the fields below actually apply:
@@ -36,10 +38,10 @@ Once connected, pick a **Module** — ATC, CATCC, AIC, or ABM — and fill in th
 
 | Module | Fields |
 |---|---|
-| ATC | Facility (an airbase from the current source's airbase list, or a CTR/FIR identifier), position type (TWR/APP/DEP/GND/CTR), frequency |
-| CATCC | Carrier (detected from live unit data — must be present in the mission), position (Marshal/Approach/Departure/Tower), frequency |
-| AIC | Callsign, frequency |
-| ABM | Callsign, frequency |
+| [ATC](atc.md) | Facility (an airbase from the current source's airbase list, or a CTR/FIR identifier), position type (TWR/APP/DEP/GND/CTR), frequency |
+| [CATCC](catcc.md) | Carrier (detected from live unit data — must be present in the mission), position (Marshal/Approach/Departure/Tower), frequency |
+| [AIC](aic.md) | Callsign, frequency |
+| [ABM](abm.md) | Callsign, frequency |
 
 Frequency must fall in VHF (118.000–136.975) or UHF (225.000–399.975). If two controllers try to sign in on the same frequency without sharing a facility/position, TRACS blocks the second sign-in as a conflict — this is a pre-flight check against other clients already in the session, not a hard source-side restriction.
 

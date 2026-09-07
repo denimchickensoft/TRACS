@@ -2,9 +2,7 @@
 
 A browser-based control suite for DCS World multiplayer servers, providing ATC, CATCC, AIC, and ABM displays.
 
-Each controller runs a local Node.js server that pulls unit data from one of three interchangeable sources — the [Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API, a direct connection to Tacview's Real-Time Telemetry export, or a standalone TRACS Relay app that can also supply SRS transponder/IFF data — and pushes it to their browser. Controllers connect to each other peer-to-peer via WebRTC by default, or over a centralized transport hosted by the same optional Relay app when one is reachable — no port forwarding or shared server required either way.
-
-**Status:** pre-beta, under active development. No automated test suite yet — treat scope behavior as verified only insofar as it's been run in a live session.
+Each controller runs a local Node.js server that pulls unit data from one of three interchangeable sources — the [Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API, a direct connection to Tacview's Real-Time Telemetry export, or a standalone TRACS Relay app that can also supply SRS transponder/IFF data — and pushes it to their browser. Controllers connect to each other peer-to-peer via WebRTC by default — no port forwarding or shared server required — or over a centralized transport hosted by the same optional Relay app when one is reachable.
 
 **Documentation:** in-depth operator guides live in [`docs/`](docs/index.md) — start there for how to actually run a position.
 
@@ -64,6 +62,7 @@ Approach/departure radar display. STARS-style command set: track ownership, hand
 
 - **ASDE-X** — ground radar sub-scope for surface movement (taxiways, ramps), with SRS-aware Unknown Target tagging.
 - **PAR** — precision approach radar panel, available from both ATC and CATCC.
+- **Strip Bay** — flight progress strip management, dockable alongside the scope or undocked to a separate window.
 
 ### CATCC (Carrier Air Traffic Control Center) Scope
 Carrier air traffic control display.
@@ -80,9 +79,6 @@ Mission-wide package tracking display.
 
 - **ATO / FRAG** — tasking summary and per-package detail, built from a dragged-in `.miz`/mission file. Deliberately limited to structural mission data (groups/routes/payloads) — trigger scripting and briefing text are excluded by design.
 - Free-hand scope drawing (lines, rectangles, circles, polygons, sectors, racetracks, text labels) plus custom airspace/drawing import (GeoJSON, zip, or `.miz`), a theatre-aware MGRS grid overlay, manual flight entry, airfield/ground-unit hover readout.
-
-### Strip Bay
-Flight progress strip management. Dockable alongside a scope or undocked to a separate window.
 
 ### Pilot Flight Plan Filing
 Standalone page (`pilot.html`) pilots can use to file flight plans directly into a session over WebRTC, without going through any of the primary data sources above.

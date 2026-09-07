@@ -1,5 +1,7 @@
 # ATC (Air Traffic Controller)
 
+[← All docs](index.md)
+
 Approach/departure radar display with a STARS-style command line, plus three sub-tools: **ASDE-X** (ground radar), **PAR** (precision approach radar), and **Strip Bay**.
 
 ## Command line basics
