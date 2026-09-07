@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+const backendPort = process.env.BACKEND_PORT ?? 3000
+
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -17,13 +19,13 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': `http://localhost:${backendPort}`,
       '/ws': {
-        target: 'ws://localhost:3000',
+        target: `ws://localhost:${backendPort}`,
         ws: true,
       },
       '/signal': {
-        target: 'ws://localhost:3000',
+        target: `ws://localhost:${backendPort}`,
         ws: true,
       },
     },

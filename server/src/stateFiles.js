@@ -3,7 +3,15 @@
 const fs   = require('fs')
 const path = require('path')
 
-const STATE_DIR = path.join(__dirname, '../state')
+// Overridable so two backend instances sharing one server/ checkout (the
+// two-backends-on-one-machine testing pattern in
+// resources/specs/data-sources/README.md's testing guide) don't race on the
+// same .tmp files -- two processes writing+renaming the identical path
+// concurrently produces a real ENOENT on Windows. Defaults to the original
+// hardcoded path, unaffected for every normal single-instance deployment.
+const STATE_DIR = process.env.TRACS_STATE_DIR
+  ? path.resolve(process.env.TRACS_STATE_DIR)
+  : path.join(__dirname, '../state')
 
 const FILES = {
   atc:     path.join(STATE_DIR, 'atc.json'),

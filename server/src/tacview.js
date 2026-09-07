@@ -200,17 +200,34 @@ function connect() {
   let handshakeSent = false
   let receivedTelemetry = false
 
-  socket = net.createConnection({ host, port })
+  // Every handler below closes over `localSocket` (this specific instance),
+  // never the mutable module-level `socket` -- a rapid stop()/connect() (two
+  // overlapping /api/connect requests, or the reconnect timer firing right as
+  // a fresh manual attempt starts) can reassign `socket` to a newer
+  // connection while an older one's handler is still in flight, and reading
+  // `socket` at that point would act on the wrong connection instead of the
+  // one that actually emitted the event -- e.g. writing the RTT handshake
+  // (below) onto a not-yet-connected socket. Same race class fixed the same
+  // way in tacviewRelayClient.js/srs.js earlier the same day; this is
+  // plausibly tangled up with the real ACCESS_VIOLATION crash documented in
+  // that memory ("cross-request rapid-reconnect guard still missing"). The
+  // `localSocket !== socket` guards additionally drop events from a
+  // connection that's since been superseded, rather than letting a stale
+  // one's data/reconnect-timer race a newer one.
+  const localSocket = net.createConnection({ host, port })
+  socket = localSocket
 
-  socket.on('connect', () => {
+  localSocket.on('connect', () => {
+    if (localSocket !== socket) { localSocket.destroy(); return }
     console.log(`[tacview] connected to ${host}:${port}`)
     connected = true
   })
 
-  socket.on('data', (chunk) => {
+  localSocket.on('data', (chunk) => {
+    if (localSocket !== socket) return
     if (!handshakeSent) {
       handshakeSent = true
-      socket.write(tacviewCore.buildClientHandshake('TRACS', config.password))
+      localSocket.write(tacviewCore.buildClientHandshake('TRACS', config.password))
       const text = chunk.toString('utf8')
       const nullIdx = text.indexOf('\0')
       const remainder = nullIdx === -1 ? '' : text.slice(nullIdx + 1)
@@ -221,7 +238,8 @@ function connect() {
     processIncoming(chunk.toString('utf8'))
   })
 
-  socket.on('close', () => {
+  localSocket.on('close', () => {
+    if (localSocket !== socket) return
     connected = false
     if (intentionalClose) return
 
@@ -237,7 +255,8 @@ function connect() {
     reconnectTimer = setTimeout(connect, RECONNECT_MS)
   })
 
-  socket.on('error', (err) => {
+  localSocket.on('error', (err) => {
+    if (localSocket !== socket) return
     console.error(`[tacview] connection error: ${err.code ?? err.name ?? 'unknown'} — ${err.message || '(no message)'}`)
   })
 }
