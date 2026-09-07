@@ -21,27 +21,59 @@ let ws = null
 let onUnitsDelta = null
 let relayUrl = null
 let password = null
+let coalition = null
 let intentionalClose = false
 let reconnectTimer = null
 let knownTransponderIds = new Set()
 
 function applyTransponders(transponders) {
   const incoming = transponders ?? {}
-  const incomingIds = new Set(Object.keys(incoming))
+  const incomingIds = new Set()
   const updated = {}
 
-  for (const [id, transponder] of Object.entries(incoming)) {
-    if (!state.getUnit(id)) continue // unknown unit — drop, don't fabricate
+  for (const [srsId, data] of Object.entries(incoming)) {
+    const { name, ...iff } = data
+    let unit = state.getUnit(srsId)
+    let resolvedId = srsId
+
+    // SRS's raw DCS unitId only reliably equals a Tacview-sourced unit's own
+    // id for one specific case (custom-datasource-tacview-spec.md §4.1: a
+    // respawning player aircraft, unitId = tacviewObjectId + 0xFFFFFF) — for
+    // every other Tacview unit (AI, or a different player's aircraft) the
+    // two ID spaces are simply unrelated, confirmed by the earlier, separate
+    // groupID-correlation work. Fall back to matching on name when the
+    // direct lookup misses — verified live 2026-09-07 (raw LotATC capture)
+    // that SRS's `Name` and a Tacview unit's `unitName` (== Tacview's
+    // `Pilot`, tacviewCore.js) match exactly for the same real aircraft, no
+    // parsing needed. Harmless no-op for Olympus sessions, where the direct
+    // ID lookup should essentially always already succeed — deliberately
+    // not gated by source type, since the general "try harder before giving
+    // up" rule already produces the right behavior on its own.
+    if (!unit && name) {
+      const target = name.trim().toLowerCase()
+      if (target) {
+        const match = state.getAllUnitEntries()
+          .find(([, u]) => u.unitName && u.unitName.trim().toLowerCase() === target)
+        if (match) { [resolvedId, unit] = match }
+      }
+    }
+
+    if (!unit) continue // genuinely unknown — drop, don't fabricate
+
+    incomingIds.add(resolvedId)
     // srsCapable is a permanent per-unit latch — set once, never cleared —
     // so consumers can tell "never had SRS" apart from "briefly dropped"
     // (see transponder-correlation-spec.md §2).
-    updated[id] = { transponder, srsCapable: true }
+    updated[resolvedId] = { transponder: iff, srsCapable: true }
   }
 
   // Clear transponder data for units that dropped out of this snapshot
   // (relay-side staleness timeout, SRS client disconnect, player left) —
   // otherwise a stale transponder object lingers forever and the unit never
   // looks disconnected. srsCapable is intentionally not cleared here.
+  // Tracks resolvedId (post-fallback), not SRS's raw id, so this still
+  // clears correctly for a unit that was only ever reached via the name
+  // fallback above.
   for (const id of knownTransponderIds) {
     if (incomingIds.has(id)) continue
     if (!state.getUnit(id)) continue
@@ -62,17 +94,24 @@ function connect() {
   // several capabilities sharing its port) — see
   // resources/specs/data-sources/tracs-relay-architecture-spec.md §2.1.
   const url = `${relayUrl.replace(/\/+$/, '')}/transponders`
-  ws = new WebSocket(url)
+  // See tacviewRelayClient.js's identical connect() for the full race
+  // explanation -- every handler closes over `socket` (this instance), never
+  // the mutable module-level `ws`, and `socket !== ws` guards drop events
+  // from a socket a newer connect() has since superseded.
+  const socket = new WebSocket(url)
+  ws = socket
 
-  ws.on('open', () => {
+  socket.on('open', () => {
+    if (socket !== ws) { socket.close(); return }
     console.log(`[srs] connected to relay at ${url}`)
     // Always sent, even with no password configured (password stays null/
     // empty) -- the relay's auth gate waits for this message regardless of
     // whether it actually has passwords configured, so it can't be skipped.
-    ws.send(JSON.stringify({ type: 'auth', password }))
+    socket.send(JSON.stringify({ type: 'auth', coalition, password }))
   })
 
-  ws.on('message', (raw) => {
+  socket.on('message', (raw) => {
+    if (socket !== ws) return
     let msg
     try {
       msg = JSON.parse(raw.toString('utf8'))
@@ -83,7 +122,8 @@ function connect() {
     if (msg.type === 'transponders') applyTransponders(msg.data)
   })
 
-  ws.on('close', (code, reason) => {
+  socket.on('close', (code, reason) => {
+    if (socket !== ws) return
     if (intentionalClose) return
 
     // An explicit password rejection will never resolve itself by retrying —
@@ -102,7 +142,8 @@ function connect() {
     reconnectTimer = setTimeout(connect, RECONNECT_MS)
   })
 
-  ws.on('error', (err) => {
+  socket.on('error', (err) => {
+    if (socket !== ws) return
     console.error(`[srs] relay connection error: ${err.code ?? err.name ?? 'unknown'} — ${err.message || '(no message)'} — url: ${url}`)
   })
 }
@@ -112,6 +153,7 @@ function start(cfg, callbacks = {}) {
 
   relayUrl = cfg.relayUrl
   password = cfg.password ?? null
+  coalition = cfg.coalition ?? null
   onUnitsDelta = callbacks.onUnitsDelta ?? null
   intentionalClose = false
   connect()
@@ -135,7 +177,7 @@ function isConnected() {
 }
 
 function getConfig() {
-  return relayUrl ? { relayUrl, password } : null
+  return relayUrl ? { relayUrl, password, coalition } : null
 }
 
 module.exports = { start, stop, isConnected, getConfig }

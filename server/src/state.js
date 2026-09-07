@@ -39,6 +39,11 @@ module.exports = {
   getSnapshot,
   clearUnits,
   getUnit:          (id) => units.get(String(id)),
+  // [id, unit][] -- entries (not just values) so a caller gets the
+  // authoritative map key directly, without relying on a unit object's own
+  // id-shaped field staying in sync with it. Used by srs.js's name-based
+  // correlation fallback.
+  getAllUnitEntries: () => [...units.entries()],
   getMission:       ()   => mission,
   setMission:       (m)  => { mission = m },
   getAirbases:      ()   => airbases,

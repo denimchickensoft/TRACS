@@ -50,6 +50,11 @@ function createTransponderRelay(wss, config) {
         mode3:  iff.mode3,
         mode4:  iff.mode4,
         status: iff.status,
+        // Correlation aid only, not an IFF field -- lets a backend fall back
+        // to name-matching when unitId doesn't line up with its own unit
+        // list (true for every Tacview-sourced unit except a respawning
+        // player aircraft -- see server/src/srs.js's applyTransponders()).
+        name:   client.Name ?? '',
       }
     }
     transponders = next
@@ -75,9 +80,9 @@ function createTransponderRelay(wss, config) {
   wss.on('connection', (ws) => {
     gateConnection(ws, config.passwords, {
       label: 'transponders',
-      onAuthenticated: () => {
+      onAuthenticated: (authMsg) => {
         authenticatedClients.add(ws)
-        console.log(`[relay:transponders] client authenticated (total: ${authenticatedClients.size})`)
+        console.log(`[relay:transponders] client authenticated coalition=${authMsg.coalition} (total: ${authenticatedClients.size})`)
         ws.send(JSON.stringify({ type: 'transponders', data: transponders }))
       },
     })
