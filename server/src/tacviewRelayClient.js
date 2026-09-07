@@ -40,6 +40,7 @@ let onMission = null
 let onBullseyes = null
 let relayUrl = null
 let password = null
+let coalition = null
 let intentionalClose = false
 let reconnectTimer = null
 let detectionTimer = null
@@ -155,14 +156,27 @@ function applyTacviewData(data) {
 
 function connect() {
   const url = `${relayUrl.replace(/\/+$/, '')}/tacview`
-  ws = new WebSocket(url)
+  // Every handler below closes over `socket` (this specific instance), never
+  // the mutable module-level `ws` -- a rapid stop()/start() can reassign `ws`
+  // to a newer socket in the gap between this one's handshake completing and
+  // its 'open' handler actually running, and reading `ws` at that point would
+  // operate on the wrong (newer, still-CONNECTING) socket instead of the one
+  // that just fired the event -- exactly what crashed the process with
+  // "WebSocket is not open: readyState 0 (CONNECTING)". The `socket !== ws`
+  // guards additionally drop events from a socket that's since been
+  // superseded, rather than letting a stale connection's data/reconnect-timer
+  // race a newer one.
+  const socket = new WebSocket(url)
+  ws = socket
 
-  ws.on('open', () => {
+  socket.on('open', () => {
+    if (socket !== ws) { socket.close(); return }
     console.log(`[tacviewRelayClient] connected to relay at ${url}`)
-    ws.send(JSON.stringify({ type: 'auth', password }))
+    socket.send(JSON.stringify({ type: 'auth', coalition, password }))
   })
 
-  ws.on('message', (raw) => {
+  socket.on('message', (raw) => {
+    if (socket !== ws) return
     let msg
     try {
       msg = JSON.parse(raw.toString('utf8'))
@@ -176,7 +190,8 @@ function connect() {
     }
   })
 
-  ws.on('close', (code, reason) => {
+  socket.on('close', (code, reason) => {
+    if (socket !== ws) return
     if (intentionalClose) return
 
     if (reason?.toString() === 'invalid password') {
@@ -189,7 +204,8 @@ function connect() {
     reconnectTimer = setTimeout(connect, RECONNECT_MS)
   })
 
-  ws.on('error', (err) => {
+  socket.on('error', (err) => {
+    if (socket !== ws) return
     console.error(`[tacviewRelayClient] relay connection error: ${err.code ?? err.name ?? 'unknown'} — ${err.message || '(no message)'} — url: ${url}`)
   })
 }
@@ -199,6 +215,7 @@ function start(cfg, callbacks = {}) {
 
   relayUrl = cfg.relayUrl
   password = cfg.password ?? null
+  coalition = cfg.coalition ?? null
   onUnitsDelta = callbacks.onUnitsDelta ?? null
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
@@ -267,7 +284,62 @@ function isConnected() {
 }
 
 function getConfig() {
-  return relayUrl ? { relayUrl, password } : null
+  return relayUrl ? { relayUrl, password, coalition } : null
 }
 
-module.exports = { start, stop, isConnected, getConfig, overrideTheatre, resetTheatreDetection }
+// Marks a rejection with a specific, surfaceable reason -- mirrors
+// tacview.js's identical identifiedError(), which routes/api.js already
+// knows how to distinguish from a generic/unidentified failure.
+function identifiedError(message) {
+  return Object.assign(new Error(message), { identified: true })
+}
+
+// Throwaway probe -- validates relay reachability + coalition/password
+// *before* committing to a live connection, same role tacview.js's own
+// probe() plays for the direct-source path. start() itself is fire-and-
+// forget (connects in the background, retries on its own timer) and was
+// never checked by routes/api.js's usingRelayAsPrimary dispatch before this
+// -- a rejected password there used to return {ok:true} regardless, since
+// nothing ever awaited the connection's actual outcome, leaving a signed-in
+// controller with a connect() that "succeeded" but no live Tacview data.
+async function probe(cfg) {
+  const url = `${cfg.relayUrl.replace(/\/+$/, '')}/tacview`
+  await new Promise((resolve, reject) => {
+    const probeSocket = new WebSocket(url)
+    let settled = false
+
+    const settle = (fn, arg) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      probeSocket.close()
+      fn(arg)
+    }
+
+    const timeout = setTimeout(() => {
+      settle(reject, new Error('Relay probe timed out — no response'))
+    }, 5000)
+
+    probeSocket.on('open', () => {
+      probeSocket.send(JSON.stringify({ type: 'auth', coalition: cfg.coalition, password: cfg.password }))
+    })
+
+    probeSocket.on('message', (raw) => {
+      let msg
+      try { msg = JSON.parse(raw.toString('utf8')) } catch { return }
+      if (msg.type === 'auth_ok') settle(resolve)
+    })
+
+    probeSocket.on('close', (code, reason) => {
+      settle(reject, reason?.toString() === 'invalid password'
+        ? identifiedError('Relay rejected the connection — check the coalition password')
+        : new Error('Relay closed the connection before authenticating'))
+    })
+
+    probeSocket.on('error', (err) => {
+      settle(reject, err)
+    })
+  })
+}
+
+module.exports = { start, stop, isConnected, getConfig, probe, overrideTheatre, resetTheatreDetection }

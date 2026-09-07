@@ -102,21 +102,55 @@ let _applying = false
 let handshakeAcked = false
 export function isApplying() { return _applying }
 
-// ── Room ID derivation ────────────────────────────────────────────────────────
-export async function deriveRoomId(olympusAddress, password = '') {
+// ── Room ID derivation (P2P/Trystero fallback only — relay-hosted sync uses
+// relayTopicFor() below instead, see webrtc-centralized-sync-spec.md) ─────────
+// `coalition` is a new, optional trailing param (added after `password`, not
+// before it) specifically so pilotClient.js's existing two-arg call
+// (`deriveRoomId(olympusUrl, password)`) keeps working unchanged — pilots
+// have no coalition concept and stay out of scope for this.
+export async function deriveRoomId(olympusAddress, password = '', coalition = '') {
   // Hostnames are case-insensitive; lowercase before hashing so two peers who
   // typed the same address with different casing still land in the same room.
-  const normalized = olympusAddress
+  const stripped = olympusAddress
     .replace(/^https?:\/\//i, '')
     .replace(/\/.*$/, '')
     .trim()
     .toLowerCase()
-  const input = password ? `${normalized}:${password}` : normalized
+  // Split host from port on the last colon (bare host, no colon at all, is
+  // also handled) so the localhost alias below only ever touches the host
+  // portion, never accidentally the port. Doesn't handle bracketed IPv6
+  // literals -- DCS server addresses are essentially never raw IPv6.
+  const lastColon = stripped.lastIndexOf(':')
+  let host = lastColon === -1 ? stripped : stripped.slice(0, lastColon)
+  const port = lastColon === -1 ? '' : stripped.slice(lastColon + 1)
+  // The one address-ambiguity case worth actually fixing: independent local
+  // testers overwhelmingly default to one of these two for the same machine,
+  // with nothing else to tell their rooms apart. Domain vs. its raw IP stays
+  // an accepted, documented limitation (webrtc-centralized-sync-spec.md) --
+  // no DNS lookup here (see that doc for why it was rejected).
+  if (host === 'localhost' || host === '::1') host = '127.0.0.1'
+  const normalized = port ? `${host}:${port}` : host
+  const input = [normalized, coalition, password].filter(Boolean).join(':')
   const hash  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
   const hex   = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
   const roomId = 'tracs-' + hex.substring(0, 16)
   console.info(`[webrtc] derived room id ${roomId} from "${normalized}"`)
   return roomId
+}
+
+// ── Relay-hosted sync topic (coalition only, no address/password) ─────────────
+// A relay is structurally pinned to exactly one DCS mission (relay/config.json
+// has one tacviewHost/tacviewPort, one srsLotatcPort) -- its own connection is
+// already the isolation boundary, so unlike deriveRoomId() above there's no
+// need for a hash or any address-collision defense here. Plain and
+// deterministic on purpose: this is also what will let GM/Admin trivially
+// derive every other coalition's topic name too, once initWebrtc() joins
+// multiple rooms for that role (not yet implemented -- see
+// resources/specs/data-sources/webrtc-centralized-sync-spec.md) -- no secret
+// is needed to compute a topic name, only the relay's own connection-level
+// auth (coalition-scoped password) gates who gets in at all.
+function relayTopicFor(coalition) {
+  return `tracs-relay-${coalition}`
 }
 
 // ── Dev logging ───────────────────────────────────────────────────────────────
@@ -730,7 +764,7 @@ export function sendChatMessage({ text, toPosition = null, broadcast = false }) 
   })
 }
 
-export async function initWebrtc({ olympusUrl, password, position, module: mod, frequency, facility = '', suffix = '' }) {
+export async function initWebrtc({ olympusUrl, password, relayPassword, coalition, position, module: mod, frequency, facility = '', suffix = '' }) {
   activePosition = position
   activeModule   = mod
   outSeq         = 0
@@ -762,9 +796,20 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
 
   sessionStorage.setItem(CONNECTED_AT_STORAGE_KEY, String(myConnectedAt))
 
-  const sessionRoomId = await deriveRoomId(olympusUrl, password)
+  // usingSyncRelay decided up front (not inside the branch below) because it
+  // also determines how the room/topic identity itself is computed: relay-
+  // hosted sync uses a plain per-coalition topic (relayTopicFor), P2P/Trystero
+  // keeps the address+password+coalition hash (deriveRoomId) -- see
+  // resources/specs/data-sources/webrtc-centralized-sync-spec.md.
+  usingSyncRelay = useSessionStore.getState().syncCapable
+  const sessionRoomId = usingSyncRelay
+    ? relayTopicFor(coalition)
+    : await deriveRoomId(olympusUrl, password, coalition)
   const moduleRoomId  = `${sessionRoomId}-${mod.toLowerCase()}`
-  console.info(`[webrtc] joining module room ${moduleRoomId}`)
+  // Same [sync]/[webrtc] convention logMsg() already uses below, for the
+  // same reason -- this always said [webrtc] regardless of which transport
+  // actually carried it.
+  console.info(`${usingSyncRelay ? '[sync]' : '[webrtc]'} joining module room ${moduleRoomId}`)
   const iceServers = await fetchIceServers()
   const baseCfg = {
     appId: 'tracs',
@@ -783,14 +828,19 @@ export async function initWebrtc({ olympusUrl, password, position, module: mod, 
   }
 
   let strategy, cfg
-  usingSyncRelay = useSessionStore.getState().syncCapable
   if (usingSyncRelay) {
     // Login's ConnectPhase already proved the relay's /sync is reachable and
     // authenticated (checkSyncCapable) before sign-in completed, so no
     // runtime probing is needed here -- go straight to it. See
     // resources/specs/data-sources/webrtc-centralized-sync-spec.md §1/§3.
+    // The relay's own auth gate (relay/config.json's `passwords`) is
+    // coalition-scoped access control, same credential srs.js/tacviewRelayClient.js
+    // already authenticate with -- unrelated to the optional Session Password
+    // below, which only ever isolates/encrypts the room, never gates the relay
+    // itself. Login's ConnectPhase capability-check already validated this
+    // exact value. See resources/specs/data-sources/webrtc-centralized-sync-spec.md.
     strategy    = syncClient
-    cfg         = { relayUrl: useSessionStore.getState().relayUrl, password }
+    cfg         = { relayUrl: useSessionStore.getState().relayUrl, coalition, password: relayPassword }
     sessionRoom = strategy.joinRoom(cfg, sessionRoomId)
   } else {
     // Try the public Nostr relay network first (no port forwarding needed).

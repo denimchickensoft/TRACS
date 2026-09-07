@@ -102,9 +102,9 @@ function createTacviewRelay(wss, config) {
   wss.on('connection', (ws) => {
     gateConnection(ws, config.passwords, {
       label: 'tacview',
-      onAuthenticated: () => {
+      onAuthenticated: (authMsg) => {
         authenticatedClients.add(ws)
-        console.log(`[relay:tacview] client authenticated (total: ${authenticatedClients.size})`)
+        console.log(`[relay:tacview] client authenticated coalition=${authMsg.coalition} (total: ${authenticatedClients.size})`)
         ws.send(JSON.stringify({
           type: 'tacview',
           data: { updated: snapshotUnits, removed: [], bullseyes: snapshotBullseyes, positions: [] },

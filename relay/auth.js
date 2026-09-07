@@ -6,22 +6,29 @@
 
 const AUTH_TIMEOUT_MS = 5_000
 
-// Always waits for the client's {type:'auth', password, peerId?} message —
-// even when validPasswords is empty (no password check performed in that
-// case, but the message itself still isn't skipped). This matters beyond
-// consistency: onAuthenticated(msg) is a capability's only source of
-// whatever the client declared (e.g. syncRelay.js's peerId) — skipping
-// straight to an unconditional ack in the no-auth-required case would hand
-// every capability an empty {} instead, silently losing that data. Closes
-// the connection if nothing arrives within timeoutMs, or if a password is
-// required and doesn't match.
+// Always waits for the client's {type:'auth', coalition, password, peerId?}
+// message — even when validPasswords is empty (no password check performed
+// in that case, but the message itself still isn't skipped). This matters
+// beyond consistency: onAuthenticated(msg) is a capability's only source of
+// whatever the client declared (e.g. syncRelay.js's peerId, or coalition
+// itself) — skipping straight to an unconditional ack in the no-auth-
+// required case would hand every capability an empty {} instead, silently
+// losing that data. Closes the connection if nothing arrives within
+// timeoutMs, or if a password is required and doesn't match the *specific*
+// coalition claimed — validPasswords is a { coalition: password } map, not
+// a flat list, so a Red client can't authenticate by supplying Blue's
+// password under a false coalition claim. This only gates the connection
+// itself; it does not separately restrict which topics an authenticated
+// connection may subscribe to afterward (see
+// resources/specs/data-sources/tracs-relay-architecture-spec.md §7 for why
+// that's intentional, not an oversight).
 // `label` identifies which capability's connection this is in the logs
 // (e.g. 'transponders', 'sync') — two capabilities rejecting two unrelated
 // connections at the same moment (e.g. a bad password tested through both
 // Login's sync capability check and srs.js's transponder connection at
 // once) would otherwise print identical, indistinguishable lines.
 function gateConnection(ws, validPasswords, { onAuthenticated, timeoutMs = AUTH_TIMEOUT_MS, label = 'relay' } = {}) {
-  const authRequired = validPasswords.length > 0
+  const authRequired = Object.keys(validPasswords).length > 0
   let authenticated = false
   const tag = `[relay:${label}]`
 
@@ -45,14 +52,14 @@ function gateConnection(ws, validPasswords, { onAuthenticated, timeoutMs = AUTH_
     }
     if (msg.type !== 'auth') return
 
-    if (!authRequired || validPasswords.includes(msg.password)) {
+    if (!authRequired || validPasswords[msg.coalition] === msg.password) {
       authenticated = true
       clearTimeout(authTimeout)
       ws.off('message', authListener)
       ws.send(JSON.stringify({ type: 'auth_ok' }))
       onAuthenticated?.(msg)
     } else {
-      console.warn(`${tag} client sent an invalid password — closing connection`)
+      console.warn(`${tag} client sent an invalid coalition/password — closing connection`)
       ws.close(4001, 'invalid password')
     }
   })

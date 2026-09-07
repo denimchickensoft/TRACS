@@ -98,7 +98,7 @@ function createSyncRelay(wss, config) {
       label: 'sync',
       onAuthenticated: (authMsg) => {
         peerId = authMsg.peerId ?? null
-        console.log(`[relay:sync] client authenticated peerId=${peerId}`)
+        console.log(`[relay:sync] client authenticated coalition=${authMsg.coalition} peerId=${peerId}`)
       },
     })
 

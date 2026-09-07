@@ -24,7 +24,7 @@ function syncUrl(relayUrl) {
 // position/module selection). The real per-room connections opened later by
 // joinRoom() authenticate near-instantly once this has already proven the
 // password good, so there's no meaningful double-handshake cost.
-export function checkSyncCapable({ relayUrl, password }) {
+export function checkSyncCapable({ relayUrl, coalition, password }) {
   return new Promise((resolve) => {
     let settled = false
     let ws
@@ -46,7 +46,7 @@ export function checkSyncCapable({ relayUrl, password }) {
     const timer = setTimeout(() => finish({ capable: false, reason: 'unreachable' }), CHECK_TIMEOUT_MS)
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'auth', password, peerId: CAPABILITY_CHECK_ID }))
+      ws.send(JSON.stringify({ type: 'auth', coalition, password, peerId: CAPABILITY_CHECK_ID }))
     }
     ws.onmessage = (ev) => {
       let msg
@@ -90,7 +90,7 @@ function connect(cfg) {
   ws = new WebSocket(syncUrl(cfg.relayUrl))
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'auth', password: cfg.password, peerId: selfId }))
+    ws.send(JSON.stringify({ type: 'auth', coalition: cfg.coalition, password: cfg.password, peerId: selfId }))
   }
 
   ws.onmessage = (ev) => {

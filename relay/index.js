@@ -42,12 +42,15 @@ const config = {
   // that ever connects out to the real DCS server in this mode. Distinct from
   // `passwords` above (which gates browsers/backends connecting IN to this relay).
   tacviewPassword: fileConfig.tacviewPassword ?? process.env.TACVIEW_PASSWORD ?? '',
-  // Any one of these unlocks the relay — not coalition-scoped, since neither
-  // transponder data nor room membership depend on which specific password
-  // was used (room privacy for sync comes from the room ID being derived
-  // from the password client-side, not from this check). Empty/missing =
-  // no auth required (the original, still-supported open-access posture).
-  passwords: Array.isArray(fileConfig.passwords) ? fileConfig.passwords : [],
+  // { coalition: password } map — gates *connecting as* a specific
+  // coalition (a Red client can't authenticate as Blue by supplying Red's
+  // own password under a false coalition claim), checked per-connection by
+  // relay/auth.js's gateConnection(). Empty/missing = no auth required (the
+  // original, still-supported open-access posture). See
+  // resources/specs/data-sources/webrtc-centralized-sync-spec.md §5.
+  passwords: (fileConfig.passwords && typeof fileConfig.passwords === 'object' && !Array.isArray(fileConfig.passwords))
+    ? fileConfig.passwords
+    : {},
 }
 
 const server = http.createServer()

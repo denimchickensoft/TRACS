@@ -4,5 +4,5 @@
   "tacviewHost": "",
   "tacviewPort": 42674,
   "tacviewPassword": "",
-  "passwords": []
+  "passwords": {}
 }
