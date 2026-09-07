@@ -57,24 +57,24 @@ Open your browser to `http://localhost:3000`.
 
 ## Modules
 
-### ATC (Air Traffic Controller) Scope
+### [ATC (Air Traffic Controller) Scope](docs/atc.md)
 Approach/departure radar display. STARS-style command set: track ownership, handoffs, point outs, flight plan management, scratchpads, PTLs, datablock collision avoidance, altitude filters, and Conflict Alert/MCI (STCA). When SRS transponder data is available, tracks gain association-gated datablocks, IDENT, and simulated squawk-standby wingmen.
 
 - **ASDE-X** — ground radar sub-scope for surface movement (taxiways, ramps), with SRS-aware Unknown Target tagging.
 - **PAR** — precision approach radar panel, available from both ATC and CATCC.
 - **Strip Bay** — flight progress strip management, dockable alongside the scope or undocked to a separate window.
 
-### CATCC (Carrier Air Traffic Control Center) Scope
+### [CATCC (Carrier Air Traffic Control Center) Scope](docs/catcc.md)
 Carrier air traffic control display.
 
 - **Status Board** — event/recovery tracking (case launch/recovery), synchronized across all CATCC positions via WebRTC.
 - **Deck** — carrier deck view with zoom/pan and lat-lon calibration.
 - Mission import for carrier/airbase data.
 
-### AIC (Air Intercept Controller) Scope
+### [AIC (Air Intercept Controller) Scope](docs/aic.md)
 Tactical display for airborne intercept control (AWACS/GCI role): BRAA list, intercept geometry.
 
-### ABM (Air Battle Manager)
+### [ABM (Air Battle Manager)](docs/abm.md)
 Mission-wide package tracking display.
 
 - **ATO / FRAG** — tasking summary and per-package detail, built from a dragged-in `.miz`/mission file. Deliberately limited to structural mission data (groups/routes/payloads) — trigger scripting and briefing text are excluded by design.
