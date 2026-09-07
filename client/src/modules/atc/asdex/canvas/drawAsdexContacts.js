@@ -40,6 +40,14 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
   for (const p of Object.values(plans ?? {})) {
     if (p.unitId != null) plansByUnit[String(p.unitId)] = p
   }
+  // Backfill from the association engine's callsign+code match (see
+  // transponder-correlation-spec.md §3.3) — plan.unitId is only ever set
+  // via the FPE's ctrl-click flow, so a StripBay-created plan would
+  // otherwise never show its type/destination line despite being
+  // correctly associated.
+  for (const [uid, aid] of Object.entries(associated)) {
+    if (!plansByUnit[uid] && plans?.[aid]) plansByUnit[uid] = plans[aid]
+  }
 
   ctx.font = '11px "Roboto Mono", monospace'
 

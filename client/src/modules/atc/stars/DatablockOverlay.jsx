@@ -390,13 +390,6 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   const dbca            = useDisplayStore((s) => s.windows[WINDOW_ID]?.dbca ?? false)
 
   const plans = useFlightPlansStore((s) => s.plans)
-  const plansByUnit = useMemo(() => {
-    const map = {}
-    for (const p of Object.values(plans)) {
-      if (p.unitId != null) map[String(p.unitId)] = p
-    }
-    return map
-  }, [plans])
 
   // Reveal gate on top of ownership — see resolveDbType's comment and
   // transponder-correlation-spec.md §3–§4.1. True (old behavior, unchanged)
@@ -406,6 +399,22 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
     (uid, unit) => !unit?.srsCapable || !!associatedMap[uid],
     [associatedMap]
   )
+
+  const plansByUnit = useMemo(() => {
+    const map = {}
+    for (const p of Object.values(plans)) {
+      if (p.unitId != null) map[String(p.unitId)] = p
+    }
+    // Backfill from the association engine's callsign+code match (see
+    // transponder-correlation-spec.md §3.3) — plan.unitId is only ever set
+    // via the FPE's ctrl-click flow, so a StripBay-created plan would
+    // otherwise never show Line 3 mismatch / actype despite being
+    // correctly associated.
+    for (const [uid, aid] of Object.entries(associatedMap)) {
+      if (!map[uid] && plans[aid]) map[uid] = plans[aid]
+    }
+    return map
+  }, [plans, associatedMap])
 
   const clockSeq  = useOdsStore((s) => s.activeProfile?.datablocks?.clockPhase?.sequence  ?? DEFAULT_SEQUENCE)
   const clockInts = useOdsStore((s) => s.activeProfile?.datablocks?.clockPhase?.intervals ?? DEFAULT_INTERVALS)
