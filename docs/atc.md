@@ -21,6 +21,8 @@ Each command below reads as `COMMAND + ENTER` or `COMMAND + SLEW`. A bare click 
 
 **Ctrl+Shift+Click** a contact is a direct shortcut for `IC` — claims it without typing anything.
 
+`IC` fails with `ILL TRK` on a track that's genuinely unassociated (see Transponder/IFF correlation below) or on a simulated wingman rendered "primary only" (see Simulated wingmen below) — claim the flight lead or wait for association instead.
+
 ## Handoffs
 
 | Command | Shortcut | Effect |
@@ -124,11 +126,52 @@ The SSA, Sign-On List, Flight-Plan (TAB) list, up to 3 Tower lists, Coast/Suspen
 
 These only appear if your ODS profile enables coordination lists.
 
+## Transponder/IFF correlation
+
+When SRS transponder data is reaching TRACS (via a relay, in either Tacview or Olympus sessions), tracks gain real squawk-based association on top of ownership:
+
+- **Association gating**: a track with live transponder data (`srsCapable`) is either *associated* (its squawk matches a filed flight plan's callsign+code) or *unassociated*. This changes what the datablock shows, separately from whether you own the track.
+- **LDB content changes**: an unassociated `srsCapable` track's LDB shows the real 4-digit beacon code on its first line, instead of the usual altitude/groundspeed line.
+- **Position symbols**: `*` marks a genuinely unassociated track; `V` marks a VFR squawk (code 1200).
+- **FDB mismatch line**: if a track's live squawk drifts from its flight plan's assigned code, the FDB (not the PDB) gains a third line showing `<reported> <assigned>` side by side. This is FDB-only by design — PDBs don't show it.
+- **IDENT**: a pilot's IDENT press appends a blinking "ID" suffix to the datablock (only the suffix blinks, not the whole datablock), latched until you acknowledge it with a slew on that track. A PDB that IDENTs temporarily displays as an FDB while the IDENT is active.
+- **Beaconator**: press and hold `F1` to force *every* squawking track's PDB into FDB-style layout with the callsign swapped for its beacon code — release to return to normal. Useful for a quick beacon-code sweep across the whole scope.
+
+## Conflict Alert / MCI (STCA)
+
+`.CA` + ENTER toggles automated conflict detection (Short-Term Conflict Alert). When on:
+
+- A track in an unacknowledged conflict gets a `CA`/`MCI` indicator line above line 1 of its datablock, blinking red.
+- **A bare left-click on a track with an active, unacknowledged conflict acknowledges it** — this takes priority over the usual "toggle partial/full datablock" click behavior described under Mouse gestures below. Once acknowledged, the indicator turns solid red instead of blinking.
+- An audible alert tone plays while any conflict is unacknowledged.
+- Suppression zones near final approach courses prevent false alerts between aircraft that are supposed to be close together on approach.
+
+The DCB aux bar (SHIFT) has a **CA** toggle button alongside **WNG** for this.
+
+## Simulated wingmen
+
+`.WNG` + ENTER toggles simplified rendering for AI wingmen that share a DCS group with a flight lead:
+
+- Only the flight lead gets a full datablock; the rest of the group renders as a small hollow diamond with no datablock at all, reducing scope clutter for large AI flights.
+- `.WNG` + SLEW, then click a second track, manually pairs two aircraft that *don't* share a DCS group (same two-click flow as `MIN`/RBL) — useful for treating an escort or wingman as a simplified pair even when the sim doesn't group them together.
+- A primary-only (wingman) track can't be claimed with `IC` — see Track ownership above.
+
+The DCB aux bar (SHIFT) has a **WNG** toggle button next to **CA**.
+
+## Altitude filters
+
+`MF F` + ENTER shows your current altitude filter. Two ways to set one:
+
+- `MF FC<loAssigned><hiAssigned>` + ENTER — filter by assigned altitude only, for associated tracks.
+- `MF F<loUnassoc><hiUnassoc> <loAssigned><hiAssigned>` + ENTER — set both the unassociated-track filter and the associated-track filter in one command.
+
+Tracks outside the active filter range don't draw at all — useful for decluttering a busy scope down to a specific altitude band.
+
 ## Mouse gestures
 
 | Gesture | Effect |
 |---|---|
-| Left-click, empty buffer | Toggle partial/full datablock, or dismiss a leftover post-handoff display |
+| Left-click, empty buffer | Acknowledge an active unacknowledged conflict (see Conflict Alert above) if the track has one; otherwise toggle partial/full datablock, or dismiss a leftover post-handoff display |
 | Right-click + drag | Pan the scope |
 | Middle-click a contact | Toggle a local highlight (not synced, not persisted) |
 | Ctrl+Click a contact | Open its Flight Plan Editor |
@@ -140,9 +183,9 @@ These only appear if your ODS profile enables coordination lists.
 
 Click a value button, then use the **mouse wheel** to adjust it. Click a submenu button to open it; **DONE** exits back to the main bar.
 
-**Main bar:** RANGE · OFF CNTR (recenter) · RR (ring spacing) · PLACE RR (click scope to set an off-center ring origin) · RR CNTR (reset) · MAPS (layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures) · BRITE (brightness submenu for DCB/background/maps/datablocks/lists/symbols/rings/compass/history) · LDR DIR · LDR LEN · CHAR SIZE (submenu: datablocks/lists/DCB/tools/position/map) · PREF (12 preset slots — save/save-as/delete/default) · SHIFT (switch to the aux bar).
+**Main bar:** RANGE · OFF CNTR (recenter) · RR (ring spacing) · PLACE RR (click scope to set an off-center ring origin) · RR CNTR (reset) · MAPS (layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures) · BRITE (brightness submenu — separate controls for Map A, Map B, background, FDB, LDB, lists, symbols, rings, compass, history) · LDR DIR · LDR LEN · CHAR SIZE (submenu: datablocks/lists/DCB/tools/position/map) · PREF (12 preset slots — save/save-as/delete/default) · SHIFT (switch to the aux bar).
 
-**Aux bar (via SHIFT):** VOL · HISTORY (trail dot count) · H_RATE (capture interval) · DCB TOP/LEFT/RIGHT/BOTTOM (reposition the bar) · PTL LNTH · PTL OWN (predicted track lines, your tracks only) · PTL ALL.
+**Aux bar (via SHIFT):** VOL · HISTORY (trail dot count) · H_RATE (capture interval) · DCB TOP/LEFT/RIGHT/BOTTOM (reposition the bar) · PTL LNTH · PTL OWN (predicted track lines, your tracks only) · PTL ALL · CA (Conflict Alert toggle) · WNG (simulated wingmen toggle).
 
 ## Keyboard shortcuts
 
@@ -162,6 +205,7 @@ Other shortcuts that act immediately, no buffer involved:
 | Key | Effect |
 |---|---|
 | `Ctrl+F` | Open a blank Flight Plan Editor |
+| `F1` (press and hold) | Beaconator — forces every squawking track's PDB to FDB layout with the callsign swapped for its beacon code, for as long as it's held (see Transponder/IFF correlation above) |
 | `Ctrl+F8` | Show/hide the DCB |
 | `Alt+T` | Toggle top-down display mode |
 | `Ctrl+Alt+0`–`9` | Save current view (center/range/overlays) to bookmark slot 0–9 |
@@ -187,6 +231,11 @@ A smaller, ground-movement-focused sub-scope showing surface traffic (aircraft/h
 | `.COORDS` + ENTER | Toggle cursor lat/lng readout |
 | `.COLORS <name>` + ENTER | Switch color profile (e.g. Day/Night) |
 | `<d>` (1–9) + SLEW | Set/clear a contact's leader-line direction (`5` clears) |
+| `.TAG <id>` + SLEW | Manually tag a target: type an aircraft ID, then click an Unknown Target to assign it. Validated against the real ground-truth callsign — a mismatched ID is rejected outright. |
+
+**Unknown Targets**: when SRS transponder data is available, a track with no live squawk renders as a **teal** triangle with no datablock or leader line — an "Unknown Target" until it either squawks or is manually tagged with `.TAG`.
+
+**Datablock content**: once a target is tagged or associated, its datablock shows the aircraft ID; otherwise it shows the raw beacon code, when one is available.
 
 **Mouse:** Ctrl+Click opens a contact's FPE; right-click+drag pans; mouse wheel zooms (0.1–2.0 NM range, in 0.1 steps).
 

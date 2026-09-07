@@ -6,7 +6,9 @@ Carrier air traffic control: a radar scope with a text command line, a synchroni
 
 Type into the command line, then press **Enter** to execute or click a target on the scope to complete a "slew" command (see below). Commands are case-insensitive; the scope uppercases as you type.
 
-Aircraft are addressed by side number or callsign.
+Aircraft are addressed by side number or callsign. A track's side number comes from the Status Board: TRACS auto-correlates a live unit's callsign against the Status Board's callsign/side-number entries, so an aircraft shows its real side number on the scope only once it's on the board (via the Status Board itself, or by adding it directly with Ctrl+Click below). An uncorrelated contact's datablock shows `XXX` instead of a side number. There's no manual "assign side number to this track" command — correlation is always driven by the Status Board.
+
+CATCC does not yet use SRS transponder data (unlike ATC's association/IDENT features) — its datablock is always the fixed side-number-or-`XXX` / altitude-groundspeed format described above, regardless of squawk. Transponder-aware CATCC datablocks are planned but not yet built.
 
 | Command | Effect |
 |---|---|
@@ -57,6 +59,8 @@ Errors appear in the ODS response area: `NO TRACK: <id>` (unit not found), `ILL 
 A synchronized event/recovery board, visible to and editable by every CATCC position via WebRTC.
 
 **Header fields:** Event, Launch/Recovery time (4-digit clock), Ceiling, Visibility, QNH, Case (Launch/Recovery — the NATOPS recovery case letter/number), MAR/APP/TWR/DEP button frequencies, RAD (radial). Sunrise/sunset, magnetic variation, timezone, BRC, FB, and speed are computed automatically and read-only. **Case Recovery** matters beyond display: setting it to `3` switches the status overlay to show RAD+FB (instrument recovery) instead of BRC.
+
+The on-scope status overlay also shows a context-sensitive next-handoff line — `<label> BTN <freq>` — based on your own position: Marshal sees Approach's frequency, Approach sees Tower's, Tower sees Departure's.
 
 BRC/FB/speed flash if they drift more than 5° and haven't restabilized for 20 seconds — a heads-up that the boat is maneuvering.
 

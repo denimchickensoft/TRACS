@@ -2,6 +2,8 @@
 
 Tactical display for airborne intercept control — AWACS/GCI style: bullseye-centered scope, hostile/friendly classification, BRAA pairing, ROE tracking, and a doctrinal PICTURE readout (formation/group detection modeled on AWACS brevity doctrine).
 
+Sign-in requires a Callsign and Frequency — see [Getting Started](getting-started.md). AIC does not use SRS transponder data (unlike ATC's association/IDENT features) — that's undecided/not planned for this module.
+
 ## Command line
 
 Click the scope to focus it, type, then **Enter** to run most commands. A few commands work differently: type them, then **click a contact on the scope** instead of pressing Enter — that pattern is called out explicitly below, since pressing Enter on those alone does nothing useful.
@@ -16,7 +18,7 @@ Click the scope to focus it, type, then **Enter** to run most commands. A few co
 | `.center <brg> <rng>` | Center at a magnetic bearing/range (NM) from bullseye |
 | `.center <fixname>` | Center on a named nav fix |
 | `.find <fixname>` | Drop a marker at a named fix (cleared by Escape) |
-| `.define <term>` | Look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition above the command line, e.g. `.define bogey dope`. Stays up until dismissed (Escape, another `.define`, or clicking it) |
+| `.define <term>` (or `.def <term>`) | Look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition above the command line, e.g. `.define bogey dope`. Stays up until dismissed (Escape, another `.define`, or clicking it) |
 | `.be` | Reset bullseye to the mission bullseye (clears any override) |
 | `.be` + click | Type `.be`, then click the map to override bullseye at that point |
 | `.be <fixname>` | Override bullseye to a named fix/navaid/runway |
@@ -60,7 +62,7 @@ Or use the F-keys (below) to declare contacts by clicking them.
 
 ### PICTURE panel
 
-`.picture` toggles the PICTURE readout — off by default, so turn it on explicitly. It groups hostile contacts into formations (single, wall, vic, echelon, etc.) with doctrine-style naming and amplifiers (opening/closing, weighted, follow-on), computed from a sector you define:
+`.picture` toggles the PICTURE readout — off by default, so turn it on explicitly. It groups hostile contacts into formations (single, azimuth, range, wall, vic, champagne, ladder, box, leading edge) with doctrine-style naming and amplifiers (opening/closing, weighted, follow-on), computed from a sector you define:
 
 | Command | Effect |
 |---|---|
