@@ -58,10 +58,16 @@ const HEX_ID_RE = /^[0-9a-fA-F]+$/
 
 const EARTH_RADIUS_M = 6371008.8
 
-// Great-circle distance (metres) between two tParts-space lat/lng pairs. Both
-// points share the same additive ReferenceLatitude/ReferenceLongitude offset
-// (§2.1), which cancels out in a distance calculation, so raw tParts values
-// (never offset-adjusted) are fine to use directly here.
+// Great-circle distance (metres) between two ABSOLUTE lat/lng pairs (not
+// tParts-space reference-relative deltas — see call site). The reference
+// offset cancels in the dLat/dLon difference terms, but the haversine
+// formula's cos(lat1)*cos(lat2) weighting term needs the true latitude: it
+// corrects the longitude term for how far the point is from the equator.
+// Feeding it a near-zero delta instead of the real latitude makes cos(lat)
+// read as ~1 regardless of theatre, inflating any east/west distance
+// component by ~1/cos(actualLat) — confirmed live 2026-09-07 as a Tacview
+// groundspeed reading ~17% high (610kt vs Olympus's 520kt on the same
+// aircraft) at a ~30-35°N theatre.
 function distanceM(lat1, lon1, lat2, lon2) {
   const toRad = (d) => (d * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)
@@ -222,6 +228,14 @@ function createParser() {
     // to HDM, then raw yaw as a last resort.
     const heading = t?.[8] ?? (p.HDM !== undefined ? p.HDM : t?.[5])
     if (heading !== undefined && heading !== null) unit.heading = heading
+    // Pitch (nose up/down, degrees) — needed by tacviewDetection.js's
+    // elevation scan-volume check. Unlike cockpit-instrument fields
+    // (IAS/AoA/wind/fuel, confirmed restricted to the connecting client's
+    // own aircraft), pitch/roll are part of the object transform every ACMI
+    // recording must carry for every object to render correctly in replay —
+    // confirmed populated for many distinct AI aircraft simultaneously in a
+    // real capture (resources/tacview-stream.txt), not just one.
+    if (t?.[4] !== undefined && t[4] !== null) unit.pitch = t[4]
 
     return unit
   }
@@ -321,7 +335,15 @@ function createParser() {
             } else {
               const dt = currentTime - obj.speedSampleTime
               if (dt >= SPEED_SAMPLE_INTERVAL_S) {
-                if (dt > 0) obj.groundSpeedMps = distanceM(obj.speedSampleLat, obj.speedSampleLon, newLat, newLon) / dt
+                // distanceM needs absolute lat/lng, not the raw reference-relative
+                // deltas stored in speedSampleLat/Lon and newLat/Lon — see distanceM's
+                // comment.
+                if (dt > 0) {
+                  obj.groundSpeedMps = distanceM(
+                    refLat + obj.speedSampleLat, refLon + obj.speedSampleLon,
+                    refLat + newLat, refLon + newLon,
+                  ) / dt
+                }
                 obj.speedSampleLat = newLat
                 obj.speedSampleLon = newLon
                 obj.speedSampleTime = currentTime
