@@ -23,6 +23,13 @@
 //   node server/scripts/buildMvaMap.js            # every facility, all theatres
 //   node server/scripts/buildMvaMap.js KLAS       # one facility (ICAO)
 //   node server/scripts/buildMvaMap.js Nevada     # all facilities in a theatre
+//   node server/scripts/buildMvaMap.js [filter] [--lnm-path <path>]
+//
+// --lnm-path (optional) points at a local LittleNavMap navigraph sqlite DB,
+// used only as a supplementary airbase-coordinate source. resources/ is
+// gitignored and not part of the committed project, so this never assumes a
+// specific resources/ subfolder — the caller says where their own copy
+// lives, and the enrichment is simply skipped (not an error) if omitted.
 //
 // Outputs:
 //   server/navdata/cache/<folder>/mva/<ICAO>.json   sector polygons
@@ -75,7 +82,8 @@ const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const SECTORS_PATH  = path.join(__dirname, '../navdata/cache/sectors.json')
 const ICAOMAP_PATH  = path.join(__dirname, '../../client/public/icaoMapping.json')
 const RUNWAYS_DIR   = path.join(__dirname, '../../client/public/runways')
-const LNM_DB_PATH   = path.join(__dirname, '../../resources/littlenavmap/little_navmap_db/little_navmap_navigraph.sqlite')
+const lnmArgIdx     = process.argv.indexOf('--lnm-path')
+const LNM_DB_PATH   = lnmArgIdx !== -1 ? process.argv[lnmArgIdx + 1] : null
 const CACHE_DIR     = path.join(__dirname, '../navdata/cache')
 const PREVIEW_DIR   = path.join(__dirname, '../data/mva-preview')
 
@@ -520,7 +528,7 @@ async function main() {
 
   // Optional LNM coordinate fallback (the 235 MB navdata source DB).
   let lnm = null, lnmStmt = null
-  if (fs.existsSync(LNM_DB_PATH)) {
+  if (LNM_DB_PATH && fs.existsSync(LNM_DB_PATH)) {
     try { lnm = new Database(LNM_DB_PATH, { readonly: true }); lnmStmt = lnm.prepare('SELECT laty, lonx FROM airport WHERE ident = ?') } catch { lnm = null }
   }
 
@@ -546,7 +554,10 @@ async function main() {
   }
 
   // CLI filter: an ICAO, or a theatre (folder/name, case-insensitive).
-  const arg = process.argv[2]
+  // Strip --lnm-path/<value> first so it doesn't shift this positional arg.
+  const cliArgs = process.argv.slice(2)
+  if (lnmArgIdx !== -1) cliArgs.splice(cliArgs.indexOf('--lnm-path'), 2)
+  const arg = cliArgs[0]
   let jobs = worklist
   if (arg) {
     const up = arg.toUpperCase(), lo = arg.toLowerCase()

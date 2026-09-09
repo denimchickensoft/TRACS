@@ -9,14 +9,28 @@
 // Verified against a real mission: PersianGulf id=4 -> "Al Dhafra AFB" matches
 // an actual airdromeId=4 waypoint in resources/Operation Hormuz M05.miz.
 //
-// Usage: node server/scripts/buildAirdromeIds.js
+// Usage: node server/scripts/buildAirdromeIds.js --pydcs-path <path>
 // Writes: client/public/airdromes/<Theatre>.json  ({ "<id>": "<name>", ... })
+//
+// --pydcs-path is required, not defaulted — it points at a local checkout of
+// pydcs (e.g. resources/pydcs-master, gitignored). resources/ isn't part of
+// the committed project, so this script never assumes any specific
+// resources/ subfolder name/location exists — the caller always says where
+// their own local copy lives.
 
 const fs   = require('fs')
 const path = require('path')
 
+const args  = process.argv.slice(2)
+const ppIdx = args.indexOf('--pydcs-path')
+if (ppIdx === -1) {
+  console.error('error: --pydcs-path <path> is required (resources/ is gitignored — no default location can be assumed)')
+  console.error('usage: node server/scripts/buildAirdromeIds.js --pydcs-path <path>')
+  process.exit(1)
+}
+
 const ROOT      = path.join(__dirname, '../..')
-const PYDCS_DIR = path.join(ROOT, 'resources/pydcs-master/dcs/terrain')
+const PYDCS_DIR = path.join(args[ppIdx + 1], 'dcs/terrain')
 const OUT_DIR   = path.join(ROOT, 'client/public/airdromes')
 
 // pydcs terrain folder name -> TRACS theatre name (matches projection_params.json keys)
