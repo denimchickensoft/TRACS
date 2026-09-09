@@ -1,0 +1,827 @@
+{
+ "A-10A": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "A-10A.lua"
+ },
+ "A-10C": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "A-10C.lua"
+ },
+ "A-10C_2": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "A-10C_2.lua"
+ },
+ "A-20G": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "A-20G.lua"
+ },
+ "A-50": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 500,
+  "sourceFile": "A-50.lua"
+ },
+ "A6E": {
+  "rcs": 5.31,
+  "detectionRangeMaxKm": 277.8,
+  "sourceFile": "A6E.lua"
+ },
+ "AH-1W": {
+  "rcs": 7,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "AH-1W.lua"
+ },
+ "AH-64A": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "AH-64A.lua"
+ },
+ "AH-64D": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "AH-64D.lua"
+ },
+ "AH-64D_BLK_II": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "AH-64D_BLK_II.lua"
+ },
+ "AJS37": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "AJS37.lua"
+ },
+ "AV8BNA": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 100,
+  "sourceFile": "AV8BNA.lua"
+ },
+ "An-26B": {
+  "rcs": 50,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "An-26B.lua"
+ },
+ "An-30M": {
+  "rcs": 50,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "An-30M.lua"
+ },
+ "B-17G": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "B-17G.lua"
+ },
+ "B-1B": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "B-1B.lua"
+ },
+ "B-52H": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "B-52H.lua"
+ },
+ "Bf-109K-4": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Bf-109K-4.lua"
+ },
+ "C-101CC": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "C-101CC.lua"
+ },
+ "C-101EB": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "C-101EB.lua"
+ },
+ "C-130": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "C-130.lua"
+ },
+ "C-130J-30": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "C-130J-30.lua"
+ },
+ "C-17A": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "C-17A.lua"
+ },
+ "C-47": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "C-47.lua"
+ },
+ "CH-47D": {
+  "rcs": 30,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "CH-47D.lua"
+ },
+ "CH-47Fbl1": {
+  "rcs": 12.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "CH-47Fbl1.lua"
+ },
+ "CH-53E": {
+  "rcs": 25,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "CH-53E.lua"
+ },
+ "Christen Eagle II": {
+  "rcs": 1.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Christen Eagle II.lua"
+ },
+ "E-2C": {
+  "rcs": 50,
+  "detectionRangeMaxKm": 400,
+  "sourceFile": "E-2C.lua"
+ },
+ "E-3A": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 500,
+  "sourceFile": "E-3A.lua"
+ },
+ "F-117A": {
+  "rcs": 0.01,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "F-117A.lua"
+ },
+ "F-14A": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 350,
+  "sourceFile": "F-14A.lua"
+ },
+ "F-14A-135-GR": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 350,
+  "sourceFile": "corrected:F-14A (confirmed via live walls-test data)"
+ },
+ "F-14A-135-GR-Early": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 350,
+  "sourceFile": "corrected:F-14A (confirmed via live walls-test data)"
+ },
+ "F-14B": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 350,
+  "sourceFile": "corrected:F-14A (confirmed via live walls-test data)"
+ },
+ "F-15C": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 335,
+  "sourceFile": "F-15C.lua"
+ },
+ "F-15E": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "F-15E.lua"
+ },
+ "F-15ESE": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "F-15ESE.lua"
+ },
+ "F-16A": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 100,
+  "sourceFile": "F-16A.lua"
+ },
+ "F-16A MLU": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 100,
+  "sourceFile": "F-16A MLU.lua"
+ },
+ "F-16C bl.50": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "F-16C bl.50.lua"
+ },
+ "F-16C bl.52d": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "F-16C bl.52d.lua"
+ },
+ "F-16C_50": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "F-16C_50.lua"
+ },
+ "F-4E": {
+  "rcs": 7,
+  "detectionRangeMaxKm": 100,
+  "sourceFile": "F-4E.lua"
+ },
+ "F-4E-45MC": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "F-4E-45MC.lua"
+ },
+ "F-5E": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "F-5E.lua"
+ },
+ "F-5E-3": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "F-5E-3.lua"
+ },
+ "F-5E-3_FC": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "F-5E-3_FC.lua"
+ },
+ "F-86F Sabre": {
+  "rcs": 2,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "F-86F Sabre.lua"
+ },
+ "F-86F_FC": {
+  "rcs": 2,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "F-86F_FC.lua"
+ },
+ "F/A-18A": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "FA-18A.lua"
+ },
+ "F/A-18C": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "FA-18C.lua"
+ },
+ "F4U-1D": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 10,
+  "sourceFile": "F4U-1D.lua"
+ },
+ "F4U-1D_CW": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 10,
+  "sourceFile": "F4U-1D_CW.lua"
+ },
+ "FA-18C_hornet": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "FA-18C_hornet.lua"
+ },
+ "FW-190A8": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "FW-190A8.lua"
+ },
+ "FW-190D9": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "FW-190D9.lua"
+ },
+ "Falcon_Gyrocopter": {
+  "rcs": 0.4,
+  "detectionRangeMaxKm": 2,
+  "sourceFile": "Falcon_Gyrocopter.lua"
+ },
+ "H-6J": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "substitute:Tu-95MS"
+ },
+ "Hawk": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "Hawk.lua"
+ },
+ "I-16": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "I-16.lua"
+ },
+ "IL-76MD": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "IL-76MD.lua"
+ },
+ "IL-78M": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "IL-78M.lua"
+ },
+ "J-11A": {
+  "rcs": 5.5,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "J-11A.lua"
+ },
+ "JF-17": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 180,
+  "sourceFile": "JF-17.lua"
+ },
+ "Ju-88A4": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Ju-88A4.lua"
+ },
+ "KC-135": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "KC-135.lua"
+ },
+ "KC130": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "KC130.lua"
+ },
+ "KC135MPRS": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "KC135MPRS.lua"
+ },
+ "KJ-2000": {
+  "rcs": 80,
+  "detectionRangeMaxKm": 500,
+  "sourceFile": "KJ-2000.lua"
+ },
+ "Ka-27": {
+  "rcs": 15,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Ka-27.lua"
+ },
+ "Ka-50": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Ka-50.lua"
+ },
+ "Ka-50_3": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Ka-50_3.lua"
+ },
+ "L-39C": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "L-39C.lua"
+ },
+ "L-39ZA": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "L-39ZA.lua"
+ },
+ "M-2000C": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 120,
+  "sourceFile": "M-2000C.lua"
+ },
+ "MB-339A": {
+  "rcs": 1.5,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "MB-339A.lua"
+ },
+ "MB-339APAN": {
+  "rcs": 1.5,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "MB-339APAN.lua"
+ },
+ "MQ-9 Reaper": {
+  "rcs": 0.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "MQ-9 Reaper.lua"
+ },
+ "Mi-24P": {
+  "rcs": 12,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "Mi-24P.lua"
+ },
+ "Mi-24V": {
+  "rcs": 12,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Mi-24V.lua"
+ },
+ "Mi-26": {
+  "rcs": 30,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Mi-26.lua"
+ },
+ "Mi-28N": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Mi-28N.lua"
+ },
+ "Mi-8MT": {
+  "rcs": 12,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Mi-8MT.lua"
+ },
+ "MiG-15bis": {
+  "rcs": 2,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "MiG-15bis.lua"
+ },
+ "MiG-15bis_FC": {
+  "rcs": 2,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "MiG-15bis_FC.lua"
+ },
+ "MiG-19P": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 100,
+  "sourceFile": "MiG-19P.lua"
+ },
+ "MiG-21Bis": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 30,
+  "sourceFile": "MiG-21Bis.lua"
+ },
+ "MiG-23MLD": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 120,
+  "sourceFile": "MiG-23MLD.lua"
+ },
+ "MiG-25PD": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 100,
+  "sourceFile": "MiG-25PD.lua"
+ },
+ "MiG-25RBT": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "MiG-25RBT.lua"
+ },
+ "MiG-27K": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "MiG-27K.lua"
+ },
+ "MiG-29 Fulcrum": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "MiG-29 Fulcrum.lua"
+ },
+ "MiG-29A": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "MiG-29A.lua"
+ },
+ "MiG-29G": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "MiG-29G.lua"
+ },
+ "MiG-29S": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 160,
+  "sourceFile": "MiG-29S.lua"
+ },
+ "MiG-31": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 350,
+  "sourceFile": "MiG-31.lua"
+ },
+ "Mirage 2000-5": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 150,
+  "sourceFile": "Mirage 2000-5.lua"
+ },
+ "Mirage-F1AD": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1AD.lua"
+ },
+ "Mirage-F1AZ": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1AZ.lua"
+ },
+ "Mirage-F1B": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1B.lua"
+ },
+ "Mirage-F1BD": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1BD.lua"
+ },
+ "Mirage-F1BE": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1BE.lua"
+ },
+ "Mirage-F1BQ": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1BQ.lua"
+ },
+ "Mirage-F1C": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1C.lua"
+ },
+ "Mirage-F1C-200": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1C-200.lua"
+ },
+ "Mirage-F1CE": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CE.lua"
+ },
+ "Mirage-F1CG": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CG.lua"
+ },
+ "Mirage-F1CH": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CH.lua"
+ },
+ "Mirage-F1CJ": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CJ.lua"
+ },
+ "Mirage-F1CK": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CK.lua"
+ },
+ "Mirage-F1CR": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CR.lua"
+ },
+ "Mirage-F1CT": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CT.lua"
+ },
+ "Mirage-F1CZ": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1CZ.lua"
+ },
+ "Mirage-F1DDA": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1DDA.lua"
+ },
+ "Mirage-F1ED": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1ED.lua"
+ },
+ "Mirage-F1EDA": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1EDA.lua"
+ },
+ "Mirage-F1EE": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1EE.lua"
+ },
+ "Mirage-F1EH": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1EH.lua"
+ },
+ "Mirage-F1EQ": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1EQ.lua"
+ },
+ "Mirage-F1JA": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1JA.lua"
+ },
+ "Mirage-F1M-CE": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1M-CE.lua"
+ },
+ "Mirage-F1M-EE": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 70,
+  "sourceFile": "Mirage-F1M-EE.lua"
+ },
+ "MosquitoFBMkVI": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "MosquitoFBMkVI.lua"
+ },
+ "OH-58D": {
+  "rcs": 5,
+  "detectionRangeMaxKm": 50,
+  "sourceFile": "OH-58D.lua"
+ },
+ "OH58D": {
+  "rcs": 2,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "OH58D.lua"
+ },
+ "P-47D-30": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "P-47D-30.lua"
+ },
+ "P-47D-30bl1": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "P-47D-30bl1.lua"
+ },
+ "P-47D-40": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "P-47D-40.lua"
+ },
+ "P-51D": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "P-51D.lua"
+ },
+ "P-51D-30-NA": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "P-51D-30-NA.lua"
+ },
+ "QF-4E": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 60,
+  "sourceFile": "QF-4E.lua"
+ },
+ "RQ-1A Predator": {
+  "rcs": 0.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "substitute:MQ-9 Reaper"
+ },
+ "S-3B": {
+  "rcs": 30,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "S-3B.lua"
+ },
+ "S-3B Tanker": {
+  "rcs": 30,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "S-3B Tanker.lua"
+ },
+ "SA342L": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 11,
+  "sourceFile": "SA342L.lua"
+ },
+ "SA342M": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 11,
+  "sourceFile": "SA342M.lua"
+ },
+ "SA342Minigun": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 11,
+  "sourceFile": "SA342Minigun.lua"
+ },
+ "SA342Mistral": {
+  "rcs": 3,
+  "detectionRangeMaxKm": 11,
+  "sourceFile": "SA342Mistral.lua"
+ },
+ "SH-3W": {
+  "rcs": 12,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "SH-3W.lua"
+ },
+ "SH-60B": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "SH-60B.lua"
+ },
+ "SpitfireLFMkIX": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "SpitfireLFMkIX.lua"
+ },
+ "SpitfireLFMkIXCW": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "SpitfireLFMkIXCW.lua"
+ },
+ "Su-17M4": {
+  "rcs": 7,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Su-17M4.lua"
+ },
+ "Su-24M": {
+  "rcs": 7.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Su-24M.lua"
+ },
+ "Su-24MR": {
+  "rcs": 7.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Su-24MR.lua"
+ },
+ "Su-25": {
+  "rcs": 7,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Su-25.lua"
+ },
+ "Su-25T": {
+  "rcs": 7,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Su-25T.lua"
+ },
+ "Su-25TM": {
+  "rcs": 7,
+  "detectionRangeMaxKm": 75,
+  "sourceFile": "Su-25TM.lua"
+ },
+ "Su-27": {
+  "rcs": 5.5,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "Su-27.lua"
+ },
+ "Su-30": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "Su-30.lua"
+ },
+ "Su-33": {
+  "rcs": 5.5,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "Su-33.lua"
+ },
+ "Su-34": {
+  "rcs": 6,
+  "detectionRangeMaxKm": 250,
+  "sourceFile": "Su-34.lua"
+ },
+ "TF-51D": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "TF-51D.lua"
+ },
+ "Tornado GR4": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 150,
+  "sourceFile": "Tornado GR4.lua"
+ },
+ "Tornado IDS": {
+  "rcs": 4,
+  "detectionRangeMaxKm": 150,
+  "sourceFile": "Tornado IDS.lua"
+ },
+ "Tu-142": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Tu-142.lua"
+ },
+ "Tu-160": {
+  "rcs": 15,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Tu-160.lua"
+ },
+ "Tu-22M3": {
+  "rcs": 60,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Tu-22M3.lua"
+ },
+ "Tu-95MS": {
+  "rcs": 100,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Tu-95MS.lua"
+ },
+ "UH-1H": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 11,
+  "sourceFile": "UH-1H.lua"
+ },
+ "UH-60A": {
+  "rcs": 10,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "UH-60A.lua"
+ },
+ "WingLoong-I": {
+  "rcs": 0.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "substitute:MQ-9 Reaper"
+ },
+ "Yak-40": {
+  "rcs": 50,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Yak-40.lua"
+ },
+ "Yak-52": {
+  "rcs": 2.5,
+  "detectionRangeMaxKm": 0,
+  "sourceFile": "Yak-52.lua"
+ }
+}

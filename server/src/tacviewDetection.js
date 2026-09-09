@@ -39,6 +39,7 @@ const DETECTION_RADAR = 4
 const DETECTION_RWR = 16
 
 const METERS_PER_NM = 1852
+const KM_PER_NM = 1.852
 const EARTH_RADIUS_NM = 3440.065
 // 4/3-effective-Earth-radius approximation for standard atmospheric
 // refraction — the same correction real radar-horizon calculations use —
@@ -68,7 +69,21 @@ const DEFAULTS = {
   losSampleCount: 8,
   azimuthConeHalfAngleDeg: 60,
   elevationConeHalfAngleDeg: 45,
-  rwr: { enabled: true, rangeMultiplier: 1.75 },
+  // zeroDetectionEmitterFallbackNm: see computeRwrContacts()'s comment below
+  // for the known, accepted gap this exists for. Off (0) by default — this
+  // project doesn't invent a number it can't justify; an operator who wants
+  // to compensate for a specific aircraft can set this themselves.
+  rwr: { enabled: true, rangeMultiplier: 1.75, zeroDetectionEmitterFallbackNm: 0 },
+  // PROVISIONAL, unresearched — see aircraftSensorDatabase.json's RCS-scaling
+  // usage below. detection_range_max (see aircraftSensorRangeNm()) is
+  // calibrated against an unspecified "large" reference target; referenceRcsM2
+  // is a deliberately arbitrary round number, not anchored to any specific
+  // real airframe's RCS, since the datamine source for detection_range_max
+  // never pins "large" to a number — picking a specific real aircraft's RCS
+  // here would imply a precision that isn't actually established.
+  // rangeScalingExponent=0.25 is the real radar-range equation's RCS^(1/4)
+  // relationship, unverified against this project's own data yet.
+  aircraftSensorScaling: { referenceRcsM2: 100, rangeScalingExponent: 0.25 },
 }
 
 const userConfig = loadUserConfig()
@@ -78,6 +93,7 @@ const config = {
   sensorRangeNm: { ...DEFAULTS.sensorRangeNm, ...(userConfig.sensorRangeNm ?? {}) },
   unitTypeRangeOverridesNm: { ...DEFAULTS.unitTypeRangeOverridesNm, ...(userConfig.unitTypeRangeOverridesNm ?? {}) },
   rwr: { ...DEFAULTS.rwr, ...(userConfig.rwr ?? {}) },
+  aircraftSensorScaling: { ...DEFAULTS.aircraftSensorScaling, ...(userConfig.aircraftSensorScaling ?? {}) },
 }
 
 const SENSOR_RANGE_NM = config.sensorRangeNm
@@ -102,6 +118,12 @@ const groundUnitDb = loadUnitDb('groundunitdatabase.json')
 const navyUnitDb = loadUnitDb('navyunitdatabase.json')
 const aircraftUnitDb = loadUnitDb('aircraftdatabase.json')
 const helicopterUnitDb = loadUnitDb('helicopterdatabase.json')
+// Real per-airframe RCS (m^2) / detectionRangeMaxKm, extracted from the DCS
+// install itself by server/scripts/buildAircraftSensorDb.js (see
+// resources/specs/tacview-detection-spec.md's "Major discovery" section).
+// Tolerates absence exactly like the DBs above — a fresh clone before that
+// script's first run just falls back to the pre-existing role-tier system.
+const aircraftSensorDb = loadUnitDb('aircraftSensorDatabase.json')
 
 // Only these `type` values are actually air-search sensors. Tank/APC/
 // Infantry/Artillery/Cargo-Transport also carry a nonzero acquisitionRange
@@ -155,12 +177,50 @@ function unitRoles(unit, db) {
   return roles
 }
 
+// Real per-airframe range against a "large" reference target (see
+// aircraftSensorDb's provenance above) when known; an explicit
+// detectionRangeMaxKm === 0 (e.g. A-10A) means a real, confirmed absence of
+// air-to-air radar — checked before the zero-vs-missing distinction below,
+// never falls back to the role-tier system for a unit we actually have real
+// data for. No DB entry at all (mod aircraft, or a name
+// buildAircraftSensorDb.js's known-name filter dropped) falls back to the
+// pre-existing role-tier approximation unchanged — this is the safety net,
+// never degrades a genuinely unknown unit to zero range.
 function aircraftSensorRangeNm(unit) {
+  const entry = aircraftSensorDb[unit.name]
+  if (entry) {
+    if (entry.detectionRangeMaxKm === 0) return 0
+    return entry.detectionRangeMaxKm / KM_PER_NM
+  }
   const db = unit.category === 'Helicopter' ? helicopterUnitDb : aircraftUnitDb
   const roles = unitRoles(unit, db)
   if (roles.has('AWACS')) return AWACS_RANGE_NM
   if (roles.has('CAP')) return FIGHTER_RANGE_NM
   return SENSOR_RANGE_NM[unit.category]
+}
+
+// Real detection range scales with the *target's* RCS too, not just the
+// detector's own capability — confirmed via live "walls" test data (the same
+// F-14 variants that reached ~190nm against a huge Tu-142 only found small
+// fighters at ~32nm). detectionRangeMaxKm is calibrated against an
+// unspecified "large" reference target (see config.aircraftSensorScaling's
+// comment), so a smaller target's real range must scale down from that
+// baseline — real radar-range-equation-informed RCS^(1/4) scaling, relative
+// to the reference RCS. Ground/naval targets, and any Aircraft/Helicopter
+// target missing a DB entry, get the unscaled base range — a "don't guess"
+// default rather than fabricating an adjustment. Used only inside
+// computeContacts()'s Aircraft/Helicopter-detector path — must NOT be used
+// for RWR (computeRwrContacts() stays correctly emitter-only/receiver-
+// agnostic, per the walls test's validation of that design).
+function radarDetectionRangeNm(detectorUnit, targetUnit) {
+  const base = aircraftSensorRangeNm(detectorUnit)
+  if (base === 0) return 0
+  const targetEntry = (targetUnit.category === 'Aircraft' || targetUnit.category === 'Helicopter')
+    ? aircraftSensorDb[targetUnit.name]
+    : undefined
+  if (!targetEntry) return base
+  const ratio = targetEntry.rcs / config.aircraftSensorScaling.referenceRcsM2
+  return base * ratio ** config.aircraftSensorScaling.rangeScalingExponent
 }
 
 function sensorRangeNm(unit) {
@@ -319,7 +379,23 @@ function computeContacts(units, friendlyCoalitionId) {
       if (quickReject(detector.unit.position, target.position, detector.rangeNm)) continue
 
       const range = distanceNm(detector.unit.position, target.position)
-      if (range > detector.rangeNm) continue
+      // For Aircraft/Helicopter detectors, detector.rangeNm (used above by
+      // quickReject as a cheap upper-bound pre-filter) is the range against
+      // an unspecified "large" reference target — the real, final accept/
+      // reject range also depends on this specific target's own RCS (see
+      // radarDetectionRangeNm()), so it's computed per-pair here rather than
+      // once per detector. Known, accepted minor approximation: if a
+      // target's real RCS ever exceeds config.aircraftSensorScaling's
+      // referenceRcsM2, its true scaled range could slightly exceed
+      // quickReject's unscaled bound, causing a rare false-reject at the
+      // extreme edge of an unusually huge target's true range — same style
+      // of small, documented conservative approximation already accepted in
+      // quickReject()'s own Math.max(cos(lat), 0.1) floor. Ground/naval
+      // detectors are unaffected — effectiveRangeNm just equals
+      // detector.rangeNm for them, the same as before this change.
+      const isAircraftDetector = detector.unit.category === 'Aircraft' || detector.unit.category === 'Helicopter'
+      const effectiveRangeNm = isAircraftDetector ? radarDetectionRangeNm(detector.unit, target) : detector.rangeNm
+      if (range > effectiveRangeNm) continue
 
       if (!isWithinScanVolume(detector.unit, target.position, range)) continue
 
@@ -355,6 +431,25 @@ function computeContacts(units, friendlyCoalitionId) {
 // already-visible (RADAR/DLINK-detected) contact's type persistently. See
 // createFogFilter's computeVisibility() for why that means RWR contacts must
 // NOT feed the server-side fog-exposure set on their own.
+//
+// Known, accepted limitation, not fixed here: an emitter's range is
+// `sensorRangeNm(emitter)` — for an Aircraft/Helicopter, that's
+// aircraftSensorDatabase.json's real detectionRangeMaxKm, which is
+// confirmed 0 for real airframes with no air-to-air radar (A-10A, most
+// attack/bomber/transport types). This module treats "has no air-to-air
+// radar" and "emits nothing RWR could ever pick up" as the same fact — but
+// live flight data (2026-09-08 walls test) showed a real bomber-class
+// aircraft with a confirmed zero radar-detection range still registering
+// as a genuine RWR-detectable emitter in practice (some other onboard
+// emission — a nav/attack radar, presumably — clearly carries even though
+// it never functions as an air-search sensor). No DCS-Lua source, live
+// number, or datamine reference exists for "how far a non-radar aircraft's
+// other emissions actually carry," so this isn't fixed with an invented
+// constant — config.rwr.zeroDetectionEmitterFallbackNm (default 0,
+// disabled) is an inert escape hatch for an operator who wants to
+// compensate for a specific aircraft, not a default this module ships
+// itself. See resources/specs/tacview-detection-spec.md for the full
+// investigation.
 function computeRwrContacts(units, friendlyCoalitionId) {
   const rwrById = new Map()
   if (!config.rwr.enabled) return {}
@@ -375,7 +470,11 @@ function computeRwrContacts(units, friendlyCoalitionId) {
   for (const receiver of receivers) {
     for (const [emitterId, emitter] of emitters) {
       if (emitterId === receiver.id) continue
-      const baseRangeNm = sensorRangeNm(emitter)
+      let baseRangeNm = sensorRangeNm(emitter)
+      const isZeroDetectionAircraft = baseRangeNm === 0 && (emitter.category === 'Aircraft' || emitter.category === 'Helicopter')
+      if (isZeroDetectionAircraft && config.rwr.zeroDetectionEmitterFallbackNm > 0) {
+        baseRangeNm = config.rwr.zeroDetectionEmitterFallbackNm
+      }
       if (!baseRangeNm) continue
       const rwrRangeNm = baseRangeNm * config.rwr.rangeMultiplier
 
