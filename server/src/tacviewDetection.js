@@ -74,7 +74,21 @@ const DEFAULTS = {
   // for the known, accepted gap this exists for. Off (0) by default — this
   // project doesn't invent a number it can't justify; an operator who wants
   // to compensate for a specific aircraft can set this themselves.
-  rwr: { enabled: true, rangeMultiplier: 1.75, zeroDetectionEmitterFallbackNm: 0 },
+  //
+  // rangeMultiplier: 1 (no boost) — RWR range equals the emitter's own
+  // detection range exactly. A one-way passive-reception boost above the
+  // radar's own two-way range is real-world physically justifiable in
+  // principle, but the Phase 0 live-calibration capture (see
+  // resources/specs/tacview-detection-spec.md's "RWR-specific findings")
+  // found the opposite in real DCS data: three independent standalone EWRs
+  // all showed an RWR/radar range ratio BELOW 1.0 (0.97, 0.96, 0.67), not
+  // above — and live-observed on a Tacview session, the original 1.75
+  // default was producing RWR hits at unrealistic range in practice (a
+  // tanker 145+nm from an S-300, well outside any plausible engagement
+  // picture). 1 is still slightly generous against the live ratios, but is
+  // a reasonable simple default absent per-site calibration; an operator
+  // can tune this via tacviewDetectionConfig.json.
+  rwr: { enabled: true, rangeMultiplier: 1, zeroDetectionEmitterFallbackNm: 0 },
   // PROVISIONAL, unresearched — see aircraftSensorDatabase.json's RCS-scaling
   // usage below. detection_range_max (see aircraftSensorRangeNm()) is
   // calibrated against an unspecified "large" reference target; referenceRcsM2
@@ -546,9 +560,10 @@ function computeContacts(units, friendlyCoalitionId) {
 // far its emissions carry), and only friendly Aircraft/Helicopter act as
 // receivers (real RWR is airframe avionics — ground/naval units don't get
 // one here). Range uses the emitter's own range times config.rwr.
-// rangeMultiplier, since one-way passive reception genuinely outranges what
-// the same radar needs for a two-way return — treated as an approximate,
-// operator-tunable number, not a researched constant. isWithinScanVolume
+// rangeMultiplier — default 1 (no boost), an operator-tunable knob, not a
+// researched constant, for a site that wants to model one-way passive
+// reception outranging what the same radar needs for a two-way return.
+// isWithinScanVolume
 // gates the emitter side when it's Aircraft/Helicopter (a fighter whose
 // radar cone doesn't reach you shouldn't paint your RWR either).
 //
