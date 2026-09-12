@@ -12,6 +12,7 @@ const stateFiles = require('./stateFiles')
 const navdata    = require('../navdata')
 const elevation  = require('./elevation')
 const { registerApiRoutes } = require('./routes/api')
+const { registerDocsRoutes } = require('./routes/docs')
 const { createWsBroadcast }  = require('./wsBroadcast')
 const { createSignalRelay }  = require('./signalRelay')
 
@@ -24,6 +25,8 @@ const PRESETS_PATH = path.join(__dirname, '../data/presets.json')
 
 const app = express()
 app.use(express.json())
+
+registerDocsRoutes(app)
 
 // Serve built client files in production
 app.use(express.static(CLIENT_DIST))

@@ -37,6 +37,13 @@ const SB_WIDTH_KEY    = 'tracs.sb.width'
 const PROFILE_STORAGE_KEY = 'tracs.lastProfile'
 const DEFAULT_PROFILE     = 'stars'
 
+const MODULE_DOCS_PAGE = {
+  [MODULE.ATC]:   'atc',
+  [MODULE.CATCC]: 'catcc',
+  [MODULE.AIC]:   'aic',
+  [MODULE.ABM]:   'abm',
+}
+
 function getSavedProfile() {
   return localStorage.getItem(PROFILE_STORAGE_KEY) ?? DEFAULT_PROFILE
 }
@@ -363,6 +370,10 @@ export function App() {
   const hasAic   = activeModule === MODULE.AIC
   const hasAbm   = activeModule === MODULE.ABM
 
+  const docsPage   = MODULE_DOCS_PAGE[activeModule] ?? 'index'
+  const docsAnchor = hasAtc && activeOds === 'asdex' ? '#asde-x-ground-radar' : ''
+  const docsHref   = `/docs/${docsPage}${docsAnchor}`
+
   // Right inset = width consumed by the right panel + the 18px tab strip.
   // Floating windows are clamped so they cannot overlap this area.
   const TAB_STRIP_W = 18
@@ -620,6 +631,16 @@ export function App() {
               />
               Use DCS Multiplayer Names
             </label>
+            <a
+              href={docsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#888', textDecoration: 'none', cursor: 'pointer' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#ccc' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#888' }}
+            >
+              Help / Docs ↗
+            </a>
           </div>
         )}
       </div>
