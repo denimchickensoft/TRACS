@@ -36,7 +36,7 @@ import { drawRunways }      from '../atc/stars/canvas/drawRunways.js'
 import { drawAbmLayers }    from './canvas/drawAbmLayers.js'
 import { drawAbmFixSymbols } from './canvas/drawAbmFixSymbols.js'
 import { drawAbmAirportPolygons } from './canvas/drawAbmAirportPolygons.js'
-import { drawAbmContacts, typeAbbrev, computeSuppressedIds } from './canvas/drawAbmContacts.js'
+import { drawAbmContacts, typeAbbrev, computeSuppressedIds, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
 import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
@@ -108,6 +108,16 @@ const F_KEY_DECL = {
 // ownership/initiation — declare-and-display only. Magnetic-north-up
 // projection (real WMM declination) and a compass rose (CATCC's smaller
 // fontScale, not STARS's) added 2026-07-05.
+// FRAG route leg labels use the flight's group callsign (e.g. "COLT1" for
+// "COLT11"), the same flight/element split Ato.jsx's CALLSIGN column and
+// formation-datablock suppression already use — see parseFlightElement's
+// header comment in drawAbmContacts.js. Falls back to the mission-editor
+// group name when the lead unit's callsign doesn't parse.
+function flightRouteGroupLabel(flight) {
+  if (!flight) return null
+  return parseFlightElement(flight.units?.[0])?.flightKey ?? flight.name ?? null
+}
+
 export default function AbmScope() {
   const canvasAreaRef  = useRef(null)
   const mapRef         = useRef(null)
@@ -167,6 +177,10 @@ export default function AbmScope() {
   )
   const selectedRoute = selectedFlight?.route ?? null
   const selectedRouteRawType = selectedFlight?.units[0]?.rawType
+  const selectedRouteGroupLabel = useMemo(
+    () => flightRouteGroupLabel(selectedFlight),
+    [selectedFlight]
+  )
 
   // Ctrl+right-click / .route + click / .route <callsign> — independent of
   // the FRAG-panel route toggle above (routeVisible/selectedGroupId): a Set
@@ -178,7 +192,7 @@ export default function AbmScope() {
     () => routeGroupIds
       .map(gid => atoFlights.find(f => f.groupId === gid))
       .filter(f => Array.isArray(f?.route) && f.route.length > 0)
-      .map(f => ({ route: f.route, rawType: f.units[0]?.rawType })),
+      .map(f => ({ route: f.route, rawType: f.units[0]?.rawType, groupLabel: flightRouteGroupLabel(f) })),
     [atoFlights, routeGroupIds]
   )
 
@@ -1145,8 +1159,8 @@ export default function AbmScope() {
 
     // Selected FRAG flight's route, if any, plus any routes toggled on via
     // Ctrl+right-click/.route independent of FRAG.
-    drawAbmFragRoute(ctx, view, selectedRoute, selectedRouteRawType)
-    for (const { route, rawType } of extraRoutes) drawAbmFragRoute(ctx, view, route, rawType)
+    drawAbmFragRoute(ctx, view, selectedRoute, selectedRouteRawType, selectedRouteGroupLabel)
+    for (const { route, rawType, groupLabel } of extraRoutes) drawAbmFragRoute(ctx, view, route, rawType, groupLabel)
 
     // RBL on top of everything — same layering AIC uses.
     drawRbl(ctx, view, rbl, view.declinationDeg)
@@ -1165,7 +1179,7 @@ export default function AbmScope() {
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
-      threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, selectedRouteRawType, extraRoutes,
+      threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, selectedRouteRawType, selectedRouteGroupLabel, extraRoutes,
       blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
