@@ -1416,7 +1416,7 @@ export default function AbmScope() {
         e.preventDefault()
         const ws = useDisplayStore.getState().windows[WINDOW_ID]
         if (e.altKey) {
-          saveAbmBookmark(n, {
+          saveAbmBookmark(theatreRef.current, n, {
             centerLat: centerLatRef.current,
             centerLng: centerLngRef.current,
             rangeNm: ws?.rangeNm,
@@ -1424,7 +1424,7 @@ export default function AbmScope() {
           })
           setCmdFeedback(`BOOKMARK ${n} SAVED`)
         } else {
-          const bm = getAbmBookmark(n)
+          const bm = getAbmBookmark(theatreRef.current, n)
           if (bm) {
             displayStore.updateWindow(WINDOW_ID, {
               centerLat: bm.centerLat, centerLng: bm.centerLng,
