@@ -477,7 +477,7 @@ export default function CatccScope() {
 
     // Ctrl+Shift+Click — initiate track (mirrors F3/IC + slew)
     if (e.ctrlKey && e.shiftKey) {
-      initCntl(target)
+      initCntl(target, effectiveCorrelationsRef.current)
       return
     }
 
@@ -514,7 +514,7 @@ export default function CatccScope() {
     // (IC/TC/HO <tcp>/point-outs/leader-line/scratchpad — see slewCommands.js)
     const parsed = parseCatccSlew(usePreviewStore.getState().buffer)
     if (parsed) {
-      dispatchCatccSlew(parsed, target)
+      dispatchCatccSlew(parsed, target, effectiveCorrelationsRef.current)
       if (!usePreviewStore.getState().response) setOdsLines([])
     }
   }, [])

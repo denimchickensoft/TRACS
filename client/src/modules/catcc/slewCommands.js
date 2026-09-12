@@ -49,12 +49,13 @@ function knownControllerIds() {
 
 // ── Modifier-click shortcuts (Ctrl+Shift+Click / Shift+Click) + "IC"/"TC" + slew ──
 
-export function initCntl(target) {
+export function initCntl(target, correlations) {
   if (!target) return err('NO TARGET')
   const controllerId = getMyControllerId()
   if (!controllerId) return err('NO POSITION')
   const { ownership, claimTrack } = useAtcStore.getState()
   if (ownership[target.unitId] !== undefined) return err('ILL TRK')
+  if (!correlations?.[String(target.unitId)]) return err('ILL TRK')
   claimTrack(target.unitId, controllerId)
   sendWebrtcEvent('TRACK_CLAIMED', { unitId: target.unitId, controllerId })
   ok()
@@ -188,10 +189,10 @@ export function parseCatccSlew(buffer) {
   return null
 }
 
-export function dispatchCatccSlew(parsed, target) {
+export function dispatchCatccSlew(parsed, target, correlations) {
   const { id, captures } = parsed
   switch (id) {
-    case 'IC':                return initCntl(target)
+    case 'IC':                return initCntl(target, correlations)
     case 'TC':                return termCntl(target)
     case 'HND_OFF':           return handOff(captures.tcp, target)
     case 'POINT_OUT':         return pointOut(captures.tcp, target)

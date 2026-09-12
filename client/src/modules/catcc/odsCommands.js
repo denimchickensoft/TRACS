@@ -62,6 +62,7 @@ register('IT', (parts, ctx) => {
   if (!target) return [`NO TRACK: ${id}`]
   const { ownership, claimTrack } = useAtcStore.getState()
   if (ownership[target.unitId]) return ['ILL TRK']
+  if (!ctx.correlations[String(target.unitId)]) return ['ILL TRK']
   const controllerId = getMyControllerId()
   claimTrack(target.unitId, controllerId)
   sendWebrtcEvent('TRACK_CLAIMED', { unitId: target.unitId, controllerId })
