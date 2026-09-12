@@ -37,6 +37,7 @@ const elevation = require('./elevation')
 
 const DETECTION_RADAR = 4
 const DETECTION_RWR = 16
+const DETECTION_VISUAL = 1
 
 const METERS_PER_NM = 1852
 const KM_PER_NM = 1.852
@@ -184,17 +185,26 @@ const TRUSTED_NAVAL_TYPES = new Set(['Aircraft Carrier', 'Combatants', 'Fast Att
 // DB miscategorizations (e.g. Type_071, a real ~20,000t amphibious warship
 // filed under `Cargo/Transport` instead of `Combatants`) without editing the
 // shipped database file, which a future data re-sync would just undo.
-function lookupGroundNavalRangeNm(unit) {
+function groundNavalSensorInfo(unit) {
   const override = config.unitTypeRangeOverridesNm[unit.name]
-  if (override) return override
+  if (override) return { rangeNm: override, detectionMethod: DETECTION_RADAR }
 
   const db = unit.category === 'NavyUnit' ? navyUnitDb : groundUnitDb
   const trustedTypes = unit.category === 'NavyUnit' ? TRUSTED_NAVAL_TYPES : TRUSTED_GROUND_TYPES
   const entry = db[unit.name]
   if (entry && trustedTypes.has(entry.type) && entry.acquisitionRange > 0) {
-    return entry.acquisitionRange / METERS_PER_NM
+    return { rangeNm: entry.acquisitionRange / METERS_PER_NM, detectionMethod: DETECTION_RADAR }
   }
-  return SENSOR_RANGE_NM[unit.category]
+  // A non-allowlisted type (Tank/APC/Infantry/Artillery/Cargo-Transport) still
+  // carries a real, plausible ground-spotting/visual range in the same field
+  // (e.g. Infantry ~2500m, Tank ~5000m) — previously discarded entirely in
+  // favor of the flat RADAR-scale default below. DETECTION_VISUAL keeps this
+  // distinguishable from a real radar range — matters for computeRwrContacts(),
+  // which must never treat a rifleman's eyesight as an RWR-detectable emission.
+  if (entry && entry.acquisitionRange > 0) {
+    return { rangeNm: entry.acquisitionRange / METERS_PER_NM, detectionMethod: DETECTION_VISUAL }
+  }
+  return { rangeNm: SENSOR_RANGE_NM[unit.category], detectionMethod: DETECTION_RADAR }
 }
 
 // Aircraft/helicopter radar-range tiers — no per-unit sensor data exists
@@ -268,9 +278,9 @@ function radarDetectionRangeNm(detectorUnit, targetUnit) {
 }
 
 function sensorRangeNm(unit) {
-  if (unit.category === 'Aircraft' || unit.category === 'Helicopter') return aircraftSensorRangeNm(unit)
-  if (unit.category === 'GroundUnit' || unit.category === 'NavyUnit') return lookupGroundNavalRangeNm(unit)
-  return null
+  if (unit.category === 'Aircraft' || unit.category === 'Helicopter') return { rangeNm: aircraftSensorRangeNm(unit), detectionMethod: DETECTION_RADAR }
+  if (unit.category === 'GroundUnit' || unit.category === 'NavyUnit') return groundNavalSensorInfo(unit)
+  return { rangeNm: null, detectionMethod: null }
 }
 
 function isValidTargetCategory(category) {
@@ -404,9 +414,9 @@ function computeContacts(units, friendlyCoalitionId) {
   for (const [id, unit] of Object.entries(units)) {
     if (unit.coalition !== friendlyCoalitionId) continue
     if (!unit.position) continue
-    const rangeNm = sensorRangeNm(unit)
+    const { rangeNm, detectionMethod } = sensorRangeNm(unit)
     if (!rangeNm) continue
-    detectors.push({ id, unit, rangeNm })
+    detectors.push({ id, unit, rangeNm, detectionMethod })
   }
 
   const targets = Object.entries(units).filter(([, u]) => u.position && u.coalition !== undefined)
@@ -446,7 +456,7 @@ function computeContacts(units, friendlyCoalitionId) {
       if (!hasLineOfSight(detector.unit.position, target.position)) continue
 
       if (!contactsById.has(detector.id)) contactsById.set(detector.id, [])
-      contactsById.get(detector.id).push({ ID: Number(targetId), detectionMethod: DETECTION_RADAR })
+      contactsById.get(detector.id).push({ ID: Number(targetId), detectionMethod: detector.detectionMethod })
     }
   }
 
@@ -514,7 +524,11 @@ function computeRwrContacts(units, friendlyCoalitionId) {
   for (const receiver of receivers) {
     for (const [emitterId, emitter] of emitters) {
       if (emitterId === receiver.id) continue
-      let baseRangeNm = sensorRangeNm(emitter)
+      // Only a real radar-tagged sensor's range counts toward RWR emission —
+      // a visually-detected non-radar ground unit (rifleman, tank crew's
+      // eyesight) radiates nothing an aircraft's RWR could ever pick up.
+      const emitterSensor = sensorRangeNm(emitter)
+      let baseRangeNm = emitterSensor.detectionMethod === DETECTION_RADAR ? emitterSensor.rangeNm : 0
       const isZeroDetectionAircraft = baseRangeNm === 0 && (emitter.category === 'Aircraft' || emitter.category === 'Helicopter')
       if (isZeroDetectionAircraft && config.rwr.zeroDetectionEmitterFallbackNm > 0) {
         baseRangeNm = config.rwr.zeroDetectionEmitterFallbackNm
@@ -649,6 +663,6 @@ function createFogFilter(friendlyCoalitionId) {
 }
 
 module.exports = {
-  computeContacts, computeRwrContacts, coalitionId, createFogFilter, DETECTION_RADAR, DETECTION_RWR,
+  computeContacts, computeRwrContacts, coalitionId, createFogFilter, DETECTION_RADAR, DETECTION_RWR, DETECTION_VISUAL,
   resetToLocalConfig, resetToDefaults, applyRelayConfig,
 }
