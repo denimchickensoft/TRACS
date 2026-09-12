@@ -1,8 +1,8 @@
 import AbmScope from './AbmScope'
 import { sanitizeFocusToken } from '../../utils/callsign.js'
 
-// Popped up by openAbmFocusWindow (actions/index.js) via .focus <callsign>
-// or double-clicking a contact on the main scope — same window.open('/?window=…')
+// Popped up by popOutAbmFocusPanel (actions/index.js), via the "pop out"
+// button on an in-page AbmFocusPanel.jsx — same window.open('/?window=…')
 // pattern as AtoWindow/FragWindow/DrawingsWindow, wired in main.jsx. A full
 // AbmScope instance (same commands/declarations/drawings, shared global
 // stores), just its own displayStore window keyed by callsign and locked

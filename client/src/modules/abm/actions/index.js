@@ -17,8 +17,8 @@
  *                                  else works fine from lowercased captures)
  *                windowId        — which displayStore.windows[] entry this
  *                                  scope instance owns ('abm-main', or
- *                                  'abm-focus-<callsign>' for a focus popup —
- *                                  see AbmFocusWindow.jsx). getWin()/updateWin()
+ *                                  'abm-focus-<callsign>' for a focus panel/
+ *                                  popup — see AbmFocusPanel.jsx). getWin()/updateWin()
  *                                  take it explicitly rather than closing over
  *                                  a module constant, so a command typed in a
  *                                  focus popup never leaks into abm-main's state.
@@ -58,6 +58,7 @@
  */
 
 import { useDisplayStore } from '../../../store/display.js'
+import { useAbmFocusPanelsStore } from '../../../store/abmFocusPanels.js'
 import { useAbmStore, DECLARATION } from '../../../store/abm.js'
 import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { useAbmUiPrefsStore } from '../../../store/abmUiPrefs.js'
@@ -562,16 +563,31 @@ export function RCLEAR() {
   return 'ROUTES CLEARED'
 }
 
-// `.focus <callsign> [range]` — opens a small popup ABM scope permanently
-// centered on that live contact at the given (or persisted default) range,
-// see AbmFocusWindow.jsx. Exported so AbmScope.jsx's double-click-a-contact
-// handler can reuse the exact same open/reuse logic. window.open()'s native
-// same-name behavior (navigates/refocuses an already-open window sharing
-// that name, rather than opening a duplicate) is what gives "re-issuing
-// .focus COLT11 reuses COLT11's existing window" for free — see
-// sanitizeFocusToken's header (utils/callsign.js) for why the popup name and
-// the focus scope's own windowId are derived identically.
-export function openAbmFocusWindow(callsign, rangeNm) {
+// `.focus <callsign> [range]` — opens (or brings to front / live-updates the
+// range of) an in-page floating focus panel (AbmFocusPanel.jsx) permanently
+// centered on that live contact. Exported so AbmScope.jsx's
+// double-click-a-contact handler can reuse the exact same logic. If a panel
+// for this callsign is already open, this just pushes the new range straight
+// into its displayStore window and brings it to front — no need to reopen.
+export function openAbmFocusPanel(callsign, rangeNm) {
+  const windowId = `abm-focus-${sanitizeFocusToken(callsign)}`
+  const panels = useAbmFocusPanelsStore.getState()
+  if (panels.order.includes(callsign)) {
+    useDisplayStore.getState().updateWindow(windowId, { rangeNm })
+    panels.bringToFront(callsign)
+    return
+  }
+  panels.openPanel(callsign, rangeNm)
+}
+
+// The focus panel's own "pop out" button hands off to a real OS popup
+// (AbmFocusWindow.jsx) for anyone who wants it on a separate monitor / truly
+// always-on-top of the OS — window.open()'s native same-name behavior
+// (navigates/refocuses an already-open window sharing that name, rather than
+// opening a duplicate) means popping the same callsign out twice reuses the
+// same popup — see sanitizeFocusToken's header (utils/callsign.js) for why
+// the popup name and the focus scope's own windowId are derived identically.
+export function popOutAbmFocusPanel(callsign, rangeNm) {
   const token = sanitizeFocusToken(callsign)
   const params = new URLSearchParams({ window: 'abm-focus', callsign, range: String(rangeNm) })
   const popup = window.open(`/?${params}`, `abm-focus-${token}`, 'width=520,height=580,resizable=yes')
@@ -580,7 +596,7 @@ export function openAbmFocusWindow(callsign, rangeNm) {
 
 // Bare `.focus <range>` (digits only — see commandParser.js's ordering
 // against FOCUS_OPEN/FOCUS_OPEN_RANGE) sets the default range used whenever
-// a `.focus <callsign>` / double-click doesn't specify one. Opens no window.
+// a `.focus <callsign>` / double-click doesn't specify one. Opens no panel.
 export function FOCUS_DEFAULT_RANGE({ captures }) {
   const nm = parseFloat(captures.nm)
   if (!(nm > 0)) return 'ILL VAL'
@@ -593,7 +609,7 @@ export function FOCUS_OPEN_RANGE({ captures, context }) {
   if (matches.length === 0) return 'NOT FOUND'
   if (matches.length > 1) return 'AMBIGUOUS'
   const nm = parseFloat(captures.nm)
-  openAbmFocusWindow(matches[0].callsign, nm)
+  openAbmFocusPanel(matches[0].callsign, nm)
   return `FOCUS ${matches[0].callsign} ${nm}NM`
 }
 
@@ -602,7 +618,7 @@ export function FOCUS_OPEN({ captures, context }) {
   if (matches.length === 0) return 'NOT FOUND'
   if (matches.length > 1) return 'AMBIGUOUS'
   const nm = loadAbmPrefs().focusDefaultRangeNm ?? 20
-  openAbmFocusWindow(matches[0].callsign, nm)
+  openAbmFocusPanel(matches[0].callsign, nm)
   return `FOCUS ${matches[0].callsign} ${nm}NM`
 }
 

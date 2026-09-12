@@ -61,7 +61,7 @@ import {
   distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
-import { dispatch, openAbmFocusWindow } from './actions/index.js'
+import { dispatch, openAbmFocusPanel } from './actions/index.js'
 import './AbmScope.css'
 
 const DEFAULT_windowId = 'abm-main'
@@ -1841,8 +1841,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
       pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId])
 
-  // Double-click a contact → open/reuse its focus popup (same mechanism as
-  // the .focus command) at the persisted default range. Guarded against
+  // Double-click a contact → open/reuse its in-page focus panel (same
+  // mechanism as the .focus command, see AbmFocusPanel.jsx) at the persisted
+  // default range. Guarded against
   // every pending click-completion state handleMouseUp itself checks, so
   // the double-click's two constituent mouseup events don't also fire a
   // classify/BRAA/leader-dir/etc. side effect while a command is armed.
@@ -1855,7 +1856,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
     if (!target) return
-    openAbmFocusWindow(resolveCallsign(target.unit), loadAbmPrefs().focusDefaultRangeNm ?? 20)
+    openAbmFocusPanel(resolveCallsign(target.unit), loadAbmPrefs().focusDefaultRangeNm ?? 20)
   }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer])
 
   if (!windowSettings) return null

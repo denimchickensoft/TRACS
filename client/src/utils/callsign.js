@@ -89,9 +89,9 @@ export function resolvePilotName(unit) {
  * Normalizes a callsign into a token safe for use as a popup window `name`
  * (and, identically, as an ABM focus-window's displayStore windowId) — see
  * modules/abm/AbmFocusWindow.jsx / modules/abm/actions/index.js's
- * openAbmFocusWindow. Both derive the token this same way so a repeat
- * `.focus <callsign>` reuses window.open()'s same-name-reuses-the-window
- * behavior instead of spawning a duplicate.
+ * popOutAbmFocusPanel. Both derive the token this same way so popping the
+ * same callsign out twice reuses window.open()'s same-name-reuses-the-window
+ * behavior instead of spawning a duplicate popup.
  */
 export function sanitizeFocusToken(callsign) {
   return (callsign ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_')

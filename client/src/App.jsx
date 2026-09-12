@@ -16,6 +16,8 @@ import { Deck }           from './modules/catcc/Deck'
 import AicScope          from './modules/aic/AicScope'
 import { BraaList, BRAA_NATURAL_WIDTH } from './modules/aic/BraaList'
 import AbmScope          from './modules/abm/AbmScope'
+import { AbmFocusPanel } from './modules/abm/AbmFocusPanel'
+import { useAbmFocusPanelsStore } from './store/abmFocusPanels'
 import { Ato, ATO_NATURAL_WIDTH } from './modules/abm/Ato'
 import { Frag }          from './modules/abm/Frag'
 import { Drawings }      from './modules/abm/Drawings'
@@ -59,6 +61,8 @@ export function App() {
   const webrtcStatus     = useSessionStore((s) => s.webrtcStatus)
   const peers            = useSessionStore((s) => s.peers)
   const resetPosition    = useSessionStore((s) => s.resetPosition)
+
+  const abmFocusOrder = useAbmFocusPanelsStore((s) => s.order)
 
   const useDcsNames    = useSessionStore((s) => s.useDcsNames)
   const toggleDcsNames = useSessionStore((s) => s.toggleDcsNames)
@@ -846,6 +850,13 @@ export function App() {
           onClose={() => { setMsgVisible(false); localStorage.setItem(MSG_VISIBLE_KEY, 'false') }}
           rightInset={panelRightInset}
         />
+
+        {/* ABM focus panels — mounted unconditionally (not gated on hasAbm) so a
+            focus panel keeps tracking its contact even after switching modules,
+            same as ControllerList/Messages above. */}
+        {abmFocusOrder.map((callsign, i) => (
+          <AbmFocusPanel key={callsign} callsign={callsign} zIndex={850 + i} cascadeIndex={i} />
+        ))}
         {!clDocked && (
           <div
             title="Controller list is in a separate window"
