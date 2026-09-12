@@ -73,6 +73,11 @@ const COMMANDS = [
   { id: 'DEFINE',           pattern: /^\.define\s+(.+)$/, captures: ['term'] },
   { id: 'DEFINE',           pattern: /^\.def\s+(.+)$/, captures: ['term'] },
   { id: 'WHERE',            pattern: /^\.where\s+(.+)$/, captures: ['callsign'] },
+  // Digits-only form must precede the single-token callsign form, or bare
+  // `.focus 50` (set the default range) would be misread as a callsign.
+  { id: 'FOCUS_DEFAULT_RANGE', pattern: /^\.focus\s+(\d+(?:\.\d+)?)$/, captures: ['nm'] },
+  { id: 'FOCUS_OPEN_RANGE',    pattern: /^\.focus\s+(\S+)\s+(\d+(?:\.\d+)?)$/, captures: ['callsign', 'nm'] },
+  { id: 'FOCUS_OPEN',          pattern: /^\.focus\s+(\S+)$/, captures: ['callsign'] },
   { id: 'FRAG_FIND',        pattern: /^\.frag\s+(.+)$/, captures: ['callsign'] },
   { id: 'ROUTE_FIND',       pattern: /^\.route\s+(.+)$/, captures: ['callsign'] },
   { id: 'RCLEAR',           pattern: /^\.rclear$/ },

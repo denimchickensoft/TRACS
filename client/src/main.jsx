@@ -11,6 +11,7 @@ import { AsdexOdsWindow }      from './modules/atc/asdex/AsdexOdsWindow'
 import { AtoWindow }           from './modules/abm/AtoWindow'
 import { FragWindow }          from './modules/abm/FragWindow'
 import { DrawingsWindow }      from './modules/abm/DrawingsWindow'
+import { AbmFocusWindow }      from './modules/abm/AbmFocusWindow'
 import { BraaListWindow }      from './modules/aic/BraaListWindow'
 
 const _params    = new URLSearchParams(window.location.search)
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')).render(
      windowMode === 'abm-ato'     ? <AtoWindow />            :
      windowMode === 'abm-frag'    ? <FragWindow />           :
      windowMode === 'abm-drawings' ? <DrawingsWindow />      :
+     windowMode === 'abm-focus'   ? <AbmFocusWindow />       :
      windowMode === 'braa'        ? <BraaListWindow />       :
      <App />}
   </StrictMode>

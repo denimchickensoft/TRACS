@@ -38,6 +38,7 @@ const DEFAULTS = {
   historyLength:  4,     // trail points shown, capped by AbmScope's MAX_HISTORY
   historyRate:    4.5,   // seconds between trail captures
   dbca:           false, // datablock collision avoidance — off by default (on for CATCC only)
+  focusDefaultRangeNm: 20, // default range for .focus <callsign> / double-click-to-focus popups when no range is given
 }
 
 const { load: loadAbmPrefs, save: saveAbmPrefs } = makePrefsStore(KEY, DEFAULTS)

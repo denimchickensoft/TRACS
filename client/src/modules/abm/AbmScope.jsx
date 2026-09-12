@@ -7,7 +7,7 @@ import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
-import { resolveCallsign } from '../../utils/callsign.js'
+import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }  from '../../store/navdata.js'
 import { useRunwaysStore }  from '../../store/runways.js'
@@ -61,10 +61,10 @@ import {
   distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
-import { dispatch } from './actions/index.js'
+import { dispatch, openAbmFocusWindow } from './actions/index.js'
 import './AbmScope.css'
 
-const WINDOW_ID  = 'abm-main'
+const DEFAULT_windowId = 'abm-main'
 const EMPTY_ARRAY = []
 const RANGE_MIN  = 1
 const RANGE_MAX  = 600
@@ -118,7 +118,7 @@ function flightRouteGroupLabel(flight) {
   return parseFlightElement(flight.units?.[0])?.flightKey ?? flight.name ?? null
 }
 
-export default function AbmScope() {
+export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign = null, initialRangeNm = null } = {}) {
   const canvasAreaRef  = useRef(null)
   const mapRef         = useRef(null)
   const layersRef      = useRef(null)
@@ -154,7 +154,7 @@ export default function AbmScope() {
   const clockTime = showLocalTime ? localTimeStr : timeStr
 
   const displayStore   = useDisplayStore()
-  const windowSettings = useDisplayStore(s => s.windows[WINDOW_ID])
+  const windowSettings = useDisplayStore(s => s.windows[windowId])
 
   // ── Air picture (§3 / Phase 4) — ABM's own declarations, own symbology ──────
   const units        = useUnitsStore(s => s.units)
@@ -214,7 +214,7 @@ export default function AbmScope() {
     setPendingBraaFighter, clearPendingBraa,
   } = useAbmStore()
   // threatRings/dbHiddenIds/bullseyeOverride/findMarker/defineEntry live in
-  // displayStore's windows[WINDOW_ID] (not local useState), same as AIC's
+  // displayStore's windows[windowId] (not local useState), same as AIC's
   // equivalents (threatRings/bullseyeOverride/findMarker/defineEntry are
   // literally the same shared per-window fields, reused under ABM's own
   // window key — see store/display.js's "ABM-only session state" comment) —
@@ -223,10 +223,10 @@ export default function AbmScope() {
   const threatRings = windowSettings?.threatRings ?? EMPTY_ARRAY
   const threatRingSet = useMemo(() => new Set(threatRings), [threatRings])
   const toggleThreatRing = useCallback((unitId) => {
-    const current = useDisplayStore.getState().windows[WINDOW_ID]?.threatRings ?? []
+    const current = useDisplayStore.getState().windows[windowId]?.threatRings ?? []
     const next = current.includes(unitId) ? current.filter(id => id !== unitId) : [...current, unitId]
-    useDisplayStore.getState().updateWindow(WINDOW_ID, { threatRings: next })
-  }, [])
+    useDisplayStore.getState().updateWindow(windowId, { threatRings: next })
+  }, [windowId])
   const threatRadius = windowSettings?.threatRadius ?? 45
 
   // .db + click (2026-07-29) — per-contact datablock override, same
@@ -237,10 +237,10 @@ export default function AbmScope() {
   const dbHiddenIds = windowSettings?.dbHiddenIds ?? EMPTY_ARRAY
   const dbHiddenIdSet = useMemo(() => new Set(dbHiddenIds), [dbHiddenIds])
   const toggleDbHidden = useCallback((unitId) => {
-    const current = useDisplayStore.getState().windows[WINDOW_ID]?.dbHiddenIds ?? []
+    const current = useDisplayStore.getState().windows[windowId]?.dbHiddenIds ?? []
     const next = current.includes(unitId) ? current.filter(id => id !== unitId) : [...current, unitId]
-    useDisplayStore.getState().updateWindow(WINDOW_ID, { dbHiddenIds: next })
-  }, [])
+    useDisplayStore.getState().updateWindow(windowId, { dbHiddenIds: next })
+  }, [windowId])
 
   // Middle-click highlight (STARS/AbmScope shared behaviour) — session-local,
   // not persisted; toggles a contact's symbol/datablock to HIGHLIGHT_TEAL
@@ -418,7 +418,7 @@ export default function AbmScope() {
   useEffect(() => {
     const id = setInterval(() => {
       const now          = Date.now()
-      const fadedSeconds = useDisplayStore.getState().windows[WINDOW_ID]?.fadedSeconds ?? 30
+      const fadedSeconds = useDisplayStore.getState().windows[windowId]?.fadedSeconds ?? 30
       for (const unitId of Object.keys(fadedRef.current)) {
         if (now - fadedRef.current[unitId].disappearedAt > fadedSeconds * 1000)
           delete fadedRef.current[unitId]
@@ -426,7 +426,7 @@ export default function AbmScope() {
       setFadedTick(t => t + 1)
     }, 500)
     return () => clearInterval(id)
-  }, [])
+  }, [windowId])
 
   // History trail capture — same rate-gated-setInterval pattern STARS uses
   // (client/src/modules/atc/stars/StarsScope.jsx), not AIC (which has none).
@@ -861,11 +861,21 @@ export default function AbmScope() {
   // ASDE-X's default -45° angle) — mirrors §"contacts" decisions 2026-07-05.
   useEffect(() => {
     if (windowSettings) return
-    displayStore.initWindow(WINDOW_ID, {
-      rangeNm: 150,
+    let initCenterLat = bullseyeLat
+    let initCenterLng = bullseyeLng
+    if (followCallsign) {
+      const match = matchLiveByPrefix(followCallsign, useUnitsStore.getState().units)
+        .find(m => m.callsign === followCallsign)
+      if (match?.unit?.position) {
+        initCenterLat = match.unit.position.lat
+        initCenterLng = match.unit.position.lng
+      }
+    }
+    displayStore.initWindow(windowId, {
+      rangeNm: initialRangeNm ?? 150,
       ringsVisible: abmPrefs.ringsVisible, ringSpacingNm: abmPrefs.ringSpacingNm,
       ringAnchorLat: null, ringAnchorLng: null, ringAnchorId: null,
-      centerLat: bullseyeLat, centerLng: bullseyeLng, centerOverridden: false,
+      centerLat: initCenterLat, centerLng: initCenterLng, centerOverridden: false,
       ptlMinutes: abmPrefs.ptlMinutes, dbVisible: abmPrefs.dbVisible, dbSuppress: abmPrefs.dbSuppress,
       ldrLength: abmPrefs.ldrLength, ldrAngleDeg: abmPrefs.ldrAngleDeg, leaderDirs: {},
       fadedSeconds: abmPrefs.fadedSeconds, threatRadius: abmPrefs.threatRadius,
@@ -875,9 +885,26 @@ export default function AbmScope() {
     })
   }, []) // eslint-disable-line
 
+  // Focus-window follow — re-centers on the live target on every units
+  // update, overriding manual pan (which still writes centerLat/centerLng
+  // via the normal pan handler below; this effect just overwrites it again
+  // on the next position tick, giving the "pan snaps back" behavior). Skips
+  // a tick rather than clearing the center if the contact briefly drops out
+  // or the prefix match goes ambiguous, so the view never jumps to 0,0.
+  const unitsLastUpdate = useUnitsStore(s => s.lastUpdateTime)
+  useEffect(() => {
+    if (!followCallsign) return
+    const match = matchLiveByPrefix(followCallsign, useUnitsStore.getState().units)
+      .find(m => m.callsign === followCallsign)
+    if (!match?.unit?.position) return
+    displayStore.updateWindow(windowId, { centerLat: match.unit.position.lat, centerLng: match.unit.position.lng })
+  }, [followCallsign, unitsLastUpdate]) // eslint-disable-line
+
   const centerOverridden = windowSettings?.centerOverridden ?? false
-  const centerLat = centerOverridden ? (windowSettings?.centerLat ?? bullseyeLat) : bullseyeLat
-  const centerLng = centerOverridden ? (windowSettings?.centerLng ?? bullseyeLng) : bullseyeLng
+  const centerLat = followCallsign ? (windowSettings?.centerLat ?? bullseyeLat)
+    : centerOverridden ? (windowSettings?.centerLat ?? bullseyeLat) : bullseyeLat
+  const centerLng = followCallsign ? (windowSettings?.centerLng ?? bullseyeLng)
+    : centerOverridden ? (windowSettings?.centerLng ?? bullseyeLng) : bullseyeLng
 
   const centerLatRef = useRef(centerLat)
   const centerLngRef = useRef(centerLng)
@@ -916,7 +943,7 @@ export default function AbmScope() {
   // ABM's right-click is already taken by pan (unlike AIC, which has no pan
   // and uses right-click for nothing), so RBL uses AIC's actual mechanism —
   // left-button drag past a 5px threshold — same as AIC, not a new binding.
-  // Lives in displayStore's windows[WINDOW_ID], same as AIC's own `rbl` —
+  // Lives in displayStore's windows[windowId], same as AIC's own `rbl` —
   // needed so .tclear's action (actions/index.js) can clear it without a
   // closure, added 2026-08-22 alongside the actions module (see
   // resources/specs/refactor-spec.md §10, phase 3 findings).
@@ -939,22 +966,22 @@ export default function AbmScope() {
   // instead, purely to desync FRAG's row highlight).
   useEffect(() => {
     const ref = findRequest
-    if (!ref) { displayStore.updateWindow(WINDOW_ID, { findMarker: null }); return }
+    if (!ref) { displayStore.updateWindow(windowId, { findMarker: null }); return }
 
     if (ref.type === 'point') {
-      if (ref.lat != null && ref.lng != null) displayStore.updateWindow(WINDOW_ID, { findMarker: { lat: ref.lat, lon: ref.lng, id: ref.id } })
+      if (ref.lat != null && ref.lng != null) displayStore.updateWindow(windowId, { findMarker: { lat: ref.lat, lon: ref.lng, id: ref.id } })
       return
     }
     if (ref.type === 'carrier') {
       const unit = Object.values(useUnitsStore.getState().units).find(u => u.unitID === ref.carrierUnitId)
-      if (unit?.position) displayStore.updateWindow(WINDOW_ID, { findMarker: { lat: unit.position.lat, lon: unit.position.lng, id: ref.carrierName } })
+      if (unit?.position) displayStore.updateWindow(windowId, { findMarker: { lat: unit.position.lat, lon: unit.position.lng, id: ref.carrierName } })
       return
     }
     if (ref.type === 'airbase') {
       preloadAirdromes(ref.theatre).then((names) => {
         const name = names?.[String(ref.airdromeId)] ?? null
         const pos  = name ? airbaseCenterFromStrips(airportStripsRef.current, name) : null
-        if (pos) displayStore.updateWindow(WINDOW_ID, { findMarker: { lat: pos.lat, lon: pos.lng, id: name } })
+        if (pos) displayStore.updateWindow(windowId, { findMarker: { lat: pos.lat, lon: pos.lng, id: name } })
       })
     }
   }, [findNonce]) // eslint-disable-line
@@ -962,7 +989,7 @@ export default function AbmScope() {
   const buildView = useCallback((w, h) => {
     const container = canvasAreaRef.current
     if (!container) return null
-    const ws = useDisplayStore.getState().windows[WINDOW_ID]
+    const ws = useDisplayStore.getState().windows[windowId]
     if (!ws) return null
     const rawW = w ?? container.clientWidth
     const rawH = h ?? container.clientHeight
@@ -989,7 +1016,7 @@ export default function AbmScope() {
       declinationDeg: declinationRef.current,
       theatre,
     }
-  }, [theatre])
+  }, [theatre, windowId])
 
   // windowSettings is undefined (and the component returns null before the
   // canvas mounts) on the first render of a cold load — canvasAreaRef.current
@@ -1082,7 +1109,7 @@ export default function AbmScope() {
   // .line/.rect/.circ/.poly/.sect/.race/.text click-driven drawing —
   // pendingDraw is null when no draw command is armed; see
   // modules/abm/draw/drawCommands.js for the per-shape state shape/arity.
-  // Lives in displayStore's windows[WINDOW_ID] (not local useState), same as
+  // Lives in displayStore's windows[windowId] (not local useState), same as
   // threatRings/bullseyeOverride/etc above — see store/display.js's
   // "click-completion state" comment and resources/specs/refactor-spec.md
   // §10.0/§10.2. drawCursor tracks the live mouse position (map lat/lng)
@@ -1103,7 +1130,7 @@ export default function AbmScope() {
   // then disarms regardless of a hit). .dclear all arms
   // pendingClearAllConfirm instead, which execCommand intercepts at the top
   // on the NEXT submitted line as a bare yes/no answer (not a new command).
-  // Both live in displayStore's windows[WINDOW_ID], same as pendingDraw above.
+  // Both live in displayStore's windows[windowId], same as pendingDraw above.
   const pendingClearClick = windowSettings?.pendingClearClick ?? false
   const pendingClearAllConfirm = windowSettings?.pendingClearAllConfirm ?? false
 
@@ -1255,13 +1282,13 @@ export default function AbmScope() {
 
   const handlePanMouseUp = useCallback((e) => {
     if (e.button !== 2 || !dragRef.current) return
-    displayStore.updateWindow(WINDOW_ID, {
+    displayStore.updateWindow(windowId, {
       centerLat: centerLatRef.current,
       centerLng: centerLngRef.current,
       centerOverridden: true,
     })
     dragRef.current = null
-  }, [displayStore])
+  }, [displayStore, windowId])
 
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove)
@@ -1286,15 +1313,15 @@ export default function AbmScope() {
         const dist = Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY)
         if (dist <= 5) return
         rblDragActiveRef.current = true
-        useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: { anchor: { lat: start.lat, lng: start.lng }, end: null, fixed: false } })
+        useDisplayStore.getState().updateWindow(windowId, { rbl: { anchor: { lat: start.lat, lng: start.lng }, end: null, fixed: false } })
       }
       const rect = interactiveRef.current?.getBoundingClientRect()
       if (!rect || !viewRef.current) return
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
       const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
-      const prevRbl = useDisplayStore.getState().windows[WINDOW_ID]?.rbl
-      if (prevRbl) useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: { ...prevRbl, end: { lat, lng } } })
+      const prevRbl = useDisplayStore.getState().windows[windowId]?.rbl
+      if (prevRbl) useDisplayStore.getState().updateWindow(windowId, { rbl: { ...prevRbl, end: { lat, lng } } })
     }
     const onUp = (e) => {
       if (e.button !== 0) return
@@ -1302,8 +1329,8 @@ export default function AbmScope() {
       leftDragStartRef.current = null
       rblDragActiveRef.current = false
       if (!wasActive) return
-      const prevRbl = useDisplayStore.getState().windows[WINDOW_ID]?.rbl
-      useDisplayStore.getState().updateWindow(WINDOW_ID, { rbl: prevRbl?.end ? { ...prevRbl, fixed: true } : null })
+      const prevRbl = useDisplayStore.getState().windows[windowId]?.rbl
+      useDisplayStore.getState().updateWindow(windowId, { rbl: prevRbl?.end ? { ...prevRbl, fixed: true } : null })
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
@@ -1311,7 +1338,7 @@ export default function AbmScope() {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup',   onUp)
     }
-  }, [])
+  }, [windowId])
 
   // ── Scroll zoom ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1324,13 +1351,13 @@ export default function AbmScope() {
       // heading lattice — see ROTATION_STEP_DEG) instead of zooming.
       if (pendingDraw && supportsRotation(pendingDraw.type)) {
         const declinationDeg = viewRef.current?.declinationDeg ?? 0
-        const pd = useDisplayStore.getState().windows[WINDOW_ID]?.pendingDraw
+        const pd = useDisplayStore.getState().windows[windowId]?.pendingDraw
         if (pd) {
-          displayStore.updateWindow(WINDOW_ID, { pendingDraw: rotatePendingDraw(pd, e.deltaY < 0 ? 1 : -1, declinationDeg) })
+          displayStore.updateWindow(windowId, { pendingDraw: rotatePendingDraw(pd, e.deltaY < 0 ? 1 : -1, declinationDeg) })
         }
         return
       }
-      const ws = useDisplayStore.getState().windows[WINDOW_ID]
+      const ws = useDisplayStore.getState().windows[windowId]
       if (!ws) return
       const dir     = e.deltaY < 0 ? 1 : -1
       const current = ws.rangeNm ?? 150
@@ -1338,7 +1365,7 @@ export default function AbmScope() {
       // coarse to be useful down at the RANGE_MIN=1 end of the range.
       const step    = current <= 10 ? 1 : (e.ctrlKey ? 25 : 10)
       const next    = Math.max(RANGE_MIN, Math.min(RANGE_MAX, current - dir * step))
-      displayStore.updateWindow(WINDOW_ID, { rangeNm: next })
+      displayStore.updateWindow(windowId, { rangeNm: next })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -1381,7 +1408,7 @@ export default function AbmScope() {
   async function execCommand(raw) {
     if (pendingClearAllConfirm) {
       const str = raw.trim().toLowerCase()
-      displayStore.updateWindow(WINDOW_ID, { pendingClearAllConfirm: false })
+      displayStore.updateWindow(windowId, { pendingClearAllConfirm: false })
       if (str === 'y') {
         clearAllDrawings(theatre)
         setCmdFeedback('ALL DRAWINGS CLEARED')
@@ -1395,6 +1422,7 @@ export default function AbmScope() {
     if (!parsed) { setCmdFeedback('UNKNOWN COMMAND'); return }
     const context = {
       raw,
+      windowId,
       theatre,
       declinationDeg: viewRef.current?.declinationDeg ?? 0,
       myCoalitionNum,
@@ -1434,7 +1462,7 @@ export default function AbmScope() {
       const n = parseInt(e.code.slice(5), 10)
       if (!Number.isNaN(n)) {
         e.preventDefault()
-        const ws = useDisplayStore.getState().windows[WINDOW_ID]
+        const ws = useDisplayStore.getState().windows[windowId]
         if (e.altKey) {
           saveAbmBookmark(theatreRef.current, n, {
             centerLat: centerLatRef.current,
@@ -1446,7 +1474,7 @@ export default function AbmScope() {
         } else {
           const bm = getAbmBookmark(theatreRef.current, n)
           if (bm) {
-            displayStore.updateWindow(WINDOW_ID, {
+            displayStore.updateWindow(windowId, {
               centerLat: bm.centerLat, centerLng: bm.centerLng,
               rangeNm: bm.rangeNm, centerOverridden: bm.centerOverridden,
             })
@@ -1461,15 +1489,15 @@ export default function AbmScope() {
 
     if (e.key === 'Escape') {
       e.preventDefault()
-      if (pendingClearClick) { displayStore.updateWindow(WINDOW_ID, { pendingClearClick: false }); return }
-      if (pendingClearAllConfirm) { displayStore.updateWindow(WINDOW_ID, { pendingClearAllConfirm: false }); setCmdFeedback('CLEAR ALL CANCELLED'); return }
-      if (pendingDraw) { displayStore.updateWindow(WINDOW_ID, { pendingDraw: null }); return }
-      if (findMarker) { displayStore.updateWindow(WINDOW_ID, { findMarker: null }); useAbmMissionStore.getState().clearFind(); return }
+      if (pendingClearClick) { displayStore.updateWindow(windowId, { pendingClearClick: false }); return }
+      if (pendingClearAllConfirm) { displayStore.updateWindow(windowId, { pendingClearAllConfirm: false }); setCmdFeedback('CLEAR ALL CANCELLED'); return }
+      if (pendingDraw) { displayStore.updateWindow(windowId, { pendingDraw: null }); return }
+      if (findMarker) { displayStore.updateWindow(windowId, { findMarker: null }); useAbmMissionStore.getState().clearFind(); return }
       if (routeVisible) { useAbmMissionStore.getState().clearRouteVisible(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
-      if (rbl) { displayStore.updateWindow(WINDOW_ID, { rbl: null }); return }
-      if (defineEntry) { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); return }
+      if (rbl) { displayStore.updateWindow(windowId, { rbl: null }); return }
+      if (defineEntry) { displayStore.updateWindow(windowId, { defineEntry: null }); return }
       clearCmd()
       return
     }
@@ -1493,7 +1521,7 @@ export default function AbmScope() {
     if (defineEntry && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault()
       const result = useBrevityStore.getState().neighbor(defineEntry.term, e.key === 'ArrowUp' ? -1 : 1)
-      if (result) displayStore.updateWindow(WINDOW_ID, { defineEntry: result })
+      if (result) displayStore.updateWindow(windowId, { defineEntry: result })
       return
     }
 
@@ -1565,7 +1593,7 @@ export default function AbmScope() {
     if (pendingBeRef.current) {
       if (e.button === 1) return
       const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
-      displayStore.updateWindow(WINDOW_ID, { bullseyeOverride: { lat: ll.lat, lng: ll.lng } })
+      displayStore.updateWindow(windowId, { bullseyeOverride: { lat: ll.lat, lng: ll.lng } })
       clearCmd()
       setCmdFeedback(`BULLSEYE SET ${ll.lat.toFixed(2)}/${ll.lng.toFixed(2)}`)
       return
@@ -1575,7 +1603,7 @@ export default function AbmScope() {
     // whether anything was actually under it.
     if (pendingClearClick) {
       if (e.button === 1) return
-      displayStore.updateWindow(WINDOW_ID, { pendingClearClick: false })
+      displayStore.updateWindow(windowId, { pendingClearClick: false })
       const hit = hitTestDrawingLayer(viewRef.current, drawingLayers, pos.x, pos.y)
       if (hit) {
         removeDrawingLayer(theatre, hit.id)
@@ -1606,7 +1634,7 @@ export default function AbmScope() {
             addDrawnShape(theatre, 'poly', { vertices: pendingDraw.vertices })
             setCmdFeedback('POLY DRAWN')
           }
-          displayStore.updateWindow(WINDOW_ID, { pendingDraw: null })
+          displayStore.updateWindow(windowId, { pendingDraw: null })
           return
         }
       }
@@ -1618,9 +1646,9 @@ export default function AbmScope() {
           addDrawnShape(theatre, pendingDraw.type, result.immediate)
           setCmdFeedback(`${pendingDraw.type.toUpperCase()} DRAWN`)
         }
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: null })
+        displayStore.updateWindow(windowId, { pendingDraw: null })
       } else {
-        displayStore.updateWindow(WINDOW_ID, { pendingDraw: result.pending })
+        displayStore.updateWindow(windowId, { pendingDraw: result.pending })
       }
       return
     }
@@ -1675,7 +1703,7 @@ export default function AbmScope() {
     if (buf === '.threat' || buf.match(/^\.threat\s+\d+(\.\d+)?$/)) {
       if (target) {
         if (buf !== '.threat') {
-          displayStore.updateWindow(WINDOW_ID, { threatRadius: parseFloat(buf.split(/\s+/)[1]) })
+          displayStore.updateWindow(windowId, { threatRadius: parseFloat(buf.split(/\s+/)[1]) })
         }
         toggleThreatRing(target.unitId)
         clearCmd()
@@ -1760,8 +1788,8 @@ export default function AbmScope() {
     const digitMatch = cmdBuffer.trim().match(/^([1-9])$/)
     if (digitMatch) {
       const dir     = digitMatch[1]
-      const current = useDisplayStore.getState().windows[WINDOW_ID]?.leaderDirs ?? {}
-      displayStore.updateWindow(WINDOW_ID, { leaderDirs: { ...current, [String(target.unitId)]: dir } })
+      const current = useDisplayStore.getState().windows[windowId]?.leaderDirs ?? {}
+      displayStore.updateWindow(windowId, { leaderDirs: { ...current, [String(target.unitId)]: dir } })
       clearCmd()
       return
     }
@@ -1785,7 +1813,7 @@ export default function AbmScope() {
     // the blinking contact always resolves to it.
     const liveBlinkIds = useAbmMissionStore.getState().blinkIds ?? []
     if (liveBlinkIds.length) {
-      const dbSuppressOn = useDisplayStore.getState().windows[WINDOW_ID]?.dbSuppress ?? true
+      const dbSuppressOn = useDisplayStore.getState().windows[windowId]?.dbSuppress ?? true
       const { leaderOf } = dbSuppressOn ? computeSuppressedIds(visibleUnitsRef.current) : { leaderOf: new Map() }
       const candidateIds = new Set(liveBlinkIds)
       for (const id of liveBlinkIds) {
@@ -1811,7 +1839,24 @@ export default function AbmScope() {
   }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getEffectiveDeclaration,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
-      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup])
+      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId])
+
+  // Double-click a contact → open/reuse its focus popup (same mechanism as
+  // the .focus command) at the persisted default range. Guarded against
+  // every pending click-completion state handleMouseUp itself checks, so
+  // the double-click's two constituent mouseup events don't also fire a
+  // classify/BRAA/leader-dir/etc. side effect while a command is armed.
+  const handleDoubleClick = useCallback((e) => {
+    if (e.button !== 0) return
+    if (pendingBeRef.current || pendingClearClick || pendingClearAllConfirm || pendingDraw ||
+        pendingDeclaration || pendingBraaFighter || cmdBuffer) return
+    const rect = interactiveRef.current?.getBoundingClientRect()
+    if (!rect || !viewRef.current) return
+    const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
+    if (!target) return
+    openAbmFocusWindow(resolveCallsign(target.unit), loadAbmPrefs().focusDefaultRangeNm ?? 20)
+  }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer])
 
   if (!windowSettings) return null
 
@@ -1840,6 +1885,7 @@ export default function AbmScope() {
           onMouseDown={handleMouseDown}
           onMouseMove={handleCursorMove}
           onMouseUp={handleMouseUp}
+          onDoubleClick={handleDoubleClick}
           onMouseLeave={() => setBecReadout(null)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
@@ -1916,7 +1962,7 @@ export default function AbmScope() {
         )}
 
         {defineEntry && (
-          <div className="abm-define" onClick={() => { displayStore.updateWindow(WINDOW_ID, { defineEntry: null }); interactiveRef.current?.focus() }}>
+          <div className="abm-define" onClick={() => { displayStore.updateWindow(windowId, { defineEntry: null }); interactiveRef.current?.focus() }}>
             <div className="abm-define-term">{defineEntry.term}</div>
             <div className="abm-define-text">{defineEntry.text}</div>
           </div>

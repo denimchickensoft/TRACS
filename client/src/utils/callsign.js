@@ -85,6 +85,18 @@ export function resolvePilotName(unit) {
  * "Shell 3" elsewhere in the mission). Returns { key, unit, callsign }[],
  * sorted by callsign for stable display order.
  */
+/**
+ * Normalizes a callsign into a token safe for use as a popup window `name`
+ * (and, identically, as an ABM focus-window's displayStore windowId) — see
+ * modules/abm/AbmFocusWindow.jsx / modules/abm/actions/index.js's
+ * openAbmFocusWindow. Both derive the token this same way so a repeat
+ * `.focus <callsign>` reuses window.open()'s same-name-reuses-the-window
+ * behavior instead of spawning a duplicate.
+ */
+export function sanitizeFocusToken(callsign) {
+  return (callsign ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_')
+}
+
 export function matchLiveByPrefix(prefix, liveUnits) {
   const norm = stripAcid(prefix ?? '')
   if (!norm) return []

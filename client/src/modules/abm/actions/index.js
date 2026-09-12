@@ -15,6 +15,13 @@
  *                                  (only the 7 draw commands need this, to
  *                                  preserve .text's label casing — everything
  *                                  else works fine from lowercased captures)
+ *                windowId        — which displayStore.windows[] entry this
+ *                                  scope instance owns ('abm-main', or
+ *                                  'abm-focus-<callsign>' for a focus popup —
+ *                                  see AbmFocusWindow.jsx). getWin()/updateWin()
+ *                                  take it explicitly rather than closing over
+ *                                  a module constant, so a command typed in a
+ *                                  focus popup never leaks into abm-main's state.
  *                theatre
  *                declinationDeg  — viewRef.current?.declinationDeg ?? 0
  *                                  (the view's declination, NOT the bullseye-
@@ -54,7 +61,7 @@ import { useDisplayStore } from '../../../store/display.js'
 import { useAbmStore, DECLARATION } from '../../../store/abm.js'
 import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { useAbmUiPrefsStore } from '../../../store/abmUiPrefs.js'
-import { saveAbmPrefs } from '../../../store/abmPrefs.js'
+import { loadAbmPrefs, saveAbmPrefs } from '../../../store/abmPrefs.js'
 import { useNavdataStore } from '../../../store/navdata.js'
 import { useGeoStore } from '../../../store/geo.js'
 import { useReliefStore } from '../../../store/relief.js'
@@ -66,7 +73,7 @@ import { useAbmDrawingsStore } from '../../../store/abmDrawings.js'
 import { useAbmMissionStore } from '../../../store/abmMission.js'
 import { useBrevityStore } from '../../../store/brevity.js'
 import { useSessionStore } from '../../../store/session.js'
-import { matchLiveByPrefix } from '../../../utils/callsign.js'
+import { matchLiveByPrefix, sanitizeFocusToken } from '../../../utils/callsign.js'
 import { DIR_TO_ANGLE } from '../../atc/stars/constants.js'
 import { trueDeclaration, drawCmdTokens } from '../abmScopeHelpers.js'
 import { parseDrawCommand } from '../draw/drawCommands.js'
@@ -98,45 +105,45 @@ const AIRSPACE_CMD_CATEGORY = {
   classe: 'CLASS E', classf: 'CLASS F', classg: 'CLASS G',
 }
 
-function getWin() {
-  return useDisplayStore.getState().windows[WINDOW_ID]
+function getWin(windowId) {
+  return useDisplayStore.getState().windows[windowId ?? WINDOW_ID]
 }
 
-function updateWin(patch) {
-  useDisplayStore.getState().updateWindow(WINDOW_ID, patch)
+function updateWin(windowId, patch) {
+  useDisplayStore.getState().updateWindow(windowId ?? WINDOW_ID, patch)
 }
 
 // ── Range rings ──────────────────────────────────────────────────────────────
 
-export function RR_TOGGLE() {
-  const on = !(getWin()?.ringsVisible ?? false)
-  updateWin({ ringsVisible: on })
+export function RR_TOGGLE({ context }) {
+  const on = !(getWin(context.windowId)?.ringsVisible ?? false)
+  updateWin(context.windowId, { ringsVisible: on })
   saveAbmPrefs({ ringsVisible: on })
-  return on ? `RANGE RINGS ${getWin()?.ringSpacingNm ?? 20}NM` : 'RANGE RINGS OFF'
+  return on ? `RANGE RINGS ${getWin(context.windowId)?.ringSpacingNm ?? 20}NM` : 'RANGE RINGS OFF'
 }
 
-export function RR_SET({ captures }) {
+export function RR_SET({ captures, context }) {
   const nm = parseFloat(captures.nm)
   if (nm <= 0) {
-    updateWin({ ringsVisible: false })
+    updateWin(context.windowId, { ringsVisible: false })
     saveAbmPrefs({ ringsVisible: false })
     return 'RANGE RINGS OFF'
   }
-  updateWin({ ringsVisible: true, ringSpacingNm: nm })
+  updateWin(context.windowId, { ringsVisible: true, ringSpacingNm: nm })
   saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
   return `RANGE RINGS ${nm}NM`
 }
 
-export function RR_SET_ANCHOR({ captures }) {
+export function RR_SET_ANCHOR({ captures, context }) {
   const nm = parseFloat(captures.nm)
   const anchor = captures.anchor
   if (nm <= 0) {
-    updateWin({ ringsVisible: false })
+    updateWin(context.windowId, { ringsVisible: false })
     saveAbmPrefs({ ringsVisible: false })
     return 'RANGE RINGS OFF'
   }
   if (anchor === 'bullseye' || anchor === 'bs') {
-    updateWin({ ringsVisible: true, ringSpacingNm: nm, ringAnchorLat: null, ringAnchorLng: null, ringAnchorId: null })
+    updateWin(context.windowId, { ringsVisible: true, ringSpacingNm: nm, ringAnchorLat: null, ringAnchorLng: null, ringAnchorId: null })
     saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
     return `RANGE RINGS ${nm}NM @ BULLSEYE`
   }
@@ -144,29 +151,29 @@ export function RR_SET_ANCHOR({ captures }) {
   if (!result) return 'FIX NOT FOUND'
   // Anchor lat/lng/id intentionally excluded from saveAbmPrefs — mission-
   // specific fix, not a persisted preference (see store/abmPrefs.js header).
-  updateWin({ ringsVisible: true, ringSpacingNm: nm, ringAnchorLat: result.lat, ringAnchorLng: result.lon, ringAnchorId: result.id })
+  updateWin(context.windowId, { ringsVisible: true, ringSpacingNm: nm, ringAnchorLat: result.lat, ringAnchorLng: result.lon, ringAnchorId: result.id })
   saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
   return `RANGE RINGS ${nm}NM @ ${result.id}`
 }
 
 // ── Bullseye override ────────────────────────────────────────────────────────
 
-export function BE_RESET() {
-  updateWin({ bullseyeOverride: null })
+export function BE_RESET({ context }) {
+  updateWin(context.windowId, { bullseyeOverride: null })
   return 'BULLSEYE RESET'
 }
 
-export function BE_LATLNG({ captures }) {
+export function BE_LATLNG({ captures, context }) {
   const lat = parseFloat(captures.lat)
   const lng = parseFloat(captures.lng)
-  updateWin({ bullseyeOverride: { lat, lng } })
+  updateWin(context.windowId, { bullseyeOverride: { lat, lng } })
   return `BULLSEYE SET ${lat.toFixed(2)}/${lng.toFixed(2)}`
 }
 
-export function BE_FIX({ captures }) {
+export function BE_FIX({ captures, context }) {
   const result = useNavdataStore.getState().lookupFix(captures.fix)
   if (!result) return 'FIX NOT FOUND'
-  updateWin({ bullseyeOverride: { lat: result.lat, lng: result.lon } })
+  updateWin(context.windowId, { bullseyeOverride: { lat: result.lat, lng: result.lon } })
   return `BULLSEYE SET @ ${result.id}`
 }
 
@@ -341,7 +348,7 @@ const DRAW_DONE_FEEDBACK = {
 }
 
 function handleDrawCommand(type, { context }) {
-  const { raw, theatre, declinationDeg } = context
+  const { raw, theatre, declinationDeg, windowId } = context
   if (!theatre) return 'NO THEATRE'
   const str = raw.trim().toLowerCase()
   const tokens = drawCmdTokens(str, raw)
@@ -358,7 +365,7 @@ function handleDrawCommand(type, { context }) {
     useAbmDrawingsStore.getState().addDrawnShape(theatre, type, result.immediate)
     return DRAW_DONE_FEEDBACK[type]
   }
-  updateWin({ pendingDraw: result.pending })
+  updateWin(windowId, { pendingDraw: result.pending })
   return DRAW_PENDING_FEEDBACK[type]
 }
 
@@ -381,18 +388,18 @@ export function TEXT({ context }) { return handleDrawCommand('text', { context }
 // yes/no answer (also bespoke — see this file's header).
 
 export function DCLEAR_BARE({ context }) {
-  const { theatre } = context
+  const { theatre, windowId } = context
   if (!theatre) return 'NO THEATRE'
-  updateWin({ pendingDraw: null, pendingClearClick: true })
+  updateWin(windowId, { pendingDraw: null, pendingClearClick: true })
   return 'CLEAR: CLICK A DRAWING'
 }
 
 export function DCLEAR_ALL({ context }) {
-  const { theatre } = context
+  const { theatre, windowId } = context
   if (!theatre) return 'NO THEATRE'
   const drawingLayers = useAbmDrawingsStore.getState().byTheatre[theatre] ?? []
   if (!drawingLayers.length) return 'NOTHING TO CLEAR'
-  updateWin({ pendingClearAllConfirm: true })
+  updateWin(windowId, { pendingClearAllConfirm: true })
   return `CLEAR ALL ${drawingLayers.length} DRAWINGS? Y TO CONFIRM`
 }
 
@@ -462,23 +469,23 @@ export function FIX_PIN({ captures, context }) {
 
 // .find <fix> — drops a green square marker at the looked-up fix/navaid,
 // cleared by Escape or another .find.
-export function FIND({ captures }) {
+export function FIND({ captures, context }) {
   const result = useNavdataStore.getState().lookupFix(captures.fix)
   if (!result) return 'NOT FOUND'
-  updateWin({ findMarker: result })
+  updateWin(context.windowId, { findMarker: result })
   useAbmMissionStore.getState().clearFind() // this find isn't tied to a FRAG row
   return `FIND ${result.id}`
 }
 
 // Tactical brevity glossary lookup (ATP 1-02.1, see store/brevity.js). Shown
 // in its own readout, not cmdFeedback — see AbmScope's defineEntry usage.
-export function DEFINE({ captures }) {
+export function DEFINE({ captures, context }) {
   const result = useBrevityStore.getState().lookup(captures.term)
   if (!result) {
-    updateWin({ defineEntry: null })
+    updateWin(context.windowId, { defineEntry: null })
     return 'NOT FOUND'
   }
-  updateWin({ defineEntry: result })
+  updateWin(context.windowId, { defineEntry: result })
   return ''
 }
 
@@ -553,6 +560,50 @@ export function RCLEAR() {
   mission.clearRouteGroups()
   mission.clearRouteVisible()
   return 'ROUTES CLEARED'
+}
+
+// `.focus <callsign> [range]` — opens a small popup ABM scope permanently
+// centered on that live contact at the given (or persisted default) range,
+// see AbmFocusWindow.jsx. Exported so AbmScope.jsx's double-click-a-contact
+// handler can reuse the exact same open/reuse logic. window.open()'s native
+// same-name behavior (navigates/refocuses an already-open window sharing
+// that name, rather than opening a duplicate) is what gives "re-issuing
+// .focus COLT11 reuses COLT11's existing window" for free — see
+// sanitizeFocusToken's header (utils/callsign.js) for why the popup name and
+// the focus scope's own windowId are derived identically.
+export function openAbmFocusWindow(callsign, rangeNm) {
+  const token = sanitizeFocusToken(callsign)
+  const params = new URLSearchParams({ window: 'abm-focus', callsign, range: String(rangeNm) })
+  const popup = window.open(`/?${params}`, `abm-focus-${token}`, 'width=520,height=580,resizable=yes')
+  popup?.focus()
+}
+
+// Bare `.focus <range>` (digits only — see commandParser.js's ordering
+// against FOCUS_OPEN/FOCUS_OPEN_RANGE) sets the default range used whenever
+// a `.focus <callsign>` / double-click doesn't specify one. Opens no window.
+export function FOCUS_DEFAULT_RANGE({ captures }) {
+  const nm = parseFloat(captures.nm)
+  if (!(nm > 0)) return 'ILL VAL'
+  saveAbmPrefs({ focusDefaultRangeNm: nm })
+  return `FOCUS RANGE ${nm}NM`
+}
+
+export function FOCUS_OPEN_RANGE({ captures, context }) {
+  const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
+  if (matches.length === 0) return 'NOT FOUND'
+  if (matches.length > 1) return 'AMBIGUOUS'
+  const nm = parseFloat(captures.nm)
+  openAbmFocusWindow(matches[0].callsign, nm)
+  return `FOCUS ${matches[0].callsign} ${nm}NM`
+}
+
+export function FOCUS_OPEN({ captures, context }) {
+  const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
+  if (matches.length === 0) return 'NOT FOUND'
+  if (matches.length > 1) return 'AMBIGUOUS'
+  const nm = loadAbmPrefs().focusDefaultRangeNm ?? 20
+  openAbmFocusWindow(matches[0].callsign, nm)
+  return `FOCUS ${matches[0].callsign} ${nm}NM`
 }
 
 // ── Runways / polygons / grid / towns / raster layers ───────────────────────
@@ -666,17 +717,17 @@ export function FEET() {
 
 // ── Contact display commands (§3, 2026-07-05) ───────────────────────────────
 
-export function PTL({ captures }) {
+export function PTL({ captures, context }) {
   const mins = parseFloat(captures.mins)
   if (mins < 0 || mins > 5) return 'INVALID: .PTL 0-5'
-  updateWin({ ptlMinutes: mins })
+  updateWin(context.windowId, { ptlMinutes: mins })
   saveAbmPrefs({ ptlMinutes: mins })
   return mins === 0 ? 'PTL OFF' : `PTL ${mins}MIN`
 }
 
-export function FADED({ captures }) {
+export function FADED({ captures, context }) {
   const s = parseInt(captures.s, 10)
-  updateWin({ fadedSeconds: s })
+  updateWin(context.windowId, { fadedSeconds: s })
   saveAbmPrefs({ fadedSeconds: s })
   return `FADED ${s}S`
 }
@@ -684,58 +735,58 @@ export function FADED({ captures }) {
 // .history — toggleable position-history trail. Bare `.history` toggles
 // visibility; `.history <len>` sets trail length (0 = off); `.history <len>
 // <rate>` also sets capture rate (seconds).
-export function HISTORY_TOGGLE() {
-  const win = getWin()
+export function HISTORY_TOGGLE({ context }) {
+  const win = getWin(context.windowId)
   const next = !(win?.historyVisible ?? true)
-  updateWin({ historyVisible: next })
+  updateWin(context.windowId, { historyVisible: next })
   saveAbmPrefs({ historyVisible: next })
   return next ? `HISTORY ${win?.historyLength ?? 4}/${win?.historyRate ?? 4.5}` : 'HISTORY OFF'
 }
 
-export function HISTORY_LEN_RATE({ captures }) {
+export function HISTORY_LEN_RATE({ captures, context }) {
   const len = Math.min(MAX_HISTORY, parseInt(captures.len, 10))
   const rate = parseFloat(captures.rate)
   if (len <= 0) {
-    updateWin({ historyVisible: false })
+    updateWin(context.windowId, { historyVisible: false })
     saveAbmPrefs({ historyVisible: false })
     return 'HISTORY OFF'
   }
-  updateWin({ historyVisible: true, historyLength: len, historyRate: rate })
+  updateWin(context.windowId, { historyVisible: true, historyLength: len, historyRate: rate })
   saveAbmPrefs({ historyVisible: true, historyLength: len, historyRate: rate })
   return `HISTORY ${len}/${rate}`
 }
 
-export function HISTORY_LEN({ captures }) {
+export function HISTORY_LEN({ captures, context }) {
   const len = Math.min(MAX_HISTORY, parseInt(captures.len, 10))
   if (len <= 0) {
-    updateWin({ historyVisible: false })
+    updateWin(context.windowId, { historyVisible: false })
     saveAbmPrefs({ historyVisible: false })
     return 'HISTORY OFF'
   }
-  updateWin({ historyVisible: true, historyLength: len })
+  updateWin(context.windowId, { historyVisible: true, historyLength: len })
   saveAbmPrefs({ historyVisible: true, historyLength: len })
-  return `HISTORY ${len}/${getWin()?.historyRate ?? 4.5}`
+  return `HISTORY ${len}/${getWin(context.windowId)?.historyRate ?? 4.5}`
 }
 
-export function DB_TOGGLE() {
-  const next = !(getWin()?.dbVisible ?? true)
-  updateWin({ dbVisible: next })
+export function DB_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.dbVisible ?? true)
+  updateWin(context.windowId, { dbVisible: next })
   saveAbmPrefs({ dbVisible: next })
   return next ? 'DATABLOCKS ON' : 'DATABLOCKS OFF'
 }
 
 // Clears every .db + click per-contact override (dbHiddenIds), returning all
 // contacts to the global dbVisible/formation-suppression behavior.
-export function DBRESET() {
-  updateWin({ dbHiddenIds: [] })
+export function DBRESET({ context }) {
+  updateWin(context.windowId, { dbHiddenIds: [] })
   return 'DATABLOCKS RESET'
 }
 
 // Datablock collision avoidance (shared algorithm w/ CATCC, see
 // utils/datablockPlacement.js). Off by default for ABM.
-export function DBCA_TOGGLE() {
-  const next = !(getWin()?.dbca ?? false)
-  updateWin({ dbca: next })
+export function DBCA_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.dbca ?? false)
+  updateWin(context.windowId, { dbca: next })
   saveAbmPrefs({ dbca: next })
   return next ? 'DBCA ON' : 'DBCA OFF'
 }
@@ -743,17 +794,17 @@ export function DBCA_TOGGLE() {
 // Formation datablock suppression (§3, 2026-07-08): when two or more
 // same-flight aircraft are within a 3NM box of the flight's lead, only the
 // lead's datablock shows. On by default.
-export function DBS_TOGGLE() {
-  const next = !(getWin()?.dbSuppress ?? true)
-  updateWin({ dbSuppress: next })
+export function DBS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.dbSuppress ?? true)
+  updateWin(context.windowId, { dbSuppress: next })
   saveAbmPrefs({ dbSuppress: next })
   return next ? 'DB SUPPRESSION ON' : 'DB SUPPRESSION OFF'
 }
 
-export function LDR({ captures }) {
+export function LDR({ captures, context }) {
   const length = parseInt(captures.length, 10)
   const dir = captures.dir
-  updateWin({ ldrLength: length, ldrAngleDeg: DIR_TO_ANGLE[dir] })
+  updateWin(context.windowId, { ldrLength: length, ldrAngleDeg: DIR_TO_ANGLE[dir] })
   saveAbmPrefs({ ldrLength: length, ldrAngleDeg: DIR_TO_ANGLE[dir] })
   return `LDR ${length} ${dir}`
 }
@@ -763,14 +814,14 @@ export function LDR({ captures }) {
 // click are handled in handleMouseUp (bespoke); these are the Enter-only (no
 // click) forms.
 
-export function THREAT_CLEAR() {
-  updateWin({ threatRings: [] })
+export function THREAT_CLEAR({ context }) {
+  updateWin(context.windowId, { threatRings: [] })
   return 'THREAT RINGS CLEARED'
 }
 
-export function THREAT_RADIUS({ captures }) {
+export function THREAT_RADIUS({ captures, context }) {
   const nm = parseFloat(captures.nm)
-  updateWin({ threatRadius: nm })
+  updateWin(context.windowId, { threatRadius: nm })
   saveAbmPrefs({ threatRadius: nm })
   return `THREAT RING ${nm}NM`
 }
@@ -780,8 +831,8 @@ export function THREAT_RADIUS({ captures }) {
 // drawings `.clear` handler added a month later already matched bare
 // `.clear` first, making the original binding unreachable — a real bug, not
 // a deliberate redesign).
-export function TCLEAR() {
-  updateWin({ rbl: null, threatRings: [] })
+export function TCLEAR({ context }) {
+  updateWin(context.windowId, { rbl: null, threatRings: [] })
   const abm = useAbmStore.getState()
   abm.braaList.forEach(p => abm.removeBraaPair(p.id))
   return 'ALL CLEARED'
@@ -903,6 +954,7 @@ const ACTION_MAP = {
   LINE, RECT, CIRC, POLY, SECT, RACE, TEXT,
   DCLEAR_BARE, DCLEAR_ALL, DCLEAR_NAME,
   FIXES_TOGGLE, NAVAIDS_TOGGLE, FIX_CLEAR, FIX_PIN, FIND, DEFINE, WHERE, FRAG_FIND, ROUTE_FIND, RCLEAR,
+  FOCUS_DEFAULT_RANGE, FOCUS_OPEN_RANGE, FOCUS_OPEN,
   RUNWAYS_TOGGLE, POLYGONS_TOGGLE, MGRS_TOGGLE, TOWNS_TOGGLE, BASE_TOGGLE, TERRAIN_TOGGLE,
   MAP_TOGGLE, WATER_TOGGLE, ROADS_TOGGLE,
   COORDS_TOGGLE, BEC_TOGGLE, DDM, DMS, METERS, FEET,
@@ -915,7 +967,7 @@ const ACTION_MAP = {
 
 /**
  * @param {{ command, captures }} parsed  commandParser.js's parseCommand() result
- * @param {object} context  { raw, theatre, declinationDeg, myCoalitionNum, allVisibleUnits }
+ * @param {object} context  { raw, windowId, theatre, declinationDeg, myCoalitionNum, allVisibleUnits }
  * @returns {Promise<string>} feedback message for cmdFeedback
  */
 export async function dispatch(parsed, context) {
