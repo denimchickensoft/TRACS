@@ -18,6 +18,7 @@ import { useAirwaysStore }  from '../../store/airways.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { loadAbmPrefs } from '../../store/abmPrefs.js'
+import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
 import { useAbmUiPrefsStore } from '../../store/abmUiPrefs.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
@@ -1403,6 +1404,39 @@ export default function AbmScope() {
       setPendingDeclaration(d => d === fDecl ? null : fDecl)
       clearPendingBraa()
       return
+    }
+
+    // View bookmarks — Ctrl+Alt+0-9 saves the current view, Ctrl+0-9 recalls
+    // it. e.code (not e.key) so this is layout/shift-independent, matching
+    // STARS' starsKeys.js. Reads live window state rather than the
+    // closed-over windowSettings, same pattern as buildView.
+    if (e.ctrlKey && e.code?.startsWith('Digit')) {
+      const n = parseInt(e.code.slice(5), 10)
+      if (!Number.isNaN(n)) {
+        e.preventDefault()
+        const ws = useDisplayStore.getState().windows[WINDOW_ID]
+        if (e.altKey) {
+          saveAbmBookmark(n, {
+            centerLat: centerLatRef.current,
+            centerLng: centerLngRef.current,
+            rangeNm: ws?.rangeNm,
+            centerOverridden: ws?.centerOverridden ?? false,
+          })
+          setCmdFeedback(`BOOKMARK ${n} SAVED`)
+        } else {
+          const bm = getAbmBookmark(n)
+          if (bm) {
+            displayStore.updateWindow(WINDOW_ID, {
+              centerLat: bm.centerLat, centerLng: bm.centerLng,
+              rangeNm: bm.rangeNm, centerOverridden: bm.centerOverridden,
+            })
+            setCmdFeedback(`BOOKMARK ${n} LOADED`)
+          } else {
+            setCmdFeedback(`BOOKMARK ${n} EMPTY`)
+          }
+        }
+        return
+      }
     }
 
     if (e.key === 'Escape') {
