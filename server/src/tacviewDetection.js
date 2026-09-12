@@ -555,10 +555,11 @@ function computeContacts(units, friendlyCoalitionId) {
 // Contacts are pushed onto the *receiving* friendly unit's contacts[], same
 // shape as radar contacts but DETECTION_RWR (16) — matches the client's
 // existing rwrEverDetected handling (AicScope.jsx/abmScopeHelpers.js), which
-// does not grant visibility from this bit alone; it only reveals an
-// already-visible (RADAR/DLINK-detected) contact's type persistently. See
-// createFogFilter's computeVisibility() for why that means RWR contacts must
-// NOT feed the server-side fog-exposure set on their own.
+// for an air emitter does not grant visibility from this bit alone; it only
+// reveals an already-visible (RADAR/DLINK-detected) contact's type
+// persistently. See createFogFilter's computeVisibility() for the one
+// exception — a ground radar site (SAM/AAA/EWR), which has no other
+// detection path at all, DOES get exposed by an RWR hit alone.
 //
 // Known, accepted limitation, not fixed here: an emitter's range is
 // `sensorRangeNm(emitter)` — for an Aircraft/Helicopter, that's
@@ -700,13 +701,22 @@ function createFogFilter(friendlyCoalitionId) {
     // left the mission, just this coalition's detection range).
     //
     // Exposure (`nowVisible`, which decides filterFrameUpdate's pass-through
-    // set) is deliberately built from radarUpdate ONLY, not the merged
-    // contactsUpdate — an RWR-only hit must not itself leak an enemy's real
-    // position over the wire, matching the client's own treatment of the RWR
-    // bit (it never grants visibility by itself, only reveals an
-    // already-visible contact's type). An RWR contact entry still reaches
-    // the client fine either way, since it's attached to the friendly
-    // receiver's own contacts[], and friendly units are always exposed.
+    // set) is built from radarUpdate, plus one carve-out from rwrUpdate: for
+    // an Aircraft/Helicopter emitter, an RWR-only hit must not itself leak an
+    // enemy's real position over the wire, matching the client's own
+    // treatment of the RWR bit for air contacts (getAbmVisibleUnits() —
+    // RADAR/DLINK only; it never grants visibility by itself, only reveals an
+    // already-visible contact's type). But a ground radar site (SAM/AAA/EWR)
+    // is excluded from computeContacts()'s targets entirely (isGroundRadarTarget())
+    // and so can only ever appear in rwrUpdate — for those, RWR IS the sole
+    // legitimate detection event, not a secondary layer, so it must grant
+    // visibility here or they could never be revealed at all (matches
+    // getAbmVisibleGroundUnits()'s already-inclusive detection mask, which
+    // treats RWR as sufficient for ground units — the gap was purely here).
+    // An RWR contact entry still reaches the client fine either way, since
+    // it's attached to the friendly receiver's own contacts[], and friendly
+    // units are always exposed — this only affects whether the *emitter's*
+    // own data is ever sent.
     computeVisibility(internalUnits) {
       const radarUpdate = computeContacts(internalUnits, friendlyCoalitionId)
       const rwrUpdate = computeRwrContacts(internalUnits, friendlyCoalitionId)
@@ -715,6 +725,12 @@ function createFogFilter(friendlyCoalitionId) {
       const nowVisible = new Set()
       for (const { contacts } of Object.values(radarUpdate)) {
         for (const { ID } of contacts) nowVisible.add(String(ID))
+      }
+      for (const { contacts } of Object.values(rwrUpdate)) {
+        for (const { ID } of contacts) {
+          const emitter = internalUnits[String(ID)]
+          if (emitter && isGroundRadarTarget(emitter)) nowVisible.add(String(ID))
+        }
       }
 
       const revealed = {}
