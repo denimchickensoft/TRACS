@@ -276,7 +276,7 @@ function start(cfg, callbacks = {}) {
   theatreDecided = false
   theatreName = null
   theatreVotes.clear()
-  state.clearUnits()
+  state.resetForNewSource()
   internalUnits = {}
   handshakeFailures = 0
   pendingUpdated = {}

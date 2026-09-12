@@ -199,7 +199,7 @@ function start(cfg, callbacks = {}) {
   consecutiveErrors = 0
   lastTheatre = null
   lastSessionHash = null
-  state.clearUnits()
+  state.resetForNewSource()
 
   console.log(`[olympus] starting polling → ${config.olympusUrl}`)
   pollUnits()

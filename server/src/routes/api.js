@@ -203,9 +203,15 @@ function registerApiRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state
     // Skip probe + restart only when already polling the same source with the
     // same config — a simultaneous probe to the same server triggers a 426
     // from Olympus. A different config is a reconnect, so probe and restart.
+    // coalition/password both matter here, not just olympusUrl: coalition
+    // picks Olympus's auth role header and Tacview's fogFilter side, so a
+    // coalition-only change at the same address is a genuine reconnect, not
+    // a duplicate of the same session.
     const alreadyOnSameSource = state.getSourceType() === sourceType
       && source.isPolling()
       && source.getConfig()?.olympusUrl === sourceCfg.olympusUrl
+      && source.getConfig()?.coalition === sourceCfg.coalition
+      && source.getConfig()?.password === sourceCfg.password
     if (!alreadyOnSameSource) {
       // autoDetectSourceType() above already completed a full probe cycle for
       // `sourceType` moments ago (that's how it was identified) — re-probing

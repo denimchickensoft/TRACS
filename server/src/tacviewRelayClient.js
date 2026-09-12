@@ -265,7 +265,7 @@ function start(cfg, callbacks = {}) {
   theatreName = null
   theatreVotes.clear()
   latestMissionUtcMs = null
-  state.clearUnits()
+  state.resetForNewSource()
   internalUnits = {}
   pendingUpdated = {}
   pendingRemoved = new Set()
