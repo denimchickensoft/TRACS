@@ -39,6 +39,8 @@ const DEFAULTS = {
   historyRate:    4.5,   // seconds between trail captures
   dbca:           false, // datablock collision avoidance — off by default (on for CATCC only)
   focusDefaultRangeNm: 20, // default range for .focus <callsign> / double-click-to-focus popups when no range is given
+  roeVisible:     true,  // ROE readout visibility default, seeded per window at open — see store/display.js
+  compassVisible: true,  // compass rose visibility default, seeded per window at open (as windows[].briteCmp)
 }
 
 const { load: loadAbmPrefs, save: saveAbmPrefs } = makePrefsStore(KEY, DEFAULTS)

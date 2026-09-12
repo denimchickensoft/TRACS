@@ -52,7 +52,7 @@ const SCOPE_DEFAULTS = {
   britePos:  null,   // position character inside contact symbol
   briteLdb:  null,   // limited data block text
   briteRr:   null,   // range rings
-  briteCmp:  null,   // compass (not yet rendered)
+  briteCmp:  null,   // compass rose brightness (0 = hidden); also ABM's .rose/.compass, per window
   briteHst:  null,   // history trails
   // Altitude filters — hundreds of feet (STARS 3-digit convention, e.g. 001 = 100ft).
   // U = unassociated tracks, A = associated tracks. Defaults show everything.
@@ -81,6 +81,7 @@ const SCOPE_DEFAULTS = {
   // concept, independent per-window instance); only dbHiddenIds has no AIC
   // equivalent.
   dbHiddenIds: [],          // unitId[] — .db + click per-contact datablock hide override
+  roeVisible: true,         // ABM-only — .roe bare-toggle, independent per window/focus panel
   // Click-completion state, deliberately kept bespoke (not generalized into a
   // parser-level "trigger" mechanism, see §10.0/§10.3 of the refactor spec) —
   // migrated here only so actions/index.js-style handlers can read/write it.

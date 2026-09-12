@@ -159,7 +159,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // ── Air picture (§3 / Phase 4) — ABM's own declarations, own symbology ──────
   const units        = useUnitsStore(s => s.units)
   const roe = useRoeStore(s => s.roe)
-  const roeVisible = useAbmUiPrefsStore(s => s.roeVisible)
+  const roeVisible = windowSettings?.roeVisible ?? true
   const declarations = useAbmStore(s => s.declarations)
   const autoClassify = useAbmStore(s => s.autoClassify)
   const getEffectiveDeclaration = useAbmStore(s => s.getEffectiveDeclaration)
@@ -882,6 +882,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       historyVisible: abmPrefs.historyVisible, historyLength: abmPrefs.historyLength,
       historyRate: abmPrefs.historyRate,
       dbca: abmPrefs.dbca,
+      roeVisible: abmPrefs.roeVisible,
+      briteCmp: abmPrefs.compassVisible ? null : 0,
     })
   }, []) // eslint-disable-line
 
@@ -1103,8 +1105,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // — no ABM-specific copy needed, just CATCC's parameter choice.
   useEffect(() => {
     if (!view || !compassRef.current) return
-    drawCompassRose(compassRef.current.getContext('2d'), view, 70, 3, 0.625)
-  }, [view])
+    drawCompassRose(compassRef.current.getContext('2d'), view, windowSettings?.briteCmp ?? 70, 3, 0.625)
+  }, [view, windowSettings?.briteCmp])
 
   // .line/.rect/.circ/.poly/.sect/.race/.text click-driven drawing —
   // pendingDraw is null when no draw command is armed; see

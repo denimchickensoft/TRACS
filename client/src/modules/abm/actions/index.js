@@ -194,6 +194,13 @@ export function UNITRO_TOGGLE() {
   return next ? 'UNIT READOUT ON' : 'UNIT READOUT OFF'
 }
 
+export function ROSE_TOGGLE({ context }) {
+  const wasVisible = (getWin(context.windowId)?.briteCmp ?? 70) > 0
+  updateWin(context.windowId, { briteCmp: wasVisible ? 0 : null })
+  saveAbmPrefs({ compassVisible: !wasVisible })
+  return wasVisible ? 'ROSE OFF' : 'ROSE ON'
+}
+
 export function GEO_TOGGLE() {
   useGeoStore.getState().toggleVisible()
   return useGeoStore.getState().visible ? 'GEO ON' : 'GEO OFF'
@@ -915,10 +922,10 @@ export function ROE({ captures }) {
   return `WEAPONS ${state}`
 }
 
-export function ROE_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.roeVisible
-  prefs.setRoeVisible(next)
+export function ROE_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.roeVisible ?? true)
+  updateWin(context.windowId, { roeVisible: next })
+  saveAbmPrefs({ roeVisible: next })
   return next ? 'ROE ON' : 'ROE OFF'
 }
 
@@ -964,7 +971,7 @@ export function ENG_TOGGLE() {
 const ACTION_MAP = {
   RR_TOGGLE, RR_SET, RR_SET_ANCHOR,
   BE_RESET, BE_LATLNG, BE_FIX,
-  TIME_TOGGLE, UNITRO_TOGGLE, GEO_TOGGLE, RELIEF_TOGGLE, HOLDS_TOGGLE, MORA_TOGGLE,
+  TIME_TOGGLE, UNITRO_TOGGLE, ROSE_TOGGLE, GEO_TOGGLE, RELIEF_TOGGLE, HOLDS_TOGGLE, MORA_TOGGLE,
   AIRWAYS_TOGGLE, AIRWAYS_TYPE, ASP_TOGGLE, ASP_CATEGORY, ASPCOLORS, REFRESH,
   LABELS_TOGGLE, FILL_TOGGLE, FILL_SET, CUSTOM_TOGGLE, CUSTOM_NAME,
   LINE, RECT, CIRC, POLY, SECT, RACE, TEXT,

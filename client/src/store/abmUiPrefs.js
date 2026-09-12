@@ -55,7 +55,6 @@ const DEFAULTS = {
   acqHidden: [],
   engHidden: [],
   autoThreat: false,
-  roeVisible: true,
 }
 
 function loadPersisted() {
@@ -119,7 +118,6 @@ export const useAbmUiPrefsStore = create((set) => ({
   setAcqHidden: setterFor(set, 'acqHidden'),
   setEngHidden: setterFor(set, 'engHidden'),
   setAutoThreat: setterFor(set, 'autoThreat'),
-  setRoeVisible: setterFor(set, 'roeVisible'),
 }))
 
 useAbmUiPrefsStore.subscribe((state, prevState) => {

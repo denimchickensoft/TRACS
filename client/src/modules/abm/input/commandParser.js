@@ -40,6 +40,7 @@ const COMMANDS = [
   { id: 'BE_FIX',           pattern: /^\.be\s+(\S+)$/, captures: ['fix'] },
   { id: 'TIME_TOGGLE',      pattern: /^\.time$/ },
   { id: 'UNITRO_TOGGLE',    pattern: /^\.unitro$/ },
+  { id: 'ROSE_TOGGLE',      pattern: /^\.(?:rose|compass)$/ },
   { id: 'GEO_TOGGLE',       pattern: /^\.geo$/ },
   { id: 'RELIEF_TOGGLE',    pattern: /^\.relief$/ },
   { id: 'HOLDS_TOGGLE',     pattern: /^\.holds$/ },
