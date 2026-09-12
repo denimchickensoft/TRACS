@@ -29,7 +29,8 @@
  */
 
 import { useDisplayStore } from '../../../store/display.js'
-import { useAicStore, DECLARATION, ROE_STATE } from '../../../store/aic.js'
+import { useAicStore, DECLARATION } from '../../../store/aic.js'
+import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { useAicPrefsStore } from '../../../store/aicPrefs.js'
 import { useNavdataStore } from '../../../store/navdata.js'
 import { useGeoStore } from '../../../store/geo.js'
@@ -201,8 +202,15 @@ export function AUTOTHREAT() {
 
 export function ROE({ captures }) {
   const state = captures.state.toUpperCase() // 'FREE' | 'TIGHT' | 'HOLD'
-  useAicStore.getState().setRoe(ROE_STATE[state])
+  useRoeStore.getState().setRoe(ROE_STATE[state])
   return `WEAPONS ${state}`
+}
+
+export function ROE_TOGGLE() {
+  const prefs = useAicPrefsStore.getState()
+  const next = !prefs.roeVisible
+  prefs.setRoeVisible(next)
+  return next ? 'ROE ON' : 'ROE OFF'
 }
 
 export async function ASPCOLORS({ captures }) {
@@ -327,7 +335,7 @@ export function DEFINE({ captures }) {
 const ACTION_MAP = {
   CENTER_BULLSEYE, CENTER_BRG_RNG, CENTER_FIX, FIND, RR_TOGGLE, RR_SET, PTL, SYM, FADED,
   THREAT_CLEAR, THREAT_RADIUS, CLEAR_ALL, CLASS_RESET, CLASS_RECLASSIFY, AUTOCLASS, AUTOTHREAT,
-  ROE, ASPCOLORS, GEO_TOGGLE, RELIEF_TOGGLE, CENTROID_TOGGLE, AXIS_TOGGLE, PICTURE_TOGGLE,
+  ROE, ROE_TOGGLE, ASPCOLORS, GEO_TOGGLE, RELIEF_TOGGLE, CENTROID_TOGGLE, AXIS_TOGGLE, PICTURE_TOGGLE,
   BEC_TOGGLE, SECTOR_ON, SECTOR_CLEAR, SECTOR_SET, BE_RESET, BE_LATLNG, BE_FIX, DEFINE,
 }
 

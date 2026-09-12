@@ -52,6 +52,7 @@
 
 import { useDisplayStore } from '../../../store/display.js'
 import { useAbmStore, DECLARATION } from '../../../store/abm.js'
+import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { useAbmUiPrefsStore } from '../../../store/abmUiPrefs.js'
 import { saveAbmPrefs } from '../../../store/abmPrefs.js'
 import { useNavdataStore } from '../../../store/navdata.js'
@@ -839,6 +840,21 @@ export function AUTOTHREAT() {
   return next ? 'AUTOTHREAT ON' : 'AUTOTHREAT OFF'
 }
 
+// ROE is shared cross-module state (store/roe.js) — either an AIC or ABM
+// controller can set it, and it syncs live to every other connected client.
+export function ROE({ captures }) {
+  const state = captures.state.toUpperCase() // 'FREE' | 'TIGHT' | 'HOLD'
+  useRoeStore.getState().setRoe(ROE_STATE[state])
+  return `WEAPONS ${state}`
+}
+
+export function ROE_TOGGLE() {
+  const prefs = useAbmUiPrefsStore.getState()
+  const next = !prefs.roeVisible
+  prefs.setRoeVisible(next)
+  return next ? 'ROE ON' : 'ROE OFF'
+}
+
 // ── Ground/naval acq/eng range-ring visibility (§7, 2026-07-07) ─────────────
 // `.acq`/`.eng` toggle all four classifications' rings at once; `.acq h`/
 // `.eng b` etc. toggle just that classification (f/n/b/h — matches the F-key
@@ -893,7 +909,7 @@ const ACTION_MAP = {
   PTL, FADED, HISTORY_TOGGLE, HISTORY_LEN_RATE, HISTORY_LEN,
   DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,
-  CLASS_RESET, CLASS_RECLASSIFY, AUTOCLASS, AUTOTHREAT,
+  CLASS_RESET, CLASS_RECLASSIFY, AUTOCLASS, AUTOTHREAT, ROE, ROE_TOGGLE,
   ACQ_CLASS, ACQ_TOGGLE, ENG_CLASS, ENG_TOGGLE,
 }
 

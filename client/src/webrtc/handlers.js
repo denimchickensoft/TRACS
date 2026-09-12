@@ -7,7 +7,7 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../store/strips.js'
 import { useSessionStore } from '../store/session.js'
 import { useControllersStore } from '../store/controllers.js'
 import { applyStatusBoardUpdate } from '../store/statusBoard.js'
-import { applyAicDeclaration, applyAicRoe, applyAicDeclarationsReset, applyAicAutoClassify } from '../store/aic.js'
+import { applyAicDeclaration, applyAicDeclarationsReset, applyAicAutoClassify } from '../store/aic.js'
 import { applyAbmDeclaration, applyAbmDeclarationsReset, applyAbmAutoClassify } from '../store/abm.js'
 
 function getMyControllerId() {
@@ -172,9 +172,6 @@ function handleAic(type, payload) {
       break
     case 'DECLARATIONS_RESET':
       applyAicDeclarationsReset()
-      break
-    case 'ROE_SET':
-      applyAicRoe(payload.roe)
       break
     case 'AUTOCLASS_SET':
       applyAicAutoClassify(payload.enabled)

@@ -44,6 +44,7 @@ const COMMANDS = [
   { id: 'CLASS_RECLASSIFY', pattern: /^\.class\s+([fnbh])\s+([fnbh])$/, captures: ['oldLetter', 'newLetter'] },
   { id: 'AUTOCLASS',        pattern: /^\.autoclass$/ },
   { id: 'AUTOTHREAT',       pattern: /^\.autothreat$/ },
+  { id: 'ROE_TOGGLE',       pattern: /^\.roe$/ },
   { id: 'ROE',              pattern: /^\.roe\s+(free|tight|hold)$/, captures: ['state'] },
   { id: 'ASPCOLORS',        pattern: /^\.aspcolors\s+(.+)$/, captures: ['name'] },
   { id: 'GEO_TOGGLE',       pattern: /^\.geo$/ },

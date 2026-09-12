@@ -4,7 +4,8 @@ import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useUnitsStore }       from '../../store/units.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
-import { useAicStore, DECLARATION, ROE_STATE } from '../../store/aic.js'
+import { useAicStore, DECLARATION } from '../../store/aic.js'
+import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { useAicPrefsStore }    from '../../store/aicPrefs.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
@@ -62,12 +63,6 @@ function trueDeclaration(unit, myCoalitionNum) {
   if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
   if (unit.coalition === 0) return DECLARATION.NEUTRAL
   return DECLARATION.HOSTILE
-}
-
-const ROE_DISPLAY = {
-  [ROE_STATE.FREE]:  'WEAPONS FREE',
-  [ROE_STATE.TIGHT]: 'WEAPONS TIGHT',
-  [ROE_STATE.HOLD]:  'WEAPONS HOLD',
 }
 
 const DECL_PICTURE = {
@@ -163,7 +158,7 @@ export default function AicScope() {
   const bullseyes  = useSessionStore(s => s.bullseyes)
 
   const declarations      = useAicStore(s => s.declarations)
-  const roe               = useAicStore(s => s.roe)
+  const roe               = useRoeStore(s => s.roe)
   const autoClassify      = useAicStore(s => s.autoClassify)
   const braaList          = useAicStore(s => s.braaList)
   const pendingBraaFighter = useAicStore(s => s.pendingBraaFighter)
@@ -418,6 +413,10 @@ export default function AicScope() {
   // .picture — toggles visibility of the PICTURE readout panel. Local UI
   // preference (not shared with other controllers). Off by default.
   const showPicture = useAicPrefsStore(s => s.showPicture)
+
+  // .roe (no args) — toggles visibility of the ROE readout badge. Local UI
+  // preference (not shared with other controllers). On by default.
+  const roeVisible = useAicPrefsStore(s => s.roeVisible)
 
   // .bec — bullseye-on-cursor readout that tracks the mouse pixel-for-pixel
   // (unlike the always-on cursorBullseye readout below, pinned to the top-
@@ -1030,8 +1029,8 @@ export default function AicScope() {
           </div>
         )}
 
-        {/* ROE indicator — top left */}
-        {roe && (
+        {/* ROE indicator — top left. Visibility toggled by bare .roe. */}
+        {roeVisible && roe && (
           <div className={`aic-roe aic-roe--${roe.toLowerCase()}`}>
             {ROE_DISPLAY[roe]}
           </div>

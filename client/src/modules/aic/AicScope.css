@@ -92,14 +92,14 @@
   z-index:     1;
 }
 
-.aic-roe--free  { color: #FF4444; background: rgba(255,68,68,0.15);  border: 1px solid rgba(255,68,68,0.4); }
+.aic-roe--free  { color: #44CC44; background: rgba(68,204,68,0.12);  border: 1px solid rgba(68,204,68,0.35); }
 .aic-roe--tight { color: #FFCC00; background: rgba(255,204,0,0.12);  border: 1px solid rgba(255,204,0,0.35); }
-.aic-roe--hold  { color: #44CC44; background: rgba(68,204,68,0.12);  border: 1px solid rgba(68,204,68,0.35); }
+.aic-roe--hold  { color: #FF4444; background: rgba(255,68,68,0.15);  border: 1px solid rgba(255,68,68,0.4); }
 
 /* ── PICTURE readout ─────────────────────────────────────────────────────────── */
 .aic-picture {
   position:       absolute;
-  top:            10px;
+  top:            40px;
   left:           10px;
   width:          420px;
   font-family:    'Roboto Mono', monospace;

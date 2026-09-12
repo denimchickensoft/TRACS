@@ -19,6 +19,7 @@ const DEFAULTS = {
   autoThreat:  false, // .autothreat — auto-lit threat rings on breach
   showPicture: false, // .picture — PICTURE readout panel visibility
   becVisible:  false, // .bec — bullseye-on-cursor readout
+  roeVisible:  true,  // .roe (no args) — ROE readout badge visibility
 }
 
 function loadPersisted() {
@@ -35,15 +36,18 @@ export const useAicPrefsStore = create((set) => ({
   setAutoThreat:  (enabled) => set({ autoThreat: enabled }),
   setShowPicture: (enabled) => set({ showPicture: enabled }),
   setBecVisible:  (enabled) => set({ becVisible: enabled }),
+  setRoeVisible:  (enabled) => set({ roeVisible: enabled }),
 }))
 
 useAicPrefsStore.subscribe((state, prevState) => {
   if (state.autoThreat === prevState.autoThreat
     && state.showPicture === prevState.showPicture
-    && state.becVisible === prevState.becVisible) return
+    && state.becVisible === prevState.becVisible
+    && state.roeVisible === prevState.roeVisible) return
   try {
     localStorage.setItem(KEY, JSON.stringify({
       autoThreat: state.autoThreat, showPicture: state.showPicture, becVisible: state.becVisible,
+      roeVisible: state.roeVisible,
     }))
   } catch {
     // ignore (e.g. private browsing quota)

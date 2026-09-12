@@ -3,13 +3,12 @@ import { createBroadcastHook } from './broadcastRegistry.js'
 
 // Shared declaration/BRAA store shape for ABM and AIC — abm.js's own comment
 // says its declarations/braaList were "ported from AIC's store/aic.js as-is."
-// The two stores are otherwise identical except ROE, which AIC genuinely has
-// and ABM genuinely doesn't (not a missing feature — see abm-spec.md §1.2) —
-// gated here by `withRoe` rather than adding a no-op ROE surface to ABM.
 //
 // Each caller (abm.js/aic.js) still owns its own declarations/braaList DATA —
 // this only shares the store SHAPE and action logic; the two stores remain
 // two independent zustand instances, never reading each other's state.
+// (ROE used to be gated here via `withRoe`, but it's genuinely shared
+// cross-module state now — see store/roe.js.)
 export const DECLARATION = {
   HOSTILE:  'HOSTILE',
   BOGEY:    'BOGEY',
@@ -17,7 +16,7 @@ export const DECLARATION = {
   FRIENDLY: 'FRIENDLY',
 }
 
-export function createDeclarationStore({ storageKey, withRoe = false }) {
+export function createDeclarationStore({ storageKey }) {
   const { register, broadcast } = createBroadcastHook()
 
   function loadStoredAutoClassify() {
@@ -31,7 +30,6 @@ export function createDeclarationStore({ storageKey, withRoe = false }) {
   const useStore = create((set, get) => ({
     declarations: {},    // { [unitId]: DECLARATION }
     autoClassify: loadStoredAutoClassify(),
-    ...(withRoe ? { roe: null } : {}), // ROE_STATE | null
 
     // BRAA line / bogey dope — local to this controller, not synced via WebRTC.
     braaList:           [],    // [{ id, fighterId, bogeyId }]
@@ -49,13 +47,6 @@ export function createDeclarationStore({ storageKey, withRoe = false }) {
       set({ declarations: {}, autoClassify: false })
       broadcast('DECLARATIONS_RESET', {})
     },
-
-    ...(withRoe ? {
-      setRoe: (roe) => {
-        set({ roe })
-        broadcast('ROE_SET', { roe })
-      },
-    } : {}),
 
     // .autoclass — when on, every unit is classified to its TRUE (coalition-
     // based) declaration as it becomes visible; the bulk apply for units
@@ -93,8 +84,6 @@ export function createDeclarationStore({ storageKey, withRoe = false }) {
       set(s => ({ declarations: { ...s.declarations, [unitId]: classification } }))
     },
 
-    ...(withRoe ? { _applyRoe: (roe) => set({ roe }) } : {}),
-
     _applyAutoClassify: (enabled) => set({ autoClassify: enabled }),
 
     getEffectiveDeclaration: (unitId, unit, myCoalitionNum) => {
@@ -105,7 +94,6 @@ export function createDeclarationStore({ storageKey, withRoe = false }) {
 
     reset: () => set({
       declarations: {}, autoClassify: false, braaList: [], pendingBraaFighter: null,
-      ...(withRoe ? { roe: null } : {}),
     }),
   }))
 
@@ -129,7 +117,6 @@ export function createDeclarationStore({ storageKey, withRoe = false }) {
   function applyStateDump(payload) {
     const patch = {}
     if (payload.declarations) patch.declarations = payload.declarations
-    if (withRoe && payload.roe !== undefined) patch.roe = payload.roe
     if (payload.autoClassify !== undefined) patch.autoClassify = payload.autoClassify
     useStore.setState(patch)
   }
@@ -138,12 +125,8 @@ export function createDeclarationStore({ storageKey, withRoe = false }) {
     useStore.setState({ declarations: {}, autoClassify: false })
   }
 
-  const applyRoe = withRoe
-    ? (roe) => { useStore.getState()._applyRoe(roe) }
-    : undefined
-
   return {
     useStore, register,
-    applyDeclaration, applyAutoClassify, applyStateDump, applyDeclarationsReset, applyRoe,
+    applyDeclaration, applyAutoClassify, applyStateDump, applyDeclarationsReset,
   }
 }

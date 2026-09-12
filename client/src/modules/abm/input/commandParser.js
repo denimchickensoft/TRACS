@@ -108,6 +108,8 @@ const COMMANDS = [
   { id: 'CLASS_RECLASSIFY', pattern: /^\.class\s+([fnbh])\s+([fnbh])$/, captures: ['oldLetter', 'newLetter'] },
   { id: 'AUTOCLASS',        pattern: /^\.autoclass$/ },
   { id: 'AUTOTHREAT',       pattern: /^\.autothreat$/ },
+  { id: 'ROE_TOGGLE',       pattern: /^\.roe$/ },
+  { id: 'ROE',              pattern: /^\.roe\s+(free|tight|hold)$/, captures: ['state'] },
   { id: 'ACQ_CLASS',        pattern: /^\.acq\s+([fnbh])$/, captures: ['letter'] },
   { id: 'ACQ_TOGGLE',       pattern: /^\.acq$/ },
   { id: 'ENG_CLASS',        pattern: /^\.eng\s+([fnbh])$/, captures: ['letter'] },

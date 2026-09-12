@@ -3,6 +3,7 @@ import { useSessionStore }  from '../../store/session'
 import { useDisplayStore }  from '../../store/display.js'
 import { useUnitsStore }    from '../../store/units.js'
 import { useAbmStore, DECLARATION } from '../../store/abm.js'
+import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
@@ -147,6 +148,8 @@ export default function AbmScope() {
 
   // ── Air picture (§3 / Phase 4) — ABM's own declarations, own symbology ──────
   const units        = useUnitsStore(s => s.units)
+  const roe = useRoeStore(s => s.roe)
+  const roeVisible = useAbmUiPrefsStore(s => s.roeVisible)
   const declarations = useAbmStore(s => s.declarations)
   const autoClassify = useAbmStore(s => s.autoClassify)
   const getEffectiveDeclaration = useAbmStore(s => s.getEffectiveDeclaration)
@@ -1834,6 +1837,12 @@ export default function AbmScope() {
             title="Click to toggle Zulu / Local time"
           >
             {clockTime ?? (showLocalTime ? '--:--:--L' : '--:--:--Z')}
+          </div>
+        )}
+
+        {roeVisible && roe && (
+          <div className={`abm-roe abm-roe--${roe.toLowerCase()}`}>
+            {ROE_DISPLAY[roe]}
           </div>
         )}
 

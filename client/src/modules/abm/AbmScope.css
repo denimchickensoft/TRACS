@@ -56,12 +56,31 @@
   color: #ddd;
 }
 
+/* ── ROE indicator (shared with AIC, see store/roe.js) ───────────────────────── */
+.abm-roe {
+  position:    absolute;
+  top:         10px;
+  left:        40px;
+  font-family: 'Roboto Mono', monospace;
+  font-size:   0.65rem;
+  letter-spacing: 0.1em;
+  padding:     3px 8px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index:     1;
+}
+
+.abm-roe--free  { color: #44CC44; background: rgba(68,204,68,0.12);  border: 1px solid rgba(68,204,68,0.35); }
+.abm-roe--tight { color: #FFCC00; background: rgba(255,204,0,0.12);  border: 1px solid rgba(255,204,0,0.35); }
+.abm-roe--hold  { color: #FF4444; background: rgba(255,68,68,0.15);  border: 1px solid rgba(255,68,68,0.4); }
+
 /* ── Cursor-proximity unit readout (top-left) ────────────────────────────────── */
 /* Mirrors the command preview area's position/type scale (bottom:32/left:40,
-   0.7rem Roboto Mono) but anchored to the opposite corner. */
+   0.7rem Roboto Mono) but anchored to the opposite corner. Top pushed to 40px
+   (from 32px) to clear the ROE badge above it. */
 .abm-readout-box {
   position:       absolute;
-  top:            32px;
+  top:            40px;
   left:           40px;
   max-width:      260px;
   display:        flex;

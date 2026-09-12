@@ -2,12 +2,6 @@ import { DECLARATION, createDeclarationStore } from '../utils/createDeclarationS
 
 export { DECLARATION }
 
-export const ROE_STATE = {
-  FREE:  'FREE',
-  TIGHT: 'TIGHT',
-  HOLD:  'HOLD',
-}
-
 const {
   useStore: useAicStore,
   register: registerAicBroadcast,
@@ -15,8 +9,7 @@ const {
   applyAutoClassify: applyAicAutoClassify,
   applyStateDump: applyAicStateDump,
   applyDeclarationsReset: applyAicDeclarationsReset,
-  applyRoe: applyAicRoe,
-} = createDeclarationStore({ storageKey: 'tracs.aic.autoClassify', withRoe: true })
+} = createDeclarationStore({ storageKey: 'tracs.aic.autoClassify' })
 
 export {
   useAicStore,
@@ -25,5 +18,4 @@ export {
   applyAicAutoClassify,
   applyAicStateDump,
   applyAicDeclarationsReset,
-  applyAicRoe,
 }
