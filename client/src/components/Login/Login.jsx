@@ -29,6 +29,26 @@ const CATCC_POSITION_TYPES = [
   { suffix: 'TWR', displayName: 'Tower'     },
 ]
 
+// Round-trips parseHostPort()'s output back into what the Server URL field
+// should display: bare host for the (default) http case, 'https://host' when
+// the saved URL was explicitly https — so a saved HTTPS profile doesn't
+// silently downgrade to http on reload.
+function displayHost({ host, protocol }) {
+  return protocol === 'https' ? `https://${host}` : host
+}
+
+// Splits a user-typed Server URL into its explicit scheme (if any) and the
+// rest, so composedOlympusUrl/composedStorageUrl can preserve whatever
+// scheme was typed instead of forcing http://. Defaults to 'http' when no
+// scheme is present — never fabricates https.
+function splitScheme(raw) {
+  const match = raw.trim().match(/^(https?):\/\//i)
+  return {
+    scheme: match ? match[1].toLowerCase() : 'http',
+    rest:   raw.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, ''),
+  }
+}
+
 const COALITION_OPTIONS = [
   { value: 'blue',  label: 'Blue Commander' },
   { value: 'red',   label: 'Red Commander'  },
@@ -54,7 +74,7 @@ function ConnectPhase({ onConnected }) {
   const lastProfile = useMemo(() => getMostRecentProfile(profiles), [profiles])
   const [sourceMode, setSourceMode] = useState(() => lastConnection?.sourceType ?? inferLegacySourceType(lastProfile))
   const [name,       setName]       = useState(() => lastConnection?.name ?? lastProfile?.name ?? '')
-  const [serverHost, setServerHost] = useState(() => parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '').host)
+  const [serverHost, setServerHost] = useState(() => displayHost(parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '')))
   const [sourcePort, setSourcePort] = useState(() => parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '').port)
   const [coalition,  setCoalition]  = useState(() => lastConnection?.coalition ?? lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
   // Meaning depends on sourceMode: Olympus/Relay -> genuinely per-coalition
@@ -109,9 +129,12 @@ function ConnectPhase({ onConnected }) {
   }, [coalition]) // eslint-disable-line
 
   // serverHost + sourcePort → the composed olympusUrl the backend expects.
-  // An empty port means "no direct source" — left blank on purpose so the
-  // backend's usingRelayAsPrimary dispatch (routes/api.js) can fire when
-  // Relay Port is filled instead. Never fabricate a portless URL here.
+  // Blank exclusively in Relay mode — that's the explicit signal the mode
+  // selector already carries for the backend's usingRelayAsPrimary dispatch
+  // (routes/api.js). A blank Source Port in Olympus/Tacview-Direct mode is
+  // NOT a signal for anything anymore (that was the old pre-selector
+  // auto-detect convention) — it just means "use the scheme's standard port",
+  // e.g. a reverse-proxied https://host with no port exposed at all.
   // NOTE: this is for the /api/connect payload only — see composedStorageUrl
   // below for saved-profile/last-connection persistence, which must keep
   // remembering the host even when Source Port is intentionally blank.
@@ -120,9 +143,9 @@ function ConnectPhase({ onConnected }) {
     // Port is hidden in this mode, but its state could still hold a stale
     // value from before a mode switch; relying on "happens to be blank" is
     // exactly the implicit-inference pattern this selector replaces.
-    if (sourceMode === 'relay' || !port) return ''
-    const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-    return `http://${cleanHost}:${port}`
+    if (sourceMode === 'relay' || !host.trim()) return ''
+    const { scheme, rest } = splitScheme(host)
+    return port ? `${scheme}://${rest}:${port}` : `${scheme}://${rest}`
   }
 
   // Same composition, but for persistence (saved profiles, last-connection) —
@@ -131,10 +154,11 @@ function ConnectPhase({ onConnected }) {
   // real Server URL the user typed and expects to see again on reload; it's
   // only the /api/connect payload that needs it blank, to signal
   // usingRelayAsPrimary to the backend. parseHostPort() round-trips a
-  // portless "http://host" back into { host, port: '' } correctly.
+  // portless "http://host" (or "https://host") back into { host, port: '',
+  // protocol } correctly.
   function composedStorageUrl(host = serverHost, port = sourcePort) {
-    const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-    return port ? `http://${cleanHost}:${port}` : `http://${cleanHost}`
+    const { scheme, rest } = splitScheme(host)
+    return port ? `${scheme}://${rest}:${port}` : `${scheme}://${rest}`
   }
 
   // Same host, XPNDR port instead — empty port means "no relay configured",
@@ -152,7 +176,7 @@ function ConnectPhase({ onConnected }) {
     const relay  = parseHostPort(profile.relayUrl)
     setName(profile.name)
     setSourceMode(profileMode)
-    setServerHost(source.host)
+    setServerHost(displayHost(source))
     setSourcePort(source.port)
     setCoalition(profileCoalition)
     setPassword(profileMode === 'tacview-direct' ? (profile.tacviewPassword ?? '') : (profile.passwords?.[profileCoalition] ?? ''))
@@ -412,8 +436,7 @@ function ConnectPhase({ onConnected }) {
               style={{ flex: 1 }}
               value={sourcePort}
               onChange={(e) => setSourcePort(e.target.value)}
-              placeholder="Source Port"
-              required
+              placeholder="Source Port (optional)"
               disabled={connecting}
             />
           )}

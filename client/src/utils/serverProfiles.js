@@ -3,16 +3,18 @@ const LAST_CONN_KEY     = 'tracs.lastConnection'
 const MAX_RECENTS  = 5
 
 // Splits a stored "http://host:port"-shaped string (or a bare host) back into
-// its host and port, for editing as separate fields. Moved here from
-// Login.jsx since inferLegacySourceType() below needs it too. Malformed
-// input returns blanks rather than throwing.
+// its host, port and protocol, for editing as separate fields. Moved here
+// from Login.jsx since inferLegacySourceType() below needs it too. Malformed
+// input returns blanks rather than throwing. protocol defaults to 'http' —
+// the only other value ever produced is 'https', when the raw string had
+// that scheme explicitly.
 export function parseHostPort(raw) {
-  if (!raw) return { host: '', port: '' }
+  if (!raw) return { host: '', port: '', protocol: 'http' }
   try {
     const u = new URL(raw.includes('://') ? raw : `http://${raw}`)
-    return { host: u.hostname, port: u.port }
+    return { host: u.hostname, port: u.port, protocol: u.protocol.replace(':', '') }
   } catch {
-    return { host: '', port: '' }
+    return { host: '', port: '', protocol: 'http' }
   }
 }
 
