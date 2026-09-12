@@ -1,19 +1,25 @@
 // Draws a selected ATO/FRAG flight's mission-editor route on the ABM scope:
-// a polyline through its waypoints, with labels on whichever points the
-// mission designer actually named (unlabeled points just get a small tick).
+// a polyline through its waypoints, labeled with the mission designer's name
+// where given, falling back to WP# (matching Frag.jsx's route list) otherwise.
 
 import { latLngToCanvas } from '../../../utils/projection.js'
+import { ZERO_INDEXED_WAYPOINT_TYPES } from '../../../utils/parseMission.js'
 
 const ROUTE_COLOR = '#00CFFF'
 const FIX_R = 2.5
 const CULL_MARGIN = 60
 
-export function drawAbmFragRoute(ctx, view, route) {
+export function drawAbmFragRoute(ctx, view, route, rawType) {
   if (!route || route.length === 0) return
 
+  const wpLabelOffset = ZERO_INDEXED_WAYPOINT_TYPES.has(rawType) ? 0 : 1
   const pts = route
-    .filter(wp => wp.lat != null && wp.lng != null)
-    .map(wp => ({ ...latLngToCanvas(wp.lat, wp.lng, view), name: wp.name }))
+    .map((wp, i) => ({ wp, i }))
+    .filter(({ wp }) => wp.lat != null && wp.lng != null)
+    .map(({ wp, i }) => ({
+      ...latLngToCanvas(wp.lat, wp.lng, view),
+      label: wp.name ?? `WP${i + wpLabelOffset}`,
+    }))
 
   if (pts.length === 0) return
 
@@ -42,9 +48,7 @@ export function drawAbmFragRoute(ctx, view, route) {
     ctx.beginPath()
     ctx.arc(p.x, p.y, FIX_R, 0, Math.PI * 2)
     ctx.fill()
-    if (p.name) {
-      ctx.fillText(p.name, p.x + FIX_R + 3, p.y)
-    }
+    ctx.fillText(p.label, p.x + FIX_R + 3, p.y)
   }
 
   ctx.restore()

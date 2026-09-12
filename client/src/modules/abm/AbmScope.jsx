@@ -161,10 +161,12 @@ export default function AbmScope() {
   const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
   const selectAtoGroup  = useAbmMissionStore(s => s.selectGroup)
   const routeVisible    = useAbmMissionStore(s => s.routeVisible)
-  const selectedRoute = useMemo(
-    () => (routeVisible ? atoFlights.find(f => f.groupId === selectedGroupId)?.route ?? null : null),
+  const selectedFlight = useMemo(
+    () => (routeVisible ? atoFlights.find(f => f.groupId === selectedGroupId) ?? null : null),
     [atoFlights, selectedGroupId, routeVisible]
   )
+  const selectedRoute = selectedFlight?.route ?? null
+  const selectedRouteRawType = selectedFlight?.units[0]?.rawType
 
   // Ctrl+right-click / .route + click / .route <callsign> — independent of
   // the FRAG-panel route toggle above (routeVisible/selectedGroupId): a Set
@@ -174,8 +176,9 @@ export default function AbmScope() {
   const toggleRouteGroup = useAbmMissionStore(s => s.toggleRouteGroup)
   const extraRoutes = useMemo(
     () => routeGroupIds
-      .map(gid => atoFlights.find(f => f.groupId === gid)?.route)
-      .filter(r => r && r.length > 0),
+      .map(gid => atoFlights.find(f => f.groupId === gid))
+      .filter(f => f?.route?.length > 0)
+      .map(f => ({ route: f.route, rawType: f.units[0]?.rawType })),
     [atoFlights, routeGroupIds]
   )
 
@@ -1142,8 +1145,8 @@ export default function AbmScope() {
 
     // Selected FRAG flight's route, if any, plus any routes toggled on via
     // Ctrl+right-click/.route independent of FRAG.
-    drawAbmFragRoute(ctx, view, selectedRoute)
-    for (const route of extraRoutes) drawAbmFragRoute(ctx, view, route)
+    drawAbmFragRoute(ctx, view, selectedRoute, selectedRouteRawType)
+    for (const { route, rawType } of extraRoutes) drawAbmFragRoute(ctx, view, route, rawType)
 
     // RBL on top of everything — same layering AIC uses.
     drawRbl(ctx, view, rbl, view.declinationDeg)
@@ -1162,7 +1165,7 @@ export default function AbmScope() {
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
-      threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, extraRoutes,
+      threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, selectedRouteRawType, extraRoutes,
       blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
