@@ -178,6 +178,22 @@ const aircraftSensorDb = loadUnitDb('aircraftSensorDatabase.json')
 const TRUSTED_GROUND_TYPES = new Set(['SAM Site', 'SAM Site Parts', 'AAA', 'AirDefence', 'Radar (EWR)'])
 const TRUSTED_NAVAL_TYPES = new Set(['Aircraft Carrier', 'Combatants', 'Fast Attack Craft'])
 
+// Whether `unit`'s own acquisitionRange can be trusted as a real anti-air/
+// surface-search radar range: an explicit operator override, or a DB entry
+// whose trusted `type` carries a real (nonzero) acquisitionRange. Used only
+// by groundNavalSensorInfo() below, to decide what range a unit gets *as a
+// detector* — deliberately NOT used by isGroundRadarTarget() further down,
+// which asks a different question ("is this unit part of a radar system at
+// all," regardless of whether it has its own nonzero range) — see that
+// function's comment for why conflating the two was a real bug.
+function isConfirmedRadarUnit(unit) {
+  if (config.unitTypeRangeOverridesNm[unit.name]) return true
+  const db = unit.category === 'NavyUnit' ? navyUnitDb : groundUnitDb
+  const trustedTypes = unit.category === 'NavyUnit' ? TRUSTED_NAVAL_TYPES : TRUSTED_GROUND_TYPES
+  const entry = db[unit.name]
+  return !!(entry && trustedTypes.has(entry.type) && entry.acquisitionRange > 0)
+}
+
 // Real per-unit-type acquisitionRange, falling back to the flat per-category
 // default for anything unmatched (mods not in the shipped DB, or a shipped
 // entry whose `type` isn't a trusted air-search sensor).
@@ -190,9 +206,8 @@ function groundNavalSensorInfo(unit) {
   if (override) return { rangeNm: override, detectionMethod: DETECTION_RADAR }
 
   const db = unit.category === 'NavyUnit' ? navyUnitDb : groundUnitDb
-  const trustedTypes = unit.category === 'NavyUnit' ? TRUSTED_NAVAL_TYPES : TRUSTED_GROUND_TYPES
   const entry = db[unit.name]
-  if (entry && trustedTypes.has(entry.type) && entry.acquisitionRange > 0) {
+  if (isConfirmedRadarUnit(unit)) {
     return { rangeNm: entry.acquisitionRange / METERS_PER_NM, detectionMethod: DETECTION_RADAR }
   }
   // A non-allowlisted type (Tank/APC/Infantry/Artillery/Cargo-Transport) still
@@ -205,6 +220,35 @@ function groundNavalSensorInfo(unit) {
     return { rangeNm: entry.acquisitionRange / METERS_PER_NM, detectionMethod: DETECTION_VISUAL }
   }
   return { rangeNm: SENSOR_RANGE_NM[unit.category], detectionMethod: DETECTION_RADAR }
+}
+
+// A ground unit belonging to a SAM/AAA/EWR system can't realistically be
+// picked out of ground clutter/terrain masking by anyone's active radar —
+// airborne, another ground radar, or a ship's radar looking inland. The only
+// physically sound way to know it's there is passively, via its own emissions
+// (computeRwrContacts()). Naval radar targets are deliberately NOT included:
+// a ship on open water is a large, isolated reflector against a low-clutter
+// background, so ship-vs-ship/air-vs-ship active radar detection stays
+// physically legitimate and is unaffected by this function.
+//
+// Deliberately does NOT reuse isConfirmedRadarUnit() (which requires a real
+// nonzero acquisitionRange) — that check answers "can this unit's own range
+// be trusted as a detector," a different question from "is this unit part of
+// a radar apparatus." Many real SAM-battery launchers/TELs/command posts
+// (type "SAM Site Parts") carry acquisitionRange: 0 in the DB, since the
+// actual search/tracking radar range belongs to a separate DB entry (the
+// battery's dedicated radar vehicle) — but the launcher is still physically
+// part of the same system and just as impossible to distinguish via active
+// radar as the radar vehicle itself, so classification here is by `type`
+// alone, regardless of the individual unit's own acquisitionRange value.
+// (Confirmed real-world shape, not a hypothetical: 21 of 47 "SAM Site Parts"
+// entries and 9 of 28 "AAA" entries in groundunitdatabase.json carry
+// acquisitionRange: 0.)
+function isGroundRadarTarget(unit) {
+  if (unit.category !== 'GroundUnit') return false
+  if (config.unitTypeRangeOverridesNm[unit.name]) return true
+  const entry = groundUnitDb[unit.name]
+  return !!(entry && TRUSTED_GROUND_TYPES.has(entry.type))
 }
 
 // Aircraft/helicopter radar-range tiers — no per-unit sensor data exists
@@ -444,7 +488,12 @@ function computeContacts(units, friendlyCoalitionId) {
     detectors.push({ id, unit, rangeNm, detectionMethod })
   }
 
-  const targets = Object.entries(units).filter(([, u]) => u.position && u.coalition !== undefined)
+  // isGroundRadarTarget() exclusion applies here, once, regardless of which
+  // detector is looking — a ground SAM/AAA/EWR site is never a valid active-
+  // radar target for anyone, only for computeRwrContacts() below.
+  const targets = Object.entries(units).filter(
+    ([, u]) => u.position && u.coalition !== undefined && !isGroundRadarTarget(u)
+  )
 
   for (const detector of detectors) {
     for (const [targetId, target] of targets) {
