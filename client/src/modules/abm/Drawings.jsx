@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useWheelDirection } from '../../utils/wheel.js'
 import { useSessionStore } from '../../store/session.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
@@ -76,6 +77,10 @@ function NumberField({ value, deg = false, onCommit }) {
 
 const DR_SORT_KEY_KEY = 'tracs.abm.drawings.sortKey'
 const DR_SORT_DIR_KEY = 'tracs.abm.drawings.sortDir'
+const DR_SCALE_KEY    = 'tracs.abm.drawings.scale'
+const SCALE_MIN       = 0.5
+const SCALE_MAX       = 2.0
+const SCALE_STEP      = 0.05
 
 // The trailing INFO column is left out of this table — it's a disclosure
 // arrow for command-drawn shapes with editable params and a feature count
@@ -152,7 +157,8 @@ function ColorSwatch({ layer, paletteStroke, onPick, onToggleOverride }) {
   )
 }
 
-export function Drawings({ docked = true, width, onResize, onUndock, onDock, onHide }) {
+export function Drawings({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
+  const wheelDir = useWheelDirection()
   const mission = useSessionStore(s => s.mission)
   const theatre = mission?.mission?.theatre ?? null
   const declinationDeg = useAbmDeclination()
@@ -261,7 +267,30 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const magOf  = (trueDeg) => Math.round(((toMagneticFromTrue(trueDeg, declinationDeg) % 360) + 360) % 360)
   const trueOf = (magDeg)  => toTrueFromMagnetic(magDeg, declinationDeg)
 
-  const style = docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }
+  const [scale, setScale] = useState(() => {
+    const saved = parseFloat(localStorage.getItem(DR_SCALE_KEY))
+    return isNaN(saved) ? 1.0 : Math.min(SCALE_MAX, Math.max(SCALE_MIN, saved))
+  })
+  const [scaleHint, setScaleHint] = useState(false)
+  const scaleHintRef = useRef(null)
+
+  useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
+
+  const handleTitleWheel = (e) => {
+    e.preventDefault()
+    const dir = wheelDir(e)
+    if (dir === null) return
+    setScale((prev) => {
+      const next = Math.min(SCALE_MAX, Math.max(SCALE_MIN, parseFloat((prev - dir * SCALE_STEP).toFixed(2))))
+      localStorage.setItem(DR_SCALE_KEY, String(next))
+      clearTimeout(scaleHintRef.current)
+      setScaleHint(true)
+      scaleHintRef.current = setTimeout(() => setScaleHint(false), 1200)
+      return next
+    })
+  }
+
+  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
 
   // Dropping a file anywhere on the panel skips straight to the import
   // modal's parse/preview step — same AbmDrawingImport flow the "Load
@@ -286,8 +315,9 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
     >
       {docked && <div className="dr-resize" onMouseDown={onResize} />}
 
-      <div className="dr-title">
+      <div className="dr-title" onWheel={handleTitleWheel}>
         <span className="dr-title-text">Custom Drawings</span>
+        {scaleHint && <span className="dr-title-scale-hint">{Math.round(scale * 100)}%</span>}
         <span className="dr-title-right">
           {docked  && onUndock && <button className="dr-btn" onClick={onUndock} title="Undock">⬡</button>}
           {!docked && onDock   && <button className="dr-btn" onClick={onDock}   title="Dock">⬡</button>}

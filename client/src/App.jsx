@@ -290,6 +290,10 @@ export function App() {
     const s = parseFloat(localStorage.getItem('tracs.frag.scale'))
     return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
   })
+  const [drawingsScale, setDrawingsScale] = useState(() => {
+    const s = parseFloat(localStorage.getItem('tracs.abm.drawings.scale'))
+    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
+  })
   const handleAbmResize = useCallback(makeResizeHandler(abmWidthRef, setAbmWidth, 280, 700, 'tracs.abm.width'), []) // eslint-disable-line
   const handleAtoUndock  = useCallback(makeUndockHandler('/?window=abm-ato',  'tracs-abm-ato',  abmWidthRef, setAtoDocked, atoPopupRef), []) // eslint-disable-line
   const handleFragUndock = useCallback(makeUndockHandler('/?window=abm-frag', 'tracs-abm-frag', abmWidthRef, setFragDocked, fragPopupRef), []) // eslint-disable-line
@@ -377,7 +381,7 @@ export function App() {
     if (hasAbm) {
       if (abmPanel === 'ato'      && atoDocked)      return Math.round(abmWidth * atoScale)  + TAB_STRIP_W
       if (abmPanel === 'frag'     && fragDocked)     return Math.round(abmWidth * fragScale) + TAB_STRIP_W
-      if (abmPanel === 'drawings' && drawingsDocked) return abmWidth + TAB_STRIP_W
+      if (abmPanel === 'drawings' && drawingsDocked) return Math.round(abmWidth * drawingsScale) + TAB_STRIP_W
       return TAB_STRIP_W
     }
     return 0
@@ -793,6 +797,7 @@ export function App() {
                 onResize={handleAbmResize}
                 onUndock={handleDrawingsUndock}
                 onHide={() => setAbmPanel(null)}
+                onScaleChange={setDrawingsScale}
               />
             )}
 
