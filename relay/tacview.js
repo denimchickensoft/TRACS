@@ -11,11 +11,31 @@
 //
 // See resources/specs/data-sources/custom-datasource-tacview-spec.md §0.1.
 
+const fs = require('fs')
+const path = require('path')
 const net = require('net')
 const { gateConnection } = require('./auth')
 const tacviewCore = require('./tacviewCore')
 
 const RECONNECT_MS = 3000
+
+// Relay-operator-owned detection/fog-of-war tuning — gitignored, optional,
+// same key shape as server/tacviewDetectionConfig.json (see
+// resources/specs/tacview-detection-spec.md). Loaded once at relay startup,
+// tolerate-absent, same convention as relay/index.js's own config.json.
+// Forwarded to every authenticated /tacview client as-is (no DEFAULTS
+// merge/shape validation here — server/src/tacviewDetection.js's
+// applyRelayConfig()/mergeConfig() is the one place that happens, exactly
+// mirroring how the local-file case already works for direct mode).
+const DETECTION_CONFIG_PATH = path.join(__dirname, 'tacviewDetectionConfig.json')
+function loadDetectionConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(DETECTION_CONFIG_PATH, 'utf8'))
+  } catch {
+    return {}
+  }
+}
+const detectionConfig = loadDetectionConfig()
 
 function createTacviewRelay(wss, config) {
   let parser = tacviewCore.createParser()
@@ -105,6 +125,12 @@ function createTacviewRelay(wss, config) {
       onAuthenticated: (authMsg) => {
         authenticatedClients.add(ws)
         console.log(`[relay:tacview] client authenticated coalition=${authMsg.coalition} (total: ${authenticatedClients.size})`)
+        // Sent before the snapshot, every time — even when detectionConfig
+        // is {} for an unconfigured relay. A connecting backend's
+        // wait-for-config gate (tacviewRelayClient.js) must only ever block
+        // on a relay that doesn't know this message type exists at all,
+        // never on one that's simply unconfigured.
+        ws.send(JSON.stringify({ type: 'tacviewDetectionConfig', config: detectionConfig }))
         ws.send(JSON.stringify({
           type: 'tacview',
           data: { updated: snapshotUnits, removed: [], bullseyes: snapshotBullseyes, positions: [] },

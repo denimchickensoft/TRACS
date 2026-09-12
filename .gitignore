@@ -14,6 +14,7 @@ specs/
 .env
 .env.local
 relay/config.json
+relay/tacviewDetectionConfig.json
 server/tacviewDetectionConfig.json
 
 # OS files

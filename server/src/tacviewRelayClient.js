@@ -59,6 +59,10 @@ let latestMissionUtcMs = null
 // mode carries the identical split) for why.
 let internalUnits = {}
 let fogFilter = null
+// Promoted out of start() — connect()'s reconnect path and the
+// tacviewDetectionConfig message handler both need to read this, not just
+// the initial start() call.
+let friendlyCoalitionId = null
 
 // Accumulates at full stream rate (whatever the relay forwards); flushed to
 // state/broadcast at BROADCAST_INTERVAL_MS by flushBroadcast(). Mirrors
@@ -142,7 +146,17 @@ function applyTacviewData(data) {
     if (fogFilter) fogFilter.forget(id)
   }
 
-  const publicUpdated = fogFilter ? fogFilter.filterFrameUpdate(updated) : updated
+  // friendlyCoalitionId === null means GM/Admin (no filter ever wanted, see
+  // tacviewDetection.coalitionId) — unchanged full passthrough. A real
+  // coalition with fogFilter still null means detection config hasn't
+  // arrived from the relay yet (see the tacviewDetectionConfig handler in
+  // connect() below) — drop rather than leak the unfiltered feed for that
+  // window, unlike the GM/Admin case.
+  const publicUpdated = friendlyCoalitionId === null
+    ? updated
+    : fogFilter
+      ? fogFilter.filterFrameUpdate(updated)
+      : {}
 
   if (Object.keys(publicUpdated).length || removed.length) {
     queueBroadcast(publicUpdated, removed)
@@ -155,6 +169,13 @@ function applyTacviewData(data) {
 }
 
 function connect() {
+  // Re-arms the wait-for-relay-config gate on every (re)connect, including
+  // reconnects — the relay resends tacviewDetectionConfig fresh to every
+  // newly-authenticated client, and a fresh session shouldn't assume a prior
+  // one's exposedEnemyIds state still holds. Left untouched for GM/Admin
+  // (friendlyCoalitionId === null), which never uses a fogFilter at all.
+  if (friendlyCoalitionId !== null) fogFilter = null
+
   const url = `${relayUrl.replace(/\/+$/, '')}/tacview`
   // Every handler below closes over `socket` (this specific instance), never
   // the mutable module-level `ws` -- a rapid stop()/start() can reassign `ws`
@@ -182,6 +203,26 @@ function connect() {
       msg = JSON.parse(raw.toString('utf8'))
     } catch (err) {
       console.error('[tacviewRelayClient] failed to parse relay message:', err.message)
+      return
+    }
+    if (msg.type === 'tacviewDetectionConfig') {
+      // Relay-authoritative detection/fog-of-war tuning — see
+      // server/src/tacviewDetection.js's applyRelayConfig() and
+      // relay/tacview.js's onAuthenticated(). Sent once per authenticated
+      // connection, even when the relay operator has no custom config file
+      // (an empty {}) — GM/Admin never reaches this branch's fogFilter
+      // creation (friendlyCoalitionId stays null for that role), matching
+      // direct mode's identical godmode behavior.
+      tacviewDetection.applyRelayConfig(msg.config)
+      if (friendlyCoalitionId !== null && !fogFilter) {
+        fogFilter = tacviewDetection.createFogFilter(friendlyCoalitionId)
+        // Catch up on anything already accumulated into internalUnits while
+        // waiting for this message, rather than waiting for the next raw
+        // relay delta to trigger filterFrameUpdate naturally.
+        const catchUp = fogFilter.filterFrameUpdate(internalUnits)
+        if (Object.keys(catchUp).length) queueBroadcast(catchUp, [])
+        runDetectionPass()
+      }
       return
     }
     if (msg.type === 'tacview') {
@@ -228,8 +269,14 @@ function start(cfg, callbacks = {}) {
   internalUnits = {}
   pendingUpdated = {}
   pendingRemoved = new Set()
-  const friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
-  fogFilter = friendlyCoalitionId !== null ? tacviewDetection.createFogFilter(friendlyCoalitionId) : null
+  friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
+  fogFilter = null
+  // Baseline while waiting for the relay's own tacviewDetectionConfig
+  // message (see the message handler in connect() above) — never the local
+  // server/tacviewDetectionConfig.json file, which relay-hosted mode must
+  // not consult at all (the relay operator, not the connecting controller,
+  // owns this in this mode).
+  tacviewDetection.resetToDefaults()
 
   connect()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)

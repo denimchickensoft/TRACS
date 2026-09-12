@@ -86,19 +86,63 @@ const DEFAULTS = {
   aircraftSensorScaling: { referenceRcsM2: 100, rangeScalingExponent: 0.25 },
 }
 
-const userConfig = loadUserConfig()
-const config = {
-  ...DEFAULTS,
-  ...userConfig,
-  sensorRangeNm: { ...DEFAULTS.sensorRangeNm, ...(userConfig.sensorRangeNm ?? {}) },
-  unitTypeRangeOverridesNm: { ...DEFAULTS.unitTypeRangeOverridesNm, ...(userConfig.unitTypeRangeOverridesNm ?? {}) },
-  rwr: { ...DEFAULTS.rwr, ...(userConfig.rwr ?? {}) },
-  aircraftSensorScaling: { ...DEFAULTS.aircraftSensorScaling, ...(userConfig.aircraftSensorScaling ?? {}) },
+// Extracted so the same merge logic can be applied against either the local
+// file (direct mode, resetToLocalConfig()) or a relay-pushed blob (relay-
+// hosted mode, applyRelayConfig()) — see those functions below.
+function mergeConfig(rawConfig) {
+  const raw = rawConfig ?? {}
+  return {
+    ...DEFAULTS,
+    ...raw,
+    sensorRangeNm: { ...DEFAULTS.sensorRangeNm, ...(raw.sensorRangeNm ?? {}) },
+    unitTypeRangeOverridesNm: { ...DEFAULTS.unitTypeRangeOverridesNm, ...(raw.unitTypeRangeOverridesNm ?? {}) },
+    rwr: { ...DEFAULTS.rwr, ...(raw.rwr ?? {}) },
+    aircraftSensorScaling: { ...DEFAULTS.aircraftSensorScaling, ...(raw.aircraftSensorScaling ?? {}) },
+  }
 }
 
-const SENSOR_RANGE_NM = config.sensorRangeNm
-const MIN_DETECTABLE_AGL_M = config.minDetectableAglM
-const LOS_SAMPLE_COUNT = config.losSampleCount
+// Reassignable rather than frozen at require time — relay-hosted Tacview
+// mode (tacviewRelayClient.js) needs to swap this out for a relay-pushed
+// config it receives asynchronously after connecting, instead of the local
+// file every other mode uses. See resetToLocalConfig/resetToDefaults/
+// applyRelayConfig below.
+let config
+let SENSOR_RANGE_NM
+let MIN_DETECTABLE_AGL_M
+let LOS_SAMPLE_COUNT
+
+function setConfig(merged) {
+  config = merged
+  SENSOR_RANGE_NM = config.sensorRangeNm
+  MIN_DETECTABLE_AGL_M = config.minDetectableAglM
+  LOS_SAMPLE_COUNT = config.losSampleCount
+}
+
+// Direct mode's (server/src/tacview.js) authoritative source — re-reads the
+// local file fresh from disk rather than reusing a module-load-time
+// snapshot, so a process that previously ran relay-hosted mode and is now
+// reconnecting direct never carries relay-sourced values forward.
+function resetToLocalConfig() {
+  setConfig(mergeConfig(loadUserConfig()))
+}
+
+// Relay-hosted mode's (server/src/tacviewRelayClient.js) pre-connect
+// baseline — plain DEFAULTS, no local-file influence at all. Called at the
+// top of start(), before the relay's own config has arrived over the wire.
+function resetToDefaults() {
+  setConfig(mergeConfig({}))
+}
+
+// Relay-hosted mode's authoritative source once the relay's own
+// tacviewDetectionConfig.json (or {} for an unconfigured relay) arrives over
+// the wire — see relay/tacview.js. The relay does no DEFAULTS merging
+// itself; this is the one place that happens, exactly mirroring the
+// local-file case above.
+function applyRelayConfig(rawConfig) {
+  setConfig(mergeConfig(rawConfig))
+}
+
+resetToLocalConfig()
 
 // ---- Real per-unit-type sensor data (client/public/units/*.json) — same
 // files, same `unit.name` correlation key, same `acquisitionRange` field
@@ -604,4 +648,7 @@ function createFogFilter(friendlyCoalitionId) {
   }
 }
 
-module.exports = { computeContacts, computeRwrContacts, coalitionId, createFogFilter, DETECTION_RADAR, DETECTION_RWR }
+module.exports = {
+  computeContacts, computeRwrContacts, coalitionId, createFogFilter, DETECTION_RADAR, DETECTION_RWR,
+  resetToLocalConfig, resetToDefaults, applyRelayConfig,
+}

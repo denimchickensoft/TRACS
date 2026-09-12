@@ -281,6 +281,10 @@ function start(cfg, callbacks = {}) {
   handshakeFailures = 0
   pendingUpdated = {}
   pendingRemoved = new Set()
+  // Guards against a prior relay-hosted session (tacviewRelayClient.js)
+  // having left tacviewDetection's shared config sourced from a relay —
+  // direct mode always forces itself back to the local file/defaults.
+  tacviewDetection.resetToLocalConfig()
   const friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = friendlyCoalitionId !== null ? tacviewDetection.createFogFilter(friendlyCoalitionId) : null
 

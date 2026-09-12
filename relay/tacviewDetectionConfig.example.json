@@ -1,0 +1,11 @@
+{
+  "sensorRangeNm": { "Aircraft": 40, "Helicopter": 15, "GroundUnit": 30, "NavyUnit": 35 },
+  "groundNavalDetectionEnabled": true,
+  "unitTypeRangeOverridesNm": {},
+  "minDetectableAglM": 15,
+  "losSampleCount": 8,
+  "azimuthConeHalfAngleDeg": 60,
+  "elevationConeHalfAngleDeg": 45,
+  "rwr": { "enabled": true, "rangeMultiplier": 1.75, "zeroDetectionEmitterFallbackNm": 0 },
+  "aircraftSensorScaling": { "referenceRcsM2": 100, "rangeScalingExponent": 0.25 }
+}
