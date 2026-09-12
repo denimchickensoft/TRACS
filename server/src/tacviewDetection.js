@@ -231,6 +231,20 @@ function unitRoles(unit, db) {
   return roles
 }
 
+// True if unit carries the "AWACS" loadout role in its own category's DB —
+// shared by aircraftSensorRangeNm() (range tiering) and isWithinScanVolume()
+// (omnidirectional scan exception), both of which need "is this an AWACS
+// airframe" derived the same way unitRoles() already avoids a curated name
+// list for. Must pick the same db aircraftSensorRangeNm()'s own lookup does —
+// unitRolesCache is keyed by unit.name alone (ignoring db), so calling this
+// with a mismatched db for a given unit would cache a wrong (empty) roles
+// Set under that name and silently corrupt a later same-unit lookup that
+// uses the correct db (e.g. the CAP-role check below).
+function hasAwacsRole(unit) {
+  const db = unit.category === 'Helicopter' ? helicopterUnitDb : aircraftUnitDb
+  return unitRoles(unit, db).has('AWACS')
+}
+
 // Real per-airframe range against a "large" reference target (see
 // aircraftSensorDb's provenance above) when known; an explicit
 // detectionRangeMaxKm === 0 (e.g. A-10A) means a real, confirmed absence of
@@ -246,10 +260,9 @@ function aircraftSensorRangeNm(unit) {
     if (entry.detectionRangeMaxKm === 0) return 0
     return entry.detectionRangeMaxKm / KM_PER_NM
   }
+  if (hasAwacsRole(unit)) return AWACS_RANGE_NM
   const db = unit.category === 'Helicopter' ? helicopterUnitDb : aircraftUnitDb
-  const roles = unitRoles(unit, db)
-  if (roles.has('AWACS')) return AWACS_RANGE_NM
-  if (roles.has('CAP')) return FIGHTER_RANGE_NM
+  if (unitRoles(unit, db).has('CAP')) return FIGHTER_RANGE_NM
   return SENSOR_RANGE_NM[unit.category]
 }
 
@@ -371,9 +384,20 @@ function hasLineOfSight(from, to) {
 // Restricts Aircraft/Helicopter sensors to a plausible forward radar scan
 // cone (azimuth off the nose, elevation off the pitch axis) instead of an
 // omnidirectional bubble. Ground/naval search radars stay omnidirectional —
-// real EWR/SAM search radars conventionally rotate. Falls back to "always
-// within volume" if heading/pitch are missing (degrades to the old
-// omnidirectional behavior rather than breaking detection outright).
+// real EWR/SAM search radars conventionally rotate.
+//
+// AWACS-role Aircraft/Helicopter (hasAwacsRole(), same roles data
+// aircraftSensorRangeNm() already keys off) get the same omnidirectional
+// treatment: a real E-2C/E-3A/A-50/KJ-2000 carries a rotating dish (APS-145
+// etc.), not a forward-looking fighter radar set, so the cone this function
+// models is the wrong shape for them regardless of heading/pitch data
+// quality. Checked before the heading/pitch-undefined fallback below so this
+// is an explicit, unconditional exception, not an accident of missing
+// telemetry.
+//
+// Falls back to "always within volume" if heading/pitch are missing
+// (degrades to the old omnidirectional behavior rather than breaking
+// detection outright).
 //
 // heading/pitch are populated for every unit including AI aircraft never
 // connected as the exporting client — confirmed against a real capture
@@ -385,6 +409,7 @@ function hasLineOfSight(from, to) {
 // avoid a second haversine call for the same pair.
 function isWithinScanVolume(detectorUnit, targetPosition, rangeNm) {
   if (detectorUnit.category !== 'Aircraft' && detectorUnit.category !== 'Helicopter') return true
+  if (hasAwacsRole(detectorUnit)) return true
   if (detectorUnit.heading === undefined || detectorUnit.pitch === undefined) return true
 
   const bearing = bearingDeg(detectorUnit.position, targetPosition)
