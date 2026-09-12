@@ -25,7 +25,33 @@ Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `
 
 ### Map & reference layers (bare toggles unless noted)
 
-`.time` (mission clock) · `.unitro` (cursor unit-proximity readout, on by default) · `.geo` (coastlines/boundaries) · `.relief` (terrain shading) · `.holds` · `.mora` · `.airways` (all) / `.airways v`/`j`/`b` (one class) · `.asp` (all airspace) or per-category: `.tma .ctr .cta .fir .uir .sua .mil .trsa .classa .classb .classc .classd .classe .classf .classg` · `.aspcolors <name>` (palette) · `.refresh` (reload palettes) · `.labels` (name labels for airspace *and* custom drawings) · `.fill` (toggle polygon fill for airspace *and* custom drawings; `.fill <1-100>` sets transparency % and turns it on) · `.custom`/`.cust` (all custom drawing layers) or `.custom <name>`/`.cust <name>` (toggles just the drawing(s) with that name) · `.fixes` · `.fix <name...>` (force-show one or more fixes regardless of `.fixes`; each name toggles independently) · `.navaids` · `.find <fix>` (drop a marker) · `.runways` · `.polygons` (airport polygons) · `.mgrs` (theatre-aware UTM/MGRS grid — see below) · `.towns` · `.base`/`.terrain`/`.water`/`.roads` (terrain raster layers; `.map` toggles all four together)
+| Command | Effect |
+|---|---|
+| `.time` | Toggle the mission clock |
+| `.unitro` | Toggle the cursor unit-proximity readout (on by default) |
+| `.rose` / `.compass` | Toggle the compass rose (on by default) |
+| `.geo` | Toggle coastlines/boundaries |
+| `.relief` | Toggle terrain relief shading |
+| `.holds` | Toggle holding patterns |
+| `.mora` | Toggle the MORA/grid overlay |
+| `.airways` | Toggle all airways; `.airways v`/`j`/`b` toggles just one class |
+| `.asp` | Bulk-toggle every airspace category |
+| `.tma` `.ctr` `.cta` `.fir` `.uir` `.sua` `.mil` `.trsa` `.classa`–`.classg` | Toggle one airspace category |
+| `.aspcolors <name>` | Select an airspace color palette |
+| `.refresh` | Reload airspace color palettes from the server |
+| `.labels` | Toggle name labels for airspace *and* custom drawings |
+| `.fill` | Toggle polygon fill for airspace *and* custom drawings; `.fill <1-100>` sets transparency % and turns it on |
+| `.custom` / `.cust` | Toggle all custom drawing layers |
+| `.custom <name>` / `.cust <name>` | Toggle just the drawing(s) with that name |
+| `.fixes` | Toggle theatre fix points |
+| `.fix <name...>` | Force-show one or more fixes regardless of `.fixes`; each name toggles independently |
+| `.navaids` | Toggle navaids |
+| `.find <fix>` | Drop a marker at a named fix |
+| `.runways` | Toggle runways |
+| `.polygons` | Toggle airport polygons |
+| `.mgrs` | Toggle the theatre-aware UTM/MGRS grid — see below |
+| `.towns` | Toggle towns |
+| `.base` / `.terrain` / `.water` / `.roads` | Toggle individual terrain raster layers; `.map` toggles all four together plus `.geo` |
 
 **MGRS grid detail**: `.mgrs` isn't a flat overlay — it auto-detects how many real UTM zones the current view actually spans and draws a correct zone-boundary seam, with reprojected 100 km grid-square labels on each side of the seam, a grid-zone designator (e.g. "38S"), and finer 1 km/10 km subdivision lines as you zoom in.
 
@@ -37,7 +63,12 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 
 ### Cursor readout
 
-`.coords` (toggle) · `.ddm` / `.dms` (coordinate format) · `.meters` / `.feet` (elevation units) · `.bec` (bullseye-on-cursor — bearing/range readout that follows the mouse)
+| Command | Effect |
+|---|---|
+| `.coords` | Toggle the cursor lat/lng readout |
+| `.ddm` / `.dms` | Set coordinate format |
+| `.meters` / `.feet` | Set elevation units |
+| `.bec` | Toggle bullseye-on-cursor — bearing/range readout that follows the mouse |
 
 ### Contacts
 
@@ -54,7 +85,7 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 
 - `.threat` (Enter) — clear all rings; `.threat <nm>` (Enter) — set default radius
 - `.threat` / `.threat <nm>`, then click a contact — toggle that contact's ring (optionally set radius)
-- `.tclear` — clears RBL, all BRAA pairs, and all threat rings at once (renamed from `.clear` — that name is now used by the drawing-clear command below, `.dclear`)
+- `.tclear` — clears RBL, all BRAA pairs, and all threat rings at once
 - `.dope`, then click — bogey-dope the clicked contact to its nearest hostile/bogey air contact
 - `.rename` / `.rename <newcallsign>`, then click — rename or reset a contact's callsign (synced to other controllers)
 
@@ -64,6 +95,10 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 - `.class <old> <new>` — bulk reclassify, letters `f`/`n`/`b`/`h` (friendly/neutral/bogey/hostile), e.g. `.class b h`
 - `.autoclass` — toggle auto-classification (true-coalition-based). Turning it **off** does not revert contacts it already classified — only a bare `.class` reset does that.
 - `.autothreat` — auto-light threat rings on friendlies near hostiles/bogeys
+
+### ROE
+
+`.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left (state is shared with AIC). Bare `.roe` toggles visibility of the ROE readout itself (visible by default).
 
 ### Ground/naval acquisition & engagement rings
 
@@ -95,6 +130,19 @@ Alternatives to clicking a contact directly, useful when you know the callsign b
 
 All three accept a partial/prefix match and will tell you if it's ambiguous between multiple live callsigns. `.rclear` clears every currently-shown route line at once (both ones toggled via `.route`/FRAG's own ROUTE header).
 
+### Focus windows
+
+A floating mini-scope locked onto one contact, for tracking it without losing your place on the main scope.
+
+- `.focus <callsign>` — open (or bring to front) a focus window on that contact, at your saved default range.
+- `.focus <callsign> <range>` — same, with an explicit range in NM.
+- `.focus <range>` — sets the default range used by future opens, without opening a window.
+- Double-clicking a contact on the main scope is a shortcut for `.focus <callsign>`.
+
+All three accept the same partial/prefix matching (and ambiguity reporting) as `.where`/`.frag`/`.route`.
+
+The focus window itself is a real independent scope: drag to move it, drag an edge/corner to resize, and use the mouse wheel over its title bar to adjust its opacity. Its **⬡** button pops it out into a separate OS window (popping out the same callsign twice refocuses the existing popup instead of opening a duplicate); its **×** button closes it.
+
 ## Mouse gestures
 
 | Gesture | Effect |
@@ -109,6 +157,7 @@ All three accept a partial/prefix match and will tell you if it's ambiguous betw
 | **Right-click + drag** | Pan the scope |
 | **Left-click + drag** | Draw a range/bearing line |
 | **Digit 1–9, then click** | Set that contact's leader-line direction |
+| **Double-click** a contact | Open a Focus window on it (see Focus windows above) |
 | **Mouse wheel** | Zoom (1 NM/step inside 10 NM range, else 10 NM — 25 NM with Ctrl) |
 
 **F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly); the next click classifies every contact within a small radius of the click point, so dense clusters aren't unreachable one-at-a-time.
@@ -123,7 +172,12 @@ Base/taskunit resolution: departure wins if the mission recorded one; air-start 
 
 Click a column header to sort (click again to reverse); click a row to select that flight and open it in FRAG. Coalition-restricted like everywhere else in ABM. Mouse wheel over the title bar zooms the panel (50–200%).
 
-**Footer:** ⬆ Load Mission · + Add Flight · ✕ Clear Mission (imported flights only) · ✕ Clear ALL (confirm-gated, wipes manual flights too).
+**Footer:**
+
+- **⬆ Load Mission**
+- **+ Add Flight**
+- **✕ Clear Mission** — imported flights only
+- **✕ Clear ALL** — confirm-gated, wipes manual flights too
 
 ## FRAG drawer
 

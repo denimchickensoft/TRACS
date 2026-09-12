@@ -50,7 +50,7 @@ Or use the F-keys (below) to declare contacts by clicking them.
 
 ### ROE
 
-`.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left.
+`.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left. Bare `.roe` toggles visibility of the ROE readout itself (visible by default).
 
 ### Threat rings
 
@@ -64,7 +64,7 @@ Or use the F-keys (below) to declare contacts by clicking them.
 
 ### PICTURE panel
 
-`.picture` toggles the PICTURE readout — off by default, so turn it on explicitly. It groups hostile contacts into formations (single, azimuth, range, wall, vic, champagne, ladder, box, leading edge) with doctrine-style naming and amplifiers (opening/closing, weighted, follow-on), computed from a sector you define:
+`.picture` toggles the PICTURE readout — off by default, so turn it on explicitly. It groups hostile contacts into formations (single, azimuth, range, wall, vic, champagne, ladder, box, leading edge) with doctrine-style naming and amplifiers (opening/closing, weighted, follow-on, echelon), computed from a sector you define. The panel header also shows the group's dimensions (e.g. "12 WIDE 8 DEEP") alongside the formation label.
 
 | Command | Effect |
 |---|---|

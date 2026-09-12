@@ -111,4 +111,4 @@ For development without a live DCS server:
 node mock-olympus/server.js
 ```
 
-Connect TRACS to `http://localhost:4514` with any password.
+Connect TRACS to `http://localhost:4001` with any password.

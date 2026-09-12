@@ -85,6 +85,8 @@ Bare-click (empty buffer) also resolves pending point-outs/handoffs automaticall
 
 `End` inserts `MIN` into the buffer. `Escape` cancels a pending RBL/MIN second point.
 
+`MF R` + SLEW toggles a predicted track line for just the clicked track, independent of the DCB's facility-wide **PTL OWN**/**PTL ALL** settings.
+
 ## Display, range, and reference commands
 
 | Command | Shortcut | Effect |
@@ -124,7 +126,14 @@ Bare-click (empty buffer) also resolves pending point-outs/handoffs automaticall
 
 The SSA, Sign-On List, Flight-Plan (TAB) list, up to 3 Tower lists, Coast/Suspend list, Alert list, and VFR list can each be toggled, relocated (SLEW to reposition), and — except SSA/Alert — resized:
 
-`MF TS` (sign-on) · `MF T` (TAB, `MF T<n>` to resize 1–100 lines) · `MF P1`/`MF P2`/`MF P3` (tower lists) · `MF TC` (coast/suspend) · `MF TM` (alert) · `MF TV` (VFR).
+| Command | List |
+|---|---|
+| `MF TS` | Sign-on list |
+| `MF T` (`MF T<n>` resizes 1–100 lines) | Flight-Plan (TAB) list |
+| `MF P1` / `MF P2` / `MF P3` | Tower lists 1–3 |
+| `MF TC` | Coast/Suspend list |
+| `MF TM` | Alert list |
+| `MF TV` | VFR list |
 
 These only appear if your ODS profile enables coordination lists.
 
@@ -185,9 +194,32 @@ Tracks outside the active filter range don't draw at all — useful for declutte
 
 Click a value button, then use the **mouse wheel** to adjust it. Click a submenu button to open it; **DONE** exits back to the main bar.
 
-**Main bar:** RANGE · OFF CNTR (recenter) · RR (ring spacing) · PLACE RR (click scope to set an off-center ring origin) · RR CNTR (reset) · MAPS (layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures) · BRITE (brightness submenu — separate controls for Map A, Map B, background, FDB, LDB, lists, symbols, rings, compass, history) · LDR DIR · LDR LEN · CHAR SIZE (submenu: datablocks/lists/DCB/tools/position/map) · PREF (12 preset slots — save/save-as/delete/default) · SHIFT (switch to the aux bar).
+**Main bar:**
 
-**Aux bar (via SHIFT):** VOL · HISTORY (trail dot count) · H_RATE (capture interval) · DCB TOP/LEFT/RIGHT/BOTTOM (reposition the bar) · PTL LNTH · PTL OWN (predicted track lines, your tracks only) · PTL ALL · CA (Conflict Alert toggle) · WNG (simulated wingmen toggle).
+- **RANGE**
+- **OFF CNTR** — recenter
+- **RR** — ring spacing
+- **PLACE RR** — click the scope to set an off-center ring origin
+- **RR CNTR** — reset
+- **MAPS** — layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures
+- **BRITE** — brightness submenu, separate controls for Map A, Map B, background, FDB, LDB, lists, symbols, rings, compass, history
+- **LDR DIR**
+- **LDR LEN**
+- **CHAR SIZE** — submenu: datablocks/lists/DCB/tools/position/map
+- **PREF** — 12 preset slots: save/save-as/delete/default
+- **SHIFT** — switch to the aux bar
+
+**Aux bar (via SHIFT):**
+
+- **VOL**
+- **HISTORY** — trail dot count
+- **H_RATE** — capture interval
+- **DCB TOP/LEFT/RIGHT/BOTTOM** — reposition the bar
+- **PTL LNTH**
+- **PTL OWN** — predicted track lines, your tracks only
+- **PTL ALL**
+- **CA** — Conflict Alert toggle
+- **WNG** — simulated wingmen toggle
 
 ## Keyboard shortcuts
 
@@ -283,6 +315,6 @@ A handful of ATC command patterns parse but currently do nothing — reported he
 - `IC <flightid>` and `TC <flightid> ` (ENTER forms, addressing by ID instead of slewing) — not yet implemented.
 - `HO <tcp> <flightid>` (ENTER form) — not yet implemented.
 - Reported/assigned altitude scratchpad via a bare 3-digit slew (`070`) or `+070` — recognized syntax, no handler yet.
-- `MF M` (Mode C toggle), `MF B` (beacon toggle), `MF E` (FDB overflight toggle), `MF R` (per-track PTL toggle) — not wired up. Use the DCB's **PTL OWN**/**PTL ALL** for predicted track lines instead.
+- `MF M` (Mode C toggle), `MF B` (beacon toggle), `MF E` (FDB overflight toggle) — not wired up. Use the DCB's **PTL OWN**/**PTL ALL** for predicted track lines instead (per-track PTL is available via `MF R`).
 - Quicklook (`**<tcp>`, `**ALL`) — parses but has no visible effect yet.
 - Most Ctrl+F-key display shortcuts (Ctrl+F1–F5, F7, F9, F10, Insert) are currently no-ops; only Ctrl+F8 (DCB show/hide) and the bookmark combos (Ctrl+Alt+0–9, Ctrl+0–9) work.

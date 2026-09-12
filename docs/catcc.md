@@ -25,7 +25,7 @@ CATCC does not yet use SRS transponder data (unlike ATC's association/IDENT feat
 | `.DBCA` | Toggle datablock collision avoidance (on by default) |
 | `.ASP` | Bulk-toggle all airspace categories |
 | `.TMA` `.CTR` `.CTA` `.FIR` `.UIR` `.SUA` `.MIL` `.TRSA` `.CLASSA`–`.CLASSG` | Toggle one airspace category |
-| `.LABELS` | Toggle airspace/fix name labels |
+| `.LABELS` (aliases `.LBL`, `.LABEL`) | Toggle airspace/fix name labels |
 | `.FILL` | Toggle airspace polygon fill; `.FILL <1-100>` sets transparency % and turns it on |
 | `.FIXES` | Toggle theatre fix points |
 | `.FIX <name...>` | Force-show one or more fixes regardless of `.FIXES`; each name toggles independently |
