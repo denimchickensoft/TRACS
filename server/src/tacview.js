@@ -151,7 +151,14 @@ function sendMissionClock() {
 }
 
 function finalizeTheatre() {
-  if (theatreDecided || !theatreVotes.size) return
+  if (theatreDecided) return
+  // No votes yet -- unlike Olympus's continuously-repolled mission fetch,
+  // this used to be a one-shot timer that gave up permanently on a slow or
+  // momentarily idle feed. Keep trying instead of stranding detection.
+  if (!theatreVotes.size) {
+    theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
+    return
+  }
   const [best] = [...theatreVotes.entries()].sort((a, b) => b[1] - a[1])[0]
   theatreDecided = true
   theatreName = best

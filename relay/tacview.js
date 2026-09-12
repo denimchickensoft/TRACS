@@ -133,7 +133,19 @@ function createTacviewRelay(wss, config) {
         ws.send(JSON.stringify({ type: 'tacviewDetectionConfig', config: detectionConfig }))
         ws.send(JSON.stringify({
           type: 'tacview',
-          data: { updated: snapshotUnits, removed: [], bullseyes: snapshotBullseyes, positions: [] },
+          data: {
+            updated: snapshotUnits,
+            removed: [],
+            bullseyes: snapshotBullseyes,
+            // Real positions, not []: a client's theatre bbox-vote (see
+            // server/src/tacviewRelayClient.js's voteTheatre()) only samples
+            // messages with a non-empty positions array, and this snapshot is
+            // otherwise its first and richest chance at a sample -- without
+            // this, a reconnecting client depends on a live delta happening
+            // to carry position-changed units within its one-shot vote
+            // window, which a mostly-static mission may never do.
+            positions: Object.values(snapshotUnits).map((u) => u.position).filter(Boolean),
+          },
           missionUtcMs: parser.getCurrentMissionUtcMs(),
         }))
       },
