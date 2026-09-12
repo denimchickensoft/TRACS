@@ -12,16 +12,20 @@ Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `
 
 ### Bullseye
 
-- `.be` — bare, Enter with no click: reset to the mission bullseye (clears any override)
-- `.be` typed then click the map: place an override bullseye at that point
-- `.be <fix>` — override to a named fix/navaid/runway
-- `.be <lat> <lon>` — override to explicit decimal-degree coordinates
+| Command | Effect |
+|---|---|
+| `.be` (Enter, no click) | Reset to the mission bullseye (clears any override) |
+| `.be` typed then click the map | Place an override bullseye at that point |
+| `.be <fix>` | Override to a named fix/navaid/runway |
+| `.be <lat> <lon>` | Override to explicit decimal-degree coordinates |
 
 ### Range rings
 
-- `.rr` — toggle on/off
-- `.rr <nm>` — set spacing (≤0 turns off)
-- `.rr <nm> <anchor>` — set spacing and anchor to `bullseye`/`bs` or a named fix
+| Command | Effect |
+|---|---|
+| `.rr` | Toggle on/off |
+| `.rr <nm>` | Set spacing (≤0 turns off) |
+| `.rr <nm> <anchor>` | Set spacing and anchor to `bullseye`/`bs` or a named fix |
 
 ### Map & reference layers (bare toggles unless noted)
 
@@ -72,29 +76,35 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 
 ### Contacts
 
-- `.ptl <0-5>` — predicted track line minutes
-- `.faded <seconds>` — coast/fade duration
-- `.history` — toggle trails; `.history <len>` — set length (0=off, max 10); `.history <len> <rate>` — length + capture rate
-- `.db` — toggle global datablock visibility; typed (no Enter) + click a contact toggles just that one
-- `.dbreset` — clear all per-contact `.db` overrides
-- `.dbca` — datablock collision-avoidance placement (off by default)
-- `.dbs` — formation datablock suppression: only the flight lead's datablock shows when 2+ same-flight aircraft are within 3 NM (on by default)
-- `.ldr <length 0-7> <dir 1-9>` — leader line length/direction
+| Command | Effect |
+|---|---|
+| `.ptl <0-5>` | Predicted track line minutes |
+| `.faded <seconds>` | Coast/fade duration |
+| `.history` | Toggle trails; `.history <len>` sets length (0=off, max 10); `.history <len> <rate>` sets length + capture rate |
+| `.db` | Toggle global datablock visibility; typed (no Enter) + click a contact toggles just that one |
+| `.dbreset` | Clear all per-contact `.db` overrides |
+| `.dbca` | Datablock collision-avoidance placement (off by default) |
+| `.dbs` | Formation datablock suppression: only the flight lead's datablock shows when 2+ same-flight aircraft are within 3 NM (on by default) |
+| `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction |
 
 ### BRAA, bogey dope, threat rings
 
-- `.threat` (Enter) — clear all rings; `.threat <nm>` (Enter) — set default radius
-- `.threat` / `.threat <nm>`, then click a contact — toggle that contact's ring (optionally set radius)
-- `.tclear` — clears RBL, all BRAA pairs, and all threat rings at once
-- `.dope`, then click — bogey-dope the clicked contact to its nearest hostile/bogey air contact
-- `.rename` / `.rename <newcallsign>`, then click — rename or reset a contact's callsign (synced to other controllers)
+| Command | Effect |
+|---|---|
+| `.threat` (Enter) | Clear all rings; `.threat <nm>` (Enter) sets the default radius instead |
+| `.threat` / `.threat <nm>`, then click a contact | Toggle that contact's ring (optionally set radius) |
+| `.tclear` | Clears RBL, all BRAA pairs, and all threat rings at once |
+| `.dope`, then click | Bogey-dope the clicked contact to its nearest hostile/bogey air contact |
+| `.rename` / `.rename <newcallsign>`, then click | Rename or reset a contact's callsign (synced to other controllers) |
 
 ### Classification
 
-- `.class` — reset all declarations to default
-- `.class <old> <new>` — bulk reclassify, letters `f`/`n`/`b`/`h` (friendly/neutral/bogey/hostile), e.g. `.class b h`
-- `.autoclass` — toggle auto-classification (true-coalition-based). Turning it **off** does not revert contacts it already classified — only a bare `.class` reset does that.
-- `.autothreat` — auto-light threat rings on friendlies near hostiles/bogeys
+| Command | Effect |
+|---|---|
+| `.class` | Reset all declarations to default |
+| `.class <old> <new>` | Bulk reclassify, letters `f`/`n`/`b`/`h` (friendly/neutral/bogey/hostile), e.g. `.class b h` |
+| `.autoclass` | Toggle auto-classification (true-coalition-based). Turning it **off** does not revert contacts it already classified — only a bare `.class` reset does that |
+| `.autothreat` | Auto-light threat rings on friendlies near hostiles/bogeys |
 
 ### ROE
 
@@ -108,11 +118,13 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 
 Draw directly on the scope by typing a command and clicking, the same type-then-click pattern as `.threat`/`.dope`/`.rename`/`.be`:
 
-- `.line`, `.rect`, `.circ` — line, rectangle, circle.
-- `.poly` — polygon; keep clicking to add vertices, `Escape` or re-typing the command finishes it.
-- `.sect <id> <brg1>...<brgN> <radius>` — a sector (or multiple sectors sharing one id) defined by a list of bearings and a radius.
-- `.race` — a racetrack shape.
-- `.text` — a text label.
+| Command | Effect |
+|---|---|
+| `.line` `.rect` `.circ` | Line, rectangle, circle |
+| `.poly` | Polygon; keep clicking to add vertices, `Escape` or re-typing the command finishes it |
+| `.sect <id> <brg1>...<brgN> <radius>` | A sector (or multiple sectors sharing one id) defined by a list of bearings and a radius |
+| `.race` | A racetrack shape |
+| `.text` | A text label |
 
 While a shape is pending, magnetic-heading snapping and whole-NM distance snapping apply automatically, and the scroll wheel rotates the shape before you commit it with a click.
 
@@ -124,9 +136,11 @@ All hand-drawn shapes show up in the Drawings panel alongside imported layers �
 
 Alternatives to clicking a contact directly, useful when you know the callsign but the contact is hard to click precisely:
 
-- `.where <callsign>` — drop a marker on that contact.
-- `.frag <callsign>` — open FRAG for that contact's flight.
-- `.route <callsign>` — toggle that flight's route line on the scope.
+| Command | Effect |
+|---|---|
+| `.where <callsign>` | Drop a marker on that contact |
+| `.frag <callsign>` | Open FRAG for that contact's flight |
+| `.route <callsign>` | Toggle that flight's route line on the scope |
 
 All three accept a partial/prefix match and will tell you if it's ambiguous between multiple live callsigns. `.rclear` clears every currently-shown route line at once (both ones toggled via `.route`/FRAG's own ROUTE header).
 
@@ -134,10 +148,12 @@ All three accept a partial/prefix match and will tell you if it's ambiguous betw
 
 A floating mini-scope locked onto one contact, for tracking it without losing your place on the main scope.
 
-- `.focus <callsign>` — open (or bring to front) a focus window on that contact, at your saved default range.
-- `.focus <callsign> <range>` — same, with an explicit range in NM.
-- `.focus <range>` — sets the default range used by future opens, without opening a window.
-- Double-clicking a contact on the main scope is a shortcut for `.focus <callsign>`.
+| Command | Effect |
+|---|---|
+| `.focus <callsign>` | Open (or bring to front) a focus window on that contact, at your saved default range |
+| `.focus <callsign> <range>` | Same, with an explicit range in NM |
+| `.focus <range>` | Sets the default range used by future opens, without opening a window |
+| Double-click a contact on the main scope | Shortcut for `.focus <callsign>` |
 
 All three accept the same partial/prefix matching (and ambiguity reporting) as `.where`/`.frag`/`.route`.
 
@@ -174,10 +190,12 @@ Click a column header to sort (click again to reverse); click a row to select th
 
 **Footer:**
 
-- **⬆ Load Mission**
-- **+ Add Flight**
-- **✕ Clear Mission** — imported flights only
-- **✕ Clear ALL** — confirm-gated, wipes manual flights too
+| Button | Effect |
+|---|---|
+| **⬆ Load Mission** | Import flights from a mission file (see Mission Import below) |
+| **+ Add Flight** | Manually add a flight (see Add Flight below) |
+| **✕ Clear Mission** | Clears imported flights only |
+| **✕ Clear ALL** | Confirm-gated, wipes manual flights too |
 
 ## FRAG drawer
 
@@ -214,13 +232,15 @@ Unlike AIC, ABM has no BRAA-list side panel — BRAA pairs are drawn only as an 
 
 Beyond importing, the Drawings panel lets you manage every layer (imported or hand-drawn via the scope commands above):
 
-- Click a layer's name to rename it inline.
-- A per-layer color swatch with an **Override** checkbox — pick a custom color, or leave it inheriting the airspace palette's CUSTOM color.
-- A per-layer "always show label" checkbox, independent of the global `.labels` toggle.
-- Drag a layer's grip handle to manually reorder it (draw/z-order) — only available while the list isn't otherwise sorted.
-- Three sortable columns (visibility / color / name+label), each with a third "off" sort state.
-- Command-drawn shapes get a disclosure-arrow parameter editor (rotation, radius, start/end bearing, leg length, turn radius/direction, text label — whichever fields apply to that shape type) for fine adjustment after drawing.
-- **⬇ Export** bundles the panel's drawings into a zip you can re-import later (including into someone else's TRACS instance, since drawings aren't otherwise shared).
+| Item | Effect |
+|---|---|
+| Layer name | Click to rename it inline |
+| Color swatch + **Override** checkbox | Pick a custom color, or leave it inheriting the airspace palette's CUSTOM color |
+| "Always show label" checkbox | Per-layer, independent of the global `.labels` toggle |
+| Grip handle | Drag to manually reorder the layer (draw/z-order) — only available while the list isn't otherwise sorted |
+| Sortable columns (visibility / color / name+label) | Each has a third "off" sort state |
+| Disclosure-arrow parameter editor | Command-drawn shapes only — rotation, radius, start/end bearing, leg length, turn radius/direction, text label, whichever fields apply to that shape type, for fine adjustment after drawing |
+| **⬇ Export** | Bundles the panel's drawings into a zip you can re-import later (including into someone else's TRACS instance, since drawings aren't otherwise shared) |
 
 ## Add Flight (manual entry)
 

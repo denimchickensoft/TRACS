@@ -141,12 +141,14 @@ These only appear if your ODS profile enables coordination lists.
 
 When SRS transponder data is reaching TRACS (via a relay, in either Tacview or Olympus sessions), tracks gain real squawk-based association on top of ownership:
 
-- **Association gating**: a track with live transponder data (`srsCapable`) is either *associated* (its squawk matches a filed flight plan's callsign+code) or *unassociated*. This changes what the datablock shows, separately from whether you own the track.
-- **LDB content changes**: an unassociated `srsCapable` track's LDB shows the real 4-digit beacon code on its first line, instead of the usual altitude/groundspeed line.
-- **Position symbols**: `*` marks a genuinely unassociated track; `V` marks a VFR squawk (code 1200).
-- **FDB mismatch line**: if a track's live squawk drifts from its flight plan's assigned code, the FDB (not the PDB) gains a third line showing `<reported> <assigned>` side by side. This is FDB-only by design — PDBs don't show it.
-- **IDENT**: a pilot's IDENT press appends a blinking "ID" suffix to the datablock (only the suffix blinks, not the whole datablock), latched until you acknowledge it with a slew on that track. A PDB that IDENTs temporarily displays as an FDB while the IDENT is active.
-- **Beaconator**: press and hold `F1` to force *every* squawking track's PDB into FDB-style layout with the callsign swapped for its beacon code — release to return to normal. Useful for a quick beacon-code sweep across the whole scope.
+| Item | Effect |
+|---|---|
+| **Association gating** | A track with live transponder data (`srsCapable`) is either *associated* (its squawk matches a filed flight plan's callsign+code) or *unassociated*. This changes what the datablock shows, separately from whether you own the track |
+| **LDB content changes** | An unassociated `srsCapable` track's LDB shows the real 4-digit beacon code on its first line, instead of the usual altitude/groundspeed line |
+| **Position symbols** | `*` marks a genuinely unassociated track; `V` marks a VFR squawk (code 1200) |
+| **FDB mismatch line** | If a track's live squawk drifts from its flight plan's assigned code, the FDB (not the PDB) gains a third line showing `<reported> <assigned>` side by side. This is FDB-only by design — PDBs don't show it |
+| **IDENT** | A pilot's IDENT press appends a blinking "ID" suffix to the datablock (only the suffix blinks, not the whole datablock), latched until you acknowledge it with a slew on that track. A PDB that IDENTs temporarily displays as an FDB while the IDENT is active |
+| **Beaconator** | Press and hold `F1` to force *every* squawking track's PDB into FDB-style layout with the callsign swapped for its beacon code — release to return to normal. Useful for a quick beacon-code sweep across the whole scope |
 
 ## Conflict Alert / MCI (STCA)
 
@@ -173,8 +175,10 @@ The DCB aux bar (SHIFT) has a **WNG** toggle button next to **CA**.
 
 `MF F` + ENTER shows your current altitude filter. Two ways to set one:
 
-- `MF FC<loAssigned><hiAssigned>` + ENTER — filter by assigned altitude only, for associated tracks.
-- `MF F<loUnassoc><hiUnassoc> <loAssigned><hiAssigned>` + ENTER — set both the unassociated-track filter and the associated-track filter in one command.
+| Command | Effect |
+|---|---|
+| `MF FC<loAssigned><hiAssigned>` + ENTER | Filter by assigned altitude only, for associated tracks |
+| `MF F<loUnassoc><hiUnassoc> <loAssigned><hiAssigned>` + ENTER | Set both the unassociated-track filter and the associated-track filter in one command |
 
 Tracks outside the active filter range don't draw at all — useful for decluttering a busy scope down to a specific altitude band.
 
@@ -196,30 +200,34 @@ Click a value button, then use the **mouse wheel** to adjust it. Click a submenu
 
 **Main bar:**
 
-- **RANGE**
-- **OFF CNTR** — recenter
-- **RR** — ring spacing
-- **PLACE RR** — click the scope to set an off-center ring origin
-- **RR CNTR** — reset
-- **MAPS** — layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures
-- **BRITE** — brightness submenu, separate controls for Map A, Map B, background, FDB, LDB, lists, symbols, rings, compass, history
-- **LDR DIR**
-- **LDR LEN**
-- **CHAR SIZE** — submenu: datablocks/lists/DCB/tools/position/map
-- **PREF** — 12 preset slots: save/save-as/delete/default
-- **SHIFT** — switch to the aux bar
+| Button | Effect |
+|---|---|
+| **RANGE** | Scope range |
+| **OFF CNTR** | Recenter |
+| **RR** | Ring spacing |
+| **PLACE RR** | Click the scope to set an off-center ring origin |
+| **RR CNTR** | Reset |
+| **MAPS** | Layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures |
+| **BRITE** | Brightness submenu, separate controls for Map A, Map B, background, FDB, LDB, lists, symbols, rings, compass, history |
+| **LDR DIR** | Leader line direction |
+| **LDR LEN** | Leader line length |
+| **CHAR SIZE** | Submenu: datablocks/lists/DCB/tools/position/map |
+| **PREF** | 12 preset slots: save/save-as/delete/default |
+| **SHIFT** | Switch to the aux bar |
 
 **Aux bar (via SHIFT):**
 
-- **VOL**
-- **HISTORY** — trail dot count
-- **H_RATE** — capture interval
-- **DCB TOP/LEFT/RIGHT/BOTTOM** — reposition the bar
-- **PTL LNTH**
-- **PTL OWN** — predicted track lines, your tracks only
-- **PTL ALL**
-- **CA** — Conflict Alert toggle
-- **WNG** — simulated wingmen toggle
+| Button | Effect |
+|---|---|
+| **VOL** | Volume |
+| **HISTORY** | Trail dot count |
+| **H_RATE** | Capture interval |
+| **DCB TOP/LEFT/RIGHT/BOTTOM** | Reposition the bar |
+| **PTL LNTH** | Predicted track line length |
+| **PTL OWN** | Predicted track lines, your tracks only |
+| **PTL ALL** | Predicted track lines, all tracks |
+| **CA** | Conflict Alert toggle |
+| **WNG** | Simulated wingmen toggle |
 
 ## Keyboard shortcuts
 

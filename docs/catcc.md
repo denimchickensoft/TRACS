@@ -37,24 +37,28 @@ Errors appear in the ODS response area: `NO TRACK: <id>` (unit not found), `ILL 
 
 **Slew commands** (type the command, then left-click the target to complete it) — CATCC has its own local implementation of these (mirrors the ATC/STARS scope's bindings, but targets CATCC's own state independently — no shared dispatcher):
 
-- `IC` — initiate control on the clicked contact
-- `TC` — terminate control
-- `HO` (bare) — accept the nearest incoming handoff; `HO <tcp>` then slew — hand off to a position
-- `<id>*` then slew — point out; `**` then slew — accept an incoming point-out as a handoff; `UN` then slew — reject a point-out
-- A 3–4 character alphanumeric then slew — set scratchpad 1; prefix with `+` for scratchpad 2
-- `MF L<n><n>` (e.g. `MF L33`) then slew — set leader-line direction globally; `MF L<n>` — for a single track
-- `MF S`, then click anywhere on the scope — relocate the status-text overlay
+| Command | Effect |
+|---|---|
+| `IC` | Initiate control on the clicked contact |
+| `TC` | Terminate control |
+| `HO` (bare) | Accept the nearest incoming handoff; `HO <tcp>` then slew hands off to a position |
+| `<id>*` / `**` / `UN`, then slew | Point out / accept an incoming point-out as a handoff / reject a point-out |
+| A 3–4 character alphanumeric, then slew | Set scratchpad 1; prefix with `+` for scratchpad 2 |
+| `MF L<n><n>` (e.g. `MF L33`), then slew | Set leader-line direction globally; `MF L<n>` sets it for a single track |
+| `MF S`, then click anywhere on the scope | Relocate the status-text overlay |
 
 ## Mouse & keyboard
 
-- **Ctrl+Shift+Click** a contact — Initiate Control
-- **Shift+Click** a contact — Terminate Control
-- **Ctrl+Click** a contact — add it to the Status Board directly (CATCC-only shortcut, no command-line equivalent)
-- **Mouse wheel** over the scope — zoom range (hold Ctrl for larger steps)
-- Moving the mouse shows a live bearing/range readout from the carrier to the cursor
-- **Alt+T** — toggle top-down display mode
-- `F2`–`F13` and other function keys map to STARS-style command prefixes (`F3`=IC, `F4`=TC, `F5`=HO, `F7`=MF, `F9`=FP, etc.) — same key-to-token mapping table as the ATC scope (purely a keyboard convenience, no shared command dispatch)
-- `Escape` clears the command line; `Backspace` deletes the last character
+| Gesture / Key | Effect |
+|---|---|
+| **Ctrl+Shift+Click** a contact | Initiate Control |
+| **Shift+Click** a contact | Terminate Control |
+| **Ctrl+Click** a contact | Add it to the Status Board directly (CATCC-only shortcut, no command-line equivalent) |
+| **Mouse wheel** over the scope | Zoom range (hold Ctrl for larger steps) |
+| Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
+| **Alt+T** | Toggle top-down display mode |
+| `F2`–`F13` and other function keys | Map to STARS-style command prefixes (`F3`=IC, `F4`=TC, `F5`=HO, `F7`=MF, `F9`=FP, etc.) — same key-to-token mapping table as the ATC scope (purely a keyboard convenience, no shared command dispatch) |
+| `Escape` / `Backspace` | Clears the command line / deletes the last character |
 
 ## Status Board
 
@@ -69,9 +73,12 @@ BRC/FB/speed flash if they drift more than 5° and haven't restabilized for 20 s
 **Aircraft table** — 14 columns: EVT, side number, callsign, pilot (auto-filled from the unit name if left blank), type, mission, ATD (actual departure time), radial, bingo fuel, a read-only side-number mirror, EAT (estimated arrival), Angels (altitude in thousands), fuel state, ATA (actual arrival time).
 
 **Adding entries:**
-- **+ Add** — blank row
-- **Ctrl+Click** a contact on the scope — adds it with callsign pre-filled
-- **⬆ Load Mission** — import from a mission file (see below)
+
+| Action | Effect |
+|---|---|
+| **+ Add** | Blank row |
+| **Ctrl+Click** a contact on the scope | Adds it with callsign pre-filled |
+| **⬆ Load Mission** | Import from a mission file (see below) |
 
 **Editing:** click a cell to edit it. `Tab`/`Shift+Tab` moves between fields, `Enter` commits, **`Shift+Enter` commits and inserts a new blank row directly below**, `Escape` cancels without saving. Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted red. Click a column header to sort (display only — doesn't reorder the underlying data).
 

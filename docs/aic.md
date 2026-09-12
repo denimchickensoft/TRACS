@@ -78,8 +78,10 @@ Click the PICTURE panel itself to acknowledge the current picture — this clear
 
 ### Type-then-click-only commands
 
-- `.rename` / `.rename <newcallsign>`, then click a contact — renames it (blank name resets to default), synced to other controllers
-- `.dope`, then click a fighter — pairs it in the BRAA list with the nearest bogey (same as Alt+click, below)
+| Command | Effect |
+|---|---|
+| `.rename` / `.rename <newcallsign>`, then click a contact | Renames it (blank name resets to default), synced to other controllers |
+| `.dope`, then click a fighter | Pairs it in the BRAA list with the nearest bogey (same as Alt+click, below) |
 
 ## BRAA List
 
