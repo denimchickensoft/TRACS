@@ -10,7 +10,7 @@ const FIX_R = 2.5
 const CULL_MARGIN = 60
 
 export function drawAbmFragRoute(ctx, view, route, rawType) {
-  if (!route || route.length === 0) return
+  if (!Array.isArray(route) || route.length === 0) return
 
   const wpLabelOffset = ZERO_INDEXED_WAYPOINT_TYPES.has(rawType) ? 0 : 1
   const pts = route

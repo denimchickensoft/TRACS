@@ -177,7 +177,7 @@ export default function AbmScope() {
   const extraRoutes = useMemo(
     () => routeGroupIds
       .map(gid => atoFlights.find(f => f.groupId === gid))
-      .filter(f => f?.route?.length > 0)
+      .filter(f => Array.isArray(f?.route) && f.route.length > 0)
       .map(f => ({ route: f.route, rawType: f.units[0]?.rawType })),
     [atoFlights, routeGroupIds]
   )
