@@ -98,12 +98,16 @@ function lockMagneticBearing(trueBearingDeg, declinationDeg) {
 
 // .rect/.poly/.race/.text's rotationDeg defaults to "no rotation" — but
 // true-bearing 0 (its old hardcoded default) is only a round MAGNETIC
-// heading when declination happens to be 0. Locking the *default* the same
-// way rotatePendingDraw locks every scroll step means a freehand shape
-// never starts life reading e.g. 087M on an edge that's supposed to be a
-// clean 090/000 before the user has touched the scroll wheel at all.
+// heading when declination happens to be 0. The default needs the TRUE
+// bearing whose magnetic equivalent is exactly 0, computed directly — not
+// lockMagneticBearing(0, declinationDeg), which rounds true-bearing-0's own
+// magnetic reading (typically already a few degrees off cardinal) to the
+// nearest whole degree, landing on some arbitrary nearby integer instead of
+// 0 (e.g. 358M, not 000M, at a 2.3°E-declination location). No rounding is
+// needed here at all: 0 is already a whole magnetic degree, so its true
+// equivalent reads back as exactly 000/090 with no drift.
 function initialRotationDeg(declinationDeg) {
-  return lockMagneticBearing(0, declinationDeg)
+  return toTrueFromMagnetic(0, declinationDeg)
 }
 
 function toLatLng(fix) {
@@ -312,7 +316,7 @@ export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null
       if (!pd.anchor) return { pending: { ...pd, anchor: click } }
       const { widthNm, heightNm } = snapRectOffsets(pd.anchor, click)
       const opposite = rectOppositeFromOffsets(pd.anchor, widthNm, heightNm)
-      return { immediate: { anchor: pd.anchor, opposite, rotationDeg: pd.rotationDeg } }
+      return { immediate: { anchor: pd.anchor, opposite, rotationDeg: pd.rotationDeg, theatre } }
     }
     case 'circ': {
       if (!pd.center) {
@@ -410,7 +414,7 @@ export function previewParams(pd, cursor, declinationDeg = 0, theatre = null) {
       // different lengths (different average-latitude reference per edge).
       return {
         anchor: pd.anchor, opposite: rectOppositeFromOffsets(pd.anchor, widthNm, heightNm),
-        rotationDeg: pd.rotationDeg, widthNm, heightNm,
+        rotationDeg: pd.rotationDeg, widthNm, heightNm, theatre,
       }
     }
     case 'circ': {

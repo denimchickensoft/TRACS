@@ -117,8 +117,9 @@ export function localOffsetNm(fromLat, fromLng, toLat, toLng) {
  * for any bearing between two independently-resolved positions meant to
  * match what's displayed on the scope or in DCS (RBL, BRAA, bullseye,
  * PICTURE sectors). Falls back to trueBearingRangeNm's flat approximation
- * for theatres without TM params (Afghanistan, Iraq, MarianasWWII) — same
- * fallback projection.js uses for canvas placement on those theatres.
+ * for a theatre with no TM params yet (theatre is null/undefined, or a
+ * newly added DCS map before solveProjectionParams.js has been run for it)
+ * — same fallback projection.js uses for canvas placement in that case.
  */
 export function gridBearingRangeNm(fromLat, fromLng, toLat, toLng, theatre) {
   const params = theatre ? getProjectionParams(theatre) : null

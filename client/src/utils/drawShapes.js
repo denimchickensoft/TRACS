@@ -7,10 +7,10 @@
 //
 // All lat/lng math goes through utils/bearing.js's destinationPoint/
 // gridDestinationPoint — the one sanctioned place this app computes bearings
-// and ranges — never bare trig at a call site here. Most shapes here
-// (.rect/.circ/.poly/.race/.text) are frame-agnostic or deliberately
-// real-true (see each builder's own comment); .sect is the one that must be
-// grid-frame, to match what a controller clicks/types as a magnetic bearing.
+// and ranges — never bare trig at a call site here. .circ/.poly/.race/.text
+// are frame-agnostic or deliberately real-true (see each builder's own
+// comment); .sect and .rect are grid-frame, to match what a controller
+// clicks/types as a magnetic bearing/heading.
 
 import { destinationPoint, gridDestinationPoint, localOffsetNm } from './bearing.js'
 import { computeBbox } from './parseGeojson.js'
@@ -20,12 +20,16 @@ function feature(geometry, properties = {}, label = null) {
 }
 
 // Rotates a local (eNm, nNm) offset from origin by rotationDeg (clockwise,
-// bearing convention) and projects it via destinationPoint.
-function offsetPoint(origin, eNm, nNm, rotationDeg = 0) {
+// bearing convention) and projects it via gridDestinationPoint — rotationDeg
+// is a declination-locked (grid-frame) heading, see buildRectFeature, so the
+// projection must be grid-frame too or the rectangle ends up square to real
+// north instead of grid/magnetic north (off by the local grid convergence
+// angle away from the theatre's central meridian).
+function offsetPoint(origin, eNm, nNm, rotationDeg = 0, theatre = null) {
   const range = Math.hypot(eNm, nNm)
   if (range === 0) return { lat: origin.lat, lng: origin.lng }
   const brg = (Math.atan2(eNm, nNm) * 180 / Math.PI + 360) % 360
-  return destinationPoint(origin.lat, origin.lng, brg + rotationDeg, range)
+  return gridDestinationPoint(origin.lat, origin.lng, brg + rotationDeg, range, theatre)
 }
 
 // Samples a semicircular (180°) arc around `center`, starting at
@@ -58,17 +62,20 @@ export function buildLineFeature({ p1, p2 }) {
  * `anchor` by rotationDeg (matches the click-driven "middle-click rotates
  * about the anchored corner" interaction).
  */
-export function buildRectFeature({ anchor, opposite, rotationDeg = 0 }) {
+export function buildRectFeature({ anchor, opposite, rotationDeg = 0, theatre = null }) {
   // localOffsetNm, not trueBearingRangeNm — this must be the exact inverse
   // of offsetPoint/destinationPoint's own fromLat-referenced projection, or
   // a snapped-to-whole-NM `opposite` (drawCommands.js's snapRectOpposite,
   // built the same way) decomposes back to a slightly different, no-longer-
   // round east/west offset (trueBearingRangeNm's average-of-both-endpoints
   // reference drifts from anchor's own reference as soon as dN != 0).
+  // This only sizes the rectangle (width/height); rotationDeg's declination-
+  // locked heading is applied in grid frame below via offsetPoint, matching
+  // .sect's fix for the same true-vs-grid mismatch.
   const { eastNm: dE, northNm: dN } = localOffsetNm(anchor.lat, anchor.lng, opposite.lat, opposite.lng)
   const localCorners = [[0, 0], [dE, 0], [dE, dN], [0, dN]]
   const ring = localCorners.map(([e, n]) => {
-    const { lat, lng } = offsetPoint(anchor, e, n, rotationDeg)
+    const { lat, lng } = offsetPoint(anchor, e, n, rotationDeg, theatre)
     return [lng, lat]
   })
   ring.push(ring[0])
