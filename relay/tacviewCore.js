@@ -54,6 +54,13 @@ const SYNTAX_SLOTS = {
 
 const NUMERIC_PROPS = new Set(['AGL', 'Health', 'IAS', 'CAS', 'TAS', 'HDM', 'Importance'])
 
+// ACMI wire headings (T= trailing Heading / HDM / raw yaw) are degrees, but
+// unit.heading is contractually radians everywhere else in the app —
+// decoder.js's DI.heading reads DCS's native getHeading() (radians), and
+// every client consumer (StatusBoard.jsx, CatccScope.jsx, Deck.jsx, Par.jsx,
+// utils/bearing.js's documented contract) converts assuming radians.
+const DEG_TO_RAD = Math.PI / 180
+
 const HEX_ID_RE = /^[0-9a-fA-F]+$/
 
 const EARTH_RADIUS_M = 6371008.8
@@ -225,9 +232,10 @@ function createParser() {
     }
     // Heading is not fully resolved (custom-datasource-tacview-spec.md §3/§5
     // item 2) — prefer the T= trailing Heading field (Syntax #4), fall back
-    // to HDM, then raw yaw as a last resort.
+    // to HDM, then raw yaw as a last resort. Converted to radians here (see
+    // DEG_TO_RAD) to match unit.heading's app-wide contract.
     const heading = t?.[8] ?? (p.HDM !== undefined ? p.HDM : t?.[5])
-    if (heading !== undefined && heading !== null) unit.heading = heading
+    if (heading !== undefined && heading !== null) unit.heading = heading * DEG_TO_RAD
     // Pitch (nose up/down, degrees) — needed by tacviewDetection.js's
     // elevation scan-volume check. Unlike cockpit-instrument fields
     // (IAS/AoA/wind/fuel, confirmed restricted to the connecting client's

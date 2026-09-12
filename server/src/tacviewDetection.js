@@ -471,7 +471,7 @@ function isWithinScanVolume(detectorUnit, targetPosition, rangeNm) {
   if (detectorUnit.heading === undefined || detectorUnit.pitch === undefined) return true
 
   const bearing = bearingDeg(detectorUnit.position, targetPosition)
-  if (angleDiff(bearing, detectorUnit.heading) > config.azimuthConeHalfAngleDeg) return false
+  if (angleDiff(bearing, toDeg(detectorUnit.heading)) > config.azimuthConeHalfAngleDeg) return false
 
   const groundRangeM = rangeNm * METERS_PER_NM
   const altDeltaM = (targetPosition.alt ?? 0) - (detectorUnit.position.alt ?? 0)
