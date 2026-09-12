@@ -156,13 +156,14 @@ export function saveLastConnection({ name, url, coalition, password, relayUrl, s
   }))
 }
 
-// Favorites first, then up to MAX_RECENTS non-favorites, both by most-recently-used;
-// filtered by a case-insensitive substring match against the query.
+// Favorites first, then up to MAX_RECENTS non-favorites (most-recently-used ones kept),
+// both groups alphabetical by name; filtered by a case-insensitive substring match against the query.
 export function filterServerProfiles(profiles, query) {
   const q = query.trim().toLowerCase()
   const matches = q ? profiles.filter((p) => p.name.toLowerCase().includes(q)) : profiles
 
-  const favorites = matches.filter((p) => p.favorite).sort((a, b) => b.lastUsed - a.lastUsed)
-  const recents   = matches.filter((p) => !p.favorite).sort((a, b) => b.lastUsed - a.lastUsed).slice(0, MAX_RECENTS)
+  const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  const favorites = matches.filter((p) => p.favorite).sort(byName)
+  const recents   = matches.filter((p) => !p.favorite).sort((a, b) => b.lastUsed - a.lastUsed).slice(0, MAX_RECENTS).sort(byName)
   return [...favorites, ...recents]
 }
