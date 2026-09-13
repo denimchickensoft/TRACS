@@ -6,6 +6,8 @@ import { useFpeStore }          from '../../store/fpe.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
 import { dispatchWebrtcEvent }  from '../../utils/commandChannel.js'
+import { sendWebrtcEvent }      from '../../webrtc/client.js'
+import { FlightPlanImport }     from '../FlightPlanImport/FlightPlanImport.jsx'
 import './StripBay.css'
 
 const SORT_OPTIONS = [
@@ -405,7 +407,9 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const setSortBy   = useStripsStore((s) => s.setSortBy)
   const reorderBay  = useStripsStore((s) => s.reorderBay)
   const addStrip    = useStripsStore((s) => s.addStrip)
+  const clearBay    = useStripsStore((s) => s.clearBay)
   const plans       = useFlightPlansStore((s) => s.plans)
+  const removePlan  = useFlightPlansStore((s) => s.remove)
   // Subscribe so re-render fires when the toggle flips
   useSessionStore((s) => s.useDcsNames)
 
@@ -421,6 +425,8 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
 
   const [addAid,       setAddAid]       = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [showImport,   setShowImport]   = useState(false)
+  const [confirmingClear, setConfirmingClear] = useState(null) // null | 'mission' | 'bay'
   const [dragId,       setDragId]       = useState(null)
   const [dragOverId,   setDragOverId]   = useState(null)
   const [ctxMenu,      setCtxMenu]      = useState(null)
@@ -465,6 +471,29 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
     setAddAid('')
     addInputRef.current?.focus()
   }, [addAid, addStrip])
+
+  const hasMissionData = useMemo(
+    () => Object.values(plans).some((p) => p.source && p.source !== 'manual'),
+    [plans]
+  )
+
+  // Session-wide -- deletes every imported flight plan and broadcasts
+  // FLIGHT_PLAN_DELETE per plan, same as FPE.jsx's own delete path. Every
+  // controller sees these disappear, not just this bay.
+  const handleClearMission = () => {
+    for (const plan of Object.values(plans)) {
+      if (!plan.source || plan.source === 'manual') continue
+      removePlan(plan.aid)
+      sendWebrtcEvent('FLIGHT_PLAN_DELETE', { aid: plan.aid })
+    }
+    setConfirmingClear(null)
+  }
+
+  // Local only -- strips are personal, no broadcast. Flight plans are untouched.
+  const handleClearBay = () => {
+    clearBay(bay.id)
+    setConfirmingClear(null)
+  }
 
   function handleDragStart(e, stripId) {
     setDragId(stripId)
@@ -577,6 +606,40 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
           onClose={() => setCtxMenu(null)}
         />
       )}
+
+      {showImport && (
+        <FlightPlanImport onClose={() => setShowImport(false)} />
+      )}
+
+      {/* Mission / bay actions */}
+      <div className="sb-footer">
+        {confirmingClear ? (
+          <>
+            <span className="sb-clear-confirm-label">
+              {confirmingClear === 'mission' ? 'Clear ALL flight plans for the session?' : 'Clear all strips from this bay?'}
+            </span>
+            <button
+              className="sb-btn-add sb-clear-confirm-btn"
+              onClick={confirmingClear === 'mission' ? handleClearMission : handleClearBay}
+            >Confirm</button>
+            <button className="sb-btn-add" onClick={() => setConfirmingClear(null)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button className="sb-btn-add sb-btn-import" onClick={() => setShowImport(true)}>⬆ Load Mission</button>
+            {hasMissionData && (
+              <button className="sb-btn-add sb-btn-clear-mission" onClick={() => setConfirmingClear('mission')}>
+                ✕ Clear Mission
+              </button>
+            )}
+            {bay.stripIds.length > 0 && (
+              <button className="sb-btn-add sb-btn-clear-bay" onClick={() => setConfirmingClear('bay')}>
+                ✕ Clear Strip Bay
+              </button>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Add strip footer */}
       <div className="sb-footer">

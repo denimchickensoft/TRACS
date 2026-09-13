@@ -49,6 +49,41 @@ export function formatMGRS(lat, lng) {
   return `${zone}${latBand(lat)} ${sq} ${pad(e, 5)} ${pad(n, 5)}`
 }
 
+// ICAO Item-15 route-string point: DDMM(N/S)DDDMM(E/W), whole minutes, no
+// symbols/decimals (e.g. "4613N02000E"). Used as the fallback token for a
+// route waypoint that doesn't name-match a real navdata fix (see
+// utils/fixMatch.js) -- NOT a display format for cursor readouts, which use
+// formatDMS/formatDDM above instead. Rounding to whole minutes introduces up
+// to ~0.5-0.71 NM of error (worst case at low latitude, where a minute of
+// longitude is closest to a minute of latitude); accepted for this use case.
+export function formatIcaoRoutePoint(lat, lng) {
+  const fmt = (value, degWidth, positiveLetter, negativeLetter) => {
+    const letter = value >= 0 ? positiveLetter : negativeLetter
+    const abs = Math.abs(value)
+    let deg = Math.floor(abs)
+    let min = Math.round((abs - deg) * 60)
+    if (min === 60) { min = 0; deg += 1 } // rounding carry, e.g. 12°59.6' -> 13°00'
+    return `${pad(deg, degWidth)}${pad(min, 2)}${letter}`
+  }
+  return `${fmt(lat, 2, 'N', 'S')}${fmt(lng, 3, 'E', 'W')}`
+}
+
+const ICAO_ROUTE_POINT_RE = /^(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])$/
+
+// Inverse of formatIcaoRoutePoint -- lets a route resolver (e.g.
+// modules/atc/stars/canvas/routeResolver.js) plot a fallback coordinate
+// token at its real position instead of treating it as an unresolvable
+// fix. Returns { lat, lng } or null if `token` isn't in this exact format.
+export function parseIcaoRoutePoint(token) {
+  const m = ICAO_ROUTE_POINT_RE.exec((token ?? '').trim().toUpperCase())
+  if (!m) return null
+  const [, latDeg, latMin, latLetter, lngDeg, lngMin, lngLetter] = m
+  const lat = (Number(latDeg) + Number(latMin) / 60) * (latLetter === 'S' ? -1 : 1)
+  const lng = (Number(lngDeg) + Number(lngMin) / 60) * (lngLetter === 'W' ? -1 : 1)
+  if (lat > 90 || lng > 180) return null
+  return { lat, lng }
+}
+
 export function formatElevation(elevationM, unit) {
   if (elevationM === null || elevationM === undefined) return 'ELEV N/A'
   const value = unit === 'feet' ? elevationM * 3.28084 : elevationM

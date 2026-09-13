@@ -129,6 +129,7 @@
 .sb-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px 6px;
   display: flex;
   flex-direction: column;
@@ -257,6 +258,49 @@
 .sb-btn-add:hover { background: rgba(0,180,216,0.07); }
 .sb-btn-add:disabled { opacity: 0.3; cursor: default; }
 
+/* ── Mission / bay action buttons (Load Mission / Clear Mission / Clear
+   Strip Bay) -- same color convention as modules/abm/Ato.css's clear
+   buttons, kept under StripBay's own class names to avoid colliding with
+   modules/catcc/StatusBoard.css's identically-prefixed "sb-" classes. ── */
+.sb-btn-import { border-color: #333; color: #888; }
+.sb-btn-import:hover { border-color: #00b4d8; color: #00b4d8; }
+
+.sb-btn-clear-mission {
+  border-color: #3A1A1A;
+  color: #663333;
+}
+.sb-btn-clear-mission:hover {
+  border-color: #664444;
+  color: #AA4444;
+}
+
+.sb-btn-clear-bay {
+  border-color: #3A1A1A;
+  color: #884444;
+}
+.sb-btn-clear-bay:hover {
+  border-color: #884444;
+  color: #CC4444;
+}
+
+.sb-clear-confirm-label {
+  color: #886644;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 2px;
+  flex: 1;
+}
+
+.sb-clear-confirm-btn {
+  border-color: #664422;
+  color: #CC6633;
+}
+.sb-clear-confirm-btn:hover {
+  border-color: #AA5533;
+  color: #FF7744;
+}
+
 /* ── Settings panel ─────────────────────────────────────────────── */
 .sb-settings {
   border-bottom: 1px solid #1a1a1a;
@@ -267,6 +311,7 @@
   gap: 12px;
   flex-shrink: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: 320px;
 }
 

@@ -1,0 +1,236 @@
+/* Same visual language as modules/abm/AbmMissionImport.css (mi-*), scoped
+   under its own fpi- prefix since this modal lives outside ABM. */
+
+.fpi-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.fpi-modal {
+  background: #0A0A0A;
+  border: 1px solid #333;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: #FFD700;
+  display: flex;
+  flex-direction: column;
+  width: 620px;
+  max-height: 80vh;
+  min-height: 200px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.fpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px 4px;
+  border-bottom: 1px solid #222;
+}
+
+.fpi-title {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #888;
+}
+
+.fpi-close {
+  background: transparent;
+  border: none;
+  color: #555;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.fpi-close:hover { color: #CC4444; }
+
+/* ── Drop zone ──────────────────────────────────────────── */
+.fpi-dropzone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px;
+  border: 1px dashed #333;
+  cursor: pointer;
+  padding: 32px;
+  transition: border-color 0.1s, background 0.1s;
+}
+.fpi-dropzone:hover,
+.fpi-dropzone.dragging {
+  border-color: #555;
+  background: rgba(255, 215, 0, 0.03);
+}
+
+.fpi-drop-icon  { font-size: 20px; color: #444; }
+.fpi-drop-label { color: #888; letter-spacing: 0.06em; }
+.fpi-drop-sub   { color: #444; font-size: 9px; }
+
+/* ── Loading / error ────────────────────────────────────── */
+.fpi-status {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  padding: 32px;
+  letter-spacing: 0.06em;
+}
+
+.fpi-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #CC4444;
+  text-align: center;
+}
+
+/* ── Preview / review ───────────────────────────────────── */
+.fpi-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fpi-section {
+  padding: 6px 8px;
+  border-bottom: 1px solid #181818;
+}
+
+.fpi-section-grow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: none;
+}
+
+.fpi-section-label {
+  font-size: 8px;
+  color: #444;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+/* DTC route-slot picker */
+.fpi-slot-list { display: flex; gap: 8px; }
+.fpi-slot-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #AAA;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.fpi-slot-btn:hover { border-color: #FFD700; color: #FFD700; }
+.fpi-slot-count { color: #666; font-size: 8px; }
+
+/* DTC AID entry */
+.fpi-aid-form { display: flex; gap: 6px; }
+.fpi-aid-input {
+  background: #111;
+  border: 1px solid #333;
+  color: #FFD700;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 8px;
+  width: 140px;
+}
+
+/* Row list */
+.fpi-row-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fpi-row {
+  display: grid;
+  grid-template-columns: 16px 64px 42px 110px 1fr auto;
+  gap: 0 8px;
+  align-items: center;
+  padding: 3px 2px;
+  color: #AAA;
+}
+.fpi-row:hover { background: #0D150D; }
+.fpi-row.excluded { opacity: 0.4; }
+
+.fpi-row-check input { cursor: pointer; }
+.fpi-row-aid { color: #FFD700; }
+.fpi-row-typ { color: #888; }
+.fpi-row-dep-dest { color: #AAA; font-size: 9px; }
+.fpi-row-rte {
+  color: #666;
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fpi-row-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.fpi-badge-collision { color: #CC8833; border: 1px solid #553311; }
+.fpi-badge-warn      { color: #CC4444; border: 1px solid #441818; }
+
+.fpi-mini-btn {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 8px;
+  padding: 1px 4px;
+  cursor: pointer;
+}
+.fpi-mini-btn.active { background: rgba(204, 136, 51, 0.15); }
+
+/* ── Footer ─────────────────────────────────────────────── */
+.fpi-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid #1A1A1A;
+}
+
+.fpi-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #555;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 3px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.fpi-btn:hover { border-color: #666; color: #888; }
+.fpi-btn:disabled { opacity: 0.4; cursor: default; }
+.fpi-btn:disabled:hover { border-color: #333; color: #555; }
+
+.fpi-btn-primary { border-color: #556622; color: #99BB33; }
+.fpi-btn-primary:hover { border-color: #88AA33; color: #CCEE55; }

@@ -139,6 +139,21 @@ export const useStripsStore = create(
       }
     }),
 
+  // ── Clear every strip from one bay only (local, personal -- no WebRTC
+  // broadcast, unlike a flight-plan delete) ────────────────────────────
+  clearBay: (bayId) =>
+    set((state) => {
+      const bay = state.bays.find((b) => b.id === bayId)
+      if (!bay) return {}
+      const removed = new Set(bay.stripIds)
+      const strips = { ...state.strips }
+      for (const id of removed) delete strips[id]
+      return {
+        strips,
+        bays: state.bays.map((b) => (b.id === bayId ? { ...b, stripIds: [] } : b)),
+      }
+    }),
+
   // ── Delete all strips for an AID (e.g. flight plan deleted) ──────
   deleteByAid: (aid) =>
     set((state) => {
