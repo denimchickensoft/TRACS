@@ -115,6 +115,7 @@ Bare-click (empty buffer) also resolves pending point-outs/handoffs automaticall
 | `.FIX <name...>` + ENTER | — | Force-show one or more fixes regardless of the FIXES DCB toggle; each name toggles independently |
 | `.PROC <name>` + ENTER | — | Toggle display of a named SID/STAR/approach procedure |
 | `.PROC` + ENTER | — | Clear all shown procedures |
+| `.RCLEAR` + ENTER | — | Clear every flight-plan route line currently displayed (see Ctrl+Right-click below) |
 | `.FP <callsign>` + ENTER | — | Open the Flight Plan Editor prefilled for that callsign |
 | `.FP` + ENTER | `Ctrl+F` | Open a blank Flight Plan Editor |
 | `.RENAME <newCallsign>` + SLEW | — | Rename the clicked track's displayed callsign |
@@ -191,7 +192,7 @@ Tracks outside the active filter range don't draw at all — useful for declutte
 | Middle-click a contact | Toggle a local highlight (not synced, not persisted) |
 | Ctrl+Click a contact | Open its Flight Plan Editor |
 | Ctrl+Shift+Click a contact | Initiate Control |
-| Alt+Click a contact | Toggle that track's flight-plan route line |
+| Ctrl+Right-click a contact | Toggle that track's flight-plan route line |
 | Mouse wheel | Zoom range (±1/notch, ±3 with Ctrl); inhibited while adjusting a DCB spinner |
 
 ## Display Control Bar (DCB)
@@ -299,6 +300,8 @@ A form-driven panel — no command line.
 Flight progress strips — no command line; direct manipulation only. `IC` on the main ATC scope auto-adds a strip if enabled in settings.
 
 **Adding strips:** type a callsign into the footer input and press Enter/click **Add Strip**. Auto-add can also trigger on track initiation, handoff acceptance, strip-pass acceptance, or a DEP/DEST airport match — configurable behind the **⚙** settings button.
+
+**Bulk flight-plan import:** the footer's **⬆ Load Mission** button opens a bulk-import dialog accepting a `.miz` mission file, a CSV, or a DCS Data Transfer Cartridge (`.dtc`, F-16C/F/A-18C) — each produces one or more flight plans for review (with per-row collision handling) before committing. Once any imported flight plans exist, **✕ Clear Mission** removes them all session-wide (confirmation required) — this deletes the actual flight plans, visible to every controller. **✕ Clear Strip Bay**, shown whenever the bay has strips, clears only your own local strips (confirmation required) and never touches the underlying flight plans.
 
 **Per-strip mouse actions:**
 
