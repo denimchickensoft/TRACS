@@ -9,6 +9,13 @@ import './FPE.css'
 // A partial code (e.g. "634") or one containing 8/9 is never a valid squawk.
 const BCN_RE = /^[0-7]{4}$/
 
+// Aircraft type designators are plain alphanumeric (e.g. F16, FA18, A10) --
+// strip hyphens/slashes/etc a controller might type from the in-sim name
+// (F-15, F/A-18C) rather than the ICAO-style designator.
+function sanitizeTyp(value) {
+  return (value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
 // ── Draggable panel ───────────────────────────────────────────────────────────
 function useDrag(panelRef) {
   const dragState = useRef({ dragging: false, ox: 0, oy: 0 })
@@ -87,7 +94,7 @@ export function FPE({ scope = null }) {
     if (plan) {
       setCid(plan.cid   ?? '')
       setBcn(plan.bcn   ?? '')
-      setTyp(plan.typ   ?? '')
+      setTyp(sanitizeTyp(plan.typ))
       setEq(plan.eq     ?? '')
       setDep(plan.dep   ?? '')
       setDest(plan.dest ?? '')
@@ -126,7 +133,7 @@ export function FPE({ scope = null }) {
     if (!plan) return
     setCid(plan.cid   ?? '')
     setBcn(plan.bcn   ?? '')
-    setTyp(plan.typ   ?? '')
+    setTyp(sanitizeTyp(plan.typ))
     setEq(plan.eq     ?? '')
     setDep(plan.dep   ?? '')
     setDest(plan.dest ?? '')
@@ -293,7 +300,7 @@ export function FPE({ scope = null }) {
               <input
                 className="fpe-input"
                 value={typ}
-                onChange={(e) => setTyp(e.target.value.toUpperCase())}
+                onChange={(e) => setTyp(sanitizeTyp(e.target.value))}
                 onKeyDown={inputKeyDown(setTyp)}
                 readOnly={disabled}
                 placeholder="F16"
