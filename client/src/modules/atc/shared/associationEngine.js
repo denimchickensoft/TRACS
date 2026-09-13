@@ -12,6 +12,17 @@
 // flow; a plan typed directly into StripBay's callsign box (a normal, very
 // common way to add a strip) never gets one, and would otherwise be
 // permanently unassociatable no matter how well its code/callsign matched.
+//
+// Also tries a plan's `dcsUnitId` (set by .miz import) against the live
+// unit's `unitID` when the callsign match fails — the only way to associate
+// a single-ship AI group, whose live callsign never carries the mission
+// file's true disambiguating digit (see utils/callsign.js findFlightPlanAid
+// for the full story). Gated by the caller-supplied `dcsUnitIdReliable` flag
+// rather than reading it here, to keep this module free of store imports
+// (same "pure logic" convention as stars/stca/formations.js) — see
+// utils/callsign.js's dcsUnitIdReliable() for why this must never run
+// against Tacview-sourced unit IDs (a real false-positive-match risk, not
+// just an ineffective no-op).
 
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { hasLiveSquawk } from '../../../utils/transponder.js'
@@ -30,9 +41,12 @@ function normalizeCode(code) {
  * @param {Object} flightPlans    plans keyed by AID (useFlightPlansStore().plans)
  * @param {Object} ownership      unitId -> controllerId (useAtcStore().ownership)
  * @param {Object} previousAssociated  prior { [unitId]: aid } (useAssociationStore().associated)
+ * @param {boolean} dcsUnitIdReliable  whether live unit IDs can be trusted against plan.dcsUnitId
+ *   this session (utils/callsign.js's dcsUnitIdReliable() — true only for a direct Olympus
+ *   connection). Passed in rather than read here to keep this module store-free.
  * @returns {Object} next { [unitId]: aid } — sticky-while-owned, sparse (only associated entries present)
  */
-export function computeAssociations({ units, flightPlans, ownership = {}, previousAssociated = {} }) {
+export function computeAssociations({ units, flightPlans, ownership = {}, previousAssociated = {}, dcsUnitIdReliable = false }) {
   const next = {}
   const plans = Object.values(flightPlans ?? {})
 
@@ -61,6 +75,7 @@ export function computeAssociations({ units, flightPlans, ownership = {}, previo
     const squawk = unit.transponder.mode3
     const liveCallsign = resolveCallsign(unit).toUpperCase()
 
+    let candidate = null
     for (const plan of plans) {
       const planAid = plan.aid?.toUpperCase()
       if (!planAid) continue
@@ -71,10 +86,21 @@ export function computeAssociations({ units, flightPlans, ownership = {}, previo
       // a long DCS unit/pilot name (e.g. "Denim Chicken" -> "DENIMCHICKEN")
       // itself, and the AID field can't hold more than AID_MAX_LEN anyway.
       if (planAid !== liveCallsign.slice(0, AID_MAX_LEN)) continue
-      if (normalizeCode(squawk) !== normalizeCode(plan.bcn)) continue
-      next[unitId] = planAid
+      candidate = plan
       break
     }
+
+    // Callsign match found nothing -- try the mission-file DCS unit ID
+    // instead (single-ship AI groups only ever resolve this way; see the
+    // header comment). The squawk gate below still applies exactly the same
+    // to whichever candidate was found.
+    if (!candidate && dcsUnitIdReliable && unit.unitID != null) {
+      candidate = plans.find((p) => p.dcsUnitId != null && String(p.dcsUnitId) === String(unit.unitID)) ?? null
+    }
+
+    if (!candidate) continue
+    if (normalizeCode(squawk) !== normalizeCode(candidate.bcn)) continue
+    next[unitId] = candidate.aid?.toUpperCase()
   }
 
   return next

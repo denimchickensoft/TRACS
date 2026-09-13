@@ -3,7 +3,7 @@ import { useFlightPlansStore } from '../store/flightPlans'
 import { useAtcStore } from '../store/atc'
 import { useSessionStore } from '../store/session'
 import { useStripsStore } from '../store/strips'
-import { resolveCallsign } from '../utils/callsign'
+import { findFlightPlanAid } from '../utils/callsign'
 
 const WS_URL = '/ws'
 const RECONNECT_INTERVAL_MS = 3000
@@ -31,9 +31,10 @@ function dispatch(message) {
       // so the fallback display after unit drop shows the correct callsign, not unit.id
       if (delta.removed) {
         const strips = useStripsStore.getState()
+        const plansAtRemoval = useFlightPlansStore.getState().plans
         for (const unitId of delta.removed) {
           const unit = currentUnits[unitId]
-          if (unit) strips.renameAid(unitId, resolveCallsign(unit))
+          if (unit) strips.renameAid(unitId, findFlightPlanAid(unit, plansAtRemoval))
         }
       }
 
@@ -45,13 +46,14 @@ function dispatch(message) {
         const updatedUnits = useUnitsStore.getState().units
         const strips       = useStripsStore.getState()
         const stripList    = Object.values(strips.strips)
+        const plans        = useFlightPlansStore.getState().plans
         for (const unitId of Object.keys(delta.updated)) {
           const unit = updatedUnits[unitId]
           if (!unit) continue
           const strip = stripList.find((s) => String(s.unitId) === unitId)
           if (!strip) continue
           if (!unit.callsign && !unit.unitName) continue  // dead/stub unit — no name data to rename from
-          const callsign = resolveCallsign(unit)
+          const callsign = findFlightPlanAid(unit, plans)
           if (strip.aid !== callsign) strips.renameAid(unitId, callsign)
         }
       }

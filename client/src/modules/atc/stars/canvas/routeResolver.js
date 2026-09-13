@@ -2,6 +2,8 @@
 // Returns segments (solid/dashed polylines), fixLabels (dots + idents),
 // and missing (midpoint coords for '?' markers on unresolvable tokens).
 
+import { parseIcaoRoutePoint } from '../../../../utils/coords.js'
+
 const COORD_PREC  = 4     // decimal places for segment-endpoint key matching (~11m)
 const NEAREST_TOL = 0.05  // degrees (~3nm) to snap fix coords to airway graph nodes
 
@@ -168,6 +170,16 @@ export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
     const resolved = lookupFix(tok)
     if (resolved) {
       return { kind: 'fix', id: tok, coords: { lat: resolved.lat, lon: resolved.lon } }
+    }
+    // Not a named fix -- check for an ICAO-compact coordinate token
+    // (DDMM(N/S)DDDMM(E/W), e.g. "2607N05531E"), the fallback format used
+    // for unmatched .miz/DTC/CSV waypoints (see utils/coords.js
+    // formatIcaoRoutePoint / resources/specs/pilot-flightplan-ingestion-spec.md).
+    // Without this, those points would draw as an unresolvable '?' gap
+    // despite carrying a real, known position.
+    const icaoPt = parseIcaoRoutePoint(tok)
+    if (icaoPt) {
+      return { kind: 'fix', id: tok, coords: { lat: icaoPt.lat, lon: icaoPt.lng } }
     }
     // Not a navdata fix — try as a bare procedure name (no explicit transition)
     const result = resolveProcLeg(tok, '', depProcs) ?? resolveProcLeg(tok, '', destProcs)

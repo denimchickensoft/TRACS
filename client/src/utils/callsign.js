@@ -64,6 +64,62 @@ export function resolveCallsign(unit) {
 }
 
 /**
+ * Whether the current session's live unit IDs can be trusted to match the
+ * mission file's per-unit `unitId` (i.e. `dcsUnitId` on an imported flight
+ * plan). True only for a direct Olympus connection: Olympus's `unitID`
+ * reliably mirrors DCS's real internal ID. Tacview's live unit IDs do NOT
+ * (its own internal enumeration counter, unrelated to DCS's engine state --
+ * see buildLiveUnitLookup()'s comment below, an existing, un-gated exposure
+ * to this same risk in ABM/AIC correlation). Under Tacview, matching on this
+ * ID isn't just unhelpful, it risks a false-positive collision with an
+ * unrelated plan's `dcsUnitId`, so this is excluded there -- and for
+ * `relay`, since what backs a relay session isn't guaranteed to be Olympus.
+ */
+export function dcsUnitIdReliable() {
+  return useSessionStore.getState().sourceType === 'olympus'
+}
+
+/**
+ * Finds the AID of a flight plan already filed for this unit. Three tiers,
+ * most to least reliable:
+ *
+ *   1. DCS's own internal unit ID (only when dcsUnitIdReliable(), see
+ *      above): Olympus's live `unitID` field reliably matches the mission
+ *      file's per-unit `unitId`. A .miz-imported flight plan carries this
+ *      as `dcsUnitId` (see mizFlightPlans.js). This is the ONLY tier that
+ *      can rescue a single-ship AI group: confirmed against a real live
+ *      payload that Olympus's `unitName` AND `callsign` both just report
+ *      the bare unit name ("Texaco 2") for a solo group -- the mission
+ *      file's true callsign ("Texaco21") simply never reaches live
+ *      telemetry as a string at all, so no string-based tier could ever
+ *      find it.
+ *   2. resolveCallsign(unit) (today's behavior, unchanged) -- the common
+ *      case: multi-ship groups (unitName already carries a "-N" element
+ *      suffix) and piped multiplayer names ("Colt 1-1 | Denim" -> "COLT11")
+ *      both already match on their own.
+ *   3. stripAcid(unit.callsign), kept as a harmless last resort in case
+ *      some other data source or unit type ever does expose a distinct
+ *      callsign field (confirmed NOT to for the AI case above, but not
+ *      disproven universally).
+ *
+ * Strictly additive at every tier: never overrides an already-matching
+ * earlier tier, so it can't affect a case that already works.
+ */
+export function findFlightPlanAid(unit, plans) {
+  if (unit.unitID != null && dcsUnitIdReliable()) {
+    const byDcsId = Object.values(plans).find(
+      (p) => p.dcsUnitId != null && String(p.dcsUnitId) === String(unit.unitID)
+    )
+    if (byDcsId) return byDcsId.aid
+  }
+  const primary = resolveCallsign(unit)?.toUpperCase()
+  if (primary && plans[primary]) return primary
+  const fallback = stripAcid(unit.callsign ?? '')
+  if (fallback && plans[fallback]) return fallback
+  return primary ?? fallback ?? null
+}
+
+/**
  * Resolve the pilot's real name from the pipe convention ("VIPER1 | John Smith").
  * Returns null if useDcsNames is off, no pipe is present, or no unitName exists.
  */

@@ -66,7 +66,7 @@ import { usePresetsStore }  from '../../../store/presets.js'
 import { useFpeStore }      from '../../../store/fpe.js'
 import { useNavdataStore }      from '../../../store/navdata.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
-import { resolveCallsign } from '../../../utils/callsign.js'
+import { findFlightPlanAid } from '../../../utils/callsign.js'
 import { formatElevation } from '../../../utils/coords.js'
 import { hasLiveSquawk }  from '../../../utils/transponder.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
@@ -672,7 +672,7 @@ export default function StarsScope() {
     const icaosNeeded = new Set()
     for (const uid of routeDisplayedUids) {
       const unit = Object.values(allUnits).find(u => String(u.id) === uid)
-      const aid  = unit ? resolveCallsign(unit)?.toUpperCase() : null
+      const aid  = unit ? findFlightPlanAid(unit, plans) : null
       const fpl  = (aid ? plans[aid] : null)
                 ?? Object.values(plans).find(p => String(p.unitId) === uid)
       if (fpl?.dep)  icaosNeeded.add(fpl.dep.toUpperCase())
@@ -716,7 +716,7 @@ export default function StarsScope() {
     const routesByUid = new Map()
     for (const uid of routeDisplayedUids) {
       const unit = Object.values(allUnits).find(u => String(u.id) === uid)
-      const aid  = unit ? resolveCallsign(unit)?.toUpperCase() : null
+      const aid  = unit ? findFlightPlanAid(unit, plans) : null
       const fpl  = (aid ? plans[aid] : null)
                 ?? Object.values(plans).find(p => String(p.unitId) === uid)
       if (!fpl) continue
@@ -1001,6 +1001,26 @@ export default function StarsScope() {
 
   // ── Mouse: LEFT click = slew, RIGHT drag = pan ────────────────────
   const handleMouseDown = useCallback((e) => {
+    if (e.button === 2 && e.ctrlKey) {
+      // Ctrl+right-click — toggle that contact's filed route on the scope.
+      // Same convention as ABM's AbmScope.jsx. Takes priority over starting
+      // a pan-drag; a plain right-click (no Ctrl) still pans.
+      const rect = interactiveRef.current?.getBoundingClientRect()
+      if (rect && viewRef.current) {
+        const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+        const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+        if (target) {
+          const uid     = String(target.unitId)
+          const current = windowSettings?.routeDisplayedUids ?? []
+          const next    = new Set(current)
+          if (next.has(uid)) next.delete(uid)
+          else               next.add(uid)
+          displayStore.updateWindow(WINDOW_ID, { routeDisplayedUids: [...next] })
+        }
+      }
+      e.preventDefault()
+      return
+    }
     if (e.button === 2) {
       // Right mouse — start pan
       panRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, moved: false }
@@ -1009,7 +1029,7 @@ export default function StarsScope() {
     // Middle mouse — suppress the browser's autoscroll/paste behaviour so
     // mouseup's highlight toggle (below) is the only effect.
     if (e.button === 1) e.preventDefault()
-  }, [])
+  }, [windowSettings, displayStore])
 
   const handleMouseMove = useCallback((e) => {
     const rect = interactiveRef.current?.getBoundingClientRect()
@@ -1093,27 +1113,11 @@ export default function StarsScope() {
       if (viewRef.current) {
         const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
         if (target) {
-          const aid      = resolveCallsign(target.unit)
+          const aid      = findFlightPlanAid(target.unit, useFlightPlansStore.getState().plans)
           const owner    = useAtcStore.getState().ownership[target.unitId]
           const readOnly = !!(owner && owner !== myControllerId)
           useFpeStore.getState().openFpe({ aid, unitId: target.unitId, readOnly, scope: 'atc' })
         }
-      }
-      return
-    }
-
-    if (e.button === 0 && e.altKey) {
-      const rect = interactiveRef.current?.getBoundingClientRect()
-      if (!rect || !viewRef.current) return
-      const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
-      const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
-      if (target) {
-        const uid     = String(target.unitId)
-        const current = windowSettings?.routeDisplayedUids ?? []
-        const next    = new Set(current)
-        if (next.has(uid)) next.delete(uid)
-        else               next.add(uid)
-        displayStore.updateWindow(WINDOW_ID, { routeDisplayedUids: [...next] })
       }
       return
     }

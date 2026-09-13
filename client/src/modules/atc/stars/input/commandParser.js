@@ -112,6 +112,11 @@ const COMMANDS = [
   { id: 'SHOW_PROC',            pattern: /^\.PROC (.+)$/,         trigger: 'ENTER', captures: ['name'] },
   { id: 'CLEAR_PROCS',          pattern: /^\.PROC$/,              trigger: 'ENTER' },
 
+  // ── Filed-route display ──────────────────────────────────────────
+  // .RCLEAR — clears every route currently shown (Ctrl+right-click toggle),
+  // same convention as ABM's own .rclear.
+  { id: 'RCLEAR',               pattern: /^\.RCLEAR$/,            trigger: 'ENTER' },
+
   // ── Flight plan editor ──────────────────────────────────────────
   { id: 'OPEN_FPE',             pattern: /^\.FP (.+)$/,           trigger: 'ENTER', captures: ['aid'] },
   { id: 'OPEN_FPE',             pattern: /^\.FP$/,                trigger: 'ENTER' },

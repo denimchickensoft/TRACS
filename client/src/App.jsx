@@ -6,6 +6,7 @@ import { useUnitsStore }       from './store/units'
 import { useFlightPlansStore } from './store/flightPlans'
 import { useAssociationStore } from './store/association'
 import { computeAssociations } from './modules/atc/shared/associationEngine.js'
+import { dcsUnitIdReliable } from './utils/callsign.js'
 import { useAtcStore }         from './store/atc.js'
 import { Login }         from './components/Login/Login'
 import StarsScope        from './modules/atc/stars/StarsScope'
@@ -110,13 +111,15 @@ export function App() {
   const unitsForAssoc     = useUnitsStore((s) => s.units)
   const plansForAssoc     = useFlightPlansStore((s) => s.plans)
   const ownershipForAssoc = useAtcStore((s) => s.ownership)
+  const sourceTypeForAssoc = useSessionStore((s) => s.sourceType)
   useEffect(() => {
     const previous = useAssociationStore.getState().associated
     const next = computeAssociations({
       units: unitsForAssoc, flightPlans: plansForAssoc, ownership: ownershipForAssoc, previousAssociated: previous,
+      dcsUnitIdReliable: dcsUnitIdReliable(),
     })
     useAssociationStore.getState().setAssociated(next)
-  }, [unitsForAssoc, plansForAssoc, ownershipForAssoc])
+  }, [unitsForAssoc, plansForAssoc, ownershipForAssoc, sourceTypeForAssoc])
 
   // ── IDENT onset detection ─────────────────────────────────────────────
   // Latches identUnacked on the edge (status becomes 2) — same blink

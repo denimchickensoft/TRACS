@@ -11,7 +11,7 @@ import { useAssociationStore }  from '../../../store/association.js'
 import { useAsdexManualTagsStore } from '../../../store/asdexManualTags.js'
 import { loadAsdexPrefs } from '../../../store/asdexPrefs.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../../../utils/projection.js'
-import { resolveCallsign }     from '../../../utils/callsign.js'
+import { resolveCallsign, findFlightPlanAid } from '../../../utils/callsign.js'
 import { computeMagvar }       from '../../../utils/magvar.js'
 import { AsdexDcb, ASDEX_WINDOW_ID } from './AsdexDcb.jsx'
 import { AsdexInputHandler }   from './AsdexInputHandler.jsx'
@@ -469,7 +469,7 @@ export default function AsdexScope() {
     if (e.ctrlKey) {
       const nearest = findNearest()
       if (!nearest) return
-      const aid      = resolveCallsign(nearest.unit).toUpperCase()
+      const aid      = findFlightPlanAid(nearest.unit, useFlightPlansStore.getState().plans)
       const owner    = useAtcStore.getState().ownership[String(nearest.id)]
       const readOnly = !!(owner && owner !== myControllerIdRef.current)
       useFpeStore.getState().openFpe({ aid, unitId: Number(nearest.id), readOnly, scope: 'asdex' })

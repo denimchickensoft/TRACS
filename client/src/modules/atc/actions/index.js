@@ -32,7 +32,7 @@ import { useProceduresStore }  from '../../../store/procedures.js'
 import { useUnitsStore }       from '../../../store/units.js'
 import { useAssociationStore } from '../../../store/association.js'
 import { computeWingmanIds }   from '../stars/stca/formations.js'
-import { resolveCallsign } from '../../../utils/callsign.js'
+import { findFlightPlanAid } from '../../../utils/callsign.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
@@ -80,7 +80,7 @@ export function INIT_CNTL({ slewTarget }) {
   claimTrack(slewTarget.unitId, controllerId)
   sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, controllerId })
   if (useSessionStore.getState().activeModule === 'ATC') {
-    const aid = resolveCallsign(slewTarget.unit)
+    const aid = findFlightPlanAid(slewTarget.unit, useFlightPlansStore.getState().plans)
     useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: slewTarget.unitId })
   }
   ok()
@@ -131,7 +131,7 @@ export function TERM_CNTL({ slewTarget }) {
   if (useSessionStore.getState().activeModule === 'ATC') {
     const { deleteOnDropTrack, deleteByAid } = useStripsStore.getState()
     if (deleteOnDropTrack) {
-      const aid = resolveCallsign(slewTarget.unit)
+      const aid = findFlightPlanAid(slewTarget.unit, useFlightPlansStore.getState().plans)
       if (aid) deleteByAid(aid)
     }
   }
@@ -846,6 +846,14 @@ export function CLEAR_PROCS() {
   ok()
 }
 
+// .RCLEAR — clears every route currently shown on the scope (toggled via
+// Ctrl+right-click, see StarsScope.jsx's handleMouseDown). Same "hide all
+// routes" convention as ABM's own .rclear (actions/index.js RCLEAR there).
+export function RCLEAR() {
+  getDisplay().updateWindow(WINDOW_ID, { routeDisplayedUids: [] })
+  ok()
+}
+
 // ── Dispatch table ────────────────────────────────────────────────────────────
 
 const ACTION_MAP = {
@@ -910,6 +918,7 @@ const ACTION_MAP = {
   RBL_CLEAR_N,
   SHOW_PROC,
   CLEAR_PROCS,
+  RCLEAR,
   // List management
   RELOCATE_SSA,
   TOGGLE_SIGNON, RELOCATE_SIGNON,
