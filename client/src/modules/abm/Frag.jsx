@@ -70,6 +70,7 @@ function radioPresets(radio) {
     .filter(([, freq]) => freq != null && freq !== 0)
     .map(([preset, freq]) => ({
       preset,
+      channel: Number(preset) + 1,
       freq: Number(freq),
       mod: radio.modulations?.[preset] === 1 ? 'FM' : 'AM',
     }))
@@ -390,7 +391,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                                       <div className="frag-radio-label">COMM{ri + 1}</div>
                                       {presets.map(p => (
                                         <div key={p.preset} className="frag-radio-row">
-                                          <span className="frag-radio-ch">CH {p.preset}</span>
+                                          <span className="frag-radio-ch">CH {p.channel}</span>
                                           <span className="frag-radio-fm">
                                             <span className="frag-radio-freq">{p.freq.toFixed(3)}</span>{' '}
                                             <span className="frag-radio-mod">{p.mod}</span>
