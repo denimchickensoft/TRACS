@@ -3,7 +3,7 @@
  * per 2026-07-05 direction: same declaration colors as AIC, but every
  * contact is a plain square (no HAFU dome/staple/triangle shapes), with
  * STARS/ASDE-X-style persistent datablocks + leader lines + history trails,
- * all colored to match the contact's classification (not white/gray like
+ * all colored to match the contact's declaration (not white/gray like
  * STARS/ASDE-X use). Declarations are ABM's own (store/abm.js) — kept
  * independent from AIC's, not shared (deferred, see abm-spec.md §1.2).
  */
@@ -20,6 +20,7 @@ const SYM_HALF     = 3   // square half-width, px (hollow outline, not filled)
 const CULL_MARGIN  = 60
 const EMPTY_SET    = new Set()
 const EMPTY_MAP    = new Map()
+const EMPTY_ARRAY  = []
 const BLINK_DIM    = '#C0C0C0'  // same dim gray STARS blinks a handoff datablock down to
 
 // Same truncation AIC's readout uses: strip suffix after _/space, then
@@ -52,6 +53,26 @@ export function parseFlightElement(unit) {
   const element  = parseInt(digits.slice(-1), 10)
   const flightNo = digits.slice(0, -1)
   return { flightKey: `${prefix}${flightNo}`, element }
+}
+
+// Uncorrelated, transponder-equipped contact — line 1 cycles through
+// whichever of Mode 1/2/3/4 are actually present/on, labeled (e.g. "M1 11" —
+// Mode 1 is a real 2-digit octal code, unlike Mode 2/3's 4-digit "M3 3333" —
+// "M4 ON"), 2 seconds per mode, skipping unset modes. Empty when there's nothing to show
+// (not srsCapable, or srsCapable with no live code/mode4 at all) — that case
+// stays the plain 1-line non-friendly datablock, unchanged. See
+// resources/specs/transponder-correlation-spec.md.
+function buildIffFrames(unit) {
+  const t = unit?.transponder
+  if (!unit?.srsCapable || !t) return []
+  const frames = []
+  if (t.status === 1 || t.status === 2) {
+    if (typeof t.mode1 === 'number' && t.mode1 >= 0) frames.push(`M1 ${String(t.mode1).padStart(2, '0')}`)
+    if (typeof t.mode2 === 'number' && t.mode2 >= 0) frames.push(`M2 ${String(t.mode2).padStart(4, '0')}`)
+    if (typeof t.mode3 === 'number' && t.mode3 >= 0) frames.push(`M3 ${String(t.mode3).padStart(4, '0')}`)
+  }
+  if (t.mode4 === true) frames.push('M4 ON')
+  return frames
 }
 
 // A follower qualifies for suppression if it's within a 3NM-per-side box
@@ -151,13 +172,14 @@ export function drawAbmContacts(
   history, historyLimit,
   fadedContacts = {}, fadedNow = 0,
   dbSuppress = true,
-  myCoalitionNum = null,
   rwrKnownIds = EMPTY_SET,
   dbca = false,
   dbHiddenIds = EMPTY_SET,
   highlightedIds = EMPTY_SET,
   blinkingIds = EMPTY_SET,
   blinkOn = true,
+  correlatedUnitIds = EMPTY_SET,
+  iffCycleIndex = 0,
 ) {
   const { width, height } = view
   ctx.font = '11px "Roboto Mono", monospace'
@@ -188,7 +210,7 @@ export function drawAbmContacts(
     const decl  = getDecl(id, unit)
     const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY]
     // Middle-click highlight override — symbol/leader/text/PTL, not the
-    // history trail (that stays in the contact's own classification color).
+    // history trail (that stays in the contact's own declaration color).
     // Non-friendly (HOSTILE/BOGEY) highlights purple instead of teal, so a
     // highlighted bandit doesn't read as friendly-adjacent at a glance.
     const isHighlighted  = highlightedIds.has(id)
@@ -203,7 +225,7 @@ export function drawAbmContacts(
 
     if (ptlMinutes > 0) drawPtl(ctx, x, y, unit, view, ptlMinutes * 60, dbColor)
 
-    // History trail — small squares in the same classification color, fading
+    // History trail — small squares in the same declaration color, fading
     const trail = (history ?? {})[id] || []
     for (let i = 0; i < trail.length && i < historyLimit; i++) {
       const hp = latLngToCanvas(trail[i].lat, trail[i].lng, view)
@@ -222,14 +244,29 @@ export function drawAbmContacts(
     if (suppressedIds.has(id)) continue  // formation lead's datablock covers this wingman
     if (dbHiddenIds.has(id)) continue    // .db + click per-contact override
 
-    // Datablock — friendly gets callsign + alt/speed-or-type; everyone else
-    // gets a single alt/speed(-or-type) line (no callsign — same "IFF
-    // doesn't know the bogey's name" convention AIC's readout already
-    // uses). Keyed off the unit's *actual* coalition, not the (possibly
-    // manually overridden) declaration — a controller tagging a real
-    // hostile/neutral as FRIENDLY (F4) changes its color but must not grant
-    // it the friendly-only 2-line datablock (2026-07-08).
-    const isFriendly = unit.coalition === myCoalitionNum
+    // Datablock — friendly (or correlated to a FRAG-assigned aircraft, see
+    // correlationEngine.js) gets callsign + alt/speed-or-type; an
+    // uncorrelated, transponder-equipped contact cycles its live Mode 1/2/3/4
+    // through line 1 instead of a callsign (buildIffFrames, above) — reduced
+    // info rather than full anonymity, same STARS-LDB-style philosophy used
+    // elsewhere in resources/specs/transponder-correlation-spec.md.
+    //
+    // Identity reveal vs. declaration, deliberately decoupled (2026-09-14,
+    // corrected after a live report): declaration/color always stays exactly
+    // what's in `decl` — that part is sticky by design and untouched here.
+    // But for an `srsCapable` contact, callsign/type reveal is driven by
+    // CURRENT correlation alone, not by `decl`. A sticky FRIENDLY declaration
+    // (via .autodec iff or manual F4) does NOT by itself keep the callsign
+    // visible — if the live transponder stops correlating, the datablock
+    // reverts to cycling codes even though the tag stays friendly-colored.
+    // This intentionally differs from a plain F4-declared non-srsCapable
+    // contact (below), which still reveals unconditionally on declare — for
+    // those, ground truth via declaration is the only signal that ever
+    // existed, there's no live correlation concept to defer to.
+    const correlated = correlatedUnitIds.has(String(id))
+    const isFriendly = unit.srsCapable ? correlated : decl === DECLARATION.FRIENDLY
+    const iffFrames  = (!isFriendly) ? buildIffFrames(unit) : EMPTY_ARRAY
+    const showsBlock = isFriendly || iffFrames.length > 0
     // Non-friendly type is only known once RWR has ever painted it
     // (rwrKnownIds — same sticky reveal as the air-unit readout in
     // AbmScope.jsx); until then it can't cycle to a type it doesn't have.
@@ -242,7 +279,8 @@ export function drawAbmContacts(
     const unitDir   = leaderDirs?.[String(id)]
     const altSpdLine = `${alt100} ${spd10}`
     const line2      = (altToggle && knowsType) ? `${alt100} ${typeAbbrev(unit)}` : altSpdLine
-    const lines      = isFriendly ? [resolveCallsign(unit).toUpperCase(), line2] : [line2]
+    const line1      = isFriendly ? resolveCallsign(unit).toUpperCase() : iffFrames[iffCycleIndex % iffFrames.length]
+    const lines      = showsBlock ? [line1, line2] : [line2]
 
     if (dbca) {
       dbCandidates.push({
@@ -276,7 +314,7 @@ export function drawAbmContacts(
     ctx.textAlign    = rightAlign ? 'right' : 'left'
     ctx.textBaseline = 'alphabetic'
 
-    if (isFriendly) {
+    if (showsBlock) {
       ctx.fillText(lines[0], tx, ly1 - 6)
       ctx.fillText(lines[1], tx, ly1 + 6)
     } else {

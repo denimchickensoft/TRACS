@@ -44,12 +44,13 @@ function fmtGs(mps) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} view            { centerLat, centerLng, pixelsPerNm, width, height }
  * @param {object} units           { [id]: unit }
- * @param {object} correlations    { [unitId]: sideNumber string }
+ * @param {object} correlations    { [unitId]: sideNumber string } — revealed (BCN+callsign matched, or old-model non-srsCapable)
+ * @param {object} pendingCodes    { [unitId]: squawk string } — srsCapable, squawking, not yet BCN-matched (reduced info instead of 'XXX')
  * @param {number} brite           0–100
  * @param {number|null} marshalBearing  magnetic bearing of the marshal/approach radial (degrees)
  * @param {boolean} dbca           datablock collision avoidance on/off
  */
-export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true) {
+export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes = {}, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true) {
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
 
@@ -68,7 +69,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, brite = 80, 
     if (!pos) continue
     const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
     if (x < -100 || x > width + 100 || y < -100 || y > height + 100) continue
-    const line1 = correlations[String(id)] ?? 'XXX'
+    const line1 = correlations[String(id)] ?? pendingCodes[String(id)] ?? 'XXX'
     const line2 = `${fmtAlt(pos.alt)} ${fmtGs(unit.speed)}`
     const unitDir = leaderDirs[String(id)] ?? null
     const prefAngleDeg = unitDir != null ? DIR_TO_ANGLE[unitDir]

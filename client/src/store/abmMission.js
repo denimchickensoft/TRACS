@@ -14,6 +14,7 @@
 
 import { create } from 'zustand'
 import { resolveCallsign, stripAcid } from '../utils/callsign.js'
+import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 
 const SB_KEY = 'tracs.abm.mission'
 
@@ -33,7 +34,45 @@ function loadSaved() {
   try { return JSON.parse(localStorage.getItem(SB_KEY) ?? 'null') } catch { return null }
 }
 
+// Full field shape a manual flight needs — must match AddAtoFlight.jsx's own
+// addFlight() call exactly, since Frag.jsx/Ato.jsx read several of these
+// fields (route, task, launch, recovery, ...) unconditionally, with no
+// per-field fallback. A flight missing any of them crashes those components
+// outright (found live: `flight.route.length` on a flight created via
+// ensureManualRosterEntry before this shape existed). `units` stays a
+// separate, deliberately-empty placeholder-count array here — see
+// setUnitIff's comment for why a real per-aircraft roster can't live there
+// for a manual flight; `iffRoster` is that real roster instead.
+function MANUAL_FLIGHT_DEFAULTS(name, callsignPrefix, coalition) {
+  return {
+    manual: true,
+    name,
+    callsignPrefix,
+    coalition,
+    task: '',
+    rawTask: '',
+    frequency: null,
+    lateActivation: false,
+    uncontrolled: false,
+    launch: { type: 'airstart' },
+    recovery: { type: 'unknown' },
+    route: [],
+    units: [],
+    iffRoster: [],
+  }
+}
+
 const saved = loadSaved() ?? {}
+
+// New cross-controller sync (2026-09-14) — the rest of this store is
+// deliberately local-only (see header comment), but per-aircraft IFF
+// assignments (Mode 1/2/3, resources/specs/transponder-correlation-spec.md)
+// need to reach every ABM controller, not just this browser's other windows.
+// Scoped narrowly: only IFF-field changes and manual-flight roster
+// creation/edits broadcast — mission import/routes/tasking stay exactly as
+// local as they are today.
+const { register: registerAbmMissionBroadcast, broadcast: broadcastAbmMission } = createBroadcastHook()
+export { registerAbmMissionBroadcast }
 
 export const useAbmMissionStore = create((set, get) => ({
   flights:         saved.flights         ?? [],
@@ -199,6 +238,173 @@ export const useAbmMissionStore = create((set, get) => ({
     const match = get().flights.find((f) => f.units?.some((u) => stripAcid(u.callsign ?? '') === liveCallsign))
     return match?.groupId ?? null
   },
+
+  // Sets one unit's assigned Mode 1/2/3 IFF codes (transponder-correlation-
+  // spec.md's FRAG section). Imported flights store this directly on their
+  // real `units[]` roster (parseMission.js-derived, one entry per aircraft).
+  // Manual flights DON'T — their `units[]` is a lightweight placeholder-count
+  // array Ato.jsx's NUM/TYPE column reads (`{unitId, type, rawType}`, no
+  // callsign, built once at Add Flight time — see AddAtoFlight.jsx's own
+  // comment), a completely different shape a real per-aircraft roster can't
+  // safely share. Manual flights get their own `iffRoster: [{callsign, iff}]`
+  // field instead, left untouched by anything reading `units`.
+  //
+  // Broadcasts differently per flight type: an imported flight only needs
+  // its IFF delta synced (every controller already has the same roster from
+  // their own mission import); a manual flight's whole iffRoster gets
+  // re-broadcast, since other controllers have no local placeholder to merge
+  // a bare delta into (FRAG is local-only otherwise — see header comment).
+  setUnitIff: (groupId, unitCallsign, iff) => {
+    let manual = false
+    set((s) => ({
+      flights: s.flights.map((f) => {
+        if (f.groupId !== groupId) return f
+        manual = !!f.manual
+        if (manual) {
+          const has = (f.iffRoster ?? []).some((u) => u.callsign === unitCallsign)
+          const iffRoster = has
+            ? f.iffRoster.map((u) => u.callsign !== unitCallsign ? u : { ...u, iff: { ...u.iff, ...iff } })
+            : [...(f.iffRoster ?? []), { callsign: unitCallsign, iff }]
+          return { ...f, iffRoster }
+        }
+        return {
+          ...f,
+          units: (f.units ?? []).map((u) => u.callsign !== unitCallsign ? u : { ...u, iff: { ...u.iff, ...iff } }),
+        }
+      }),
+    }))
+    const flight = get().flights.find((f) => f.groupId === groupId)
+    if (!flight) return
+    if (manual) broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId, name: flight.name, callsignPrefix: flight.callsignPrefix, coalition: flight.coalition, iffRoster: flight.iffRoster })
+    else broadcastAbmMission('FRAG_IFF_SET', { groupId, unitCallsign, iff })
+  },
+
+  // Bulk-assign codes from a CSV (matched by callsign against every unit
+  // already known across all flights, imported or manual) — assign-only,
+  // never creates a new flight/unit. Matched via stripAcid, not exact-equals
+  // — the CSV's callsign column is normalized text (csvIffAssignments.js),
+  // but an imported roster row's u.callsign is the raw mission-file string
+  // (e.g. "HAVOC 1-1"); same normalization resolveGroupIdForUnit and
+  // correlationEngine.js already use for the identical problem (manual rows'
+  // iffRoster callsigns are already normalized, so stripAcid is a no-op for
+  // those). Reuses setUnitIff (passing the row's own raw callsign, not the
+  // CSV's normalized one, so setUnitIff's own exact match still finds it) so
+  // the sync/broadcast behavior is identical to a manual/typed edit.
+  // @returns {{ matched: string[], skipped: string[] }}
+  applyIffCsv: (rows) => {
+    const matched = []
+    const skipped = []
+    for (const row of rows) {
+      let found = null
+      for (const f of get().flights) {
+        const u = f.manual
+          ? f.iffRoster?.find((u) => stripAcid(u.callsign ?? '') === row.callsign)
+          : f.units?.find((u) => stripAcid(u.callsign ?? '') === row.callsign)
+        if (u) { found = { flight: f, unit: u }; break }
+      }
+      if (!found) { skipped.push(row.callsign); continue }
+      matched.push(row.callsign)
+      get().setUnitIff(found.flight.groupId, found.unit.callsign, { mode1: row.mode1, mode2: row.mode2, mode3: row.mode3 })
+    }
+    return { matched, skipped }
+  },
+
+  // Ctrl+Shift+Click's create-or-reconcile action (AbmScope.jsx) and Frag.jsx's
+  // manual "add aircraft" row both call this. Checks across EVERY flight
+  // (imported's units[], manual's iffRoster) first — if this exact aircraft
+  // already has a roster row anywhere, just return that flight's groupId, no
+  // mutation, no duplicate. Only when it's genuinely untracked does this
+  // find-or-create the *manual* flight for this callsign-prefix group and
+  // add the iffRoster row. Returns the flight's groupId so the caller can
+  // select/open it.
+  //
+  // Real bug found live: a created flight with no `coalition` field is
+  // silently invisible to Frag.jsx's own render gate (`found.coalition ===
+  // sessionCoalition`, blue/red sessions only) — Ctrl+Shift+Click would open
+  // the panel but it'd render nothing at all. `coalition` (the session's own
+  // string coalition, 'blue'/'red'/'gm'/'admin' — AbmScope.jsx already
+  // gates the click to same-coalition contacts before calling this, so it's
+  // always the caller's own side) must be set on creation, same as
+  // AddAtoFlight.jsx's manual flights already do.
+  ensureManualRosterEntry: (callsignPrefix, unitCallsign, coalition) => {
+    const existing = get().flights.find((f) =>
+      f.manual ? f.iffRoster?.some((u) => u.callsign === unitCallsign) : f.units?.some((u) => u.callsign === unitCallsign)
+    )
+    if (existing) {
+      // Backfill a flight created before this shape was complete (a real
+      // case hit live testing this session, not hypothetical — missing
+      // `coalition` first, then `route`/`task`/etc. crashed Frag.jsx
+      // outright since AddAtoFlight.jsx's manual flights always carry the
+      // full MANUAL_FLIGHT_DEFAULTS shape and Frag.jsx reads several of
+      // those fields unconditionally). Otherwise this fast path would keep
+      // returning the same broken flight forever, never reaching the
+      // creation branch below where the full shape actually gets set.
+      const missingDefaults = existing.manual && existing.route === undefined
+      const missingCoalition = existing.manual && existing.coalition == null && coalition != null
+      if (missingDefaults || missingCoalition) {
+        set((s) => ({
+          flights: s.flights.map((f) => f.groupId !== existing.groupId ? f : {
+            ...MANUAL_FLIGHT_DEFAULTS(f.name ?? f.callsignPrefix, f.callsignPrefix, f.coalition ?? coalition),
+            ...f,
+            coalition: f.coalition ?? coalition,
+          }),
+        }))
+        const patched = get().flights.find((f) => f.groupId === existing.groupId)
+        broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId: patched.groupId, name: patched.name, callsignPrefix: patched.callsignPrefix, coalition: patched.coalition, iffRoster: patched.iffRoster })
+      }
+      return existing.groupId
+    }
+
+    let flight = get().flights.find((f) => f.manual && f.callsignPrefix === callsignPrefix)
+    if (!flight) {
+      const groupId = get().nextManualId
+      flight = { groupId, ...MANUAL_FLIGHT_DEFAULTS(callsignPrefix, callsignPrefix, coalition) }
+      set((s) => ({ flights: [...s.flights, flight], nextManualId: s.nextManualId - 1 }))
+    }
+    set((s) => ({
+      flights: s.flights.map((f) => f.groupId !== flight.groupId ? f : { ...f, iffRoster: [...(f.iffRoster ?? []), { callsign: unitCallsign, iff: {} }] }),
+    }))
+    const finalFlight = get().flights.find((f) => f.groupId === flight.groupId)
+    broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId: finalFlight.groupId, name: finalFlight.name, callsignPrefix: finalFlight.callsignPrefix, coalition: finalFlight.coalition, iffRoster: finalFlight.iffRoster })
+    return flight.groupId
+  },
+
+  // Removes one row from a manual flight's iffRoster (e.g. a mistyped
+  // callsign added via Frag.jsx's "Add Aircraft" input) — the row's live
+  // detection (if any, via callsign-prefix matching) is unaffected by this;
+  // it just stops carrying an assigned IFF code / a pending pre-add entry.
+  removeManualRosterEntry: (groupId, callsign) => {
+    set((s) => ({
+      flights: s.flights.map((f) => f.groupId !== groupId ? f : { ...f, iffRoster: (f.iffRoster ?? []).filter((u) => u.callsign !== callsign) }),
+    }))
+    const flight = get().flights.find((f) => f.groupId === groupId)
+    if (!flight) return
+    broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId: flight.groupId, name: flight.name, callsignPrefix: flight.callsignPrefix, coalition: flight.coalition, iffRoster: flight.iffRoster })
+  },
+
+  // Applies an incoming FRAG_IFF_SET/FRAG_MANUAL_FLIGHT_SET broadcast from
+  // another controller without re-broadcasting it.
+  _applyIffSet: (groupId, unitCallsign, iff) => set((s) => ({
+    flights: s.flights.map((f) => f.groupId !== groupId ? f : {
+      ...f,
+      units: (f.units ?? []).map((u) => u.callsign !== unitCallsign ? u : { ...u, iff: { ...u.iff, ...iff } }),
+    }),
+  })),
+
+  // Never touches `units` (the placeholder-count array) — only `iffRoster`.
+  // A brand-new flight arriving here (another controller's Ctrl+Shift+Click)
+  // gets the full MANUAL_FLIGHT_DEFAULTS shape first, same reason the local
+  // creation path needs it — the sync payload only ever carries
+  // {name, callsignPrefix, coalition, iffRoster}, not route/task/etc., and
+  // this receiving controller's own Frag.jsx would crash the same way
+  // opening it otherwise.
+  _applyManualFlightSet: (groupId, name, callsignPrefix, coalition, iffRoster) => set((s) => {
+    const exists = s.flights.some((f) => f.groupId === groupId)
+    if (exists) {
+      return { flights: s.flights.map((f) => f.groupId !== groupId ? f : { ...f, name, callsignPrefix, coalition, iffRoster, manual: true }) }
+    }
+    return { flights: [...s.flights, { groupId, ...MANUAL_FLIGHT_DEFAULTS(name, callsignPrefix, coalition), iffRoster }] }
+  }),
 }))
 
 // ── Cross-window sync (main window + undocked ATO/FRAG popups) ─────────────
@@ -222,3 +428,24 @@ _ch.onmessage = (e) => {
   }
 }
 _ch.postMessage({ type: 'REQUEST_STATE' })
+
+// Apply an incoming WebRTC FRAG_IFF_SET/FRAG_MANUAL_FLIGHT_SET payload
+// (webrtc/handlers.js) without triggering re-broadcast — mirrors
+// store/statusBoard.js's applyStatusBoardUpdate.
+export function applyAbmMissionIffSet(payload) {
+  _syncing = true
+  try {
+    useAbmMissionStore.getState()._applyIffSet(payload.groupId, payload.unitCallsign, payload.iff)
+  } finally {
+    _syncing = false
+  }
+}
+
+export function applyAbmMissionManualFlightSet(payload) {
+  _syncing = true
+  try {
+    useAbmMissionStore.getState()._applyManualFlightSet(payload.groupId, payload.name, payload.callsignPrefix, payload.coalition, payload.iffRoster)
+  } finally {
+    _syncing = false
+  }
+}

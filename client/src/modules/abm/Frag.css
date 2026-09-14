@@ -172,6 +172,51 @@
 .frag-unit-state-air    { color: #5A8A5A; }
 .frag-unit-state-taxi   { color: #BB8833; }
 .frag-unit-state-ground { color: #666; }
+.frag-unit-state-pending { color: #555; font-style: italic; }
+
+.frag-unit-remove {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.frag-unit-remove:hover { color: #CC4444; }
+
+.frag-add-aircraft {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 3px 0;
+}
+.frag-add-aircraft input {
+  flex: 1;
+  min-width: 0;
+  background: #0a0a0a;
+  border: 1px solid #222;
+  color: #ddd;
+  font-family: inherit;
+  font-size: 9px;
+  padding: 3px 5px;
+}
+.frag-add-aircraft input:focus { outline: none; border-color: #005f73; }
+.frag-add-aircraft button {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #888;
+  font-family: inherit;
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  padding: 3px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.frag-add-aircraft button:hover:not(:disabled) { color: #00b4d8; border-color: #005f73; }
+.frag-add-aircraft button:disabled { opacity: 0.3; cursor: default; }
 
 .frag-ordnance {
   margin-top: 3px;
@@ -193,6 +238,33 @@
 .frag-ord-qty {
   color: #666;
   text-align: right;
+}
+
+.frag-iff-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 3px;
+  padding-left: 4px;
+}
+.frag-iff-field {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 8px;
+  color: #666;
+}
+.frag-iff-field input {
+  width: 32px;
+  background: #0a0a0a;
+  border: 1px solid #222;
+  color: #ddd;
+  font-family: inherit;
+  font-size: 9px;
+  padding: 1px 2px;
+}
+.frag-iff-field input:focus {
+  outline: none;
+  border-color: #005f73;
 }
 
 .frag-radio-block {

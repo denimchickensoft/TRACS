@@ -7,6 +7,7 @@ import { useFlightPlansStore } from '../store/flightPlans.js'
 import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadcast } from '../store/statusBoard.js'
 import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/aic.js'
 import { useAbmStore, registerAbmBroadcast, applyAbmStateDump } from '../store/abm.js'
+import { registerAbmMissionBroadcast } from '../store/abmMission.js'
 import { useRoeStore, registerRoeBroadcast, applyRoe } from '../store/roe.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
@@ -270,11 +271,11 @@ function buildDump(mod) {
   }
   if (mod === 'AIC') {
     const aic = useAicStore.getState()
-    return { ...base, declarations: { ...aic.declarations }, autoClassify: aic.autoClassify }
+    return { ...base, declarations: { ...aic.declarations }, autoDeclareMode: aic.autoDeclareMode }
   }
   if (mod === 'ABM') {
     const abm = useAbmStore.getState()
-    return { ...base, declarations: { ...abm.declarations }, autoClassify: abm.autoClassify }
+    return { ...base, declarations: { ...abm.declarations }, autoDeclareMode: abm.autoDeclareMode }
   }
   if (mod === 'ATC') {
     const fps = useFlightPlansStore.getState()
@@ -892,6 +893,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   }
   if (mod === 'ABM') {
     registerAbmBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+    registerAbmMissionBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   }
   // ROE is cross-module (session-room) state, registered regardless of
   // active module — see store/roe.js.

@@ -3,7 +3,7 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
-import { resolveCallsign, matchLiveByPrefix, buildLiveUnitLookup } from '../../utils/callsign.js'
+import { resolveCallsign, matchLiveByPrefix, buildLiveUnitLookup, stripAcid } from '../../utils/callsign.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 import { getOrdnanceName, preloadOrdnanceDb } from '../../utils/ordnance.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
@@ -24,6 +24,73 @@ const STATE_PRIORITY = { AIR: 3, TAXI: 2, GROUND: 1 }
 // Non-airborne per-unit state — 'AIR' | 'TAXI' | 'GROUND'.
 function unitState(liveUnit, isCarrierBase, carrierUnit) {
   return liveUnit.airborne ? 'AIR' : groundState(liveUnit, isCarrierBase, carrierUnit)
+}
+
+// Mode 1/2/3 IFF assignment fields — one per roster row (imported or
+// manual), see resources/specs/transponder-correlation-spec.md's FRAG
+// section. `onSetIff` commits directly to the store on each field's blur;
+// for a manual flight it also has to ensure the roster row exists first
+// (Ctrl+Shift+Click's ensureManualRosterEntry already does this for
+// click-created rows, but a row typed straight into FRAG hasn't necessarily
+// gone through that path yet).
+function IffFields({ iff, onSetIff }) {
+  const [draft, setDraft] = useState({
+    mode1: iff?.mode1 ?? '', mode2: iff?.mode2 ?? '', mode3: iff?.mode3 ?? '',
+  })
+  useEffect(() => {
+    setDraft({ mode1: iff?.mode1 ?? '', mode2: iff?.mode2 ?? '', mode3: iff?.mode3 ?? '' })
+  }, [iff?.mode1, iff?.mode2, iff?.mode3])
+
+  // Mode 1 is a real 2-digit octal code (00-73); Mode 2/3 are 4-digit — same
+  // distinction drawAbmContacts.js's buildIffFrames() display already makes.
+  function commit(field, value, maxLen) {
+    const digits = value.replace(/\D/g, '').slice(0, maxLen)
+    setDraft((d) => ({ ...d, [field]: digits }))
+    onSetIff({ [field]: digits === '' ? null : digits })
+  }
+
+  return (
+    <div className="frag-iff-row">
+      <label className="frag-iff-field">
+        <span>M1</span>
+        <input value={draft.mode1} onChange={(e) => commit('mode1', e.target.value, 2)} maxLength={2} placeholder="--" />
+      </label>
+      <label className="frag-iff-field">
+        <span>M2</span>
+        <input value={draft.mode2} onChange={(e) => commit('mode2', e.target.value, 4)} maxLength={4} placeholder="----" />
+      </label>
+      <label className="frag-iff-field">
+        <span>M3</span>
+        <input value={draft.mode3} onChange={(e) => commit('mode3', e.target.value, 4)} maxLength={4} placeholder="----" />
+      </label>
+    </div>
+  )
+}
+
+// Manual flights' "+ Add Aircraft" input — types a callsign straight into
+// the flight's iffRoster (via ensureManualRosterEntry, same store path
+// Ctrl+Shift+Click uses) without needing the aircraft to be live/visible
+// yet. Lets a controller pre-assign an IFF code before a flight checks in.
+function AddAircraftRow({ onAdd }) {
+  const [value, setValue] = useState('')
+  function submit() {
+    const cs = stripAcid(value)
+    if (!cs) return
+    onAdd(cs)
+    setValue('')
+  }
+  return (
+    <div className="frag-add-aircraft">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value.toUpperCase())}
+        onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+        placeholder="CALLSIGN"
+        maxLength={16}
+      />
+      <button type="button" onClick={submit} disabled={!value.trim()}>+ ADD AIRCRAFT</button>
+    </div>
+  )
 }
 
 // Full name + "(ICAO/abbrev)" — unlike ATO's TASKUNIT column, which shows
@@ -312,31 +379,81 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
 
             <div className="frag-section">
               {flight.manual ? (
-                // Manual flights have no mission-file roster — the live
-                // matches (Ato.jsx's same prefix match) *are* the roster,
-                // one row per real aircraft found right now. No mission
-                // data exists for ordnance/radios/link16/modex/skill, so
+                // Manual flights have no mission-file roster. Two sources
+                // merged into one list: live callsign-prefix matches
+                // (Ato.jsx's same matchLiveByPrefix — any live aircraft
+                // whose callsign starts with this flight's prefix shows up
+                // automatically, no explicit add needed) and iffRoster rows
+                // with no current live match — a callsign added via "+ Add
+                // Aircraft" (or a prior click) before that aircraft is
+                // actually live/visible, shown as PENDING so an assigned
+                // code can be set ahead of check-in. No mission data exists
+                // for ordnance/radios/link16/modex/skill on either kind, so
                 // those simply aren't shown.
-                <>
-                  <div className="frag-section-label">ROSTER ({flightLiveMatches.length})</div>
-                  {flightLiveMatches.map(m => {
-                    const isBlinking = blinkIds.includes(m.key)
-                    const state = unitState(m.unit, flightIsCarrierBase, flightCarrierUnit)
-                    return (
-                      <div key={m.key} className="frag-unit">
-                        <div
-                          className={['frag-unit-header', 'frag-unit-findable', isBlinking ? 'frag-unit-blinking' : ''].join(' ').trim()}
-                          onClick={() => toggleBlink(m.key)}
-                          title="Blink datablock on scope"
-                        >
-                          <span className="frag-unit-cs">{m.callsign}</span>
-                          <span className="frag-unit-type">{typeAbbrev(m.unit)}</span>
-                          <span className={['frag-unit-state', `frag-unit-state-${state.toLowerCase()}`].join(' ')}>{state}</span>
+                (() => {
+                  const liveCallsigns = new Set(flightLiveMatches.map(m => m.callsign))
+                  const pendingRows = (flight.iffRoster ?? []).filter(u => !liveCallsigns.has(u.callsign))
+                  return (
+                    <>
+                      <div className="frag-section-label">ROSTER ({flightLiveMatches.length + pendingRows.length})</div>
+                      {flightLiveMatches.map(m => {
+                        const isBlinking = blinkIds.includes(m.key)
+                        const state = unitState(m.unit, flightIsCarrierBase, flightCarrierUnit)
+                        const rosterRow = flight.iffRoster?.find(u => u.callsign === m.callsign)
+                        return (
+                          <div key={m.key} className="frag-unit">
+                            <div
+                              className={['frag-unit-header', 'frag-unit-findable', isBlinking ? 'frag-unit-blinking' : ''].join(' ').trim()}
+                              onClick={() => toggleBlink(m.key)}
+                              title="Blink datablock on scope"
+                            >
+                              <span className="frag-unit-cs">{m.callsign}</span>
+                              <span className="frag-unit-type">{typeAbbrev(m.unit)}</span>
+                              <span className={['frag-unit-state', `frag-unit-state-${state.toLowerCase()}`].join(' ')}>{state}</span>
+                              {rosterRow && (
+                                <button
+                                  type="button"
+                                  className="frag-unit-remove"
+                                  title="Remove from roster"
+                                  onClick={(e) => { e.stopPropagation(); useAbmMissionStore.getState().removeManualRosterEntry(flight.groupId, m.callsign) }}
+                                >×</button>
+                              )}
+                            </div>
+                            <IffFields
+                              iff={rosterRow?.iff}
+                              onSetIff={(patch) => {
+                                const mission = useAbmMissionStore.getState()
+                                mission.ensureManualRosterEntry(flight.callsignPrefix, m.callsign, flight.coalition ?? sessionCoalition)
+                                mission.setUnitIff(flight.groupId, m.callsign, patch)
+                              }}
+                            />
+                          </div>
+                        )
+                      })}
+                      {pendingRows.map(r => (
+                        <div key={r.callsign} className="frag-unit">
+                          <div className="frag-unit-header">
+                            <span className="frag-unit-cs">{r.callsign}</span>
+                            <span className="frag-unit-state frag-unit-state-pending">PENDING</span>
+                            <button
+                              type="button"
+                              className="frag-unit-remove"
+                              title="Remove from roster"
+                              onClick={() => useAbmMissionStore.getState().removeManualRosterEntry(flight.groupId, r.callsign)}
+                            >×</button>
+                          </div>
+                          <IffFields
+                            iff={r.iff}
+                            onSetIff={(patch) => useAbmMissionStore.getState().setUnitIff(flight.groupId, r.callsign, patch)}
+                          />
                         </div>
-                      </div>
-                    )
-                  })}
-                </>
+                      ))}
+                      <AddAircraftRow
+                        onAdd={(callsign) => useAbmMissionStore.getState().ensureManualRosterEntry(flight.callsignPrefix, callsign, flight.coalition ?? sessionCoalition)}
+                      />
+                    </>
+                  )
+                })()
               ) : (
                 <>
                   <div className="frag-section-label">ROSTER ({flight.units.length})</div>
@@ -364,6 +481,10 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                         <span className={['frag-unit-skl', u.skill === 'Client' ? 'client' : ''].join(' ')}>{u.skill}</span>
                         <span className={['frag-unit-state', state ? `frag-unit-state-${state.toLowerCase()}` : ''].join(' ').trim()}>{state ?? '—'}</span>
                       </div>
+                      <IffFields
+                        iff={u.iff}
+                        onSetIff={(patch) => useAbmMissionStore.getState().setUnitIff(flight.groupId, u.callsign, patch)}
+                      />
                       {(() => { const ord = ordnanceSummary(u); return ord.length > 0 && (
                         <div className="frag-ordnance">
                           {ord.map(([name, qty], i) => (
@@ -416,7 +537,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
               )}
             </div>
 
-            {flight.route.length > 0 && (
+            {flight.route?.length > 0 && (
             <div className="frag-section frag-section-grow">
               <div
                 className={['frag-section-label', 'frag-route-toggle', routeVisible ? 'frag-find-active' : ''].join(' ').trim()}
@@ -430,8 +551,8 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                   // ZERO_INDEXED_WAYPOINT_TYPES for the aircraft this is
                   // verified for; everyone else keeps the natural 1-based
                   // ME numbering until similarly confirmed.
-                  const wpLabelOffset = ZERO_INDEXED_WAYPOINT_TYPES.has(flight.units[0]?.rawType) ? 0 : 1
-                  return flight.route.map((wp, i) => {
+                  const wpLabelOffset = ZERO_INDEXED_WAYPOINT_TYPES.has(flight.units?.[0]?.rawType) ? 0 : 1
+                  return (flight.route ?? []).map((wp, i) => {
                     const wpName = wp.name ?? `WP${i + wpLabelOffset}`
                     const findable = wp.lat != null && wp.lng != null
                     const wpKey = `wp-${flight.groupId}-${i}`

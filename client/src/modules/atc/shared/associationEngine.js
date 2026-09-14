@@ -25,16 +25,12 @@
 // just an ineffective no-op).
 
 import { resolveCallsign } from '../../../utils/callsign.js'
-import { hasLiveSquawk } from '../../../utils/transponder.js'
+import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
 
 // Every AID-entry point (FPE, StripBay's add-strip box) caps at 8 chars, so
 // the canonical identifier for any aircraft is always its live callsign
 // truncated to exactly this length.
 const AID_MAX_LEN = 8
-
-function normalizeCode(code) {
-  return String(code ?? '').padStart(4, '0')
-}
 
 /**
  * @param {Object} units          live units keyed by id (useUnitsStore().units)

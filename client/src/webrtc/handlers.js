@@ -7,8 +7,9 @@ import { useStripsStore, STRIP_HIGHLIGHT } from '../store/strips.js'
 import { useSessionStore } from '../store/session.js'
 import { useControllersStore } from '../store/controllers.js'
 import { applyStatusBoardUpdate } from '../store/statusBoard.js'
-import { applyAicDeclaration, applyAicDeclarationsReset, applyAicAutoClassify } from '../store/aic.js'
-import { applyAbmDeclaration, applyAbmDeclarationsReset, applyAbmAutoClassify } from '../store/abm.js'
+import { applyAicDeclaration, applyAicDeclarationsReset, applyAicAutoDeclareMode } from '../store/aic.js'
+import { applyAbmDeclaration, applyAbmDeclarationsReset, applyAbmAutoDeclareMode } from '../store/abm.js'
+import { applyAbmMissionIffSet, applyAbmMissionManualFlightSet } from '../store/abmMission.js'
 
 function getMyControllerId() {
   const positionName = useSessionStore.getState().positionName
@@ -168,13 +169,13 @@ function handleCatcc(type, payload) {
 function handleAic(type, payload) {
   switch (type) {
     case 'DECLARATION_SET':
-      applyAicDeclaration(payload.unitId, payload.classification)
+      applyAicDeclaration(payload.unitId, payload.declaration)
       break
     case 'DECLARATIONS_RESET':
       applyAicDeclarationsReset()
       break
-    case 'AUTOCLASS_SET':
-      applyAicAutoClassify(payload.enabled)
+    case 'AUTO_DECLARE_MODE_SET':
+      applyAicAutoDeclareMode(payload.mode)
       break
   }
 }
@@ -184,13 +185,19 @@ function handleAic(type, payload) {
 function handleAbm(type, payload) {
   switch (type) {
     case 'DECLARATION_SET':
-      applyAbmDeclaration(payload.unitId, payload.classification)
+      applyAbmDeclaration(payload.unitId, payload.declaration)
       break
     case 'DECLARATIONS_RESET':
       applyAbmDeclarationsReset()
       break
-    case 'AUTOCLASS_SET':
-      applyAbmAutoClassify(payload.enabled)
+    case 'AUTO_DECLARE_MODE_SET':
+      applyAbmAutoDeclareMode(payload.mode)
+      break
+    case 'FRAG_IFF_SET':
+      applyAbmMissionIffSet(payload)
+      break
+    case 'FRAG_MANUAL_FLIGHT_SET':
+      applyAbmMissionManualFlightSet(payload)
       break
   }
 }

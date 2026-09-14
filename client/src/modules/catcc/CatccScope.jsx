@@ -77,7 +77,7 @@ export default function CatccScope() {
   const myControllerId    = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
 
   const correlations      = useCorrelationStore((s) => s.correlations)
-  const sbEntries         = useStatusBoardStore((s) => s.entries)
+  const pendingCodes      = useCorrelationStore((s) => s.pendingCodes)
 
   const displayStore   = useDisplayStore()
   const windowSettings = displayStore.windows[WINDOW_ID]
@@ -158,23 +158,17 @@ export default function CatccScope() {
 
   const visibleUnits = useMemo(() => getVisibleUnits(units, coalition, tdmMode), [units, coalition, tdmMode])
 
-  // Auto-correlate: match live contact callsigns to modexes from mission import.
-  // Manual store correlations take priority over auto-matched ones.
-  const effectiveCorrelations = useMemo(() => {
-    const result = { ...correlations }
-    for (const [unitId, unit] of Object.entries(visibleUnits)) {
-      if (result[String(unitId)]) continue
-      const cs = resolveCallsign(unit)
-      const entry = sbEntries.find((e) => e.callsign === cs && e.sideNumber)
-      if (entry) result[String(unitId)] = entry.sideNumber
-    }
-    return result
-  }, [correlations, visibleUnits, sbEntries])
+  // correlations/pendingCodes are already the single source of truth,
+  // computed by StatusBoard.jsx's own sync effect (srsCapable-gated double
+  // match, see resources/specs/transponder-correlation-spec.md) — this used
+  // to also do its own, ungated callsign-only auto-match here, which bypassed
+  // that gate entirely for srsCapable units. Removed; read the store values
+  // directly instead of re-deriving a second, looser version of the same map.
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 
-  const effectiveCorrelationsRef = useRef(effectiveCorrelations)
-  useEffect(() => { effectiveCorrelationsRef.current = effectiveCorrelations }, [effectiveCorrelations])
+  const correlationsRef = useRef(correlations)
+  useEffect(() => { correlationsRef.current = correlations }, [correlations])
 
   // Tracked contacts: unitId → position letter (M/A/D/T). Absent = untracked.
   // ownership[unitId] is a controllerId like "1M" — extract the letter directly.
@@ -383,7 +377,7 @@ export default function CatccScope() {
       windowSettings?.briteHst      ?? 80,
     )
     drawCatccDatablocks(
-      ctx, view, visibleUnits, effectiveCorrelations,
+      ctx, view, visibleUnits, correlations, pendingCodes,
       windowSettings?.britePos ?? 80,
       marshalBearing,
       windowSettings?.leaderDirs      ?? {},
@@ -395,7 +389,7 @@ export default function CatccScope() {
       windowSettings?.catccLeaderLen  ?? 16,
       windowSettings?.dbca ?? true,
     )
-  }, [visibleUnits, view, trackMap, effectiveCorrelations, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
+  }, [visibleUnits, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos,
       windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca,
       windowSettings?.showHistory, windowSettings?.historyLength, windowSettings?.briteHst, windowSettings?.leaderDirs])
@@ -452,7 +446,7 @@ export default function CatccScope() {
       // lines land in odsLines whenever it resolves.
       processOdsCommand(buf, {
         visibleUnits: visibleUnitsRef.current,
-        correlations: effectiveCorrelationsRef.current,
+        correlations: correlationsRef.current,
         positionName,
       }).then((output) => {
         setOdsLines((prev) => (output.length ? [...prev, ...output].slice(-ODS_MAX_LINES) : []))
@@ -477,7 +471,7 @@ export default function CatccScope() {
 
     // Ctrl+Shift+Click — initiate track (mirrors F3/IC + slew)
     if (e.ctrlKey && e.shiftKey) {
-      initCntl(target, effectiveCorrelationsRef.current)
+      initCntl(target, correlationsRef.current)
       return
     }
 
@@ -514,7 +508,7 @@ export default function CatccScope() {
     // (IC/TC/HO <tcp>/point-outs/leader-line/scratchpad — see slewCommands.js)
     const parsed = parseCatccSlew(usePreviewStore.getState().buffer)
     if (parsed) {
-      dispatchCatccSlew(parsed, target, effectiveCorrelationsRef.current)
+      dispatchCatccSlew(parsed, target, correlationsRef.current)
       if (!usePreviewStore.getState().response) setOdsLines([])
     }
   }, [])

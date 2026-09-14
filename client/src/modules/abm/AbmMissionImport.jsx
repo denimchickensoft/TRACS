@@ -4,6 +4,7 @@ import { parseLua, findAtoFlights } from '../../utils/parseMission.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { preloadOrdnanceDb } from '../../utils/ordnance.js'
+import { parseIffCsv } from '../../utils/csvIffAssignments.js'
 import './AbmMissionImport.css'
 
 function readFileText(file) {
@@ -36,9 +37,11 @@ export function AbmMissionImport({ onClose }) {
   const setFlights = useAbmMissionStore(s => s.setFlights)
   const sessionCoalition = useSessionStore(s => s.coalition)
 
-  const [phase,    setPhase]    = useState('idle')   // idle | loading | preview | error
+  const [phase,    setPhase]    = useState('idle')   // idle | loading | preview | csv-preview | csv-done | error
   const [error,    setError]    = useState('')
   const [flights, setLocalFlights] = useState([])
+  const [csvRows,  setCsvRows]  = useState([])
+  const [csvResult, setCsvResult] = useState(null)
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef()
 
@@ -46,9 +49,23 @@ export function AbmMissionImport({ onClose }) {
   // that would spoil surprises the mission intended to keep hidden from
   // them. Filter right at import, before anything is shown. GM/admin
   // aren't aligned to a side, so they see everything (same rule as ATO/FRAG).
+  //
+  // A .csv here is a bulk IFF-code assignment sheet (resources/specs/
+  // transponder-correlation-spec.md), not a mission file — it goes through
+  // this same Load Mission modal rather than a separate FRAG-panel importer
+  // because ATO/FRAG already share one dataset (useAbmMissionStore().flights);
+  // there's no second place for a CSV import to "trickle down" into.
   const processFile = useCallback(async (file) => {
     setPhase('loading')
     try {
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        const text = await readFileText(file)
+        const rows = parseIffCsv(text)
+        setCsvRows(rows)
+        setPhase('csv-preview')
+        return
+      }
+
       const text    = await loadMissionText(file)
       const mission = parseLua(text)
       let found     = findAtoFlights(mission)
@@ -85,6 +102,12 @@ export function AbmMissionImport({ onClose }) {
     onClose()
   }
 
+  const doApplyCsv = () => {
+    const result = useAbmMissionStore.getState().applyIffCsv(csvRows)
+    setCsvResult(result)
+    setPhase('csv-done')
+  }
+
   return (
     <div className="mi-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="mi-modal">
@@ -102,12 +125,12 @@ export function AbmMissionImport({ onClose }) {
             onClick={() => fileRef.current?.click()}
           >
             <span className="mi-drop-icon">⬆</span>
-            <span className="mi-drop-label">Drop .miz or mission file</span>
+            <span className="mi-drop-label">Drop .miz, mission, or IFF .csv file</span>
             <span className="mi-drop-sub">or click to browse</span>
             <input
               ref={fileRef}
               type="file"
-              accept=".miz,*"
+              accept=".miz,.csv,*"
               style={{ display: 'none' }}
               onChange={onFileChange}
             />
@@ -115,13 +138,45 @@ export function AbmMissionImport({ onClose }) {
         )}
 
         {phase === 'loading' && (
-          <div className="mi-status">Parsing mission file…</div>
+          <div className="mi-status">Parsing file…</div>
         )}
 
         {phase === 'error' && (
           <div className="mi-error">
             <span>{error}</span>
             <button className="mi-btn" onClick={() => setPhase('idle')}>Try Again</button>
+          </div>
+        )}
+
+        {phase === 'csv-preview' && (
+          <div className="mi-preview">
+            <div className="mi-section mi-section-grow">
+              <div className="mi-section-label">IFF ASSIGNMENTS ({csvRows.length})</div>
+              <div className="mi-ac-list">
+                {csvRows.map((r, i) => (
+                  <div key={i} className="mi-flight-row">
+                    <span className="mi-flight-name">{r.callsign}</span>
+                    <span className="mi-flight-task">
+                      {[r.mode1 && `M1 ${r.mode1}`, r.mode2 && `M2 ${r.mode2}`, r.mode3 && `M3 ${r.mode3}`].filter(Boolean).join(' · ') || '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mi-status">
+              Assign-only — matched against callsigns already on a FRAG roster (imported or manual). Unmatched rows are skipped, not created as new flights.
+            </div>
+          </div>
+        )}
+
+        {phase === 'csv-done' && (
+          <div className="mi-preview">
+            <div className="mi-status">
+              Assigned {csvResult.matched.length} of {csvRows.length}.
+              {csvResult.skipped.length > 0 && (
+                <> Skipped (no matching roster row): {csvResult.skipped.join(', ')}</>
+              )}
+            </div>
           </div>
         )}
 
@@ -154,10 +209,15 @@ export function AbmMissionImport({ onClose }) {
         )}
 
         <div className="mi-footer">
-          <button className="mi-btn" onClick={onClose}>Cancel</button>
+          <button className="mi-btn" onClick={onClose}>{phase === 'csv-done' ? 'Close' : 'Cancel'}</button>
           {phase === 'preview' && (
             <button className="mi-btn mi-btn-primary" onClick={doImport}>
               Import
+            </button>
+          )}
+          {phase === 'csv-preview' && (
+            <button className="mi-btn mi-btn-primary" onClick={doApplyCsv}>
+              Apply
             </button>
           )}
         </div>

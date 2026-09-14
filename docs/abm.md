@@ -97,13 +97,14 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 | `.dope`, then click | Bogey-dope the clicked contact to its nearest hostile/bogey air contact |
 | `.rename` / `.rename <newcallsign>`, then click | Rename or reset a contact's callsign (synced to other controllers) |
 
-### Classification
+### Declaration
 
 | Command | Effect |
 |---|---|
-| `.class` | Reset all declarations to default |
-| `.class <old> <new>` | Bulk reclassify, letters `f`/`n`/`b`/`h` (friendly/neutral/bogey/hostile), e.g. `.class b h` |
-| `.autoclass` | Toggle auto-classification (true-coalition-based). Turning it **off** does not revert contacts it already classified — only a bare `.class` reset does that |
+| `.dec` | Reset all declarations to default |
+| `.dec <old> <new>` | Bulk redeclare, letters `f`/`n`/`b`/`h` (friendly/neutral/bogey/hostile), e.g. `.dec b h` |
+| `.autodec` | Toggle auto-declare (true-coalition-based, unconditional — Mode 4 never consulted). Turning it **off** does not revert contacts it already declared — only a bare `.dec` reset does that |
+| `.autodec iff` | Toggle IFF-gated auto-declare — FRIENDLY only. A non-SRS-fielded same-coalition contact declares unconditionally; an SRS-fielded one only when correlated to a FRAG-assigned aircraft (see FRAG's IFF section below). Never touches hostile/neutral/bogey. Mutually exclusive with `.autodec` |
 | `.autothreat` | Auto-light threat rings on friendlies near hostiles/bogeys |
 
 ### ROE
@@ -176,7 +177,7 @@ The focus window itself is a real independent scope: drag to move it, drag an ed
 | **Double-click** a contact | Open a Focus window on it (see Focus windows above) |
 | **Mouse wheel** | Zoom (1 NM/step inside 10 NM range, else 10 NM — 25 NM with Ctrl) |
 
-**F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly); the next click classifies every contact within a small radius of the click point, so dense clusters aren't unreachable one-at-a-time.
+**F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly); the next click declares every contact within a small radius of the click point, so dense clusters aren't unreachable one-at-a-time.
 
 FRAG also drives the scope indirectly: clicking a flight's Base or a route waypoint in FRAG drops a marker on the scope; clicking a roster row makes that contact's datablock blink.
 
@@ -202,12 +203,15 @@ Click a column header to sort (click again to reverse); click a row to select th
 Detail view for the flight selected in ATO or via Ctrl+Shift+Click on the scope.
 
 - **Tasking** — editable Task field, full Base name, Status (same rollup as ATO). Click Base to drop a scope marker.
-- **Roster** — one row per aircraft. For imported flights: callsign, type, live-resolved callsign, onboard number, skill, air/ground state, ordnance summary, a collapsible comms/radio list, and Link16 station if present. For manually-added flights: just callsign, type, and state — there's no mission data behind them for ordnance/radios/Link16.
+- **Roster** — one row per aircraft. For imported flights: callsign, type, live-resolved callsign, onboard number, skill, air/ground state, ordnance summary, a collapsible comms/radio list, and Link16 station if present. For manually-added flights: callsign, type, and state, live-matched against whoever's currently flying that callsign — there's no mission data behind them for ordnance/radios/Link16. A **+ Add Aircraft** field at the bottom of a manual flight's roster lets you type a callsign in directly, before that aircraft is even live — it shows as **PENDING** until a live match appears. A **×** on any manually-added row removes it (a live-matched row with nothing added to it has nothing to remove).
+- **IFF** — Mode 1/2/3 fields under each roster row (imported and manual alike). This is the assigned code the correlation engine matches a live contact's transponder against (any of Mode 1/2/3/4 matching, plus a callsign check) to reveal its real callsign on the scope in place of the cycling code readout — see "Declaration" above for `.autodec iff`. Synced live to every ABM controller (the rest of FRAG isn't).
 - **Route** — each waypoint's name, altitude, and speed; click one to drop a marker on the scope. Click the ROUTE header (yellow, green when active) to toggle the flight's route as a dashed line on the scope; Escape also clears it. Hidden by default each time a flight is (re)selected.
 
 Mouse wheel over the title bar zooms the panel independently of ATO.
 
 Unlike AIC, ABM has no BRAA-list side panel — BRAA pairs are drawn only as an on-scope dashed line with an inline bearing/range label.
+
+**Ctrl+Shift+Click** on a friendly contact opens its FRAG flight, creating one if it doesn't exist yet (grouped by callsign, e.g. every "ENFIELD1x" aircraft together) and adding that exact aircraft to its roster if it isn't already there. Safe to repeat — an already-tracked aircraft just opens its existing flight, never duplicates it. New roster rows start with blank IFF fields.
 
 ## Mission Import
 
@@ -217,6 +221,7 @@ Unlike AIC, ABM has no BRAA-list side panel — BRAA pairs are drawn only as an 
 - Blue/red sessions only ever see their own coalition's tasked flights — the other side's tasking is filtered out before you even see a preview, not just hidden after import.
 - Preview shows a count-by-task summary and the list of flights found (with a RESERVE badge for late-activation flights). **Import** replaces the previously-imported set but keeps any manually-added flights.
 - ABM's mission parsing deliberately reads only structural mission data (groups, units, routes, payloads, radios, Link16) — it never touches trigger scripts, trigger rules, or the mission's localization dictionary, so nothing an author scripted as a hidden narrative or timing surprise leaks through.
+- **Dropping a `.csv` here instead** bulk-assigns IFF codes: a `callsign,mode1,mode2,mode3` header row, one row per aircraft. This is assign-only — it fills in Mode 1/2/3 on roster rows that already exist (from a prior mission import, or from Ctrl+Shift+Click/manual typing), matched by callsign, and never creates a new flight. A callsign with no matching roster row anywhere is skipped and reported, not silently dropped.
 
 ## Custom Drawing Import
 
@@ -265,7 +270,7 @@ Fields: Flight Name, Task, Type, Num (aircraft count), **Callsign Prefix** (requ
 
 ## Known limitations
 
-- Manually-added flights (via Add Flight) never get route, ordnance, radio, or Link16 data — only imported mission flights have that detail.
-- Turning `.autoclass` off doesn't revert contacts it already classified; only `.class` (bare reset) does.
+- Manually-added flights (via Add Flight or Ctrl+Shift+Click) never get route, ordnance, radio, or Link16 data — only imported mission flights have that detail.
+- Turning `.autodec`/`.autodec iff` off doesn't revert contacts already declared; only `.dec` (bare reset) does.
 - Bogey-dope (`.dope` / Alt+click) only ever targets air contacts, even though BRAA pairs themselves can include ground/naval units.
 - Pylon station numbers shown in FRAG are a best-effort index, not necessarily the true DCS station number, for aircraft with non-contiguous pylon tables.

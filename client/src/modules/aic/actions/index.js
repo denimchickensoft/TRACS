@@ -29,7 +29,8 @@
  */
 
 import { useDisplayStore } from '../../../store/display.js'
-import { useAicStore, DECLARATION } from '../../../store/aic.js'
+import { useAicStore, DECLARATION, getAicEffectiveDeclaration } from '../../../store/aic.js'
+import { AUTO_DECLARE_MODE } from '../../../utils/createDeclarationStore.js'
 import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { useAicPrefsStore } from '../../../store/aicPrefs.js'
 import { useNavdataStore } from '../../../store/navdata.js'
@@ -37,16 +38,17 @@ import { useGeoStore } from '../../../store/geo.js'
 import { useReliefStore } from '../../../store/relief.js'
 import { useMapsStore } from '../../../store/maps.js'
 import { useBrevityStore } from '../../../store/brevity.js'
+import { getIffStatus } from '../../../utils/transponder.js'
 import { toTrueFromMagnetic } from '../../../utils/bearing.js'
 import { sectorAxisBearing } from '../canvas/computePicture.js'
 
 const WINDOW_ID = 'aic-main'
 
-// .class classification letters — duplicated from AicScope.jsx rather than
+// .dec declaration letters — duplicated from AicScope.jsx rather than
 // imported, matching this codebase's existing convention of keeping small
 // stable per-scope helpers independent (see e.g. ABM's own trueDeclaration
 // copy, kept separate from AIC's for the same reason).
-const CLASS_LETTER = {
+const DECLARATION_LETTER = {
   f: DECLARATION.FRIENDLY,
   n: DECLARATION.NEUTRAL,
   b: DECLARATION.BOGEY,
@@ -151,43 +153,66 @@ export function CLEAR_ALL() {
 }
 
 // Returns every explicit declaration to its fog-of-war default (2026-07-07).
-export function CLASS_RESET() {
+export function DECLARATION_RESET() {
   useAicStore.getState().resetDeclarations()
-  return 'CLASS RESET'
+  return 'DEC RESET'
 }
 
-// `.class <old> <new>` reclassifies every currently-visible contact whose
-// *effective* declaration is <old> to <new> — e.g. `.class b h` turns every
+// `.dec <old> <new>` bulk-redeclares every currently-visible contact whose
+// *effective* declaration is <old> to <new> — e.g. `.dec b h` turns every
 // bogey into a hostile (2026-07-07).
-export function CLASS_RECLASSIFY({ captures, context }) {
+export function DECLARATION_SET_BULK({ captures, context }) {
   const { myCoalitionNum, visibleUnits } = context
-  const oldDecl = CLASS_LETTER[captures.oldLetter]
-  const newDecl = CLASS_LETTER[captures.newLetter]
+  const oldDecl = DECLARATION_LETTER[captures.oldLetter]
+  const newDecl = DECLARATION_LETTER[captures.newLetter]
   const aic = useAicStore.getState()
   for (const [id, unit] of Object.entries(visibleUnits)) {
-    if (aic.getEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
+    if (getAicEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
       aic.setDeclaration(id, newDecl)
     }
   }
-  return `CLASS ${oldDecl} → ${newDecl}`
+  return `DEC ${oldDecl} → ${newDecl}`
 }
 
-// Toggles autoclassification (2026-07-08). Turning it ON sets every
-// currently-visible contact to its TRUE (coalition-based) classification
-// right away; ongoing auto-declaration of newly-visible units happens in
-// AicScope's own useEffect. Turning it OFF does not revert anything already
-// classified, it just stops future auto-declaration. `.class` (no args)
+// .autodec — declares every currently-visible undeclared contact to its TRUE
+// (coalition-based) declaration right away, unconditionally; ongoing
+// auto-declaration of newly-visible units happens in AicScope's own
+// useEffect. Mutually exclusive with .autodec iff (selecting this turns iff
+// mode off, and vice versa). Turning either off does not revert anything
+// already declared, it just stops future auto-declaration. `.dec` (no args)
 // overrides this and turns it back off.
-export function AUTOCLASS({ context }) {
+export function AUTO_DECLARE({ context }) {
   const aic = useAicStore.getState()
-  const next = !aic.autoClassify
-  aic.setAutoClassify(next)
-  if (!next) return 'AUTOCLASS OFF'
+  const next = aic.autoDeclareMode === AUTO_DECLARE_MODE.COALITION ? AUTO_DECLARE_MODE.OFF : AUTO_DECLARE_MODE.COALITION
+  aic.setAutoDeclareMode(next)
+  if (next === AUTO_DECLARE_MODE.OFF) return 'AUTODEC OFF'
   const { myCoalitionNum, visibleUnits } = context
   for (const [id, unit] of Object.entries(visibleUnits)) {
     aic.setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
   }
-  return 'AUTOCLASS ON'
+  return 'AUTODEC ON'
+}
+
+// .autodec iff — FRIENDLY-only auto-declare: a non-srsCapable same-coalition
+// contact declares unconditionally, same as always; an srsCapable
+// same-coalition contact declares only when its live Mode 4 IFF reply is
+// VALID (see utils/transponder.js's getIffStatus — compares mode4 against
+// ground-truth coalition internally, never exposes the coalition value
+// itself). Never declares HOSTILE/NEUTRAL/BOGEY under any condition — real
+// IFF only ever gives a positive *friend* confirmation, never a positive
+// *hostile* one. Mutually exclusive with plain .autodec.
+export function AUTO_DECLARE_IFF({ context }) {
+  const aic = useAicStore.getState()
+  const next = aic.autoDeclareMode === AUTO_DECLARE_MODE.IFF ? AUTO_DECLARE_MODE.OFF : AUTO_DECLARE_MODE.IFF
+  aic.setAutoDeclareMode(next)
+  if (next === AUTO_DECLARE_MODE.OFF) return 'AUTODEC IFF OFF'
+  const { myCoalitionNum, visibleUnits } = context
+  for (const [id, unit] of Object.entries(visibleUnits)) {
+    if (trueDeclaration(unit, myCoalitionNum) !== DECLARATION.FRIENDLY) continue
+    if (unit.srsCapable && getIffStatus(unit, myCoalitionNum) !== 'VALID') continue
+    aic.setDeclaration(id, DECLARATION.FRIENDLY)
+  }
+  return 'AUTODEC IFF ON'
 }
 
 // Toggles automatic threat rings (2026-07-10): while on, every friendly
@@ -334,7 +359,7 @@ export function DEFINE({ captures }) {
 
 const ACTION_MAP = {
   CENTER_BULLSEYE, CENTER_BRG_RNG, CENTER_FIX, FIND, RR_TOGGLE, RR_SET, PTL, SYM, FADED,
-  THREAT_CLEAR, THREAT_RADIUS, CLEAR_ALL, CLASS_RESET, CLASS_RECLASSIFY, AUTOCLASS, AUTOTHREAT,
+  THREAT_CLEAR, THREAT_RADIUS, CLEAR_ALL, DECLARATION_RESET, DECLARATION_SET_BULK, AUTO_DECLARE, AUTO_DECLARE_IFF, AUTOTHREAT,
   ROE, ROE_TOGGLE, ASPCOLORS, GEO_TOGGLE, RELIEF_TOGGLE, CENTROID_TOGGLE, AXIS_TOGGLE, PICTURE_TOGGLE,
   BEC_TOGGLE, SECTOR_ON, SECTOR_CLEAR, SECTOR_SET, BE_RESET, BE_LATLNG, BE_FIX, DEFINE,
 }

@@ -4,7 +4,9 @@ import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useUnitsStore }       from '../../store/units.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
-import { useAicStore, DECLARATION } from '../../store/aic.js'
+import { useAicStore, DECLARATION, getAicEffectiveDeclaration } from '../../store/aic.js'
+import { AUTO_DECLARE_MODE } from '../../utils/createDeclarationStore.js'
+import { getIffStatus } from '../../utils/transponder.js'
 import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { useAicPrefsStore }    from '../../store/aicPrefs.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
@@ -55,9 +57,9 @@ const DECL_LABEL = {
   [DECLARATION.FRIENDLY]: 'FR',
 }
 
-// .autoclass (2026-07-08) — a unit's TRUE classification, straight off
+// .autodec (2026-07-08) — a unit's TRUE declaration, straight off
 // coalition: own side is FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL,
-// anything else is an enemy, i.e. HOSTILE (not BOGEY — autoclass means no
+// anything else is an enemy, i.e. HOSTILE (not BOGEY — autodec means no
 // more fog-of-war ambiguity for that contact).
 function trueDeclaration(unit, myCoalitionNum) {
   if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
@@ -159,13 +161,14 @@ export default function AicScope() {
 
   const declarations      = useAicStore(s => s.declarations)
   const roe               = useRoeStore(s => s.roe)
-  const autoClassify      = useAicStore(s => s.autoClassify)
+  const autoDeclareMode   = useAicStore(s => s.autoDeclareMode)
   const braaList          = useAicStore(s => s.braaList)
   const pendingBraaFighter = useAicStore(s => s.pendingBraaFighter)
   const {
     setDeclaration, addBraaPair, removeBraaPairsForUnit,
-    setPendingBraaFighter, clearPendingBraa, getEffectiveDeclaration,
+    setPendingBraaFighter, clearPendingBraa,
   } = useAicStore()
+  const getEffectiveDeclaration = getAicEffectiveDeclaration
 
   const geoBoundaries  = useGeoStore(s => s.boundaries)
   const geoCoastlines  = useGeoStore(s => s.coastlines)
@@ -248,18 +251,29 @@ export default function AicScope() {
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
 
-  // .autoclass (2026-07-08) — while on, any unit that becomes visible with
-  // no explicit declaration yet gets one set to its TRUE classification.
-  // Only touches undeclared units so it never stomps a manual override (or
-  // its own prior auto-declaration) made after the fact. The bulk
-  // reclassify-everything-visible-now pass runs once, in execCommand, at
-  // the moment .autoclass is switched on.
+  // .autodec / .autodec iff (2026-07-08, reworked for SRS/IFF gating) —
+  // while a mode is active, any unit that becomes visible with no explicit
+  // declaration yet gets auto-declared: 'coalition' mode declares every unit
+  // to its TRUE declaration unconditionally; 'iff' mode only ever declares
+  // FRIENDLY, and only when an srsCapable unit's live Mode 4 reply is VALID
+  // (utils/transponder.js's getIffStatus — never HOSTILE/NEUTRAL/BOGEY,
+  // under any condition). Only touches undeclared units so it never stomps
+  // a manual override (or its own prior auto-declaration) made after the
+  // fact. The bulk apply-to-everything-visible-now pass runs once, in
+  // actions/index.js, at the moment a mode is switched on.
   useEffect(() => {
-    if (!autoClassify) return
+    if (autoDeclareMode === AUTO_DECLARE_MODE.OFF) return
     for (const [id, unit] of Object.entries(visibleUnits)) {
-      if (declarationsRef.current[id] === undefined) setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
+      if (declarationsRef.current[id] !== undefined) continue
+      if (autoDeclareMode === AUTO_DECLARE_MODE.COALITION) {
+        setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
+      } else if (autoDeclareMode === AUTO_DECLARE_MODE.IFF) {
+        if (trueDeclaration(unit, myCoalitionNum) !== DECLARATION.FRIENDLY) continue
+        if (unit.srsCapable && getIffStatus(unit, myCoalitionNum) !== 'VALID') continue
+        setDeclaration(id, DECLARATION.FRIENDLY)
+      }
     }
-  }, [visibleUnits, autoClassify, myCoalitionNum, setDeclaration])
+  }, [visibleUnits, autoDeclareMode, myCoalitionNum, setDeclaration])
 
   const [view, setView] = useState(null)
   const viewRef = useRef(null)
@@ -511,7 +525,7 @@ export default function AicScope() {
     const curr = visibleUnits
     for (const [id, unit] of Object.entries(prev)) {
       if (!curr[id] && !fadedRef.current[id]) {
-        const decl = useAicStore.getState().getEffectiveDeclaration(id, unit, myCoalitionNum)
+        const decl = getAicEffectiveDeclaration(id, unit, myCoalitionNum)
         fadedRef.current[id] = { unit: { ...unit }, disappearedAt: now, decl }
       }
     }
@@ -902,12 +916,34 @@ export default function AicScope() {
       unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
     )
     const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
-    const isFriendly = decl === 'FRIENDLY'
-    const typeRevealed = isFriendly || rwrEverDetectedRef.current.has(String(unitId))
+    // Callsign/type reveal is no longer gated purely on the Declaration — a
+    // VALID Mode 4 IFF reply reveals identity too, independent of whether
+    // the contact has actually been declared FRIENDLY yet (see
+    // resources/specs/transponder-correlation-spec.md). The Declaration
+    // field itself (`decl` above) is never touched by this — it only ever
+    // reflects the actual effective/explicit declaration state.
+    //
+    // Reveal is decoupled from declaration for srsCapable contacts
+    // (2026-09-14, corrected after a live report on ABM's identical
+    // pattern): a sticky FRIENDLY declaration (manual F4 or .autodec iff)
+    // does NOT by itself keep the callsign revealed — only a currently
+    // VALID Mode 4 reply does, AIC's equivalent of ABM's live "correlated"
+    // signal. If Mode 4 later drops, the callsign hides again even though
+    // the Declaration stays FRIENDLY. Non-srsCapable contacts are
+    // unaffected — declaration alone still reveals unconditionally, same
+    // as always (no live IFF concept exists for those).
+    const iffStatus  = getIffStatus(unit, myCoalitionNum) // 'VALID' | 'INVALID' | 'NO_REPLY' | null (not srsCapable)
+    const revealed   = unit.srsCapable ? iffStatus === 'VALID' : decl === DECLARATION.FRIENDLY
+    const typeRevealed = revealed || rwrEverDetectedRef.current.has(String(unitId))
     const typeName  = typeRevealed
       ? (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
       : null
-    const callsign  = isFriendly ? resolveCallsign(unit) : null
+    const callsign  = revealed ? resolveCallsign(unit) : null
+    // No 'VALID REPLY' text — the callsign being shown at all already is
+    // the evidence of a valid reply (revealed === iffStatus === 'VALID'
+    // for an srsCapable contact); only the non-revealing statuses need a
+    // word on the line.
+    const iffText   = iffStatus === 'INVALID' ? 'INVALID REPLY' : iffStatus === 'NO_REPLY' ? 'NO REPLY' : null
     const spdKts    = Math.round((unit.speed ?? 0) * 1.94384)
 
     return {
@@ -919,6 +955,7 @@ export default function AicScope() {
       spd:      `${spdKts}`,
       flags:    speedFlags(unit),
       callsign,
+      iff:      iffText,
     }
   }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum]) // eslint-disable-line
 
@@ -1020,8 +1057,12 @@ export default function AicScope() {
                   <span className="aic-readout-id">{readout.type}</span>
                   <span>{readout.spd}</span>
                 </div>
-                {readout.flags    && <div className="aic-readout-flags">{readout.flags}</div>}
-                {readout.callsign && <div className="aic-readout-callsign">{readout.callsign}</div>}
+                {readout.flags && <div className="aic-readout-flags">{readout.flags}</div>}
+                {(readout.callsign || readout.iff) && (
+                  <div className="aic-readout-callsign">
+                    {[readout.callsign, readout.iff].filter(Boolean).join(' ')}
+                  </div>
+                )}
               </>
             ) : (
               <div className="aic-readout-cursor-bs">{cursorBullseye}</div>

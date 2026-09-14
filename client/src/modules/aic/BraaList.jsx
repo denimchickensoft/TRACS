@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
-import { useAicStore }  from '../../store/aic.js'
+import { useAicStore, getAicEffectiveDeclaration } from '../../store/aic.js'
 import { useUnitsStore } from '../../store/units.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { useSessionStore } from '../../store/session.js'
@@ -114,7 +114,7 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
   const mission      = useSessionStore(s => s.mission)
   const braaList          = useAicStore(s => s.braaList)
   const removeBraaPair    = useAicStore(s => s.removeBraaPair)
-  const getEffectiveDecl  = useAicStore(s => s.getEffectiveDeclaration)
+  const getEffectiveDecl  = getAicEffectiveDeclaration
   const declarations      = useAicStore(s => s.declarations)
   const myCoalitionNum    = { blue: 2, red: 1, gm: 2, admin: 2 }[coalition] ?? 2
 

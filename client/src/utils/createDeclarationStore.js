@@ -16,46 +16,64 @@ export const DECLARATION = {
   FRIENDLY: 'FRIENDLY',
 }
 
-export function createDeclarationStore({ storageKey }) {
+// autoDeclareMode: 'off' | 'coalition' | 'iff'. 'coalition' is the old
+// autoClassify=true behavior (declare everything to ground truth,
+// unconditionally). 'iff' is a stricter, FRIENDLY-only mode — see each
+// caller's own actions/index.js for what 'iff' actually gates on
+// (module-specific: AIC uses SRS Mode 4, ABM uses FRAG-assigned code
+// correlation) — this store only holds the bare mode string and its
+// mutual-exclusivity/sync mechanics, not the matching logic itself.
+export const AUTO_DECLARE_MODE = { OFF: 'off', COALITION: 'coalition', IFF: 'iff' }
+
+export function createDeclarationStore({ storageKey, legacyStorageKey }) {
   const { register, broadcast } = createBroadcastHook()
 
-  function loadStoredAutoClassify() {
+  function loadStoredAutoDeclareMode() {
     try {
-      return localStorage.getItem(storageKey) === 'true'
+      const stored = localStorage.getItem(storageKey)
+      if (stored === AUTO_DECLARE_MODE.OFF || stored === AUTO_DECLARE_MODE.COALITION || stored === AUTO_DECLARE_MODE.IFF) {
+        return stored
+      }
+      // One-time migration from the old boolean autoClassify key — 'true'
+      // meant unconditional ground-truth auto-declare, i.e. today's
+      // 'coalition' mode.
+      if (legacyStorageKey && localStorage.getItem(legacyStorageKey) === 'true') return AUTO_DECLARE_MODE.COALITION
+      return AUTO_DECLARE_MODE.OFF
     } catch {
-      return false
+      return AUTO_DECLARE_MODE.OFF
     }
   }
 
   const useStore = create((set, get) => ({
     declarations: {},    // { [unitId]: DECLARATION }
-    autoClassify: loadStoredAutoClassify(),
+    autoDeclareMode: loadStoredAutoDeclareMode(),
 
     // BRAA line / bogey dope — local to this controller, not synced via WebRTC.
     braaList:           [],    // [{ id, fighterId, bogeyId }]
     pendingBraaFighter: null,  // unitId awaiting second Ctrl+click
 
-    setDeclaration: (unitId, classification) => {
-      set(s => ({ declarations: { ...s.declarations, [unitId]: classification } }))
-      broadcast('DECLARATION_SET', { unitId, classification })
+    setDeclaration: (unitId, declaration) => {
+      set(s => ({ declarations: { ...s.declarations, [unitId]: declaration } }))
+      broadcast('DECLARATION_SET', { unitId, declaration })
     },
 
-    // .class (no args) — return every explicit declaration to its fog-of-war
-    // default, and turn off autoclassification. Broadcast as one bulk event
-    // rather than N individual DECLARATION_SET messages.
+    // .dec (no args) — return every explicit declaration to its fog-of-war
+    // default, and turn off auto-declare. Broadcast as one bulk event rather
+    // than N individual DECLARATION_SET messages.
     resetDeclarations: () => {
-      set({ declarations: {}, autoClassify: false })
+      set({ declarations: {}, autoDeclareMode: AUTO_DECLARE_MODE.OFF })
       broadcast('DECLARATIONS_RESET', {})
     },
 
-    // .autoclass — when on, every unit is classified to its TRUE (coalition-
-    // based) declaration as it becomes visible; the bulk apply for units
-    // already visible at toggle-on time happens in the scope component (it
-    // needs live unit data the store doesn't hold). Toggling off does not
-    // revert existing declarations, it just stops future auto-declaration.
-    setAutoClassify: (enabled) => {
-      set({ autoClassify: enabled })
-      broadcast('AUTOCLASS_SET', { enabled })
+    // .autodec / .autodec iff — mutually exclusive three-state toggle.
+    // Turning a mode ON applies it immediately to every currently-visible
+    // contact (the bulk apply happens in the scope component, which needs
+    // live unit data this store doesn't hold); switching modes or turning
+    // off never reverts anything already declared, it just stops future
+    // auto-declaration under the old mode.
+    setAutoDeclareMode: (mode) => {
+      set({ autoDeclareMode: mode })
+      broadcast('AUTO_DECLARE_MODE_SET', { mode })
     },
 
     addBraaPair: (fighterId, bogeyId) => {
@@ -80,11 +98,11 @@ export function createDeclarationStore({ storageKey }) {
     setPendingBraaFighter: (unitId) => set({ pendingBraaFighter: unitId }),
     clearPendingBraa:      ()       => set({ pendingBraaFighter: null }),
 
-    _applyDeclaration: (unitId, classification) => {
-      set(s => ({ declarations: { ...s.declarations, [unitId]: classification } }))
+    _applyDeclaration: (unitId, declaration) => {
+      set(s => ({ declarations: { ...s.declarations, [unitId]: declaration } }))
     },
 
-    _applyAutoClassify: (enabled) => set({ autoClassify: enabled }),
+    _applyAutoDeclareMode: (mode) => set({ autoDeclareMode: mode }),
 
     getEffectiveDeclaration: (unitId, unit, myCoalitionNum) => {
       const explicit = get().declarations[String(unitId)]
@@ -93,40 +111,40 @@ export function createDeclarationStore({ storageKey }) {
     },
 
     reset: () => set({
-      declarations: {}, autoClassify: false, braaList: [], pendingBraaFighter: null,
+      declarations: {}, autoDeclareMode: AUTO_DECLARE_MODE.OFF, braaList: [], pendingBraaFighter: null,
     }),
   }))
 
   useStore.subscribe((state, prevState) => {
-    if (state.autoClassify === prevState.autoClassify) return
+    if (state.autoDeclareMode === prevState.autoDeclareMode) return
     try {
-      localStorage.setItem(storageKey, String(state.autoClassify))
+      localStorage.setItem(storageKey, state.autoDeclareMode)
     } catch {
       // ignore (e.g. private browsing quota)
     }
   })
 
-  function applyDeclaration(unitId, classification) {
-    useStore.getState()._applyDeclaration(unitId, classification)
+  function applyDeclaration(unitId, declaration) {
+    useStore.getState()._applyDeclaration(unitId, declaration)
   }
 
-  function applyAutoClassify(enabled) {
-    useStore.getState()._applyAutoClassify(enabled)
+  function applyAutoDeclareMode(mode) {
+    useStore.getState()._applyAutoDeclareMode(mode)
   }
 
   function applyStateDump(payload) {
     const patch = {}
     if (payload.declarations) patch.declarations = payload.declarations
-    if (payload.autoClassify !== undefined) patch.autoClassify = payload.autoClassify
+    if (payload.autoDeclareMode !== undefined) patch.autoDeclareMode = payload.autoDeclareMode
     useStore.setState(patch)
   }
 
   function applyDeclarationsReset() {
-    useStore.setState({ declarations: {}, autoClassify: false })
+    useStore.setState({ declarations: {}, autoDeclareMode: AUTO_DECLARE_MODE.OFF })
   }
 
   return {
     useStore, register,
-    applyDeclaration, applyAutoClassify, applyStateDump, applyDeclarationsReset,
+    applyDeclaration, applyAutoDeclareMode, applyStateDump, applyDeclarationsReset,
   }
 }

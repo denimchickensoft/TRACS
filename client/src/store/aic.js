@@ -6,16 +6,32 @@ const {
   useStore: useAicStore,
   register: registerAicBroadcast,
   applyDeclaration: applyAicDeclaration,
-  applyAutoClassify: applyAicAutoClassify,
+  applyAutoDeclareMode: applyAicAutoDeclareMode,
   applyStateDump: applyAicStateDump,
   applyDeclarationsReset: applyAicDeclarationsReset,
-} = createDeclarationStore({ storageKey: 'tracs.aic.autoClassify' })
+} = createDeclarationStore({ storageKey: 'tracs.aic.autoDeclareMode', legacyStorageKey: 'tracs.aic.autoClassify' })
 
 export {
   useAicStore,
   registerAicBroadcast,
   applyAicDeclaration,
-  applyAicAutoClassify,
+  applyAicAutoDeclareMode,
   applyAicStateDump,
   applyAicDeclarationsReset,
+}
+
+// AIC-only override of the shared getEffectiveDeclaration fallback — an
+// srsCapable, same-coalition contact with no explicit declaration defaults
+// to BOGEY instead of the shared store's usual auto-FRIENDLY default (the
+// same fog-of-war resting state every other contact already gets), until
+// manually declared or auto-declared via .autodec/.autodec iff. Deliberately
+// NOT edited into createDeclarationStore.js's shared getEffectiveDeclaration
+// itself — ABM reads that same function for its own (unrelated) declaration-
+// color computation, and this default change is AIC-specific.
+// See resources/specs/transponder-correlation-spec.md.
+export function getAicEffectiveDeclaration(unitId, unit, myCoalitionNum) {
+  const explicit = useAicStore.getState().declarations[String(unitId)]
+  if (explicit !== undefined) return explicit
+  if (unit?.srsCapable) return DECLARATION.BOGEY
+  return unit?.coalition === myCoalitionNum ? DECLARATION.FRIENDLY : DECLARATION.BOGEY
 }

@@ -3,7 +3,7 @@ import { latLngToCanvas } from '../../utils/projection.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 
-// .autoclass (2026-07-08) — same TRUE-classification rule as AIC's
+// .autodec (2026-07-08) — same TRUE-declaration rule as AIC's
 // (client/src/modules/aic/AicScope.jsx trueDeclaration): own coalition is
 // FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL, anything else is HOSTILE.
 export function trueDeclaration(unit, myCoalitionNum) {
@@ -86,22 +86,22 @@ export function getAbmVisibleGroundUnits(units, myCoalitionNum) {
 // Bogey dope helper — ported from AIC's AicScope.jsx findNearestBogey as-is.
 // Air contacts only, BOGEY/HOSTILE only (excludes FRIENDLY/NEUTRAL and,
 // per 2026-07-07 direction, ground/naval contacts — "bogey" means air).
-// Classification-only multi-select (2026-07-08) — local to ABM, not shared
+// Declaration-only multi-select (2026-07-08) — local to ABM, not shared
 // with resolveSlew (used everywhere else: BRAA, threat rings, bogey dope,
 // leader-dir override) which always picks the single nearest hit. Dense
 // ground/naval clusters can bury a unit behind closer neighbors so that
 // "nearest wins" makes it unreachable no matter where in the cluster you
-// click; F1-F4 + click instead classifies every contact within the same
+// click; F1-F4 + click instead declares every contact within the same
 // click radius at once.
-const CLASSIFY_CLICK_RADIUS_PX = 10
+const DECLARE_CLICK_RADIUS_PX = 10
 
-export function resolveClassifyTargets(canvasPos, units, view) {
+export function resolveDeclareTargets(canvasPos, units, view) {
   const hits = []
   for (const [id, unit] of Object.entries(units)) {
     const pos = unit.position
     if (!pos) continue
     const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
-    if (Math.hypot(canvasPos.x - x, canvasPos.y - y) < CLASSIFY_CLICK_RADIUS_PX) {
+    if (Math.hypot(canvasPos.x - x, canvasPos.y - y) < DECLARE_CLICK_RADIUS_PX) {
       hits.push({ unitId: id, unit })
     }
   }
@@ -132,10 +132,11 @@ export function buildReadoutFields(dbEntry) {
   return fields.filter(v => v !== undefined && v !== null && v !== '')
 }
 
-// Friendly air-unit readout — true coalition (unit.coalition === myCoalitionNum),
-// not the possibly F-key-overridden declaration, same "actual side" gate
-// drawAbmContacts.js uses for its own friendly/non-friendly datablock split
-// (2026-08-02 direction: classification overrides shouldn't unlock this).
+// Friendly air-unit readout — built for a unit the caller has already
+// determined is "friendly" for datablock/readout purposes (declaration or
+// correlation-driven since 2026-09-14, see drawAbmContacts.js/AbmScope.jsx's
+// getAbmEffectiveDeclaration + correlationEngine.js — no gating logic lives
+// in this function itself, it just formats the field list).
 // One line per ammo entry, no cap — a loaded-out jet just gets a long list.
 export function buildFriendlyAirFields(unit) {
   const fields = [

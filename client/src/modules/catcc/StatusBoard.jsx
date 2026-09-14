@@ -7,6 +7,7 @@ import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { getVisibleUnits }      from '../atc/stars/visibleUnits.js'
 import { resolveCallsign, parseUnitName } from '../../utils/callsign.js'
+import { hasLiveSquawk, normalizeCode } from '../../utils/transponder.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
@@ -37,6 +38,7 @@ function isValidDecimal(v) {
 const COLUMNS = [
   { id: 'evt',    label: 'EVT',      field: 'evt',        w: 28,  maxLen: 2 },
   { id: 'side1',  label: 'SIDE',     field: 'sideNumber', w: 36,  maxLen: 3, digitsOnly: true },
+  { id: 'bcn',    label: 'BCN',      field: 'bcn',        w: 58,  maxLen: 4, digitsOnly: true },
   { id: 'cs',     label: 'CALLSIGN', field: 'callsign',   w: 72,  maxLen: 10 },
   { id: 'pilot',  label: 'PILOT',    field: 'pilot',      w: 64,  maxLen: 24 },
   { id: 'type',   label: 'TYPE',     field: 'type',       w: 38,  maxLen: 4 },
@@ -312,7 +314,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     event, launch, recovery, clg, vis, qnh,
     caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn, rad,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
-    clearMissionData, clearAll,
+    clearMissionData, clearAll, recycleBcn,
   } = useStatusBoardStore()
 
   const [importOpen,       setImportOpen]       = useState(false)
@@ -414,8 +416,22 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
 
   // ── Correlation sync ───────────────────────────────────────────────
   // Rebuild correlationStore from entries whenever entries or visible units change.
+  //
+  // Not srsCapable (no relay, or a unit that's never reported real SRS
+  // transponder data) → old model, unchanged: side number shown as soon as
+  // it's typed/matched, no gating.
+  //
+  // srsCapable → gated like STARS' LDB/FDB (see
+  // resources/specs/transponder-correlation-spec.md): no live squawk yet →
+  // nothing shown (CatccScope falls back to 'XXX'); live squawk but no BCN
+  // match → the live code itself shows instead (pendingCodes, reduced info
+  // rather than full anonymity); BCN AND callsign both match (double-gate,
+  // same rationale as associationEngine.js — callsign is ground truth, not
+  // self-reported, so requiring both closes the duplicate/borrowed-code case
+  // for free) → reveal the side number.
   useEffect(() => {
     const newCorrelations = {}
+    const newPendingCodes = {}
     for (const entry of entries) {
       let uid = entry.unitId
       if (uid && !visibleUnits[uid]) uid = null  // stale — unit was deleted and recreated
@@ -424,11 +440,26 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           if (resolveCallsign(unit) === entry.callsign) { uid = id; break }
         }
       }
-      if (uid && entry.sideNumber) {
+      if (!uid) continue
+      const unit = visibleUnits[uid]
+
+      if (!unit?.srsCapable) {
+        if (entry.sideNumber) newCorrelations[String(uid)] = entry.sideNumber
+        continue
+      }
+
+      if (!hasLiveSquawk(unit)) continue // nothing to gate on yet
+
+      const squawkMatches   = normalizeCode(unit.transponder.mode3) === normalizeCode(entry.bcn)
+      const callsignMatches = resolveCallsign(unit) === entry.callsign
+      if (entry.sideNumber && squawkMatches && callsignMatches) {
         newCorrelations[String(uid)] = entry.sideNumber
+      } else {
+        newPendingCodes[String(uid)] = normalizeCode(unit.transponder.mode3)
       }
     }
     useCorrelationStore.getState().setAll(newCorrelations)
+    useCorrelationStore.getState().setPendingCodes(newPendingCodes)
   }, [entries, visibleUnits])
 
   // ── Pilot auto-populate ────────────────────────────────────────────
@@ -543,12 +574,12 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           {sortedEntries.map((entry, rowIdx) => (
             <Fragment key={entry.id}>
               {COLUMNS.map((col) => (
-                <div key={col.id} className="sb-td">
+                <div key={col.id} className={col.id === 'bcn' ? 'sb-td sb-td-bcn' : 'sb-td'}>
                   <EditableCell
                     value={entry[col.field] ?? ''}
                     readOnly={col.readOnly}
                     maxLen={col.maxLen}
-                    inputW={col.w - 6}
+                    inputW={col.id === 'bcn' ? col.w - 24 : col.w - 6}
                     digitsOnly={col.digitsOnly}
                     padZero={col.padZero}
                     decimalFmt={col.decimalFmt}
@@ -570,6 +601,14 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                       if (!col.readOnly) updateEntry(entry.id, col.field, v)
                     }}
                   />
+                  {col.id === 'bcn' && (
+                    <button
+                      type="button"
+                      className="sb-recycle-btn"
+                      onClick={() => recycleBcn(entry.id)}
+                      title="Recycle BCN"
+                    >↻</button>
+                  )}
                 </div>
               ))}
               <div className="sb-td sb-td-move">

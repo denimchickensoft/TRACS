@@ -27,7 +27,7 @@
  *                                  (the view's declination, NOT the bullseye-
  *                                  relative one — draw commands only)
  *                myCoalitionNum
- *                allVisibleUnits — air+ground/naval union (.class/.autoclass only)
+ *                allVisibleUnits — air+ground/naval union (.dec/.autodec only)
  *
  * Returns the command-feedback string to show the controller (never null —
  * every one of these branches produced feedback in the original). AbmScope
@@ -59,7 +59,8 @@
 
 import { useDisplayStore } from '../../../store/display.js'
 import { useAbmFocusPanelsStore } from '../../../store/abmFocusPanels.js'
-import { useAbmStore, DECLARATION } from '../../../store/abm.js'
+import { useAbmStore, DECLARATION, getAbmEffectiveDeclaration } from '../../../store/abm.js'
+import { AUTO_DECLARE_MODE } from '../../../utils/createDeclarationStore.js'
 import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { useAbmUiPrefsStore } from '../../../store/abmUiPrefs.js'
 import { loadAbmPrefs, saveAbmPrefs } from '../../../store/abmPrefs.js'
@@ -82,10 +83,10 @@ import { parseDrawCommand } from '../draw/drawCommands.js'
 const WINDOW_ID = 'abm-main'
 const MAX_HISTORY = 10 // absolute cap on captured trail points, same as AbmScope.jsx's own constant
 
-// .class/.acq/.eng classification letters — duplicated from AbmScope.jsx
-// rather than imported, matching AIC's own CLASS_LETTER duplication
+// .dec/.acq/.eng declaration letters — duplicated from AbmScope.jsx
+// rather than imported, matching AIC's own DECLARATION_LETTER duplication
 // convention (small, stable, per-scope constant — see that file's comment).
-const CLASS_LETTER = {
+const DECLARATION_LETTER = {
   f: DECLARATION.FRIENDLY,
   n: DECLARATION.NEUTRAL,
   b: DECLARATION.BOGEY,
@@ -861,47 +862,68 @@ export function TCLEAR({ context }) {
   return 'ALL CLEARED'
 }
 
-// ── Bulk reclassification (2026-07-07) ──────────────────────────────────────
-// `.class` alone returns every explicit declaration to its fog-of-war
-// default; `.class <old> <new>` (letters f/n/b/h) reclassifies every
+// ── Bulk redeclaration (2026-07-07) ─────────────────────────────────────────
+// `.dec` alone returns every explicit declaration to its fog-of-war
+// default; `.dec <old> <new>` (letters f/n/b/h) redeclares every
 // currently-visible contact whose *effective* declaration is <old> to <new>
-// — e.g. `.class b h` turns every bogey into a hostile. Applies across air +
+// — e.g. `.dec b h` turns every bogey into a hostile. Applies across air +
 // ground/naval (allVisibleUnits).
 
-export function CLASS_RESET() {
+export function DECLARATION_RESET() {
   useAbmStore.getState().resetDeclarations()
-  return 'CLASS RESET'
+  return 'DEC RESET'
 }
 
-export function CLASS_RECLASSIFY({ captures, context }) {
-  const oldDecl = CLASS_LETTER[captures.oldLetter]
-  const newDecl = CLASS_LETTER[captures.newLetter]
+export function DECLARATION_SET_BULK({ captures, context }) {
+  const oldDecl = DECLARATION_LETTER[captures.oldLetter]
+  const newDecl = DECLARATION_LETTER[captures.newLetter]
   const { myCoalitionNum, allVisibleUnits } = context
   const abm = useAbmStore.getState()
   for (const [id, unit] of Object.entries(allVisibleUnits)) {
-    if (abm.getEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
+    if (getAbmEffectiveDeclaration(id, unit, myCoalitionNum) === oldDecl) {
       abm.setDeclaration(id, newDecl)
     }
   }
-  return `CLASS ${oldDecl} → ${newDecl}`
+  return `DEC ${oldDecl} → ${newDecl}`
 }
 
-// Toggles autoclassification (2026-07-08): ON sets every currently-visible
-// air/ground/naval contact to its TRUE (coalition-based) classification
-// right away, and AbmScope's own useEffect keeps auto-declaring newly-visible
-// units from then on. OFF does not revert anything already classified, it
-// just stops future auto-declaration. `.class` (no args) overrides this and
-// turns it off.
-export function AUTOCLASS({ context }) {
+// .autodec — declares every currently-visible undeclared air/ground/naval
+// contact to its TRUE (coalition-based) declaration right away, and
+// AbmScope's own useEffect keeps auto-declaring newly-visible units from then
+// on. Mutually exclusive with .autodec iff. Turning either off does not
+// revert anything already declared, it just stops future auto-declaration.
+// `.dec` (no args) overrides this and turns it back off.
+export function AUTO_DECLARE({ context }) {
   const abm = useAbmStore.getState()
-  const next = !abm.autoClassify
-  abm.setAutoClassify(next)
-  if (!next) return 'AUTOCLASS OFF'
+  const next = abm.autoDeclareMode === AUTO_DECLARE_MODE.COALITION ? AUTO_DECLARE_MODE.OFF : AUTO_DECLARE_MODE.COALITION
+  abm.setAutoDeclareMode(next)
+  if (next === AUTO_DECLARE_MODE.OFF) return 'AUTODEC OFF'
   const { myCoalitionNum, allVisibleUnits } = context
   for (const [id, unit] of Object.entries(allVisibleUnits)) {
     abm.setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
   }
-  return 'AUTOCLASS ON'
+  return 'AUTODEC ON'
+}
+
+// .autodec iff — FRIENDLY-only auto-declare: a non-srsCapable same-coalition
+// contact declares unconditionally, same as always; an srsCapable
+// same-coalition contact declares only when correlationEngine.js's
+// computeCorrelations has bound it to a FRAG-assigned aircraft (any of Mode
+// 1/2/3/4 matching, plus the callsign safety net — see
+// resources/specs/transponder-correlation-spec.md). Never declares
+// HOSTILE/NEUTRAL/BOGEY. Mutually exclusive with plain .autodec.
+export function AUTO_DECLARE_IFF({ context }) {
+  const abm = useAbmStore.getState()
+  const next = abm.autoDeclareMode === AUTO_DECLARE_MODE.IFF ? AUTO_DECLARE_MODE.OFF : AUTO_DECLARE_MODE.IFF
+  abm.setAutoDeclareMode(next)
+  if (next === AUTO_DECLARE_MODE.OFF) return 'AUTODEC IFF OFF'
+  const { myCoalitionNum, allVisibleUnits, correlatedUnitIds } = context
+  for (const [id, unit] of Object.entries(allVisibleUnits)) {
+    if (trueDeclaration(unit, myCoalitionNum) !== DECLARATION.FRIENDLY) continue
+    if (unit.srsCapable && !correlatedUnitIds?.has(String(id))) continue
+    abm.setDeclaration(id, DECLARATION.FRIENDLY)
+  }
+  return 'AUTODEC IFF ON'
 }
 
 // Toggles automatic threat rings (2026-07-10): while on, every friendly
@@ -930,12 +952,12 @@ export function ROE_TOGGLE({ context }) {
 }
 
 // ── Ground/naval acq/eng range-ring visibility (§7, 2026-07-07) ─────────────
-// `.acq`/`.eng` toggle all four classifications' rings at once; `.acq h`/
-// `.eng b` etc. toggle just that classification (f/n/b/h — matches the F-key
+// `.acq`/`.eng` toggle all four declarations' rings at once; `.acq h`/
+// `.eng b` etc. toggle just that declaration (f/n/b/h — matches the F-key
 // declaration letters, b for BOGEY).
 
-export function ACQ_CLASS({ captures }) {
-  const decl = CLASS_LETTER[captures.letter]
+export function ACQ_DECL({ captures }) {
+  const decl = DECLARATION_LETTER[captures.letter]
   const prefs = useAbmUiPrefsStore.getState()
   const wasHidden = prefs.acqHidden.has(decl)
   const next = new Set(prefs.acqHidden)
@@ -951,8 +973,8 @@ export function ACQ_TOGGLE() {
   return next.size ? 'ACQ OFF' : 'ACQ ON'
 }
 
-export function ENG_CLASS({ captures }) {
-  const decl = CLASS_LETTER[captures.letter]
+export function ENG_DECL({ captures }) {
+  const decl = DECLARATION_LETTER[captures.letter]
   const prefs = useAbmUiPrefsStore.getState()
   const wasHidden = prefs.engHidden.has(decl)
   const next = new Set(prefs.engHidden)
@@ -984,8 +1006,8 @@ const ACTION_MAP = {
   PTL, FADED, HISTORY_TOGGLE, HISTORY_LEN_RATE, HISTORY_LEN,
   DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,
-  CLASS_RESET, CLASS_RECLASSIFY, AUTOCLASS, AUTOTHREAT, ROE, ROE_TOGGLE,
-  ACQ_CLASS, ACQ_TOGGLE, ENG_CLASS, ENG_TOGGLE,
+  DECLARATION_RESET, DECLARATION_SET_BULK, AUTO_DECLARE, AUTO_DECLARE_IFF, AUTOTHREAT, ROE, ROE_TOGGLE,
+  ACQ_DECL, ACQ_TOGGLE, ENG_DECL, ENG_TOGGLE,
 }
 
 /**

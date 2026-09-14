@@ -2,7 +2,9 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useSessionStore }  from '../../store/session'
 import { useDisplayStore }  from '../../store/display.js'
 import { useUnitsStore }    from '../../store/units.js'
-import { useAbmStore, DECLARATION } from '../../store/abm.js'
+import { useAbmStore, DECLARATION, getAbmEffectiveDeclaration } from '../../store/abm.js'
+import { AUTO_DECLARE_MODE } from '../../utils/createDeclarationStore.js'
+import { computeCorrelations } from './correlationEngine.js'
 import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
@@ -57,7 +59,7 @@ import {
 } from './draw/drawCommands.js'
 import {
   trueDeclaration, getAbmVisibleUnits, getAbmVisibleGroundUnits,
-  resolveClassifyTargets, buildReadoutFields, buildFriendlyAirFields,
+  resolveDeclareTargets, buildReadoutFields, buildFriendlyAirFields,
   distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
@@ -89,7 +91,7 @@ const F_KEY_DECL = {
   F4: DECLARATION.FRIENDLY,
 }
 
-// .acq/.eng classification letters, ALL_DECLARATIONS, and the per-category
+// .acq/.eng declaration letters, ALL_DECLARATIONS, and the per-category
 // airspace tables used to live here — moved to actions/index.js 2026-08-22
 // (resources/specs/refactor-spec.md §10 phase 4), execCommand was their only
 // call site in this file.
@@ -161,8 +163,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const roe = useRoeStore(s => s.roe)
   const roeVisible = windowSettings?.roeVisible ?? true
   const declarations = useAbmStore(s => s.declarations)
-  const autoClassify = useAbmStore(s => s.autoClassify)
-  const getEffectiveDeclaration = useAbmStore(s => s.getEffectiveDeclaration)
+  const autoDeclareMode = useAbmStore(s => s.autoDeclareMode)
+  const getEffectiveDeclaration = getAbmEffectiveDeclaration
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
 
@@ -259,10 +261,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const autoThreat    = useAbmUiPrefsStore(s => s.autoThreat)
   const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
 
-  // Ground/naval acq/eng range-ring visibility (§7) — per-classification
+  // Ground/naval acq/eng range-ring visibility (§7) — per-declaration
   // hide sets (.acq/.eng commands). Empty set = everything shown; bare
-  // `.acq`/`.eng` toggles all four classes at once, `.acq h` etc. toggles
-  // just that classification (2026-07-07).
+  // `.acq`/`.eng` toggles all four declarations at once, `.acq h` etc. toggles
+  // just that declaration (2026-07-07).
   const acqHidden    = useAbmUiPrefsStore(s => s.acqHidden)
   const engHidden    = useAbmUiPrefsStore(s => s.engHidden)
 
@@ -277,6 +279,19 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   )
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
+
+  // Transponder correlation (§D of resources/specs/transponder-correlation-spec.md)
+  // — continuous, unconditional reveal gate: binds an srsCapable unit to a
+  // FRAG-assigned aircraft via correlationEngine.js's double gate. Not
+  // toggle-gated (same as CATCC's BCN match / AIC's VALID REPLY) — only
+  // *declaring* a correlated contact FRIENDLY needs .autodec/.autodec iff or
+  // a manual F4.
+  const correlations = useMemo(
+    () => computeCorrelations({ units: visibleUnits, flights: atoFlights }),
+    [visibleUnits, atoFlights]
+  )
+  const correlatedUnitIdsRef = useRef(new Set())
+  useEffect(() => { correlatedUnitIdsRef.current = new Set(Object.keys(correlations)) }, [correlations])
 
   useEffect(() => {
     if (!autoThreat) { setAutoThreatRingIds(new Set()); return }
@@ -297,7 +312,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius]) // eslint-disable-line
 
   // ── Ground/naval picture (§7 / Phase 5) — same declaration store/symbology
-  // rules as air (classification works the same way), distinct rendering
+  // rules as air (declaration works the same way), distinct rendering
   // (drawAbmGroundContacts.js): solid circles, half the air symbol's size,
   // no datablock/leader/PTL. Range rings sourced from the static unit
   // databases (client/public/units/{ground,navy}unitdatabase.json), keyed by
@@ -355,20 +370,29 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const allVisibleUnitsRef = useRef(allVisibleUnits)
   useEffect(() => { allVisibleUnitsRef.current = allVisibleUnits }, [allVisibleUnits])
 
-  // .autoclass (2026-07-08) — same pattern as AIC's (AicScope.jsx): while on,
-  // any air/ground/naval unit that becomes visible with no explicit
-  // declaration yet gets one set to its TRUE classification. Only touches
+  // .autodec / .autodec iff (2026-07-08, reworked for SRS/correlation gating)
+  // — same pattern as AIC's (AicScope.jsx): while a mode is active, any
+  // air/ground/naval unit that becomes visible with no explicit declaration
+  // yet gets auto-declared. 'coalition' mode declares to TRUE declaration
+  // unconditionally; 'iff' mode only ever declares FRIENDLY, and only when an
+  // srsCapable unit has been correlated to a FRAG-assigned aircraft (see
+  // correlationEngine.js) — never HOSTILE/NEUTRAL/BOGEY. Only touches
   // undeclared units so it never stomps a manual override (or its own prior
-  // auto-declaration). The bulk reclassify-everything-visible-now pass runs
-  // once, in execCommand, at the moment .autoclass is switched on.
+  // auto-declaration). The bulk apply-to-everything-visible-now pass runs
+  // once, in actions/index.js, at the moment a mode is switched on.
   useEffect(() => {
-    if (!autoClassify) return
+    if (autoDeclareMode === AUTO_DECLARE_MODE.OFF) return
     for (const [id, unit] of Object.entries(allVisibleUnits)) {
-      if (declarationsRef.current[id] === undefined) {
+      if (declarationsRef.current[id] !== undefined) continue
+      if (autoDeclareMode === AUTO_DECLARE_MODE.COALITION) {
         useAbmStore.getState().setDeclaration(id, trueDeclaration(unit, myCoalitionNum))
+      } else if (autoDeclareMode === AUTO_DECLARE_MODE.IFF) {
+        if (trueDeclaration(unit, myCoalitionNum) !== DECLARATION.FRIENDLY) continue
+        if (unit.srsCapable && !correlatedUnitIdsRef.current.has(String(id))) continue
+        useAbmStore.getState().setDeclaration(id, DECLARATION.FRIENDLY)
       }
     }
-  }, [allVisibleUnits, autoClassify, myCoalitionNum])
+  }, [allVisibleUnits, autoDeclareMode, myCoalitionNum, correlations])
 
   const [groundUnitDb, setGroundUnitDb] = useState({})
   useEffect(() => {
@@ -736,7 +760,18 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
         continue
       }
       if (hit.kind === 'air') {
-        const isFriendly = hit.unit.coalition === myCoalitionNum
+        // Declaration-driven for a non-srsCapable contact; for an
+        // srsCapable one, identity reveal is driven by CURRENT correlation
+        // alone, independent of (possibly sticky) declaration — same
+        // decoupling as drawAbmContacts.js's datablock, see its comment for
+        // the full reasoning. getAbmEffectiveDeclaration still gates
+        // whether an srsCapable contact gets an automatic FRIENDLY default
+        // in the first place (no free pass for being same-coalition), but
+        // decl itself no longer factors into reveal here.
+        const decl = getAbmEffectiveDeclaration(hit.unitId, hit.unit, myCoalitionNum)
+        const isFriendly = hit.unit.srsCapable
+          ? correlatedUnitIdsRef.current.has(String(hit.unitId))
+          : decl === DECLARATION.FRIENDLY
         if (isFriendly) {
           groups.set(`air:${hit.unitId}`, {
             kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: true, count: 1,
@@ -1176,13 +1211,14 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       (windowSettings?.historyVisible ?? true) ? Math.min(MAX_HISTORY, windowSettings?.historyLength ?? 4) : 0,
       fadedRef.current, Date.now(),
       windowSettings?.dbSuppress ?? true,
-      myCoalitionNum,
       rwrEverDetectedRef.current,
       windowSettings?.dbca ?? false,
       dbHiddenIdSet,
       highlightedIds,
       blinkIdSet,
       blinkOn,
+      correlatedUnitIdsRef.current,
+      Math.floor(Date.now() / 2000),
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
 
@@ -1429,6 +1465,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       declinationDeg: viewRef.current?.declinationDeg ?? 0,
       myCoalitionNum,
       allVisibleUnits: allVisibleUnitsRef.current,
+      correlatedUnitIds: correlatedUnitIdsRef.current,
     }
     const feedback = await dispatch(parsed, context)
     setCmdFeedback(feedback)
@@ -1660,14 +1697,33 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       return
     }
 
+    // Create-or-reconcile a FRAG flight from a live contact (§D.3 of
+    // transponder-correlation-spec.md). Friendly-only (true coalition, not
+    // the fog-of-war declaration — this is about tracking your own side's
+    // aircraft in FRAG, independent of anything declared). Group discovery
+    // is callsign-prefix based (parseFlightElement, same helper
+    // drawAbmContacts.js's formation-suppression already uses), not
+    // resolveGroupIdForUnit's DCS-groupID path — that one only resolves for
+    // Olympus, and only for already-tracked groups on Tacview, so it can't
+    // identify a genuinely new group at all on that source. One unified
+    // action regardless of whether the flight already exists or this exact
+    // aircraft is already on its roster: ensureManualRosterEntry no-ops on
+    // both "already exists" cases, so repeat clicks are always safe.
+    //
+    // Real bug found live: parseFlightElement requires an AI-style trailing
+    // two-digit flight+element suffix (e.g. "ENFIELD11") — it returns null
+    // for a single-ship/human callsign with no such suffix (e.g. "DENIM"),
+    // silently no-opping the whole handler. Falls back to the bare live
+    // callsign as its own one-aircraft group in that case.
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
-      const groupId = target?.unit ? useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit) : null
-      if (groupId != null) {
-        const flight = useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
-        // FRAG is coalition-restricted like ATO — GM/admin sees everything,
-        // blue/red sessions only their own side's flights.
-        const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
-        if (flight && ownSide) selectAtoGroup(flight.groupId)
+      if (target?.unit && target.unit.coalition === myCoalitionNum) {
+        const liveCallsign = resolveCallsign(target.unit)
+        const fe = parseFlightElement(target.unit)
+        const flightKey = fe ? fe.flightKey : liveCallsign
+        if (flightKey && liveCallsign) {
+          const groupId = useAbmMissionStore.getState().ensureManualRosterEntry(flightKey, liveCallsign, coalition)
+          selectAtoGroup(groupId)
+        }
       }
       return
     }
@@ -1797,7 +1853,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     }
 
     if (pendingDeclaration) {
-      const targets = resolveClassifyTargets(pos, allVisibleUnitsRef.current, viewRef.current)
+      const targets = resolveDeclareTargets(pos, allVisibleUnitsRef.current, viewRef.current)
       for (const t of targets) useAbmStore.getState().setDeclaration(t.unitId, pendingDeclaration)
       setCmdFeedback(pendingDeclaration)
       setPendingDeclaration(null)

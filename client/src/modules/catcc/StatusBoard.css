@@ -349,6 +349,26 @@
   color: #CC4444;
 }
 
+.sb-td-bcn {
+  gap: 2px;
+}
+
+.sb-recycle-btn {
+  background: transparent;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sb-recycle-btn:hover {
+  color: #00b4d8;
+}
+
 .sb-title {
   position: relative;
   font-size: 9px;

@@ -13,3 +13,20 @@ export function hasLiveSquawk(unit) {
   if (t.status !== 1 && t.status !== 2) return false
   return typeof t.mode3 === 'number' && t.mode3 >= 0
 }
+
+// Shared 4-digit octal squawk normalizer — used by any code+callsign
+// double-gate match (STARS' associationEngine.js, CATCC's correlation).
+export function normalizeCode(code) {
+  return String(code ?? '').padStart(4, '0')
+}
+
+// AIC's Mode 4 IFF readout/gate. SRS's mode4 is a raw, unauthenticated
+// on/off toggle (not real crypto) — TRACS compares it against ground-truth
+// coalition internally to decide legitimacy, without ever exposing the
+// coalition value itself. 'VALID' is the only value that should ever feed a
+// reveal/auto-declare gate; 'INVALID'/'NO_REPLY' are display-only.
+export function getIffStatus(unit, myCoalitionNum) {
+  if (!unit?.srsCapable) return null
+  if (unit.transponder?.mode4 !== true) return 'NO_REPLY'
+  return unit.coalition === myCoalitionNum ? 'VALID' : 'INVALID'
+}

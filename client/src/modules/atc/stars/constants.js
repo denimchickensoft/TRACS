@@ -17,7 +17,7 @@ export const RIGHT_ALIGN_ANGLES = new Set([90, 135, 180, 225]) // S, SW, W, NW
 
 // Middle-click highlight color — shared between STARS (drawContacts.js/
 // DatablockOverlay.jsx) and ABM (drawAbmContacts.js/drawAbmGroundContacts.js),
-// overriding whatever classification/ownership color a symbol or datablock
+// overriding whatever declaration/ownership color a symbol or datablock
 // would otherwise use while the contact is highlighted.
 export const HIGHLIGHT_TEAL = '#00FFFF'
 

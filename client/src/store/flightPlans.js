@@ -31,7 +31,7 @@ export const useFlightPlansStore = create(
           [aid]: {
             aid,
             cid:         generateCid(),
-            bcn:         generateBcn(state.plans),
+            bcn:         generateBcn(Object.values(state.plans).map((p) => p.bcn)),
             typ:         '',
             eq:          '',
             dep:         '',
@@ -94,7 +94,7 @@ export const useFlightPlansStore = create(
       return {
         plans: {
           ...state.plans,
-          [key]: { ...state.plans[key], bcn: generateBcn(state.plans) },
+          [key]: { ...state.plans[key], bcn: generateBcn(Object.values(state.plans).map((p) => p.bcn)) },
         },
       }
     }),

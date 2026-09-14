@@ -1,13 +1,13 @@
 /**
  * ABM ground/naval contact rendering (§7) — solid-filled circles, half the
  * pixel size of ABM's air symbol (SYM_HALF=3 in drawAbmContacts.js), using
- * the same classification colors/store as air contacts. No datablock,
+ * the same declaration colors/store as air contacts. No datablock,
  * leader line, PTL, or history trail — declare-and-display only, like air,
  * but deliberately unadorned per 2026-07-07 direction. Units with a known
  * acquisition/engagement range (client/public/units/groundunitdatabase.json,
  * navyunitdatabase.json, keyed by the Olympus unit.name type identifier)
  * get concentric range rings: dashed for acquisition, solid for engagement.
- * Either ring type can be hidden per-classification (.acq/.eng commands in
+ * Either ring type can be hidden per-declaration (.acq/.eng commands in
  * AbmScope.jsx) via acqHidden/engHidden — Sets of DECLARATION values whose
  * rings should be suppressed.
  */

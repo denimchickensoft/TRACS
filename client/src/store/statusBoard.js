@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
+import { generateBcn } from '../utils/bcn.js'
 
 const SB_KEY = 'tracs.catcc.sb'
 
@@ -48,7 +49,7 @@ export const useStatusBoardStore = create((set) => ({
       return {
         entries: [...s.entries, {
           id: s.nextId, evt: '', callsign, unitId,
-          sideNumber: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', eat: '', angels: '', state: '', ata: '',
+          sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', eat: '', angels: '', state: '', ata: '',
         }],
         nextId: s.nextId + 1,
       }
@@ -64,7 +65,7 @@ export const useStatusBoardStore = create((set) => ({
         toAdd.push({
           id, fromMission: true,
           evt: '', callsign: e.callsign, unitId: null,
-          sideNumber: e.modex, pilot: '', type: e.type, msn: e.task,
+          sideNumber: e.modex, bcn: '', pilot: '', type: e.type, msn: e.task,
           atd: '', radial: '', bingo: '', eat: '', angels: '', state: '', ata: '',
         })
         id++
@@ -86,13 +87,20 @@ export const useStatusBoardStore = create((set) => ({
 
   insertEntryAfter: (afterId) =>
     set((s) => {
-      const newEntry = { id: s.nextId, fromMission: false, evt: '', callsign: '', unitId: null, sideNumber: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', eat: '', angels: '', state: '', ata: '' }
+      const newEntry = { id: s.nextId, fromMission: false, evt: '', callsign: '', unitId: null, sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', eat: '', angels: '', state: '', ata: '' }
       const idx = s.entries.findIndex((e) => e.id === afterId)
       const entries = idx === -1
         ? [...s.entries, newEntry]
         : [...s.entries.slice(0, idx + 1), newEntry, ...s.entries.slice(idx + 1)]
       return { entries, nextId: s.nextId + 1 }
     }),
+
+  recycleBcn: (id) =>
+    set((s) => ({
+      entries: s.entries.map((e) =>
+        e.id === id ? { ...e, bcn: generateBcn(s.entries.map((e2) => e2.bcn)) } : e
+      ),
+    })),
 
   renameEntry: (unitId, newCallsign) =>
     set((s) => ({

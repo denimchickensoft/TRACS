@@ -2,7 +2,7 @@
 
 [← All docs](index.md)
 
-Tactical display for airborne intercept control — AWACS/GCI style: bullseye-centered scope, hostile/friendly classification, BRAA pairing, ROE tracking, and a doctrinal PICTURE readout (formation/group detection modeled on AWACS brevity doctrine).
+Tactical display for airborne intercept control — AWACS/GCI style: bullseye-centered scope, hostile/friendly declaration, BRAA pairing, ROE tracking, and a doctrinal PICTURE readout (formation/group detection modeled on AWACS brevity doctrine).
 
 Sign-in requires a Callsign and Frequency — see [Getting Started](getting-started.md). AIC does not use SRS transponder data (unlike ATC's association/IDENT features) — that's undecided/not planned for this module.
 
@@ -38,13 +38,14 @@ Click the scope to focus it, type, then **Enter** to run most commands. A few co
 | `.bec` | Toggle bullseye-on-cursor — bearing/range readout that follows the mouse (off by default) |
 | `.clear` | Clears threat rings, RBL, sector, PICTURE-ack state, and **all** BRAA pairs |
 
-### Classification
+### Declaration
 
 | Command | Effect |
 |---|---|
-| `.class` | Reset all declarations to default (fog-of-war), turns off autoclass |
-| `.class <old> <new>` | Bulk-reclassify every contact currently `<old>` to `<new>` — letters `f`/`n`/`b`/`h` for friendly/neutral/bogey/hostile, e.g. `.class b h` |
-| `.autoclass` | Toggle auto-classification — undeclared contacts adopt their true coalition (friendly/neutral/hostile, never bogey) as soon as they're visible |
+| `.dec` | Reset all declarations to default (fog-of-war), turns off auto-declare |
+| `.dec <old> <new>` | Bulk-redeclare every contact currently `<old>` to `<new>` — letters `f`/`n`/`b`/`h` for friendly/neutral/bogey/hostile, e.g. `.dec b h` |
+| `.autodec` | Toggle auto-declare — undeclared contacts adopt their true coalition (friendly/neutral/hostile, never bogey) as soon as they're visible |
+| `.autodec iff` | Toggle IFF-gated auto-declare — FRIENDLY only; a non-SRS-fielded same-coalition contact declares unconditionally, an SRS-fielded one only when its Mode 4 IFF reply is valid. Never touches hostile/neutral/bogey. Mutually exclusive with `.autodec` |
 
 Or use the F-keys (below) to declare contacts by clicking them.
 
