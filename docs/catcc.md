@@ -57,6 +57,8 @@ Errors appear in the ODS response area: `NO TRACK: <id>` (unit not found), `ILL 
 | **Mouse wheel** over the scope | Zoom range (hold Ctrl for larger steps) |
 | Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
 | **Alt+T** | Toggle top-down display mode |
+| **Ctrl+Alt+0**–**9** | Save current range to bookmark slot 0–9 |
+| **Ctrl+0**–**9** | Load range bookmark 0–9 |
 | `F2`–`F13` and other function keys | Map to STARS-style command prefixes (`F3`=IC, `F4`=TC, `F5`=HO, `F7`=MF, `F9`=FP, etc.) — same key-to-token mapping table as the ATC scope (purely a keyboard convenience, no shared command dispatch) |
 | `Escape` / `Backspace` | Clears the command line / deletes the last character |
 

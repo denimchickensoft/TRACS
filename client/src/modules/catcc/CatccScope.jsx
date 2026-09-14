@@ -30,6 +30,7 @@ import { processOdsCommand } from './odsCommands.js'
 import { initCntl, termCntl, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
+import { getCatccBookmark, saveCatccBookmark } from '../../store/catccBookmarks.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
 import './CatccScope.css'
 
@@ -429,6 +430,30 @@ export default function CatccScope() {
       if (starsKey.action === 'TOGGLE_TOPDOWN') {
         const current = useDisplayStore.getState().windows[WINDOW_ID]?.tdmMode ?? false
         displayStore.updateWindow(WINDOW_ID, { tdmMode: !current })
+        return
+      }
+      // Range bookmarks — CATCC is always carrier-centered, so only rangeNm
+      // is captured (see catccBookmarks.js header for why this isn't folded
+      // into catccPrefs.js or scoped per-theatre like ABM's).
+      const setMatch = starsKey.action?.match(/^SET_BOOKMARK_(\d)$/)
+      if (setMatch) {
+        const n = parseInt(setMatch[1], 10)
+        const rangeNm = useDisplayStore.getState().windows[WINDOW_ID]?.rangeNm
+        saveCatccBookmark(n, { rangeNm })
+        setOdsLines((prev) => [...prev, `BOOKMARK ${n} SAVED (${rangeNm}NM)`].slice(-ODS_MAX_LINES))
+        return
+      }
+      const loadMatch = starsKey.action?.match(/^LOAD_BOOKMARK_(\d)$/)
+      if (loadMatch) {
+        const n = parseInt(loadMatch[1], 10)
+        const bm = getCatccBookmark(n)
+        if (bm) {
+          const rangeNm = Math.max(6, Math.min(256, bm.rangeNm))
+          displayStore.updateWindow(WINDOW_ID, { rangeNm })
+          setOdsLines((prev) => [...prev, `BOOKMARK ${n} LOADED (${rangeNm}NM)`].slice(-ODS_MAX_LINES))
+        } else {
+          setOdsLines((prev) => [...prev, `BOOKMARK ${n} EMPTY`].slice(-ODS_MAX_LINES))
+        }
         return
       }
       if (starsKey.token) usePreviewStore.getState().appendToken(starsKey.token)
