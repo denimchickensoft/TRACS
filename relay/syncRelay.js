@@ -11,6 +11,15 @@
 // See resources/specs/data-sources/webrtc-centralized-sync-spec.md §2.
 const { gateConnection } = require('./auth')
 
+// How often to ping every connected socket, and how a missed pong is
+// detected: any socket still marked not-alive at the START of a tick (i.e.
+// it never answered the ping sent on the PREVIOUS tick) is presumed dead
+// and terminated. So a truly dead connection is reaped within one to two
+// intervals of going quiet, not left registered in `topics` forever (the
+// gap that let a stale session hold a position name hostage indefinitely --
+// see resources/specs/data-sources/webrtc-centralized-sync-spec.md).
+const HEARTBEAT_INTERVAL_MS = 20_000
+
 function createSyncRelay(wss, config) {
   const topics = new Map()   // topic → Set<{ws, peerId}>
 
@@ -93,6 +102,8 @@ function createSyncRelay(wss, config) {
 
   wss.on('connection', (ws) => {
     let peerId = null
+    ws.isAlive = true
+    ws.on('pong', () => { ws.isAlive = true })
 
     gateConnection(ws, config.passwords, {
       label: 'sync',
@@ -130,6 +141,21 @@ function createSyncRelay(wss, config) {
       console.error('[relay:sync] client socket error:', err.message)
     })
   })
+
+  // Reap connections that stopped answering pings -- a dead TCP connection
+  // (process killed, sleep/wake, network drop) otherwise never fires 'close'
+  // and sits in `topics` forever, holding its position name hostage against
+  // a legitimate reconnect. terminate() forces 'close', which routes through
+  // the existing unsubscribeAll(ws) cleanup above -- no separate reap logic
+  // needed.
+  const heartbeatInterval = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (ws.isAlive === false) { ws.terminate(); continue }
+      ws.isAlive = false
+      ws.ping()
+    }
+  }, HEARTBEAT_INTERVAL_MS)
+  wss.on('close', () => clearInterval(heartbeatInterval))
 }
 
 module.exports = { createSyncRelay }

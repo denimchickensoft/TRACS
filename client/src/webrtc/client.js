@@ -38,6 +38,22 @@ async function fetchIceServers() {
 const DISCONNECT_TIMEOUT_MS    = 30_000
 const PEER_ID_STORAGE_KEY      = 'tracs.previousPeerId'
 const CONNECTED_AT_STORAGE_KEY = 'tracs.connectedAt'
+const CLIENT_ID_STORAGE_KEY    = 'tracs.clientId'
+
+// Durable per-browser/device identity, stored in localStorage (unlike
+// PEER_ID_STORAGE_KEY above, which is sessionStorage and only survives a
+// same-tab refresh). Lets the HANDSHAKE handler recognize "this is the same
+// device re-signing in under the same name" even after the tab/app was
+// fully closed and reopened, so it can evict a stale slot immediately
+// instead of waiting on relay-side dead-connection reaping.
+function getClientId() {
+  let id = localStorage.getItem(CLIENT_ID_STORAGE_KEY)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(CLIENT_ID_STORAGE_KEY, id)
+  }
+  return id
+}
 
 // ── Signaling strategy selection ───────────────────────────────────────────────
 // Primary: public Nostr relay network (serverless, no port forwarding needed).
@@ -89,7 +105,7 @@ let activeModule   = ''
 let usingSyncRelay = false
 function activeTransportStatus() { return usingSyncRelay ? 'relay' : 'webrtc' }
 
-let clientList = []   // { peerId, position, module, frequency, connectedAt }[]
+let clientList = []   // { peerId, clientId, position, module, frequency, connectedAt }[]
 let outSeq     = 0    // outgoing sequence counter
 let peerSeqs   = {}   // peerId → last received sequence (for STATE_DUMP peerSequences)
 
@@ -494,6 +510,41 @@ async function onSessionMessage(msg, fromPeerId) {
         removeClient(msg.payload.previousPeerId)
       }
 
+      // Same device re-signing in under the same name (e.g. the app was fully
+      // closed and reopened, so sessionStorage's previousPeerId above is gone,
+      // but localStorage's clientId survives). Evict the stale slot the same
+      // way. Matched on clientId AND position together, not clientId alone --
+      // localStorage is shared across every tab/window on the same browser
+      // profile, so a controller legitimately running two TRACS windows for
+      // two different positions on one machine must not have one evict the
+      // other.
+      if (msg.payload.clientId) {
+        const stale = clientList.find(c => c.clientId === msg.payload.clientId && c.position === msg.payload.position)
+        if (stale) {
+          clearTimeout(disconnectTimers[stale.peerId])
+          delete disconnectTimers[stale.peerId]
+          removeClient(stale.peerId)
+        }
+      }
+
+      // Whichever connected peer is the oldest member of the JOINER'S module
+      // sends the STATE_DUMP for it -- independent of who the overall session
+      // host is. Cross-module state (roe, callsignOverrides, registry) rides
+      // along in every module's dump via buildDump()'s `base`, so the peer
+      // who actually holds a module's data must answer, not necessarily the
+      // global host, who may belong to an entirely different module and
+      // never have touched it. (oldestPeerOfModule() is deterministic and
+      // gives the same single peerId to everyone computing it, so this can't
+      // double-send.) Every peer evaluates this off the broadcast HANDSHAKE,
+      // not just the host, and it must run before the host-only section
+      // below so a non-host oldest-module-peer still gets to send it.
+      if (oldestPeerOfModule(msg.payload.module) === selfId) {
+        const dump = await buildDump(msg.payload.module)
+        const dumpMsg = envelope('STATE_DUMP', dump)
+        logMsg('→ session', dumpMsg, fromPeerId)
+        sendSession?.(dumpMsg, fromPeerId)
+      }
+
       // Non-hosts must not upsert the raw requested position — if it collides with
       // an existing peer's position string, rebuildFromClientList would overwrite that
       // peer's registry entry (wiping their controllerId) until the host's CLU arrives.
@@ -528,6 +579,7 @@ async function onSessionMessage(msg, fromPeerId) {
 
       upsertClient({
         peerId:        fromPeerId,
+        clientId:      msg.payload.clientId,
         position:      resolved,
         module:        msg.payload.module,
         frequency:     msg.payload.frequency  ?? '',
@@ -538,14 +590,6 @@ async function onSessionMessage(msg, fromPeerId) {
       })
       syncPeers()
       persistSession()
-
-      // Host: oldest module peer sends STATE_DUMP
-      if (oldestPeerOfModule(msg.payload.module) === selfId) {
-        const dump = await buildDump(msg.payload.module)
-        const dumpMsg = envelope('STATE_DUMP', dump)
-        logMsg('→ session', dumpMsg, fromPeerId)
-        sendSession?.(dumpMsg, fromPeerId)
-      }
 
       // Host: send ACK (with resolved position if changed) and authoritative CLU.
       // CLU carries the full registry so non-hosts apply host-assigned IDs directly
@@ -788,6 +832,11 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   // is not shared between windows, so a second position signing in on the same
   // machine never sees another tab's peerId.
   const previousPeerId    = sessionStorage.getItem(PEER_ID_STORAGE_KEY) ?? undefined
+  // Durable device identity (localStorage, survives closing the tab/app
+  // entirely) -- lets other peers' HANDSHAKE handlers recognize a reconnect
+  // from this same device even when previousPeerId above is gone. See
+  // getClientId() above.
+  const myClientId        = getClientId()
   // Preserve the original connectedAt across refreshes so group number ordering
   // (1T, 2A, …) remains stable. Without this, each refresh resets connectedAt to
   // Date.now(), which re-sorts the peer among its siblings and causes group numbers
@@ -900,7 +949,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   registerRoeBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
 
   // Add self immediately — if first peer, we're already "connected"
-  upsertClient({ peerId: selfId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt })
+  upsertClient({ peerId: selfId, clientId: myClientId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt })
   syncPeers()
   useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
   persistSession()
@@ -916,7 +965,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
       delete disconnectTimers[peerId]
     }
     if (handshakeAcked) return
-    const hsMsg = envelope('HANDSHAKE', { position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt, previousPeerId })
+    const hsMsg = envelope('HANDSHAKE', { position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt, previousPeerId, clientId: myClientId })
     logMsg('→ session', hsMsg)
     sendSession(hsMsg)
   })
