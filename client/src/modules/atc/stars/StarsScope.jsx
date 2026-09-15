@@ -836,12 +836,14 @@ export default function StarsScope() {
 
   // ── Command evaluation helper ─────────────────────────────────────
   const evaluateCommand = useCallback((trigger, canvasPos = null) => {
-    const buffer  = usePreviewStore.getState().buffer
-    const parsed  = parseCommand(buffer, trigger)
+    const { buffer, hasToken } = usePreviewStore.getState()
+    const parsed  = parseCommand(buffer, trigger, hasToken)
     if (!parsed) {
       if (trigger === 'ENTER') {
         const trimmed = buffer.trim().toUpperCase()
         usePreviewStore.getState().setResponse(looksLikeKnownCommand(trimmed) ? 'FORMAT' : 'INVALID INPUT')
+      } else if (trigger === 'SLEW' && buffer.trim()) {
+        usePreviewStore.getState().setResponse('FORMAT')
       }
       return
     }

@@ -62,7 +62,7 @@ const COMMANDS = [
   { id: 'SET_LEADER_GLOBAL',    pattern: /^MF L([1-9])\1$/,       trigger: 'SLEW',  captures: ['dir'] },
   // Single track: MF L3 or shorthand 3
   { id: 'SET_LEADER_MF',        pattern: /^MF L([1-9])$/,         trigger: 'SLEW',  captures: ['dir'] },
-  { id: 'SET_LEADER_SHORT',     pattern: /^([1-9])$/,             trigger: 'SLEW',  captures: ['dir'] },
+  { id: 'SET_LEADER_SHORT',     pattern: /^([1-9])$/,             trigger: 'SLEW',  captures: ['dir'], contextFree: true },
   // Leader length via DCB LDR key: LD 0-7
   { id: 'SET_LEADER_LEN',       pattern: /^LD ([0-7])$/,          trigger: 'ENTER', captures: ['len'] },
 
@@ -143,18 +143,18 @@ const COMMANDS = [
   // Bare HO + slew = context-dependent (recall if outgoing, accept if incoming)
   { id: 'HND_OFF_BARE',         pattern: /^HO$/,                  trigger: 'SLEW'  },
   // Shorthand: TCP + SLEW (e.g. "1D" slew = handoff to 1D)
-  { id: 'HND_OFF_SHORT',        pattern: /^([1-9][A-Z0-9])$/,     trigger: 'SLEW',  captures: ['tcp'] },
+  { id: 'HND_OFF_SHORT',        pattern: /^([1-9][A-Z0-9])$/,     trigger: 'SLEW',  captures: ['tcp'], contextFree: true },
 
   // ── Point outs ──────────────────────────────────────────────────
   // Send point out: (TCP)* + SLEW
-  { id: 'POINT_OUT',            pattern: /^([^ *]+)\*$/,          trigger: 'SLEW',  captures: ['tcp'] },
+  { id: 'POINT_OUT',            pattern: /^([^ *]+)\*$/,          trigger: 'SLEW',  captures: ['tcp'], contextFree: true },
   // Convert incoming point out to handoff + accept: ** + SLEW
-  { id: 'CONVERT_POINT_OUT',    pattern: /^\*\*$/,                trigger: 'SLEW'  },
+  { id: 'CONVERT_POINT_OUT',    pattern: /^\*\*$/,                trigger: 'SLEW',  contextFree: true },
   // Reject incoming point out: UN + SLEW
   { id: 'REJECT_POINT_OUT',     pattern: /^UN$/,                  trigger: 'SLEW'  },
   // Force quicklook: ** + (TCP) + SLEW
-  { id: 'QUICK_LOOK_TCP',       pattern: /^\*\*([A-Z0-9]+)$/,     trigger: 'SLEW',  captures: ['tcp'] },
-  { id: 'QUICK_LOOK_ALL',       pattern: /^\*\*ALL$/,             trigger: 'SLEW'  },
+  { id: 'QUICK_LOOK_TCP',       pattern: /^\*\*([A-Z0-9]+)$/,     trigger: 'SLEW',  captures: ['tcp'], contextFree: true },
+  { id: 'QUICK_LOOK_ALL',       pattern: /^\*\*ALL$/,             trigger: 'SLEW',  contextFree: true },
 
   // ── Minimum separation ──────────────────────────────────────────
   // Must precede SET_SP1 — "MIN" matches the 3-char scratchpad pattern
@@ -169,19 +169,19 @@ const COMMANDS = [
   { id: 'SET_SP2_MF',           pattern: /^MF Y\+(.+)$/,          trigger: 'SLEW',  captures: ['sp'] },
   { id: 'CLEAR_SP2_MF',         pattern: /^MF Y\+$/,              trigger: 'SLEW'  },
   // SP1 shorthand: (text) + SLEW
-  { id: 'SET_SP1',              pattern: /^([A-Z0-9/]{3,4})$/,    trigger: 'SLEW',  captures: ['sp'] },
+  { id: 'SET_SP1',              pattern: /^([A-Z0-9/]{3,4})$/,    trigger: 'SLEW',  captures: ['sp'], contextFree: true },
   // SP2 shorthand: +(text) + SLEW
-  { id: 'SET_SP2',              pattern: /^\+([A-Z0-9/]{1,4})$/,  trigger: 'SLEW',  captures: ['sp'] },
+  { id: 'SET_SP2',              pattern: /^\+([A-Z0-9/]{1,4})$/,  trigger: 'SLEW',  captures: ['sp'], contextFree: true },
   // Clear SP1: . + SLEW
-  { id: 'CLEAR_SP1',            pattern: /^\.$/,                  trigger: 'SLEW'  },
+  { id: 'CLEAR_SP1',            pattern: /^\.$/,                  trigger: 'SLEW',  contextFree: true },
   // Clear SP2: + + SLEW
-  { id: 'CLEAR_SP2',            pattern: /^\+$/,                  trigger: 'SLEW'  },
+  { id: 'CLEAR_SP2',            pattern: /^\+$/,                  trigger: 'SLEW',  contextFree: true },
 
   // ── Altitude ────────────────────────────────────────────────────
   // Pilot-reported altitude: (###) + SLEW
-  { id: 'SET_ALT_REPORTED',     pattern: /^(\d{3})$/,             trigger: 'SLEW',  captures: ['alt'] },
+  { id: 'SET_ALT_REPORTED',     pattern: /^(\d{3})$/,             trigger: 'SLEW',  captures: ['alt'], contextFree: true },
   // Assigned altitude: +(###) + SLEW
-  { id: 'SET_ALT_ASSIGNED',     pattern: /^\+(\d{3})$/,           trigger: 'SLEW',  captures: ['alt'] },
+  { id: 'SET_ALT_ASSIGNED',     pattern: /^\+(\d{3})$/,           trigger: 'SLEW',  captures: ['alt'], contextFree: true },
 
   // ── Range bearing line ──────────────────────────────────────────
   // *T + ENTER → clear all RBLs; *Tn + ENTER → clear RBL #n
@@ -230,15 +230,19 @@ export function looksLikeKnownCommand(trimmed) {
 /**
  * Match the current buffer against the command table.
  *
- * @param {string}  buffer   current preview buffer (trimmed)
- * @param {'SLEW'|'ENTER'} trigger  what event fired
+ * @param {string}  buffer    current preview buffer (trimmed)
+ * @param {'SLEW'|'ENTER'} trigger   what event fired
+ * @param {boolean} hasToken  true if a function-key token entered the buffer
+ *   since it was last cleared — disables the context-free shorthand patterns,
+ *   which are only valid for buffers built purely from typed characters.
  * @returns {{ command, captures } | null}
  */
-export function parseCommand(buffer, trigger) {
+export function parseCommand(buffer, trigger, hasToken = false) {
   const trimmed = buffer.trim().toUpperCase()
 
   for (const cmd of COMMANDS) {
     if (cmd.trigger !== trigger && cmd.trigger !== 'EITHER') continue
+    if (cmd.contextFree && hasToken) continue
     const match = trimmed.match(cmd.pattern)
     if (!match) continue
 
