@@ -421,15 +421,20 @@ function registerApiRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state
   app.get('/api/debug', (req, res) => {
     const snapshot = state.getSnapshot()
     const unitList = Object.values(snapshot.updated)
+    const weaponsSnapshot = state.getWeaponsSnapshot()
+    const weaponList = Object.values(weaponsSnapshot.updated)
     res.json({
       polling: (sourceRegistry.get(state.getSourceType())?.isPolling() ?? false) || tacviewRelayClient.isConnected(),
       wsClients: getWsClientCount(),
       unitCount: unitList.length,
       lastUpdateTime: snapshot.time,
+      weaponCount: weaponList.length,
+      lastWeaponsUpdateTime: weaponsSnapshot.time,
       mission: state.getMission(),
       airbases: state.getAirbases(),
       bullseyes: state.getBullseyes(),
       units: unitList,
+      weapons: weaponList,
     })
   })
 
