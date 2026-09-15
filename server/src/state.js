@@ -9,6 +9,20 @@ let lastUpdateTime = 0
 let lastWeaponsUpdateTime = 0
 let sourceType = 'olympus'
 
+// Olympus's /olympus/units?time= endpoint needs its own opaque cursor —
+// Olympus's returned `updateTime` (see decoder.js), echoed back verbatim on
+// the next poll — completely different domain/meaning from lastUpdateTime
+// above (last-broadcast bookkeeping, written by every applyDelta() call).
+// Kept separate on purpose: olympus.js's pollMissileDetection() also calls
+// applyDelta(), with a Date.now()-based delta.time that has nothing to do
+// with Olympus's own clock — if that were allowed to overwrite the same
+// field the incremental fetch cursor read from, it would silently corrupt
+// pollUnits()'s next `?time=` request whenever a missile-detection delta
+// landed in between two unit polls (found 2026-09-15, investigating a
+// client-reported position stutter/jump — any friendly AWACS/EWR alive is
+// enough to trigger this, no missile needs to be in the air).
+let sourceCursorTime = 0
+
 function applyDelta(delta) {
   if (delta.updated) {
     for (const [id, unit] of Object.entries(delta.updated)) {
@@ -63,6 +77,7 @@ function resetForNewSource() {
   weapons.clear()
   lastUpdateTime = 0
   lastWeaponsUpdateTime = 0
+  sourceCursorTime = 0
   mission = null
   airbases = []
   bullseyes = null
@@ -87,7 +102,8 @@ module.exports = {
   setAirbases:      (a)  => { airbases = a },
   getBullseyes:     ()   => bullseyes,
   setBullseyes:     (b)  => { bullseyes = b },
-  getLastUpdateTime: ()  => lastUpdateTime,
+  getLastUpdateTime: ()  => sourceCursorTime,
+  setSourceCursorTime: (t) => { sourceCursorTime = t },
   getSourceType:    ()   => sourceType,
   setSourceType:    (t)  => { sourceType = t },
 }

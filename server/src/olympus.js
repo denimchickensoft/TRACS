@@ -48,7 +48,6 @@ let lastSessionHash = null
 let internalWeapons = {}
 let missileFogFilter = null
 let friendlyCoalitionId = null
-let lastWeaponsPollTime = 0
 
 let bullseyesTimer = null
 
@@ -135,6 +134,10 @@ async function pollUnits() {
 
     const delta = { updated: updatedMap, removed: removedIds, time: updateTime }
     state.applyDelta(delta)
+    // Olympus's own cursor for the next `?time=` request — must be this
+    // poll's real updateTime, never anything else's delta.time (see
+    // state.js's setSourceCursorTime comment).
+    state.setSourceCursorTime(updateTime)
     if (onUnitsDelta) onUnitsDelta(delta)
     consecutiveErrors = 0
   } catch (err) {
@@ -164,12 +167,16 @@ async function pollUnits() {
 async function pollWeapons() {
   if (!polling) return
   try {
-    const forceFullRefresh = pollCount % FULL_REFRESH_EVERY === 1
-    const lastTime = forceFullRefresh ? 0 : lastWeaponsPollTime
-
-    const buffer = await fetchOlympusBinary(`/olympus/weapons?time=${lastTime}`)
+    // Always a full fetch (time=0) — per this function's header comment,
+    // Olympus's weapons endpoint never streams real position on an
+    // incremental (?time=X, X>0) poll, only a bare {id} stub. Relying on
+    // FULL_REFRESH_EVERY the way pollUnits() does left real missile position
+    // updates landing only once every 10 polls (~10s at 1Hz) — client-
+    // reported 2026-09-15. Live weapon counts (missiles only) are small
+    // enough that a full fetch every poll is cheap, and it's the only way to
+    // get real position data every poll.
+    const buffer = await fetchOlympusBinary('/olympus/weapons?time=0')
     const { updateTime, units: weapons } = decodeUnits(buffer)
-    lastWeaponsPollTime = updateTime
 
     const updatedMap = {}
     const removedIds = []
@@ -185,15 +192,14 @@ async function pollWeapons() {
       updatedMap[String(weapon.id)] = weapon
     }
 
-    // Compared against internalWeapons (the omniscient truth), not state.js's
-    // public store — a currently-hidden enemy missile is legitimately absent
-    // from the public store while still alive, and comparing against that
-    // would wrongly mark it removed on every single full-refresh cycle.
-    if (forceFullRefresh) {
-      const receivedIds = new Set(weapons.map((w) => String(w.id)))
-      for (const knownId of Object.keys(internalWeapons)) {
-        if (!receivedIds.has(knownId)) removedIds.push(knownId)
-      }
+    // Always a full snapshot now, so any previously-known weapon missing
+    // from this response is genuinely gone — no forceFullRefresh gate
+    // needed (compared against internalWeapons, the omniscient truth, not
+    // state.js's public store — a currently-hidden enemy missile is
+    // legitimately absent from the public store while still alive).
+    const receivedIds = new Set(weapons.map((w) => String(w.id)))
+    for (const knownId of Object.keys(internalWeapons)) {
+      if (!receivedIds.has(knownId)) removedIds.push(knownId)
     }
 
     for (const [id, weapon] of Object.entries(updatedMap)) internalWeapons[id] = weapon
@@ -327,7 +333,6 @@ function start(cfg, callbacks = {}) {
   lastSessionHash = null
   state.resetForNewSource()
   internalWeapons = {}
-  lastWeaponsPollTime = 0
   friendlyCoalitionId = coalitionId(config.coalition)
   missileFogFilter = friendlyCoalitionId !== null ? missileDetection.createMissileFogFilter(friendlyCoalitionId) : null
   // Olympus has no relay-hosted mode — always local, see server/rateConfig.json.
@@ -354,7 +359,6 @@ function stop() {
   internalWeapons = {}
   missileFogFilter = null
   friendlyCoalitionId = null
-  lastWeaponsPollTime = 0
   console.log('[olympus] polling stopped')
 }
 
