@@ -700,5 +700,5 @@ module.exports = {
   resetToLocalConfig, resetToDefaults, applyRelayConfig,
   // Reused by missileDetection.js — a separate, dedicated module (per
   // explicit direction) but no reason to re-derive these from scratch.
-  hasAwacsRole, ewrRangeNm, AWACS_RANGE_NM,
+  hasAwacsRole, ewrRangeNm, AWACS_RANGE_NM, aircraftSensorRangeNm,
 }

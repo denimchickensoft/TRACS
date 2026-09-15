@@ -45,7 +45,7 @@
 // partial update that omits a field leaves the client's previous value in
 // place rather than clearing it.
 
-const { hasAwacsRole, ewrRangeNm, AWACS_RANGE_NM, DETECTION_RADAR } = require('./tacviewDetection')
+const { hasAwacsRole, ewrRangeNm, aircraftSensorRangeNm, DETECTION_RADAR } = require('./tacviewDetection')
 const { distanceNm, quickReject, hasLineOfSight } = require('./utils/geo')
 const { getWeaponRcs } = require('./weaponDatabase')
 
@@ -57,9 +57,14 @@ const REFERENCE_RCS_M2 = 100
 const RANGE_SCALING_EXPONENT = 0.25
 const LOS_SAMPLE_COUNT = 8
 
+// AWACS-role Aircraft/Helicopter get their own airframe's real detection
+// range (aircraftSensorRangeNm — real per-unit detectionRangeMaxKm when the
+// datamine has an entry, e.g. E-3A/E-2C/A-50/KJ-2000, falling back to
+// AWACS_RANGE_NM internally only for an AWACS-role airframe missing one)
+// rather than a single flat range for every AWACS type.
 function detectorRangeNm(unit) {
   if (unit.category === 'Aircraft' || unit.category === 'Helicopter') {
-    return hasAwacsRole(unit) ? AWACS_RANGE_NM : null
+    return hasAwacsRole(unit) ? aircraftSensorRangeNm(unit) : null
   }
   if (unit.category === 'GroundUnit') return ewrRangeNm(unit)
   return null
