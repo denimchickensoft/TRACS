@@ -238,9 +238,15 @@ export function drawAbmContacts(
   bullseyeLng = 0,
   theatre = null,
   declinationDeg = 0,
+  dbSize = 2,
 ) {
   const { width, height } = view
-  ctx.font = '11px "Roboto Mono", monospace'
+  const fontPx     = 8 + dbSize * 2
+  const lineHeight = Math.round(fontPx * 12 / 11)
+  const halfLine   = Math.round(lineHeight / 2)
+  const dbAscent   = Math.round(fontPx * 8 / 11)
+  const dbDescent  = Math.round(fontPx * 2 / 11)
+  ctx.font = `${fontPx}px "Roboto Mono", monospace`
 
   const { suppressed: suppressedIds, leaderOf } = dbSuppress
     ? computeSuppressedIds(units)
@@ -378,9 +384,9 @@ export function drawAbmContacts(
       // on the leader tip) so .bedb off stays pixel-identical to before; a
       // 3rd (bullseye) line extends downward at the same 12px line height
       // the dbca placement path (below) uses.
-      ctx.fillText(lines[0], tx, ly1 - 6)
-      ctx.fillText(lines[1], tx, ly1 + 6)
-      for (let i = 2; i < lines.length; i++) ctx.fillText(lines[i], tx, ly1 + 6 + (i - 1) * 12)
+      ctx.fillText(lines[0], tx, ly1 - halfLine)
+      ctx.fillText(lines[1], tx, ly1 + halfLine)
+      for (let i = 2; i < lines.length; i++) ctx.fillText(lines[i], tx, ly1 + halfLine + (i - 1) * lineHeight)
     } else {
       ctx.fillText(lines[0], tx, ly1)
     }
@@ -400,9 +406,9 @@ export function drawAbmContacts(
         candidateAnglesDeg: DEFAULT_CANDIDATE_ANGLES_DEG,
         symbolRadius: SYM_HALF,
         leaderLen: ldrLength * 10,
-        lineHeight: 12,
-        ascent: 8,
-        descent: 2,
+        lineHeight,
+        ascent: dbAscent,
+        descent: dbDescent,
         padding: 2,
       },
     )
@@ -423,7 +429,7 @@ export function drawAbmContacts(
       ctx.fillStyle = c.textColor
       ctx.textAlign = bbox.align
       for (let i = 0; i < c.lines.length; i++) {
-        ctx.fillText(c.lines[i], bbox.textX, bbox.ly1 + i * 12)
+        ctx.fillText(c.lines[i], bbox.textX, bbox.ly1 + i * lineHeight)
       }
     }
   }

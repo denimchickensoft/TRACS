@@ -35,20 +35,20 @@ const BUILDERS = {
   race: buildRaceFeature,
 }
 
-export function drawPendingDraw(ctx, view, pendingDraw, cursor) {
+export function drawPendingDraw(ctx, view, pendingDraw, cursor, csMap = 2) {
   if (!pendingDraw) return
   const declinationDeg = view.declinationDeg ?? 0
   const params = previewParams(pendingDraw, cursor, declinationDeg, view.theatre)
   if (!params) return
 
   if (pendingDraw.type === 'text') {
-    drawTextPreview(ctx, view, params)
+    drawTextPreview(ctx, view, params, csMap)
     return
   }
   // .poly is a freeform, not-yet-closed vertex chain — an open polyline
   // preview (plus a closing-edge hint), not a Polygon built via BUILDERS.
   if (pendingDraw.type === 'poly') {
-    drawPolyPreview(ctx, view, params, declinationDeg)
+    drawPolyPreview(ctx, view, params, declinationDeg, csMap)
     return
   }
 
@@ -60,7 +60,7 @@ export function drawPendingDraw(ctx, view, pendingDraw, cursor) {
   }
   ctx.setLineDash([])
 
-  drawDimensions(ctx, view, pendingDraw.type, params, built, declinationDeg)
+  drawDimensions(ctx, view, pendingDraw.type, params, built, declinationDeg, csMap)
 }
 
 // vertices = [...placed, liveCursorPoint] (previewParams already locked/
@@ -68,7 +68,7 @@ export function drawPendingDraw(ctx, view, pendingDraw, cursor) {
 // REAL vertices are down, also hints the closing edge back to vertex 0 —
 // clicking near it (AbmScope.jsx's proximity test) is what actually closes
 // the polygon.
-function drawPolyPreview(ctx, view, { vertices, rangeNm, trueBearingDeg }, declinationDeg) {
+function drawPolyPreview(ctx, view, { vertices, rangeNm, trueBearingDeg }, declinationDeg, csMap = 2) {
   const placedCount = vertices.length - 1
   const coords = vertices.map(v => [v.lng, v.lat])
   if (placedCount >= 3) coords.push([vertices[0].lng, vertices[0].lat])
@@ -78,19 +78,19 @@ function drawPolyPreview(ctx, view, { vertices, rangeNm, trueBearingDeg }, decli
   for (const v of vertices.slice(0, -1)) drawPoint(ctx, view, [v.lng, v.lat], PREVIEW_COLOR, PREVIEW_OPACITY)
 
   const last = vertices[vertices.length - 2]
-  drawDimLabel(ctx, view, last, vertices[vertices.length - 1], lenBrgLabel(rangeNm, trueBearingDeg, declinationDeg))
+  drawDimLabel(ctx, view, last, vertices[vertices.length - 1], lenBrgLabel(rangeNm, trueBearingDeg, declinationDeg), csMap)
 }
 
 // No marker dot — .text has none once committed either (drawAbmCustomDrawings.js),
 // the placed point is the text's own centroid.
-function drawTextPreview(ctx, view, { anchor, text, rotationDeg }) {
+function drawTextPreview(ctx, view, { anchor, text, rotationDeg }, csMap = 2) {
   const { x, y } = latLngToCanvas(anchor.lat, anchor.lng, view)
   ctx.save()
   ctx.translate(x, y)
   ctx.rotate(rotationDeg * Math.PI / 180)
   ctx.globalAlpha = PREVIEW_OPACITY
   ctx.fillStyle   = PREVIEW_COLOR
-  ctx.font        = '9px "Roboto Mono", monospace'
+  ctx.font        = `${6 + csMap * 2}px "Roboto Mono", monospace`
   ctx.textAlign   = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(text, 0, 0)
@@ -116,8 +116,8 @@ function lenBrgLabel(rangeNm, trueBearingDeg, declinationDeg) {
   return `${String(magBrg).padStart(3, '0')}°M  ${Math.round(rangeNm)}NM`
 }
 
-function drawDimLabelAt(ctx, x, y, text) {
-  ctx.font      = '10px "Roboto Mono", monospace'
+function drawDimLabelAt(ctx, x, y, text, csMap = 2) {
+  ctx.font      = `${6 + csMap * 2}px "Roboto Mono", monospace`
   ctx.textAlign = 'center'
   ctx.fillStyle = 'rgba(0,0,0,0.45)'
   ctx.fillText(text, x + 1, y - 5)
@@ -127,10 +127,10 @@ function drawDimLabelAt(ctx, x, y, text) {
   ctx.globalAlpha = 1
 }
 
-function drawDimLabel(ctx, view, fromLatLng, toLatLng, text) {
+function drawDimLabel(ctx, view, fromLatLng, toLatLng, text, csMap = 2) {
   const a = latLngToCanvas(fromLatLng.lat, fromLatLng.lng, view)
   const b = latLngToCanvas(toLatLng.lat, toLatLng.lng, view)
-  drawDimLabelAt(ctx, (a.x + b.x) / 2, (a.y + b.y) / 2, text)
+  drawDimLabelAt(ctx, (a.x + b.x) / 2, (a.y + b.y) / 2, text, csMap)
 }
 
 // Ring vertices as {lat,lng}, closing duplicate dropped — used to label
@@ -146,7 +146,7 @@ function ringPoints(built) {
 // sit at true bearing 090/270 and the "height" (north-pointing) edges at
 // 000/180, so rotationDeg is added directly. Only the rendered ring's
 // vertices are used, and only for where to place each label on screen.
-function drawRectDims(ctx, view, params, built, declinationDeg) {
+function drawRectDims(ctx, view, params, built, declinationDeg, csMap = 2) {
   const pts = ringPoints(built)
   const { widthNm, heightNm, rotationDeg } = params
   const widthBrg  = ((rotationDeg + 90) % 360 + 360) % 360
@@ -154,33 +154,33 @@ function drawRectDims(ctx, view, params, built, declinationDeg) {
   const lengths  = [widthNm, heightNm, widthNm, heightNm]
   const headings = [widthBrg, heightBrg, (widthBrg + 180) % 360, (heightBrg + 180) % 360]
   for (let i = 0; i < 4; i++) {
-    drawDimLabel(ctx, view, pts[i], pts[(i + 1) % 4], lenBrgLabel(lengths[i], headings[i], declinationDeg))
+    drawDimLabel(ctx, view, pts[i], pts[(i + 1) % 4], lenBrgLabel(lengths[i], headings[i], declinationDeg), csMap)
   }
 }
 
-function drawDimensions(ctx, view, type, params, built, declinationDeg) {
+function drawDimensions(ctx, view, type, params, built, declinationDeg, csMap = 2) {
   switch (type) {
     case 'line':
-      drawDimLabel(ctx, view, params.p1, params.p2, lenBrgLabel(params.rangeNm, params.trueBearingDeg, declinationDeg))
+      drawDimLabel(ctx, view, params.p1, params.p2, lenBrgLabel(params.rangeNm, params.trueBearingDeg, declinationDeg), csMap)
       return
     case 'rect':
-      drawRectDims(ctx, view, params, built, declinationDeg)
+      drawRectDims(ctx, view, params, built, declinationDeg, csMap)
       return
     case 'circ': {
       const { x, y } = latLngToCanvas(params.center.lat, params.center.lng, view)
-      drawDimLabelAt(ctx, x, y - 14, `R ${Math.round(params.radiusNm)}NM`)
+      drawDimLabelAt(ctx, x, y - 14, `R ${Math.round(params.radiusNm)}NM`, csMap)
       return
     }
     case 'sect': {
       const spanDeg = ((params.endBrg - params.startBrg) % 360 + 360) % 360
       const { x, y } = latLngToCanvas(params.center.lat, params.center.lng, view)
-      drawDimLabelAt(ctx, x, y - 14, `${Math.round(params.radiusNm)}NM  ${Math.round(spanDeg)}°`)
+      drawDimLabelAt(ctx, x, y - 14, `${Math.round(params.radiusNm)}NM  ${Math.round(spanDeg)}°`, csMap)
       return
     }
     case 'race': {
       const magRad = Math.round(toMagneticFromTrue(params.radialDeg, declinationDeg)) || 360
       const { x, y } = latLngToCanvas(params.fix.lat, params.fix.lng, view)
-      drawDimLabelAt(ctx, x, y - 14, `${params.turnDir} ${Math.round(params.legNm)}NM  ${String(magRad).padStart(3, '0')}°M`)
+      drawDimLabelAt(ctx, x, y - 14, `${params.turnDir} ${Math.round(params.legNm)}NM  ${String(magRad).padStart(3, '0')}°M`, csMap)
       return
     }
     default:

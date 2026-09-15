@@ -54,6 +54,12 @@ const COMMANDS = [
   { id: 'LABELS_TOGGLE',    pattern: /^\.(?:labels|lbl|label)$/ },
   { id: 'FILL_TOGGLE',      pattern: /^\.fill$/ },
   { id: 'FILL_SET',         pattern: /^\.fill\s+(\d{1,3})$/, captures: ['pct'] },
+  // .labelsize [0-5] — airspace/fix/drawing label size, shared w/ STARS' csMap
+  { id: 'LABELSIZE_SHOW',   pattern: /^\.labelsize$/ },
+  { id: 'LABELSIZE_SET',    pattern: /^\.labelsize\s+([0-5])$/, captures: ['n'] },
+  // .dbsize [0-5] — aircraft datablock size
+  { id: 'DBSIZE_SHOW',      pattern: /^\.dbsize$/ },
+  { id: 'DBSIZE_SET',       pattern: /^\.dbsize\s+([0-5])$/, captures: ['n'] },
   { id: 'CUSTOM_TOGGLE',    pattern: /^\.(?:custom|cust)$/ },
   { id: 'CUSTOM_NAME',      pattern: /^\.(?:custom|cust)\s+(.+)$/, captures: ['name'] },
   { id: 'LINE',             pattern: /^\.line(?:\s.*)?$/ },

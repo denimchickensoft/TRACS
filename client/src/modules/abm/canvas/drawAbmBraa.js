@@ -21,7 +21,7 @@ function computeBraa(fighter, bogey, declinationDeg, theatre) {
 }
 
 // units: merged air+ground/naval visible units (BRAA pairing works across both)
-export function drawBraaOverlays(ctx, view, braaList, units, declinationDeg) {
+export function drawBraaOverlays(ctx, view, braaList, units, declinationDeg, csMap = 2) {
   for (const pair of braaList) {
     const fighter = units[pair.fighterId]
     const bogey   = units[pair.bogeyId]
@@ -44,7 +44,7 @@ export function drawBraaOverlays(ctx, view, braaList, units, declinationDeg) {
       const label = `${String(braa.bearing).padStart(3, '0')}°M  ${braa.range}NM`
       const midX  = (fp.x + bp.x) / 2
       const midY  = (fp.y + bp.y) / 2
-      ctx.font      = '11px "Roboto Mono", monospace'
+      ctx.font      = `${6 + csMap * 2}px "Roboto Mono", monospace`
       ctx.textAlign = 'center'
       ctx.fillStyle = 'rgba(0,0,0,0.4)'
       ctx.fillText(label, midX + 1, midY - 5)

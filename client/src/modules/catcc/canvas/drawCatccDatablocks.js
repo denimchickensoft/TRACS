@@ -7,9 +7,6 @@ const MS_TO_KT = 1.94384
 
 const SYMBOL_RADIUS  = 5     // px — matches circle radius in drawCatccContacts
 const LEADER_LEN     = 16    // px default — long enough that bbox near-edge clears symbol for all angles
-const LINE_HEIGHT    = 11    // px between text lines
-const ASCENT         = 9     // approx ascent for 10px monospace
-const DESCENT        = 2     // approx descent
 const PADDING        = 2     // extra clearance around each bbox
 const RADIAL_PENALTY = 1e6   // score penalty for hitting a radial line
 const OFF_MODE_ANGLE = -45   // NE — CATCC's fixed default when .dbca is off and no preference is set
@@ -49,8 +46,9 @@ function fmtGs(mps) {
  * @param {number} brite           0–100
  * @param {number|null} marshalBearing  magnetic bearing of the marshal/approach radial (degrees)
  * @param {boolean} dbca           datablock collision avoidance on/off
+ * @param {number}  dbSize         0–5 char size index (see .dbsize)
  */
-export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes = {}, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true) {
+export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes = {}, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true, dbSize = 2) {
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
 
@@ -58,8 +56,13 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
   const cx = width  / 2
   const cy = height / 2
 
+  const fontPx     = 8 + dbSize * 2
+  const lineHeight = Math.round(fontPx * 1.1)
+  const ascent     = Math.round(fontPx * 0.9)
+  const descent    = Math.round(fontPx * 0.2)
+
   ctx.save()
-  ctx.font         = '10px "Roboto Mono", monospace'
+  ctx.font         = `${fontPx}px "Roboto Mono", monospace`
   ctx.textBaseline = 'alphabetic'
 
   // ── Pass 1: collect visible contacts and measure text ─────────────────────
@@ -87,9 +90,9 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
   const placementOpts = {
     symbolRadius: SYMBOL_RADIUS,
     leaderLen,
-    lineHeight: LINE_HEIGHT,
-    ascent: ASCENT,
-    descent: DESCENT,
+    lineHeight,
+    ascent,
+    descent,
     padding: PADDING,
     unitBonus: UNIT_DIR_BONUS,
     globalBonus: GLOBAL_DIR_BONUS,
@@ -158,7 +161,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     ctx.fillStyle = gold
     ctx.textAlign = bbox.align
     ctx.fillText(line1, bbox.textX, bbox.ly1)
-    ctx.fillText(line2, bbox.textX, bbox.ly1 + LINE_HEIGHT)
+    ctx.fillText(line2, bbox.textX, bbox.ly1 + lineHeight)
   }
 
   ctx.restore()

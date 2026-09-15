@@ -53,12 +53,12 @@ import { latLngToCanvas } from '../../../utils/projection.js'
 
 const MARKER_RADIUS = 3
 
-export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, labelsVisible = false, fillPct = 0) {
+export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, labelsVisible = false, fillPct = 0, csMap = 2) {
   if (!layers?.length) return
   const visibleLayers = layers.filter(l => l.visible && l.features?.length)
   if (!visibleLayers.length) return
 
-  const fontSize = 9
+  const fontSize = 6 + csMap * 2
   const lineH    = fontSize + 3
 
   for (const layer of visibleLayers) {

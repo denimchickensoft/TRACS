@@ -9,8 +9,9 @@ const ROUTE_COLOR = '#00CFFF'
 const FIX_R = 2.5
 const CULL_MARGIN = 60
 
-export function drawAbmFragRoute(ctx, view, route, rawType, groupLabel) {
+export function drawAbmFragRoute(ctx, view, route, rawType, groupLabel, csMap = 2) {
   if (!Array.isArray(route) || route.length === 0) return
+  const fontSize = 6 + csMap * 2
 
   const wpLabelOffset = ZERO_INDEXED_WAYPOINT_TYPES.has(rawType) ? 0 : 1
   const pts = route
@@ -56,7 +57,7 @@ export function drawAbmFragRoute(ctx, view, route, rawType, groupLabel) {
     if (longest) {
       const midX = (longest.a.x + longest.b.x) / 2
       const midY = (longest.a.y + longest.b.y) / 2
-      ctx.font = '9px "Roboto Mono", monospace'
+      ctx.font = `${fontSize}px "Roboto Mono", monospace`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = 'rgba(0,0,0,0.4)'
@@ -67,7 +68,7 @@ export function drawAbmFragRoute(ctx, view, route, rawType, groupLabel) {
   }
 
   ctx.fillStyle = ROUTE_COLOR
-  ctx.font = '9px "Roboto Mono", monospace'
+  ctx.font = `${fontSize}px "Roboto Mono", monospace`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
 

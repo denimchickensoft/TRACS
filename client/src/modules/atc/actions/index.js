@@ -642,6 +642,19 @@ export function SET_FILL({ captures }) {
   ok()
 }
 
+// .LABELSIZE [0-5] — text-command alias for the CHAR SIZE > MAP DCB spinner (csMap)
+export function SHOW_LABELSIZE() {
+  const win = getDisplay().windows[WINDOW_ID]
+  usePreviewStore.getState().showInfo(`LABELSIZE: ${win?.csMap ?? 2}`)
+}
+
+export function SET_LABELSIZE({ captures }) {
+  const n = parseInt(captures?.n, 10)
+  if (isNaN(n) || n < 0 || n > 5) return err('ILL VAL')
+  getDisplay().updateWindow(WINDOW_ID, { csMap: n })
+  ok()
+}
+
 // Conflict alert (STCA) processing on/off — facility-wide, persisted locally.
 export function TOGGLE_STCA() {
   const win  = getDisplay().windows[WINDOW_ID]
@@ -875,6 +888,8 @@ const ACTION_MAP = {
   TOGGLE_WINGMEN,
   TOGGLE_FILL,
   SET_FILL,
+  SHOW_LABELSIZE,
+  SET_LABELSIZE,
   FIND_FIX,
   TOGGLE_FIX,
   CLEAR_FIX,

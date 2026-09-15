@@ -18,6 +18,11 @@ const DEFAULTS = {
   fillVisible:   false, // airspace polygon fill — .fill toggles
   fillPct:       30,    // 1-100 — .fill <n> sets this and turns fillVisible on
   pinnedFixes:   {},    // { [theatre]: string[] } — .fix <name...> toggles, shown regardless of .fixes
+  csMap:         2,     // airspace/fix label size (0-5), see .labelsize
+  dbSize:        2,     // aircraft datablock size (0-5), see .dbsize
+  showHistory:   true,  // history trails on/off — .history toggles
+  catccLeaderLen: 16,   // leader line length in pixels — .ll sets
+  globalLeaderDir: null, // default leader direction — .ld sets (null = OFF)
 }
 
 const { load: loadCatccPrefs, save: saveCatccPrefs } = makePrefsStore(KEY, DEFAULTS)

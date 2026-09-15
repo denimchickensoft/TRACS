@@ -38,6 +38,7 @@ const SCOPE_DEFAULTS = {
   csTools: null,
   csPos: null,
   csMap: null,
+  dbSize: null,           // CATCC/ABM aircraft datablock size (0–5 scale, null = default → treated as 2)
   displayParadigm: DISPLAY_PARADIGM.SYNTHETIC,
   centerLat: 0,
   centerLng: 0,

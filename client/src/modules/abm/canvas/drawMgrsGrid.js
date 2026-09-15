@@ -160,7 +160,7 @@ function boundaryEastingAt(zone, hemisphere, seamLng) {
   }
 }
 
-function drawZoneGrid(ctx, view, zone, hemisphere, fineSpacing, labelEastingFloor) {
+function drawZoneGrid(ctx, view, zone, hemisphere, fineSpacing, labelEastingFloor, csMap = 2) {
   const { width, height } = view
   const params = utmZoneParams(zone, hemisphere)
 
@@ -229,7 +229,7 @@ function drawZoneGrid(ctx, view, zone, hemisphere, fineSpacing, labelEastingFloo
     : null
 
   ctx.fillStyle = LABEL_COLOR
-  ctx.font = '11px "Roboto Mono", monospace'
+  ctx.font = `${6 + csMap * 2}px "Roboto Mono", monospace`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
   for (const e of vLines) {
@@ -253,7 +253,7 @@ function drawZoneGrid(ctx, view, zone, hemisphere, fineSpacing, labelEastingFloo
 // UTM zone's frame. Re-derived every render from the current view, so
 // panning across a real boundary produces the correct seam rather than the
 // whole grid snapping between two single-zone approximations.
-function drawMultiZoneGrid(ctx, view, hemisphere, fineSpacing) {
+function drawMultiZoneGrid(ctx, view, hemisphere, fineSpacing, csMap = 2) {
   const { centerLat, centerLng } = view
   const { minLat, maxLat, minLng, maxLng } = screenLatLngRange(view)
   const seams = zoneBoundariesIn(minLng, maxLng)
@@ -268,7 +268,7 @@ function drawMultiZoneGrid(ctx, view, hemisphere, fineSpacing) {
 
     ctx.save()
     if (loLng != null || hiLng != null) clipBand(ctx, view, loLng, hiLng, minLat, maxLat)
-    drawZoneGrid(ctx, view, zone, hemisphere, fineSpacing, labelEastingFloor)
+    drawZoneGrid(ctx, view, zone, hemisphere, fineSpacing, labelEastingFloor, csMap)
     ctx.restore()
   }
 
@@ -277,7 +277,7 @@ function drawMultiZoneGrid(ctx, view, hemisphere, fineSpacing) {
   // ── Grid zone designator (zone + latitude band) for wherever the view is
   // currently centered ───────────────────────────────────────────────────
   const centerZone = utmZoneNumber(centerLng)
-  ctx.font = 'bold 12px "Roboto Mono", monospace'
+  ctx.font = `bold ${6 + csMap * 2 + 1}px "Roboto Mono", monospace`
   ctx.fillStyle = LABEL_COLOR
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
@@ -290,7 +290,7 @@ function drawMultiZoneGrid(ctx, view, hemisphere, fineSpacing) {
  * @param {boolean} visible
  * @param {number}  brite   0-100
  */
-export function drawMgrsGrid(ctx, view, visible, brite = 50) {
+export function drawMgrsGrid(ctx, view, visible, brite = 50, csMap = 2) {
   if (!visible || brite <= 0) return
   const { centerLat, rangeNm } = view
 
@@ -300,6 +300,6 @@ export function drawMgrsGrid(ctx, view, visible, brite = 50) {
 
   ctx.save()
   ctx.globalAlpha = alpha
-  drawMultiZoneGrid(ctx, view, hemisphere, fineSpacing)
+  drawMultiZoneGrid(ctx, view, hemisphere, fineSpacing, csMap)
   ctx.restore()
 }

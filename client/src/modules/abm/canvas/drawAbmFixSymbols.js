@@ -12,7 +12,7 @@ import { fixSymbolType, drawFixSymbol } from '../../atc/stars/canvas/fixSymbol.j
 
 const CULL_MARGIN = 20
 
-export function drawAbmFixSymbols(ctx, view, points, visible, color, brite = 60, labelsVisible = false) {
+export function drawAbmFixSymbols(ctx, view, points, visible, color, brite = 60, labelsVisible = false, csMap = 2) {
   if (!visible || !points?.length || brite <= 0) return
   const { width, height } = view
   const alpha = Math.max(0, Math.min(1, brite / 100))
@@ -23,7 +23,7 @@ export function drawAbmFixSymbols(ctx, view, points, visible, color, brite = 60,
   ctx.fillStyle   = color
   ctx.lineWidth   = 1
   if (labelsVisible) {
-    ctx.font         = '9px "Roboto Mono", monospace'
+    ctx.font         = `${6 + csMap * 2}px "Roboto Mono", monospace`
     ctx.textAlign    = 'left'
     ctx.textBaseline = 'alphabetic'
   }

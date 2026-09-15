@@ -191,12 +191,15 @@ export default function CatccScope() {
     if (!windowSettings) {
       const catccPrefs = loadCatccPrefs()
       displayStore.initWindow(WINDOW_ID, {
-        rangeNm: 50, ringSpacingNm: 10, statusTextXPct: 50, statusTextYPct: 2, showHistory: true, historyRate: 4.5,
+        rangeNm: 50, ringSpacingNm: 10, statusTextXPct: 50, statusTextYPct: 2, historyRate: 4.5,
+        showHistory: catccPrefs.showHistory,
         dbca: catccPrefs.dbca,
         asVisible: catccPrefs.asVisible, aspColorIdx: catccPrefs.aspColorIdx, labelsVisible: catccPrefs.labelsVisible,
         fixesVisible: catccPrefs.fixesVisible, geoVisible: catccPrefs.geoVisible,
         fillVisible: catccPrefs.fillVisible, fillPct: catccPrefs.fillPct,
         pinnedFixes: catccPrefs.pinnedFixes,
+        csMap: catccPrefs.csMap, dbSize: catccPrefs.dbSize,
+        catccLeaderLen: catccPrefs.catccLeaderLen, globalLeaderDir: catccPrefs.globalLeaderDir,
       })
     }
   }, []) // eslint-disable-line
@@ -283,15 +286,15 @@ export default function CatccScope() {
     // Per-feature stroke, no edge de-dup — see drawAbmAirspace.js for the
     // dedupe option if dense theatres read as double/uneven lines.
     drawAbmAirspace(ctx, view, airspaceFeatures, windowSettings?.asVisible ?? {}, 80, false, airspaceColors, windowSettings?.labelsVisible ?? false,
-      windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0)
+      windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0, windowSettings?.csMap ?? 2)
     // .FIX-pinned fixes (per-theatre — see odsCommands.js .FIX) always draw
     // regardless of .fixes, same override ABM's own .fix command gives.
     const pinnedIds   = new Set(windowSettings?.pinnedFixes?.[theatre] ?? [])
     const fixesToDraw = (windowSettings?.fixesVisible ?? false) ? fixes : fixes.filter((f) => pinnedIds.has(f.id.toUpperCase()))
-    drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, windowSettings?.labelsVisible ?? false)
+    drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, windowSettings?.labelsVisible ?? false, windowSettings?.csMap ?? 2)
   }, [view, geoBoundaries, geoCoastlines, windowSettings?.geoVisible,
       airspaceFeatures, airspaceColors, windowSettings?.asVisible, windowSettings?.labelsVisible,
-      windowSettings?.fillVisible, windowSettings?.fillPct,
+      windowSettings?.fillVisible, windowSettings?.fillPct, windowSettings?.csMap,
       fixes, windowSettings?.fixesVisible, windowSettings?.pinnedFixes, theatre])
 
   // ── Render CATCC layers (rings + CCZ/CCA + corridor + radial) ─────
@@ -389,9 +392,10 @@ export default function CatccScope() {
       myControllerId,
       windowSettings?.catccLeaderLen  ?? 16,
       windowSettings?.dbca ?? true,
+      windowSettings?.dbSize ?? 2,
     )
   }, [visibleUnits, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
-      myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos,
+      myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos, windowSettings?.dbSize,
       windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca,
       windowSettings?.showHistory, windowSettings?.historyLength, windowSettings?.briteHst, windowSettings?.leaderDirs])
 

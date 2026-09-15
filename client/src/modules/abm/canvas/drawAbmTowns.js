@@ -11,12 +11,12 @@ const CULL_MARGIN = 20
 const LABEL_COLOR = 'rgba(180,180,180,0.8)'
 const DOT_COLOR   = 'rgba(180,180,180,0.6)'
 
-export function drawAbmTowns(ctx, view, towns, visible) {
+export function drawAbmTowns(ctx, view, towns, visible, csMap = 2) {
   if (!visible || !towns?.length) return
   const { width, height } = view
 
   ctx.save()
-  ctx.font = '10px "Roboto Mono", monospace'
+  ctx.font = `${6 + csMap * 2}px "Roboto Mono", monospace`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
 

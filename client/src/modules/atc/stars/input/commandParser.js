@@ -75,6 +75,9 @@ const COMMANDS = [
   { id: 'TOGGLE_FIXES',         pattern: /^\.FIXES$/,             trigger: 'ENTER' },
   { id: 'SET_FILL',             pattern: /^\.FILL (\d{1,3})$/,    trigger: 'ENTER', captures: ['pct'] },
   { id: 'TOGGLE_FILL',          pattern: /^\.FILL$/,              trigger: 'ENTER' },
+  // .LABELSIZE [0-5] — alias for the CHAR SIZE > MAP DCB spinner (csMap)
+  { id: 'SET_LABELSIZE',        pattern: /^\.LABELSIZE ([0-5])$/, trigger: 'ENTER', captures: ['n'] },
+  { id: 'SHOW_LABELSIZE',       pattern: /^\.LABELSIZE$/,         trigger: 'ENTER' },
   // Conflict alert (STCA) processing on/off, facility-wide.
   { id: 'TOGGLE_STCA',          pattern: /^\.CA$/,                trigger: 'ENTER' },
   // Simulated squawk-standby wingmen — only the DCS-group flight lead gets
@@ -208,7 +211,7 @@ const DOT_VERBS = [
   'CA', 'WNG', 'ASP', 'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
   'CLASSA', 'CLASSB', 'CLASSC', 'CLASSD', 'CLASSE', 'CLASSF', 'CLASSG',
   'MSA', 'HOLDS', 'RELIEF', 'MVA', 'SAT', 'COORDS', 'FIND', 'FIX', 'PROC',
-  'FP', 'RENAME',
+  'FP', 'RENAME', 'LABELSIZE',
 ]
 
 /**

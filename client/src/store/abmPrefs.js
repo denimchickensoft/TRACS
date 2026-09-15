@@ -31,6 +31,8 @@ const DEFAULTS = {
   dbSuppress:     true,
   ldrLength:      2,
   ldrAngleDeg:    -45,
+  csMap:          2,     // airspace/fix/drawing label size (0-5), see .labelsize
+  dbSize:         2,     // aircraft datablock size (0-5), see .dbsize
   ptlMinutes:     1,
   fadedSeconds:   30,
   threatRadius:   45,

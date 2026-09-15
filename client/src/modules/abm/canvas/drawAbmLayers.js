@@ -11,6 +11,7 @@ export function drawAbmLayers(
   ctx, view, ringSpacingNm,
   ringAnchorLat, ringAnchorLng, ringAnchorId,
   bullseyeLat, bullseyeLng,
+  csMap = 2,
 ) {
   const { pixelsPerNm, width, height } = view
 
@@ -35,7 +36,7 @@ export function drawAbmLayers(
       ctx.beginPath()
       ctx.arc(acx, acy, 2.5, 0, Math.PI * 2)
       ctx.fill()
-      ctx.font = '10px "Roboto Mono", monospace'
+      ctx.font = `${6 + csMap * 2}px "Roboto Mono", monospace`
       ctx.fillText(ringAnchorId, acx + 6, acy - 6)
     }
   }

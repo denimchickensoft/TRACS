@@ -153,6 +153,7 @@ register('.HISTORY', () => {
   const ws = useDisplayStore.getState().windows[WINDOW_ID]
   const current = ws?.showHistory ?? true
   useDisplayStore.getState().updateWindow(WINDOW_ID, { showHistory: !current })
+  saveCatccPrefs({ showHistory: !current })
   return []
 })
 
@@ -166,6 +167,35 @@ register('.LL', (parts) => {
   const n = parseInt(val, 10)
   if (isNaN(n) || n < 0 || n > 99) return ['ILL VAL']
   useDisplayStore.getState().updateWindow(WINDOW_ID, { catccLeaderLen: n })
+  saveCatccPrefs({ catccLeaderLen: n })
+  return []
+})
+
+// .LABELSIZE [0-5] — set airspace/fix label size, shared with STARS' csMap (omit to query current)
+register('.LABELSIZE', (parts) => {
+  const val = parts[1]
+  if (!val) {
+    const ws = useDisplayStore.getState().windows[WINDOW_ID]
+    return [`LABELSIZE: ${ws?.csMap ?? 2}`]
+  }
+  const n = parseInt(val, 10)
+  if (isNaN(n) || n < 0 || n > 5) return ['ILL VAL']
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { csMap: n })
+  saveCatccPrefs({ csMap: n })
+  return []
+})
+
+// .DBSIZE [0-5] — set aircraft datablock size (omit to query current)
+register('.DBSIZE', (parts) => {
+  const val = parts[1]
+  if (!val) {
+    const ws = useDisplayStore.getState().windows[WINDOW_ID]
+    return [`DBSIZE: ${ws?.dbSize ?? 2}`]
+  }
+  const n = parseInt(val, 10)
+  if (isNaN(n) || n < 0 || n > 5) return ['ILL VAL']
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { dbSize: n })
+  saveCatccPrefs({ dbSize: n })
   return []
 })
 
@@ -177,11 +207,13 @@ register('.LD', (parts) => {
   const val = parts[1]
   if (!val || val === 'OFF') {
     useDisplayStore.getState().updateWindow(WINDOW_ID, { globalLeaderDir: null })
+    saveCatccPrefs({ globalLeaderDir: null })
     return []
   }
   const key = DIR_MAP[val] ?? (NUMPAD_DIRS.has(val) ? val : null)
   if (!key) return ['ILL DIR']
   useDisplayStore.getState().updateWindow(WINDOW_ID, { globalLeaderDir: key })
+  saveCatccPrefs({ globalLeaderDir: key })
   return []
 })
 

@@ -7,7 +7,7 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 
-export function drawRbl(ctx, view, rbl, declinationDeg) {
+export function drawRbl(ctx, view, rbl, declinationDeg, csMap = 2) {
   if (!rbl?.anchor || !rbl?.end) return
 
   const ap = latLngToCanvas(rbl.anchor.lat, rbl.anchor.lng, view)
@@ -34,7 +34,7 @@ export function drawRbl(ctx, view, rbl, declinationDeg) {
   const midX = (ap.x + ep.x) / 2
   const midY = (ap.y + ep.y) / 2
 
-  ctx.font      = '11px "Roboto Mono", monospace'
+  ctx.font      = `${6 + csMap * 2}px "Roboto Mono", monospace`
   ctx.textAlign = 'center'
   ctx.fillStyle = 'rgba(0,0,0,0.4)'
   ctx.fillText(label, midX + 1, midY - 5)

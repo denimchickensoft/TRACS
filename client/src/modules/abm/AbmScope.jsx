@@ -958,6 +958,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       centerLat: initCenterLat, centerLng: initCenterLng, centerOverridden: false,
       ptlMinutes: abmPrefs.ptlMinutes, dbVisible: abmPrefs.dbVisible, dbSuppress: abmPrefs.dbSuppress,
       ldrLength: abmPrefs.ldrLength, ldrAngleDeg: abmPrefs.ldrAngleDeg, leaderDirs: {},
+      csMap: abmPrefs.csMap, dbSize: abmPrefs.dbSize,
       fadedSeconds: abmPrefs.fadedSeconds, threatRadius: abmPrefs.threatRadius,
       historyVisible: abmPrefs.historyVisible, historyLength: abmPrefs.historyLength,
       historyRate: abmPrefs.historyRate,
@@ -1158,16 +1159,16 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     // own shared border. If dense theatres make that read as double/uneven
     // lines, pass `true` as a 6th arg here to de-dup (see drawAbmAirspace.js).
     drawAbmAirspace(ctx, view, airspaceFeatures, asVisible, 80, false, airspaceColors, labelsVisible,
-      fillVisible ? fillPct : 0)
+      fillVisible ? fillPct : 0, windowSettings?.csMap ?? 2)
     drawAbmCustomDrawings(ctx, view, drawingLayers, airspaceColors?.CUSTOM ?? null, labelsVisible,
-      fillVisible ? fillPct : 0)
+      fillVisible ? fillPct : 0, windowSettings?.csMap ?? 2)
     drawAirways(ctx, view, airways, airwaysVisible, 50)
     drawMora(ctx, view, mora, moraVisible, 50)
     drawHoldings(ctx, view, holdings, holdingsVisible, 50, 0)
-    drawAbmFixSymbols(ctx, view, navaids, navaidsVisible, '#FFCC44', 60, labelsVisible)
+    drawAbmFixSymbols(ctx, view, navaids, navaidsVisible, '#FFCC44', 60, labelsVisible, windowSettings?.csMap ?? 2)
     const pinnedFixIds = new Set(pinnedFixes[theatre] ?? [])
     const fixesToDraw  = fixesVisible ? fixes : fixes.filter(f => pinnedFixIds.has(f.id.toUpperCase()))
-    drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, labelsVisible)
+    drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, labelsVisible, windowSettings?.csMap ?? 2)
     if (runwaysVisible && runwayCenterlines.length) {
       // drawRunways expects { id, end1, end2 }; the store's centerlines carry
       // the same points under rwyEnd1/rwyEnd2 (built for STARS's own draw path).
@@ -1175,14 +1176,14 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       const rwyVisible  = Object.fromEntries(runwayMaps.map(r => [r.id, true]))
       drawRunways(ctx, view, runwayMaps, rwyVisible, 80)
     }
-    drawMgrsGrid(ctx, view, mgrsVisible, 60)
-    drawAbmTowns(ctx, view, towns, townsVisible)
+    drawMgrsGrid(ctx, view, mgrsVisible, 60, windowSettings?.csMap ?? 2)
+    drawAbmTowns(ctx, view, towns, townsVisible, windowSettings?.csMap ?? 2)
   }, [view, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible,
       polygonFeatures, polygonsVisible,
       asVisible, airspaceFeatures, airspaceColors, labelsVisible, fillVisible, fillPct, drawingLayers, airways, airwaysVisible, mora, moraVisible,
       holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible, pinnedFixes, theatre,
       runwaysVisible, runwayCenterlines, mgrsVisible, towns, townsVisible,
-      basemap, basemapVisible, terrain, terrainVisible, water, waterVisible, roads, roadsVisible])
+      basemap, basemapVisible, terrain, terrainVisible, water, waterVisible, roads, roadsVisible, windowSettings?.csMap])
 
   // ── Range rings + bullseye marker ───────────────────────────────────────────
   const ringAnchorLat = windowSettings?.ringAnchorLat ?? bullseyeLat
@@ -1197,8 +1198,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       windowSettings?.ringsVisible ? (windowSettings?.ringSpacingNm ?? 20) : 0,
       ringAnchorLat, ringAnchorLng, ringAnchorId,
       bullseyeLat, bullseyeLng,
+      windowSettings?.csMap ?? 2,
     )
-  }, [view, windowSettings?.ringsVisible, windowSettings?.ringSpacingNm, ringAnchorLat, ringAnchorLng, ringAnchorId, bullseyeLat, bullseyeLng])
+  }, [view, windowSettings?.ringsVisible, windowSettings?.ringSpacingNm, ringAnchorLat, ringAnchorLng, ringAnchorId, bullseyeLat, bullseyeLng, windowSettings?.csMap])
 
   // ── Compass rose — CATCC's fontScale (0.625), not STARS's default (1) ──────
   // ABM's view is the densest of any scope (contacts+sectors+flights all at
@@ -1264,7 +1266,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       ? new Set([...threatRingSet, ...autoThreatRingIds])
       : threatRingSet
     drawThreatRings(ctx, view, allVisibleUnits, mergedThreatRings, threatRadius, getDecl)
-    drawBraaOverlays(ctx, view, braaList, allVisibleUnits, view.declinationDeg)
+    drawBraaOverlays(ctx, view, braaList, allVisibleUnits, view.declinationDeg, windowSettings?.csMap ?? 2)
 
     const historyLimit = (windowSettings?.historyVisible ?? true) ? Math.min(MAX_HISTORY, windowSettings?.historyLength ?? 4) : 0
     drawAbmContacts(
@@ -1293,6 +1295,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       bullseyeLng,
       theatre,
       view.declinationDeg,
+      windowSettings?.dbSize ?? 2,
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
     drawAbmMissiles(
@@ -1304,11 +1307,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
     // Selected FRAG flight's route, if any, plus any routes toggled on via
     // Ctrl+right-click/.route independent of FRAG.
-    drawAbmFragRoute(ctx, view, selectedRoute, selectedRouteRawType, selectedRouteGroupLabel)
-    for (const { route, rawType, groupLabel } of extraRoutes) drawAbmFragRoute(ctx, view, route, rawType, groupLabel)
+    drawAbmFragRoute(ctx, view, selectedRoute, selectedRouteRawType, selectedRouteGroupLabel, windowSettings?.csMap ?? 2)
+    for (const { route, rawType, groupLabel } of extraRoutes) drawAbmFragRoute(ctx, view, route, rawType, groupLabel, windowSettings?.csMap ?? 2)
 
     // RBL on top of everything — same layering AIC uses.
-    drawRbl(ctx, view, rbl, view.declinationDeg)
+    drawRbl(ctx, view, rbl, view.declinationDeg, windowSettings?.csMap ?? 2)
 
     // .find marker — small green square, same symbol AIC uses (drawAicContacts.js).
     if (findMarker) {
@@ -1319,14 +1322,14 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
     // In-progress .line/.rect/.circ/.poly/.sect/.race/.text preview — on top
     // of everything, same as RBL.
-    drawPendingDraw(ctx, view, pendingDraw, drawCursor)
+    drawPendingDraw(ctx, view, pendingDraw, drawCursor, windowSettings?.csMap ?? 2)
   }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getEffectiveDeclaration, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
       windowSettings?.bedbVisible, hasBullseye, bullseyeLat, bullseyeLng, theatre,
       threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, selectedRouteRawType, selectedRouteGroupLabel, extraRoutes,
-      blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor])
+      blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor, windowSettings?.dbSize, windowSettings?.csMap])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {

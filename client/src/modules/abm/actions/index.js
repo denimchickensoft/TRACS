@@ -132,6 +132,32 @@ export function RR_SET({ captures, context }) {
   return `RANGE RINGS ${nm}NM`
 }
 
+// ── Label / datablock size ──────────────────────────────────────────────────
+
+export function LABELSIZE_SHOW({ context }) {
+  return `LABELSIZE: ${getWin(context.windowId)?.csMap ?? 2}`
+}
+
+export function LABELSIZE_SET({ captures, context }) {
+  const n = parseInt(captures.n, 10)
+  if (isNaN(n) || n < 0 || n > 5) return 'ILL VAL'
+  updateWin(context.windowId, { csMap: n })
+  saveAbmPrefs({ csMap: n })
+  return `LABELSIZE ${n}`
+}
+
+export function DBSIZE_SHOW({ context }) {
+  return `DBSIZE: ${getWin(context.windowId)?.dbSize ?? 2}`
+}
+
+export function DBSIZE_SET({ captures, context }) {
+  const n = parseInt(captures.n, 10)
+  if (isNaN(n) || n < 0 || n > 5) return 'ILL VAL'
+  updateWin(context.windowId, { dbSize: n })
+  saveAbmPrefs({ dbSize: n })
+  return `DBSIZE ${n}`
+}
+
 export function RR_SET_ANCHOR({ captures, context }) {
   const nm = parseFloat(captures.nm)
   const anchor = captures.anchor
@@ -1039,6 +1065,7 @@ export function ENG_TOGGLE({ context }) {
 
 const ACTION_MAP = {
   RR_TOGGLE, RR_SET, RR_SET_ANCHOR,
+  LABELSIZE_SHOW, LABELSIZE_SET, DBSIZE_SHOW, DBSIZE_SET,
   BE_RESET, BE_LATLNG, BE_FIX,
   TIME_TOGGLE, UNITRO_TOGGLE, ROSE_TOGGLE, GEO_TOGGLE, RELIEF_TOGGLE, HOLDS_TOGGLE, MORA_TOGGLE,
   AIRWAYS_TOGGLE, AIRWAYS_TYPE, ASP_TOGGLE, ASP_CATEGORY, ASPCOLORS, REFRESH,

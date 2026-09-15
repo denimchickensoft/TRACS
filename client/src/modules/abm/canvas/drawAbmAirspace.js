@@ -35,7 +35,7 @@ import { placeAirspaceLabels } from '../../../utils/airspaceLabelPlacement.js'
 
 const FALLBACK_COLOR = '#556677'
 
-export function drawAbmAirspace(ctx, view, features, visibleCategories, brite = 80, dedupe = false, colors = null, labelsVisible = false, fillPct = 0) {
+export function drawAbmAirspace(ctx, view, features, visibleCategories, brite = 80, dedupe = false, colors = null, labelsVisible = false, fillPct = 0, csMap = 2) {
   if (!features?.length) return
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
@@ -95,19 +95,18 @@ export function drawAbmAirspace(ctx, view, features, visibleCategories, brite = 
   ctx.setLineDash([])
   ctx.globalAlpha = 1.0
 
-  if (labelsVisible) drawLabels(ctx, view, visibleFeatures, colors, alpha)
+  if (labelsVisible) drawLabels(ctx, view, visibleFeatures, colors, alpha, csMap)
 }
 
 // Renders each feature's nameLabel/altLabel (same fields STARS' drawMaps.js
 // reads). Anchor geometry (centroid vs. longest near-straight edge) and
 // collision-avoidance nudging are shared with drawMaps.js via
-// utils/airspaceLabelPlacement.js — only text measurement/sizing stays
-// local, since STARS sizes text off csMap/briteMapB (DCB knobs ABM has no
-// equivalent of) while ABM uses a fixed font size at the geometry pass'
-// alpha. `visibleFeatures` is already filtered to on-toggle categories, so
-// labels inherit that for free.
-function drawLabels(ctx, view, visibleFeatures, colors, alpha) {
-  const fontSize = 9
+// utils/airspaceLabelPlacement.js. `csMap` (0-5, from .labelsize) drives text
+// size with the same `6 + csMap*2` formula STARS' drawMaps.js uses.
+// `visibleFeatures` is already filtered to on-toggle categories, so labels
+// inherit that for free.
+function drawLabels(ctx, view, visibleFeatures, colors, alpha, csMap = 2) {
+  const fontSize = 6 + csMap * 2
   const lineH    = fontSize + 3
   ctx.font         = `${fontSize}px "Roboto Mono", monospace`
   ctx.textAlign    = 'center'
