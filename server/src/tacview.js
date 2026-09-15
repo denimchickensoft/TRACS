@@ -96,7 +96,14 @@ let broadcastTimer = null
 
 function queueBroadcast(updated, removed) {
   for (const [id, unit] of Object.entries(updated)) {
-    pendingUpdated[id] = unit
+    // Merge, not overwrite — processIncoming() (full unit incl. position) and
+    // runDetectionPass() (partial {contacts:[...]}, no position) both write
+    // here before one flush, and whichever ran later in a tick would
+    // otherwise wholesale-replace the other's data for the same id, e.g.
+    // dropping a fresh position under a position-less contacts update
+    // (confirmed live 2026-09-15: a radar-equipped unit's position freezing
+    // intermittently).
+    pendingUpdated[id] = { ...pendingUpdated[id], ...unit }
     pendingRemoved.delete(id)
   }
   for (const id of removed) {

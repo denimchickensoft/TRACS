@@ -86,7 +86,10 @@ let broadcastTimer = null
 
 function queueBroadcast(updated, removed) {
   for (const [id, unit] of Object.entries(updated)) {
-    pendingUpdated[id] = unit
+    // Merge, not overwrite — see tacview.js's identical queueBroadcast for
+    // why (processIncoming's full unit vs. runDetectionPass's partial
+    // {contacts:[...]} racing into the same buffer before one flush).
+    pendingUpdated[id] = { ...pendingUpdated[id], ...unit }
     pendingRemoved.delete(id)
   }
   for (const id of removed) {
