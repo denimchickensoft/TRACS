@@ -47,3 +47,7 @@ server/scripts/terrainDataExe/main.bundle.js
 server/scripts/terrainDataExe/main.blob
 server/data/mva-preview/
 server/data/relief-preview/
+
+# Throwaway missile-tracking capture diagnostic — not a real feature, never commit
+server/scripts/captureWeapons.js
+weapons-capture-*.jsonl

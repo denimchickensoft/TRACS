@@ -15,6 +15,8 @@ const state = require('./state')
 const navdata = require('../navdata')
 const tacviewCore = require('./tacviewCore')
 const tacviewDetection = require('./tacviewDetection')
+const weaponDatabase = require('./weaponDatabase')
+const missileDetection = require('./missileDetection')
 
 const DEFAULT_PORT = 42674
 const RECONNECT_MS = 3000
@@ -24,6 +26,9 @@ const RECONNECT_MS = 3000
 // safety net against a border-overlap-zone misvote, not this window's length.
 const THEATRE_VOTE_WINDOW_MS = 2000
 const DETECTION_INTERVAL_MS = 2000
+// Same cadence as DETECTION_INTERVAL_MS — separate constant since it's a
+// conceptually distinct pass (missileDetection.js, not tacviewDetection.js).
+const MISSILE_DETECTION_INTERVAL_MS = 2000
 // Re-sync the mission clock this often (matches olympus.js's own
 // MISSION_INTERVAL_MS) — useMissionClock() free-runs client-side off of
 // whatever dateAndTime it was last given, so periodic re-sends correct any
@@ -54,6 +59,7 @@ let connected = false
 let intentionalClose = false
 let reconnectTimer = null
 let detectionTimer = null
+let missileDetectionTimer = null
 let theatreTimer = null
 let missionClockTimer = null
 let theatreDecided = false
@@ -64,9 +70,22 @@ const theatreVotes = new Map()
 // directly. `state`/broadcast only ever receive the fog-filtered subset; see
 // tacviewDetection.js's createFogFilter for why this split exists.
 let internalUnits = {}
+// Missiles get their own omniscient store, split out of internalUnits by
+// category (see splitByCategory below) — they need entirely different
+// visibility handling (own-coalition always visible + missileDetection.js's
+// AWACS/EWR gating, not fogFilter's exposure-tracking), so keeping them
+// mixed into internalUnits would make that split harder to reason about, not
+// easier.
+let internalWeapons = {}
 let fogFilter = null
+let missileFogFilter = null
+// Promoted to module scope (not just a local inside start()) so
+// runMissileDetectionPass() can read it — mirrors tacviewRelayClient.js's
+// identical promotion of the same value.
+let friendlyCoalitionId = null
 
 let onUnitsDelta = null
+let onWeaponsDelta = null
 let onMission = null
 let onBullseyes = null
 let onDisconnect = null
@@ -97,6 +116,48 @@ function flushBroadcast() {
   if (onUnitsDelta) onUnitsDelta(delta)
   pendingUpdated = {}
   pendingRemoved = new Set()
+}
+
+// Mirrors queueBroadcast/flushBroadcast exactly, for the separate weapons
+// delta stream (own state.js store, own onWeaponsDelta callback, own
+// message type) — not reusing the units buffers since a weapon and a unit
+// sharing the same numeric id space would otherwise collide in one map.
+let pendingWeaponsUpdated = {}
+let pendingWeaponsRemoved = new Set()
+
+function queueWeaponsBroadcast(updated, removed) {
+  for (const [id, weapon] of Object.entries(updated)) {
+    pendingWeaponsUpdated[id] = weapon
+    pendingWeaponsRemoved.delete(id)
+  }
+  for (const id of removed) {
+    delete pendingWeaponsUpdated[id]
+    pendingWeaponsRemoved.add(id)
+  }
+}
+
+function flushWeaponsBroadcast() {
+  if (Object.keys(pendingWeaponsUpdated).length === 0 && pendingWeaponsRemoved.size === 0) return
+  const delta = { updated: pendingWeaponsUpdated, removed: [...pendingWeaponsRemoved], time: Date.now() }
+  state.applyWeaponsDelta(delta)
+  if (onWeaponsDelta) onWeaponsDelta(delta)
+  pendingWeaponsUpdated = {}
+  pendingWeaponsRemoved = new Set()
+}
+
+// Splits parseLines()'s single mixed `updated` map by category — Tacview's
+// wire format doesn't distinguish "kinds" of object at the transport level
+// (classify() just assigns a category string per Type= tag), so units and
+// missiles arrive interleaved and have to be separated here before their two
+// very different visibility pipelines (fogFilter vs missileDetection.js).
+function splitByCategory(updated) {
+  const units = {}
+  const weapons = {}
+  for (const [id, obj] of Object.entries(updated)) {
+    if (obj.category === 'Missile') weapons[id] = obj
+    else units[id] = obj
+  }
+  return { units, weapons }
 }
 
 // Login.jsx's composedOlympusUrl() always builds "http://host:port"
@@ -173,6 +234,24 @@ function runDetectionPass() {
   queueBroadcast(updated, hidden)
 }
 
+// AWACS/EWR-only synthetic missile detection (server/src/missileDetection.js)
+// — neither real Olympus weapon objects nor Tacview's have any native
+// detection data, so this runs on its own cadence against the current
+// internalUnits/internalWeapons, same design as olympus.js's
+// pollMissileDetection(). No-op for a gm/admin session (missileFogFilter
+// null), matching fogFilter's identical godmode exemption. Also drives the
+// weapon fog-of-war reveal/hide cycle (missileFogFilter.computeVisibility),
+// not just the units-side missileContacts[] update — see
+// missileDetection.js's createMissileFogFilter for why weapons need this at
+// all (Olympus's own /olympus/weapons endpoint sends unredacted omniscient
+// data, confirmed live 2026-09-15).
+function runMissileDetectionPass() {
+  if (!connected || !missileFogFilter) return
+  const { contactsUpdate, revealed, hidden } = missileFogFilter.computeVisibility(internalUnits, internalWeapons)
+  if (Object.keys(contactsUpdate).length > 0) queueBroadcast(contactsUpdate, [])
+  if (Object.keys(revealed).length > 0 || hidden.length > 0) queueWeaponsBroadcast(revealed, hidden)
+}
+
 let lineBuffer = ''
 function processIncoming(text) {
   lineBuffer += text
@@ -184,16 +263,45 @@ function processIncoming(text) {
 
   if (positions.length) voteTheatre(positions)
 
-  Object.assign(internalUnits, updated)
-  for (const id of removed) {
-    delete internalUnits[id]
-    if (fogFilter) fogFilter.forget(id)
+  const { units: unitsUpdated, weapons: weaponsUpdatedRaw } = splitByCategory(updated)
+
+  // RCS-trackability filter (shared with olympus.js's pollWeapons()) — applied
+  // here, before ever entering internalWeapons/state, not deferred to render
+  // time.
+  const weaponsUpdated = {}
+  for (const [id, weapon] of Object.entries(weaponsUpdatedRaw)) {
+    if (weaponDatabase.isTrackableMissile(weapon.name)) weaponsUpdated[id] = weapon
   }
 
-  const publicUpdated = fogFilter ? fogFilter.filterFrameUpdate(updated) : updated
+  Object.assign(internalUnits, unitsUpdated)
+  Object.assign(internalWeapons, weaponsUpdated)
 
-  if (Object.keys(publicUpdated).length || removed.length) {
-    queueBroadcast(publicUpdated, removed)
+  const unitsRemoved = []
+  const weaponsRemoved = []
+  for (const id of removed) {
+    if (internalWeapons[id] !== undefined) {
+      delete internalWeapons[id]
+      if (missileFogFilter) missileFogFilter.forget(id)
+      weaponsRemoved.push(id)
+    } else {
+      delete internalUnits[id]
+      if (fogFilter) fogFilter.forget(id)
+      unitsRemoved.push(id)
+    }
+  }
+
+  const publicUpdated = fogFilter ? fogFilter.filterFrameUpdate(unitsUpdated) : unitsUpdated
+  if (Object.keys(publicUpdated).length || unitsRemoved.length) {
+    queueBroadcast(publicUpdated, unitsRemoved)
+  }
+
+  // Weapons: own-coalition/neutral pass straight through; a non-friendly
+  // weapon's raw position data is only forwarded once missileFogFilter has
+  // actually confirmed it detected (see that filter's own comment for why
+  // this redaction is necessary on Tacview, same as fogFilter is for units).
+  const publicWeaponsUpdated = missileFogFilter ? missileFogFilter.filterFrameUpdate(weaponsUpdated) : weaponsUpdated
+  if (Object.keys(publicWeaponsUpdated).length || weaponsRemoved.length) {
+    queueWeaponsBroadcast(publicWeaponsUpdated, weaponsRemoved)
   }
 
   if (bullseyes) {
@@ -273,6 +381,7 @@ function start(cfg, callbacks = {}) {
 
   config = cfg
   onUnitsDelta = callbacks.onUnitsDelta ?? null
+  onWeaponsDelta = callbacks.onWeaponsDelta ?? null
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
   onDisconnect = callbacks.onDisconnect ?? null
@@ -285,20 +394,25 @@ function start(cfg, callbacks = {}) {
   theatreVotes.clear()
   state.resetForNewSource()
   internalUnits = {}
+  internalWeapons = {}
   handshakeFailures = 0
   pendingUpdated = {}
   pendingRemoved = new Set()
+  pendingWeaponsUpdated = {}
+  pendingWeaponsRemoved = new Set()
   // Guards against a prior relay-hosted session (tacviewRelayClient.js)
   // having left tacviewDetection's shared config sourced from a relay —
   // direct mode always forces itself back to the local file/defaults.
   tacviewDetection.resetToLocalConfig()
-  const friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
+  friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = friendlyCoalitionId !== null ? tacviewDetection.createFogFilter(friendlyCoalitionId) : null
+  missileFogFilter = friendlyCoalitionId !== null ? missileDetection.createMissileFogFilter(friendlyCoalitionId) : null
 
   connect()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
   detectionTimer = setInterval(runDetectionPass, DETECTION_INTERVAL_MS)
-  broadcastTimer = setInterval(flushBroadcast, BROADCAST_INTERVAL_MS)
+  missileDetectionTimer = setInterval(runMissileDetectionPass, MISSILE_DETECTION_INTERVAL_MS)
+  broadcastTimer = setInterval(() => { flushBroadcast(); flushWeaponsBroadcast() }, BROADCAST_INTERVAL_MS)
   missionClockTimer = setInterval(sendMissionClock, MISSION_CLOCK_INTERVAL_MS)
 }
 
@@ -309,6 +423,7 @@ function stop() {
   clearTimeout(theatreTimer)
   clearInterval(missionClockTimer)
   clearInterval(detectionTimer)
+  clearInterval(missileDetectionTimer)
   clearInterval(broadcastTimer)
   reconnectTimer = null
   if (socket) {
@@ -317,9 +432,14 @@ function stop() {
   }
   config = null
   internalUnits = {}
+  internalWeapons = {}
   fogFilter = null
+  missileFogFilter = null
+  friendlyCoalitionId = null
   pendingUpdated = {}
   pendingRemoved = new Set()
+  pendingWeaponsUpdated = {}
+  pendingWeaponsRemoved = new Set()
   console.log('[tacview] stopped')
 }
 

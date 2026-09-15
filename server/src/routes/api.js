@@ -167,9 +167,10 @@ function registerApiRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state
         tacviewRelayClient.start(
           { relayUrl, password: sourceCfg.password ?? '', coalition: sourceCfg.coalition ?? 'blue' },
           {
-            onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }),
-            onMission:    (data)  => broadcast({ type: 'mission',    data }),
-            onBullseyes:  (data)  => broadcast({ type: 'bullseyes', data }),
+            onUnitsDelta:   (delta) => broadcast({ type: 'units_delta', data: delta }),
+            onWeaponsDelta: (delta) => broadcast({ type: 'weapons_delta', data: delta }),
+            onMission:      (data)  => broadcast({ type: 'mission',    data }),
+            onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
           }
         )
         broadcast({ type: 'units_clear' })
@@ -243,6 +244,7 @@ function registerApiRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state
         sourceCfg,
         {
           onUnitsDelta:   (delta) => broadcast({ type: 'units_delta', data: delta }),
+          onWeaponsDelta: (delta) => broadcast({ type: 'weapons_delta', data: delta }),
           onMission:      (data)  => broadcast({ type: 'mission',    data }),
           onAirbases:     (data)  => broadcast({ type: 'airbases',  data }),
           onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),

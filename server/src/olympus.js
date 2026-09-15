@@ -4,10 +4,14 @@ const crypto    = require('crypto')
 const state     = require('./state')
 const elevation = require('./elevation')
 const { decodeUnits } = require('./decoder')
+const weaponDatabase = require('./weaponDatabase')
+const missileDetection = require('./missileDetection')
+const { coalitionId } = require('./tacviewDetection')
 
 const POLL_INTERVAL_MS = 1000
 const MISSION_INTERVAL_MS = 10000
 const AIRBASES_INTERVAL_MS = 30000
+const MISSILE_DETECTION_INTERVAL_MS = 2000
 const FULL_REFRESH_EVERY = 10
 const MAX_CONSECUTIVE_ERRORS = 10
 
@@ -20,14 +24,32 @@ let onDisconnect = null
 let unitsTimer = null
 let missionTimer = null
 let airbasesTimer = null
+let weaponsTimer = null
+let missileDetectionTimer = null
 
 let onUnitsDelta  = null
+let onWeaponsDelta = null
 let onMission     = null
 let onAirbases    = null
 let onBullseyes   = null
 
 let lastTheatre     = null
 let lastSessionHash = null
+
+// Omniscient weapons truth (all coalitions), separate from state.js's
+// weapons store — mirrors tacview.js's internalUnits/internalWeapons split.
+// Necessary because Olympus's own /olympus/weapons endpoint, unlike
+// /olympus/units, sends full unredacted position data for every coalition's
+// missiles regardless of which coalition authenticated (confirmed live
+// 2026-09-15 — see missileDetection.js's createMissileFogFilter). state.js's
+// weapons store (what a newly-connected browser gets hydrated with) must
+// only ever hold the fog-filtered PUBLIC view, matching what's already been
+// broadcast — so pollMissileDetection() needs its own omniscient copy to
+// compute against.
+let internalWeapons = {}
+let missileFogFilter = null
+let friendlyCoalitionId = null
+let lastWeaponsPollTime = 0
 
 let bullseyesTimer = null
 
@@ -130,6 +152,110 @@ async function pollUnits() {
   }
 }
 
+// Weapon objects need two guards real units don't (confirmed against a live
+// capture, 2026-09-15 — see the "Add missile tracking to AIC/ABM" plan):
+// Olympus never purges a dead weapon from its internal registry, so it keeps
+// reporting the same id forever — a proper {category, alive:false} on every
+// full-refresh poll, and a completely bare {id}-only stub (no position, no
+// alive field at all) on every delta poll in between. Skipping any record
+// without a `position` catches both cases (every genuine live update always
+// carries position); treating alive===false as a removal is naturally
+// idempotent (re-removing an already-gone id is a harmless no-op), so no
+// permanent tombstone tracking is needed.
+async function pollWeapons() {
+  if (!polling) return
+  try {
+    const forceFullRefresh = pollCount % FULL_REFRESH_EVERY === 1
+    const lastTime = forceFullRefresh ? 0 : lastWeaponsPollTime
+
+    const buffer = await fetchOlympusBinary(`/olympus/weapons?time=${lastTime}`)
+    const { updateTime, units: weapons } = decodeUnits(buffer)
+    lastWeaponsPollTime = updateTime
+
+    const updatedMap = {}
+    const removedIds = []
+
+    for (const weapon of weapons) {
+      if (weapon.alive === false) {
+        removedIds.push(String(weapon.id))
+        continue
+      }
+      if (!weapon.position) continue // stale/ghost stub — see comment above
+      if (weapon.category !== 'Missile') continue // bombs/shells out of scope for v1
+      if (!weaponDatabase.isTrackableMissile(weapon.name)) continue
+      updatedMap[String(weapon.id)] = weapon
+    }
+
+    // Compared against internalWeapons (the omniscient truth), not state.js's
+    // public store — a currently-hidden enemy missile is legitimately absent
+    // from the public store while still alive, and comparing against that
+    // would wrongly mark it removed on every single full-refresh cycle.
+    if (forceFullRefresh) {
+      const receivedIds = new Set(weapons.map((w) => String(w.id)))
+      for (const knownId of Object.keys(internalWeapons)) {
+        if (!receivedIds.has(knownId)) removedIds.push(knownId)
+      }
+    }
+
+    for (const [id, weapon] of Object.entries(updatedMap)) internalWeapons[id] = weapon
+    for (const id of removedIds) {
+      delete internalWeapons[id]
+      if (missileFogFilter) missileFogFilter.forget(id)
+    }
+
+    // Own-coalition/neutral pass straight through; a non-friendly weapon's
+    // raw position data is only forwarded once missileFogFilter has actually
+    // confirmed it detected — see that filter's own comment for why this
+    // redaction is necessary here (Olympus's /olympus/weapons endpoint sends
+    // unredacted omniscient data, confirmed live 2026-09-15).
+    const publicUpdated = missileFogFilter ? missileFogFilter.filterFrameUpdate(updatedMap) : updatedMap
+
+    const delta = { updated: publicUpdated, removed: removedIds, time: updateTime }
+    state.applyWeaponsDelta(delta)
+    if (onWeaponsDelta) onWeaponsDelta(delta)
+  } catch (err) {
+    console.error('[olympus] weapons poll error:', err.message)
+  } finally {
+    if (polling) weaponsTimer = setTimeout(pollWeapons, POLL_INTERVAL_MS)
+  }
+}
+
+// AWACS/EWR-only synthetic missile detection (server/src/missileDetection.js)
+// — neither Olympus's real units nor its weapon objects carry any native
+// detection data for a missile target (Weapon class never populates
+// contacts[]/radarState), so this runs independently on its own cadence
+// rather than piggybacking on pollUnits()/pollWeapons(), reading the current
+// canonical state built up by both. No-op for a gm/admin session
+// (missileFogFilter null), matching tacviewDetection.js's fog filter being
+// likewise only created for a real blue/red session. Also drives the weapon
+// fog-of-war reveal/hide cycle (missileFogFilter.computeVisibility), not
+// just the units-side missileContacts[] update.
+function pollMissileDetection() {
+  if (!polling) return
+  try {
+    if (missileFogFilter) {
+      const units = Object.fromEntries(state.getAllUnitEntries())
+      const { contactsUpdate, revealed, hidden } = missileFogFilter.computeVisibility(units, internalWeapons)
+
+      if (Object.keys(contactsUpdate).length > 0) {
+        const unitsDelta = { updated: contactsUpdate, removed: [], time: Date.now() }
+        state.applyDelta(unitsDelta)
+        if (onUnitsDelta) onUnitsDelta(unitsDelta)
+      }
+
+      if (Object.keys(revealed).length > 0 || hidden.length > 0) {
+        const weaponsDelta = { updated: revealed, removed: hidden, time: Date.now() }
+        state.applyWeaponsDelta(weaponsDelta)
+        if (onWeaponsDelta) onWeaponsDelta(weaponsDelta)
+      }
+    }
+  } catch (err) {
+    console.error('[olympus] missile detection error:', err.message)
+  } finally {
+    if (polling) missileDetectionTimer = setTimeout(pollMissileDetection, MISSILE_DETECTION_INTERVAL_MS)
+  }
+}
+
 async function pollBullseyes() {
   if (!polling) return
   try {
@@ -189,6 +315,7 @@ function start(cfg, callbacks = {}) {
 
   config = cfg
   onUnitsDelta    = callbacks.onUnitsDelta    ?? null
+  onWeaponsDelta  = callbacks.onWeaponsDelta  ?? null
   onMission       = callbacks.onMission       ?? null
   onAirbases      = callbacks.onAirbases      ?? null
   onBullseyes     = callbacks.onBullseyes     ?? null
@@ -200,9 +327,15 @@ function start(cfg, callbacks = {}) {
   lastTheatre = null
   lastSessionHash = null
   state.resetForNewSource()
+  internalWeapons = {}
+  lastWeaponsPollTime = 0
+  friendlyCoalitionId = coalitionId(config.coalition)
+  missileFogFilter = friendlyCoalitionId !== null ? missileDetection.createMissileFogFilter(friendlyCoalitionId) : null
 
   console.log(`[olympus] starting polling → ${config.olympusUrl}`)
   pollUnits()
+  pollWeapons()
+  pollMissileDetection()
   pollMission()
   pollAirbases()
   pollBullseyes()
@@ -211,10 +344,16 @@ function start(cfg, callbacks = {}) {
 function stop() {
   polling = false
   clearTimeout(unitsTimer)
+  clearTimeout(weaponsTimer)
+  clearTimeout(missileDetectionTimer)
   clearTimeout(missionTimer)
   clearTimeout(airbasesTimer)
   clearTimeout(bullseyesTimer)
   config = null
+  internalWeapons = {}
+  missileFogFilter = null
+  friendlyCoalitionId = null
+  lastWeaponsPollTime = 0
   console.log('[olympus] polling stopped')
 }
 

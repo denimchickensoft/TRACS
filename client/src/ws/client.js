@@ -1,4 +1,5 @@
 import { useUnitsStore } from '../store/units'
+import { useWeaponsStore } from '../store/weapons'
 import { useFlightPlansStore } from '../store/flightPlans'
 import { useAtcStore } from '../store/atc'
 import { useSessionStore } from '../store/session'
@@ -60,8 +61,13 @@ function dispatch(message) {
       break
     }
 
+    case 'weapons_delta':
+      useWeaponsStore.getState().applyDelta(message.data)
+      break
+
     case 'units_clear':
       useUnitsStore.getState().clearUnits()
+      useWeaponsStore.getState().clearWeapons()
       useFlightPlansStore.getState().reset()
       useAtcStore.getState().reset()
       break
@@ -70,6 +76,7 @@ function dispatch(message) {
       const hash = message.data?.sessionHash ?? null
       if (hash && lastSessionHash && hash !== lastSessionHash) {
         useUnitsStore.getState().clearUnits()
+        useWeaponsStore.getState().clearWeapons()
         useFlightPlansStore.getState().reset()
         useAtcStore.getState().reset()
       }

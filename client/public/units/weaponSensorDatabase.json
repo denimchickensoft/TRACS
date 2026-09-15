@@ -1,0 +1,1647 @@
+{
+ "9M317": {
+  "reflection": 0.0918,
+  "diamMm": 400,
+  "massKg": 715,
+  "displayName": "9M317",
+  "sourceFile": "rockets\\9M317.lua"
+ },
+ "9M723": {
+  "reflection": 0.2,
+  "diamMm": 610,
+  "massKg": 3800,
+  "displayName": "9M723",
+  "sourceFile": "rockets\\9M723.lua"
+ },
+ "9M723_HE": {
+  "reflection": 0.2,
+  "diamMm": 610,
+  "massKg": 3800,
+  "displayName": "9M723 HE",
+  "sourceFile": "rockets\\9M723_HE.lua"
+ },
+ "ADM_141A": {
+  "reflection": 5,
+  "diamMm": 340,
+  "massKg": 180,
+  "displayName": "ADM-141A",
+  "sourceFile": "rockets\\ADM_141A.lua"
+ },
+ "ADM_141B": {
+  "reflection": 5,
+  "diamMm": 340,
+  "massKg": 180,
+  "displayName": "ADM-141B",
+  "sourceFile": "rockets\\ADM_141B.lua"
+ },
+ "AGM_114": {
+  "reflection": 0.03,
+  "diamMm": 178,
+  "massKg": 49,
+  "displayName": "AGM-114L",
+  "sourceFile": "rockets\\AGM_114.lua"
+ },
+ "AGM_114K": {
+  "reflection": 0.03,
+  "diamMm": 178,
+  "massKg": 45.3,
+  "displayName": "AGM-114K Hellfire",
+  "sourceFile": "rockets\\AGM_114K.lua"
+ },
+ "AGM_119": {
+  "reflection": 0.15,
+  "diamMm": 300,
+  "massKg": 370,
+  "displayName": "AGM-119B Penguin",
+  "sourceFile": "rockets\\AGM_119.lua"
+ },
+ "AGM_122": {
+  "reflection": 0.05,
+  "diamMm": 127,
+  "massKg": 88,
+  "displayName": "AGM-122A Sidearm",
+  "sourceFile": "rockets\\AGM_122.lua"
+ },
+ "AGM_12A": {
+  "reflection": 0.03,
+  "diamMm": 305,
+  "massKg": 257,
+  "displayName": "AGM-12A",
+  "sourceFile": "rockets\\AGM_12A.lua"
+ },
+ "AGM_12B": {
+  "reflection": 0.03,
+  "diamMm": 305,
+  "massKg": 263,
+  "displayName": "AGM-12B",
+  "sourceFile": "rockets\\AGM_12B.lua"
+ },
+ "AGM_12C_ED": {
+  "reflection": 0.03,
+  "diamMm": 432,
+  "massKg": 811.5,
+  "displayName": "AGM-12C Bullpup",
+  "sourceFile": "rockets\\AGM_12C_ED.lua"
+ },
+ "AGM_130": {
+  "reflection": 0.2,
+  "diamMm": 460,
+  "massKg": 1323,
+  "displayName": "AGM-130C-9",
+  "sourceFile": "rockets\\AGM_130.lua"
+ },
+ "AGM_154": {
+  "reflection": 0.05,
+  "diamMm": 400,
+  "massKg": 485,
+  "displayName": "AGM-154C",
+  "sourceFile": "rockets\\AGM_154.lua"
+ },
+ "AGM_154A": {
+  "reflection": 0.05,
+  "diamMm": 400,
+  "massKg": 485,
+  "displayName": "AGM-154A",
+  "sourceFile": "rockets\\AGM_154A.lua"
+ },
+ "AGM_154B": {
+  "reflection": 0.05,
+  "diamMm": 400,
+  "massKg": 485,
+  "displayName": "AGM-154B",
+  "sourceFile": "rockets\\AGM_154B.lua"
+ },
+ "AGM_45A": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 180,
+  "displayName": "AGM-45A Shrike ARM",
+  "sourceFile": "rockets\\AGM_45A.lua"
+ },
+ "AGM_45B": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 185,
+  "displayName": "AGM-45B Shrike ARM",
+  "sourceFile": "rockets\\AGM_45B.lua"
+ },
+ "AGM_65A": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 210.5,
+  "displayName": "AGM-65A",
+  "sourceFile": "rockets\\AGM_65A.lua"
+ },
+ "AGM_65B": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 210.5,
+  "displayName": "AGM-65B",
+  "sourceFile": "rockets\\AGM_65B.lua"
+ },
+ "AGM_65D": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 218,
+  "displayName": "AGM-65D",
+  "sourceFile": "rockets\\AGM_65D.lua"
+ },
+ "AGM_65E": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 286,
+  "displayName": "AGM-65E",
+  "sourceFile": "rockets\\AGM_65E.lua"
+ },
+ "AGM_65F": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 301,
+  "displayName": "AGM-65F",
+  "sourceFile": "rockets\\AGM_65F.lua"
+ },
+ "AGM_65G": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 301,
+  "displayName": "AGM-65G",
+  "sourceFile": "rockets\\AGM_65G.lua"
+ },
+ "AGM_65H": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 208,
+  "displayName": "AGM-65H",
+  "sourceFile": "rockets\\AGM_65H.lua"
+ },
+ "AGM_65K": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 298,
+  "displayName": "AGM-65K",
+  "sourceFile": "rockets\\AGM_65K.lua"
+ },
+ "AGM_65L": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 292,
+  "displayName": "AGM-65L",
+  "sourceFile": "rockets\\AGM_65L.lua"
+ },
+ "AGM_78A": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 620,
+  "displayName": "AGM-78A Standard ARM",
+  "sourceFile": "rockets\\AGM_78A.lua"
+ },
+ "AGM_78B": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 620,
+  "displayName": "AGM-78B Standard ARM",
+  "sourceFile": "rockets\\AGM_78B.lua"
+ },
+ "AGM_84A": {
+  "reflection": 0.1,
+  "diamMm": 343,
+  "massKg": 548,
+  "displayName": "AGM-84A Harpoon",
+  "sourceFile": "rockets\\AGM_84A.lua"
+ },
+ "AGM_84D": {
+  "reflection": 0.08,
+  "diamMm": 343,
+  "massKg": 540,
+  "displayName": "AGM-84D",
+  "sourceFile": "rockets\\AGM_84D.lua"
+ },
+ "AGM_84E": {
+  "reflection": 0.1,
+  "diamMm": 343,
+  "massKg": 628,
+  "displayName": "AGM-84E",
+  "sourceFile": "rockets\\AGM_84E.lua"
+ },
+ "AGM_84H": {
+  "reflection": 0.1,
+  "diamMm": 343,
+  "massKg": 675,
+  "displayName": "AGM-84H",
+  "sourceFile": "rockets\\AGM_84H.lua"
+ },
+ "AGM_84S": {
+  "reflection": 0.1,
+  "diamMm": 343,
+  "massKg": 661.5,
+  "displayName": "RGM-84D Harpoon",
+  "sourceFile": "rockets\\AGM_84S.lua"
+ },
+ "AGM_86": {
+  "reflection": 0.1691,
+  "diamMm": 697,
+  "massKg": 1450,
+  "displayName": "AGM-86D",
+  "sourceFile": "rockets\\AGM_86.lua"
+ },
+ "AGM_86C": {
+  "reflection": 0.1691,
+  "diamMm": 697,
+  "massKg": 1950,
+  "displayName": "AGM-86C",
+  "sourceFile": "rockets\\AGM_86C.lua"
+ },
+ "AGM_88": {
+  "reflection": 0.08,
+  "diamMm": 254,
+  "massKg": 361,
+  "displayName": "AGM-88C",
+  "sourceFile": "rockets\\AGM_88.lua"
+ },
+ "AGR_20A": {
+  "reflection": 0.01,
+  "diamMm": 70,
+  "massKg": 15,
+  "displayName": "Hydra 70 M151 HE APKWS",
+  "sourceFile": "rockets\\AGR_20A.lua"
+ },
+ "AGR_20_M282": {
+  "reflection": 0.01,
+  "diamMm": 70,
+  "massKg": 15,
+  "displayName": "Hydra 70 M282 MPP APKWS",
+  "sourceFile": "rockets\\AGR_20_M282.lua"
+ },
+ "AIM-7E": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 206.4,
+  "displayName": "AIM-7E",
+  "sourceFile": "rockets\\AIM-7E.lua"
+ },
+ "AIM-7E-2": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 194,
+  "displayName": "AIM-7E-2",
+  "sourceFile": "rockets\\AIM-7E-2.lua"
+ },
+ "AIM-7F": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 231,
+  "displayName": "AIM-7F",
+  "sourceFile": "rockets\\AIM-7F.lua"
+ },
+ "AIM-7MH": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 231,
+  "displayName": "AIM-7MH",
+  "sourceFile": "rockets\\AIM-7MH.lua"
+ },
+ "AIM-7P": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 231,
+  "displayName": "AIM-7P",
+  "sourceFile": "rockets\\AIM-7P.lua"
+ },
+ "AIM-9E": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 76.43,
+  "displayName": "AIM-9E",
+  "sourceFile": "rockets\\AIM-9E.lua"
+ },
+ "AIM-9J": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 76.93,
+  "displayName": "AIM-9J",
+  "sourceFile": "rockets\\AIM-9J.lua"
+ },
+ "AIM-9JULI": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 82.3,
+  "displayName": "AIM-9JULI",
+  "sourceFile": "rockets\\AIM-9JULI.lua"
+ },
+ "AIM-9L": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 85.73,
+  "displayName": "AIM-9L",
+  "sourceFile": "rockets\\AIM-9L.lua"
+ },
+ "AIM-9P": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 74.84,
+  "displayName": "AIM-9P",
+  "sourceFile": "rockets\\AIM-9P.lua"
+ },
+ "AIM-9P3": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 80.7,
+  "displayName": "AIM-9P3",
+  "sourceFile": "rockets\\AIM-9P3.lua"
+ },
+ "AIM-9P5": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 80.7,
+  "displayName": "AIM-9P5",
+  "sourceFile": "rockets\\AIM-9P5.lua"
+ },
+ "AIM_120": {
+  "reflection": 0.07,
+  "diamMm": 169,
+  "massKg": 157.85,
+  "displayName": "AIM-120B",
+  "sourceFile": "rockets\\AIM_120.lua"
+ },
+ "AIM_120C": {
+  "reflection": 0.07,
+  "diamMm": 160,
+  "massKg": 161.48,
+  "displayName": "AIM-120C",
+  "sourceFile": "rockets\\AIM_120C.lua"
+ },
+ "AIM_54": {
+  "reflection": 0.12,
+  "diamMm": 380,
+  "massKg": 463,
+  "displayName": "AIM-54C",
+  "sourceFile": "rockets\\AIM_54.lua"
+ },
+ "AIM_54A_Mk47": {
+  "reflection": 0.12,
+  "diamMm": 380,
+  "massKg": 444,
+  "displayName": "AIM-54A-Mk47",
+  "sourceFile": "rockets\\AIM_54A_Mk47.lua"
+ },
+ "AIM_54A_Mk60": {
+  "reflection": 0.12,
+  "diamMm": 380,
+  "massKg": 444,
+  "displayName": "AIM-54A-Mk60",
+  "sourceFile": "rockets\\AIM_54A_Mk60.lua"
+ },
+ "AIM_54C_Mk47": {
+  "reflection": 0.12,
+  "diamMm": 380,
+  "massKg": 454,
+  "displayName": "AIM-54C-Mk47",
+  "sourceFile": "rockets\\AIM_54C_Mk47.lua"
+ },
+ "AIM_54C_Mk60": {
+  "reflection": 0.12,
+  "diamMm": 380,
+  "massKg": 454,
+  "displayName": "AIM-54C-Mk60",
+  "sourceFile": "rockets\\AIM_54C_Mk60.lua"
+ },
+ "AIM_7": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 231.1,
+  "displayName": "AIM-7M",
+  "sourceFile": "rockets\\AIM_7.lua"
+ },
+ "AIM_9": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 85.73,
+  "displayName": "AIM-9M",
+  "sourceFile": "rockets\\AIM_9.lua"
+ },
+ "AIM_9X": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 84.46,
+  "displayName": "AIM-9X",
+  "sourceFile": "rockets\\AIM_9X.lua"
+ },
+ "AKD-10": {
+  "reflection": 0.015,
+  "diamMm": 170,
+  "massKg": 48,
+  "displayName": "AKD-10",
+  "sourceFile": "rockets\\AKD-10.lua"
+ },
+ "ALARM": {
+  "reflection": 0.08,
+  "diamMm": 224,
+  "massKg": 268,
+  "displayName": "ALARM",
+  "sourceFile": "rockets\\ALARM.lua"
+ },
+ "AM39": {
+  "reflection": 0.08,
+  "diamMm": 350,
+  "massKg": 670,
+  "displayName": "AM39",
+  "sourceFile": "rockets\\AM39.lua"
+ },
+ "ASM_N_2": {
+  "reflection": 0.2,
+  "diamMm": 585,
+  "massKg": 727,
+  "displayName": "ASM-N-2 Bat, radar guided glide bomb",
+  "sourceFile": "rockets\\ASM_N_2.lua"
+ },
+ "AT_6": {
+  "reflection": 0.03,
+  "diamMm": 130,
+  "massKg": 35.4,
+  "displayName": "9M114 Shturm (AT-6 Spiral)",
+  "sourceFile": "rockets\\AT_6.lua"
+ },
+ "Ataka_9M120": {
+  "reflection": 0.03,
+  "diamMm": 130,
+  "massKg": 49.5,
+  "displayName": "9M120 Ataka (AT-9 Spiral-2)",
+  "sourceFile": "rockets\\Ataka_9M120.lua"
+ },
+ "Ataka_9M120F": {
+  "reflection": 0.03,
+  "diamMm": 130,
+  "massKg": 49.5,
+  "displayName": "9M120F Ataka (AT-9 Spiral-2)",
+  "sourceFile": "rockets\\Ataka_9M120F.lua"
+ },
+ "Ataka_9M220": {
+  "reflection": 0.03,
+  "diamMm": 130,
+  "massKg": 49.5,
+  "displayName": "9M220O Ataka (AT-9 Spiral-2)",
+  "sourceFile": "rockets\\Ataka_9M220.lua"
+ },
+ "BGM_109B": {
+  "reflection": 0.16,
+  "diamMm": 830,
+  "massKg": 1440,
+  "displayName": "BGM-109C Tomahawk",
+  "sourceFile": "rockets\\BGM_109B.lua"
+ },
+ "BK90_MJ1": {
+  "reflection": 0.4,
+  "diamMm": 550,
+  "massKg": 605,
+  "displayName": "BK90 MJ1",
+  "sourceFile": "rockets\\BK90_MJ1.lua"
+ },
+ "BK90_MJ1_MJ2": {
+  "reflection": 0.4,
+  "diamMm": 550,
+  "massKg": 605,
+  "displayName": "BK90 MJ1-MJ2",
+  "sourceFile": "rockets\\BK90_MJ1_MJ2.lua"
+ },
+ "BK90_MJ2": {
+  "reflection": 0.4,
+  "diamMm": 550,
+  "massKg": 605,
+  "displayName": "BK90 MJ2",
+  "sourceFile": "rockets\\BK90_MJ2.lua"
+ },
+ "BRM-1_90MM": {
+  "reflection": 0.05,
+  "diamMm": 70,
+  "massKg": 16.8,
+  "displayName": "BRM-1 90mm Laser-guided Rocket",
+  "sourceFile": "rockets\\BRM-1_90MM.lua"
+ },
+ "CATM_65K": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 297,
+  "displayName": "CATM-65K",
+  "sourceFile": "rockets\\CATM_65K.lua"
+ },
+ "CATM_9M": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 85.73,
+  "displayName": "CATM-9M",
+  "sourceFile": "rockets\\CATM_9M.lua"
+ },
+ "CHAP_AIM92": {
+  "reflection": 0.01,
+  "diamMm": 70,
+  "massKg": 10.1,
+  "displayName": "FIM-92",
+  "sourceFile": "rockets\\CHAP_AIM92.lua"
+ },
+ "CM-400AKG": {
+  "reflection": 0.12,
+  "diamMm": 400,
+  "massKg": 910,
+  "displayName": "CM-400AKG",
+  "sourceFile": "rockets\\CM-400AKG.lua"
+ },
+ "CM-802AKG": {
+  "reflection": 0.09,
+  "diamMm": 343,
+  "massKg": 675,
+  "displayName": "CM802AKG",
+  "sourceFile": "rockets\\CM-802AKG.lua"
+ },
+ "CM_802AKG": {
+  "reflection": 0.25,
+  "diamMm": 360,
+  "massKg": 670,
+  "displayName": "CM-802AKG",
+  "sourceFile": "rockets\\CM_802AKG.lua"
+ },
+ "C_701IR": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 100,
+  "displayName": "C-701IR",
+  "sourceFile": "rockets\\C_701IR.lua"
+ },
+ "C_701T": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 100,
+  "displayName": "C-701T",
+  "sourceFile": "rockets\\C_701T.lua"
+ },
+ "C_802AK": {
+  "reflection": 0.25,
+  "diamMm": 360,
+  "massKg": 600,
+  "displayName": "C-802AK",
+  "sourceFile": "rockets\\C_802AK.lua"
+ },
+ "DWS39_MJ1": {
+  "reflection": 0.15,
+  "diamMm": 400,
+  "massKg": 605,
+  "displayName": "DWS39 MJ1",
+  "sourceFile": "rockets\\DWS39_MJ1.lua"
+ },
+ "DWS39_MJ1_MJ2": {
+  "reflection": 0.15,
+  "diamMm": 400,
+  "massKg": 605,
+  "displayName": "DWS39 MJ1-MJ2",
+  "sourceFile": "rockets\\DWS39_MJ1_MJ2.lua"
+ },
+ "DWS39_MJ2": {
+  "reflection": 0.15,
+  "diamMm": 400,
+  "massKg": 605,
+  "displayName": "DWS39 MJ2",
+  "sourceFile": "rockets\\DWS39_MJ2.lua"
+ },
+ "FIM_92C": {
+  "reflection": 0.01,
+  "diamMm": 70,
+  "massKg": 10.1,
+  "displayName": "FIM-92C Stinger",
+  "sourceFile": "rockets\\FIM_92C.lua"
+ },
+ "GAR-8": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 74.39,
+  "displayName": "AIM-9B",
+  "sourceFile": "rockets\\GAR-8.lua"
+ },
+ "GB-6": {
+  "reflection": 0.1,
+  "diamMm": 330,
+  "massKg": 620,
+  "displayName": "GB-6",
+  "sourceFile": "rockets\\GB-6.lua"
+ },
+ "GB-6-HE": {
+  "reflection": 0.1,
+  "diamMm": 330,
+  "massKg": 620,
+  "displayName": "GB-6-HE",
+  "sourceFile": "rockets\\GB-6-HE.lua"
+ },
+ "GB-6-SFW": {
+  "reflection": 0.1,
+  "diamMm": 330,
+  "massKg": 620,
+  "displayName": "GB-6-SFW",
+  "sourceFile": "rockets\\GB-6-SFW.lua"
+ },
+ "HAWK_RAKETA": {
+  "reflection": 0.1676,
+  "diamMm": 356,
+  "massKg": 638,
+  "displayName": "MIM-23K Hawk",
+  "sourceFile": "rockets\\HAWK_RAKETA.lua"
+ },
+ "HB-AIM-7E": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 206.4,
+  "displayName": "AIM-7E",
+  "sourceFile": "rockets\\HB-AIM-7E.lua"
+ },
+ "HB-AIM-7E-2": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 194,
+  "displayName": "AIM-7E-2",
+  "sourceFile": "rockets\\HB-AIM-7E-2.lua"
+ },
+ "HB_AGM_78": {
+  "reflection": 0.05,
+  "diamMm": 343,
+  "massKg": 620,
+  "displayName": "HB-AGM-78",
+  "sourceFile": "rockets\\HB_AGM_78.lua"
+ },
+ "HHQ-9": {
+  "reflection": 0.2,
+  "diamMm": 519,
+  "massKg": 1780,
+  "displayName": "HHQ-9",
+  "sourceFile": "rockets\\HHQ-9.lua"
+ },
+ "HJ-12": {
+  "reflection": 0.05,
+  "diamMm": 135,
+  "massKg": 15.5,
+  "displayName": "HJ-12",
+  "sourceFile": "rockets\\HJ-12.lua"
+ },
+ "HOT2": {
+  "reflection": 0.0182,
+  "diamMm": 150,
+  "massKg": 23.5,
+  "displayName": "HOT2",
+  "sourceFile": "rockets\\HOT2.lua"
+ },
+ "HOT3_MBDA": {
+  "reflection": 0.0182,
+  "diamMm": 150,
+  "massKg": 24.5,
+  "displayName": "HOT-3",
+  "sourceFile": "rockets\\HOT3_MBDA.lua"
+ },
+ "HQ-16": {
+  "reflection": 0.0918,
+  "diamMm": 340,
+  "massKg": 650,
+  "displayName": "HQ-16",
+  "sourceFile": "rockets\\HQ-16.lua"
+ },
+ "HQ-7B": {
+  "reflection": 0.01,
+  "diamMm": 156,
+  "massKg": 85,
+  "displayName": "HQ-7B",
+  "sourceFile": "rockets\\HQ-7B.lua"
+ },
+ "HY-2": {
+  "reflection": 0.3967,
+  "diamMm": 760,
+  "massKg": 3000,
+  "displayName": "HY-2 (SS-N-2 Styx)",
+  "sourceFile": "rockets\\HY-2.lua"
+ },
+ "Igla_1E": {
+  "reflection": 0.01,
+  "diamMm": 72,
+  "massKg": 10.8,
+  "displayName": "9M39 Igla",
+  "sourceFile": "rockets\\Igla_1E.lua"
+ },
+ "KD_20": {
+  "reflection": 0.1691,
+  "diamMm": 600,
+  "massKg": 1700,
+  "displayName": "KD-20",
+  "sourceFile": "rockets\\KD_20.lua"
+ },
+ "KD_63": {
+  "reflection": 0.121,
+  "diamMm": 760,
+  "massKg": 2000,
+  "displayName": "KD-63",
+  "sourceFile": "rockets\\KD_63.lua"
+ },
+ "KD_63B": {
+  "reflection": 0.121,
+  "diamMm": 760,
+  "massKg": 2000,
+  "displayName": "KD-63B",
+  "sourceFile": "rockets\\KD_63B.lua"
+ },
+ "KONKURS": {
+  "reflection": 0.035,
+  "diamMm": 100,
+  "massKg": 40,
+  "displayName": "AT-5 Spandrel",
+  "sourceFile": "rockets\\KONKURS.lua"
+ },
+ "Kh-66_Grom": {
+  "reflection": 0.12044,
+  "diamMm": 275,
+  "massKg": 288,
+  "displayName": "Kh-66 Grom (21) - AGM, radar guided",
+  "sourceFile": "rockets\\Kh-66_Grom.lua"
+ },
+ "Kh25MP_PRGS1VP": {
+  "reflection": 0.06,
+  "diamMm": 275,
+  "massKg": 316,
+  "displayName": "Kh-25MP (AS-12 Kegler)",
+  "sourceFile": "rockets\\Kh25MP_PRGS1VP.lua"
+ },
+ "Kormoran": {
+  "reflection": 0.1758,
+  "diamMm": 345,
+  "massKg": 600,
+  "displayName": "AS.34 Kormoran",
+  "sourceFile": "rockets\\Kormoran.lua"
+ },
+ "LD-10": {
+  "reflection": 0.07,
+  "diamMm": 203,
+  "massKg": 199,
+  "displayName": "LD-10",
+  "sourceFile": "rockets\\LD-10.lua"
+ },
+ "LS_6": {
+  "reflection": 0.03,
+  "diamMm": 299,
+  "massKg": 275,
+  "displayName": "LS-6-250",
+  "sourceFile": "rockets\\LS_6.lua"
+ },
+ "LS_6_500": {
+  "reflection": 0.07,
+  "diamMm": 377,
+  "massKg": 525,
+  "displayName": "LS-6-500",
+  "sourceFile": "rockets\\LS_6_500.lua"
+ },
+ "M30": {
+  "reflection": 0.05,
+  "diamMm": 230,
+  "massKg": 306,
+  "displayName": "GMLRS M30",
+  "sourceFile": "rockets\\M30.lua"
+ },
+ "M31": {
+  "reflection": 0.05,
+  "diamMm": 230,
+  "massKg": 306,
+  "displayName": "GMLRS M31",
+  "sourceFile": "rockets\\M31.lua"
+ },
+ "M39A1": {
+  "reflection": 0.2,
+  "diamMm": 610,
+  "massKg": 1320,
+  "displayName": "MGM-140B M39A1",
+  "sourceFile": "rockets\\M39A1.lua"
+ },
+ "M48": {
+  "reflection": 0.2,
+  "diamMm": 610,
+  "massKg": 1320,
+  "displayName": "MGM-140E M48",
+  "sourceFile": "rockets\\M48.lua"
+ },
+ "MALUTKA": {
+  "reflection": 0.03,
+  "diamMm": 100,
+  "massKg": 10.9,
+  "displayName": "AT-3 Sagger",
+  "sourceFile": "rockets\\MALUTKA.lua"
+ },
+ "MICA_R": {
+  "reflection": 0.07,
+  "diamMm": 160,
+  "massKg": 112,
+  "displayName": "MICA-RF",
+  "sourceFile": "rockets\\MICA_R.lua"
+ },
+ "MICA_T": {
+  "reflection": 0.05,
+  "diamMm": 160,
+  "massKg": 112,
+  "displayName": "MICA-IR",
+  "sourceFile": "rockets\\MICA_T.lua"
+ },
+ "MIM_104": {
+  "reflection": 0.2,
+  "diamMm": 410,
+  "massKg": 914,
+  "displayName": "MIM-104 Patriot",
+  "sourceFile": "rockets\\MIM_104.lua"
+ },
+ "MIM_72G": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 84,
+  "displayName": "MIM-72G Chaparrel",
+  "sourceFile": "rockets\\MIM_72G.lua"
+ },
+ "MMagicII": {
+  "reflection": 0.0157,
+  "diamMm": 157,
+  "massKg": 85,
+  "displayName": "Matra Magic II",
+  "sourceFile": "rockets\\MMagicII.lua"
+ },
+ "Matra Super 530D": {
+  "reflection": 0.0257,
+  "diamMm": 263,
+  "massKg": 270,
+  "displayName": "Super 530D",
+  "sourceFile": "rockets\\Matra Super 530D.lua"
+ },
+ "Mistral": {
+  "reflection": 0.0182,
+  "diamMm": 90,
+  "massKg": 18.7,
+  "displayName": "Mistral",
+  "sourceFile": "rockets\\Mistral.lua"
+ },
+ "OH58D_FIM_92": {
+  "reflection": 0.01,
+  "diamMm": 70,
+  "massKg": 10.1,
+  "displayName": "FIM-92",
+  "sourceFile": "rockets\\OH58D_FIM_92.lua"
+ },
+ "PL-12": {
+  "reflection": 0.045,
+  "diamMm": 203,
+  "massKg": 199,
+  "displayName": "PL-12 AAM",
+  "sourceFile": "rockets\\PL-12.lua"
+ },
+ "PL-5EII": {
+  "reflection": 0.0182,
+  "diamMm": 127,
+  "massKg": 83,
+  "displayName": "PL-5EII",
+  "sourceFile": "rockets\\PL-5EII.lua"
+ },
+ "PL-8A": {
+  "reflection": 0.0329,
+  "diamMm": 160,
+  "massKg": 115,
+  "displayName": "PL-8A",
+  "sourceFile": "rockets\\PL-8A.lua"
+ },
+ "PL-8B": {
+  "reflection": 0.0329,
+  "diamMm": 160,
+  "massKg": 115,
+  "displayName": "PL-8B",
+  "sourceFile": "rockets\\PL-8B.lua"
+ },
+ "P_24R": {
+  "reflection": 0.08,
+  "diamMm": 200,
+  "massKg": 244,
+  "displayName": "R-24R (AA-7 Apex SA)",
+  "sourceFile": "rockets\\P_24R.lua"
+ },
+ "P_24T": {
+  "reflection": 0.06,
+  "diamMm": 200,
+  "massKg": 237,
+  "displayName": "R-24T (AA-7 Apex IR)",
+  "sourceFile": "rockets\\P_24T.lua"
+ },
+ "P_27P": {
+  "reflection": 0.08,
+  "diamMm": 230,
+  "massKg": 253,
+  "displayName": "R-27R",
+  "sourceFile": "rockets\\P_27P.lua"
+ },
+ "P_27PE": {
+  "reflection": 0.09,
+  "diamMm": 260,
+  "massKg": 351,
+  "displayName": "R-27ER",
+  "sourceFile": "rockets\\P_27PE.lua"
+ },
+ "P_27T": {
+  "reflection": 0.06,
+  "diamMm": 230,
+  "massKg": 245,
+  "displayName": "R-27T",
+  "sourceFile": "rockets\\P_27T.lua"
+ },
+ "P_27TE": {
+  "reflection": 0.07,
+  "diamMm": 260,
+  "massKg": 343,
+  "displayName": "R-27ET",
+  "sourceFile": "rockets\\P_27TE.lua"
+ },
+ "P_33E": {
+  "reflection": 0.12,
+  "diamMm": 380,
+  "massKg": 520,
+  "displayName": "R-33 (AA-9 Amos)",
+  "sourceFile": "rockets\\P_33E.lua"
+ },
+ "P_40R": {
+  "reflection": 0.1,
+  "diamMm": 300,
+  "massKg": 465,
+  "displayName": "R-40RD (AA-6 Acrid)",
+  "sourceFile": "rockets\\P_40R.lua"
+ },
+ "P_40T": {
+  "reflection": 0.08,
+  "diamMm": 300,
+  "massKg": 463,
+  "displayName": "R-40TD (AA-6 Acrid)",
+  "sourceFile": "rockets\\P_40T.lua"
+ },
+ "P_500": {
+  "reflection": 1.2,
+  "diamMm": 950,
+  "massKg": 4800,
+  "displayName": "P-500 (SS-N-12 Sandbox)",
+  "sourceFile": "rockets\\P_500.lua"
+ },
+ "P_60": {
+  "reflection": 0.03,
+  "diamMm": 120,
+  "massKg": 43.5,
+  "displayName": "R-60M",
+  "sourceFile": "rockets\\P_60.lua"
+ },
+ "P_700": {
+  "reflection": 1.5,
+  "diamMm": 850,
+  "massKg": 6900,
+  "displayName": "P-700 (SS-N-19 Shipwreck)",
+  "sourceFile": "rockets\\P_700.lua"
+ },
+ "P_73": {
+  "reflection": 0.04,
+  "diamMm": 170,
+  "massKg": 105,
+  "displayName": "R-73 (AA-11 Archer)",
+  "sourceFile": "rockets\\P_73.lua"
+ },
+ "P_77": {
+  "reflection": 0.15,
+  "diamMm": 190,
+  "massKg": 175,
+  "displayName": "R-77 (AA-12 Adder)",
+  "sourceFile": "rockets\\P_77.lua"
+ },
+ "P_9M117": {
+  "reflection": 0.032,
+  "diamMm": 100,
+  "massKg": 17.6,
+  "displayName": "AT-10 Stabber",
+  "sourceFile": "rockets\\P_9M117.lua"
+ },
+ "P_9M133": {
+  "reflection": 0.02,
+  "diamMm": 152,
+  "massKg": 27,
+  "displayName": "AT-14 Spriggan",
+  "sourceFile": "rockets\\P_9M133.lua"
+ },
+ "R-13M": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 87.7,
+  "displayName": "R-13M",
+  "sourceFile": "rockets\\R-13M.lua"
+ },
+ "R-13M1": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 90.6,
+  "displayName": "R-13M1",
+  "sourceFile": "rockets\\R-13M1.lua"
+ },
+ "R-3R": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 82.84,
+  "displayName": "R-3R",
+  "sourceFile": "rockets\\R-3R.lua"
+ },
+ "R-3S": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 75.3,
+  "displayName": "R-3S",
+  "sourceFile": "rockets\\R-3S.lua"
+ },
+ "R-55": {
+  "reflection": 0.063,
+  "diamMm": 200,
+  "massKg": 91,
+  "displayName": "R-55 - AAM, IR guided",
+  "sourceFile": "rockets\\R-55.lua"
+ },
+ "R-60": {
+  "reflection": 0.03,
+  "diamMm": 120,
+  "massKg": 43,
+  "displayName": "R-60",
+  "sourceFile": "rockets\\R-60.lua"
+ },
+ "RB75": {
+  "reflection": 0.063,
+  "diamMm": 305,
+  "massKg": 210.5,
+  "displayName": "RB-75A",
+  "sourceFile": "rockets\\RB75.lua"
+ },
+ "RB75B": {
+  "reflection": 0.063,
+  "diamMm": 305,
+  "massKg": 210.5,
+  "displayName": "RB-75B",
+  "sourceFile": "rockets\\RB75B.lua"
+ },
+ "RB75T": {
+  "reflection": 0.063,
+  "diamMm": 305,
+  "massKg": 295,
+  "displayName": "RB-75T",
+  "sourceFile": "rockets\\RB75T.lua"
+ },
+ "REFLEX": {
+  "reflection": 0.032,
+  "diamMm": 125,
+  "massKg": 17.2,
+  "displayName": "AT-11 Sniper",
+  "sourceFile": "rockets\\REFLEX.lua"
+ },
+ "RIM_116A": {
+  "reflection": 0.0182,
+  "diamMm": 127,
+  "massKg": 73.6,
+  "displayName": "RIM-116A",
+  "sourceFile": "rockets\\RIM_116A.lua"
+ },
+ "ROLAND_R": {
+  "reflection": 0.06,
+  "diamMm": 150,
+  "massKg": 75,
+  "displayName": "XMIM-115 Roland",
+  "sourceFile": "rockets\\ROLAND_R.lua"
+ },
+ "RS2US": {
+  "reflection": 0.063,
+  "diamMm": 200,
+  "massKg": 83.2,
+  "displayName": "RS2US - AAM, beam-rider",
+  "sourceFile": "rockets\\RS2US.lua"
+ },
+ "R_530F_EM": {
+  "reflection": 0.11,
+  "diamMm": 260,
+  "massKg": 195,
+  "displayName": "R530F EM",
+  "sourceFile": "rockets\\R_530F_EM.lua"
+ },
+ "R_530F_IR": {
+  "reflection": 0.11,
+  "diamMm": 260,
+  "massKg": 192,
+  "displayName": "R530F IR",
+  "sourceFile": "rockets\\R_530F_IR.lua"
+ },
+ "R_550": {
+  "reflection": 0.03,
+  "diamMm": 157,
+  "massKg": 89,
+  "displayName": "R550 Magic 2",
+  "sourceFile": "rockets\\R_550.lua"
+ },
+ "R_550_M1": {
+  "reflection": 0.03,
+  "diamMm": 157,
+  "massKg": 89,
+  "displayName": "R550 Magic 1",
+  "sourceFile": "rockets\\R_550_M1.lua"
+ },
+ "Rapier": {
+  "reflection": 0.08,
+  "diamMm": 133,
+  "massKg": 45,
+  "displayName": "Rapier",
+  "sourceFile": "rockets\\Rapier.lua"
+ },
+ "Rb 04E": {
+  "reflection": 0.12044,
+  "diamMm": 500,
+  "massKg": 625,
+  "displayName": "RB-04E",
+  "sourceFile": "rockets\\Rb 04E.lua"
+ },
+ "Rb 04E (for A.I.)": {
+  "reflection": 0.1691,
+  "diamMm": 500,
+  "massKg": 620,
+  "displayName": "RB-04E (for A.I.)",
+  "sourceFile": "rockets\\Rb 04E (for A.I.).lua"
+ },
+ "Rb 05A": {
+  "reflection": 0.12044,
+  "diamMm": 300,
+  "massKg": 288,
+  "displayName": "RB-05A",
+  "sourceFile": "rockets\\Rb 05A.lua"
+ },
+ "Rb 15F": {
+  "reflection": 0.12044,
+  "diamMm": 500,
+  "massKg": 560,
+  "displayName": "RB-15F",
+  "sourceFile": "rockets\\Rb 15F.lua"
+ },
+ "Rb 15F (for A.I.)": {
+  "reflection": 0.1691,
+  "diamMm": 343,
+  "massKg": 560,
+  "displayName": "RB-15F (for A.I.)",
+  "sourceFile": "rockets\\Rb 15F (for A.I.).lua"
+ },
+ "Rb 24": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 74.39,
+  "displayName": "RB-24",
+  "sourceFile": "rockets\\Rb 24.lua"
+ },
+ "Rb 24J": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 80.7,
+  "displayName": "RB-24J",
+  "sourceFile": "rockets\\Rb 24J.lua"
+ },
+ "Rb 74": {
+  "reflection": 0.03,
+  "diamMm": 127,
+  "massKg": 85.73,
+  "displayName": "RB-74",
+  "sourceFile": "rockets\\Rb 74.lua"
+ },
+ "Rb_04": {
+  "reflection": 0.12044,
+  "diamMm": 500,
+  "massKg": 625,
+  "displayName": "RB-04E",
+  "sourceFile": "rockets\\Rb_04.lua"
+ },
+ "SA2V755": {
+  "reflection": 0.3967,
+  "diamMm": 500,
+  "massKg": 2388,
+  "displayName": "V755 S-75",
+  "sourceFile": "rockets\\SA2V755.lua"
+ },
+ "SA3M9M": {
+  "reflection": 0.3,
+  "diamMm": 330,
+  "massKg": 600,
+  "displayName": "3M9M Kub (SA-6 Gainful)",
+  "sourceFile": "rockets\\SA3M9M.lua"
+ },
+ "SA48H6E2": {
+  "reflection": 0.2,
+  "diamMm": 519,
+  "massKg": 1780,
+  "displayName": "48N6 S-300F (SA-N-6 Grumble)",
+  "sourceFile": "rockets\\SA48H6E2.lua"
+ },
+ "SA57E6": {
+  "reflection": 0.03,
+  "diamMm": 90,
+  "massKg": 74.5,
+  "displayName": "57E6 Pantsir",
+  "sourceFile": "rockets\\SA57E6.lua"
+ },
+ "SA5B27": {
+  "reflection": 0.2,
+  "diamMm": 400,
+  "massKg": 690,
+  "displayName": "5V27 S-125 Neva (SA-3 Goa)",
+  "sourceFile": "rockets\\SA5B27.lua"
+ },
+ "SA5B55": {
+  "reflection": 0.2,
+  "diamMm": 508,
+  "massKg": 1600,
+  "displayName": "5V55 S-300PS (SA-10B Grumble)",
+  "sourceFile": "rockets\\SA5B55.lua"
+ },
+ "SA5V28": {
+  "reflection": 1,
+  "diamMm": 752,
+  "massKg": 7108,
+  "displayName": "5V28 (SA-5 Gammon)",
+  "sourceFile": "rockets\\SA5V28.lua"
+ },
+ "SA9M31": {
+  "reflection": 0.06,
+  "diamMm": 120,
+  "massKg": 32,
+  "displayName": "9M31 Strela-1 (SA-9 Gaskin)",
+  "sourceFile": "rockets\\SA9M31.lua"
+ },
+ "SA9M311": {
+  "reflection": 0.03,
+  "diamMm": 76,
+  "massKg": 41.6,
+  "displayName": "9M311 Tunguska (SA-19 Grison)",
+  "sourceFile": "rockets\\SA9M311.lua"
+ },
+ "SA9M33": {
+  "reflection": 0.08,
+  "diamMm": 210,
+  "massKg": 126.3,
+  "displayName": "9M33 Osa (SA-8 Gecko)",
+  "sourceFile": "rockets\\SA9M33.lua"
+ },
+ "SA9M330": {
+  "reflection": 0.08,
+  "diamMm": 237,
+  "massKg": 167,
+  "displayName": "9M330 Tor (SA-15 Gauntlet)",
+  "sourceFile": "rockets\\SA9M330.lua"
+ },
+ "SA9M333": {
+  "reflection": 0.07,
+  "diamMm": 120,
+  "massKg": 39,
+  "displayName": "9M333 Strela-10 (SA-13 Gopher)",
+  "sourceFile": "rockets\\SA9M333.lua"
+ },
+ "SA9M338K": {
+  "reflection": 0.05,
+  "diamMm": 190,
+  "massKg": 133,
+  "displayName": "9M338K (SA-15B Gauntlet)",
+  "sourceFile": "rockets\\SA9M338K.lua"
+ },
+ "SA9M38M1": {
+  "reflection": 0.0918,
+  "diamMm": 400,
+  "massKg": 690,
+  "displayName": "9M38M1 Buk-M1 (SA-11 Gadfly)",
+  "sourceFile": "rockets\\SA9M38M1.lua"
+ },
+ "SA_IRIS_T_SL": {
+  "reflection": 0.03,
+  "diamMm": 190,
+  "massKg": 200,
+  "displayName": "IRIS-T-SL",
+  "sourceFile": "rockets\\SA_IRIS_T_SL.lua"
+ },
+ "SCUD_RAKETA": {
+  "reflection": 2,
+  "diamMm": 880,
+  "massKg": 5862,
+  "displayName": "Scud R-17",
+  "sourceFile": "rockets\\SCUD_RAKETA.lua"
+ },
+ "SD-10": {
+  "reflection": 0.045,
+  "diamMm": 203,
+  "massKg": 199,
+  "displayName": "SD-10A AAM",
+  "sourceFile": "rockets\\SD-10.lua"
+ },
+ "SM_1": {
+  "reflection": 0.15,
+  "diamMm": 343,
+  "massKg": 630,
+  "displayName": "SM-1",
+  "sourceFile": "rockets\\SM_1.lua"
+ },
+ "SM_2": {
+  "reflection": 0.15,
+  "diamMm": 343,
+  "massKg": 708,
+  "displayName": "SM-2",
+  "sourceFile": "rockets\\SM_2.lua"
+ },
+ "SM_2ER": {
+  "reflection": 0.15,
+  "diamMm": 343,
+  "massKg": 1463,
+  "displayName": "SM-2ER",
+  "sourceFile": "rockets\\SM_2ER.lua"
+ },
+ "SM_6": {
+  "reflection": 0.15,
+  "diamMm": 343,
+  "massKg": 1497,
+  "displayName": "SM-6",
+  "sourceFile": "rockets\\SM_6.lua"
+ },
+ "SPIKE_ER": {
+  "reflection": 0.03,
+  "diamMm": 170,
+  "massKg": 26,
+  "displayName": "SPIKE-ER",
+  "sourceFile": "rockets\\SPIKE_ER.lua"
+ },
+ "SPIKE_ER2": {
+  "reflection": 0.03,
+  "diamMm": 170,
+  "massKg": 26.2,
+  "displayName": "SPIKE-ER2",
+  "sourceFile": "rockets\\SPIKE_ER2.lua"
+ },
+ "SPIKE_ERA": {
+  "reflection": 0.03,
+  "diamMm": 170,
+  "massKg": 26.2,
+  "displayName": "SPIKE-ER/A",
+  "sourceFile": "rockets\\SPIKE_ERA.lua"
+ },
+ "SVIR": {
+  "reflection": 0.032,
+  "diamMm": 125,
+  "massKg": 17.2,
+  "displayName": "AT-11 Sniper",
+  "sourceFile": "rockets\\SVIR.lua"
+ },
+ "S_25L": {
+  "reflection": 0.15,
+  "diamMm": 340,
+  "massKg": 485,
+  "displayName": "S-25L",
+  "sourceFile": "rockets\\S_25L.lua"
+ },
+ "SeaSparrow": {
+  "reflection": 0.08,
+  "diamMm": 203,
+  "massKg": 230,
+  "displayName": "RIM-7M SeaSparrow Semi-Active Radar",
+  "sourceFile": "rockets\\SeaSparrow.lua"
+ },
+ "Sea_Cat": {
+  "reflection": 0.0182,
+  "diamMm": 220,
+  "massKg": 68,
+  "displayName": "GWS-22 Mod. 1 Sea Cat",
+  "sourceFile": "rockets\\Sea_Cat.lua"
+ },
+ "Sea_Dart": {
+  "reflection": 0.0182,
+  "diamMm": 420,
+  "massKg": 549,
+  "displayName": "GWS-30 Sea Dart",
+  "sourceFile": "rockets\\Sea_Dart.lua"
+ },
+ "Sea_Eagle": {
+  "reflection": 0.121,
+  "diamMm": 400,
+  "massKg": 600,
+  "displayName": "Sea Eagle",
+  "sourceFile": "rockets\\Sea_Eagle.lua"
+ },
+ "Sea_Wolf": {
+  "reflection": 0.0182,
+  "diamMm": 180,
+  "massKg": 82,
+  "displayName": "GWS-25 Sea Wolf",
+  "sourceFile": "rockets\\Sea_Wolf.lua"
+ },
+ "Super_530D": {
+  "reflection": 0.08,
+  "diamMm": 263,
+  "massKg": 270,
+  "displayName": "S530D",
+  "sourceFile": "rockets\\Super_530D.lua"
+ },
+ "Super_530F": {
+  "reflection": 0.08,
+  "diamMm": 263,
+  "massKg": 245,
+  "displayName": "S530F",
+  "sourceFile": "rockets\\Super_530F.lua"
+ },
+ "TGM_65D": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 218,
+  "displayName": "TGM-65D",
+  "sourceFile": "rockets\\TGM_65D.lua"
+ },
+ "TGM_65G": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 301,
+  "displayName": "TGM-65G",
+  "sourceFile": "rockets\\TGM_65G.lua"
+ },
+ "TGM_65H": {
+  "reflection": 0.08,
+  "diamMm": 305,
+  "massKg": 208,
+  "displayName": "TGM-65H",
+  "sourceFile": "rockets\\TGM_65H.lua"
+ },
+ "TOW": {
+  "reflection": 0.033,
+  "diamMm": 150,
+  "massKg": 40,
+  "displayName": "BGM-71D TOW",
+  "sourceFile": "rockets\\TOW.lua"
+ },
+ "TOW2": {
+  "reflection": 0.03,
+  "diamMm": 230,
+  "massKg": 40,
+  "displayName": "BGM-71 TOW",
+  "sourceFile": "rockets\\TOW2.lua"
+ },
+ "V-1": {
+  "reflection": 0.3967,
+  "diamMm": 470,
+  "massKg": 2325,
+  "displayName": "V-1",
+  "sourceFile": "rockets\\V-1.lua"
+ },
+ "Vikhr_M": {
+  "reflection": 0.03,
+  "diamMm": 130,
+  "massKg": 45,
+  "displayName": "9M127 Vikhr",
+  "sourceFile": "rockets\\Vikhr_M.lua"
+ },
+ "X_101": {
+  "reflection": 0.1,
+  "diamMm": 742,
+  "massKg": 2300,
+  "displayName": "Kh-101",
+  "sourceFile": "rockets\\X_101.lua"
+ },
+ "X_22": {
+  "reflection": 1.82,
+  "diamMm": 1000,
+  "massKg": 6800,
+  "displayName": "Kh-22 (AS-4 Kitchen)",
+  "sourceFile": "rockets\\X_22.lua"
+ },
+ "X_25ML": {
+  "reflection": 0.08,
+  "diamMm": 275,
+  "massKg": 316,
+  "displayName": "Kh-25ML (AS-10 Karen)",
+  "sourceFile": "rockets\\X_25ML.lua"
+ },
+ "X_25MP": {
+  "reflection": 0.1,
+  "diamMm": 275,
+  "massKg": 310,
+  "displayName": "Kh-25MPU (Updated AS-12 Kegler)",
+  "sourceFile": "rockets\\X_25MP.lua"
+ },
+ "X_25MR": {
+  "reflection": 0.08,
+  "diamMm": 275,
+  "massKg": 300,
+  "displayName": "Kh-25MR (AS-10 Karen) - 300kg, ASM, 10km, RC Guided",
+  "sourceFile": "rockets\\X_25MR.lua"
+ },
+ "X_28": {
+  "reflection": 0.15,
+  "diamMm": 430,
+  "massKg": 715,
+  "displayName": "Kh-28",
+  "sourceFile": "rockets\\X_28.lua"
+ },
+ "X_29L": {
+  "reflection": 0.175,
+  "diamMm": 380,
+  "massKg": 648,
+  "displayName": "Kh-29L (AS-14 Kedge)",
+  "sourceFile": "rockets\\X_29L.lua"
+ },
+ "X_29T": {
+  "reflection": 0.1729,
+  "diamMm": 380,
+  "massKg": 680,
+  "displayName": "Kh-29T (AS-14 Kedge)",
+  "sourceFile": "rockets\\X_29T.lua"
+ },
+ "X_29TE": {
+  "reflection": 0.1729,
+  "diamMm": 380,
+  "massKg": 678,
+  "displayName": "Kh-29TE (AS-14 Kedge)",
+  "sourceFile": "rockets\\X_29TE.lua"
+ },
+ "X_31A": {
+  "reflection": 0.3,
+  "diamMm": 360,
+  "massKg": 610,
+  "displayName": "Kh-31A",
+  "sourceFile": "rockets\\X_31A.lua"
+ },
+ "X_31P": {
+  "reflection": 0.3,
+  "diamMm": 360,
+  "massKg": 600,
+  "displayName": "Kh-31P",
+  "sourceFile": "rockets\\X_31P.lua"
+ },
+ "X_35": {
+  "reflection": 0.13,
+  "diamMm": 420,
+  "massKg": 520,
+  "displayName": "Kh-35 (AS-20 Kayak)",
+  "sourceFile": "rockets\\X_35.lua"
+ },
+ "X_41": {
+  "reflection": 0.9,
+  "diamMm": 760,
+  "massKg": 4500,
+  "displayName": "Kh-41 (SS-N-22-Sunburn)",
+  "sourceFile": "rockets\\X_41.lua"
+ },
+ "X_555": {
+  "reflection": 0.1656,
+  "diamMm": 700,
+  "massKg": 1280,
+  "displayName": "Kh-555",
+  "sourceFile": "rockets\\X_555.lua"
+ },
+ "X_58": {
+  "reflection": 0.15,
+  "diamMm": 380,
+  "massKg": 650,
+  "displayName": "Kh-58U",
+  "sourceFile": "rockets\\X_58.lua"
+ },
+ "X_59M": {
+  "reflection": 0.2,
+  "diamMm": 380,
+  "massKg": 930,
+  "displayName": "Kh-59M (AS-18 Kazoo)",
+  "sourceFile": "rockets\\X_59M.lua"
+ },
+ "X_65": {
+  "reflection": 0.1656,
+  "diamMm": 514,
+  "massKg": 1400,
+  "displayName": "Kh-65",
+  "sourceFile": "rockets\\X_65.lua"
+ },
+ "YJ-12": {
+  "reflection": 1,
+  "diamMm": 756,
+  "massKg": 1750,
+  "displayName": "YJ-12",
+  "sourceFile": "rockets\\YJ-12.lua"
+ },
+ "YJ-62": {
+  "reflection": 0.121,
+  "diamMm": 540,
+  "massKg": 1240,
+  "displayName": "YJ-62",
+  "sourceFile": "rockets\\YJ-62.lua"
+ },
+ "YJ-82": {
+  "reflection": 0.121,
+  "diamMm": 360,
+  "massKg": 850,
+  "displayName": "YJ-82",
+  "sourceFile": "rockets\\YJ-82.lua"
+ },
+ "YJ-83": {
+  "reflection": 0.121,
+  "diamMm": 360,
+  "massKg": 850,
+  "displayName": "YJ-83",
+  "sourceFile": "rockets\\YJ-83.lua"
+ },
+ "YJ-83K": {
+  "reflection": 0.121,
+  "diamMm": 360,
+  "massKg": 560,
+  "displayName": "YJ-83K",
+  "sourceFile": "rockets\\YJ-83K.lua"
+ }
+}

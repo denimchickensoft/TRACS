@@ -33,20 +33,13 @@
 
 const fs = require('fs')
 const path = require('path')
-const elevation = require('./elevation')
+const { METERS_PER_NM, toDeg, distanceNm, bearingDeg, angleDiff, quickReject, hasLineOfSight } = require('./utils/geo')
 
 const DETECTION_RADAR = 4
 const DETECTION_RWR = 16
 const DETECTION_VISUAL = 1
 
-const METERS_PER_NM = 1852
 const KM_PER_NM = 1.852
-const EARTH_RADIUS_NM = 3440.065
-// 4/3-effective-Earth-radius approximation for standard atmospheric
-// refraction — the same correction real radar-horizon calculations use —
-// rather than the true geometric radius.
-const EFFECTIVE_EARTH_RADIUS_M = 6371000 * (4 / 3)
-const NM_PER_DEG_LAT = 60
 
 // ---- Operator-tunable config (server/tacviewDetectionConfig.json, optional,
 // gitignored — mirrors relay/index.js's config.json loading pattern: read
@@ -208,6 +201,18 @@ function isConfirmedRadarUnit(unit) {
   return !!(entry && trustedTypes.has(entry.type) && entry.acquisitionRange > 0)
 }
 
+// EWR-only ground-detector range for missileDetection.js — deliberately
+// narrower than isConfirmedRadarUnit's full TRUSTED_GROUND_TYPES set (which
+// also includes SAM Site/SAM Site Parts/AAA/AirDefence): only a dedicated
+// early-warning radar counts as a missile detector, per explicit direction
+// that SAM/AAA fire-control radars should not. Exported rather than
+// duplicated in missileDetection.js since groundUnitDb is already loaded here.
+function ewrRangeNm(unit) {
+  const entry = groundUnitDb[unit.name]
+  if (!entry || entry.type !== 'Radar (EWR)' || !(entry.acquisitionRange > 0)) return null
+  return entry.acquisitionRange / METERS_PER_NM
+}
+
 // Real per-unit-type acquisitionRange, falling back to the flat per-category
 // default for anything unmatched (mods not in the shipped DB, or a shipped
 // entry whose `type` isn't a trusted air-search sensor).
@@ -359,85 +364,8 @@ function isValidTargetCategory(category) {
   return config.groundNavalDetectionEnabled && (category === 'GroundUnit' || category === 'NavyUnit')
 }
 
-function toRad(deg) {
-  return (deg * Math.PI) / 180
-}
-
-function toDeg(rad) {
-  return (rad * 180) / Math.PI
-}
-
-function distanceNm(a, b) {
-  const dLat = toRad(b.lat - a.lat)
-  const dLng = toRad(b.lng - a.lng)
-  const lat1 = toRad(a.lat)
-  const lat2 = toRad(b.lat)
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
-  return 2 * EARTH_RADIUS_NM * Math.asin(Math.min(1, Math.sqrt(h)))
-}
-
-// True initial bearing from a to b, in degrees [0, 360).
-function bearingDeg(a, b) {
-  const lat1 = toRad(a.lat)
-  const lat2 = toRad(b.lat)
-  const dLng = toRad(b.lng - a.lng)
-  const y = Math.sin(dLng) * Math.cos(lat2)
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)
-  return (toDeg(Math.atan2(y, x)) + 360) % 360
-}
-
-// Smallest absolute difference between two compass angles, 0-180.
-function angleDiff(a, b) {
-  const d = Math.abs(a - b) % 360
-  return d > 180 ? 360 - d : d
-}
-
-// Cheap bounding-box reject before the real haversine/LOS work — matters
-// once real per-unit ranges (up to ~250nm for large EWRs) multiply the
-// detector×target cross product far beyond the old flat-category scale.
-// Widened by 1/cos(lat) on longitude since a degree of longitude compresses
-// toward the poles — erring toward not rejecting a valid pair costs a little
-// extra compute; erring the other way would silently drop real detections.
-function quickReject(a, b, maxRangeNm) {
-  const maxDeltaLat = maxRangeNm / NM_PER_DEG_LAT
-  if (Math.abs(a.lat - b.lat) > maxDeltaLat) return true
-  const lngCompression = Math.max(Math.cos(toRad(a.lat)), 0.1)
-  const maxDeltaLng = maxRangeNm / (NM_PER_DEG_LAT * lngCompression)
-  return Math.abs(a.lng - b.lng) > maxDeltaLng
-}
-
-// Linear interpolation along the great-circle path (adequate for the short
-// distances/sample counts here — not a proper geodesic intermediate-point
-// formula, which isn't warranted for a baseline heuristic).
-function interpolate(a, b, frac) {
-  return { lat: a.lat + (b.lat - a.lat) * frac, lng: a.lng + (b.lng - a.lng) * frac }
-}
-
-// Returns true if terrain and earth curvature together don't obstruct a
-// straight line between the two positions' altitudes, sampled at
-// LOS_SAMPLE_COUNT points along the path.
-//
-// The curvature term matters once ranges realistically reach 100-250nm
-// (real EWR/SAM acquisitionRange data) — a naive flat-altitude interpolation
-// overstates detectability at range, since the earth's surface curves away
-// beneath a straight sightline. At each sample point the effective sightline
-// altitude is reduced by the standard chord/arc curvature-drop formula
-// (d1*d2)/(2*Re), using the 4/3-effective-Earth-radius approximation for
-// atmospheric refraction.
-function hasLineOfSight(from, to) {
-  const totalDistM = distanceNm(from, to) * METERS_PER_NM
-  for (let i = 1; i < LOS_SAMPLE_COUNT; i++) {
-    const frac = i / LOS_SAMPLE_COUNT
-    const point = interpolate(from, to, frac)
-    const expectedAlt = from.alt + (to.alt - from.alt) * frac
-    const d1 = totalDistM * frac
-    const d2 = totalDistM * (1 - frac)
-    const curvatureDropM = (d1 * d2) / (2 * EFFECTIVE_EARTH_RADIUS_M)
-    const terrain = elevation.getElevation(point.lat, point.lng)
-    if (terrain !== null && terrain > expectedAlt - curvatureDropM) return false
-  }
-  return true
-}
+// toRad/toDeg/distanceNm/bearingDeg/angleDiff/quickReject/hasLineOfSight now
+// live in ./utils/geo.js (shared with missileDetection.js) — imported above.
 
 // Restricts Aircraft/Helicopter sensors to a plausible forward radar scan
 // cone (azimuth off the nose, elevation off the pitch axis) instead of an
@@ -541,7 +469,7 @@ function computeContacts(units, friendlyCoalitionId) {
 
       if (!isWithinScanVolume(detector.unit, target.position, range)) continue
 
-      if (!hasLineOfSight(detector.unit.position, target.position)) continue
+      if (!hasLineOfSight(detector.unit.position, target.position, LOS_SAMPLE_COUNT)) continue
 
       if (!contactsById.has(detector.id)) contactsById.set(detector.id, [])
       contactsById.get(detector.id).push({ ID: Number(targetId), detectionMethod: detector.detectionMethod })
@@ -633,7 +561,7 @@ function computeRwrContacts(units, friendlyCoalitionId) {
 
       if (!isWithinScanVolume(emitter, receiver.unit.position, range)) continue
 
-      if (!hasLineOfSight(emitter.position, receiver.unit.position)) continue
+      if (!hasLineOfSight(emitter.position, receiver.unit.position, LOS_SAMPLE_COUNT)) continue
 
       if (!rwrById.has(receiver.id)) rwrById.set(receiver.id, [])
       rwrById.get(receiver.id).push({ ID: Number(emitterId), detectionMethod: DETECTION_RWR })
@@ -770,4 +698,7 @@ function createFogFilter(friendlyCoalitionId) {
 module.exports = {
   computeContacts, computeRwrContacts, coalitionId, createFogFilter, DETECTION_RADAR, DETECTION_RWR, DETECTION_VISUAL,
   resetToLocalConfig, resetToDefaults, applyRelayConfig,
+  // Reused by missileDetection.js — a separate, dedicated module (per
+  // explicit direction) but no reason to re-derive these from scratch.
+  hasAwacsRole, ewrRangeNm, AWACS_RANGE_NM,
 }

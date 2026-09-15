@@ -17,6 +17,11 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRela
       ws.send(JSON.stringify({ type: 'units_delta', data: snapshot }))
     }
 
+    const weaponsSnapshot = state.getWeaponsSnapshot()
+    if (Object.keys(weaponsSnapshot.updated).length > 0) {
+      ws.send(JSON.stringify({ type: 'weapons_delta', data: weaponsSnapshot }))
+    }
+
     // Send mission/airbases if available
     const mission = state.getMission()
     if (mission) ws.send(JSON.stringify({ type: 'mission', data: mission }))

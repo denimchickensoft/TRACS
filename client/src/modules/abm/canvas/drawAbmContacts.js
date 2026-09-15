@@ -165,6 +165,28 @@ function drawFadedContacts(ctx, view, fadedContacts, now, ptlMinutes) {
   ctx.restore()
 }
 
+// Missile tracking — plain filled dot, no label/trail/link line, colored via
+// the same DECL_COLOR declaration scheme as every other contact for
+// consistency with the rest of the scope. In practice this almost always
+// resolves to FRIENDLY: a non-friendly missile is only ever passed in here
+// at all once independently AWACS/EWR-detected (server/src/missileDetection.js),
+// own-coalition/neutral missiles are unconditionally visible — see
+// abmScopeHelpers.js's getAbmVisibleMissiles.
+const MISSILE_DOT_RADIUS_PX = 3
+
+export function drawAbmMissiles(ctx, view, missiles, getDecl) {
+  for (const [id, weapon] of Object.entries(missiles)) {
+    if (!weapon.position) continue
+    const decl = getDecl(id, weapon)
+    const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY]
+    const { x, y } = latLngToCanvas(weapon.position.lat, weapon.position.lng, view)
+    ctx.beginPath()
+    ctx.arc(x, y, MISSILE_DOT_RADIUS_PX, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.fill()
+  }
+}
+
 export function drawAbmContacts(
   ctx, view, units, getDecl,
   ptlMinutes, dbVisible, altToggle,

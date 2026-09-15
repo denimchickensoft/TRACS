@@ -83,6 +83,32 @@ export function getAbmVisibleGroundUnits(units, myCoalitionNum) {
   return result
 }
 
+// Missile tracking — same fog-of-war shape as getAbmVisibleUnits above, but
+// reads unit.missileContacts (not unit.contacts): server/src/missileDetection.js
+// deliberately writes to a separate field to avoid colliding with Olympus's
+// own independent 1s-cadence refresh of a unit's real contacts (see that
+// module's header comment for the full race it avoids). No AGL floor (a
+// missile spends its early flight near ground level by definition) and no
+// category filter (weapons are already missiles-only by the time they reach
+// the client — see olympus.js's pollWeapons()/tacviewCore.js's classify()).
+export function getAbmVisibleMissiles(weapons, units, myCoalitionNum) {
+  const result      = {}
+  const detectedIds = new Set()
+
+  for (const unit of Object.values(units)) {
+    if (!unit.missileContacts) continue
+    for (const c of unit.missileContacts) detectedIds.add(String(c.ID))
+  }
+
+  for (const [id, weapon] of Object.entries(weapons)) {
+    if (!weapon.position) continue
+    const c = weapon.coalition
+    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = weapon
+  }
+
+  return result
+}
+
 // Bogey dope helper — ported from AIC's AicScope.jsx findNearestBogey as-is.
 // Air contacts only, BOGEY/HOSTILE only (excludes FRIENDLY/NEUTRAL and,
 // per 2026-07-07 direction, ground/naval contacts — "bogey" means air).

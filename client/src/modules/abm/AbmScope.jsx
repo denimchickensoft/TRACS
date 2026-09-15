@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useSessionStore }  from '../../store/session'
 import { useDisplayStore }  from '../../store/display.js'
 import { useUnitsStore }    from '../../store/units.js'
+import { useWeaponsStore }  from '../../store/weapons.js'
 import { useAbmStore, DECLARATION, getAbmEffectiveDeclaration } from '../../store/abm.js'
 import { AUTO_DECLARE_MODE } from '../../utils/createDeclarationStore.js'
 import { computeCorrelations } from './correlationEngine.js'
@@ -37,7 +38,7 @@ import { drawRunways }      from '../atc/stars/canvas/drawRunways.js'
 import { drawAbmLayers }    from './canvas/drawAbmLayers.js'
 import { drawAbmFixSymbols } from './canvas/drawAbmFixSymbols.js'
 import { drawAbmAirportPolygons } from './canvas/drawAbmAirportPolygons.js'
-import { drawAbmContacts, typeAbbrev, computeSuppressedIds, parseFlightElement } from './canvas/drawAbmContacts.js'
+import { drawAbmContacts, drawAbmMissiles, typeAbbrev, computeSuppressedIds, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
 import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
@@ -57,7 +58,7 @@ import {
   advancePendingDraw, rotatePendingDraw, supportsRotation, POLY_CLOSE_RADIUS_PX,
 } from './draw/drawCommands.js'
 import {
-  trueDeclaration, getAbmVisibleUnits, getAbmVisibleGroundUnits,
+  trueDeclaration, getAbmVisibleUnits, getAbmVisibleGroundUnits, getAbmVisibleMissiles,
   resolveDeclareTargets, buildReadoutFields, buildFriendlyAirFields,
   distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
 } from './abmScopeHelpers.js'
@@ -284,6 +285,15 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   )
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
+
+  // Missile tracking — own-coalition/neutral always visible, enemy gated by
+  // server/src/missileDetection.js's AWACS/EWR-only detection (see
+  // abmScopeHelpers.js's getAbmVisibleMissiles).
+  const weapons = useWeaponsStore(s => s.weapons)
+  const visibleMissiles = useMemo(
+    () => getAbmVisibleMissiles(weapons, units, myCoalitionNum),
+    [weapons, units, myCoalitionNum]
+  )
 
   // Transponder correlation (§D of resources/specs/transponder-correlation-spec.md)
   // — continuous, unconditional reveal gate: binds an srsCapable unit to a
@@ -1253,6 +1263,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       view.declinationDeg,
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
+    drawAbmMissiles(ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum))
 
     // Selected FRAG flight's route, if any, plus any routes toggled on via
     // Ctrl+right-click/.route independent of FRAG.
@@ -1272,7 +1283,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     // In-progress .line/.rect/.circ/.poly/.sect/.race/.text preview — on top
     // of everything, same as RBL.
     drawPendingDraw(ctx, view, pendingDraw, drawCursor)
-  }, [view, visibleUnits, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getEffectiveDeclaration, altToggle,
+  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getEffectiveDeclaration, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,

@@ -93,7 +93,15 @@ function classify(typeTag) {
   if (tags.includes('Air')) return tags.includes('Rotorcraft') ? 'Helicopter' : 'Aircraft'
   if (tags.includes('Ground')) return 'GroundUnit'
   if (tags.includes('Sea')) return 'NavyUnit'
-  return null // Weapon/Sensor/Misc/non-bullseye Navaid — not real units
+  // Confirmed live 2026-09-15 (real DCS export, not just the documented ACMI
+  // taxonomy): a fired missile's Type is exactly "Weapon+Missile". Bombs/
+  // shells (Weapon+Bomb, etc.) are deliberately still excluded — out of scope
+  // for v1 (see the "Add missile tracking to AIC/ABM" plan). This still flows
+  // through the same `updated` map as every other category below — callers
+  // that need to treat missiles differently (tacview.js) split them out by
+  // category afterward, same way olympus.js's pollWeapons() does.
+  if (tags.includes('Weapon') && tags.includes('Missile')) return 'Missile'
+  return null // Weapon+Bomb/Weapon+Shell/Sensor/Misc/non-bullseye Navaid — not tracked
 }
 
 // ACMI properties are comma-separated; text values may contain

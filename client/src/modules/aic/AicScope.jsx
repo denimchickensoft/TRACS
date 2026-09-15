@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection }   from '../../utils/wheel.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useUnitsStore }       from '../../store/units.js'
+import { useWeaponsStore }     from '../../store/weapons.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { useAicStore, DECLARATION, getAicEffectiveDeclaration } from '../../store/aic.js'
@@ -20,6 +21,7 @@ import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
 import { drawAicContacts }     from './canvas/drawAicContacts.js'
+import { drawAbmMissiles }     from '../abm/canvas/drawAbmContacts.js'
 import { drawGeo }             from '../atc/stars/canvas/drawGeo.js'
 import { drawRelief }          from '../atc/stars/canvas/drawRelief.js'
 import { computePicture, sectorAxisBearing } from './canvas/computePicture.js'
@@ -129,6 +131,30 @@ function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
     if (unit.agl !== undefined && unit.agl < AGL_FLOOR_M) continue
     const c = unit.coalition
     if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
+  }
+
+  return result
+}
+
+// Missile tracking — same fog-of-war shape as getAicVisibleUnits above, but
+// reads unit.missileContacts (not unit.contacts): server/src/missileDetection.js
+// deliberately writes to a separate field — see that module's header for why
+// (avoids colliding with Olympus's own independent 1s-cadence refresh of a
+// unit's real contacts). Local copy, not shared, per this file's existing
+// getAicVisibleUnits convention.
+function getAicVisibleMissiles(weapons, units, myCoalitionNum) {
+  const result      = {}
+  const detectedIds = new Set()
+
+  for (const unit of Object.values(units)) {
+    if (!unit.missileContacts) continue
+    for (const c of unit.missileContacts) detectedIds.add(String(c.ID))
+  }
+
+  for (const [id, weapon] of Object.entries(weapons)) {
+    if (!weapon.position) continue
+    const c = weapon.coalition
+    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = weapon
   }
 
   return result
@@ -247,6 +273,14 @@ export default function AicScope() {
   )
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
+
+  // Missile tracking — own-coalition/neutral always visible, enemy gated by
+  // server/src/missileDetection.js's AWACS/EWR-only detection.
+  const weapons = useWeaponsStore(s => s.weapons)
+  const visibleMissiles = useMemo(
+    () => getAicVisibleMissiles(weapons, units, myCoalitionNum),
+    [weapons, units, myCoalitionNum]
+  )
 
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
@@ -599,10 +633,11 @@ export default function AicScope() {
       mergedThreatRings, threatRadius, fadedRef.current, Date.now(), findMarker,
       showCentroid ? picture?.centroid : null,
       showAxis && picture?.axisOrigin ? { origin: picture.axisOrigin, axisBearing: picture.axisBearing } : null)
+    drawAbmMissiles(ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum))
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }
-  }, [view, visibleUnits, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRingSet, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
+  }, [view, visibleUnits, visibleMissiles, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRingSet, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
 
   // RBL drag (left-click) — only arms once the drag clears a threshold, so
   // plain left-clicks used for declare/BRAA/sector/etc. don't touch the RBL

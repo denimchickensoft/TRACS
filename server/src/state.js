@@ -1,10 +1,12 @@
 'use strict'
 
 const units = new Map()   // unitId (string) → unit object
+const weapons = new Map() // weaponId (string) → weapon object — missiles only, see olympus.js's pollWeapons()/tacview.js
 let mission   = null
 let airbases  = []
 let bullseyes = null
 let lastUpdateTime = 0
+let lastWeaponsUpdateTime = 0
 let sourceType = 'olympus'
 
 function applyDelta(delta) {
@@ -29,6 +31,28 @@ function getSnapshot() {
   }
 }
 
+function applyWeaponsDelta(delta) {
+  if (delta.updated) {
+    for (const [id, weapon] of Object.entries(delta.updated)) {
+      weapons.set(id, { ...weapons.get(id), ...weapon })
+    }
+  }
+  if (delta.removed) {
+    for (const id of delta.removed) {
+      weapons.delete(id)
+    }
+  }
+  lastWeaponsUpdateTime = delta.time ?? Date.now()
+}
+
+function getWeaponsSnapshot() {
+  return {
+    updated: Object.fromEntries(weapons),
+    removed: [],
+    time: lastWeaponsUpdateTime,
+  }
+}
+
 // Called at the top of every source's start() -- a fresh source has no
 // relation to whatever the previous source left behind, so every per-session
 // field needs to go, not just units (a mission/airbases field lingering from
@@ -36,7 +60,9 @@ function getSnapshot() {
 // Olympus's frameRate surviving into a Tacview session).
 function resetForNewSource() {
   units.clear()
+  weapons.clear()
   lastUpdateTime = 0
+  lastWeaponsUpdateTime = 0
   mission = null
   airbases = []
   bullseyes = null
@@ -45,6 +71,8 @@ function resetForNewSource() {
 module.exports = {
   applyDelta,
   getSnapshot,
+  applyWeaponsDelta,
+  getWeaponsSnapshot,
   resetForNewSource,
   getUnit:          (id) => units.get(String(id)),
   // [id, unit][] -- entries (not just values) so a caller gets the
@@ -52,6 +80,7 @@ module.exports = {
   // id-shaped field staying in sync with it. Used by srs.js's name-based
   // correlation fallback.
   getAllUnitEntries: () => [...units.entries()],
+  getAllWeaponEntries: () => [...weapons.entries()],
   getMission:       ()   => mission,
   setMission:       (m)  => { mission = m },
   getAirbases:      ()   => airbases,
