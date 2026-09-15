@@ -131,6 +131,18 @@ function createTacviewRelay(wss, config) {
         // on a relay that doesn't know this message type exists at all,
         // never on one that's simply unconfigured.
         ws.send(JSON.stringify({ type: 'tacviewDetectionConfig', config: detectionConfig }))
+        // Radar scan-rate config — unlike detectionConfig, this always has
+        // resolved values (config.json → env var → hardcoded default, see
+        // relay/index.js), never a bare {}, since every relay operator's
+        // scan rate is "something" even if they never touched config.json.
+        ws.send(JSON.stringify({
+          type: 'tacviewRateConfig',
+          config: {
+            unitUpdateMs: config.unitUpdateMs,
+            detectionMs: config.detectionMs,
+            missileDetectionMs: config.missileDetectionMs,
+          },
+        }))
         ws.send(JSON.stringify({
           type: 'tacview',
           data: {

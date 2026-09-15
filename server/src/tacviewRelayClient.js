@@ -23,20 +23,21 @@ const navdata = require('../navdata')
 const tacviewDetection = require('./tacviewDetection')
 const weaponDatabase = require('./weaponDatabase')
 const missileDetection = require('./missileDetection')
+const rateConfig = require('./rateConfig')
 
 const RECONNECT_MS = 3000
 // See tacview.js's identical constant for why this was shortened from 5000.
 const THEATRE_VOTE_WINDOW_MS = 2000
-const DETECTION_INTERVAL_MS = 2000
-// Same cadence, separate constant — see tacview.js's identical constant.
-const MISSILE_DETECTION_INTERVAL_MS = 2000
 // See tacview.js's identical constant — re-syncs useMissionClock() against
 // client-side timer drift, same as Olympus's own repeated mission poll.
 const MISSION_CLOCK_INTERVAL_MS = 10000
-// Browser-facing broadcast cadence, matching Olympus's 1Hz poll and
-// tacview.js's direct-mode equivalent — see that file's BROADCAST_INTERVAL_MS
-// comment for why this throttle exists at all. Not currently configurable.
-const BROADCAST_INTERVAL_MS = 1000
+// Detection pass, missile-detection pass, and browser-facing broadcast
+// cadence all live in server/src/rateConfig.js now (rateConfig.detectionMs/
+// missileDetectionMs/unitUpdateMs). Unlike direct mode, this relay-hosted
+// mode's rate is owned by the relay operator (relay/index.js's config.json),
+// pushed over the wire after connecting (see the 'tacviewRateConfig' message
+// handler and armRateTimers() below) — never this backend's own local
+// server/rateConfig.json.
 
 let ws = null
 let onUnitsDelta = null
@@ -77,7 +78,7 @@ let missileFogFilter = null
 let friendlyCoalitionId = null
 
 // Accumulates at full stream rate (whatever the relay forwards); flushed to
-// state/broadcast at BROADCAST_INTERVAL_MS by flushBroadcast(). Mirrors
+// state/broadcast at rateConfig.unitUpdateMs by flushBroadcast(). Mirrors
 // tacview.js's identical mechanism for direct mode.
 let pendingUpdated = {}
 let pendingRemoved = new Set()
@@ -277,6 +278,21 @@ function applyTacviewData(data) {
   }
 }
 
+// (Re-)creates the three rate-driven timers from rateConfig's current
+// values. Called once at start() with the pre-connect defaults, and again
+// whenever the relay's tacviewRateConfig message arrives — unlike a
+// self-rescheduling setTimeout chain (olympus.js's pattern), setInterval's
+// delay is fixed at creation time, so an already-running interval never
+// picks up a config change on its own; it has to be torn down and re-armed.
+function armRateTimers() {
+  clearInterval(detectionTimer)
+  clearInterval(missileDetectionTimer)
+  clearInterval(broadcastTimer)
+  detectionTimer = setInterval(runDetectionPass, rateConfig.detectionMs)
+  missileDetectionTimer = setInterval(runMissileDetectionPass, rateConfig.missileDetectionMs)
+  broadcastTimer = setInterval(() => { flushBroadcast(); flushWeaponsBroadcast() }, rateConfig.unitUpdateMs)
+}
+
 function connect() {
   // Re-arms the wait-for-relay-config gate on every (re)connect, including
   // reconnects — the relay resends tacviewDetectionConfig fresh to every
@@ -332,6 +348,18 @@ function connect() {
         if (Object.keys(catchUp).length) queueBroadcast(catchUp, [])
         runDetectionPass()
       }
+      return
+    }
+    if (msg.type === 'tacviewRateConfig') {
+      // Relay-authoritative scan-rate tuning — see server/src/rateConfig.js's
+      // applyRelayConfig() and relay/tacview.js's onAuthenticated(). Sent
+      // unconditionally, same as tacviewDetectionConfig above, since
+      // relay/index.js's config always has resolved unitUpdateMs/detectionMs/
+      // missileDetectionMs values (file → env var → hardcoded default), never
+      // truly "unset".
+      rateConfig.applyRelayConfig(msg.config)
+      console.log(`[tacviewRelayClient] relay rate config received: unitUpdateMs=${msg.config.unitUpdateMs} detectionMs=${msg.config.detectionMs} missileDetectionMs=${msg.config.missileDetectionMs}`)
+      armRateTimers()
       return
     }
     if (msg.type === 'tacview') {
@@ -395,12 +423,19 @@ function start(cfg, callbacks = {}) {
   // not consult at all (the relay operator, not the connecting controller,
   // owns this in this mode).
   tacviewDetection.resetToDefaults()
+  // Same posture as tacviewDetection above — relay-hosted mode must not
+  // consult this backend's own local server/rateConfig.json at all; the
+  // relay operator owns the rate until its tacviewRateConfig message arrives
+  // (armRateTimers() re-runs then). Warn if a local file exists anyway, since
+  // it'll silently do nothing in this mode — easy to mistake for a bug.
+  if (rateConfig.localConfigFileExists()) {
+    console.log('[tacviewRelayClient] relay-hosted mode active — local server/rateConfig.json, if present, is ignored; rate is controlled by the relay operator\'s config.json')
+  }
+  rateConfig.resetToDefaults()
 
   connect()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
-  detectionTimer = setInterval(runDetectionPass, DETECTION_INTERVAL_MS)
-  missileDetectionTimer = setInterval(runMissileDetectionPass, MISSILE_DETECTION_INTERVAL_MS)
-  broadcastTimer = setInterval(() => { flushBroadcast(); flushWeaponsBroadcast() }, BROADCAST_INTERVAL_MS)
+  armRateTimers()
   missionClockTimer = setInterval(sendMissionClock, MISSION_CLOCK_INTERVAL_MS)
 }
 

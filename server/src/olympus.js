@@ -7,11 +7,10 @@ const { decodeUnits } = require('./decoder')
 const weaponDatabase = require('./weaponDatabase')
 const missileDetection = require('./missileDetection')
 const { coalitionId } = require('./tacviewDetection')
+const rateConfig = require('./rateConfig')
 
-const POLL_INTERVAL_MS = 1000
 const MISSION_INTERVAL_MS = 10000
 const AIRBASES_INTERVAL_MS = 30000
-const MISSILE_DETECTION_INTERVAL_MS = 2000
 const FULL_REFRESH_EVERY = 10
 const MAX_CONSECUTIVE_ERRORS = 10
 
@@ -148,7 +147,7 @@ async function pollUnits() {
       return
     }
   } finally {
-    if (polling) unitsTimer = setTimeout(pollUnits, POLL_INTERVAL_MS)
+    if (polling) unitsTimer = setTimeout(pollUnits, rateConfig.unitUpdateMs)
   }
 }
 
@@ -216,7 +215,7 @@ async function pollWeapons() {
   } catch (err) {
     console.error('[olympus] weapons poll error:', err.message)
   } finally {
-    if (polling) weaponsTimer = setTimeout(pollWeapons, POLL_INTERVAL_MS)
+    if (polling) weaponsTimer = setTimeout(pollWeapons, rateConfig.unitUpdateMs)
   }
 }
 
@@ -252,7 +251,7 @@ function pollMissileDetection() {
   } catch (err) {
     console.error('[olympus] missile detection error:', err.message)
   } finally {
-    if (polling) missileDetectionTimer = setTimeout(pollMissileDetection, MISSILE_DETECTION_INTERVAL_MS)
+    if (polling) missileDetectionTimer = setTimeout(pollMissileDetection, rateConfig.missileDetectionMs)
   }
 }
 
@@ -331,6 +330,8 @@ function start(cfg, callbacks = {}) {
   lastWeaponsPollTime = 0
   friendlyCoalitionId = coalitionId(config.coalition)
   missileFogFilter = friendlyCoalitionId !== null ? missileDetection.createMissileFogFilter(friendlyCoalitionId) : null
+  // Olympus has no relay-hosted mode — always local, see server/rateConfig.json.
+  rateConfig.resetToLocalConfig()
 
   console.log(`[olympus] starting polling → ${config.olympusUrl}`)
   pollUnits()

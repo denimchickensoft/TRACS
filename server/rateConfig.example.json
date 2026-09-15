@@ -1,0 +1,5 @@
+{
+  "unitUpdateMs": 4000,
+  "detectionMs": 4000,
+  "missileDetectionMs": 4000
+}

@@ -51,6 +51,17 @@ const config = {
   passwords: (fileConfig.passwords && typeof fileConfig.passwords === 'object' && !Array.isArray(fileConfig.passwords))
     ? fileConfig.passwords
     : {},
+  // Radar scan-rate tuning for relay-hosted Tacview sessions — pushed to
+  // every connecting controller backend by relay/tacview.js's
+  // onAuthenticated(), applied via server/src/rateConfig.js's
+  // applyRelayConfig(). Same units/meaning as server/rateConfig.json's
+  // unitUpdateMs/detectionMs/missileDetectionMs (see that file's comment for
+  // real-world radar scan-rate context) — 1000ms matches this project's
+  // original testing-fidelity default; see config.example.json for a more
+  // realistic value.
+  unitUpdateMs:       Number(fileConfig.unitUpdateMs ?? process.env.UNIT_UPDATE_MS ?? 1000),
+  detectionMs:        Number(fileConfig.detectionMs ?? process.env.DETECTION_MS ?? 1000),
+  missileDetectionMs: Number(fileConfig.missileDetectionMs ?? process.env.MISSILE_DETECTION_MS ?? 1000),
 }
 
 const server = http.createServer()

@@ -16,6 +16,7 @@ specs/
 relay/config.json
 relay/tacviewDetectionConfig.json
 server/tacviewDetectionConfig.json
+server/rateConfig.json
 
 # OS files
 .DS_Store

@@ -17,6 +17,7 @@ const tacviewCore = require('./tacviewCore')
 const tacviewDetection = require('./tacviewDetection')
 const weaponDatabase = require('./weaponDatabase')
 const missileDetection = require('./missileDetection')
+const rateConfig = require('./rateConfig')
 
 const DEFAULT_PORT = 42674
 const RECONNECT_MS = 3000
@@ -25,25 +26,20 @@ const RECONNECT_MS = 3000
 // Login's facility-picker wait; the manual theatre override remains the real
 // safety net against a border-overlap-zone misvote, not this window's length.
 const THEATRE_VOTE_WINDOW_MS = 2000
-const DETECTION_INTERVAL_MS = 2000
-// Same cadence as DETECTION_INTERVAL_MS — separate constant since it's a
-// conceptually distinct pass (missileDetection.js, not tacviewDetection.js).
-const MISSILE_DETECTION_INTERVAL_MS = 2000
+// Detection pass, missile-detection pass, and browser-facing broadcast
+// cadence all live in server/src/rateConfig.js now (rateConfig.detectionMs/
+// missileDetectionMs/unitUpdateMs) — operator-tunable via
+// server/rateConfig.json, so an installation can match a real radar's scan
+// rate instead of this project's original 1Hz testing-fidelity default.
+// Incoming ACMI updates are still parsed/tracked at full stream rate
+// internally (needed for the groundspeed derivation's accuracy) regardless
+// of rateConfig.unitUpdateMs — only the browser-facing broadcast is
+// throttled.
 // Re-sync the mission clock this often (matches olympus.js's own
 // MISSION_INTERVAL_MS) — useMissionClock() free-runs client-side off of
 // whatever dateAndTime it was last given, so periodic re-sends correct any
 // client-side timer drift over a long session, same as Olympus already does.
 const MISSION_CLOCK_INTERVAL_MS = 10000
-// Olympus polls (and therefore broadcasts to the browser) at a controlled
-// 1Hz (olympus.js's POLL_INTERVAL_MS). Tacview's raw ACMI stream has no such
-// throttle — it pushes at whatever rate DCS's exporter is configured for
-// (~9Hz observed live) — so without this, the scope would repaint far more
-// often for a Tacview-sourced connection than it ever does for Olympus.
-// Incoming updates are still parsed/tracked at full stream rate internally
-// (needed for the groundspeed derivation's accuracy); only the
-// browser-facing broadcast is throttled to match Olympus's cadence. Not
-// currently user-configurable — hard-coded to match Olympus exactly.
-const BROADCAST_INTERVAL_MS = 1000
 // If the server closes the connection right after our handshake (no
 // telemetry ever received) this many times in a row, stop retrying — this is
 // almost always a wrong RTT password, not a transient network blip, and
@@ -92,7 +88,7 @@ let onDisconnect = null
 let handshakeFailures = 0
 
 // Accumulates at full stream rate; flushed to state/broadcast once per
-// BROADCAST_INTERVAL_MS by flushBroadcast(). Both processIncoming and
+// rateConfig.unitUpdateMs by flushBroadcast(). Both processIncoming and
 // runDetectionPass write here instead of calling state.applyDelta directly.
 let pendingUpdated = {}
 let pendingRemoved = new Set()
@@ -404,15 +400,20 @@ function start(cfg, callbacks = {}) {
   // having left tacviewDetection's shared config sourced from a relay —
   // direct mode always forces itself back to the local file/defaults.
   tacviewDetection.resetToLocalConfig()
+  // Direct mode always uses this backend's own local server/rateConfig.json
+  // (or built-in defaults) — never a relay's, same posture as detection
+  // config above. Must run before the setInterval calls below so they pick
+  // up the resolved values.
+  rateConfig.resetToLocalConfig()
   friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = friendlyCoalitionId !== null ? tacviewDetection.createFogFilter(friendlyCoalitionId) : null
   missileFogFilter = friendlyCoalitionId !== null ? missileDetection.createMissileFogFilter(friendlyCoalitionId) : null
 
   connect()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
-  detectionTimer = setInterval(runDetectionPass, DETECTION_INTERVAL_MS)
-  missileDetectionTimer = setInterval(runMissileDetectionPass, MISSILE_DETECTION_INTERVAL_MS)
-  broadcastTimer = setInterval(() => { flushBroadcast(); flushWeaponsBroadcast() }, BROADCAST_INTERVAL_MS)
+  detectionTimer = setInterval(runDetectionPass, rateConfig.detectionMs)
+  missileDetectionTimer = setInterval(runMissileDetectionPass, rateConfig.missileDetectionMs)
+  broadcastTimer = setInterval(() => { flushBroadcast(); flushWeaponsBroadcast() }, rateConfig.unitUpdateMs)
   missionClockTimer = setInterval(sendMissionClock, MISSION_CLOCK_INTERVAL_MS)
 }
 

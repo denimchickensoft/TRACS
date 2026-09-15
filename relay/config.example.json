@@ -4,5 +4,8 @@
   "tacviewHost": "",
   "tacviewPort": 42674,
   "tacviewPassword": "",
-  "passwords": {}
+  "passwords": {},
+  "unitUpdateMs": 4000,
+  "detectionMs": 4000,
+  "missileDetectionMs": 4000
 }
