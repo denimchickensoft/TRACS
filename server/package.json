@@ -13,8 +13,7 @@
     "build:mva": "node scripts/buildMvaMap.js",
     "package:extract": "node --experimental-sea-config navdata/tools/sea-config.json",
     "build:terrain-exe": "node scripts/terrainDataExe/build.js",
-    "seed-manifest": "node scripts/terrainDataExe/seedManifest.js",
-    "calibrate:detection": "node scripts/phase0DetectionCalibration.js"
+    "seed-manifest": "node scripts/terrainDataExe/seedManifest.js"
   },
   "dependencies": {
     "better-sqlite3": "^9.0.0",
