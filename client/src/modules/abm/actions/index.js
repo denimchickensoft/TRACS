@@ -49,12 +49,14 @@
  * `.dclear all` y/n confirmation intercept, which stays bespoke at the top of
  * AbmScope.jsx's execCommand wrapper per §10.0/§10.3 of the refactor spec.
  *
- * Some persisted fields also get an explicit saveAbmPrefs(...) call here
- * alongside the displayStore update — those are the fields store/abmPrefs.js
- * still owns (rings/leader/history/dbca/aspColorIdx, see that file's
- * header), not the ~24 fields store/abmUiPrefs.js auto-persists on every
- * setter call. Don't add saveAbmPrefs calls for uiPrefs-store fields — that
- * store already persists itself via its own subscribe() (see abmUiPrefs.js).
+ * Every command with a persisted display setting pairs its updateWin(...)
+ * call with an explicit saveAbmPrefs(...) call — updateWin sets the live
+ * per-window value, saveAbmPrefs saves the seed default the next NEW window
+ * inherits at open time (store/abmPrefs.js). This is the getWin/updateWin +
+ * saveAbmPrefs pattern every per-window toggle in this file follows (2026-09-14
+ * — see store/abmPrefs.js header for why: a prior windowId-less shared store,
+ * store/abmUiPrefs.js, meant toggling e.g. `.coords` in one ABM window leaked
+ * into every other open one).
  */
 
 import { useDisplayStore } from '../../../store/display.js'
@@ -62,14 +64,8 @@ import { useAbmFocusPanelsStore } from '../../../store/abmFocusPanels.js'
 import { useAbmStore, DECLARATION, getAbmEffectiveDeclaration } from '../../../store/abm.js'
 import { AUTO_DECLARE_MODE } from '../../../utils/createDeclarationStore.js'
 import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
-import { useAbmUiPrefsStore } from '../../../store/abmUiPrefs.js'
 import { loadAbmPrefs, saveAbmPrefs } from '../../../store/abmPrefs.js'
 import { useNavdataStore } from '../../../store/navdata.js'
-import { useGeoStore } from '../../../store/geo.js'
-import { useReliefStore } from '../../../store/relief.js'
-import { useHoldingsStore } from '../../../store/holdings.js'
-import { useMoraStore } from '../../../store/mora.js'
-import { useAirwaysStore } from '../../../store/airways.js'
 import { useAbmAirspaceStore } from '../../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../../store/abmDrawings.js'
 import { useAbmMissionStore } from '../../../store/abmMission.js'
@@ -181,17 +177,29 @@ export function BE_FIX({ captures, context }) {
 
 // ── Navdata layer toggles (§4.2) ─────────────────────────────────────────────
 
-export function TIME_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.clockVisible
-  prefs.setClockVisible(next)
+// Per-window (2026-09-14): TIME/UNITRO/GEO/RELIEF/HOLDS/MORA/AIRWAYS/ASP all
+// used to read/write a windowId-less shared store (useAbmUiPrefsStore, or
+// one of the five navdata-layer stores' single `visible` flag), so toggling
+// any of them in a `.focus` window leaked into every other open ABM window —
+// same bug class as COORDS_TOGGLE/BEC_TOGGLE below. Now getWin/updateWin,
+// same as ROSE_TOGGLE. useGeoStore/useReliefStore/useHoldingsStore/
+// useMoraStore/useAirwaysStore themselves are untouched here — they're
+// shared with STARS/CATCC/AIC (data fetch + cache, via loadForTheatre in
+// AbmScope.jsx), which have no window multiplicity and keep reading those
+// stores' own `visible` field directly; only ABM's copy of "is this layer
+// on in THIS window" moved to windowSettings.
+
+export function TIME_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.timeVisible ?? true)
+  updateWin(context.windowId, { timeVisible: next })
+  saveAbmPrefs({ timeVisible: next })
   return next ? 'TIME ON' : 'TIME OFF'
 }
 
-export function UNITRO_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.unitReadoutVisible
-  prefs.setUnitReadoutVisible(next)
+export function UNITRO_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.unitReadoutVisible ?? true)
+  updateWin(context.windowId, { unitReadoutVisible: next })
+  saveAbmPrefs({ unitReadoutVisible: next })
   return next ? 'UNIT READOUT ON' : 'UNIT READOUT OFF'
 }
 
@@ -202,71 +210,93 @@ export function ROSE_TOGGLE({ context }) {
   return wasVisible ? 'ROSE OFF' : 'ROSE ON'
 }
 
-export function GEO_TOGGLE() {
-  useGeoStore.getState().toggleVisible()
-  return useGeoStore.getState().visible ? 'GEO ON' : 'GEO OFF'
+export function GEO_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.geoVisible ?? true)
+  updateWin(context.windowId, { geoVisible: next })
+  saveAbmPrefs({ geoVisible: next })
+  return next ? 'GEO ON' : 'GEO OFF'
 }
 
-export function RELIEF_TOGGLE() {
-  useReliefStore.getState().toggleVisible()
-  return useReliefStore.getState().visible ? 'RELIEF ON' : 'RELIEF OFF'
+export function RELIEF_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.reliefVisible ?? false)
+  updateWin(context.windowId, { reliefVisible: next })
+  saveAbmPrefs({ reliefVisible: next })
+  return next ? 'RELIEF ON' : 'RELIEF OFF'
 }
 
-export function HOLDS_TOGGLE() {
-  useHoldingsStore.getState().toggleVisible()
-  return useHoldingsStore.getState().visible ? 'HOLDS ON' : 'HOLDS OFF'
+export function HOLDS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.holdingsVisible ?? false)
+  updateWin(context.windowId, { holdingsVisible: next })
+  saveAbmPrefs({ holdingsVisible: next })
+  return next ? 'HOLDS ON' : 'HOLDS OFF'
 }
 
-export function MORA_TOGGLE() {
-  useMoraStore.getState().toggleVisible()
-  return useMoraStore.getState().visible ? 'MORA ON' : 'MORA OFF'
+export function MORA_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.moraVisible ?? false)
+  updateWin(context.windowId, { moraVisible: next })
+  saveAbmPrefs({ moraVisible: next })
+  return next ? 'MORA ON' : 'MORA OFF'
 }
 
-export function AIRWAYS_TOGGLE() {
-  const v = useAirwaysStore.getState().visible
+export function AIRWAYS_TOGGLE({ context }) {
+  const v = getWin(context.windowId)?.airwaysVisible ?? { V: false, J: false, B: false }
   const anyOn = v.V || v.J || v.B
-  useAirwaysStore.getState().setVisible({ V: !anyOn, J: !anyOn, B: !anyOn })
+  const next = { V: !anyOn, J: !anyOn, B: !anyOn }
+  updateWin(context.windowId, { airwaysVisible: next })
+  saveAbmPrefs({ airwaysVisible: next })
   return anyOn ? 'AIRWAYS OFF' : 'AIRWAYS ON'
 }
 
-export function AIRWAYS_TYPE({ captures }) {
+export function AIRWAYS_TYPE({ captures, context }) {
   const type = captures.type.toUpperCase()
-  useAirwaysStore.getState().toggleVisible(type)
-  return `AIRWAYS ${type} ${useAirwaysStore.getState().visible[type] ? 'ON' : 'OFF'}`
+  const v = getWin(context.windowId)?.airwaysVisible ?? { V: false, J: false, B: false }
+  const next = { ...v, [type]: !v[type] }
+  updateWin(context.windowId, { airwaysVisible: next })
+  saveAbmPrefs({ airwaysVisible: next })
+  return `AIRWAYS ${type} ${next[type] ? 'ON' : 'OFF'}`
 }
 
 // .asp — bulk toggle (was .airspace, 2026-07-08): on if any category is
 // currently visible, off otherwise, same anyOn pattern as .airways.
-export function ASP_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const anyOn = AIRSPACE_CATEGORIES.some(c => prefs.asVisible[c])
+export function ASP_TOGGLE({ context }) {
+  const asVisible = getWin(context.windowId)?.asVisible ?? {}
+  const anyOn = AIRSPACE_CATEGORIES.some(c => asVisible[c])
   const next = anyOn ? {} : Object.fromEntries(AIRSPACE_CATEGORIES.map(c => [c, true]))
-  prefs.setAsVisible(next)
+  updateWin(context.windowId, { asVisible: next })
+  saveAbmPrefs({ asVisible: next })
   return anyOn ? 'AIRSPACE OFF' : 'AIRSPACE ON'
 }
 
 // Per-category airspace toggles (2026-07-08) — .tma/.ctr/.cta/.fir/.uir/.sua/
 // .mil/.trsa/.classa-.classg. No procedure commands (SID/STAR/APPCH stay
 // display-only, per direction).
-export function ASP_CATEGORY({ captures }) {
+export function ASP_CATEGORY({ captures, context }) {
   const cat = AIRSPACE_CMD_CATEGORY[captures.cat]
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.asVisible[cat]
-  prefs.setAsVisible(s => ({ ...s, [cat]: next }))
-  return `${cat} ${next ? 'ON' : 'OFF'}`
+  const asVisible = getWin(context.windowId)?.asVisible ?? {}
+  const next = { ...asVisible, [cat]: !asVisible[cat] }
+  updateWin(context.windowId, { asVisible: next })
+  saveAbmPrefs({ asVisible: next })
+  return `${cat} ${next[cat] ? 'ON' : 'OFF'}`
 }
 
 // Same commands STARS uses for airspace palettes, reimplemented against
 // useAbmAirspaceStore's own palette state rather than useMapsStore's, which
-// is STARS-only (see store/abmAirspace.js).
-export async function ASPCOLORS({ captures }) {
+// is STARS-only (see store/abmAirspace.js). features/palettes stay global
+// (shared fetch, also read by CatccScope.jsx); the *selected* palette index
+// is per-window (aspColorIdx) for ABM's own canvas rendering, but this also
+// still updates the shared store's paletteIdx so Drawings.jsx's single,
+// non-windowed CUSTOM-color preview stays in sync (see store/abmAirspace.js
+// header — that field was always meant to be a single global value for that
+// one consumer, not a per-ABM-window one).
+export async function ASPCOLORS({ captures, context }) {
   const name = captures.name.trim().toUpperCase()
   await useAbmAirspaceStore.getState().refreshPalettes()
   const palettes = useAbmAirspaceStore.getState().palettes
   const idx = palettes.findIndex(p => p.name.toUpperCase() === name)
   if (idx < 0) return 'INVALID PALETTE'
-  useAbmAirspaceStore.getState().setPaletteIdx(idx)
+  updateWin(context.windowId, { aspColorIdx: idx })
   saveAbmPrefs({ aspColorIdx: idx })
+  useAbmAirspaceStore.getState().setPaletteIdx(idx)
   return `ASP COLORS: ${palettes[idx].name.toUpperCase()}`
 }
 
@@ -277,27 +307,26 @@ export async function REFRESH() {
 
 // .labels/.lbl/.label — name-label toggle for both airspace and
 // custom-drawing layers.
-export function LABELS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.labelsVisible
-  prefs.setLabelsVisible(next)
+export function LABELS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.labelsVisible ?? false)
+  updateWin(context.windowId, { labelsVisible: next })
+  saveAbmPrefs({ labelsVisible: next })
   return next ? 'LABELS ON' : 'LABELS OFF'
 }
 
 // .fill — toggle airspace polygon fill, remembering the last percentage used.
-export function FILL_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.fillVisible
-  prefs.setFillVisible(next)
+export function FILL_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.fillVisible ?? false)
+  updateWin(context.windowId, { fillVisible: next })
+  saveAbmPrefs({ fillVisible: next })
   return next ? 'FILL ON' : 'FILL OFF'
 }
 
-export function FILL_SET({ captures }) {
+export function FILL_SET({ captures, context }) {
   const pct = parseInt(captures.pct, 10)
   if (pct < 1 || pct > 100) return 'ILL VAL'
-  const prefs = useAbmUiPrefsStore.getState()
-  prefs.setFillVisible(true)
-  prefs.setFillPct(pct)
+  updateWin(context.windowId, { fillVisible: true, fillPct: pct })
+  saveAbmPrefs({ fillVisible: true, fillPct: pct })
   return `FILL ${pct}%`
 }
 
@@ -427,27 +456,28 @@ export function DCLEAR_NAME({ captures, context }) {
 
 // ── Fixes / navaids ──────────────────────────────────────────────────────────
 
-export function FIXES_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.fixesVisible
-  prefs.setFixesVisible(next)
+export function FIXES_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.fixesVisible ?? false)
+  updateWin(context.windowId, { fixesVisible: next })
+  saveAbmPrefs({ fixesVisible: next })
   return next ? 'FIXES ON' : 'FIXES OFF'
 }
 
-export function NAVAIDS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.navaidsVisible
-  prefs.setNavaidsVisible(next)
+export function NAVAIDS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.navaidsVisible ?? false)
+  updateWin(context.windowId, { navaidsVisible: next })
+  saveAbmPrefs({ navaidsVisible: next })
   return next ? 'NAVAIDS ON' : 'NAVAIDS OFF'
 }
 
 // .fix — with no argument, clears all pinned fixes for this theatre.
 export function FIX_CLEAR({ context }) {
-  const { theatre } = context
+  const { theatre, windowId } = context
   if (!theatre) return 'NO THEATRE'
-  const prefs = useAbmUiPrefsStore.getState()
-  const merged = { ...prefs.pinnedFixes, [theatre]: [] }
-  prefs.setPinnedFixes(merged)
+  const pinnedFixes = getWin(windowId)?.pinnedFixes ?? {}
+  const merged = { ...pinnedFixes, [theatre]: [] }
+  updateWin(windowId, { pinnedFixes: merged })
+  saveAbmPrefs({ pinnedFixes: merged })
   return 'FIX CLEARED'
 }
 
@@ -455,7 +485,7 @@ export function FIX_CLEAR({ context }) {
 // visibility. Each name toggles independently (repeat to un-pin); persisted
 // per-theatre so pins survive a reload.
 export function FIX_PIN({ captures, context }) {
-  const { theatre } = context
+  const { theatre, windowId } = context
   if (!theatre) return 'NO THEATRE'
   const names = captures.names.trim().split(/\s+/).map(n => n.toUpperCase()).filter(Boolean)
   if (!names.length) return 'ILL VAL'
@@ -465,14 +495,15 @@ export function FIX_PIN({ captures, context }) {
   const knownIds = new Set(useNavdataStore.getState().fixes.map(f => f.id.toUpperCase()))
   const notFound = names.filter(n => !knownIds.has(n))
   if (notFound.length) return `${notFound.join(' ')} NOT FOUND`
-  const prefs = useAbmUiPrefsStore.getState()
-  const current = new Set(prefs.pinnedFixes[theatre] ?? [])
+  const pinnedFixes = getWin(windowId)?.pinnedFixes ?? {}
+  const current = new Set(pinnedFixes[theatre] ?? [])
   for (const name of names) {
     if (current.has(name)) current.delete(name)
     else current.add(name)
   }
-  const merged = { ...prefs.pinnedFixes, [theatre]: [...current] }
-  prefs.setPinnedFixes(merged)
+  const merged = { ...pinnedFixes, [theatre]: [...current] }
+  updateWin(windowId, { pinnedFixes: merged })
+  saveAbmPrefs({ pinnedFixes: merged })
   return `FIX ${names.join(' ')}`
 }
 
@@ -632,110 +663,122 @@ export function FOCUS_OPEN({ captures, context }) {
 
 // ── Runways / polygons / grid / towns / raster layers ───────────────────────
 
-export function RUNWAYS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.runwaysVisible
-  prefs.setRunwaysVisible(next)
+export function RUNWAYS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.runwaysVisible ?? false)
+  updateWin(context.windowId, { runwaysVisible: next })
+  saveAbmPrefs({ runwaysVisible: next })
   return next ? 'RUNWAYS ON' : 'RUNWAYS OFF'
 }
 
-export function POLYGONS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.polygonsVisible
-  prefs.setPolygonsVisible(next)
+export function POLYGONS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.polygonsVisible ?? false)
+  updateWin(context.windowId, { polygonsVisible: next })
+  saveAbmPrefs({ polygonsVisible: next })
   return next ? 'POLYGONS ON' : 'POLYGONS OFF'
 }
 
-export function MGRS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.mgrsVisible
-  prefs.setMgrsVisible(next)
+export function MGRS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.mgrsVisible ?? false)
+  updateWin(context.windowId, { mgrsVisible: next })
+  saveAbmPrefs({ mgrsVisible: next })
   return next ? 'MGRS GRID ON' : 'MGRS GRID OFF'
 }
 
-export function TOWNS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.townsVisible
-  prefs.setTownsVisible(next)
+export function TOWNS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.townsVisible ?? false)
+  updateWin(context.windowId, { townsVisible: next })
+  saveAbmPrefs({ townsVisible: next })
   return next ? 'TOWNS ON' : 'TOWNS OFF'
 }
 
-export function BASE_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.basemapVisible
-  prefs.setBasemapVisible(next)
+export function BASE_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.basemapVisible ?? false)
+  updateWin(context.windowId, { basemapVisible: next })
+  saveAbmPrefs({ basemapVisible: next })
   return next ? 'BASE ON' : 'BASE OFF'
 }
 
-export function TERRAIN_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.terrainVisible
-  prefs.setTerrainVisible(next)
+export function TERRAIN_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.terrainVisible ?? false)
+  updateWin(context.windowId, { terrainVisible: next })
+  saveAbmPrefs({ terrainVisible: next })
   return next ? 'TERRAIN ON' : 'TERRAIN OFF'
 }
 
 // .map — bulk toggle for all four raster layers (base/terrain/water/roads)
 // plus .geo's live coastline/boundary layer, same any-on pattern as .asp.
-export function MAP_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const geoVisible = useGeoStore.getState().visible
-  const anyOn = prefs.basemapVisible || prefs.terrainVisible || prefs.waterVisible || prefs.roadsVisible || geoVisible
+export function MAP_TOGGLE({ context }) {
+  const win = getWin(context.windowId)
+  const anyOn = (win?.basemapVisible ?? false) || (win?.terrainVisible ?? false) ||
+    (win?.waterVisible ?? false) || (win?.roadsVisible ?? false) || (win?.geoVisible ?? true)
   const next = !anyOn
-  prefs.setBasemapVisible(next)
-  prefs.setTerrainVisible(next)
-  prefs.setWaterVisible(next)
-  prefs.setRoadsVisible(next)
-  useGeoStore.getState().setVisible(next)
+  const patch = { basemapVisible: next, terrainVisible: next, waterVisible: next, roadsVisible: next, geoVisible: next }
+  updateWin(context.windowId, patch)
+  saveAbmPrefs(patch)
   return next ? 'MAP ON' : 'MAP OFF'
 }
 
-export function WATER_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.waterVisible
-  prefs.setWaterVisible(next)
+export function WATER_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.waterVisible ?? false)
+  updateWin(context.windowId, { waterVisible: next })
+  saveAbmPrefs({ waterVisible: next })
   return next ? 'WATER ON' : 'WATER OFF'
 }
 
-export function ROADS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.roadsVisible
-  prefs.setRoadsVisible(next)
+export function ROADS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.roadsVisible ?? false)
+  updateWin(context.windowId, { roadsVisible: next })
+  saveAbmPrefs({ roadsVisible: next })
   return next ? 'ROADS ON' : 'ROADS OFF'
 }
 
-// ── Cursor position readout / bullseye-on-cursor ────────────────────────────
+// ── Cursor position readout / bullseye-on-cursor / bullseye-on-datablock ───
 
-export function COORDS_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.coordsVisible
-  prefs.setCoordsVisible(next)
+export function COORDS_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.coordsVisible ?? false)
+  updateWin(context.windowId, { coordsVisible: next })
+  saveAbmPrefs({ coordsVisible: next })
   return next ? 'COORDS ON' : 'COORDS OFF'
 }
 
-export function BEC_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.becVisible
-  prefs.setBecVisible(next)
+export function BEC_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.becVisible ?? false)
+  updateWin(context.windowId, { becVisible: next })
+  saveAbmPrefs({ becVisible: next })
   return next ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF'
 }
 
-export function DDM() {
-  useAbmUiPrefsStore.getState().setCoordFormat('ddm')
+// .bedb — adds a 3rd datablock line per contact: bearing/range from
+// bullseye (e.g. "090/20"), same magnetic-bearing convention as .bec/.coords'
+// bullseye readout (drawAbmContacts.js). Off by default.
+export function BEDB_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.bedbVisible ?? false)
+  updateWin(context.windowId, { bedbVisible: next })
+  saveAbmPrefs({ bedbVisible: next })
+  return next ? 'BULLSEYE DATABLOCK ON' : 'BULLSEYE DATABLOCK OFF'
+}
+
+export function DDM({ context }) {
+  updateWin(context.windowId, { coordFormat: 'ddm' })
+  saveAbmPrefs({ coordFormat: 'ddm' })
   return 'DDM — DEGREES DECIMAL MINUTES'
 }
 
-export function DMS() {
-  useAbmUiPrefsStore.getState().setCoordFormat('dms')
+export function DMS({ context }) {
+  updateWin(context.windowId, { coordFormat: 'dms' })
+  saveAbmPrefs({ coordFormat: 'dms' })
   return 'DMS — DEGREES MINUTES SECONDS'
 }
 
-export function METERS() {
-  useAbmUiPrefsStore.getState().setElevUnit('meters')
+export function METERS({ context }) {
+  updateWin(context.windowId, { elevUnit: 'meters' })
+  saveAbmPrefs({ elevUnit: 'meters' })
   return 'ELEV METERS'
 }
 
-export function FEET() {
-  useAbmUiPrefsStore.getState().setElevUnit('feet')
+export function FEET({ context }) {
+  updateWin(context.windowId, { elevUnit: 'feet' })
+  saveAbmPrefs({ elevUnit: 'feet' })
   return 'ELEV FEET'
 }
 
@@ -929,10 +972,10 @@ export function AUTO_DECLARE_IFF({ context }) {
 // Toggles automatic threat rings (2026-07-10): while on, every friendly
 // aircraft within threatRadius of a HOSTILE/BOGEY aircraft gets its ring lit
 // until the breach clears — see AbmScope's own useEffect.
-export function AUTOTHREAT() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = !prefs.autoThreat
-  prefs.setAutoThreat(next)
+export function AUTOTHREAT({ context }) {
+  const next = !(getWin(context.windowId)?.autoThreat ?? false)
+  updateWin(context.windowId, { autoThreat: next })
+  saveAbmPrefs({ autoThreat: next })
   return next ? 'AUTOTHREAT ON' : 'AUTOTHREAT OFF'
 }
 
@@ -956,37 +999,41 @@ export function ROE_TOGGLE({ context }) {
 // `.eng b` etc. toggle just that declaration (f/n/b/h — matches the F-key
 // declaration letters, b for BOGEY).
 
-export function ACQ_DECL({ captures }) {
+export function ACQ_DECL({ captures, context }) {
   const decl = DECLARATION_LETTER[captures.letter]
-  const prefs = useAbmUiPrefsStore.getState()
-  const wasHidden = prefs.acqHidden.has(decl)
-  const next = new Set(prefs.acqHidden)
+  const acqHidden = getWin(context.windowId)?.acqHidden ?? new Set()
+  const wasHidden = acqHidden.has(decl)
+  const next = new Set(acqHidden)
   wasHidden ? next.delete(decl) : next.add(decl)
-  prefs.setAcqHidden(next)
+  updateWin(context.windowId, { acqHidden: next })
+  saveAbmPrefs({ acqHidden: [...next] })
   return `ACQ ${decl} ${wasHidden ? 'ON' : 'OFF'}`
 }
 
-export function ACQ_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = prefs.acqHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
-  prefs.setAcqHidden(next)
+export function ACQ_TOGGLE({ context }) {
+  const acqHidden = getWin(context.windowId)?.acqHidden ?? new Set()
+  const next = acqHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
+  updateWin(context.windowId, { acqHidden: next })
+  saveAbmPrefs({ acqHidden: [...next] })
   return next.size ? 'ACQ OFF' : 'ACQ ON'
 }
 
-export function ENG_DECL({ captures }) {
+export function ENG_DECL({ captures, context }) {
   const decl = DECLARATION_LETTER[captures.letter]
-  const prefs = useAbmUiPrefsStore.getState()
-  const wasHidden = prefs.engHidden.has(decl)
-  const next = new Set(prefs.engHidden)
+  const engHidden = getWin(context.windowId)?.engHidden ?? new Set()
+  const wasHidden = engHidden.has(decl)
+  const next = new Set(engHidden)
   wasHidden ? next.delete(decl) : next.add(decl)
-  prefs.setEngHidden(next)
+  updateWin(context.windowId, { engHidden: next })
+  saveAbmPrefs({ engHidden: [...next] })
   return `ENG ${decl} ${wasHidden ? 'ON' : 'OFF'}`
 }
 
-export function ENG_TOGGLE() {
-  const prefs = useAbmUiPrefsStore.getState()
-  const next = prefs.engHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
-  prefs.setEngHidden(next)
+export function ENG_TOGGLE({ context }) {
+  const engHidden = getWin(context.windowId)?.engHidden ?? new Set()
+  const next = engHidden.size ? new Set() : new Set(ALL_DECLARATIONS)
+  updateWin(context.windowId, { engHidden: next })
+  saveAbmPrefs({ engHidden: [...next] })
   return next.size ? 'ENG OFF' : 'ENG ON'
 }
 
@@ -1002,7 +1049,7 @@ const ACTION_MAP = {
   FOCUS_DEFAULT_RANGE, FOCUS_OPEN_RANGE, FOCUS_OPEN,
   RUNWAYS_TOGGLE, POLYGONS_TOGGLE, MGRS_TOGGLE, TOWNS_TOGGLE, BASE_TOGGLE, TERRAIN_TOGGLE,
   MAP_TOGGLE, WATER_TOGGLE, ROADS_TOGGLE,
-  COORDS_TOGGLE, BEC_TOGGLE, DDM, DMS, METERS, FEET,
+  COORDS_TOGGLE, BEC_TOGGLE, BEDB_TOGGLE, DDM, DMS, METERS, FEET,
   PTL, FADED, HISTORY_TOGGLE, HISTORY_LEN_RATE, HISTORY_LEN,
   DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,

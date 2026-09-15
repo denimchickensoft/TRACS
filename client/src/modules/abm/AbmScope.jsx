@@ -22,7 +22,6 @@ import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
-import { useAbmUiPrefsStore } from '../../store/abmUiPrefs.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
@@ -68,6 +67,9 @@ import './AbmScope.css'
 
 const DEFAULT_windowId = 'abm-main'
 const EMPTY_ARRAY = []
+const EMPTY_SET = new Set()
+const EMPTY_OBJECT = {}
+const EMPTY_AIRWAYS_VISIBLE = { V: false, J: false, B: false }
 const RANGE_MIN  = 1
 const RANGE_MAX  = 600
 const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
@@ -134,10 +136,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const abmPrefsRef = useRef(null)
   if (abmPrefsRef.current === null) {
     abmPrefsRef.current = loadAbmPrefs()
-    // paletteIdx lives in useAbmAirspaceStore (not local state) so
-    // Drawings.jsx can reactively read the active CUSTOM palette color —
-    // hydrated here, synchronously, so the selector below never sees the
-    // store's default 0 before this mount's saved value applies.
+    // useAbmAirspaceStore's paletteIdx is a single global value (not per
+    // ABM window) so Drawings.jsx — a single, non-windowed panel — can
+    // reactively read the active CUSTOM palette color; hydrated here,
+    // synchronously, so its selector never sees the store's default 0
+    // before this mount's saved value applies. This is separate from
+    // windowSettings.aspColorIdx below, which drives THIS window's own
+    // canvas airspace rendering and is seeded per-window at init time.
     useAbmAirspaceStore.setState({ paletteIdx: abmPrefsRef.current.aspColorIdx })
   }
   const abmPrefs = abmPrefsRef.current
@@ -152,11 +157,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // ── Mission clock — click to toggle Zulu/Local, .time to toggle visibility ─────
   const { timeStr, localTimeStr } = useMissionClock()
   const [showLocalTime, setShowLocalTime] = useState(false)
-  const clockVisible    = useAbmUiPrefsStore(s => s.clockVisible)
   const clockTime = showLocalTime ? localTimeStr : timeStr
 
   const displayStore   = useDisplayStore()
   const windowSettings = useDisplayStore(s => s.windows[windowId])
+  const clockVisible    = windowSettings?.timeVisible ?? true
 
   // ── Air picture (§3 / Phase 4) — ABM's own declarations, own symbology ──────
   const units        = useUnitsStore(s => s.units)
@@ -258,15 +263,15 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // tracked separately from threatRings (manual Ctrl+Alt+click/.threat+click)
   // and just union at draw time, so auto fully owns a contact's ring for as
   // long as the breach lasts.
-  const autoThreat    = useAbmUiPrefsStore(s => s.autoThreat)
+  const autoThreat    = windowSettings?.autoThreat ?? false
   const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
 
   // Ground/naval acq/eng range-ring visibility (§7) — per-declaration
   // hide sets (.acq/.eng commands). Empty set = everything shown; bare
   // `.acq`/`.eng` toggles all four declarations at once, `.acq h` etc. toggles
   // just that declaration (2026-07-07).
-  const acqHidden    = useAbmUiPrefsStore(s => s.acqHidden)
-  const engHidden    = useAbmUiPrefsStore(s => s.engHidden)
+  const acqHidden    = windowSettings?.acqHidden ?? EMPTY_SET
+  const engHidden    = windowSettings?.engHidden ?? EMPTY_SET
 
   // IDs ever seen with the RWR detection bit (16) set — same "sticky" reveal
   // rule as AIC (AicScope.jsx rwrEverDetectedRef): once a non-friendly air
@@ -500,22 +505,25 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // ── Navdata layers (§4) — reused directly from STARS's stores/draw functions ─
   const geoBoundaries   = useGeoStore(s => s.boundaries)
   const geoCoastlines   = useGeoStore(s => s.coastlines)
-  const geoVisible      = useGeoStore(s => s.visible)
+  // Per-window (2026-09-14) — see actions/index.js's GEO_TOGGLE comment for
+  // why the store's own `visible` field is left untouched (shared with
+  // STARS/CATCC/AIC) while ABM's copy of the flag lives here instead.
+  const geoVisible      = windowSettings?.geoVisible ?? true
   const relief          = useReliefStore(s => s.relief)
-  const reliefVisible   = useReliefStore(s => s.visible)
+  const reliefVisible   = windowSettings?.reliefVisible ?? false
   const holdings        = useHoldingsStore(s => s.holdings)
-  const holdingsVisible = useHoldingsStore(s => s.visible)
+  const holdingsVisible = windowSettings?.holdingsVisible ?? false
   const mora            = useMoraStore(s => s.mora)
-  const moraVisible     = useMoraStore(s => s.visible)
+  const moraVisible     = windowSettings?.moraVisible ?? false
   const airways         = useAirwaysStore(s => s.airways)
-  const airwaysVisible  = useAirwaysStore(s => s.visible)
+  const airwaysVisible  = windowSettings?.airwaysVisible ?? EMPTY_AIRWAYS_VISIBLE
   const airspaceFeatures = useAbmAirspaceStore(s => s.features)
   const airspacePalettes = useAbmAirspaceStore(s => s.palettes)
-  const aspColorIdx   = useAbmAirspaceStore(s => s.paletteIdx)
-  const asVisible       = useAbmUiPrefsStore(s => s.asVisible)
-  const labelsVisible   = useAbmUiPrefsStore(s => s.labelsVisible)
-  const fillVisible     = useAbmUiPrefsStore(s => s.fillVisible)
-  const fillPct         = useAbmUiPrefsStore(s => s.fillPct)
+  const aspColorIdx   = windowSettings?.aspColorIdx ?? 0
+  const asVisible       = windowSettings?.asVisible ?? EMPTY_OBJECT
+  const labelsVisible   = windowSettings?.labelsVisible ?? false
+  const fillVisible     = windowSettings?.fillVisible ?? false
+  const fillPct         = windowSettings?.fillPct ?? 30
   const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
   const addDrawnShape = useAbmDrawingsStore(s => s.addDrawnShape)
   const removeDrawingLayer = useAbmDrawingsStore(s => s.removeLayer)
@@ -523,28 +531,28 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const airspaceColors = airspacePalettes[aspColorIdx]?.colors ?? airspacePalettes[0]?.colors ?? null
   const fixes   = useNavdataStore(s => s.fixes)
   const navaids = useNavdataStore(s => s.navaids)
-  const fixesVisible      = useAbmUiPrefsStore(s => s.fixesVisible)
-  const navaidsVisible    = useAbmUiPrefsStore(s => s.navaidsVisible)
+  const fixesVisible      = windowSettings?.fixesVisible ?? false
+  const navaidsVisible    = windowSettings?.navaidsVisible ?? false
   // .fix <name...> — per-theatre pinned fixes, always shown regardless of
   // fixesVisible (see .fix handler below and drawAbmFixSymbols call).
-  const pinnedFixes    = useAbmUiPrefsStore(s => s.pinnedFixes)
+  const pinnedFixes    = windowSettings?.pinnedFixes ?? EMPTY_OBJECT
   // Same useRunwaysStore.loadForTheatre(theatre) call as below (no facility
   // args) already yields theatre-wide unfiltered centerlines — see §4.3.
   const runwayCenterlines = useRunwaysStore(s => s.centerlines)
-  const runwaysVisible    = useAbmUiPrefsStore(s => s.runwaysVisible)
+  const runwaysVisible    = windowSettings?.runwaysVisible ?? false
   // Local fetch mirroring ASDE-X's pattern — no shared store exists for this,
   // and unlike ASDE-X we want every airport in the theatre, not one facility.
   const [polygonFeatures, setPolygonFeatures] = useState([])
-  const polygonsVisible    = useAbmUiPrefsStore(s => s.polygonsVisible)
+  const polygonsVisible    = windowSettings?.polygonsVisible ?? false
   // Real UTM/MGRS grid (see drawMgrsGrid.js) — matches DCS's own F10 map.
   // No shared store needed (ABM-only, like the toggles above), so plain
   // local state.
-  const mgrsVisible    = useAbmUiPrefsStore(s => s.mgrsVisible)
+  const mgrsVisible    = windowSettings?.mgrsVisible ?? false
   // Town/city name labels (.towns) — local fetch straight from the public
   // static file, same as polygonFeatures below but no server API needed
   // since towns are pre-baked per-theatre JSON, not derived from mission data.
   const [towns, setTowns] = useState([])
-  const townsVisible    = useAbmUiPrefsStore(s => s.townsVisible)
+  const townsVisible    = windowSettings?.townsVisible ?? false
   // Baked raster layers (.map/.terrain/.water/.roads/.base) — see server's
   // buildAbmBasemap.js + drawAbmRaster.js. Draw order (furthest-back first):
   // basemap (land/sea silhouette, wide/coarse), terrain (relief wash only,
@@ -557,13 +565,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // theatre preview to the layer actually responsible for land/sea color
   // everywhere, and terrain (the former basemap) stopped being that source.
   const [basemap, setBasemap] = useState(null)
-  const basemapVisible    = useAbmUiPrefsStore(s => s.basemapVisible)
+  const basemapVisible    = windowSettings?.basemapVisible ?? false
   const [terrain, setTerrain] = useState(null)
-  const terrainVisible    = useAbmUiPrefsStore(s => s.terrainVisible)
+  const terrainVisible    = windowSettings?.terrainVisible ?? false
   const [water, setWater] = useState(null)
-  const waterVisible    = useAbmUiPrefsStore(s => s.waterVisible)
+  const waterVisible    = windowSettings?.waterVisible ?? false
   const [roads, setRoads] = useState(null)
-  const roadsVisible    = useAbmUiPrefsStore(s => s.roadsVisible)
+  const roadsVisible    = windowSettings?.roadsVisible ?? false
 
   // Cursor position readout (.coords) — DMS/DDS + real MGRS + terrain
   // elevation at the cursor. Position updates read straight off a ref
@@ -571,9 +579,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // re-render on every raw mousemove; elevation is fetched from the new
   // /api/elevation endpoint (server/src/elevation.js, previously only used
   // internally for per-unit AGL) and throttled to once per ~100m cell.
-  const coordsVisible    = useAbmUiPrefsStore(s => s.coordsVisible)
-  const coordFormat      = useAbmUiPrefsStore(s => s.coordFormat) // 'dms' | 'ddm'
-  const elevUnit         = useAbmUiPrefsStore(s => s.elevUnit) // 'feet' | 'meters'
+  const coordsVisible    = windowSettings?.coordsVisible ?? false
+  const coordFormat      = windowSettings?.coordFormat ?? 'dms' // 'dms' | 'ddm'
+  const elevUnit         = windowSettings?.elevUnit ?? 'feet' // 'feet' | 'meters'
   const [coordsReadout, setCoordsReadout] = useState(null)
   const cursorLatLngRef  = useRef({ lat: null, lng: null })
   const elevRef          = useRef(null)
@@ -590,7 +598,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // every mousemove instead of the 150ms interval .coords uses, since this
   // is plain trig (no fetch to throttle) and needs to feel like it's
   // actually attached to the cursor.
-  const becVisible    = useAbmUiPrefsStore(s => s.becVisible)
+  const becVisible    = windowSettings?.becVisible ?? false
   const [becReadout, setBecReadout] = useState(null)
 
   const handleCursorMove = useCallback((e) => {
@@ -654,7 +662,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // below, not the airport readout, which is a separate concern that
   // happens to share the same box/interval. Gated on the same 150ms
   // interval so it doesn't re-render on every raw mousemove.
-  const unitReadoutVisible    = useAbmUiPrefsStore(s => s.unitReadoutVisible)
+  const unitReadoutVisible    = windowSettings?.unitReadoutVisible ?? true
   //
   // Airports/runways (2026-07-09) piggyback on the same interval and radius:
   // useRunwaysStore.centerlines emits two direction-entries per physical
@@ -846,11 +854,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     return () => { cancelled = true }
   }, [theatre])
 
-  // Unlike STARS/AIC, ABM has no per-window persistence for this toggle, so
-  // force geo on whenever the scope mounts rather than inheriting whatever
-  // another module last left the shared store at.
-  useEffect(() => { useGeoStore.getState().setVisible(true) }, [])
-
   useEffect(() => {
     if (!theatre) return
     useNavdataStore.getState().loadForTheatre(theatre)
@@ -880,14 +883,15 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   const bullseyeLat = bullseyeOverride?.lat ?? bullseyeEntry?.latitude  ?? 0
   const bullseyeLng = bullseyeOverride?.lng ?? bullseyeEntry?.longitude ?? 0
+  const hasBullseye = !!(bullseyeOverride || bullseyeEntry)
 
   // Ref mirror for the .coords readout effect above, which is declared
   // earlier in the component (before bullseyeEntry/Lat/Lng exist) and would
   // hit a temporal-dead-zone error referencing them directly in its deps.
   const bullseyeRef = useRef({ hasBullseye: false, lat: 0, lng: 0 })
   useEffect(() => {
-    bullseyeRef.current = { hasBullseye: !!(bullseyeOverride || bullseyeEntry), lat: bullseyeLat, lng: bullseyeLng }
-  }, [bullseyeOverride, bullseyeEntry, bullseyeLat, bullseyeLng])
+    bullseyeRef.current = { hasBullseye, lat: bullseyeLat, lng: bullseyeLng }
+  }, [hasBullseye, bullseyeLat, bullseyeLng])
 
   // ── Window init — default center follows bullseye until the user pans.
   // Range rings default OFF; when enabled default to 20nm spacing anchored
@@ -919,6 +923,28 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       dbca: abmPrefs.dbca,
       roeVisible: abmPrefs.roeVisible,
       briteCmp: abmPrefs.compassVisible ? null : 0,
+      bedbVisible: abmPrefs.bedbVisible,
+      // Per-window UI toggles (2026-09-14) — seeded from abmPrefs same as
+      // everything above; see store/abmPrefs.js header and actions/index.js's
+      // GEO_TOGGLE comment for why these moved out of the old windowId-less
+      // useAbmUiPrefsStore/navdata-layer-store `visible` fields.
+      timeVisible: abmPrefs.timeVisible, unitReadoutVisible: abmPrefs.unitReadoutVisible,
+      asVisible: abmPrefs.asVisible, labelsVisible: abmPrefs.labelsVisible,
+      fillVisible: abmPrefs.fillVisible, fillPct: abmPrefs.fillPct,
+      fixesVisible: abmPrefs.fixesVisible, navaidsVisible: abmPrefs.navaidsVisible,
+      pinnedFixes: abmPrefs.pinnedFixes,
+      runwaysVisible: abmPrefs.runwaysVisible, polygonsVisible: abmPrefs.polygonsVisible,
+      mgrsVisible: abmPrefs.mgrsVisible, townsVisible: abmPrefs.townsVisible,
+      basemapVisible: abmPrefs.basemapVisible, terrainVisible: abmPrefs.terrainVisible,
+      waterVisible: abmPrefs.waterVisible, roadsVisible: abmPrefs.roadsVisible,
+      coordsVisible: abmPrefs.coordsVisible, coordFormat: abmPrefs.coordFormat,
+      elevUnit: abmPrefs.elevUnit, becVisible: abmPrefs.becVisible,
+      acqHidden: new Set(abmPrefs.acqHidden ?? []), engHidden: new Set(abmPrefs.engHidden ?? []),
+      autoThreat: abmPrefs.autoThreat,
+      geoVisible: abmPrefs.geoVisible, reliefVisible: abmPrefs.reliefVisible,
+      holdingsVisible: abmPrefs.holdingsVisible, moraVisible: abmPrefs.moraVisible,
+      airwaysVisible: abmPrefs.airwaysVisible,
+      aspColorIdx: abmPrefs.aspColorIdx,
     })
   }, []) // eslint-disable-line
 
@@ -1219,6 +1245,12 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       blinkOn,
       correlatedUnitIdsRef.current,
       Math.floor(Date.now() / 2000),
+      windowSettings?.bedbVisible ?? false,
+      hasBullseye,
+      bullseyeLat,
+      bullseyeLng,
+      theatre,
+      view.declinationDeg,
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
 
@@ -1244,6 +1276,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
+      windowSettings?.bedbVisible, hasBullseye, bullseyeLat, bullseyeLng, theatre,
       threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, selectedRouteRawType, selectedRouteGroupLabel, extraRoutes,
       blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor])
 
@@ -1950,7 +1983,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
           onPaste={handlePaste}
           onContextMenu={(e) => e.preventDefault()}
         />
-        {!bullseyeEntry && !bullseyeOverride && <div className="abm-warn">NO BULLSEYE</div>}
+        {!hasBullseye && <div className="abm-warn">NO BULLSEYE</div>}
 
         {clockVisible && (
           <div

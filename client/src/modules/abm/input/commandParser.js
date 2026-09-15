@@ -93,6 +93,7 @@ const COMMANDS = [
   { id: 'ROADS_TOGGLE',     pattern: /^\.roads$/ },
   { id: 'COORDS_TOGGLE',    pattern: /^\.coords$/ },
   { id: 'BEC_TOGGLE',       pattern: /^\.bec$/ },
+  { id: 'BEDB_TOGGLE',      pattern: /^\.bedb$/ },
   { id: 'DDM',              pattern: /^\.ddm$/ },
   { id: 'DMS',              pattern: /^\.dms$/ },
   { id: 'METERS',           pattern: /^\.meters$/ },

@@ -9,7 +9,7 @@
  */
 
 import { latLngToCanvas } from '../../../utils/projection.js'
-import { destinationPoint } from '../../../utils/bearing.js'
+import { destinationPoint, gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 import { drawPtl, DECL_COLOR } from '../../aic/canvas/drawAicContacts.js'
 import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
 import { DECLARATION } from '../../../store/abm.js'
@@ -180,6 +180,12 @@ export function drawAbmContacts(
   blinkOn = true,
   correlatedUnitIds = EMPTY_SET,
   iffCycleIndex = 0,
+  bedbVisible = false,
+  hasBullseye = false,
+  bullseyeLat = 0,
+  bullseyeLng = 0,
+  theatre = null,
+  declinationDeg = 0,
 ) {
   const { width, height } = view
   ctx.font = '11px "Roboto Mono", monospace'
@@ -282,6 +288,15 @@ export function drawAbmContacts(
     const line1      = isFriendly ? resolveCallsign(unit).toUpperCase() : iffFrames[iffCycleIndex % iffFrames.length]
     const lines      = showsBlock ? [line1, line2] : [line2]
 
+    // .bedb — 3rd datablock line: magnetic bearing/range from bullseye, same
+    // convention as the .bec/.coords bullseye readout (never shows "000",
+    // shown as "360" instead — see AbmScope.jsx's becReadout/coordsReadout).
+    if (showsBlock && bedbVisible && hasBullseye) {
+      const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bullseyeLat, bullseyeLng, unit.position.lat, unit.position.lng, theatre)
+      const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
+      lines.push(`${String(Math.round(magBrg) || 360).padStart(3, '0')}/${Math.round(rangeNm)}`)
+    }
+
     if (dbca) {
       dbCandidates.push({
         id, x, y, color: dbColor, textColor, lines,
@@ -315,8 +330,13 @@ export function drawAbmContacts(
     ctx.textBaseline = 'alphabetic'
 
     if (showsBlock) {
+      // First 2 lines keep their original fixed offsets (-6/+6, i.e. centered
+      // on the leader tip) so .bedb off stays pixel-identical to before; a
+      // 3rd (bullseye) line extends downward at the same 12px line height
+      // the dbca placement path (below) uses.
       ctx.fillText(lines[0], tx, ly1 - 6)
       ctx.fillText(lines[1], tx, ly1 + 6)
+      for (let i = 2; i < lines.length; i++) ctx.fillText(lines[i], tx, ly1 + 6 + (i - 1) * 12)
     } else {
       ctx.fillText(lines[0], tx, ly1)
     }

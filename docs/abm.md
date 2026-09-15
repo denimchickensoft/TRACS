@@ -86,6 +86,7 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 | `.dbca` | Datablock collision-avoidance placement (off by default) |
 | `.dbs` | Formation datablock suppression: only the flight lead's datablock shows when 2+ same-flight aircraft are within 3 NM (on by default) |
 | `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction |
+| `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
 ### BRAA, bogey dope, threat rings
 
@@ -158,7 +159,7 @@ A floating mini-scope locked onto one contact, for tracking it without losing yo
 
 All three accept the same partial/prefix matching (and ambiguity reporting) as `.where`/`.frag`/`.route`.
 
-The focus window itself is a real independent scope: drag to move it, drag an edge/corner to resize, and use the mouse wheel over its title bar to adjust its opacity. Its **⬡** button pops it out into a separate OS window (popping out the same callsign twice refocuses the existing popup instead of opening a duplicate); its **×** button closes it.
+The focus window itself is a real independent scope: drag to move it, drag an edge/corner to resize, and use the mouse wheel over its title bar to adjust its opacity. Its **⬡** button pops it out into a separate OS window (popping out the same callsign twice refocuses the existing popup instead of opening a duplicate); its **×** button closes it. Every display toggle above (`.coords`, `.db`, `.geo`, etc.) is independent per window — turning one on/off in a focus window never affects the main scope or any other focus window.
 
 ## Mouse gestures
 
