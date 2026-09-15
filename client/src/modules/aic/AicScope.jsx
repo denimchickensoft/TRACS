@@ -633,7 +633,7 @@ export default function AicScope() {
       mergedThreatRings, threatRadius, fadedRef.current, Date.now(), findMarker,
       showCentroid ? picture?.centroid : null,
       showAxis && picture?.axisOrigin ? { origin: picture.axisOrigin, axisBearing: picture.axisBearing } : null)
-    drawAbmMissiles(ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum))
+    drawAbmMissiles(ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum), ptlSeconds)
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }

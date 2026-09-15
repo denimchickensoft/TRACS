@@ -294,6 +294,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     () => getAbmVisibleMissiles(weapons, units, myCoalitionNum),
     [weapons, units, myCoalitionNum]
   )
+  const visibleMissilesRef = useRef(visibleMissiles)
+  useEffect(() => { visibleMissilesRef.current = visibleMissiles }, [visibleMissiles])
 
   // Transponder correlation (§D of resources/specs/transponder-correlation-spec.md)
   // — continuous, unconditional reveal gate: binds an srsCapable unit to a
@@ -494,6 +496,35 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
           const pos  = u.position
           if (!pos) return [uid, prev]
           return [uid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
+        })
+      )
+    }, 200)
+    return () => clearInterval(id)
+  }, [])
+
+  // Missile history trail capture — same pattern as the aircraft capture
+  // above, sharing its rate/length settings (one .history command governs
+  // both), but keyed off the weapons store and ABM-only (AIC's drawAbmMissiles
+  // call never passes a history map, so it never draws a trail there).
+  const missileHistoryRef = useRef({})
+  useEffect(() => {
+    let lastCaptureWall = 0
+    let lastCaptureUpdateTime = 0
+    const id = setInterval(() => {
+      const { lastUpdateTime } = useWeaponsStore.getState()
+      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
+      const now = Date.now()
+      if (now - lastCaptureWall < historyRateRef.current * 1000) return
+      lastCaptureWall = now
+      lastCaptureUpdateTime = lastUpdateTime
+
+      const current = visibleMissilesRef.current
+      missileHistoryRef.current = Object.fromEntries(
+        Object.entries(current).map(([wid, w]) => {
+          const prev = missileHistoryRef.current[wid] || []
+          const pos  = w.position
+          if (!pos) return [wid, prev]
+          return [wid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
         })
       )
     }, 200)
@@ -1235,6 +1266,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     drawThreatRings(ctx, view, allVisibleUnits, mergedThreatRings, threatRadius, getDecl)
     drawBraaOverlays(ctx, view, braaList, allVisibleUnits, view.declinationDeg)
 
+    const historyLimit = (windowSettings?.historyVisible ?? true) ? Math.min(MAX_HISTORY, windowSettings?.historyLength ?? 4) : 0
     drawAbmContacts(
       ctx, view, visibleUnits, getDecl,
       windowSettings?.ptlMinutes ?? 1,
@@ -1244,7 +1276,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       windowSettings?.ldrAngleDeg ?? -45,
       windowSettings?.leaderDirs ?? {},
       historyRef.current,
-      (windowSettings?.historyVisible ?? true) ? Math.min(MAX_HISTORY, windowSettings?.historyLength ?? 4) : 0,
+      historyLimit,
       fadedRef.current, Date.now(),
       windowSettings?.dbSuppress ?? true,
       rwrEverDetectedRef.current,
@@ -1263,7 +1295,12 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       view.declinationDeg,
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
-    drawAbmMissiles(ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum))
+    drawAbmMissiles(
+      ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum),
+      (windowSettings?.ptlMinutes ?? 1) * 60,
+      missileHistoryRef.current,
+      historyLimit,
+    )
 
     // Selected FRAG flight's route, if any, plus any routes toggled on via
     // Ctrl+right-click/.route independent of FRAG.
