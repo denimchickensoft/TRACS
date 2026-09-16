@@ -217,3 +217,34 @@ export const useAtcStore = create(
     }
   )
 )
+
+// ── Cross-window ownership sync ───────────────────────────────────────────────
+// One-directional, deliberately mirroring store/controllers.js's identical
+// pattern rather than the symmetric syncStore() helper other stores use: the
+// main window broadcasts `ownership` on every change but never applies
+// incoming state (its own dump-apply/merge path — applyStateDump above,
+// wired from webrtc/client.js — is the only writer there, and stays
+// completely untouched by this); popups (e.g. ASDE-X ODS) never write
+// `ownership` locally, so they only ever receive and mirror it. This
+// asymmetry is deliberate: this store has a documented history of
+// regressions from naive-merge sync (see feedback_webrtc_relay_sync_invariants
+// memory) — a plain whole-field replace here is safe specifically because
+// there's nothing local on the popup side to reconcile against, and the
+// value arriving is always the main window's already-correctly-merged
+// current state. Only `ownership` is synced (not handoffs/pointOuts/etc.) —
+// the one field a real bug (ASDE-X's FPE read-only check always seeing a
+// null myControllerId-owned-track comparison) actually depends on.
+const _isPopup    = !!new URLSearchParams(window.location.search).get('window')
+const _atcOwnerCh = new BroadcastChannel('tracs-atc-ownership')
+
+if (!_isPopup) {
+  useAtcStore.subscribe((state) => _atcOwnerCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: state.ownership } }))
+  _atcOwnerCh.onmessage = (e) => {
+    if (e.data?.type === 'REQUEST_STATE') _atcOwnerCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: useAtcStore.getState().ownership } })
+  }
+} else {
+  _atcOwnerCh.onmessage = (e) => {
+    if (e.data?.type === 'STATE_UPDATE') useAtcStore.setState({ ownership: e.data.state.ownership })
+  }
+  _atcOwnerCh.postMessage({ type: 'REQUEST_STATE' })
+}
