@@ -173,6 +173,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const getEffectiveDeclaration = getAbmEffectiveDeclaration
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
+  const getDecl = useCallback(
+    (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
+    [getEffectiveDeclaration, myCoalitionNum]
+  )
 
   // ── ATO/FRAG flight selection (Ctrl+Shift+Click) ─────────────────────────────
   const atoFlights       = useAbmMissionStore(s => s.flights)
@@ -312,7 +316,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   useEffect(() => {
     if (!autoThreat) { setAutoThreatRingIds(new Set()); return }
-    const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
     const friendlies = []
     const hostiles   = []
     for (const [id, unit] of Object.entries(visibleUnits)) {
@@ -326,7 +329,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       if (hostiles.some(h => nmBetween(unit.position, h.position) <= threatRadius)) breached.add(id)
     }
     setAutoThreatRingIds(breached)
-  }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius]) // eslint-disable-line
+  }, [visibleUnits, autoThreat, getDecl, threatRadius])
 
   // ── Ground/naval picture (§7 / Phase 5) — same declaration store/symbology
   // rules as air (declaration works the same way), distinct rendering
@@ -1259,7 +1262,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   useEffect(() => {
     if (!view || !contactsRef.current) return
     const ctx = contactsRef.current.getContext('2d')
-    const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
     ctx.clearRect(0, 0, view.width, view.height)
 
     const mergedThreatRings = autoThreatRingIds.size
@@ -1323,7 +1325,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     // In-progress .line/.rect/.circ/.poly/.sect/.race/.text preview — on top
     // of everything, same as RBL.
     drawPendingDraw(ctx, view, pendingDraw, drawCursor, windowSettings?.csMap ?? 2)
-  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getEffectiveDeclaration, altToggle,
+  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getDecl, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
@@ -1838,7 +1840,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
     if (e.altKey && !e.ctrlKey) {
       if (!target) return
-      const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
       const nearestId = findNearestBogey(target.unitId, target.unit, visibleUnitsRef.current, getDecl)
       if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
       else setCmdFeedback('NO BOGEY')
@@ -1865,7 +1866,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
     if (buf === '.dope') {
       if (!target) return
-      const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
       const nearestId = findNearestBogey(target.unitId, target.unit, visibleUnitsRef.current, getDecl)
       if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
       else setCmdFeedback('NO BOGEY')
@@ -1983,7 +1983,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
         }
       }
     }
-  }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getEffectiveDeclaration,
+  }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getDecl,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
       pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId])
