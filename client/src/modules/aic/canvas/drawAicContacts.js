@@ -9,14 +9,8 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue, destinationPoint } from '../../../utils/bearing.js'
 import { DECLARATION } from '../../../store/aic.js'
+import { DECL_COLOR, drawPtl } from '../../../utils/declarationSymbols.js'
 import { computeAicIntercept } from '../aicGeometry.js'
-
-export const DECL_COLOR = {
-  [DECLARATION.HOSTILE]:  '#FF4444',
-  [DECLARATION.BOGEY]:  '#FFCC00',
-  [DECLARATION.NEUTRAL]:  '#44CC44',
-  [DECLARATION.FRIENDLY]: '#4488FF',
-}
 
 // Pixel radius for symSize 1-5. Default (3) → 9px.
 export function symRadius(symSize) { return 3 + (symSize - 1) * 2 }
@@ -68,25 +62,6 @@ export function drawSymbol(ctx, x, y, declaration, S, colorOverride = null) {
       break
     }
   }
-}
-
-export function drawPtl(ctx, x, y, unit, view, ptlSeconds, color) {
-  if (!unit.speed || !unit.track) return
-  const distNm = (unit.speed * ptlSeconds) / 1852
-  if (distNm < 0.01) return
-
-  // Rotate track by declination so PTL aligns with the magnetic-north-up canvas.
-  const magTrackRad = unit.track - view.declinationDeg * Math.PI / 180
-  const endX = x + Math.sin(magTrackRad) * distNm * view.pixelsPerNm
-  const endY = y - Math.cos(magTrackRad) * distNm * view.pixelsPerNm
-
-  ctx.strokeStyle = color
-  ctx.lineWidth   = 2
-  ctx.setLineDash([])
-  ctx.beginPath()
-  ctx.moveTo(x, y)
-  ctx.lineTo(endX, endY)
-  ctx.stroke()
 }
 
 function drawDugout(ctx, view, units, getDecl, rangeNm, symSize) {

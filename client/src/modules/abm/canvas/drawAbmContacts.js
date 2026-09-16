@@ -10,7 +10,7 @@
 
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { destinationPoint, gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
-import { drawPtl, DECL_COLOR } from '../../aic/canvas/drawAicContacts.js'
+import { drawPtl, DECL_COLOR, drawHistoryTrail } from '../../../utils/declarationSymbols.js'
 import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
 import { DECLARATION } from '../../../store/abm.js'
 import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
@@ -163,58 +163,6 @@ function drawFadedContacts(ctx, view, fadedContacts, now, ptlMinutes) {
   }
 
   ctx.restore()
-}
-
-// Small squares in the contact's own color, fading with age. Shared by
-// drawAbmContacts (aircraft) and drawAbmMissiles (missiles, ABM only —
-// AIC's call site never passes a non-empty history/historyLimit).
-function drawHistoryTrail(ctx, view, trail, historyLimit, color) {
-  for (let i = 0; i < trail.length && i < historyLimit; i++) {
-    const hp = latLngToCanvas(trail[i].lat, trail[i].lng, view)
-    ctx.globalAlpha = Math.max(0.15, 0.6 - i * 0.12)
-    ctx.fillStyle   = color
-    ctx.fillRect(hp.x - SYM_HALF / 2, hp.y - SYM_HALF / 2, SYM_HALF, SYM_HALF)
-  }
-  ctx.globalAlpha = 1
-}
-
-// Missile tracking — small filled triangle pointing in the direction of
-// travel (weapon.heading — DCS's raw engine-frame heading, validated
-// reliable true-frame data per utils/bearing.js's header, unlike Olympus's
-// own .track field), colored via the same DECL_COLOR declaration scheme as
-// every other contact for consistency with the rest of the scope. In
-// practice this almost always resolves to FRIENDLY: a non-friendly missile
-// is only ever passed in here at all once independently AWACS/EWR-detected
-// (server/src/missileDetection.js), own-coalition/neutral missiles are
-// unconditionally visible — see abmScopeHelpers.js's getAbmVisibleMissiles.
-//
-// ptlSeconds/history/historyLimit default off so AIC's call site (which
-// passes neither) keeps its current minimal treatment (triangle + PTL, no
-// trail) without needing any changes there beyond ptlSeconds.
-export function drawAbmMissiles(ctx, view, missiles, getDecl, ptlSeconds = 0, history = null, historyLimit = 0) {
-  for (const [id, weapon] of Object.entries(missiles)) {
-    if (!weapon.position) continue
-    const decl = getDecl(id, weapon)
-    const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY]
-    const { x, y } = latLngToCanvas(weapon.position.lat, weapon.position.lng, view)
-
-    drawHistoryTrail(ctx, view, (history ?? {})[id] || [], historyLimit, color)
-
-    if (ptlSeconds > 0) drawPtl(ctx, x, y, { ...weapon, track: weapon.heading }, view, ptlSeconds, color)
-
-    const headingRad = weapon.heading ?? 0
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.rotate(headingRad - (view.declinationDeg ?? 0) * Math.PI / 180)
-    ctx.beginPath()
-    ctx.moveTo(0, -4)
-    ctx.lineTo(2.5, 3)
-    ctx.lineTo(-2.5, 3)
-    ctx.closePath()
-    ctx.fillStyle = color
-    ctx.fill()
-    ctx.restore()
-  }
 }
 
 export function drawAbmContacts(

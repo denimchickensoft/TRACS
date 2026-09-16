@@ -13,7 +13,7 @@
  */
 
 import { latLngToCanvas } from '../../../utils/projection.js'
-import { DECL_COLOR } from '../../aic/canvas/drawAicContacts.js'
+import { DECL_COLOR } from '../../../utils/declarationSymbols.js'
 import { DECLARATION } from '../../../store/abm.js'
 import { HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
 

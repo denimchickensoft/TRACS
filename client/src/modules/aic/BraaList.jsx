@@ -6,7 +6,7 @@ import { resolveCallsign } from '../../utils/callsign.js'
 import { useSessionStore } from '../../store/session.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, trueBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
-import { DECLARATION } from '../../store/aic.js'
+import { DECL_COLOR } from '../../utils/declarationSymbols.js'
 import { computeAicIntercept } from './aicGeometry.js'
 import './BraaList.css'
 
@@ -19,13 +19,6 @@ function speedFlags(unit) {
   if (kts >= 900) parts.push('VERY FAST')
   else if (kts >= 600) parts.push('FAST')
   return parts.join('  ')
-}
-
-const DECL_COLOR = {
-  [DECLARATION.HOSTILE]:  '#FF4444',
-  [DECLARATION.BOGEY]:    '#FFCC00',
-  [DECLARATION.NEUTRAL]:  '#44CC44',
-  [DECLARATION.FRIENDLY]: '#4488FF',
 }
 
 const safeNum = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d
