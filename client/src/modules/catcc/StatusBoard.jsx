@@ -6,14 +6,14 @@ import { useCorrelationStore }  from '../../store/correlation.js'
 import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
 import { getVisibleUnits }      from '../atc/stars/visibleUnits.js'
-import { resolveCallsign, parseUnitName } from '../../utils/callsign.js'
-import { hasLiveSquawk, normalizeCode } from '../../utils/transponder.js'
+import { parseUnitName } from '../../utils/callsign.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
 import { useMissionClock }      from '../../utils/useMissionClock.js'
 import { toUtcDateTime, getTheatreUtcOffset } from '../../utils/theatreTime.js'
 import { COLUMNS, EDITABLE_COLS, EDIT_COL_IDX_MAP } from './statusBoardColumns.js'
+import { computeCatccCorrelations } from './correlationEngine.js'
 import { EditableCell } from './EditableCell.jsx'
 import { useStabilityAlert } from './useStabilityAlert.js'
 import { HeaderField } from './HeaderField.jsx'
@@ -132,52 +132,12 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     })
   }, [entries, sortField, sortDir])
 
-  // ── Correlation sync ───────────────────────────────────────────────
+  // ── Correlation sync — see correlationEngine.js's computeCatccCorrelations ──
   // Rebuild correlationStore from entries whenever entries or visible units change.
-  //
-  // Not srsCapable (no relay, or a unit that's never reported real SRS
-  // transponder data) → old model, unchanged: side number shown as soon as
-  // it's typed/matched, no gating.
-  //
-  // srsCapable → gated like STARS' LDB/FDB (see
-  // resources/specs/transponder-correlation-spec.md): no live squawk yet →
-  // nothing shown (CatccScope falls back to 'XXX'); live squawk but no BCN
-  // match → the live code itself shows instead (pendingCodes, reduced info
-  // rather than full anonymity); BCN AND callsign both match (double-gate,
-  // same rationale as associationEngine.js — callsign is ground truth, not
-  // self-reported, so requiring both closes the duplicate/borrowed-code case
-  // for free) → reveal the side number.
   useEffect(() => {
-    const newCorrelations = {}
-    const newPendingCodes = {}
-    for (const entry of entries) {
-      let uid = entry.unitId
-      if (uid && !visibleUnits[uid]) uid = null  // stale — unit was deleted and recreated
-      if (!uid && entry.callsign) {
-        for (const [id, unit] of Object.entries(visibleUnits)) {
-          if (resolveCallsign(unit) === entry.callsign) { uid = id; break }
-        }
-      }
-      if (!uid) continue
-      const unit = visibleUnits[uid]
-
-      if (!unit?.srsCapable) {
-        if (entry.sideNumber) newCorrelations[String(uid)] = entry.sideNumber
-        continue
-      }
-
-      if (!hasLiveSquawk(unit)) continue // nothing to gate on yet
-
-      const squawkMatches   = normalizeCode(unit.transponder.mode3) === normalizeCode(entry.bcn)
-      const callsignMatches = resolveCallsign(unit) === entry.callsign
-      if (entry.sideNumber && squawkMatches && callsignMatches) {
-        newCorrelations[String(uid)] = entry.sideNumber
-      } else {
-        newPendingCodes[String(uid)] = normalizeCode(unit.transponder.mode3)
-      }
-    }
-    useCorrelationStore.getState().setAll(newCorrelations)
-    useCorrelationStore.getState().setPendingCodes(newPendingCodes)
+    const { correlations, pendingCodes } = computeCatccCorrelations({ entries, visibleUnits })
+    useCorrelationStore.getState().setAll(correlations)
+    useCorrelationStore.getState().setPendingCodes(pendingCodes)
   }, [entries, visibleUnits])
 
   // ── Pilot auto-populate ────────────────────────────────────────────
