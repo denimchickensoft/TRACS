@@ -22,6 +22,8 @@ CATCC does not yet use SRS transponder data (unlike ATC's association/IDENT feat
 | `.HISTORY` | Toggle history-trail display |
 | `.LL [0-99]` | Set leader-line length (pixels); bare `.LL` queries the current value |
 | `.LD [N\|NE\|E\|SE\|S\|SW\|W\|NW\|1-9\|OFF]` | Set the default leader-line direction |
+| `.LABELSIZE [0-5]` | Set airspace/fix label size; bare `.LABELSIZE` queries the current value |
+| `.DBSIZE [0-5]` | Set aircraft datablock size; bare `.DBSIZE` queries the current value |
 | `.DBCA` | Toggle datablock collision avoidance (on by default) |
 | `.ASP` | Bulk-toggle all airspace categories |
 | `.TMA` `.CTR` `.CTA` `.FIR` `.UIR` `.SUA` `.MIL` `.TRSA` `.CLASSA`–`.CLASSG` | Toggle one airspace category |
@@ -72,7 +74,7 @@ The on-scope status overlay also shows a context-sensitive next-handoff line —
 
 BRC/FB/speed flash if they drift more than 5° and haven't restabilized for 20 seconds — a heads-up that the boat is maneuvering.
 
-**Aircraft table** — 14 columns: EVT, side number, callsign, pilot (auto-filled from the unit name if left blank), type, mission, ATD (actual departure time), radial, bingo fuel, a read-only side-number mirror, EAT (estimated arrival), Angels (altitude in thousands), fuel state, ATA (actual arrival time).
+**Aircraft table** — 15 columns: EVT, side number, BCN (beacon/squawk code, with a ↻ button per row to recycle it), callsign, pilot (auto-filled from the unit name if left blank), type, mission, ATD (actual departure time), radial, bingo fuel, a read-only side-number mirror, EAT (estimated arrival), Angels (altitude in thousands), fuel state, ATA (actual arrival time).
 
 **Adding entries:**
 

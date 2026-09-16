@@ -99,6 +99,7 @@ Bare-click (empty buffer) also resolves pending point-outs/handoffs automaticall
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
 | `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement |
+| `.LABELSIZE <0-5>` + ENTER | — | Set map/airspace label size — text alias for the DCB's CHAR SIZE > MAP spinner; bare `.LABELSIZE` reports the current value |
 | `.LABELS` + ENTER | — | Toggle the LBL DCB MAP button (map/airspace name labels) |
 | `.FIXES` + ENTER | — | Toggle the FIXES DCB MAP button (theatre fix points) |
 | `.ASP` + ENTER | — | Bulk-toggle every airspace category MAP button |

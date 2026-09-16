@@ -16,7 +16,7 @@ Fields shown/required depend on the mode:
 
 - **Server Name** — optional label; click the save icon to store this connection as a favorite for next time. Saved servers appear in a dropdown as you type, and remember which mode they were saved under.
 - **Server URL** — the DCS server's address, e.g. `1.2.3.4`. `http://` is added automatically if omitted.
-- **Source Port** — the Olympus or Tacview port. Shown and required in **Olympus**/**Tacview** modes; hidden entirely in **Relay** mode (the relay is the connection, there's no separate source port to give).
+- **Source Port** — the Olympus or Tacview port. Shown and optional in **Olympus**/**Tacview** modes (leave it blank to use the URL's own scheme default, e.g. a reverse-proxied `https://host` with no port exposed); hidden entirely in **Relay** mode (the relay is the connection, there's no separate source port to give).
 - **Relay Port** — the TRACS Relay app's port.
   - In **Olympus**/**Tacview** modes this is optional — fill it in to also get SRS transponder/IFF data merged onto tracks, and centralized sync with other controllers (see below) instead of the peer-to-peer fallback.
   - In **Relay** mode this is required — it's your entire connection.
@@ -38,7 +38,7 @@ Once connected, pick a **Module** — ATC, CATCC, AIC, or ABM — and fill in th
 
 | Module | Fields |
 |---|---|
-| [ATC](atc.md) | Facility (an airbase from the current source's airbase list, or a CTR/FIR identifier), position type (TWR/APP/DEP/GND/CTR), frequency |
+| [ATC](atc.md) | Facility (an airbase from the current source's airbase list, or a CTR/FIR identifier), position type (TWR/APP/DEP/GND/CTR, plus RDR/CONTROL/DEL), frequency |
 | [CATCC](catcc.md) | Carrier (detected from live unit data — must be present in the mission), position (Marshal/Approach/Departure/Tower), frequency |
 | [AIC](aic.md) | Callsign, frequency |
 | [ABM](abm.md) | Callsign, frequency |

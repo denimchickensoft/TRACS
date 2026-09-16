@@ -19,6 +19,7 @@ Click the scope to focus it, type, then **Enter** to run most commands. A few co
 | `.center` | Re-center on bullseye |
 | `.center <brg> <rng>` | Center at a magnetic bearing/range (NM) from bullseye |
 | `.center <fixname>` | Center on a named nav fix |
+| `.center` + click | Center on the clicked point |
 | `.find <fixname>` | Drop a marker at a named fix (cleared by Escape) |
 | `.define <term>` (or `.def <term>`) | Look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition above the command line, e.g. `.define bogey dope`. Stays up until dismissed (Escape, another `.define`, or clicking it) |
 | `.be` | Reset bullseye to the mission bullseye (clears any override) |
