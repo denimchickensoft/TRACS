@@ -10,6 +10,7 @@ import { usePreviewStore }  from '../../../store/preview.js'
 import { getVisibleUnits }      from './visibleUnits.js'
 import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './starsStoreSelectors.js'
 import { computeStarsSymbolMap, computeStarsFilteredUnits } from './starsScopeHelpers.js'
+import { useStarsNavdataLoading } from './starsNavdataLoading.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
@@ -31,7 +32,6 @@ import { drawProcedures }             from './canvas/drawProcedures.js'
 import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
 import { useMapsStore }         from '../../../store/maps.js'
-import { useRunwaysStore }      from '../../../store/runways.js'
 import { useHoldingsStore }     from '../../../store/holdings.js'
 import { useAirwaysStore }      from '../../../store/airways.js'
 import { useMsaStore }          from '../../../store/msa.js'
@@ -352,10 +352,8 @@ export default function StarsScope() {
   // convergence, so this app doesn't add it either.
   const declinationDeg = facilityCl?.declinationDeg ?? 0
 
-  // Load fixes + navaids for the current theatre so .FIND lookups work
-  useEffect(() => {
-    if (theatre) useNavdataStore.getState().loadForTheatre(theatre)
-  }, [theatre])
+  // ── Theatre/facility-driven navdata loading — see starsNavdataLoading.js ──
+  useStarsNavdataLoading({ theatre, mission, airbases, facilityDcsName, facilityId, positionSuffix, positionName })
 
   const buildView = useCallback(() => {
     const canvas = ringCanvasRef.current
@@ -458,49 +456,6 @@ export default function StarsScope() {
     })
     autoCenteredRef.current = facilityDcsName
   }, [airbases, facilityDcsName, centerlines, windowSettings, displayStore, facilityType])
-
-  // ── Load runway data when theatre or facility changes ────────────
-  useEffect(() => {
-    const theatre = mission?.mission?.theatre
-    if (!theatre) return
-    const raw    = airbases?.airbases ?? airbases ?? {}
-    const match  = facilityDcsName ? Object.values(raw).find((ab) => (ab.callsign || '') === facilityDcsName) : null
-    const facLat = match?.latitude  ?? null
-    const facLng = match?.longitude ?? null
-    const missionDate = mission?.mission?.dateAndTime?.date ?? null
-    useRunwaysStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, facilityDcsName, missionDate)
-  }, [mission?.mission?.theatre, mission?.mission?.dateAndTime?.date, facilityDcsName, positionSuffix, airbases])
-
-  // ── Load airspace maps when theatre or facility changes ──────────
-  useEffect(() => {
-    const theatre = mission?.mission?.theatre
-    if (!theatre) return
-    const raw    = airbases?.airbases ?? airbases ?? {}
-    const match  = facilityDcsName ? Object.values(raw).find((ab) => (ab.callsign || '') === facilityDcsName) : null
-    const facLat = match?.latitude  ?? null
-    const facLng = match?.longitude ?? null
-    useMapsStore.getState().loadForTheatre(theatre, positionSuffix, facLat, facLng, positionName)
-  }, [mission?.mission?.theatre, facilityDcsName, positionSuffix, airbases, positionName])
-
-  // ── Load new overlays when theatre changes ────────────────────────
-  useEffect(() => {
-    const theatre = mission?.mission?.theatre
-    if (!theatre) return
-    useHoldingsStore.getState().loadForTheatre(theatre)
-    useAirwaysStore.getState().loadForTheatre(theatre)
-    useMsaStore.getState().loadForTheatre(theatre)
-    useMoraStore.getState().loadForTheatre(theatre)
-    useReliefStore.getState().loadForTheatre(theatre)
-    useGeoStore.getState().loadForTheatre(theatre)
-  }, [mission?.mission?.theatre])
-
-  // ── Load procedures + MVA when facility ICAO changes ──────────────────────────
-  useEffect(() => {
-    if (!facilityId) return
-    useProceduresStore.getState().loadForIcao(facilityId)
-    useMvaStore.getState().loadForFacility(facilityId)
-  }, [facilityId])
-
 
   // ── History capture ───────────────────────────────────────────────
   // Rate driven by windowSettings.historyRate (seconds). Uses a ref for the
