@@ -44,6 +44,7 @@ Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `
 | `.aspcolors <name>` | Select an airspace color palette |
 | `.refresh` | Reload airspace color palettes from the server |
 | `.labels` | Toggle name labels for airspace *and* custom drawings |
+| `.labelsize [0-5]` | Set airspace/fix/drawing label size; bare form reports the current value |
 | `.fill` | Toggle polygon fill for airspace *and* custom drawings; `.fill <1-100>` sets transparency % and turns it on |
 | `.custom` / `.cust` | Toggle all custom drawing layers |
 | `.custom <name>` / `.cust <name>` | Toggle just the drawing(s) with that name |
@@ -84,6 +85,7 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 | `.db` | Toggle global datablock visibility; typed (no Enter) + click a contact toggles just that one |
 | `.dbreset` | Clear all per-contact `.db` overrides |
 | `.dbca` | Datablock collision-avoidance placement (off by default) |
+| `.dbsize [0-5]` | Set aircraft datablock size; bare form reports the current value |
 | `.dbs` | Formation datablock suppression: only the flight lead's datablock shows when 2+ same-flight aircraft are within 3 NM (on by default) |
 | `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction |
 | `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
@@ -144,7 +146,7 @@ Alternatives to clicking a contact directly, useful when you know the callsign b
 | `.frag <callsign>` | Open FRAG for that contact's flight |
 | `.route <callsign>` | Toggle that flight's route line on the scope |
 
-All three accept a partial/prefix match and will tell you if it's ambiguous between multiple live callsigns. `.rclear` clears every currently-shown route line at once (both ones toggled via `.route`/FRAG's own ROUTE header).
+All three accept a partial/prefix match and will tell you if it's ambiguous between multiple live callsigns. `.rclear` clears every currently-shown route line at once (both ones toggled via `.route`/FRAG's own ROUTE header) — as does `Escape`, once the command line is already empty (see Keyboard shortcuts below).
 
 ### Focus windows
 
@@ -261,7 +263,7 @@ Fields: Flight Name, Task, Type, Num (aircraft count), **Callsign Prefix** (requ
 | Key | Effect |
 |---|---|
 | `F1`–`F4` | Arm a pending declaration (Hostile/Bogey/Neutral/Friendly) |
-| `Escape` | Clear pending state, in the priority order listed above |
+| `Escape` | Clear pending state, in priority order: an in-progress interactive mode (drawing, RBL, declaration, BRAA pairing, `.define` readout, find marker, clear/clear-all confirmation) first, then any text/feedback in the command line, then — once the command line is already empty — every route line on the scope (same as `.rclear`) |
 | `Enter` | Run the buffered command |
 | `ArrowUp`/`ArrowDown` | Cycle command history |
 | `1`–`9`, then click | Set a contact's leader-line direction |

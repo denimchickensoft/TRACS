@@ -63,7 +63,7 @@ import {
   distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
-import { dispatch, openAbmFocusPanel } from './actions/index.js'
+import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'
 import './AbmScope.css'
 
 const DEFAULT_windowId = 'abm-main'
@@ -1616,11 +1616,16 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       if (pendingClearAllConfirm) { displayStore.updateWindow(windowId, { pendingClearAllConfirm: false }); setCmdFeedback('CLEAR ALL CANCELLED'); return }
       if (pendingDraw) { displayStore.updateWindow(windowId, { pendingDraw: null }); return }
       if (findMarker) { displayStore.updateWindow(windowId, { findMarker: null }); useAbmMissionStore.getState().clearFind(); return }
-      if (routeVisible) { useAbmMissionStore.getState().clearRouteVisible(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
       if (rbl) { displayStore.updateWindow(windowId, { rbl: null }); return }
       if (defineEntry) { displayStore.updateWindow(windowId, { defineEntry: null }); return }
+      // Text in the response field clears first; only once it's already
+      // empty does ESC fall through to clearing every route on the scope
+      // (both Ctrl+RightClick's routeGroupIds and FRAG's routeVisible) —
+      // same "clear all routes" as .rclear.
+      if (cmdBuffer || cmdFeedback) { clearCmd(); return }
+      if (routeVisible || routeGroupIds.length) { setCmdFeedback(RCLEAR()); return }
       clearCmd()
       return
     }
@@ -1684,8 +1689,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // execCommand is a large per-render-redefined function only called from this handler; wrapping
   // it in its own useCallback is a larger refactor than this cleanup pass, tracked separately.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cmdBuffer, pendingDeclaration, pendingBraaFighter, clearPendingBraa, rbl, findMarker, pendingDraw,
-      pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible])
+  }, [cmdBuffer, cmdFeedback, pendingDeclaration, pendingBraaFighter, clearPendingBraa, rbl, findMarker, pendingDraw,
+      pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible, routeGroupIds])
 
   // ── Click dispatch — ported from AIC's handleMouseUp, same modifier/command
   // precedence (2026-07-07): Shift+click removes BRAA pairs for the target;
