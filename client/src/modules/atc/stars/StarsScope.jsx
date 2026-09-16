@@ -12,6 +12,7 @@ import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './
 import { computeStarsSymbolMap, computeStarsFilteredUnits } from './starsScopeHelpers.js'
 import { useStarsNavdataLoading } from './starsNavdataLoading.js'
 import { useStcaTracker } from './stca/useStcaCompute.js'
+import { useHistoryCapture } from './useHistoryCapture.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
@@ -70,7 +71,6 @@ import { loadStarsPrefs, saveStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
 
 const WINDOW_ID  = 'atc-main'
-const MAX_HISTORY = 10  // absolute max; display capped by historyLength setting
 
 export default function StarsScope() {
   const wheelDir         = useWheelDirection()
@@ -165,7 +165,6 @@ export default function StarsScope() {
   const panRef       = useRef({ dragging: false, startX: 0, startY: 0, lastX: 0, lastY: 0 })
   const panAccumRef  = useRef({ dx: 0, dy: 0 })  // pixel delta accumulated since last rAF flush
   const panRafRef    = useRef(null)              // pending rAF id for the coalesced pan flush
-  const historyRef   = useRef({})
   const rblCursorRef = useRef(null)    // canvas-pixel cursor pos during RBL_P2 preview
   const coordsRef    = useRef(null)    // debug coords display div
   const elevRef            = useRef(null)  // last-fetched elevation (m) at cursor, .coords
@@ -398,44 +397,8 @@ export default function StarsScope() {
     autoCenteredRef.current = facilityDcsName
   }, [airbases, facilityDcsName, centerlines, windowSettings, displayStore, facilityType])
 
-  // ── History capture ───────────────────────────────────────────────
-  // Rate driven by windowSettings.historyRate (seconds). Uses a ref for the
-  // current rate so the interval itself never needs to be torn down on change.
-  const historyRateRef = useRef(4.5)
-  useEffect(() => {
-    historyRateRef.current = windowSettings?.historyRate ?? 4.5
-  }, [windowSettings?.historyRate])
-
-  useEffect(() => {
-    let lastCaptureWall = 0
-    let lastCaptureUpdateTime = 0
-    const id = setInterval(() => {
-      const rateSecs = historyRateRef.current
-      if (rateSecs <= 0) return
-
-      // Only capture when fresh Olympus data has arrived
-      const { lastUpdateTime } = useUnitsStore.getState()
-      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
-
-      // Rate-gate in wall time
-      const now = Date.now()
-      if ((now - lastCaptureWall) < rateSecs * 1000) return
-
-      lastCaptureWall = now
-      lastCaptureUpdateTime = lastUpdateTime
-
-      const current = visibleUnitsRef.current
-      historyRef.current = Object.fromEntries(
-        Object.entries(current).map(([uid, u]) => {
-          const prev = historyRef.current[uid] || []
-          const pos  = u.position
-          if (!pos) return [uid, prev]
-          return [uid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
-        })
-      )
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
+  // ── History capture — see useHistoryCapture.js ────────────────────
+  const historyRef = useHistoryCapture(visibleUnitsRef, windowSettings?.historyRate)
 
   // ── Render range rings ────────────────────────────────────────────
   useEffect(() => {
@@ -612,6 +575,7 @@ export default function StarsScope() {
       ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 8, 8)
     }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef is a stable ref returned by useHistoryCapture
   }, [filteredUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick, blinkOn,
       myControllerId, positionName,
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
