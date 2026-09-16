@@ -3,7 +3,6 @@
   "ignoreExportsUsedInFile": true,
   "workspaces": {
     "client": {
-      "entry": ["src/pilot/main.jsx"],
       "project": ["src/**/*.{js,jsx}"]
     },
     "server": {

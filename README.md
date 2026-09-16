@@ -80,9 +80,6 @@ Mission-wide package tracking display.
 - **ATO / FRAG** — tasking summary and per-package detail, built from a dragged-in `.miz`/mission file. Deliberately limited to structural mission data (groups/routes/payloads) — trigger scripting and briefing text are excluded by design.
 - Free-hand scope drawing (lines, rectangles, circles, polygons, sectors, racetracks, text labels) plus custom airspace/drawing import (GeoJSON, zip, or `.miz`), a theatre-aware MGRS grid overlay, manual flight entry, airfield/ground-unit hover readout.
 
-### Pilot Flight Plan Filing
-Standalone page (`pilot.html`) pilots can use to file flight plans directly into a session over WebRTC, without going through any of the primary data sources above.
-
 ---
 
 ## Architecture

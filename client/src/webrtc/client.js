@@ -191,10 +191,9 @@ export function isApplying() { return _applying }
 
 // ── Room ID derivation (P2P/Trystero fallback only — relay-hosted sync uses
 // relayTopicFor() below instead, see webrtc-centralized-sync-spec.md) ─────────
-// `coalition` is a new, optional trailing param (added after `password`, not
-// before it) specifically so pilotClient.js's existing two-arg call
-// (`deriveRoomId(olympusUrl, password)`) keeps working unchanged — pilots
-// have no coalition concept and stay out of scope for this.
+// `coalition` is an optional trailing param (added after `password`, not
+// before it) so existing two-arg callers (`deriveRoomId(olympusUrl, password)`)
+// keep working unchanged.
 export async function deriveRoomId(olympusAddress, password = '', coalition = '') {
   // Hostnames are case-insensitive; lowercase before hashing so two peers who
   // typed the same address with different casing still land in the same room.
@@ -839,59 +838,12 @@ function onModuleMessage(msg) {
   logMsg('← module', msg)
   trackSeq(msg)
 
-  if (msg.type === 'PILOT_FLIGHT_PLAN_REQUEST') {
-    // Any connected ATC peer acks receipt immediately, regardless of host status.
-    // This decouples "did my request reach anyone" (fast, from whoever's peer
-    // connection happens to be up) from "has the host resolved it" (potentially
-    // slower) -- the pilot page stops resending once acked, and only the actual
-    // host goes on to resolve it below.
-    if (activeModule === 'ATC') {
-      const ackMsg = envelope('PILOT_FLIGHT_PLAN_ACK', { aid: msg.payload?.aid }, 'ATC')
-      logMsg('→ module', ackMsg, msg.fromPeerId)
-      sendModule?.(ackMsg, msg.fromPeerId)
-    }
-    resolvePilotFlightPlanRequest(msg.payload, msg.fromPeerId)
-    return
-  }
-
   _applying = true
   try {
     handleModuleMessage(msg)
   } finally {
     _applying = false
   }
-}
-
-// A standalone pilot-filing page (see resources/specs/pilot-filed-flight-plans.md) joins the
-// ATC module room directly but never joins the session room, so it never appears in clientList
-// and is never host-eligible. Only the current global host acts on its request -- otherwise
-// every connected controller would independently mint a different CID/BCN for the same AID via
-// useFlightPlansStore.add()'s local generation. The host resolves it once, locally, then
-// re-broadcasts an ordinary FLIGHT_PLAN_CREATE that every peer (pilot included) applies through
-// the normal handleModuleMessage path.
-//
-// Pilots may only CREATE a new plan, never amend an existing one. If a plan already exists for
-// the AID, the host rejects the request explicitly (rather than silently dropping it) so the
-// pilot page can distinguish "already exists" from "no controller online." A controller frees the
-// AID via the FPE's Delete flow (broadcasts FLIGHT_PLAN_DELETE) so the pilot can refile.
-function resolvePilotFlightPlanRequest(payload, fromPeerId) {
-  if (activeModule !== 'ATC' || !amHost()) return
-  const aid = payload?.aid?.toUpperCase()
-  if (!aid) return
-
-  const fps = useFlightPlansStore.getState()
-  if (fps.plans[aid]) {
-    const rejectMsg = envelope('PILOT_FLIGHT_PLAN_REJECTED', { aid, reason: 'ALREADY_EXISTS' }, 'ATC')
-    logMsg('→ module', rejectMsg, fromPeerId)
-    sendModule?.(rejectMsg, fromPeerId)
-    return
-  }
-
-  fps.add(payload)
-  const resolved = useFlightPlansStore.getState().plans[aid]
-  const outMsg    = envelope('FLIGHT_PLAN_CREATE', resolved, 'ATC')
-  logMsg('→ module', outMsg)
-  sendModule?.(outMsg)
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

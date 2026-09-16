@@ -207,7 +207,7 @@ export function FPE({ scope = null }) {
     if (plans[normalizedAid]) {
       // Backfill/update unitId when the FPE was opened via ctrl-click on a
       // specific contact — otherwise a plan filed without a unit link (e.g.
-      // pilot-filed before radar correlation) never gains one just by a
+      // entered manually before radar correlation) never gains one just by a
       // controller later ctrl-clicking the matching target into an amend.
       amend(normalizedAid, { typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk, bcn,
              ...(unitId ? { unitId } : {}) })
