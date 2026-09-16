@@ -5,12 +5,11 @@ import { useBlink } from '../../../utils/useBlink.js'
 const METERS_TO_FEET = 3.28084
 import { useUnitsStore }       from '../../../store/units.js'
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../../store/atc.js'
-import { useSessionStore }     from '../../../store/session.js'
-import { useControllersStore } from '../../../store/controllers.js'
 import { useDisplayStore }  from '../../../store/display.js'
 import { useOdsStore }      from '../../../store/ods.js'
 import { usePreviewStore }  from '../../../store/preview.js'
 import { getVisibleUnits }      from './visibleUnits.js'
+import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './starsStoreSelectors.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
@@ -87,57 +86,21 @@ export default function StarsScope() {
   const rblCanvasRef     = useRef(null)
   const interactiveRef   = useRef(null)
 
-  const units        = useUnitsStore((s) => s.units)
-  const ownership    = useAtcStore((s) => s.ownership)
-  const handoffs     = useAtcStore((s) => s.handoffs)
-  const pointOuts    = useAtcStore((s) => s.pointOuts)
-  const blinkTracks  = useAtcStore((s) => s.blinkTracks)
-  const displayFdb   = useAtcStore((s) => s.displayFdb)
-  const conflictAcks = useAtcStore((s) => s.conflictAcks)
-  const conflicts    = useStcaStore((s) => s.conflicts)
-  const coalition    = useSessionStore((s) => s.coalition)
-  const positionName = useSessionStore((s) => s.positionName)
-  const myControllerId = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
-  const mission         = useSessionStore((s) => s.mission)
-  const airbases        = useSessionStore((s) => s.airbases)
-  const facilityDcsName  = useSessionStore((s) => s.facilityDcsName)
-  const facilityType     = useSessionStore((s) => s.facilityType)
-  const positionSuffix   = useSessionStore((s) => s.positionSuffix)
-  const facilityId       = useSessionStore((s) => s.facilityId)
-
-  const maps       = useMapsStore((s) => s.maps)
-  const mapPalettes = useMapsStore((s) => s.palettes)
-  const mapVisible = useMapsStore((s) => s.visible)
-
-  const holdings      = useHoldingsStore((s) => s.holdings)
-  const holdsVisible  = useHoldingsStore((s) => s.visible)
-  const airways       = useAirwaysStore((s) => s.airways)
-  const airwaysVisible = useAirwaysStore((s) => s.visible)
-  const msa           = useMsaStore((s) => s.msa)
-  const msaVisible    = useMsaStore((s) => s.visible)
-  const mora          = useMoraStore((s) => s.mora)
-  const moraVisible   = useMoraStore((s) => s.visible)
-  const relief        = useReliefStore((s) => s.relief)
-  const reliefVisible = useReliefStore((s) => s.visible)
-  const mva           = useMvaStore((s) => s.mva)
-  const mvaVisible    = useMvaStore((s) => s.visible)
-  const geoBoundaries = useGeoStore((s) => s.boundaries)
-  const geoCoastlines = useGeoStore((s) => s.coastlines)
-  const geoVisible    = useGeoStore((s) => s.visible)
-  const fixes         = useNavdataStore((s) => s.fixes)
-  const fixesVisible  = useFixesStore((s) => s.visible)
-
-  const procRaw           = useProceduresStore((s) => s.raw)
-  const procSidGroups     = useProceduresStore((s) => s.sidGroups)
-  const procStarGroups    = useProceduresStore((s) => s.starGroups)
-  const procAppchGroups   = useProceduresStore((s) => s.appchGroups)
-  const procVisible       = useProceduresStore((s) => s.visible)
-  const procCommandVisible = useProceduresStore((s) => s.commandVisible)
-
-  const centerlines   = useRunwaysStore((s) => s.centerlines)
-  const cltrVisible   = useRunwaysStore((s) => s.cltrVisible)
-  const obstructions  = useRunwaysStore((s) => s.obstructions)
-  const obstVisible   = useRunwaysStore((s) => s.obstVisible)
+  const {
+    units, ownership, handoffs, pointOuts, blinkTracks, displayFdb, conflictAcks,
+    conflicts, coalition, positionName, myControllerId,
+  } = useStarsAtcData()
+  const {
+    mission, airbases, facilityDcsName, facilityType, positionSuffix, facilityId,
+  } = useStarsFacilityData()
+  const {
+    maps, mapPalettes, mapVisible,
+    holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible,
+    mora, moraVisible, relief, reliefVisible, mva, mvaVisible,
+    geoBoundaries, geoCoastlines, geoVisible, fixes, fixesVisible,
+    procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
+    centerlines, cltrVisible, obstructions, obstVisible,
+  } = useStarsNavdataLayers()
 
   const displayStore   = useDisplayStore()
   const windowSettings = displayStore.windows[WINDOW_ID]
