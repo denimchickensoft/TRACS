@@ -418,7 +418,7 @@ export function Par({
   const sessionCarrierId  = useSessionStore((s) => s.carrierUnitId)
   const sessionModule     = useSessionStore((s) => s.activeModule)
   const sessionAirbases   = useSessionStore((s) => s.airbases)
-  const facilityDcsName   = useSessionStore((s) => s.facilityDcsName)
+  const sessionFacilityDcsName = useSessionStore((s) => s.facilityDcsName)
 
   const params = useMemo(() => new URLSearchParams(window.location.search), [])
 
@@ -431,6 +431,10 @@ export function Par({
   const initCarrierId = docked
     ? (sessionModule === MODULE.CATCC ? sessionCarrierId : null)
     : (params.get('carrierUnitId') != null ? Number(params.get('carrierUnitId')) : null)
+
+  const facilityDcsName = docked
+    ? sessionFacilityDcsName
+    : (params.get('facilityDcsName') ?? null)
 
   // ── WebSocket connection (standalone popup only) ───────────────────
   useEffect(() => {

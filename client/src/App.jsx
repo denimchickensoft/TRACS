@@ -330,10 +330,11 @@ export function App() {
   }, [abmSelectNonce]) // eslint-disable-line
 
   const handleParUndock = useCallback(() => {
-    const { mission, carrierUnitId: cid, activeModule: am } = useSessionStore.getState()
+    const { mission, carrierUnitId: cid, activeModule: am, facilityDcsName } = useSessionStore.getState()
     const theatre = mission?.mission?.theatre ?? null
     const p       = new URLSearchParams({ window: 'par' })
     if (theatre) p.set('theatre', theatre)
+    if (facilityDcsName) p.set('facilityDcsName', facilityDcsName)
     if (am === MODULE.CATCC) {
       p.set('module', 'catcc')
       if (cid != null) p.set('carrierUnitId', String(cid))
