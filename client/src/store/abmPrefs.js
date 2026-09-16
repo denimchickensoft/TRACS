@@ -35,7 +35,7 @@ const DEFAULTS = {
   dbSize:         2,     // aircraft datablock size (0-5), see .dbsize
   ptlMinutes:     1,
   fadedSeconds:   30,
-  threatRadius:   45,
+  threatRadius:   35,
   ringsVisible:   false,
   ringSpacingNm:  20,
   aspColorIdx:    0,     // index into airspace_colors.json palette array — also seeds useAbmAirspaceStore's global paletteIdx (Drawings.jsx CUSTOM color), see AbmScope's mount hydration

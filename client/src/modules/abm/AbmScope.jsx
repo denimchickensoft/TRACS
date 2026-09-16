@@ -235,7 +235,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     const next = current.includes(unitId) ? current.filter(id => id !== unitId) : [...current, unitId]
     useDisplayStore.getState().updateWindow(windowId, { threatRings: next })
   }, [windowId])
-  const threatRadius = windowSettings?.threatRadius ?? 45
+  const threatRadius = windowSettings?.threatRadius ?? 35
 
   // .db + click (2026-07-29) — per-contact datablock override, same
   // session-local Set-toggle pattern as threatRings above (not persisted —

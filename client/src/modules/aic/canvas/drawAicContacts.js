@@ -269,7 +269,7 @@ function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize
 export function drawAicContacts(
   ctx, view, units, getDecl, ptlSeconds, symSize, braaList, rangeNm,
   rbl = null, declinationDeg = 0,
-  threatRings = new Set(), threatRadius = 45,
+  threatRings = new Set(), threatRadius = 35,
   fadedContacts = {}, fadedNow = 0,
   findMarker = null,
   centroidMarker = null,

@@ -371,7 +371,7 @@ export default function AicScope() {
       const defaults = {
         rangeNm: 120, ringSpacingNm: 20, ptlSeconds: 60, symSize: 3,
         centerLat: 0, centerLng: 0, centerOverridden: false,
-        fadedSeconds: 30, threatRadius: 45,
+        fadedSeconds: 30, threatRadius: 35,
       }
       const savedWin = saved
         ? Object.fromEntries(AIC_WIN_FIELDS.filter(k => saved[k] !== undefined).map(k => [k, saved[k]]))
@@ -425,7 +425,7 @@ export default function AicScope() {
     const next = current.includes(unitId) ? current.filter(id => id !== unitId) : [...current, unitId]
     useDisplayStore.getState().updateWindow(WINDOW_ID, { threatRings: next })
   }, [])
-  const threatRadius = windowSettings?.threatRadius ?? 45
+  const threatRadius = windowSettings?.threatRadius ?? 35
 
   // .autothreat (2026-07-10) — local UI toggle (not shared with other
   // controllers). While on, rings light automatically on every friendly
