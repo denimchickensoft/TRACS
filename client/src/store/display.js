@@ -62,6 +62,8 @@ const SCOPE_DEFAULTS = {
   altFilterLowA: 1,
   altFilterHighA: 600,
   qnh: '29.92',
+  atis: null,
+  giText: null,
   tdmMode: false,
   // AIC-only session state (§9.2 of resources/specs/refactor-spec.md) —
   // present in every window's shape like STARS's rbls/minSep above, but only

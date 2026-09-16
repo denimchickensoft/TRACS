@@ -16,6 +16,9 @@ const COMMANDS = [
   // ── List management ─────────────────────────────────────────────
   // SSA — relocate only (always visible)
   { id: 'RELOCATE_SSA',         pattern: /^MF S$/,                trigger: 'SLEW'  },
+  // SSA — ATIS/GI text (main line only; no aux lines/delete variants)
+  { id: 'SET_ATIS_GI',          pattern: /^MF S(\S+) (.+)$/,      trigger: 'ENTER', captures: ['atis', 'giText'] },
+  { id: 'SET_ATIS',             pattern: /^MF S(\S+)$/,           trigger: 'ENTER', captures: ['atis'] },
   // Sign-On List
   { id: 'TOGGLE_SIGNON',        pattern: /^MF TS$/,               trigger: 'ENTER' },
   { id: 'RELOCATE_SIGNON',      pattern: /^MF TS$/,               trigger: 'SLEW'  },

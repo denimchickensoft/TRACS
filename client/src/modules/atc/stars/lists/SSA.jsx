@@ -26,7 +26,7 @@ export function SSA() {
   if (!windowSettings || !activeProfile) return null
 
   const {
-    rangeNm, ptlLength, qnh, lists, briteLst, csLists, tdmMode,
+    rangeNm, ptlLength, qnh, atis, giText, lists, briteLst, csLists, tdmMode,
     altFilterLowU, altFilterHighU, altFilterLowA, altFilterHighA,
   } = windowSettings
   const pos    = lists?.ssa ?? { xPct: 2, yPct: 2 }
@@ -49,6 +49,7 @@ export function SSA() {
 
   const rows = [
     `${displayTime} ${qnhStr}`,
+    ...(atis || giText ? [`${atis ?? ''} ${giText ?? ''}`] : []),
     statusLine,
     `${rangeNm}NM PTL: ${Number(ptlLength).toFixed(1)}`,
     altFilterLine,
