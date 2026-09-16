@@ -185,11 +185,15 @@ const Datablock = memo(function Datablock({
   // forces PDB up to FDB and swaps the callsign for the code. An FDB
   // already shows everything needed — regardless of *why* it's FDB
   // (owned, handoff, point-out, quick look, displayFdb) — so this must
-  // only ever touch a track that was genuinely PDB to begin with. LDB
-  // already shows the code by default, so it needs no override either —
-  // see resources/specs/transponder-correlation-spec.md §4.
+  // only ever touch a track that was genuinely PDB to begin with.
+  // A genuinely-unassociated LDB already shows the code by default (no
+  // override needed), but an associated-but-untracked LDB (no owner, real
+  // flight-plan match) normally shows alt/gs instead — that one DOES need
+  // an override, ldbReadoutActive below, or F1 does nothing for it. See
+  // resources/specs/transponder-correlation-spec.md §4.
   const isBeaconTrack = !!unit.srsCapable && hasLiveSquawk(unit)
   const readoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'PDB'
+  const ldbReadoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'LDB'
   // A PDB that's IDENTing temporarily displays as an LDB for as long as the
   // IDENT is unacknowledged (not just the "on" half of the blink cycle) —
   // takes priority over Beaconator's PDB->FDB promotion if both apply.
@@ -255,7 +259,7 @@ const Datablock = memo(function Datablock({
     // identForcesLdb) shows the real squawk-code layout too, not the
     // legacy single alt/gs line — "turns into an LDB" means it actually
     // looks like one, code and all.
-    if (!assoc || isIdent) {
+    if (!assoc || isIdent || ldbReadoutActive) {
       const beacon = String(unit.transponder?.mode3 ?? '').padStart(4, '0')
       return (
         <g>
@@ -317,10 +321,17 @@ const Datablock = memo(function Datablock({
   // Both blink between white and light gray — never go invisible.
   const isIncomingHo  = handoffs[uid]?.to === myId
   const shouldBlink   = isBlinking || isIncomingHo || isPoReceiving || isPoRejected
+  // readoutActive means this FDB is a Beaconator (F1) promotion of a track
+  // that was genuinely a plain PDB (owner !== myId, no handoff/point-out/
+  // quick-look reason to see it) — see the readoutActive comment above.
+  // Beaconator forces FDB-level *content* but must not repaint the track as
+  // if it were now mine; it stays in the other-controller-owned (PDB) color.
   const fdbColor      = isHighlighted ? HIGHLIGHT_TEAL
     : isPoReceiving
     ? (blinkOn ? '#FFFF00' : '#808000')
-    : shouldBlink ? (blinkOn ? '#FFFFFF' : '#C0C0C0') : colors.fdbText
+    : shouldBlink ? (blinkOn ? '#FFFFFF' : '#C0C0C0')
+    : readoutActive ? colors.pdbText
+    : colors.fdbText
   const acidLine      = beaconLine1 ??
                       ( isPoReceiving ? cs + ' PO'
                       : isPoSent      ? cs + ' PO' + po.to
@@ -454,6 +465,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       // Only a genuinely-PDB track gets promoted+swapped — see the matching
       // comment in Datablock above.
       const readoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'PDB'
+      const ldbReadoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'LDB'
       const identForcesLdb = !!identUnacked[uid] && rawDbType === 'PDB'
       const dbType = identForcesLdb ? 'LDB' : readoutActive ? 'FDB' : rawDbType
       const cs     = (readoutActive && unit.transponder?.mode3 != null)
@@ -469,7 +481,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
 
       let lines
       if (dbType === 'LDB') {
-        if (!assoc || identUnacked[uid]) {
+        if (!assoc || identUnacked[uid] || ldbReadoutActive) {
           const beacon = String(unit.transponder?.mode3 ?? '').padStart(4, '0')
           lines = [beacon, slewedPdbs?.has(uid) ? `${alt} ${gs}` : alt]
         } else {

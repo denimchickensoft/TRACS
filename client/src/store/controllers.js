@@ -32,6 +32,45 @@ function globalUsedLetters(registry) {
   return new Set(Object.values(registry).map((e) => e.letter).filter(Boolean))
 }
 
+// Deterministically resolve any duplicate controllerId across positionNames —
+// e.g. from a split-brain P2P session where two independently-hosting peers
+// each minted their own "1A" before merging. Keeps the entry that registered
+// first (by clientList connectedAt, tie-broken by positionName so every peer
+// computing this over the same inputs reaches the same answer), re-mints the
+// loser(s) via the same nextAvailableLetter/globalUsedLetters machinery
+// registerController uses. See feedback_webrtc_relay_sync_invariants memory,
+// invariant #4 — this is the backstop for every registry merge, not just one
+// call site, so it's wired into setRegistry() itself.
+function dedupeByControllerId(registry, clientList) {
+  const connectedAtByPos = Object.fromEntries(clientList.map((c) => [c.position, c.connectedAt ?? Infinity]))
+  const byId = {}
+  for (const [pos, entry] of Object.entries(registry)) {
+    if (!entry.controllerId) continue
+    ;(byId[entry.controllerId] ??= []).push(pos)
+  }
+  let next = registry
+  for (const positions of Object.values(byId)) {
+    if (positions.length < 2) continue
+    const [, ...losers] = [...positions].sort((a, b) => {
+      const da = connectedAtByPos[a] ?? Infinity, db = connectedAtByPos[b] ?? Infinity
+      return da !== db ? da - db : a.localeCompare(b)
+    })
+    for (const pos of losers) {
+      const entry  = next[pos]
+      const letter = nextAvailableLetter(globalUsedLetters(next))
+      next = {
+        ...next,
+        [pos]: {
+          ...entry, letter, positionSymbol: letter,
+          controllerId: (entry.canAssumeTrack && letter) ? `${entry.groupNumber}${letter}` : null,
+        },
+      }
+      console.warn(`[controllers] duplicate controllerId collision resolved: re-minted ${pos}`)
+    }
+  }
+  return next
+}
+
 export const useControllersStore = create((set, get) => ({
   // { [positionName]: ControllerEntry }
   registry: {},
@@ -68,7 +107,9 @@ export const useControllersStore = create((set, get) => ({
   registerController: (positionName, { facility, suffix, frequency }) => {
     const { registry, groupAssignments, nextGroupNumber, positionTypes } = get()
 
-    if (registry[positionName]) return  // already registered
+    // Allow finalizing a pending stub (registerPendingController below) —
+    // only a real, already-minted entry blocks re-registration.
+    if (registry[positionName] && !registry[positionName].pending) return
 
     const typeDef = positionTypes.find((t) => t.suffix === suffix)
 
@@ -113,6 +154,50 @@ export const useControllersStore = create((set, get) => ({
       },
       groupAssignments: newGroupAssignments,
       nextGroupNumber:  newNextGroupNumber,
+    })
+  },
+
+  // ── Register a pending controller (self-registration before authority is
+  // known) ─────────────────────────────────────────────────────────────────
+  // Called at sign-in (Login.jsx), before initWebrtc() has even run — i.e.
+  // before we can know whether we're the session host (P2P/Nostr) or what
+  // the relay's authoritative registry says (relay transport). Writes a
+  // stub with no controllerId so nothing can self-mint against an
+  // incomplete view (see feedback_webrtc_relay_sync_invariants memory,
+  // invariant #2). finalizeController() below promotes this to a real,
+  // minted entry once the actual authority is known. canAssumeTrack/
+  // displayName are still safe to resolve immediately, since they're derived
+  // purely from local positionTypes.json, not from any authority.
+  registerPendingController: (positionName, { facility, suffix, frequency }) => {
+    const { registry, positionTypes } = get()
+    if (registry[positionName] && !registry[positionName].pending) return  // already finalized
+
+    const typeDef        = positionTypes.find((t) => t.suffix === suffix)
+    const canAssumeTrack = typeDef?.canAssumeTrack ?? false
+
+    set({
+      registry: {
+        ...registry,
+        [positionName]: {
+          positionName, facility, suffix, frequency,
+          letter: null, controllerId: null, positionSymbol: null,
+          canAssumeTrack, groupNumber: null,
+          displayName: typeDef?.displayName ?? suffix,
+          pending: true,
+        },
+      },
+    })
+  },
+
+  // Finalizes a pending stub written by registerPendingController(), using
+  // the stub's own stored facility/suffix/frequency — i.e. re-runs
+  // registerController() for real, now that its loosened guard allows a
+  // pending entry through instead of no-op'ing.
+  finalizeController: (positionName) => {
+    const entry = get().registry[positionName]
+    if (!entry?.pending) return
+    get().registerController(positionName, {
+      facility: entry.facility, suffix: entry.suffix, frequency: entry.frequency,
     })
   },
 
@@ -190,10 +275,16 @@ export const useControllersStore = create((set, get) => ({
 
   // ── Apply host-assigned registry ──────────────────────────────────
   // Used by non-hosts when receiving a CLU or STATE_DUMP that carries
-  // the host's authoritative registry. Replaces local state wholesale
-  // so the host's group numbers and letters are canonical.
-  setRegistry: (registry, groupAssignments = {}, nextGroupNumber = 1) =>
-    set({ registry, groupAssignments, nextGroupNumber }),
+  // the host's authoritative registry (or, on relay transport, a
+  // registry_update from the relay itself). Replaces local state wholesale
+  // so the authority's group numbers and letters are canonical. Runs the
+  // dedup backstop on every call — see dedupeByControllerId above — since
+  // any caller could in principle be passing in a registry that unioned two
+  // independently-minted views (e.g. a P2P split-brain host election).
+  // clientList is only used for the dedup pass's connectedAt tie-break, not
+  // stored.
+  setRegistry: (registry, groupAssignments = {}, nextGroupNumber = 1, clientList = []) =>
+    set({ registry: dedupeByControllerId(registry, clientList), groupAssignments, nextGroupNumber }),
 
   // ── Convenience selectors ─────────────────────────────────────────
   getEntry:          (positionName) => get().registry[positionName] ?? null,

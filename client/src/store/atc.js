@@ -16,6 +16,26 @@ export const POINTOUT_STATE = {
   REJECTED:  'REJECTED',   // sender sees UN indicator until they dismiss it
 }
 
+// Pure — filters a STATE_DUMP payload's ownership/handoffs/pointOuts down to
+// controllerIds actually present in the session. Used by applyAtcDump/
+// applyCatccDump (client/src/webrtc/client.js) to compute the next value
+// *before* touching the store, so the whole transition can land in one set()
+// via applyStateDump() below instead of reset()-then-per-item-replay (which
+// exposes an intermediate all-empty tick to every live subscriber — see
+// feedback_webrtc_relay_sync_invariants memory, invariant #1).
+export function filterAtcDumpPayload(payload, activeIds) {
+  const ownership = {}
+  for (const [uid, cid] of Object.entries(payload.trackOwnership ?? {}))
+    if (activeIds.has(cid)) ownership[uid] = cid
+  const handoffs = {}
+  for (const [uid, ho] of Object.entries(payload.handoffs ?? {}))
+    if (activeIds.has(ho.from) && activeIds.has(ho.to)) handoffs[uid] = ho
+  const pointOuts = {}
+  for (const [uid, po] of Object.entries(payload.pointOuts ?? {}))
+    if (activeIds.has(po.from) && activeIds.has(po.to)) pointOuts[uid] = po
+  return { ownership, handoffs, pointOuts }
+}
+
 export const useAtcStore = create(
   persist(
     (set) => ({
@@ -168,6 +188,23 @@ export const useAtcStore = create(
 
   reset: () =>
     set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {}, identUnacked: {}, conflictAcks: {} }),
+
+  // Atomically replace ownership/handoffs/pointOuts from an authoritative
+  // STATE_DUMP in a single set() — unlike reset() followed by a
+  // claimTrack/setHandoff/setPointOut replay, this never exposes an
+  // intermediate "everything wiped" tick to subscribers (DatablockOverlay's
+  // live ownership read, associationEngine's sticky-while-owned check). See
+  // commit 5b7ae01 (mergeClientList) for the same principle applied to
+  // clientList. callsignOverrides is deliberately NOT cleared here —
+  // applyDump() (client.js) applies payload.callsignOverrides itself,
+  // unconditionally, for every module, right after the per-module dump
+  // function returns.
+  applyStateDump: (ownership, handoffs, pointOuts) =>
+    set({
+      ownership, handoffs, pointOuts,
+      scratchpads: {}, quickLook: new Set(), displayFdb: {},
+      blinkTracks: {}, identUnacked: {}, conflictAcks: {},
+    }),
     }),
     {
       name: 'tracs.atc',

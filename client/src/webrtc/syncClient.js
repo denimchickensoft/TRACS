@@ -75,7 +75,7 @@ const topicState = new Map()   // topic → { onData: fn|null, onJoin: [fn], onL
 
 function topic(t) {
   let s = topicState.get(t)
-  if (!s) { s = { onData: null, onJoin: [], onLeave: [] }; topicState.set(t, s) }
+  if (!s) { s = { onData: null, onJoin: [], onLeave: [], onRegistryUpdate: [], pendingRegister: null }; topicState.set(t, s) }
   return s
 }
 
@@ -117,6 +117,37 @@ function connect(cfg) {
     }
     if (msg.type === 'peer_leave' && topicState.has(msg.topic)) {
       for (const cb of topicState.get(msg.topic).onLeave) cb(msg.peerId)
+      return
+    }
+
+    // Registry-authority messages (client.js's Bug-2 relay-authority path) —
+    // the relay resolves position collisions and mints controllerIds itself
+    // on this transport, see relay/syncRelay.js's handleRegister().
+    if (msg.type === 'register_rejected' && topicState.has(msg.topic)) {
+      const state = topicState.get(msg.topic)
+      state.pendingRegister?.({
+        rejected: true, reason: msg.reason,
+        conflictPosition: msg.conflictPosition, frequency: msg.frequency,
+      })
+      state.pendingRegister = null
+      return
+    }
+    if (msg.type === 'registry_update' && topicState.has(msg.topic)) {
+      const state = topicState.get(msg.topic)
+      // Sent to every member of the topic, including whoever just
+      // registered (unlike 'publish', which excludes the sender) — it's
+      // self-consistent to apply regardless of who triggered it.
+      if (state.pendingRegister) {
+        state.pendingRegister({ rejected: false })
+        state.pendingRegister = null
+      }
+      const payload = {
+        clientList:       msg.clientList,
+        registry:         msg.registry,
+        groupAssignments: msg.groupAssignments,
+        nextGroupNumber:  msg.nextGroupNumber,
+      }
+      for (const cb of state.onRegistryUpdate) cb(payload)
     }
   }
 
@@ -165,6 +196,23 @@ export function joinRoom(cfg, roomId) {
     },
     onPeerJoin(cb)  { state.onJoin.push(cb) },
     onPeerLeave(cb) { state.onLeave.push(cb) },
+    // Registers this peer with the relay's registry authority for this topic
+    // (session-topic only — see client.js's Bug-2 relay-authority path) and
+    // resolves once the relay answers, either with the resolved registration
+    // (via a registry_update, applied through onRegistryUpdate below same as
+    // any other) or a rejection. Only one registerSelf() call is ever made
+    // per room join, so a single pending resolver per topic is sufficient.
+    registerSelf(info) {
+      return new Promise((resolve) => {
+        state.pendingRegister = resolve
+        send({ type: 'register', topic: roomId, ...info })
+      })
+    },
+    // Fires on every registry_update for this topic — the relay's
+    // authoritative clientList/registry/groupAssignments/nextGroupNumber,
+    // both the initial answer to registerSelf() and every subsequent change
+    // (another controller joining/leaving/reconnecting).
+    onRegistryUpdate(cb) { state.onRegistryUpdate.push(cb) },
     leave() {
       topicState.delete(roomId)
       if (topicState.size === 0) {

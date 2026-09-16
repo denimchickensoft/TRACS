@@ -518,7 +518,7 @@ function PositionPhase({ onSignedIn }) {
     overrideTheatre,
     webrtcRejection, clearWebrtcRejection,
   } = useSessionStore()
-  const { positionTypes, loadPositionTypes, registerController } = useControllersStore()
+  const { positionTypes, loadPositionTypes, registerPendingController } = useControllersStore()
 
 
   const [selectedModule, setSelectedModule] = useState(
@@ -940,7 +940,7 @@ function PositionPhase({ onSignedIn }) {
         positionSuffix:   positionSuffix,
         carrierUnitId:    isCarrier ? selectedEntry.unitId : null,
       })
-      registerController(atcPositionName, {
+      registerPendingController(atcPositionName, {
         facility:  facilityId.toUpperCase(),
         suffix:    positionSuffix,
         frequency: formattedFreq,
@@ -967,7 +967,7 @@ function PositionPhase({ onSignedIn }) {
         positionSuffix:   catccSuffix,
         carrierUnitId:    catccEntry.unitId,
       })
-      registerController(catccPositionId, {
+      registerPendingController(catccPositionId, {
         facility:  catccFacilityId,
         suffix:    catccSuffix,
         frequency: formattedFreq,
@@ -988,7 +988,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
         positionTypeName: 'AIC',
         carrierUnitId:    null,
       })
-      registerController(callsign, {
+      registerPendingController(callsign, {
         facility:  'AIC',
         suffix:    'AIC',
         frequency: formattedFreq,
@@ -1008,7 +1008,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
         positionTypeName: 'ABM',
         carrierUnitId:    null,
       })
-      registerController(callsign, {
+      registerPendingController(callsign, {
         facility:  'ABM',
         suffix:    'ABM',
         frequency: formattedFreq,

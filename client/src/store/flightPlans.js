@@ -140,6 +140,26 @@ export const useFlightPlansStore = create(
     Object.values(get().plans).find((p) => p.unitId === unitId) ?? null,
 
   reset: () => { _cidCounter = 1; set({ plans: {} }) },
+
+  // Atomically replace `plans` from an authoritative STATE_DUMP in a single
+  // set() — unlike reset() followed by a per-plan add() replay, this never
+  // exposes an intermediate "no flight plans" tick to subscribers
+  // (associationEngine.js's sticky-while-owned retention bails if
+  // flightPlans?.[aid] is momentarily missing, the same class of bug fixed
+  // for atc.js's ownership/handoffs/pointOuts — see
+  // feedback_webrtc_relay_sync_invariants memory). The dump's plans are
+  // already complete records (real cid/bcn from the sender's own fps.plans,
+  // not freshly generated), so this bypasses add()'s per-plan defaulting
+  // entirely rather than needing a separate filter step.
+  applyPlansDump: (plans) => {
+    // Advance (never rewind) the CID counter past anything in the dump so a
+    // subsequent genuinely-new add() can't collide with a dumped plan's CID —
+    // add()'s generateCid() call used to do this implicitly, once per dumped
+    // plan, as a side effect of the old per-item reset()+add() replay.
+    const maxCid = Math.max(0, ...Object.values(plans).map((p) => parseInt(p.cid, 10) || 0))
+    if (maxCid + 1 > _cidCounter) _cidCounter = maxCid + 1
+    set({ plans })
+  },
     }),
     {
       name: 'tracs.flightPlans',

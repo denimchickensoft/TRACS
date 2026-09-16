@@ -194,7 +194,10 @@ export function HND_OFF_BARE({ slewTarget }) {
   }
 
   if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === controllerId) {
-    getAtc().dropTrack(slewTarget.unitId)
+    // claimTrack already unconditionally overwrites the ownership map entry —
+    // a preceding dropTrack for the same unit is redundant and is the same
+    // shape of two-step "reassign" anti-pattern fixed elsewhere in this
+    // subsystem (see feedback_webrtc_relay_sync_invariants memory).
     claimTrack(slewTarget.unitId, controllerId)
     clearHandoff(slewTarget.unitId)
     sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: slewTarget.unitId, fromControllerId: ho.from, toControllerId: controllerId })

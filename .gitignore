@@ -15,6 +15,7 @@ specs/
 .env.local
 relay/config.json
 relay/tacviewDetectionConfig.json
+relay/sessions.json
 server/tacviewDetectionConfig.json
 server/rateConfig.json
 

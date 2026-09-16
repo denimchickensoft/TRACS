@@ -2,7 +2,7 @@ import * as nostrStrategy    from '@trystero-p2p/nostr'
 import * as wsRelayStrategy  from '@trystero-p2p/ws-relay'
 import * as syncClient       from './syncClient.js'
 import { useSessionStore }    from '../store/session.js'
-import { useAtcStore }        from '../store/atc.js'
+import { useAtcStore, filterAtcDumpPayload } from '../store/atc.js'
 import { useFlightPlansStore } from '../store/flightPlans.js'
 import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadcast } from '../store/statusBoard.js'
 import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/aic.js'
@@ -118,6 +118,75 @@ let _applying = false
 // HANDSHAKE on every new peer join so the host receives it even if our first
 // connection landed on a non-host peer.
 let handshakeAcked = false
+
+// ── Deferred self-minting (P2P/Nostr transport only) ───────────────────────────
+// See feedback_webrtc_relay_sync_invariants memory, invariant #2: a peer must
+// never mint its own controllerId against an incomplete local view. Login.jsx
+// writes a `pending` stub (registerPendingController) at sign-in, before any
+// networking happens; these two mechanisms are what eventually finalize it on
+// this transport (the relay transport finalizes via registerSelf/
+// registry_update instead — see initWebrtc below). Both are no-ops on the
+// relay transport (never armed there) and both stop the moment
+// registry[activePosition] is no longer `pending`.
+const SELF_MINT_GRACE_MS   = 2_500 // no peer found at all within this window -> assume solo, self-mint
+const HANDSHAKE_RETRY_MS   = 3_000 // a peer WAS found but HANDSHAKE_ACK/CLU never arrived -> retry
+const HANDSHAKE_MAX_RETRIES = 3    // ...this many times before falling back to self-mint as a last resort
+let selfMintGraceTimer   = null
+let handshakeRetryTimer  = null
+let handshakeRetryCount  = 0
+
+function stillPendingSelf() {
+  return !!useControllersStore.getState().registry[activePosition]?.pending
+}
+
+// Last-resort self-mint — called once a peer is confirmed alone (grace timer),
+// once HANDSHAKE retries are exhausted, or (see the HANDSHAKE case below) right
+// before a peer broadcasts itself as authoritative host, so its own entry is
+// never the one still pending.
+function ensureSelfRegistered() {
+  if (stillPendingSelf()) useControllersStore.getState().finalizeController(activePosition)
+}
+
+function clearSelfMintTimers() {
+  clearTimeout(selfMintGraceTimer); selfMintGraceTimer = null
+  clearTimeout(handshakeRetryTimer); handshakeRetryTimer = null
+  handshakeRetryCount = 0
+}
+
+// Resends the same HANDSHAKE up to HANDSHAKE_MAX_RETRIES times if we're still
+// pending, then self-mints as a last resort. Self-terminating: stops
+// rescheduling itself the moment stillPendingSelf() is false (a real CLU
+// landed) without needing an explicit cancellation from the caller.
+function scheduleHandshakeRetry(hsMsg) {
+  handshakeRetryTimer = setTimeout(() => {
+    if (!stillPendingSelf()) return // resolved via CLU in the meantime
+    if (handshakeRetryCount >= HANDSHAKE_MAX_RETRIES) {
+      ensureSelfRegistered()
+      return
+    }
+    handshakeRetryCount++
+    logMsg('→ session', hsMsg)
+    sendSession?.(hsMsg)
+    scheduleHandshakeRetry(hsMsg)
+  }, HANDSHAKE_RETRY_MS)
+}
+
+// Client-side resolution of position-type hints for the relay's authoritative
+// `register` message (relay transport only) — the relay is a standalone,
+// independently-deployed app not guaranteed to ship alongside
+// client/public/positionTypes.json, so the client (which already loads it for
+// registerController's own use) resolves and forwards these instead of the
+// relay reading the file itself. See Bug 2 Part A in
+// feedback_webrtc_relay_sync_invariants memory for the full rationale.
+function positionTypeHints(suffix) {
+  const typeDef = useControllersStore.getState().positionTypes.find((t) => t.suffix === suffix)
+  return {
+    preferredLetter: typeDef?.letter ?? null,
+    canAssumeTrack:  typeDef?.canAssumeTrack ?? false,
+    displayName:     typeDef?.displayName ?? suffix,
+  }
+}
+
 export function isApplying() { return _applying }
 
 // ── Room ID derivation (P2P/Trystero fallback only — relay-hosted sync uses
@@ -336,11 +405,33 @@ function buildDump(mod) {
   return base
 }
 
+// Sends a module's STATE_DUMP to a specific newly-appeared peer, iff we're the
+// oldest currently-connected member of that module — module data authority is
+// independent of session-host/registry authority (see the HANDSHAKE case and
+// the relay onRegistryUpdate handler in initWebrtc, both of which call this).
+// oldestPeerOfModule() is deterministic and gives the same single peerId to
+// everyone computing it, so this can't double-send.
+async function maybeSendModuleDump(mod, toPeerId) {
+  if (oldestPeerOfModule(mod) !== selfId) return
+  const dump = await buildDump(mod)
+  const dumpMsg = envelope('STATE_DUMP', dump)
+  logMsg('→ session', dumpMsg, toPeerId)
+  sendSession?.(dumpMsg, toPeerId)
+}
+
 // ── Apply STATE_DUMP payload ──────────────────────────────────────────────────
+// Both functions below apply ownership/handoffs/pointOuts via one atomic
+// applyStateDump() call, and applyAtcDump additionally applies flight plans
+// via one atomic applyPlansDump() call, rather than reset()-then-per-item-
+// claimTrack/setHandoff/setPointOut/add() — the old pattern exposed an
+// intermediate "everything wiped" tick to every live subscriber
+// (DatablockOverlay's ownership read, associationEngine's sticky-while-owned
+// check, which bails on a momentarily-missing flight plan just as readily as
+// a momentarily-missing ownership entry), which is exactly the class of bug
+// feedback_webrtc_relay_sync_invariants exists to prevent. See that memory /
+// the STARS-datablock-flicker fix (both rounds) for the history.
 function applyAtcDump(payload) {
-  const fps = useFlightPlansStore.getState()
-  fps.reset()
-  for (const plan of Object.values(payload.flightPlans ?? {})) fps.add(plan)
+  useFlightPlansStore.getState().applyPlansDump(payload.flightPlans ?? {})
 
   // Build the set of controller IDs that are actually present in the dumped
   // session. syncPeers() has already run, so the registry reflects the dump's
@@ -351,18 +442,8 @@ function applyAtcDump(payload) {
       .map((e) => e.controllerId)
       .filter(Boolean)
   )
-
-  const atc = useAtcStore.getState()
-  atc.reset()
-  for (const [uid, cid] of Object.entries(payload.trackOwnership ?? {})) {
-    if (activeIds.has(cid)) atc.claimTrack(uid, cid)
-  }
-  for (const [uid, ho] of Object.entries(payload.handoffs ?? {})) {
-    if (activeIds.has(ho.from) && activeIds.has(ho.to)) atc.setHandoff(uid, ho)
-  }
-  for (const [uid, po] of Object.entries(payload.pointOuts ?? {})) {
-    if (activeIds.has(po.from) && activeIds.has(po.to)) atc.setPointOut(uid, po)
-  }
+  const { ownership, handoffs, pointOuts } = filterAtcDumpPayload(payload, activeIds)
+  useAtcStore.getState().applyStateDump(ownership, handoffs, pointOuts)
 }
 
 function applyCatccDump(payload) {
@@ -373,25 +454,23 @@ function applyCatccDump(payload) {
       .map((e) => e.controllerId)
       .filter(Boolean)
   )
-  const atc = useAtcStore.getState()
-  atc.reset()
-  for (const [uid, cid] of Object.entries(payload.trackOwnership ?? {})) {
-    if (activeIds.has(cid)) atc.claimTrack(uid, cid)
-  }
-  for (const [uid, ho] of Object.entries(payload.handoffs ?? {})) {
-    if (activeIds.has(ho.from) && activeIds.has(ho.to)) atc.setHandoff(uid, ho)
-  }
-  for (const [uid, po] of Object.entries(payload.pointOuts ?? {})) {
-    if (activeIds.has(po.from) && activeIds.has(po.to)) atc.setPointOut(uid, po)
-  }
+  const { ownership, handoffs, pointOuts } = filterAtcDumpPayload(payload, activeIds)
+  useAtcStore.getState().applyStateDump(ownership, handoffs, pointOuts)
 }
 
 function applyDump(mod, payload) {
   _applying = true
   try {
-    // Seed registry before syncPeers so rebuildFromClientList treats every
-    // peer as "already registered" (no local ID derivation) and so that the
-    // activeIds filter in applyAtcDump/applyCatccDump sees correct IDs.
+    // clientList merges first (reversed from the original order) so that the
+    // registry-merge dedup pass below has connectedAt available for any
+    // position that only just arrived in this exact dump — dedupeByControllerId
+    // (controllers.js) needs it to pick a deterministic winner on collision.
+    if (payload.clientList) { clientList = mergeClientList(payload.clientList); syncPeers() }
+
+    // Seed registry so rebuildFromClientList (already run via syncPeers above)
+    // treats every peer as "already registered" (no local ID derivation) and
+    // so that the activeIds filter in applyAtcDump/applyCatccDump sees correct
+    // IDs.
     //
     // Merge rather than replace: the dump can be a stale snapshot captured
     // by the sender before it registered the very peer this is being sent
@@ -399,23 +478,25 @@ function applyDump(mod, payload) {
     // upserting/minting their ID -- see the HANDSHAKE handler above), so it
     // must never be able to erase an entry we already have (especially our
     // own). The authoritative CLIENT_LIST_UPDATE that always follows applies
-    // the host's registry wholesale once it's actually complete.
+    // the host's registry wholesale once it's actually complete. setRegistry's
+    // dedup pass (controllers.js) is the backstop for the rare case where this
+    // merge unions two independently-minted entries for the same controllerId.
     if (payload.registry) {
       const ctrl = useControllersStore.getState()
       useControllersStore.getState().setRegistry(
         { ...ctrl.registry, ...payload.registry },
         { ...ctrl.groupAssignments, ...(payload.groupAssignments ?? {}) },
         Math.max(ctrl.nextGroupNumber, payload.nextGroupNumber ?? 1),
+        clientList,
       )
     }
-    if (payload.clientList) { clientList = mergeClientList(payload.clientList); syncPeers() }
     if (payload.peerSequences) Object.assign(peerSeqs, payload.peerSequences)
     if (mod === 'ATC')   applyAtcDump(payload)
     if (mod === 'CATCC') applyCatccDump(payload)
     if (mod === 'AIC')   applyAicStateDump(payload)
     if (mod === 'ABM')   applyAbmStateDump(payload)
     // Applied after the per-module dump above, since applyAtcDump/applyCatccDump
-    // call atc.reset() (which clears callsignOverrides) before this point.
+    // apply their own (unrelated) state via applyStateDump() before this point.
     if (payload.callsignOverrides) {
       useAtcStore.setState({ callsignOverrides: payload.callsignOverrides })
     }
@@ -465,22 +546,31 @@ function startDisconnectTimer(peerId) {
     persistSession()
     dropControllerTracks(lostControllerId)
 
-    const ctrl = useControllersStore.getState()
-    const pdMsg  = envelope('PEER_DISCONNECTED', {
+    const pdMsg = envelope('PEER_DISCONNECTED', {
       position: entry.position,
       module:   entry.module,
       peerId,
     })
-    const cluMsg = envelope('CLIENT_LIST_UPDATE', {
-      clients:          clientList,
-      registry:         ctrl.registry,
-      groupAssignments: ctrl.groupAssignments,
-      nextGroupNumber:  ctrl.nextGroupNumber,
-    })
     logMsg('→ session', pdMsg)
-    logMsg('→ session', cluMsg)
     sendSession?.(pdMsg)
-    sendSession?.(cluMsg)
+
+    // Registry-authority broadcast — Nostr/P2P transport only. On the relay
+    // transport the relay itself owns eviction and re-broadcast (its own
+    // eviction timer + registry_update — see initWebrtc's onRegistryUpdate
+    // handler), so a client must never also assert a registry view of its
+    // own onto the shared topic (see feedback_webrtc_relay_sync_invariants
+    // memory, invariant #2 — exactly one authority).
+    if (!usingSyncRelay) {
+      const ctrl = useControllersStore.getState()
+      const cluMsg = envelope('CLIENT_LIST_UPDATE', {
+        clients:          clientList,
+        registry:         ctrl.registry,
+        groupAssignments: ctrl.groupAssignments,
+        nextGroupNumber:  ctrl.nextGroupNumber,
+      })
+      logMsg('→ session', cluMsg)
+      sendSession?.(cluMsg)
+    }
   }, DISCONNECT_TIMEOUT_MS)
 }
 
@@ -497,6 +587,12 @@ async function onSessionMessage(msg, fromPeerId) {
 
   switch (msg.type) {
     case 'HANDSHAKE': {
+      // Defensive: no client ever sends a HANDSHAKE on the relay transport
+      // (the relay is the sole registry authority there — see initWebrtc's
+      // registerSelf/onRegistryUpdate) — a stray/skewed client shouldn't be
+      // able to make us process one.
+      if (usingSyncRelay) break
+
       const senderConnectedAt  = msg.payload.connectedAt  ?? Date.now()
       // roomJoinedAt = actual wall-clock time the sender entered the WebRTC room in
       // this session. Unlike connectedAt it is never preserved across refreshes, so
@@ -561,18 +657,22 @@ async function onSessionMessage(msg, fromPeerId) {
       // double-send.) Every peer evaluates this off the broadcast HANDSHAKE,
       // not just the host, and it must run before the host-only section
       // below so a non-host oldest-module-peer still gets to send it.
-      if (oldestPeerOfModule(msg.payload.module) === selfId) {
-        const dump = await buildDump(msg.payload.module)
-        const dumpMsg = envelope('STATE_DUMP', dump)
-        logMsg('→ session', dumpMsg, fromPeerId)
-        sendSession?.(dumpMsg, fromPeerId)
-      }
+      await maybeSendModuleDump(msg.payload.module, fromPeerId)
 
       // Non-hosts must not upsert the raw requested position — if it collides with
       // an existing peer's position string, rebuildFromClientList would overwrite that
       // peer's registry entry (wiping their controllerId) until the host's CLU arrives.
       // Non-hosts wait for the authoritative CLU instead.
       if (!amGlobalHost) break
+
+      // We're about to broadcast ourselves as the authoritative host — make
+      // sure our own entry is finalized first (covers the legitimate
+      // first/only-controller case; see ensureSelfRegistered above).
+      // Deliberately not called from maybeSendModuleDump/oldestPeerOfModule
+      // above — that authority is module-scoped and independent of
+      // session-host/registry authority, and finalizing there would reopen
+      // the exact self-mint race this is closing.
+      ensureSelfRegistered()
 
       const resolved = resolvePosition(msg.payload.position)
 
@@ -663,6 +763,12 @@ async function onSessionMessage(msg, fromPeerId) {
     }
 
     case 'CLIENT_LIST_UPDATE': {
+      // Defensive: no client ever sends this on the relay transport anymore
+      // (see startDisconnectTimer's matching guard) — the relay's own
+      // registry_update is the only trusted registry-authority broadcast
+      // there.
+      if (usingSyncRelay) break
+
       // Merge the incoming list with ours: update/add entries from the host's view,
       // but never remove peers we already track — only PEER_DISCONNECTED and the
       // disconnect timer remove peers. This prevents a stale CLU from resurrecting
@@ -676,6 +782,7 @@ async function onSessionMessage(msg, fromPeerId) {
           msg.payload.registry,
           msg.payload.groupAssignments ?? {},
           msg.payload.nextGroupNumber  ?? 1,
+          clientList,
         )
       }
       syncPeers()
@@ -966,26 +1073,103 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   // active module — see store/roe.js.
   registerRoeBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
 
-  // Add self immediately — if first peer, we're already "connected"
-  upsertClient({ peerId: selfId, clientId: myClientId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt })
-  syncPeers()
-  useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
-  persistSession()
+  if (usingSyncRelay) {
+    // The relay is the sole registry authority on this transport (see
+    // feedback_webrtc_relay_sync_invariants memory, invariant #2) — no local
+    // self-upsert/mint here. registerSelf() below is answered by the relay's
+    // own resolvePosition()/minting (relay/registryAuthority.js), and every
+    // subsequent registry/clientList change (ours or anyone else's) arrives
+    // via registry_update, applied by onRegistryUpdate.
+    sessionRoom.onRegistryUpdate(({ clientList: relayClientList, registry, groupAssignments, nextGroupNumber }) => {
+      const previousPeerIds = new Set(clientList.map((c) => c.peerId))
+      // Registry first — same ordering rule as applyDump()/CLIENT_LIST_UPDATE,
+      // so nothing ever tries to locally mint for a position the relay
+      // already resolved.
+      useControllersStore.getState().setRegistry(registry, groupAssignments, nextGroupNumber, relayClientList)
+      // Additive merge, not a replace — departures are still handled by the
+      // same transport-agnostic onPeerLeave/startDisconnectTimer/removeClient
+      // path used on the Nostr/P2P transport (unchanged below), so this only
+      // ever needs to add/update entries here.
+      clientList = mergeClientList(relayClientList)
+      syncPeers()
+      persistSession()
 
-  // onPeerJoin fires on BOTH sides when a connection is established. We send
-  // HANDSHAKE on every new peer join until we receive HANDSHAKE_ACK. This ensures
-  // the host receives our HANDSHAKE even if our first connection landed on a
-  // non-host peer (which cannot process the HANDSHAKE itself).
+      const mine = clientList.find((c) => c.peerId === selfId)
+      if (mine && mine.position !== activePosition) {
+        activePosition = mine.position
+        useSessionStore.setState({ positionName: activePosition })
+      }
+
+      for (const c of relayClientList) {
+        if (!previousPeerIds.has(c.peerId)) maybeSendModuleDump(c.module, c.peerId)
+      }
+    })
+
+    const result = await sessionRoom.registerSelf({
+      position, module: mod, frequency, facility, suffix,
+      clientId: myClientId, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt,
+      previousPeerId,
+      ...positionTypeHints(suffix),
+    })
+    if (result.rejected) {
+      const message = result.reason === 'DUPLICATE_FREQUENCY'
+        ? `Frequency ${result.frequency} MHz is already in use by ${result.conflictPosition}.`
+        : 'Sign-on rejected by the relay.'
+      useSessionStore.getState().setWebrtcRejection(message)
+      await disconnectWebrtc()
+      useSessionStore.getState().resetPosition()
+      return
+    }
+    handshakeAcked = true
+    useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
+    persistSession()
+  } else {
+    // Add self immediately — if first peer, we're already "connected". Real
+    // identity (host election + minting) resolves via HANDSHAKE/CLU below;
+    // Login.jsx's registerPendingController already wrote our own registry
+    // entry as `pending` so nothing here self-mints against an incomplete view.
+    upsertClient({ peerId: selfId, clientId: myClientId, position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt })
+    syncPeers()
+    useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
+    persistSession()
+
+    // No peer found at all within this window -> assume solo, self-mint.
+    // Cleared the moment any peer actually shows up (onPeerJoin below).
+    clearTimeout(selfMintGraceTimer)
+    selfMintGraceTimer = setTimeout(ensureSelfRegistered, SELF_MINT_GRACE_MS)
+  }
+
+  // onPeerJoin fires on BOTH sides when a connection is established. On the
+  // Nostr/P2P transport we send HANDSHAKE on every new peer join until we
+  // receive HANDSHAKE_ACK, so the host receives it even if our first
+  // connection landed on a non-host peer (which cannot process the HANDSHAKE
+  // itself); on the relay transport this only cancels a pending disconnect
+  // timer, since the relay itself is the registry authority.
   sessionRoom.onPeerJoin((peerId) => {
     // Reconnect: cancel the pending disconnect timer so the peer isn't evicted.
     if (disconnectTimers[peerId]) {
       clearTimeout(disconnectTimers[peerId])
       delete disconnectTimers[peerId]
     }
+    if (usingSyncRelay) return
+
+    // A real peer exists now — defer to HANDSHAKE/CLU instead of the
+    // "assume solo" grace timer.
+    clearTimeout(selfMintGraceTimer); selfMintGraceTimer = null
+
     if (handshakeAcked) return
     const hsMsg = envelope('HANDSHAKE', { position, module: mod, frequency, facility, suffix, connectedAt: myConnectedAt, roomJoinedAt: myRoomJoinedAt, previousPeerId, clientId: myClientId })
     logMsg('→ session', hsMsg)
     sendSession(hsMsg)
+
+    // A peer was found but the HANDSHAKE reply (ACK/CLU) may be lost — retry
+    // a bounded number of times before falling back to self-mint as a last
+    // resort (see scheduleHandshakeRetry above). Restarts the retry chain
+    // fresh on every peer join, in case an earlier one's reply is what's
+    // actually missing.
+    clearTimeout(handshakeRetryTimer)
+    handshakeRetryCount = 0
+    scheduleHandshakeRetry(hsMsg)
   })
 
   // Never start a disconnect timer against ourselves — a relay/transport-level
@@ -1020,6 +1204,7 @@ export async function disconnectWebrtc() {
 
   for (const t of Object.values(disconnectTimers)) clearTimeout(t)
   for (const k of Object.keys(disconnectTimers))   delete disconnectTimers[k]
+  clearSelfMintTimers()
 
   useSessionStore.getState().setWebrtcStatus('disconnected')
   useSessionStore.getState().setPeers([])
