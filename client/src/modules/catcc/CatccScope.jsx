@@ -519,25 +519,11 @@ export default function CatccScope() {
       return
     }
 
-    // MF S — relocate status text
-    if (usePreviewStore.getState().buffer.trim().toUpperCase() === 'MF S') {
-      const v = viewRef.current
-      if (v) {
-        useDisplayStore.getState().updateWindow(WINDOW_ID, {
-          statusTextXPct: (canvasPos.x / v.width)  * 100,
-          statusTextYPct: (canvasPos.y / v.height) * 100,
-        })
-        usePreviewStore.getState().clear()
-        setOdsLines([])
-      }
-      return
-    }
-
     // Slew commands — parse ODS buffer against CATCC's own local slew table
-    // (IC/TC/HO <tcp>/point-outs/leader-line/scratchpad — see slewCommands.js)
+    // (IC/TC/HO <tcp>/point-outs/leader-line/scratchpad/MF S — see slewCommands.js)
     const parsed = parseCatccSlew(usePreviewStore.getState().buffer)
     if (parsed) {
-      dispatchCatccSlew(parsed, target, correlationsRef.current)
+      dispatchCatccSlew(parsed, target, correlationsRef.current, { canvasPos, view: viewRef.current })
       if (!usePreviewStore.getState().response) setOdsLines([])
     }
   }, [])

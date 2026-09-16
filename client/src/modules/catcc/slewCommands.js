@@ -150,6 +150,19 @@ function setLeader(dir, target) {
   ok()
 }
 
+// ── MF S + click — relocate the status-text overlay to a canvas position ────
+// Unlike every other SLEW_COMMANDS entry, this one's "target" is a raw
+// canvas position, not a unit — dispatchCatccSlew's optional `extra` param
+// carries { canvasPos, view } for this one case.
+function relocateStatusText(canvasPos, view) {
+  if (!canvasPos || !view) return err('NO TARGET')
+  useDisplayStore.getState().updateWindow(WINDOW_ID, {
+    statusTextXPct: (canvasPos.x / view.width)  * 100,
+    statusTextYPct: (canvasPos.y / view.height) * 100,
+  })
+  ok()
+}
+
 // ── 3-4 char alphanumeric + slew — scratchpad 1; +prefixed — scratchpad 2 ────
 // Bare "." / "+" + slew clears the respective field.
 function setScratchpad(field, value, target) {
@@ -171,6 +184,7 @@ const SLEW_COMMANDS = [
   { id: 'REJECT_PO',         pattern: /^UN$/ },
   { id: 'SET_LEADER_GLOBAL', pattern: /^MF L([1-9])\1$/,       captures: ['dir'] },
   { id: 'SET_LEADER',        pattern: /^MF L([1-9])$/,         captures: ['dir'] },
+  { id: 'MF_S',              pattern: /^MF S$/ },
   { id: 'SET_SP1',           pattern: /^([A-Z0-9/]{3,4})$/,    captures: ['sp'] },
   { id: 'SET_SP2',           pattern: /^\+([A-Z0-9/]{1,4})$/,  captures: ['sp'] },
   { id: 'CLEAR_SP1',         pattern: /^\.$/ },
@@ -189,7 +203,7 @@ export function parseCatccSlew(buffer) {
   return null
 }
 
-export function dispatchCatccSlew(parsed, target, correlations) {
+export function dispatchCatccSlew(parsed, target, correlations, extra) {
   const { id, captures } = parsed
   switch (id) {
     case 'IC':                return initCntl(target, correlations)
@@ -200,6 +214,7 @@ export function dispatchCatccSlew(parsed, target, correlations) {
     case 'REJECT_PO':         return rejectPointOut(target)
     case 'SET_LEADER_GLOBAL': return setLeaderGlobal(captures.dir)
     case 'SET_LEADER':        return setLeader(captures.dir, target)
+    case 'MF_S':              return relocateStatusText(extra?.canvasPos, extra?.view)
     case 'SET_SP1':           return setScratchpad('sp1', captures.sp, target)
     case 'SET_SP2':           return setScratchpad('sp2', captures.sp, target)
     case 'CLEAR_SP1':         return setScratchpad('sp1', '', target)
