@@ -2,7 +2,6 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useBlink } from '../../../utils/useBlink.js'
 
-const METERS_TO_FEET = 3.28084
 import { useUnitsStore }       from '../../../store/units.js'
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../../store/atc.js'
 import { useDisplayStore }  from '../../../store/display.js'
@@ -10,6 +9,7 @@ import { useOdsStore }      from '../../../store/ods.js'
 import { usePreviewStore }  from '../../../store/preview.js'
 import { getVisibleUnits }      from './visibleUnits.js'
 import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './starsStoreSelectors.js'
+import { computeStarsSymbolMap, computeStarsFilteredUnits } from './starsScopeHelpers.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
@@ -67,7 +67,6 @@ import { useNavdataStore }      from '../../../store/navdata.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { findFlightPlanAid } from '../../../utils/callsign.js'
 import { formatElevation } from '../../../utils/coords.js'
-import { hasLiveSquawk }  from '../../../utils/transponder.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
 import { loadStarsPrefs, saveStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
@@ -242,32 +241,12 @@ export default function StarsScope() {
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 
 
-  // ── Contact symbol map ────────────────────────────────────────────
-  // Each entry: { sym: string, mine: boolean }
-  // sym  — '*' unassociated (beacon code received), 'V' unassociated
-  // squawking 1200, position letter (e.g. 'T') when associated
-  // mine — true when owned by this controller (drives white vs green)
-  //
-  // "Unassociated" here always meant "unowned" — this is the first time it
-  // reflects a real transponder-based association check too (only for
-  // srsCapable units; unchanged for everything else). See
-  // resources/specs/transponder-correlation-spec.md §4.1.
+  // ── Contact symbol map — see starsScopeHelpers.js's computeStarsSymbolMap ──
   const associated = useAssociationStore((s) => s.associated)
-  const symbolMap = useMemo(() => {
-    const map = {}
-    for (const [id, unit] of Object.entries(visibleUnits)) {
-      const owner = ownership[String(id)]
-      const assoc = !unit?.srsCapable || !!associated[String(id)]
-      // Treat as "mine" if owned by me, or if I have a sticky FDB (post-handoff sender)
-      const mine  = owner === myControllerId || !!displayFdb[String(id)]
-      // 2-char ID in either order (e.g. "1A" or "A1") — extract the letter
-      const m   = (assoc && owner?.length === 2) ? owner.match(/[A-Z]/) : null
-      const isVfrCode = unit?.srsCapable && !assoc && Number(unit.transponder?.mode3) === 1200
-      const sym = m ? m[0] : isVfrCode ? 'V' : '*'
-      map[id] = { sym, mine }
-    }
-    return map
-  }, [visibleUnits, ownership, displayFdb, myControllerId, associated])
+  const symbolMap = useMemo(
+    () => computeStarsSymbolMap(visibleUnits, ownership, displayFdb, myControllerId, associated),
+    [visibleUnits, ownership, displayFdb, myControllerId, associated]
+  )
 
   // ── Beacon code readout ("Beaconator") — press-and-hold F1 ──────────
   // Momentary: forces every beacon track (real, active squawk) to appear
@@ -295,29 +274,14 @@ export default function StarsScope() {
     }
   }, [])
 
-  // ── Altitude filter (MULTI FUNC F / FC) ───────────────────────────
-  // Suppresses tracks whose altitude falls outside the filter range for
-  // their association status (symbolMap sym === '*' means unassociated).
-  // Units with no altitude data (elevation unavailable) are never filtered.
-  // Beacon readout (above) forces beacon tracks through regardless.
-  const filteredUnits = useMemo(() => {
-    const loU = windowSettings?.altFilterLowU  ?? 1
-    const hiU = windowSettings?.altFilterHighU ?? 600
-    const loA = windowSettings?.altFilterLowA  ?? 1
-    const hiA = windowSettings?.altFilterHighA ?? 600
-    const out = {}
-    for (const [id, unit] of Object.entries(visibleUnits)) {
-      const alt = unit.position?.alt
-      if (alt == null) { out[id] = unit; continue }
-      const hundreds   = (alt * METERS_TO_FEET) / 100
-      const sym        = symbolMap[id]?.sym
-      const associated = sym !== '*' && sym !== 'V'
-      const [lo, hi]   = associated ? [loA, hiA] : [loU, hiU]
-      if (hundreds >= lo && hundreds <= hi) { out[id] = unit; continue }
-      if (beaconReadout && hasLiveSquawk(unit)) out[id] = unit
-    }
-    return out
-  }, [visibleUnits, symbolMap, beaconReadout,
+  // ── Altitude filter (MULTI FUNC F / FC) — see starsScopeHelpers.js's
+  // computeStarsFilteredUnits ─────────────────────────────────────────
+  const filteredUnits = useMemo(() => computeStarsFilteredUnits(visibleUnits, symbolMap, beaconReadout, {
+    loU: windowSettings?.altFilterLowU  ?? 1,
+    hiU: windowSettings?.altFilterHighU ?? 600,
+    loA: windowSettings?.altFilterLowA  ?? 1,
+    hiA: windowSettings?.altFilterHighA ?? 600,
+  }), [visibleUnits, symbolMap, beaconReadout,
       windowSettings?.altFilterLowU, windowSettings?.altFilterHighU,
       windowSettings?.altFilterLowA, windowSettings?.altFilterHighA])
 
