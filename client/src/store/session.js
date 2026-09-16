@@ -257,15 +257,24 @@ export const useSessionStore = create((set) => ({
     }),
 }))
 
-// Sync the subset of session state used by the ControllerList popup window.
-// Only these fields are broadcast — positionSet, webrtcStatus, etc. are local.
-// Syncs only session-wide data (shared across all windows in the same session).
-// facilityId and facilityName are per-scope and must NOT be synced here — doing so
-// causes scope windows to overwrite each other's facility identity when multiple
-// scopes are open simultaneously.
+// Sync the subset of session state every popup window (StatusBoard, BraaList,
+// Ato, Frag, AbmScope's focus panel, ControllerList, AsdexScope, ...) may
+// depend on. Only these fields are broadcast — positionSet, webrtcStatus,
+// etc. are local. Syncs only session-wide data (shared across all windows in
+// the same session): coalition/positionName/activeModule are each set exactly
+// once (at login / on module switch, see setConnection/setActiveModule) and
+// never legitimately differ between two windows in the same session, unlike
+// facilityId/facilityName/facilityDcsName/carrierUnitId, which are per-scope
+// and must NOT be synced here — doing so causes scope windows to overwrite
+// each other's facility/carrier identity when multiple scopes are open
+// simultaneously (those are instead passed as URL params by whichever window
+// opens the popup — see App.jsx's undock handlers).
 syncStore(useSessionStore, 'tracs-session-cl', (s) => ({
-  airbases:  s.airbases,
-  bullseyes: s.bullseyes,
-  mission:   s.mission,
-  peers:     s.peers,
+  airbases:     s.airbases,
+  bullseyes:    s.bullseyes,
+  mission:      s.mission,
+  peers:        s.peers,
+  coalition:    s.coalition,
+  positionName: s.positionName,
+  activeModule: s.activeModule,
 }))
