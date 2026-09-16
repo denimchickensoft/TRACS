@@ -24,6 +24,7 @@ const tacviewDetection = require('./tacviewDetection')
 const weaponDatabase = require('./weaponDatabase')
 const missileDetection = require('./missileDetection')
 const rateConfig = require('./rateConfig')
+const { splitByCategory, computeDateAndTime, identifiedError, createDeltaBuffer } = require('./tacviewShared')
 
 const RECONNECT_MS = 3000
 // See tacview.js's identical constant for why this was shortened from 5000.
@@ -78,76 +79,14 @@ let missileFogFilter = null
 let friendlyCoalitionId = null
 
 // Accumulates at full stream rate (whatever the relay forwards); flushed to
-// state/broadcast at rateConfig.unitUpdateMs by flushBroadcast(). Mirrors
-// tacview.js's identical mechanism for direct mode.
-let pendingUpdated = {}
-let pendingRemoved = new Set()
+// state/broadcast at rateConfig.unitUpdateMs by unitsBuffer.flush(). Mirrors
+// tacview.js's identical mechanism for direct mode — see tacviewShared.js's
+// createDeltaBuffer for the merge-vs-overwrite semantics.
+const unitsBuffer = createDeltaBuffer({ applyFn: state.applyDelta, merge: true })
+// Mirrors unitsBuffer, for the separate weapons delta stream — a weapon and
+// a unit sharing the same numeric id space would otherwise collide in one map.
+const weaponsBuffer = createDeltaBuffer({ applyFn: state.applyWeaponsDelta, merge: false })
 let broadcastTimer = null
-
-function queueBroadcast(updated, removed) {
-  for (const [id, unit] of Object.entries(updated)) {
-    // Merge, not overwrite — see tacview.js's identical queueBroadcast for
-    // why (processIncoming's full unit vs. runDetectionPass's partial
-    // {contacts:[...]} racing into the same buffer before one flush).
-    pendingUpdated[id] = { ...pendingUpdated[id], ...unit }
-    pendingRemoved.delete(id)
-  }
-  for (const id of removed) {
-    delete pendingUpdated[id]
-    pendingRemoved.add(id)
-  }
-}
-
-function flushBroadcast() {
-  if (Object.keys(pendingUpdated).length === 0 && pendingRemoved.size === 0) return
-  const delta = { updated: pendingUpdated, removed: [...pendingRemoved], time: Date.now() }
-  state.applyDelta(delta)
-  if (onUnitsDelta) onUnitsDelta(delta)
-  pendingUpdated = {}
-  pendingRemoved = new Set()
-}
-
-// Mirrors queueBroadcast/flushBroadcast exactly, for the separate weapons
-// delta stream — see tacview.js's identical pair for why this isn't reused
-// (a weapon and a unit sharing the same numeric id space would otherwise
-// collide in one map).
-let pendingWeaponsUpdated = {}
-let pendingWeaponsRemoved = new Set()
-
-function queueWeaponsBroadcast(updated, removed) {
-  for (const [id, weapon] of Object.entries(updated)) {
-    pendingWeaponsUpdated[id] = weapon
-    pendingWeaponsRemoved.delete(id)
-  }
-  for (const id of removed) {
-    delete pendingWeaponsUpdated[id]
-    pendingWeaponsRemoved.add(id)
-  }
-}
-
-function flushWeaponsBroadcast() {
-  if (Object.keys(pendingWeaponsUpdated).length === 0 && pendingWeaponsRemoved.size === 0) return
-  const delta = { updated: pendingWeaponsUpdated, removed: [...pendingWeaponsRemoved], time: Date.now() }
-  state.applyWeaponsDelta(delta)
-  if (onWeaponsDelta) onWeaponsDelta(delta)
-  pendingWeaponsUpdated = {}
-  pendingWeaponsRemoved = new Set()
-}
-
-// See tacview.js's identical function — the relay forwards a single mixed
-// `updated` map (classify() just assigns a category string per Type= tag),
-// so units and missiles arrive interleaved and have to be separated before
-// their two very different visibility pipelines (fogFilter vs
-// missileDetection.js).
-function splitByCategory(updated) {
-  const units = {}
-  const weapons = {}
-  for (const [id, obj] of Object.entries(updated)) {
-    if (obj.category === 'Missile') weapons[id] = obj
-    else units[id] = obj
-  }
-  return { units, weapons }
-}
 
 function voteTheatre(positions) {
   if (theatreDecided) return
@@ -155,17 +94,6 @@ function voteTheatre(positions) {
     for (const name of navdata.theatresContaining(lat, lng)) {
       theatreVotes.set(name, (theatreVotes.get(name) ?? 0) + 1)
     }
-  }
-}
-
-// See tacview.js's identical helper for the full real-UTC-vs-DCS-internal-
-// Zulu explanation — this mirrors it exactly, just sourcing missionUtcMs from
-// the relay's messages instead of a local parser.
-function computeDateAndTime(missionUtcMs, offsetHours) {
-  const d = new Date(missionUtcMs + offsetHours * 3600000)
-  return {
-    date: { Day: d.getUTCDate(), Month: d.getUTCMonth() + 1, Year: d.getUTCFullYear() },
-    time: { h: d.getUTCHours(), m: d.getUTCMinutes(), s: d.getUTCSeconds() },
   }
 }
 
@@ -197,7 +125,7 @@ function runDetectionPass() {
   const { contactsUpdate, revealed, hidden } = fogFilter.computeVisibility(internalUnits)
   const updated = { ...contactsUpdate, ...revealed }
   if (Object.keys(updated).length === 0 && hidden.length === 0) return
-  queueBroadcast(updated, hidden)
+  unitsBuffer.queue(updated, hidden)
 }
 
 // AWACS/EWR-only synthetic missile detection (server/src/missileDetection.js)
@@ -209,8 +137,8 @@ function runDetectionPass() {
 function runMissileDetectionPass() {
   if (!isConnected() || !missileFogFilter) return
   const { contactsUpdate, revealed, hidden } = missileFogFilter.computeVisibility(internalUnits, internalWeapons)
-  if (Object.keys(contactsUpdate).length > 0) queueBroadcast(contactsUpdate, [])
-  if (Object.keys(revealed).length > 0 || hidden.length > 0) queueWeaponsBroadcast(revealed, hidden)
+  if (Object.keys(contactsUpdate).length > 0) unitsBuffer.queue(contactsUpdate, [])
+  if (Object.keys(revealed).length > 0 || hidden.length > 0) weaponsBuffer.queue(revealed, hidden)
 }
 
 function applyTacviewData(data) {
@@ -257,7 +185,7 @@ function applyTacviewData(data) {
       : {}
 
   if (Object.keys(publicUpdated).length || unitsRemoved.length) {
-    queueBroadcast(publicUpdated, unitsRemoved)
+    unitsBuffer.queue(publicUpdated, unitsRemoved)
   }
 
   // Weapons: own-coalition/neutral pass straight through (or everything, for
@@ -272,7 +200,7 @@ function applyTacviewData(data) {
       : {}
 
   if (Object.keys(publicWeaponsUpdated).length || weaponsRemoved.length) {
-    queueWeaponsBroadcast(publicWeaponsUpdated, weaponsRemoved)
+    weaponsBuffer.queue(publicWeaponsUpdated, weaponsRemoved)
   }
 
   if (bullseyes) {
@@ -293,7 +221,7 @@ function armRateTimers() {
   clearInterval(broadcastTimer)
   detectionTimer = setInterval(runDetectionPass, rateConfig.detectionMs)
   missileDetectionTimer = setInterval(runMissileDetectionPass, rateConfig.missileDetectionMs)
-  broadcastTimer = setInterval(() => { flushBroadcast(); flushWeaponsBroadcast() }, rateConfig.unitUpdateMs)
+  broadcastTimer = setInterval(() => { unitsBuffer.flush(onUnitsDelta); weaponsBuffer.flush(onWeaponsDelta) }, rateConfig.unitUpdateMs)
 }
 
 function connect() {
@@ -348,7 +276,7 @@ function connect() {
         // waiting for this message, rather than waiting for the next raw
         // relay delta to trigger filterFrameUpdate naturally.
         const catchUp = fogFilter.filterFrameUpdate(internalUnits)
-        if (Object.keys(catchUp).length) queueBroadcast(catchUp, [])
+        if (Object.keys(catchUp).length) unitsBuffer.queue(catchUp, [])
         runDetectionPass()
       }
       return
@@ -409,10 +337,8 @@ function start(cfg, callbacks = {}) {
   state.resetForNewSource()
   internalUnits = {}
   internalWeapons = {}
-  pendingUpdated = {}
-  pendingRemoved = new Set()
-  pendingWeaponsUpdated = {}
-  pendingWeaponsRemoved = new Set()
+  unitsBuffer.reset()
+  weaponsBuffer.reset()
   friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = null
   // Unlike fogFilter (needs the relay's own detection config first, see the
@@ -464,10 +390,8 @@ function stop() {
   fogFilter = null
   missileFogFilter = null
   friendlyCoalitionId = null
-  pendingUpdated = {}
-  pendingRemoved = new Set()
-  pendingWeaponsUpdated = {}
-  pendingWeaponsRemoved = new Set()
+  unitsBuffer.reset()
+  weaponsBuffer.reset()
   console.log('[tacviewRelayClient] stopped')
 }
 
@@ -496,13 +420,6 @@ function isConnected() {
 
 function getConfig() {
   return relayUrl ? { relayUrl, password, coalition } : null
-}
-
-// Marks a rejection with a specific, surfaceable reason -- mirrors
-// tacview.js's identical identifiedError(), which routes/api.js already
-// knows how to distinguish from a generic/unidentified failure.
-function identifiedError(message) {
-  return Object.assign(new Error(message), { identified: true })
 }
 
 // Throwaway probe -- validates relay reachability + coalition/password

@@ -18,6 +18,7 @@ const tacviewDetection = require('./tacviewDetection')
 const weaponDatabase = require('./weaponDatabase')
 const missileDetection = require('./missileDetection')
 const rateConfig = require('./rateConfig')
+const { splitByCategory, computeDateAndTime, identifiedError, createDeltaBuffer } = require('./tacviewShared')
 
 const DEFAULT_PORT = 42674
 const RECONNECT_MS = 3000
@@ -88,80 +89,18 @@ let onDisconnect = null
 let handshakeFailures = 0
 
 // Accumulates at full stream rate; flushed to state/broadcast once per
-// rateConfig.unitUpdateMs by flushBroadcast(). Both processIncoming and
+// rateConfig.unitUpdateMs by unitsBuffer.flush(). Both processIncoming and
 // runDetectionPass write here instead of calling state.applyDelta directly.
-let pendingUpdated = {}
-let pendingRemoved = new Set()
+// merge:true — see tacviewShared.js's createDeltaBuffer for why (processIncoming's
+// full unit vs. runDetectionPass's partial {contacts:[...]} race).
+const unitsBuffer = createDeltaBuffer({ applyFn: state.applyDelta, merge: true })
+// Mirrors unitsBuffer, for the separate weapons delta stream (own state.js
+// store, own onWeaponsDelta callback, own message type) — not reusing the
+// units buffer since a weapon and a unit sharing the same numeric id space
+// would otherwise collide in one map. merge:false — no equivalent partial-
+// write race for weapons.
+const weaponsBuffer = createDeltaBuffer({ applyFn: state.applyWeaponsDelta, merge: false })
 let broadcastTimer = null
-
-function queueBroadcast(updated, removed) {
-  for (const [id, unit] of Object.entries(updated)) {
-    // Merge, not overwrite — processIncoming() (full unit incl. position) and
-    // runDetectionPass() (partial {contacts:[...]}, no position) both write
-    // here before one flush, and whichever ran later in a tick would
-    // otherwise wholesale-replace the other's data for the same id, e.g.
-    // dropping a fresh position under a position-less contacts update
-    // (confirmed live 2026-09-15: a radar-equipped unit's position freezing
-    // intermittently).
-    pendingUpdated[id] = { ...pendingUpdated[id], ...unit }
-    pendingRemoved.delete(id)
-  }
-  for (const id of removed) {
-    delete pendingUpdated[id]
-    pendingRemoved.add(id)
-  }
-}
-
-function flushBroadcast() {
-  if (Object.keys(pendingUpdated).length === 0 && pendingRemoved.size === 0) return
-  const delta = { updated: pendingUpdated, removed: [...pendingRemoved], time: Date.now() }
-  state.applyDelta(delta)
-  if (onUnitsDelta) onUnitsDelta(delta)
-  pendingUpdated = {}
-  pendingRemoved = new Set()
-}
-
-// Mirrors queueBroadcast/flushBroadcast exactly, for the separate weapons
-// delta stream (own state.js store, own onWeaponsDelta callback, own
-// message type) — not reusing the units buffers since a weapon and a unit
-// sharing the same numeric id space would otherwise collide in one map.
-let pendingWeaponsUpdated = {}
-let pendingWeaponsRemoved = new Set()
-
-function queueWeaponsBroadcast(updated, removed) {
-  for (const [id, weapon] of Object.entries(updated)) {
-    pendingWeaponsUpdated[id] = weapon
-    pendingWeaponsRemoved.delete(id)
-  }
-  for (const id of removed) {
-    delete pendingWeaponsUpdated[id]
-    pendingWeaponsRemoved.add(id)
-  }
-}
-
-function flushWeaponsBroadcast() {
-  if (Object.keys(pendingWeaponsUpdated).length === 0 && pendingWeaponsRemoved.size === 0) return
-  const delta = { updated: pendingWeaponsUpdated, removed: [...pendingWeaponsRemoved], time: Date.now() }
-  state.applyWeaponsDelta(delta)
-  if (onWeaponsDelta) onWeaponsDelta(delta)
-  pendingWeaponsUpdated = {}
-  pendingWeaponsRemoved = new Set()
-}
-
-// Splits parseLines()'s single mixed `updated` map by category — Tacview's
-// wire format doesn't distinguish "kinds" of object at the transport level
-// (classify() just assigns a category string per Type= tag), so units and
-// missiles arrive interleaved and have to be separated here before their two
-// very different visibility pipelines (fogFilter vs missileDetection.js).
-function splitByCategory(updated) {
-  const units = {}
-  const weapons = {}
-  for (const [id, obj] of Object.entries(updated)) {
-    if (obj.category === 'Missile') weapons[id] = obj
-    else units[id] = obj
-  }
-  return { units, weapons }
-}
 
 // Login.jsx's composedOlympusUrl() always builds "http://host:port"
 // regardless of which source actually answers on that port (the
@@ -180,24 +119,6 @@ function voteTheatre(positions) {
     for (const name of navdata.theatresContaining(lat, lng)) {
       theatreVotes.set(name, (theatreVotes.get(name) ?? 0) + 1)
     }
-  }
-}
-
-// Tacview's ReferenceTime is real-world UTC (confirmed live by its trailing
-// 'Z', e.g. "2011-06-25T09:30:01Z"). DCS's own dateAndTime (what Olympus
-// sends, and what useMissionClock()/toUtcDateTime() expect) is theatre-local
-// relative to DCS's own INTERNAL clock — a separate thing from real-world
-// UTC, skewed from it by its own fixed per-theatre amount (confirmed live,
-// 2026-09-06: PersianGulf needed a real-UTC→local offset of +3.5, distinct
-// from the existing +4 used for the internal-Zulu→local leg — see
-// navdata.theatreTacviewRealUtcOffset()'s comment for the full story). This
-// converts real UTC straight to the theatre-local shape the existing
-// pipeline expects, using the Tacview-specific constant, not the Olympus one.
-function computeDateAndTime(missionUtcMs, offsetHours) {
-  const d = new Date(missionUtcMs + offsetHours * 3600000)
-  return {
-    date: { Day: d.getUTCDate(), Month: d.getUTCMonth() + 1, Year: d.getUTCFullYear() },
-    time: { h: d.getUTCHours(), m: d.getUTCMinutes(), s: d.getUTCSeconds() },
   }
 }
 
@@ -234,7 +155,7 @@ function runDetectionPass() {
   const { contactsUpdate, revealed, hidden } = fogFilter.computeVisibility(internalUnits)
   const updated = { ...contactsUpdate, ...revealed }
   if (Object.keys(updated).length === 0 && hidden.length === 0) return
-  queueBroadcast(updated, hidden)
+  unitsBuffer.queue(updated, hidden)
 }
 
 // AWACS/EWR-only synthetic missile detection (server/src/missileDetection.js)
@@ -251,8 +172,8 @@ function runDetectionPass() {
 function runMissileDetectionPass() {
   if (!connected || !missileFogFilter) return
   const { contactsUpdate, revealed, hidden } = missileFogFilter.computeVisibility(internalUnits, internalWeapons)
-  if (Object.keys(contactsUpdate).length > 0) queueBroadcast(contactsUpdate, [])
-  if (Object.keys(revealed).length > 0 || hidden.length > 0) queueWeaponsBroadcast(revealed, hidden)
+  if (Object.keys(contactsUpdate).length > 0) unitsBuffer.queue(contactsUpdate, [])
+  if (Object.keys(revealed).length > 0 || hidden.length > 0) weaponsBuffer.queue(revealed, hidden)
 }
 
 let lineBuffer = ''
@@ -295,7 +216,7 @@ function processIncoming(text) {
 
   const publicUpdated = fogFilter ? fogFilter.filterFrameUpdate(unitsUpdated) : unitsUpdated
   if (Object.keys(publicUpdated).length || unitsRemoved.length) {
-    queueBroadcast(publicUpdated, unitsRemoved)
+    unitsBuffer.queue(publicUpdated, unitsRemoved)
   }
 
   // Weapons: own-coalition/neutral pass straight through; a non-friendly
@@ -304,7 +225,7 @@ function processIncoming(text) {
   // this redaction is necessary on Tacview, same as fogFilter is for units).
   const publicWeaponsUpdated = missileFogFilter ? missileFogFilter.filterFrameUpdate(weaponsUpdated) : weaponsUpdated
   if (Object.keys(publicWeaponsUpdated).length || weaponsRemoved.length) {
-    queueWeaponsBroadcast(publicWeaponsUpdated, weaponsRemoved)
+    weaponsBuffer.queue(publicWeaponsUpdated, weaponsRemoved)
   }
 
   if (bullseyes) {
@@ -399,10 +320,8 @@ function start(cfg, callbacks = {}) {
   internalUnits = {}
   internalWeapons = {}
   handshakeFailures = 0
-  pendingUpdated = {}
-  pendingRemoved = new Set()
-  pendingWeaponsUpdated = {}
-  pendingWeaponsRemoved = new Set()
+  unitsBuffer.reset()
+  weaponsBuffer.reset()
   // Guards against a prior relay-hosted session (tacviewRelayClient.js)
   // having left tacviewDetection's shared config sourced from a relay —
   // direct mode always forces itself back to the local file/defaults.
@@ -420,7 +339,7 @@ function start(cfg, callbacks = {}) {
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
   detectionTimer = setInterval(runDetectionPass, rateConfig.detectionMs)
   missileDetectionTimer = setInterval(runMissileDetectionPass, rateConfig.missileDetectionMs)
-  broadcastTimer = setInterval(() => { flushBroadcast(); flushWeaponsBroadcast() }, rateConfig.unitUpdateMs)
+  broadcastTimer = setInterval(() => { unitsBuffer.flush(onUnitsDelta); weaponsBuffer.flush(onWeaponsDelta) }, rateConfig.unitUpdateMs)
   missionClockTimer = setInterval(sendMissionClock, MISSION_CLOCK_INTERVAL_MS)
 }
 
@@ -444,10 +363,8 @@ function stop() {
   fogFilter = null
   missileFogFilter = null
   friendlyCoalitionId = null
-  pendingUpdated = {}
-  pendingRemoved = new Set()
-  pendingWeaponsUpdated = {}
-  pendingWeaponsRemoved = new Set()
+  unitsBuffer.reset()
+  weaponsBuffer.reset()
   console.log('[tacview] stopped')
 }
 
@@ -504,16 +421,13 @@ function getConfig() {
 // surfaced to Login.jsx as a normal 502 from /api/connect — instead of
 // probe() reporting success and start()'s own connect() looping forever on
 // a connection the server rejects right after the handshake.
-// `identified: true` on a rejection means the greeting positively confirmed
-// this IS a Tacview RTT server (before we ever sent a password) — so the
-// failure is specific and actionable (wrong password), not "nothing here."
-// api.js's autoDetectSourceType surfaces an `identified` error over the
-// generic "cannot reach any known source type" message, since we genuinely
-// know which server answered and why it rejected us.
-function identifiedError(message) {
-  return Object.assign(new Error(message), { identified: true })
-}
-
+// `identified: true` (tacviewShared.js's identifiedError) on a rejection
+// means the greeting positively confirmed this IS a Tacview RTT server
+// (before we ever sent a password) — so the failure is specific and
+// actionable (wrong password), not "nothing here." api.js's
+// autoDetectSourceType surfaces an `identified` error over the generic
+// "cannot reach any known source type" message, since we genuinely know
+// which server answered and why it rejected us.
 async function probe(cfg) {
   const { host, port } = parseHostPort(cfg.olympusUrl)
   await new Promise((resolve, reject) => {
