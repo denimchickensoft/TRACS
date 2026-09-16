@@ -12,6 +12,7 @@ const stateFiles = require('./stateFiles')
 const navdata    = require('../navdata')
 const elevation  = require('./elevation')
 const { registerApiRoutes } = require('./routes/api')
+const { registerSourceConnectRoutes } = require('./routes/sourceConnect')
 const { registerDocsRoutes } = require('./routes/docs')
 const { createWsBroadcast }  = require('./wsBroadcast')
 const { createSignalRelay }  = require('./signalRelay')
@@ -55,8 +56,10 @@ const { broadcast, getWsClientCount } = createWsBroadcast(wss, {
 
 createSignalRelay(signalWss)
 
+registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state, broadcast })
+
 registerApiRoutes(app, {
-  sourceRegistry, srs, tacviewRelayClient, state, stateFiles, navdata, elevation, broadcast, getWsClientCount,
+  sourceRegistry, tacviewRelayClient, state, stateFiles, navdata, elevation, getWsClientCount,
   presetsPath: PRESETS_PATH,
 })
 
