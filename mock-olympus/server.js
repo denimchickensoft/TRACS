@@ -4,6 +4,7 @@
  * Mock Olympus REST API server for TRACS development and testing.
  *
  * /olympus/units    — binary format decoded by server/src/decoder.js
+ * /olympus/weapons  — binary format, same as /olympus/units (missiles only, see "fire" below)
  * /olympus/mission  — JSON
  * /olympus/airbases — JSON
  *
@@ -21,6 +22,9 @@
  *   <n> h <hdg>       — turn shortest direction to heading
  *   <n> s <spd>       — set speed in KTAS (e.g. "2 s 280")
  *   create <cs> [<type>] [<coal>] [H<hdg>] [S<spd>] [A<alt>]  — spawn unit (type defaults to FA-18C, coal defaults to BLU)
+ *   fire <n> <hdg> [<weapon>]  — launch a missile from aircraft <n> on heading <hdg>, straight-line flight until
+ *                                impact/timeout (weapon defaults to AGM_84A; must be a trackable entry — RCS >= 0.1 m^2 —
+ *                                in client/public/units/weaponSensorDatabase.json to be visible to AIC/ABM)
  *   ident <n>              — squawk IDENT (blinks for a few seconds, then reverts to NORMAL)
  *   stby <n>                — transponder to STANDBY/OFF (blanks the squawk code, same as real SRS)
  *   norm <n>                — transponder to NORMAL (restores the unit's assigned squawk code)
@@ -63,6 +67,17 @@ const AZ_TOL_DEG      = 2.5  // azimuth full-scale deflection
 const TURN_RATE_RPS   = 3 * DEG_TO_RAD        // standard rate: 3°/s in radians
 const CLIMB_RATE_MPS  = (1000 / 60) * FT_TO_M // 1000 fpm in m/s
 const ACCEL_KTS_PER_S = 5                     // knots/s speed change rate
+
+// ─── Weapons (missile fire simulation) ─────────────────────────────────────────
+// Straight-line flight only (no homing/target lock) — enough to exercise
+// AIC/ABM missile detection/rendering/history trails end-to-end. Default
+// weapon is AGM_84A (Harpoon, RCS 0.1 m^2 — right at the trackable threshold
+// in server/src/weaponDatabase.js), a realistic real-world large air-launched
+// missile; small AAMs like AIM-120 are deliberately NOT trackable (RCS 0.07),
+// matching the real threshold's intent of excluding them.
+const DEFAULT_MISSILE_NAME = 'AGM_84A'
+const MISSILE_SPEED_KTS    = 550    // subsonic ASM cruise speed, ballpark
+const MISSILE_LIFETIME_MS  = 25000  // time-of-flight before "impact"/removal
 
 // Carrier deck metadata — mirrors client/src/utils/carriers.js
 const CARRIER_META = {
@@ -245,6 +260,12 @@ const units = new Map(unitDefs.map((u) => [u.id, {
   ...(u.category === 'Aircraft' ? { squawk: randomSquawk(), iffStatus: IFF_STATUS.NORMAL, identTimer: null } : {}),
 }]))
 
+// Fired missiles — keyed by synthetic weapon id (see cmdFire). Offset well
+// above the unit id space (unitDefs/create both stay in the low thousands)
+// so weapon ids can never collide with a unit id.
+const weapons = new Map()
+let nextWeaponId = 90000001
+
 let serverTime  = BigInt(Date.now())
 let lastMovedAt = Date.now()
 let rl          = null  // set by startConsole, used for re-prompting after async events
@@ -408,6 +429,23 @@ function stepParApproach(unit, dt) {
   return false
 }
 
+// Straight-line advance + lifetime expiry — no homing, no terrain/impact
+// detection, just enough to make a missile move and eventually disappear.
+function moveWeapons(dt) {
+  const now = Date.now()
+  for (const [id, w] of weapons) {
+    if (now - w.bornAt >= MISSILE_LIFETIME_MS) {
+      weapons.delete(id)
+      console.log(`\n  Weapon ${id} (${w.name}): impact/expired`)
+      rl.prompt()
+      continue
+    }
+    const distDeg = w.spd * dt * NM_PER_SEC * NM_DEG
+    w.lat += Math.cos(w.hdg) * distDeg
+    w.lng += Math.sin(w.hdg) * distDeg
+  }
+}
+
 function moveUnits() {
   const now     = Date.now()
   const dt      = Math.min((now - lastMovedAt) / 1000, 1.0)
@@ -451,6 +489,8 @@ function moveUnits() {
     }
     broadcastTransponders()
   }
+
+  moveWeapons(dt)
 
   serverTime = BigInt(now)
 }
@@ -522,6 +562,31 @@ function encodeUnitsBuffer() {
   return w.build()
 }
 
+// Weapons — deliberately a narrower field set than encodeUnitsBuffer (no
+// unitName/contacts/airborne — real Olympus's /olympus/weapons response is
+// sparser too), but decodeUnits() is fully field-tagged so this is fine.
+function encodeWeaponsBuffer() {
+  const w = new Writer()
+  w.uint64(serverTime)
+
+  for (const weapon of weapons.values()) {
+    w.uint32(weapon.id)
+
+    w.uint8(DI.category);  w.string(weapon.category)
+    w.uint8(DI.alive);     w.bool(true)
+    w.uint8(DI.coalition); w.uint8(weapon.coalition)
+    w.uint8(DI.name);      w.string(weapon.name)
+    w.uint8(DI.position);  w.coords(weapon.lat, weapon.lng, weapon.alt)
+    w.uint8(DI.speed);     w.float64(weapon.spd * KNOTS_TO_MS)
+    w.uint8(DI.heading);   w.float64(weapon.hdg)
+    w.uint8(DI.track);     w.float64(weapon.hdg)
+
+    w.uint8(DI.endOfData)
+  }
+
+  return w.build()
+}
+
 // ─── Request helpers ──────────────────────────────────────────────────────────
 
 function checkAuth(req, res) {
@@ -549,6 +614,20 @@ function json(res, data, status = 200) {
 function handleUnits(req, res) {
   moveUnits()
   const body = encodeUnitsBuffer()
+  res.writeHead(200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Length': body.length,
+    'Access-Control-Allow-Origin': '*',
+  })
+  res.end(body)
+}
+
+// Always a full snapshot, matching real Olympus's own /olympus/weapons
+// quirk that server/src/olympus.js's pollWeapons() already works around by
+// always fetching with time=0 — see that function's header comment.
+function handleWeapons(req, res) {
+  moveUnits()
+  const body = encodeWeaponsBuffer()
   res.writeHead(200, {
     'Content-Type': 'application/octet-stream',
     'Content-Length': body.length,
@@ -905,6 +984,42 @@ function cmdDelete(parts) {
   broadcastTransponders()
 }
 
+// ── fire <n> <hdg> [<weapon>] ─────────────────────────────────────────────────
+
+function cmdFire(parts) {
+  const ids = getAircraftIds()
+  const idx = parseInt(parts[1], 10) - 1
+  if (isNaN(idx) || idx < 0 || idx >= ids.length) {
+    console.log(`  Unknown unit number: ${parts[1]}`)
+    return
+  }
+
+  const hdgVal = parseInt(parts[2], 10)
+  if (isNaN(hdgVal) || hdgVal < 0 || hdgVal > 360) {
+    console.log('  Usage: fire <n> <hdg> [<weapon>]  (e.g. fire 3 090 AGM_84A)')
+    return
+  }
+
+  const shooter    = units.get(ids[idx])
+  const weaponName = parts[3] || DEFAULT_MISSILE_NAME
+  const id         = nextWeaponId++
+
+  weapons.set(id, {
+    id,
+    name:      weaponName,
+    category:  'Missile',
+    coalition: shooter.coalition,
+    lat:       shooter.lat,
+    lng:       shooter.lng,
+    alt:       shooter.alt,
+    hdg:       normalizeAngle(hdgVal * DEG_TO_RAD),
+    spd:       MISSILE_SPEED_KTS,
+    bornAt:    Date.now(),
+  })
+
+  console.log(`  ${shooter.unitName}: ${weaponName} away, heading ${String(hdgVal).padStart(3, '0')}°`)
+}
+
 // ── rename <n> <callsign> ─────────────────────────────────────────────────────
 
 function cmdRename(parts) {
@@ -1144,6 +1259,7 @@ function parseCommand(line) {
   if (first === 'create')  { cmdCreate(parts);  return }
   if (first === 'theatre') { cmdTheatre(parts); return }
   if (first === 'delete')  { cmdDelete(parts);  return }
+  if (first === 'fire')    { cmdFire(parts);    return }
   if (first === 'rename')  { cmdRename(parts);  return }
   if (first === 'ident')   { cmdIdent(parts);   return }
   if (first === 'stby')    { cmdStby(parts);    return }
@@ -1210,6 +1326,7 @@ const server = http.createServer((req, res) => {
   if (!checkAuth(req, res)) return
 
   if (path === '/olympus/units')      return handleUnits(req, res)
+  if (path === '/olympus/weapons')    return handleWeapons(req, res)
   if (path === '/olympus/mission')    return handleMission(req, res)
   if (path === '/olympus/airbases')   return handleAirbases(req, res)
   if (path === '/olympus/bullseyes')  return handleBullseyes(req, res)
