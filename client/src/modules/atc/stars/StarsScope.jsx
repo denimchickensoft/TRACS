@@ -101,7 +101,8 @@ export default function StarsScope() {
   const displayStore   = useDisplayStore()
   const windowSettings = displayStore.windows[WINDOW_ID]
 
-  const activeProfile = useOdsStore((s) => s.activeProfile)
+  const activeProfile   = useOdsStore((s) => s.activeProfile)
+  const activeProfileId = useOdsStore((s) => s.activeProfileId)
 
   const [view,       setView]      = useState(null)
   const [dcbVisible, setDcbVisible] = useState(true)
@@ -278,10 +279,21 @@ export default function StarsScope() {
     }
   }, []) // eslint-disable-line
 
+  // Tracks the ODS profile id last applied to this window, seeded from the
+  // current id on mount so a fresh StarsScope instance (remounted whenever
+  // App.jsx swaps STARS/ASDE-X -- a real unmount/remount, not a CSS hide)
+  // doesn't reapply defaults over the live rangeNm/etc. already sitting in
+  // windowSettings just because this is the component's first render. Only a
+  // genuine profile switch while mounted (activeProfileId actually changing)
+  // should reapply.
+  const appliedProfileIdRef = useRef(activeProfileId)
+
   useEffect(() => {
     if (!activeProfile?.defaults || !windowSettings) return
+    if (activeProfileId === appliedProfileIdRef.current) return
+    appliedProfileIdRef.current = activeProfileId
     displayStore.applyProfileDefaults(WINDOW_ID, activeProfile.defaults)
-  }, [activeProfile]) // eslint-disable-line
+  }, [activeProfileId]) // eslint-disable-line
 
   // ── Build view ────────────────────────────────────────────────────
   const theatre    = mission?.mission?.theatre
