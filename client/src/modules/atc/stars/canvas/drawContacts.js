@@ -1,4 +1,5 @@
 import { latLngToCanvas } from '../../../../utils/projection.js'
+import { destinationPoint } from '../../../../utils/bearing.js'
 import { HIGHLIGHT_TEAL } from '../constants.js'
 
 /**
@@ -79,9 +80,7 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
       // Project endpoint: speed (m/s) → kt → nm over ptl minutes
       const distNm     = (unit.speed * M_PER_S_TO_KT * minutes) / 60
       const headingRad = unit.track     // true track, radians, DCS-native (0=N, CW)
-      const latRad     = pos.lat * Math.PI / 180
-      const endLat     = pos.lat + (distNm / 60) * Math.cos(headingRad)
-      const endLng     = pos.lng + (distNm / (60 * Math.cos(latRad))) * Math.sin(headingRad)
+      const { lat: endLat, lng: endLng } = destinationPoint(pos.lat, pos.lng, headingRad * 180 / Math.PI, distNm)
 
       const end = latLngToCanvas(endLat, endLng, view)
 
