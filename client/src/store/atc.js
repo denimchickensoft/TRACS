@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { syncStore } from '../utils/storeSync.js'
 
 // Handoff states for a given unit
 export const HANDOFF_STATE = {
@@ -248,3 +249,15 @@ if (!_isPopup) {
   }
   _atcOwnerCh.postMessage({ type: 'REQUEST_STATE' })
 }
+
+// ── Cross-window callsignOverrides sync ────────────────────────────────────
+// Unlike ownership above, callsignOverrides is writable from more than the
+// main window: AbmScope's .rename handling runs unmodified inside the
+// abm-focus popup (AbmFocusWindow.jsx -> full <AbmScope>), so a rename can
+// originate from a popup too. Use the symmetric syncStore() helper (already
+// used for units/weapons/flightPlans/association/asdexManualTags, all
+// similarly multi-writer) instead of an asymmetric broadcast-only channel,
+// which would drop and later clobber a popup-originated rename. This is a
+// plain whole-key replace that never touches ownership/handoffs/pointOuts,
+// so it can't reproduce this store's documented reset-then-rebuild bugs.
+syncStore(useAtcStore, 'tracs-atc-callsigns', (state) => ({ callsignOverrides: state.callsignOverrides }))
