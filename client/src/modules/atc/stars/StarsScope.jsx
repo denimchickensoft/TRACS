@@ -11,6 +11,7 @@ import { getVisibleUnits }      from './visibleUnits.js'
 import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './starsStoreSelectors.js'
 import { computeStarsSymbolMap, computeStarsFilteredUnits } from './starsScopeHelpers.js'
 import { useStarsNavdataLoading } from './starsNavdataLoading.js'
+import { useStcaTracker } from './stca/useStcaCompute.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'
@@ -56,11 +57,8 @@ import { resolveSlew }          from './input/slewResolver.js'
 import { parseCommand, looksLikeKnownCommand } from './input/commandParser.js'
 import { dispatch as dispatchAction, INIT_CNTL, ackConflict } from '../actions/index.js'
 import { useStcaStore }         from '../../../store/stca.js'
-import { computeConflicts }     from './stca/computeConflicts.js'
-import { buildSuppressionZones, isSuppressed } from './stca/suppressionZones.js'
 import { resolvePrimaryOnlyIds } from './stca/formations.js'
 import { useAssociationStore }  from '../../../store/association.js'
-import { startAlertTone, stopAlertTone } from '../../../audio/alertTone.js'
 import { usePresetsStore }  from '../../../store/presets.js'
 import { useFpeStore }      from '../../../store/fpe.js'
 import { useNavdataStore }      from '../../../store/navdata.js'
@@ -73,7 +71,6 @@ import './StarsScope.css'
 
 const WINDOW_ID  = 'atc-main'
 const MAX_HISTORY = 10  // absolute max; display capped by historyLength setting
-const STCA_TICK_MS = 1000
 
 export default function StarsScope() {
   const wheelDir         = useWheelDirection()
@@ -135,68 +132,12 @@ export default function StarsScope() {
     return resolvePrimaryOnlyIds(units, ownership, windowSettings?.manualWingmen, !!windowSettings?.simWingmenStandby)
   }, [units, ownership, windowSettings?.simWingmenStandby, windowSettings?.manualWingmen])
 
-  // ── STCA compute loop ────────────────────────────────────────────────
-  // Opt-in (.CA / starsPrefs.stcaEnabled) — see stca/computeConflicts.js.
-  // Runs on its own ~1s interval (independent of the 200ms blink tick) to
-  // bound cost; reads fresh store state each tick rather than closing over
-  // reactive props, since the interval callback outlives any single render.
-  const vertRatesRef = useRef(new Map())
-  const latchedRef   = useRef(new Map())
-  useEffect(() => {
-    if (!windowSettings?.stcaEnabled) {
-      // Disabling only hides/silences active alerts — it does NOT forget
-      // them. The latch (and its wider hysteresis clear-margin) survives,
-      // so re-enabling resumes instantly instead of forcing every still-
-      // active pair to re-qualify from scratch under the tight trigger
-      // thresholds, which is what caused a several-second re-alert delay.
-      useStcaStore.getState().setConflicts([])
-      return
-    }
-    const zones = buildSuppressionZones(centerlines)
-    const tick = () => {
-      const liveUnits     = useUnitsStore.getState().units
-      const liveOwnership = useAtcStore.getState().ownership
-      // Read simWingmenStandby/manualWingmen fresh each tick rather than off
-      // the closed-over `windowSettings` — manualWingmen changes (the .WNG
-      // two-click flow below) don't restart this effect, so a stale closure
-      // here would miss them until something else happened to re-arm it.
-      const liveWinSettings = useDisplayStore.getState().windows[WINDOW_ID]
-      const liveWingmen = resolvePrimaryOnlyIds(
-        liveUnits, liveOwnership, liveWinSettings?.manualWingmen, !!liveWinSettings?.simWingmenStandby
-      )
-      const result = computeConflicts({
-        units:            liveUnits,
-        ownership:        liveOwnership,
-        suppressionZones: zones,
-        isSuppressed,
-        wingmanIds:       liveWingmen,
-        vertRates:        vertRatesRef.current,
-        latched:          latchedRef.current,
-      })
-      useStcaStore.getState().setConflicts(result)
-      useAtcStore.getState().pruneConflictAcks(result.map((c) => c.id))
-    }
-    tick()
-    const id = setInterval(tick, STCA_TICK_MS)
-    return () => clearInterval(id)
-  }, [windowSettings?.stcaEnabled, windowSettings?.simWingmenStandby, centerlines])
-
-  // ── STCA alert tone ──────────────────────────────────────────────────
-  // Sector-specific: only sounds on a window whose controller owns unit A
-  // or B of an unacknowledged pair.
-  useEffect(() => {
-    const hasUnacked = conflicts.some((c) =>
-      !conflictAcks[c.id] &&
-      (ownership[c.unitAId] === myControllerId || ownership[c.unitBId] === myControllerId)
-    )
-    if (hasUnacked) {
-      startAlertTone('stars-ca', { getVolume: () => (windowSettings?.vol ?? 10) / 10 })
-    } else {
-      stopAlertTone('stars-ca')
-    }
-  }, [conflicts, conflictAcks, ownership, myControllerId, windowSettings?.vol])
-
-  useEffect(() => () => stopAlertTone('stars-ca'), [])
+  // ── STCA compute loop + alert tone — see stca/useStcaCompute.js ───────
+  useStcaTracker({
+    centerlines, conflicts, conflictAcks, ownership, myControllerId,
+    vol: windowSettings?.vol, stcaEnabled: windowSettings?.stcaEnabled,
+    simWingmenStandby: windowSettings?.simWingmenStandby,
+  })
 
   // Ctrl+F → open blank FPE
   useEffect(() => {
