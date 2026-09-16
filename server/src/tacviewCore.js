@@ -333,6 +333,15 @@ function createParser() {
           // frame: the reference sample only advances once that much time
           // has actually elapsed, so `groundSpeedMps` holds its last value
           // in between rather than recomputing on every delta line.
+          //
+          // If an object stops moving enough for ACMI to stop emitting `T`
+          // updates for it at all (e.g. parked, no further deltas), this
+          // branch never re-fires and `groundSpeedMps` freezes forever at
+          // its last real in-motion value instead of decaying to 0 —
+          // confirmed live 2026-09-16: a parked aircraft held a stale
+          // ~2.0 m/s reading. Downstream consumers of `unit.speed` (e.g.
+          // ASDE-X's PTL) can't treat "nonzero" as proof of current motion
+          // when the source is Tacview.
           updateTParts(obj, prop.value)
           const newLat = obj.tParts?.[1]
           const newLon = obj.tParts?.[0]
