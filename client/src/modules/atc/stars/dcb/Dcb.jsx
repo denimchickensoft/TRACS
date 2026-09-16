@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useWheelDirection } from '../../../../utils/wheel.js'
 import { useDisplayStore }  from '../../../../store/display.js'
 import { usePresetsStore }  from '../../../../store/presets.js'
@@ -15,15 +15,12 @@ import { useGeoStore }        from '../../../../store/geo.js'
 import { useFixesStore }      from '../../../../store/fixes.js'
 import { useProceduresStore } from '../../../../store/procedures.js'
 import { saveStarsPrefs }     from '../../../../store/starsPrefs.js'
-import './Dcb.css'
+import { LDR_DIR_SEQUENCE, LDR_DIR_CANVAS_ANGLES, ldrDirWraparound, clampValueDelta } from '../../../../utils/dcbSpinner.js'
+import { useNonPassiveWheel } from '../../../../utils/useNonPassiveWheel.js'
+import '../../dcb.css'
 
 const WINDOW_ID = 'atc-main'
 
-// ─── LDR direction spinner — clockwise from N ────────────────────────────────
-// Index corresponds to bearing (N=0°, E=90°, etc.); canvas angles differ because
-// canvas 0° is right (+x) and y increases downward.
-const LDR_DIR_SEQUENCE     = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-const LDR_DIR_CANVAS_ANGLES = [-90,  -45,   0,   45,  90,  135,  180, -135]
 const RR_VALUES = [2, 5, 10, 20]
 
 // ─── Menu / button definitions ────────────────────────────────────────────────
@@ -284,7 +281,7 @@ function applyValueDelta(id, delta, win, updateWindow) {
   // LDR_DIR wraps around (circular), so handle before the generic clamping path
   if (id === 'LDR_DIR') {
     const cur = getWindowValue('LDR_DIR', win)
-    const next = ((cur - delta) % 8 + 8) % 8  // dir:-1 → scroll-up increments index (clockwise)
+    const next = ldrDirWraparound(cur, delta)  // dir:-1 → scroll-up increments index (clockwise)
     updateWindow(WINDOW_ID, { ldrAngleDeg: LDR_DIR_CANVAS_ANGLES[next] })
     return
   }
@@ -292,9 +289,7 @@ function applyValueDelta(id, delta, win, updateWindow) {
   const cfg = VALUE_CONFIG[id]
   if (!cfg) return
   const cur  = getWindowValue(id, win)
-  const next = Math.max(cfg.min, Math.min(cfg.max,
-    parseFloat((cur + delta * cfg.step * (cfg.dir ?? -1)).toFixed(3))
-  ))
+  const next = clampValueDelta(cur, delta, cfg)
   switch (id) {
     case 'VOL':           updateWindow(WINDOW_ID, { vol: next });            break
     case 'RANGE':         updateWindow(WINDOW_ID, { rangeNm: next });       break
@@ -728,12 +723,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     }
   }, [activeButton, windowSettings, updateWindow, wheelDir])
 
-  useEffect(() => {
-    const el = barRef.current
-    if (!el) return
-    el.addEventListener('wheel', handleWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleWheel)
-  }, [handleWheel])
+  useNonPassiveWheel(barRef, handleWheel)
 
   // ── Render a single button def ────────────────────────────────────
   function renderBtn(btn, half = false) {

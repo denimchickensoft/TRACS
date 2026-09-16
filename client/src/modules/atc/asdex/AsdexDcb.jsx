@@ -1,15 +1,15 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }   from '../../../store/display.js'
 import { saveAsdexPrefs }   from '../../../store/asdexPrefs.js'
-import '../stars/dcb/Dcb.css'
+import { LDR_DIR_SEQUENCE, LDR_DIR_CANVAS_ANGLES, ldrDirWraparound, clampValueDelta } from '../../../utils/dcbSpinner.js'
+import { useNonPassiveWheel } from '../../../utils/useNonPassiveWheel.js'
+import '../dcb.css'
 
 export const ASDEX_WINDOW_ID = 'asdex-main'
 
 const RANGE_MIN = 0.1
 const RANGE_MAX = 2.0
-const LDR_DIR_SEQUENCE      = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-const LDR_DIR_CANVAS_ANGLES = [-90,  -45,   0,   45,  90,  135,  180, -135]
 
 const VALUE_CONFIG = {
   LDR_DIR:  { min: 0,   max: 7,   step: 1,   dir: -1, fmt: v => LDR_DIR_SEQUENCE[v] ?? 'NE' },
@@ -67,7 +67,7 @@ function applyDelta(id, delta, win, updateWindow) {
   }
   if (id === 'LDR_DIR') {
     const cur  = getValue('LDR_DIR', win)
-    const next = ((cur - delta) % 8 + 8) % 8
+    const next = ldrDirWraparound(cur, delta)
     const ldrAngleDeg = LDR_DIR_CANVAS_ANGLES[next]
     updateWindow(ASDEX_WINDOW_ID, { ldrAngleDeg })
     saveAsdexPrefs({ ldrAngleDeg })
@@ -76,9 +76,7 @@ function applyDelta(id, delta, win, updateWindow) {
   const cfg = VALUE_CONFIG[id]
   if (!cfg) return
   const cur  = getValue(id, win)
-  const next = Math.max(cfg.min, Math.min(cfg.max,
-    parseFloat((cur + delta * cfg.step * (cfg.dir ?? -1)).toFixed(3))
-  ))
+  const next = clampValueDelta(cur, delta, cfg)
   switch (id) {
     case 'LDR_LEN':  updateWindow(ASDEX_WINDOW_ID, { ldrLength: next });     saveAsdexPrefs({ ldrLength: next });     break
     case 'PTL_LNTH': updateWindow(ASDEX_WINDOW_ID, { ptlLength: next });     saveAsdexPrefs({ ptlLength: next });     break
@@ -134,12 +132,7 @@ export function AsdexDcb() {
     applyDelta(activeSpinner, dir, win, updateWindow)
   }, [activeSpinner, win, updateWindow, wheelDir])
 
-  useEffect(() => {
-    const el = barRef.current
-    if (!el) return
-    el.addEventListener('wheel', handleWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleWheel)
-  }, [handleWheel])
+  useNonPassiveWheel(barRef, handleWheel)
 
   function renderBtn(btn, half = false) {
     const isActive = activeSpinner === btn.id
