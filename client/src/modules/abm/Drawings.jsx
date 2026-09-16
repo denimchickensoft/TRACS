@@ -3,6 +3,7 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useSessionStore } from '../../store/session.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
+import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { useAbmDeclination } from './useAbmDeclination.js'
 import { toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { AbmDrawingImport } from './AbmDrawingImport.jsx'
@@ -181,6 +182,22 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const airspacePalettes = useAbmAirspaceStore(s => s.palettes)
   const paletteIdx       = useAbmAirspaceStore(s => s.paletteIdx)
   const paletteStroke    = airspacePalettes[paletteIdx]?.colors?.CUSTOM?.stroke ?? null
+
+  // When docked, AbmScope owns loading palettes + hydrating paletteIdx from
+  // abmPrefs (see its own comment: paletteIdx is a single global value, not
+  // per-window, so this panel just reads it reactively) — don't conflict
+  // with that. Standalone, there's no AbmScope instance in this document to
+  // do either, so this popup would otherwise always see an empty palette
+  // list and the default paletteIdx (0), rendering every un-overridden
+  // drawing's swatch as a hardcoded gray instead of the real palette color.
+  useEffect(() => {
+    if (docked) return
+    useAbmAirspaceStore.setState({ paletteIdx: loadAbmPrefs().aspColorIdx })
+  }, [docked])
+  useEffect(() => {
+    if (docked || !theatre) return
+    useAbmAirspaceStore.getState().loadForTheatre(theatre)
+  }, [docked, theatre])
 
   const [importOpen, setImportOpen] = useState(false)
   const [initialFiles, setInitialFiles] = useState(null)
