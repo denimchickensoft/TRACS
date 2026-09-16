@@ -222,6 +222,20 @@ function removeClient(peerId) {
   clientList = clientList.filter(c => c.peerId !== peerId)
 }
 
+// Additively merge an incoming client list into ours: update/add entries from
+// the incoming view, but never drop a peer we already track (in particular,
+// never drop our own selfId entry) — an incoming list can be a stale snapshot
+// (e.g. a STATE_DUMP built before the sender added the peer this is being
+// sent to) and must never be able to regress what we already know. Only
+// PEER_DISCONNECTED and the disconnect timer remove peers.
+function mergeClientList(incoming) {
+  const incomingById = Object.fromEntries(incoming.map(c => [c.peerId, c]))
+  const merged = clientList
+    .map(c => incomingById[c.peerId] ?? c)   // update existing entries
+    .concat(incoming.filter(c => !clientList.some(e => e.peerId === c.peerId))) // add new
+  return merged.sort((a, b) => a.connectedAt - b.connectedAt)
+}
+
 // Peers inside disconnectTimers have fired onPeerLeave — they may be gone.
 // The effective list excludes them so host duties transfer immediately on leave,
 // without waiting for the full DISCONNECT_TIMEOUT_MS reconnect window to expire.
@@ -378,14 +392,23 @@ function applyDump(mod, payload) {
     // Seed registry before syncPeers so rebuildFromClientList treats every
     // peer as "already registered" (no local ID derivation) and so that the
     // activeIds filter in applyAtcDump/applyCatccDump sees correct IDs.
+    //
+    // Merge rather than replace: the dump can be a stale snapshot captured
+    // by the sender before it registered the very peer this is being sent
+    // to (STATE_DUMP is now sent to a joiner before the host finishes
+    // upserting/minting their ID -- see the HANDSHAKE handler above), so it
+    // must never be able to erase an entry we already have (especially our
+    // own). The authoritative CLIENT_LIST_UPDATE that always follows applies
+    // the host's registry wholesale once it's actually complete.
     if (payload.registry) {
+      const ctrl = useControllersStore.getState()
       useControllersStore.getState().setRegistry(
-        payload.registry,
-        payload.groupAssignments ?? {},
-        payload.nextGroupNumber  ?? 1,
+        { ...ctrl.registry, ...payload.registry },
+        { ...ctrl.groupAssignments, ...(payload.groupAssignments ?? {}) },
+        Math.max(ctrl.nextGroupNumber, payload.nextGroupNumber ?? 1),
       )
     }
-    if (payload.clientList) { clientList = payload.clientList; syncPeers() }
+    if (payload.clientList) { clientList = mergeClientList(payload.clientList); syncPeers() }
     if (payload.peerSequences) Object.assign(peerSeqs, payload.peerSequences)
     if (mod === 'ATC')   applyAtcDump(payload)
     if (mod === 'CATCC') applyCatccDump(payload)
@@ -644,12 +667,7 @@ async function onSessionMessage(msg, fromPeerId) {
       // but never remove peers we already track — only PEER_DISCONNECTED and the
       // disconnect timer remove peers. This prevents a stale CLU from resurrecting
       // a disconnected peer or erasing a peer the host hasn't heard about yet.
-      const incoming = msg.payload.clients ?? []
-      const incomingById = Object.fromEntries(incoming.map(c => [c.peerId, c]))
-      const merged = clientList
-        .map(c => incomingById[c.peerId] ?? c)   // update existing entries
-        .concat(incoming.filter(c => !clientList.some(e => e.peerId === c.peerId))) // add new
-      clientList = merged.sort((a, b) => a.connectedAt - b.connectedAt)
+      clientList = mergeClientList(msg.payload.clients ?? [])
       // Non-hosts apply the host's registry before syncPeers so that
       // rebuildFromClientList treats every peer as already-registered and
       // never derives IDs locally. The host never receives its own CLU.
@@ -970,7 +988,14 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     sendSession(hsMsg)
   })
 
-  sessionRoom.onPeerLeave(startDisconnectTimer)
+  // Never start a disconnect timer against ourselves — a relay/transport-level
+  // leave event for our own peerId is always spurious (e.g. a duplicate-membership
+  // artifact from a reconnect racing the relay's stale-connection reaping), unlike
+  // PEER_DISCONNECTED (client.js's selfId guard there) this has no other peer
+  // vouching for the departure at all.
+  sessionRoom.onPeerLeave((peerId) => {
+    if (peerId !== selfId) startDisconnectTimer(peerId)
+  })
 }
 
 export async function disconnectWebrtc() {

@@ -30,10 +30,32 @@ function createSyncRelay(wss, config) {
     return null
   }
 
+  function memberByPeerId(topic, peerId) {
+    for (const m of topics.get(topic) ?? []) {
+      if (m.peerId === peerId) return m
+    }
+    return null
+  }
+
   function subscribe(topic, ws, peerId) {
     let members = topics.get(topic)
     if (!members) { members = new Set(); topics.set(topic, members) }
     if (memberOf(topic, ws)) return // already subscribed — ignore duplicate
+
+    // Reconnect under the same peerId (e.g. a brief drop-and-retry on the
+    // flat 3s reconnect in syncClient.js) — replace the stale socket in
+    // place rather than adding a second membership entry. Without this, the
+    // stale entry lingers until the heartbeat sweep reaps it, up to
+    // HEARTBEAT_INTERVAL_MS*2 later, and unsubscribeAll() then broadcasts a
+    // peer_leave for a peerId that, from every other member's perspective,
+    // never actually left — client.js has no way to distinguish that from a
+    // real departure.
+    const existing = memberByPeerId(topic, peerId)
+    if (existing) {
+      existing.ws = ws
+      console.log(`[relay:sync] peerId=${peerId} resubscribed topic=${topic} (${members.size} member${members.size === 1 ? '' : 's'})`)
+      return
+    }
 
     // Notify existing members about the newcomer, and the newcomer about each
     // existing member — symmetric on both sides, matching Trystero's onPeerJoin,
