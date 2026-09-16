@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createBroadcastHook } from './broadcastRegistry.js'
+import { syncStore } from './storeSync.js'
 
 // Shared declaration/BRAA store shape for ABM and AIC — abm.js's own comment
 // says its declarations/braaList were "ported from AIC's store/aic.js as-is."
@@ -25,7 +26,7 @@ export const DECLARATION = {
 // mutual-exclusivity/sync mechanics, not the matching logic itself.
 export const AUTO_DECLARE_MODE = { OFF: 'off', COALITION: 'coalition', IFF: 'iff' }
 
-export function createDeclarationStore({ storageKey, legacyStorageKey }) {
+export function createDeclarationStore({ storageKey, legacyStorageKey, channelName }) {
   const { register, broadcast } = createBroadcastHook()
 
   function loadStoredAutoDeclareMode() {
@@ -123,6 +124,21 @@ export function createDeclarationStore({ storageKey, legacyStorageKey }) {
       // ignore (e.g. private browsing quota)
     }
   })
+
+  // Cross-window sync for this controller's own popup windows (e.g. AIC's
+  // BraaList popup, ABM's focus-panel popup) — NOT the cross-controller
+  // broadcast above (declarations/braaList are deliberately local to this
+  // controller, never sent to other controllers). pendingBraaFighter is
+  // excluded: it's transient in-progress-click state specific to whichever
+  // window's cursor is mid-BRAA-pair, not something that should leak across
+  // windows.
+  if (typeof window !== 'undefined') {
+    syncStore(useStore, channelName, (s) => ({
+      declarations:    s.declarations,
+      braaList:        s.braaList,
+      autoDeclareMode: s.autoDeclareMode,
+    }))
+  }
 
   function applyDeclaration(unitId, declaration) {
     useStore.getState()._applyDeclaration(unitId, declaration)

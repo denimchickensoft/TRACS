@@ -9,7 +9,7 @@ const {
   applyAutoDeclareMode: applyAicAutoDeclareMode,
   applyStateDump: applyAicStateDump,
   applyDeclarationsReset: applyAicDeclarationsReset,
-} = createDeclarationStore({ storageKey: 'tracs.aic.autoDeclareMode', legacyStorageKey: 'tracs.aic.autoClassify' })
+} = createDeclarationStore({ storageKey: 'tracs.aic.autoDeclareMode', legacyStorageKey: 'tracs.aic.autoClassify', channelName: 'tracs-aic-declarations' })
 
 export {
   useAicStore,

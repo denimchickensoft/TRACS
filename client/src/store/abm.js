@@ -13,7 +13,7 @@ const {
   applyAutoDeclareMode: applyAbmAutoDeclareMode,
   applyStateDump: applyAbmStateDump,
   applyDeclarationsReset: applyAbmDeclarationsReset,
-} = createDeclarationStore({ storageKey: 'tracs.abm.autoDeclareMode', legacyStorageKey: 'tracs.abm.autoClassify' })
+} = createDeclarationStore({ storageKey: 'tracs.abm.autoDeclareMode', legacyStorageKey: 'tracs.abm.autoClassify', channelName: 'tracs-abm-declarations' })
 
 export {
   useAbmStore,
