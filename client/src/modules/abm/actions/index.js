@@ -572,6 +572,8 @@ export function WHERE({ captures, context }) {
   return `WHERE ${matches[0].callsign}`
 }
 
+// ── FRAG / route finding ─────────────────────────────────────────────────────
+
 // `.frag <callsign>` — text-argument sibling of the click-based `.frag` +
 // click / Ctrl+Shift+click handlers in AbmScope.jsx's handleMouseUp: opens
 // the FRAG panel for the flight that contact belongs to, without needing a
@@ -627,6 +629,8 @@ export function RCLEAR() {
   mission.clearRouteVisible()
   return 'ROUTES CLEARED'
 }
+
+// ── Focus-panel window management ────────────────────────────────────────────
 
 // `.focus <callsign> [range]` — opens (or brings to front / live-updates the
 // range of) an in-page floating focus panel (AbmFocusPanel.jsx) permanently
