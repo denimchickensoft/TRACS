@@ -226,10 +226,16 @@ export default function StarsScope() {
       windowSettings?.altFilterLowU, windowSettings?.altFilterHighU,
       windowSettings?.altFilterLowA, windowSettings?.altFilterHighA])
 
-  // ── Load presets from server on mount; apply default if set ──────
+  // ── Load presets from server on mount; apply default once per session ──
+  // `load()` (refreshing the slot list) is harmless to rerun on every mount,
+  // but applying the default slot's settings to the window is NOT — StarsScope
+  // remounts on every STARS<->ASDE-X toggle (see App.jsx), and without the
+  // defaultAppliedThisSession guard this would silently stomp the window's
+  // live rangeNm/center/etc. back to the saved default on every round trip.
   useEffect(() => {
     usePresetsStore.getState().load().then(() => {
-      const { slots, defaultSlot } = usePresetsStore.getState()
+      const { slots, defaultSlot, defaultAppliedThisSession } = usePresetsStore.getState()
+      if (defaultAppliedThisSession) return
       if (defaultSlot !== null && slots[defaultSlot]?.settings) {
         const settings = slots[defaultSlot].settings
         displayStore.updateWindow(WINDOW_ID, {
@@ -255,6 +261,7 @@ export default function StarsScope() {
           usePreviewStore.getState().setPosition(settings.previewPosition)
         usePresetsStore.getState().setActiveSlot(defaultSlot)
       }
+      usePresetsStore.getState().markDefaultApplied()
     })
   }, []) // eslint-disable-line
 
@@ -374,14 +381,15 @@ export default function StarsScope() {
   }, [buildView, blinkTick])
 
   // ── Auto-center on facility airbase ──────────────────────────────
-  // Stores the facilityDcsName that was last auto-centered so that changing
-  // facility triggers a re-center even if the scope is already off-zero.
-  const autoCenteredRef = useRef(null)
+  // Tracks the facilityDcsName last auto-centered in windowSettings.autoCenteredFacility
+  // (the module-level display store, which survives the STARS<->ASDE-X unmount/
+  // remount) rather than a component ref, so a genuine facility change still
+  // triggers a re-center but a bare remount doesn't clobber a live pan.
   useEffect(() => {
     // FIR/CTR has no single center point — skip auto-center, let controller pan
     if (!windowSettings || facilityType === 'fir') return
     if (!facilityDcsName) return
-    if (autoCenteredRef.current === facilityDcsName) return
+    if (windowSettings.autoCenteredFacility === facilityDcsName) return
 
     // Prefer a runway center point — more precise than the Olympus airbase position.
     // Falls back to Olympus position if runway data hasn't loaded yet or has no match
@@ -405,8 +413,8 @@ export default function StarsScope() {
       homeCenterLat: centerLat,
       homeCenterLng: centerLng,
       offCntr:       false,
+      autoCenteredFacility: facilityDcsName,
     })
-    autoCenteredRef.current = facilityDcsName
   }, [airbases, facilityDcsName, centerlines, windowSettings, displayStore, facilityType])
 
   // ── History capture — see useHistoryCapture.js ────────────────────

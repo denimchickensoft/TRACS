@@ -35,6 +35,14 @@ export const usePresetsStore = create((set, get) => ({
   pendingMode:      null,   // null | { type: 'pick' } | { type: 'name', slotIndex: number }
   pendingBookmarks: Array(10).fill(null), // bookmark slots when no preset is active
 
+  // True once the defaultSlot's settings have been applied to a window this
+  // session. This store is module-level and survives StarsScope remounting
+  // (e.g. the STARS<->ASDE-X toggle is a real unmount/remount) — without this
+  // guard, "auto-loaded on session start" above would really mean "reapplied
+  // on every remount", stomping live rangeNm/center/etc. back to the saved
+  // default every time.
+  defaultAppliedThisSession: false,
+
   load: async () => {
     try {
       const res = await fetch('/api/presets')
@@ -131,5 +139,7 @@ export const usePresetsStore = create((set, get) => ({
 
   setActiveSlot:  (index) => set({ activeSlot: index }),
   setPendingMode: (mode)  => set({ pendingMode: mode }),
+
+  markDefaultApplied: () => set({ defaultAppliedThisSession: true }),
 }))
 
