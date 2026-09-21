@@ -95,6 +95,8 @@ Bare-click (empty buffer) also resolves pending point-outs/handoffs automaticall
 | `RR (2\|5\|10\|20)` + ENTER | — | Set range-ring spacing |
 | `MF P` + SLEW | `F7` | Relocate the command-line/response readout to the clicked point |
 | `MF S` + SLEW | `F7` | Relocate the SSA overlay |
+| `MF S<atis>` + ENTER | — | Set the SSA overlay's ATIS code letter |
+| `MF S<atis> <giText>` + ENTER | — | Set the SSA overlay's ATIS code letter and general-info text |
 | `.ALTIM <val>` / `.QNH <val>` + ENTER | — | Set altimeter (inHg or hPa, auto-detected by range) |
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
@@ -158,7 +160,7 @@ When SRS transponder data is reaching TRACS (via a relay, in either Tacview or O
 
 - A track in an unacknowledged conflict gets a `CA`/`MCI` indicator line above line 1 of its datablock, blinking red.
 - **A bare left-click on a track with an active, unacknowledged conflict acknowledges it** — this takes priority over the usual "toggle partial/full datablock" click behavior described under Mouse gestures below. Once acknowledged, the indicator turns solid red instead of blinking.
-- An audible alert tone plays while any conflict is unacknowledged.
+- An audible alert tone plays while any conflict is unacknowledged. The app-wide **Sounds** checkbox in Settings (see [Getting Started](getting-started.md)) mutes this tone entirely.
 - Suppression zones near final approach courses prevent false alerts between aircraft that are supposed to be close together on approach.
 
 The DCB aux bar (SHIFT) has a **CA** toggle button alongside **WNG** for this.
@@ -205,12 +207,13 @@ Click a value button, then use the **mouse wheel** to adjust it. Click a submenu
 | Button | Effect |
 |---|---|
 | **RANGE** | Scope range |
+| **PLACE CNTR** | Not yet implemented — see Known limitations below |
 | **OFF CNTR** | Recenter |
 | **RR** | Ring spacing |
 | **PLACE RR** | Click the scope to set an off-center ring origin |
 | **RR CNTR** | Reset |
-| **MAPS** | Layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures |
-| **BRITE** | Brightness submenu, separate controls for Map A, Map B, background, FDB, LDB, lists, symbols, rings, compass, history |
+| **MAPS** | Layer toggles: holds, MSA, airways, MORA/grid, relief, geo, fixes, obstacles, centerlines, procedures, satellite flow buckets (see `.SAT` above), and — when the facility's MVA layer is in play — an MVA slot swap |
+| **BRITE** | Brightness submenu, separate controls for Map A, Map B, background, FDB, LDB, lists, symbols, rings, compass, history, and the DCB's own brightness |
 | **LDR DIR** | Leader line direction |
 | **LDR LEN** | Leader line length |
 | **CHAR SIZE** | Submenu: datablocks/lists/DCB/tools/position/map |
@@ -330,3 +333,4 @@ A handful of ATC command patterns parse but currently do nothing — reported he
 - `MF M` (Mode C toggle), `MF B` (beacon toggle), `MF E` (FDB overflight toggle) — not wired up. Use the DCB's **PTL OWN**/**PTL ALL** for predicted track lines instead (per-track PTL is available via `MF R`).
 - Quicklook (`**<tcp>`, `**ALL`) — parses but has no visible effect yet.
 - Most Ctrl+F-key display shortcuts (Ctrl+F1–F5, F7, F9, F10, Insert) are currently no-ops; only Ctrl+F8 (DCB show/hide) and the bookmark combos (Ctrl+Alt+0–9, Ctrl+0–9) work.
+- DCB **PLACE CNTR** button — visually selects but has no handler yet; use **OFF CNTR** to recenter instead.

@@ -55,6 +55,14 @@ Click **Sign In**. This establishes your position, registers you with other cont
 
 A browser refresh rejoins the same session automatically — your peer identity is persisted locally, so other controllers see you reconnect rather than see you as dropped. A full **Disconnect** (bottom of the position sign-in screen) clears this and returns you to the connect screen.
 
+## Settings
+
+The **⚙** icon (top right, once signed in) opens a small settings panel:
+
+- **Use DCS Multiplayer Names** — toggles whether callsigns/labels use DCS multiplayer names instead of the in-mission unit naming.
+- **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking this silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
+- **Help / Docs** — opens this documentation in a new tab.
+
 ## Local testing without a live DCS server
 
 Run the bundled mock Olympus server:

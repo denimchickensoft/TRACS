@@ -8,7 +8,7 @@ Sign-in requires a Callsign and Frequency, same as AIC — see [Getting Started]
 
 ## Command line
 
-Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `.dope`, `.rename`, `.be`, `.frag`, `.route`, and the free-hand drawing commands below) work by typing without pressing Enter, then clicking the map instead — noted below. `Escape` clears state in this priority order: a pending drawing-clear click → a pending "clear all drawings" confirm → a pending free-hand drawing in progress → find marker → a flight's route line (toggled via `.route`/FRAG) → pending F-key declaration → pending BRAA fighter → open RBL → brevity definition readout → command buffer. `ArrowUp`/`ArrowDown` cycle your last 50 commands.
+Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `.dope`, `.rename`, `.be`, `.frag`, `.route`, and the free-hand drawing commands below) work by typing without pressing Enter, then clicking the map instead — noted below. `Escape` clears state in this priority order: a pending drawing-clear click → a pending "clear all drawings" confirm → a pending free-hand drawing in progress → find marker → pending F-key declaration → pending BRAA fighter → open RBL → brevity definition readout → command buffer → every route line on the scope (toggled via `.route`/FRAG), once the command buffer is already empty. `ArrowUp`/`ArrowDown` cycle your last 50 commands.
 
 ### Bullseye
 
@@ -43,13 +43,14 @@ Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `
 | `.tma` `.ctr` `.cta` `.fir` `.uir` `.sua` `.mil` `.trsa` `.classa`–`.classg` | Toggle one airspace category |
 | `.aspcolors <name>` | Select an airspace color palette |
 | `.refresh` | Reload airspace color palettes from the server |
-| `.labels` | Toggle name labels for airspace *and* custom drawings |
+| `.labels` (or `.lbl` / `.label`) | Toggle name labels for airspace *and* custom drawings |
 | `.labelsize [0-5]` | Set airspace/fix/drawing label size; bare form reports the current value |
 | `.fill` | Toggle polygon fill for airspace *and* custom drawings; `.fill <1-100>` sets transparency % and turns it on |
 | `.custom` / `.cust` | Toggle all custom drawing layers |
 | `.custom <name>` / `.cust <name>` | Toggle just the drawing(s) with that name |
 | `.fixes` | Toggle theatre fix points |
 | `.fix <name...>` | Force-show one or more fixes regardless of `.fixes`; each name toggles independently |
+| `.fix` (no argument) | Clear every pinned fix for the current theatre |
 | `.navaids` | Toggle navaids |
 | `.find <fix>` | Drop a marker at a named fix |
 | `.runways` | Toggle runways |
@@ -86,7 +87,7 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 | `.dbreset` | Clear all per-contact `.db` overrides |
 | `.dbca` | Datablock collision-avoidance placement (off by default) |
 | `.dbsize [0-5]` | Set aircraft datablock size; bare form reports the current value |
-| `.dbs` | Formation datablock suppression: only the flight lead's datablock shows when 2+ same-flight aircraft are within 3 NM (on by default) |
+| `.dbs` | Formation datablock suppression: only the flight lead's datablock shows when 2+ same-flight aircraft are within a 3 NM box (along-track/cross-track relative to the lead's heading, not a simple radius) (on by default) |
 | `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction |
 | `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
@@ -101,6 +102,8 @@ A newly-detected enemy missile triggers an alert: a repeating tone plus the miss
 | `.malert` | Toggle the missile-launch alert on/off entirely |
 | `.vol` | Show current master alert volume |
 | `.vol <0-10>` | Set master alert volume (0 = mute) — shared by any ABM alert tone, not missile-specific |
+
+The app-wide **Sounds** checkbox in Settings (see [Getting Started](getting-started.md)) is a master mute that overrides `.vol` — if it's unchecked, the missile-launch alert stays silent regardless of `.vol`.
 
 Alert audio/state is shared across every open ABM window (main scope, focus panels, pop-outs) — only one tone ever plays regardless of how many windows are open, and dismissing it from any window silences it everywhere.
 
@@ -161,6 +164,8 @@ Alternatives to clicking a contact directly, useful when you know the callsign b
 | `.route <callsign>` | Toggle that flight's route line on the scope |
 
 All three accept a partial/prefix match and will tell you if it's ambiguous between multiple live callsigns. `.rclear` clears every currently-shown route line at once (both ones toggled via `.route`/FRAG's own ROUTE header) — as does `Escape`, once the command line is already empty (see Keyboard shortcuts below).
+
+`.frag` and `.route` also work bare, type-then-click style (no Enter): type `.frag` or `.route` with no callsign, then click a contact to open its FRAG or toggle its route line — same effect as the named form, for when it's faster to click than to type a callsign.
 
 ### Focus windows
 
