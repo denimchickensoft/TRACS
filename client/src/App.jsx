@@ -75,6 +75,8 @@ export function App() {
 
   const useDcsNames    = useSessionStore((s) => s.useDcsNames)
   const toggleDcsNames = useSessionStore((s) => s.toggleDcsNames)
+  const soundsEnabled  = useSessionStore((s) => s.soundsEnabled)
+  const toggleSounds   = useSessionStore((s) => s.toggleSounds)
   const unreadGeneral  = useSessionStore((s) => s.unreadGeneral)
   const unreadDm       = useSessionStore((s) => s.unreadDm)
   const openDmTab      = useSessionStore((s) => s.openDmTab)
@@ -635,6 +637,15 @@ export function App() {
                 style={{ cursor: 'pointer', accentColor: '#4488cc' }}
               />
               Use DCS Multiplayer Names
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#888', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={soundsEnabled}
+                onChange={toggleSounds}
+                style={{ cursor: 'pointer', accentColor: '#4488cc' }}
+              />
+              Sounds
             </label>
             <a
               href={docsHref}

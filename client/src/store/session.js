@@ -63,6 +63,10 @@ export const useSessionStore = create((set) => ({
 
   // Display preferences
   useDcsNames: localStorage.getItem('tracs.settings.useDcsNames') !== 'false',
+  // Global audio mute — gates every alertTone.js channel (STARS CA, ABM
+  // missile-launch, and any future one) at the single choke point rather
+  // than each module's own call site. See audio/alertTone.js's pulse().
+  soundsEnabled: localStorage.getItem('tracs.settings.soundsEnabled') !== 'false',
 
   // Active module (single paradigm per window)
   activeModule: null,
@@ -114,6 +118,12 @@ export const useSessionStore = create((set) => ({
     const next = !s.useDcsNames
     localStorage.setItem('tracs.settings.useDcsNames', String(next))
     return { useDcsNames: next }
+  }),
+
+  toggleSounds: () => set((s) => {
+    const next = !s.soundsEnabled
+    localStorage.setItem('tracs.settings.soundsEnabled', String(next))
+    return { soundsEnabled: next }
   }),
 
   setActiveModule: (module) => set({ activeModule: module }),

@@ -8,6 +8,7 @@
 // elsewhere). That's fine for a UI alert; it's not a music synthesizer.
 
 import { getAudioContext } from './audioEngine.js'
+import { useSessionStore } from '../store/session.js'
 
 const active = new Map() // channel -> { osc, gain, timeoutId, on }
 
@@ -56,7 +57,12 @@ export function startAlertTone(channel, opts = {}) {
 
   const pulse = () => {
     entry.on = !entry.on
-    const target = entry.on ? Math.max(0, Math.min(1, entry.getVolume())) : 0
+    // Global "Sounds" checkbox (App.jsx settings panel) is a hard gate here
+    // rather than each caller's own concern — re-sampled every pulse, same as
+    // getVolume(), so toggling it mutes/unmutes an already-sounding tone
+    // within one pulse instead of only on the next start.
+    const soundsEnabled = useSessionStore.getState().soundsEnabled
+    const target = (entry.on && soundsEnabled) ? Math.max(0, Math.min(1, entry.getVolume())) : 0
     const now = ctx.currentTime
     gain.gain.cancelScheduledValues(now)
     gain.gain.setValueAtTime(gain.gain.value, now)
