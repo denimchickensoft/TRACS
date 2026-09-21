@@ -90,6 +90,20 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 | `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction |
 | `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
+### Missile tracking & launch alert
+
+In-flight enemy missiles show as a small triangle (heading-oriented, colored by declaration) once independently detected by a friendly AWACS/EWR unit — same fog-of-war rule as everything else on the scope. Only medium/large threats (cruise missiles, anti-ship missiles, SAMs) are trackable at all; typical fighter-launched air-to-air shots are too small to register and never appear. `.ptl` and `.history` (see Contacts above) apply to missile symbols too.
+
+A newly-detected enemy missile triggers an alert: a repeating tone plus the missile's symbol/PTL blinking, both continuing for as long as it stays tracked and clearing automatically on impact, expiry, or lost detection. Click the blinking symbol to cancel the alert early (sound + blink both stop) — the missile itself keeps rendering normally afterward.
+
+| Command | Effect |
+|---|---|
+| `.malert` | Toggle the missile-launch alert on/off entirely |
+| `.vol` | Show current master alert volume |
+| `.vol <0-10>` | Set master alert volume (0 = mute) — shared by any ABM alert tone, not missile-specific |
+
+Alert audio/state is shared across every open ABM window (main scope, focus panels, pop-outs) — only one tone ever plays regardless of how many windows are open, and dismissing it from any window silences it everywhere.
+
 ### BRAA, bogey dope, threat rings
 
 | Command | Effect |
@@ -178,6 +192,7 @@ The focus window itself is a real independent scope: drag to move it, drag an ed
 | **Left-click + drag** | Draw a range/bearing line |
 | **Digit 1–9, then click** | Set that contact's leader-line direction |
 | **Double-click** a contact | Open a Focus window on it (see Focus windows above) |
+| **Click** a blinking missile symbol | Cancel its launch alert (sound + blink stop) — see Missile tracking & launch alert above |
 | **Mouse wheel** | Zoom (1 NM/step inside 10 NM range, else 10 NM — 25 NM with Ctrl) |
 
 **F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly); the next click declares every contact within a small radius of the click point, so dense clusters aren't unreachable one-at-a-time.
