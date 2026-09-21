@@ -213,48 +213,20 @@ function centroidOf(segs) {
 // returns a result descriptor. Caller is responsible for writing output and
 // logging.
 
-function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInverse }) {
-  if (!tm || !conf) {
-    return { status: 'skip', reason: 'no TM params or theatre config' }
-  }
-
-  const atDir = path.join(terrainsDir, conf.terrainsFolder || theatre, 'AirfieldsTaxiways')
-  if (!fs.existsSync(atDir)) {
-    return { status: 'skip', reason: 'AirfieldsTaxiways not found' }
-  }
-
-  if (!rwJson) {
-    return { status: 'skip', reason: 'runway JSON not found' }
-  }
-
-  // Theatre bbox for TM validation (with padding)
-  const [minLon, minLat, maxLon, maxLat] = conf.bbox
-  const PAD = 2
-  const tmInv = makeTmInv(tmInverse, tm, minLat - PAD, maxLat + PAD, minLon - PAD, maxLon + PAD)
-
-  // Index runway JSON by airbase name → runways[]
-  const rwByAirbase = {}
-  for (const ab of rwJson.airbases) {
-    const rwys = (Array.isArray(ab.runways) ? ab.runways : []).filter(r => (r.width_ft || 0) > 0 && r.end1 && r.end2)
-    if (rwys.length) rwByAirbase[ab.airbase] = rwys
-  }
-
+// Shared matching + polygon-building step, independent of where the taxiway
+// segments came from (fresh rn5 read, or reprojected from a cached raw
+// export) — see buildTheatre() and buildTheatreFromRaw() below.
+function matchAndBuildFeatures({ segmentsByStem, nameMap, rwByAirbase }) {
   const taxiFeatures = []
   const rwyFeatures  = []
   const unmatchedStems = []
   const unmatchedCentroids = {}
   const matchedAirbases = new Set()
-  const rawTaxiways = {}
 
-  const rn5Files = fs.readdirSync(atDir).filter(f => f.endsWith('.rn5')).sort()
+  for (const stem of Object.keys(segmentsByStem).sort()) {
+    const segs = segmentsByStem[stem]
 
-  for (const fname of rn5Files) {
-    const stem = path.basename(fname, '.rn5')
-    const data = fs.readFileSync(path.join(atDir, fname))
-    const { segments: segs, nativeSegments } = extractRn5(data, tmInv)
-    rawTaxiways[stem] = nativeSegments
-
-    // Taxiway polygons from rn5 segments
+    // Taxiway polygons
     for (const coords of segs) {
       const ring = bufferPolyline(coords, TAXIWAY_WIDTH_M / 2)
       if (!ring) continue
@@ -318,6 +290,55 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInver
   }
   suggestedPairs.sort((a, b) => a.distanceM - b.distanceM)
 
+  return { taxiFeatures, rwyFeatures, unmatchedStems, unclaimedAirbases, suggestedPairs }
+}
+
+function indexRunwaysByAirbase(rwJson) {
+  const rwByAirbase = {}
+  for (const ab of rwJson.airbases) {
+    const rwys = (Array.isArray(ab.runways) ? ab.runways : []).filter(r => (r.width_ft || 0) > 0 && r.end1 && r.end2)
+    if (rwys.length) rwByAirbase[ab.airbase] = rwys
+  }
+  return rwByAirbase
+}
+
+function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInverse }) {
+  if (!tm || !conf) {
+    return { status: 'skip', reason: 'no TM params or theatre config' }
+  }
+
+  const atDir = path.join(terrainsDir, conf.terrainsFolder || theatre, 'AirfieldsTaxiways')
+  if (!fs.existsSync(atDir)) {
+    return { status: 'skip', reason: 'AirfieldsTaxiways not found' }
+  }
+
+  if (!rwJson) {
+    return { status: 'skip', reason: 'runway JSON not found' }
+  }
+
+  // Theatre bbox for TM validation (with padding)
+  const [minLon, minLat, maxLon, maxLat] = conf.bbox
+  const PAD = 2
+  const tmInv = makeTmInv(tmInverse, tm, minLat - PAD, maxLat + PAD, minLon - PAD, maxLon + PAD)
+
+  const rwByAirbase = indexRunwaysByAirbase(rwJson)
+
+  const segmentsByStem = {}
+  const rawTaxiways = {}
+
+  const rn5Files = fs.readdirSync(atDir).filter(f => f.endsWith('.rn5')).sort()
+
+  for (const fname of rn5Files) {
+    const stem = path.basename(fname, '.rn5')
+    const data = fs.readFileSync(path.join(atDir, fname))
+    const { segments: segs, nativeSegments } = extractRn5(data, tmInv)
+    rawTaxiways[stem] = nativeSegments
+    segmentsByStem[stem] = segs
+  }
+
+  const { taxiFeatures, rwyFeatures, unmatchedStems, unclaimedAirbases, suggestedPairs } =
+    matchAndBuildFeatures({ segmentsByStem, nameMap, rwByAirbase })
+
   // Taxiways first, runways last — sequential draw gives correct superimposition
   return {
     status: 'ok',
@@ -332,4 +353,68 @@ function buildTheatre({ theatre, terrainsDir, tm, nameMap, conf, rwJson, tmInver
   }
 }
 
-module.exports = { TAXIWAY_WIDTH_M, makeTmInv, extractRn5, projectSegment, bufferPolyline, buildTheatre }
+// Reprojects a cached "raw" taxiway export (native theatre-grid easting/
+// northing, as persisted in airports_raw.json's `taxiways` field) back into
+// lon/lat segments, without needing the original rn5 files / a DCS install.
+// The native nodes were already validated+stripped of sentinel/corrupt data
+// when they were first extracted (see extractRn5/projectSegment above), so
+// this is just the projection half of that pipeline.
+function reprojectRawSegments(rawTaxiwaysByStem, tmInv) {
+  const segmentsByStem = {}
+  for (const [stem, nativeSegments] of Object.entries(rawTaxiwaysByStem)) {
+    const segs = []
+    for (const nativeNodes of nativeSegments) {
+      const nodes = []
+      let ok = true
+      for (const [z, x] of nativeNodes) {
+        const result = tmInv(z, x)
+        if (!result) { ok = false; break }
+        const [lat, lon] = result
+        nodes.push([+lon.toFixed(7), +lat.toFixed(7)])
+      }
+      if (ok && nodes.length >= 2) segs.push(nodes)
+    }
+    segmentsByStem[stem] = segs
+  }
+  return segmentsByStem
+}
+
+// Same output shape as buildTheatre(), but rebuilt from a previously-cached
+// airports_raw.json instead of reading rn5 files from a DCS install — lets
+// airport_name_map.json entries added after the original extraction (e.g.
+// from a prior run's suggestedPairs) get applied without redoing the DCS
+// read.
+function buildTheatreFromRaw({ tm, nameMap, conf, rwJson, rawTaxiways, tmInverse }) {
+  if (!tm || !conf) {
+    return { status: 'skip', reason: 'no TM params or theatre config' }
+  }
+  if (!rwJson) {
+    return { status: 'skip', reason: 'runway JSON not found' }
+  }
+
+  const [minLon, minLat, maxLon, maxLat] = conf.bbox
+  const PAD = 2
+  const tmInv = makeTmInv(tmInverse, tm, minLat - PAD, maxLat + PAD, minLon - PAD, maxLon + PAD)
+
+  const rwByAirbase   = indexRunwaysByAirbase(rwJson)
+  const segmentsByStem = reprojectRawSegments(rawTaxiways, tmInv)
+
+  const { taxiFeatures, rwyFeatures, unmatchedStems, unclaimedAirbases, suggestedPairs } =
+    matchAndBuildFeatures({ segmentsByStem, nameMap, rwByAirbase })
+
+  return {
+    status: 'ok',
+    features: [...taxiFeatures, ...rwyFeatures],
+    airportCount: Object.keys(segmentsByStem).length,
+    taxiCount: taxiFeatures.length,
+    rwyCount: rwyFeatures.length,
+    unmatchedStems,
+    unclaimedAirbases,
+    suggestedPairs,
+  }
+}
+
+module.exports = {
+  TAXIWAY_WIDTH_M, makeTmInv, extractRn5, projectSegment, bufferPolyline,
+  buildTheatre, buildTheatreFromRaw,
+}

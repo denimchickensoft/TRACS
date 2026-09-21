@@ -1,0 +1,1495 @@
+{
+ "theatre": "Iraq",
+ "towns": [
+  {
+   "name": "Abi Sayda",
+   "lat": 33.927962,
+   "lon": 44.77264
+  },
+  {
+   "name": "Abu Ghraib",
+   "lat": 33.304525,
+   "lon": 44.146337
+  },
+  {
+   "name": "Ad Dawr",
+   "lat": 34.458349,
+   "lon": 43.795799
+  },
+  {
+   "name": "Ad Duluiyah",
+   "lat": 34.034258,
+   "lon": 44.2254
+  },
+  {
+   "name": "Adaim",
+   "lat": 34.275441,
+   "lon": 44.538533
+  },
+  {
+   "name": "Aghjalar",
+   "lat": 35.748699,
+   "lon": 44.898488
+  },
+  {
+   "name": "Akre",
+   "lat": 36.748739,
+   "lon": 43.896393
+  },
+  {
+   "name": "Al Abaiji",
+   "lat": 33.769789,
+   "lon": 44.379869
+  },
+  {
+   "name": "Al Abbarah",
+   "lat": 33.814426,
+   "lon": 44.657916
+  },
+  {
+   "name": "Al Abbasi",
+   "lat": 35.274795,
+   "lon": 43.594879
+  },
+  {
+   "name": "Al Alam",
+   "lat": 34.688895,
+   "lon": 43.713632
+  },
+  {
+   "name": "Al Baaj",
+   "lat": 36.04745,
+   "lon": 41.716869
+  },
+  {
+   "name": "Al Hadar",
+   "lat": 35.577312,
+   "lon": 42.734024
+  },
+  {
+   "name": "Al Hawl",
+   "lat": 36.389444,
+   "lon": 41.149722
+  },
+  {
+   "name": "Al Ishaqi",
+   "lat": 34.047533,
+   "lon": 43.986862
+  },
+  {
+   "name": "Al Khalis",
+   "lat": 33.856577,
+   "lon": 44.516681
+  },
+  {
+   "name": "Al Mansuriyah",
+   "lat": 34.070649,
+   "lon": 44.865133
+  },
+  {
+   "name": "Al Mu`abbadah",
+   "lat": 37.024661,
+   "lon": 41.963794
+  },
+  {
+   "name": "Al Muhallabiyah",
+   "lat": 36.266584,
+   "lon": 42.702901
+  },
+  {
+   "name": "Al Mushahidah",
+   "lat": 33.635742,
+   "lon": 44.235354
+  },
+  {
+   "name": "Al Mutasam",
+   "lat": 34.077197,
+   "lon": 44.063698
+  },
+  {
+   "name": "Al Rumailan",
+   "lat": 37.009738,
+   "lon": 41.949288
+  },
+  {
+   "name": "Al Sharqat",
+   "lat": 35.486038,
+   "lon": 43.240801
+  },
+  {
+   "name": "Al-Ayadiya",
+   "lat": 36.487282,
+   "lon": 42.419337
+  },
+  {
+   "name": "Al-Forat",
+   "lat": 33.648557,
+   "lon": 42.842255
+  },
+  {
+   "name": "Al-Hasakah",
+   "lat": 36.501374,
+   "lon": 40.746995
+  },
+  {
+   "name": "Al-Malikiyah",
+   "lat": 37.174937,
+   "lon": 42.141336
+  },
+  {
+   "name": "Al-Qa'im",
+   "lat": 34.395772,
+   "lon": 40.994369
+  },
+  {
+   "name": "Al-Qahtaniyah",
+   "lat": 37.029088,
+   "lon": 41.549123
+  },
+  {
+   "name": "Al-Qairawan",
+   "lat": 36.159201,
+   "lon": 42.031651
+  },
+  {
+   "name": "Al-Tall",
+   "lat": 35.946602,
+   "lon": 42.56514
+  },
+  {
+   "name": "Aljwadea",
+   "lat": 36.986553,
+   "lon": 41.818879
+  },
+  {
+   "name": "Alqosh",
+   "lat": 36.734772,
+   "lon": 43.097405
+  },
+  {
+   "name": "Alwand Dam",
+   "lat": 34.313306,
+   "lon": 45.439445
+  },
+  {
+   "name": "Amedi",
+   "lat": 37.091969,
+   "lon": 43.487438
+  },
+  {
+   "name": "Amirli",
+   "lat": 34.725433,
+   "lon": 44.58354
+  },
+  {
+   "name": "Anah",
+   "lat": 34.372514,
+   "lon": 41.985872
+  },
+  {
+   "name": "Ankawa",
+   "lat": 36.228359,
+   "lon": 43.995335
+  },
+  {
+   "name": "Ar Rashidiyah",
+   "lat": 33.552778,
+   "lon": 44.3725
+  },
+  {
+   "name": "Ar Riyad",
+   "lat": 35.26944,
+   "lon": 43.910713
+  },
+  {
+   "name": "Arabit",
+   "lat": 35.426888,
+   "lon": 45.584267
+  },
+  {
+   "name": "Ash Shurah",
+   "lat": 35.994738,
+   "lon": 43.223401
+  },
+  {
+   "name": "Az Zab",
+   "lat": 35.2673,
+   "lon": 43.449975
+  },
+  {
+   "name": "Babylon Palace",
+   "lat": 32.54314,
+   "lon": 44.420037
+  },
+  {
+   "name": "Baghdad",
+   "lat": 33.302431,
+   "lon": 44.378799
+  },
+  {
+   "name": "Bahadre",
+   "lat": 36.724378,
+   "lon": 43.252609
+  },
+  {
+   "name": "Baharka",
+   "lat": 36.318942,
+   "lon": 44.038351
+  },
+  {
+   "name": "Bahriz",
+   "lat": 33.702959,
+   "lon": 44.659651
+  },
+  {
+   "name": "Baiji",
+   "lat": 34.929312,
+   "lon": 43.494562
+  },
+  {
+   "name": "Bakhdida",
+   "lat": 36.271049,
+   "lon": 43.376351
+  },
+  {
+   "name": "Bakrajo",
+   "lat": 35.557197,
+   "lon": 45.34942
+  },
+  {
+   "name": "Balad",
+   "lat": 34.000789,
+   "lon": 44.164731
+  },
+  {
+   "name": "Balad Ruz",
+   "lat": 33.689286,
+   "lon": 45.062403
+  },
+  {
+   "name": "Balisan",
+   "lat": 36.396477,
+   "lon": 44.548492
+  },
+  {
+   "name": "Baneh",
+   "lat": 35.994663,
+   "lon": 45.884322
+  },
+  {
+   "name": "Baneh Verdeh",
+   "lat": 34.970525,
+   "lon": 46.360004
+  },
+  {
+   "name": "Bani Saad",
+   "lat": 33.569909,
+   "lon": 44.544799
+  },
+  {
+   "name": "Baqubah",
+   "lat": 33.743727,
+   "lon": 44.649523
+  },
+  {
+   "name": "Bardarash",
+   "lat": 36.5027,
+   "lon": 43.588907
+  },
+  {
+   "name": "Bartella",
+   "lat": 36.354018,
+   "lon": 43.381614
+  },
+  {
+   "name": "Baruq",
+   "lat": 36.954634,
+   "lon": 46.324737
+  },
+  {
+   "name": "Barwana",
+   "lat": 34.095793,
+   "lon": 42.388824
+  },
+  {
+   "name": "Barzan",
+   "lat": 36.930451,
+   "lon": 44.039377
+  },
+  {
+   "name": "Barzinja",
+   "lat": 35.544937,
+   "lon": 45.69495
+  },
+  {
+   "name": "Bashiqa",
+   "lat": 36.450456,
+   "lon": 43.349772
+  },
+  {
+   "name": "Basirma",
+   "lat": 36.503805,
+   "lon": 44.348437
+  },
+  {
+   "name": "Basne",
+   "lat": 35.889069,
+   "lon": 45.58266
+  },
+  {
+   "name": "Batel",
+   "lat": 36.960806,
+   "lon": 42.681008
+  },
+  {
+   "name": "Batifa",
+   "lat": 37.174372,
+   "lon": 43.013249
+  },
+  {
+   "name": "Bawakhoshen",
+   "lat": 35.174979,
+   "lon": 45.614026
+  },
+  {
+   "name": "Bayangan",
+   "lat": 34.9813,
+   "lon": 46.2709
+  },
+  {
+   "name": "Bazyan",
+   "lat": 35.594704,
+   "lon": 45.136861
+  },
+  {
+   "name": "Bingird",
+   "lat": 36.066389,
+   "lon": 45.047833
+  },
+  {
+   "name": "Bjeel",
+   "lat": 36.728924,
+   "lon": 44.015843
+  },
+  {
+   "name": "Bonab",
+   "lat": 37.338605,
+   "lon": 46.059291
+  },
+  {
+   "name": "Bowalhasan",
+   "lat": 35.9942,
+   "lon": 45.66
+  },
+  {
+   "name": "Bu'in-e Sofla",
+   "lat": 35.938319,
+   "lon": 45.934809
+  },
+  {
+   "name": "Bukan",
+   "lat": 36.52151,
+   "lon": 46.211184
+  },
+  {
+   "name": "Byara",
+   "lat": 35.230827,
+   "lon": 46.12064
+  },
+  {
+   "name": "Chahar Borj",
+   "lat": 37.125002,
+   "lon": 45.9772
+  },
+  {
+   "name": "Chamanki",
+   "lat": 36.939347,
+   "lon": 43.411646
+  },
+  {
+   "name": "Chamchamal",
+   "lat": 35.5311,
+   "lon": 44.827191
+  },
+  {
+   "name": "Chavar",
+   "lat": 33.696719,
+   "lon": 46.296763
+  },
+  {
+   "name": "Choman",
+   "lat": 36.63631,
+   "lon": 44.886767
+  },
+  {
+   "name": "Chwarqurna",
+   "lat": 36.211513,
+   "lon": 44.827069
+  },
+  {
+   "name": "Chwarta",
+   "lat": 35.717567,
+   "lon": 45.570245
+  },
+  {
+   "name": "Daquq",
+   "lat": 35.137923,
+   "lon": 44.446382
+  },
+  {
+   "name": "Daratu",
+   "lat": 36.476214,
+   "lon": 43.728731
+  },
+  {
+   "name": "Darbandekhan",
+   "lat": 35.115305,
+   "lon": 45.682926
+  },
+  {
+   "name": "Darkar",
+   "lat": 37.198652,
+   "lon": 42.822544
+  },
+  {
+   "name": "Deir Ez Zor",
+   "lat": 35.333334,
+   "lon": 40.15
+  },
+  {
+   "name": "Dibaga",
+   "lat": 35.87532,
+   "lon": 43.809997
+  },
+  {
+   "name": "Dinarta",
+   "lat": 36.798636,
+   "lon": 43.986556
+  },
+  {
+   "name": "Diraluk",
+   "lat": 37.055263,
+   "lon": 43.648005
+  },
+  {
+   "name": "Diyala Weir",
+   "lat": 34.064405,
+   "lon": 44.982137
+  },
+  {
+   "name": "Dizaj",
+   "lat": 37.212436,
+   "lon": 44.9282
+  },
+  {
+   "name": "Dizlli",
+   "lat": 35.373771,
+   "lon": 46.147214
+  },
+  {
+   "name": "Dubis",
+   "lat": 35.673925,
+   "lon": 44.074351
+  },
+  {
+   "name": "Duhok",
+   "lat": 36.85426,
+   "lon": 42.992453
+  },
+  {
+   "name": "Dujail",
+   "lat": 33.83707,
+   "lon": 44.247461
+  },
+  {
+   "name": "Dukan",
+   "lat": 35.930643,
+   "lon": 44.962935
+  },
+  {
+   "name": "Dukan Dam",
+   "lat": 35.953905,
+   "lon": 44.952898
+  },
+  {
+   "name": "En Sifne",
+   "lat": 36.696868,
+   "lon": 43.353063
+  },
+  {
+   "name": "Erbil",
+   "lat": 36.191162,
+   "lon": 44.009465
+  },
+  {
+   "name": "Eywan",
+   "lat": 33.828241,
+   "lon": 46.309637
+  },
+  {
+   "name": "Ezgeleh",
+   "lat": 34.832214,
+   "lon": 45.842497
+  },
+  {
+   "name": "Faidah",
+   "lat": 36.759627,
+   "lon": 42.928798
+  },
+  {
+   "name": "Failaka Island",
+   "lat": 29.450595,
+   "lon": 48.292817
+  },
+  {
+   "name": "Fallujah",
+   "lat": 33.344843,
+   "lon": 43.784018
+  },
+  {
+   "name": "Fallujah Dam",
+   "lat": 33.308957,
+   "lon": 43.772243
+  },
+  {
+   "name": "Galala",
+   "lat": 36.611836,
+   "lon": 44.823147
+  },
+  {
+   "name": "Gapelon",
+   "lat": 35.798442,
+   "lon": 45.352432
+  },
+  {
+   "name": "Gayara",
+   "lat": 35.798776,
+   "lon": 43.291783
+  },
+  {
+   "name": "Gechina",
+   "lat": 35.869888,
+   "lon": 45.053946
+  },
+  {
+   "name": "Gherdakshaneh",
+   "lat": 36.808487,
+   "lon": 45.264528
+  },
+  {
+   "name": "Glejal",
+   "lat": 34.979806,
+   "lon": 45.797056
+  },
+  {
+   "name": "Govaver",
+   "lat": 34.0266,
+   "lon": 46.329
+  },
+  {
+   "name": "Gulala",
+   "lat": 34.27382,
+   "lon": 45.166699
+  },
+  {
+   "name": "Gwer",
+   "lat": 36.040474,
+   "lon": 43.495846
+  },
+  {
+   "name": "Habbah",
+   "lat": 33.784062,
+   "lon": 44.506592
+  },
+  {
+   "name": "Haditha",
+   "lat": 34.135259,
+   "lon": 42.377837
+  },
+  {
+   "name": "Haditha Dam",
+   "lat": 34.206484,
+   "lon": 42.356185
+  },
+  {
+   "name": "Haft Cheshmeh",
+   "lat": 33.627357,
+   "lon": 46.359676
+  },
+  {
+   "name": "Haji Omaran",
+   "lat": 36.675474,
+   "lon": 45.044045
+  },
+  {
+   "name": "Hajiawa",
+   "lat": 36.234307,
+   "lon": 44.793875
+  },
+  {
+   "name": "Halabja",
+   "lat": 35.179206,
+   "lon": 45.987368
+  },
+  {
+   "name": "Halsho",
+   "lat": 36.20902,
+   "lon": 45.258809
+  },
+  {
+   "name": "Hamam al Alil",
+   "lat": 36.164364,
+   "lon": 43.255363
+  },
+  {
+   "name": "Haqlaniyah",
+   "lat": 34.083784,
+   "lon": 42.360536
+  },
+  {
+   "name": "Harir",
+   "lat": 36.551844,
+   "lon": 44.354093
+  },
+  {
+   "name": "Hawar Ghal",
+   "lat": 35.905378,
+   "lon": 43.485832
+  },
+  {
+   "name": "Hemrin Dam",
+   "lat": 34.111172,
+   "lon": 44.970202
+  },
+  {
+   "name": "Hiran",
+   "lat": 36.27983,
+   "lon": 44.492482
+  },
+  {
+   "name": "Ibrahim Khalil",
+   "lat": 37.138585,
+   "lon": 42.566002
+  },
+  {
+   "name": "Isewe",
+   "lat": 36.06602,
+   "lon": 45.28471
+  },
+  {
+   "name": "Jabara",
+   "lat": 34.593047,
+   "lon": 44.934586
+  },
+  {
+   "name": "Kabisa",
+   "lat": 33.594103,
+   "lon": 42.618463
+  },
+  {
+   "name": "Kalah Sur",
+   "lat": 35.832412,
+   "lon": 43.517057
+  },
+  {
+   "name": "Kalak",
+   "lat": 36.26765,
+   "lon": 43.633564
+  },
+  {
+   "name": "Kalar",
+   "lat": 34.629497,
+   "lon": 45.315879
+  },
+  {
+   "name": "Kanan",
+   "lat": 33.693589,
+   "lon": 44.798796
+  },
+  {
+   "name": "Kanaqin",
+   "lat": 34.347513,
+   "lon": 45.391915
+  },
+  {
+   "name": "Kandenawa",
+   "lat": 36.119076,
+   "lon": 43.596962
+  },
+  {
+   "name": "Kani Sur",
+   "lat": 36.0583,
+   "lon": 45.7481
+  },
+  {
+   "name": "Kawrgosk",
+   "lat": 36.3483,
+   "lon": 43.802714
+  },
+  {
+   "name": "Kerend-e Gharb",
+   "lat": 34.282791,
+   "lon": 46.243687
+  },
+  {
+   "name": "Keshavarz",
+   "lat": 36.83555,
+   "lon": 46.357378
+  },
+  {
+   "name": "Khabat",
+   "lat": 36.277609,
+   "lon": 43.678817
+  },
+  {
+   "name": "Khalakan",
+   "lat": 36.020016,
+   "lon": 44.838172
+  },
+  {
+   "name": "Khalifan",
+   "lat": 36.607823,
+   "lon": 44.4019
+  },
+  {
+   "name": "Khansor",
+   "lat": 36.465903,
+   "lon": 41.624751
+  },
+  {
+   "name": "Kharg Island",
+   "lat": 29.244518,
+   "lon": 50.309404
+  },
+  {
+   "name": "Khidran",
+   "lat": 36.129563,
+   "lon": 44.775818
+  },
+  {
+   "name": "Khraba",
+   "lat": 35.91943,
+   "lon": 44.783701
+  },
+  {
+   "name": "Khurmal",
+   "lat": 35.298627,
+   "lon": 46.035937
+  },
+  {
+   "name": "Khusheh Mehr",
+   "lat": 37.309377,
+   "lon": 46.138938
+  },
+  {
+   "name": "Kirkuk",
+   "lat": 35.470341,
+   "lon": 44.395723
+  },
+  {
+   "name": "Kore",
+   "lat": 36.399929,
+   "lon": 44.236906
+  },
+  {
+   "name": "Koya",
+   "lat": 36.084808,
+   "lon": 44.627689
+  },
+  {
+   "name": "Kukhan",
+   "lat": 36.1229,
+   "lon": 45.7216
+  },
+  {
+   "name": "Kut Barrage",
+   "lat": 32.498628,
+   "lon": 45.817734
+  },
+  {
+   "name": "Leylan",
+   "lat": 37.011132,
+   "lon": 46.205914
+  },
+  {
+   "name": "Mahabad",
+   "lat": 36.765174,
+   "lon": 45.721814
+  },
+  {
+   "name": "Malekan",
+   "lat": 37.142959,
+   "lon": 46.104082
+  },
+  {
+   "name": "Mandali",
+   "lat": 33.746499,
+   "lon": 45.552242
+  },
+  {
+   "name": "Mangesh",
+   "lat": 37.03762,
+   "lon": 43.095378
+  },
+  {
+   "name": "Maragheh",
+   "lat": 37.391671,
+   "lon": 46.239752
+  },
+  {
+   "name": "Marivan",
+   "lat": 35.521906,
+   "lon": 46.175889
+  },
+  {
+   "name": "Mawat",
+   "lat": 35.902187,
+   "lon": 45.414114
+  },
+  {
+   "name": "Maydan",
+   "lat": 34.918897,
+   "lon": 45.620497
+  },
+  {
+   "name": "Mehran",
+   "lat": 33.123671,
+   "lon": 46.166701
+  },
+  {
+   "name": "Mergesor",
+   "lat": 36.837688,
+   "lon": 44.306501
+  },
+  {
+   "name": "Miandoab",
+   "lat": 36.969559,
+   "lon": 46.099381
+  },
+  {
+   "name": "Mir Deh",
+   "lat": 36.1463,
+   "lon": 46.0624
+  },
+  {
+   "name": "Mirabad",
+   "lat": 36.405506,
+   "lon": 45.371946
+  },
+  {
+   "name": "MobarakShahr",
+   "lat": 37.183325,
+   "lon": 46.057954
+  },
+  {
+   "name": "Mohammadyar",
+   "lat": 36.984184,
+   "lon": 45.516758
+  },
+  {
+   "name": "Mosul",
+   "lat": 36.341584,
+   "lon": 43.129139
+  },
+  {
+   "name": "Mosul Dam",
+   "lat": 36.629669,
+   "lon": 42.826933
+  },
+  {
+   "name": "Multaqa Subdistrict",
+   "lat": 35.470339,
+   "lon": 44.127268
+  },
+  {
+   "name": "Naft Shahr",
+   "lat": 33.993356,
+   "lon": 45.497316
+  },
+  {
+   "name": "Nalas",
+   "lat": 36.263792,
+   "lon": 45.494149
+  },
+  {
+   "name": "Nalparez",
+   "lat": 35.576882,
+   "lon": 45.854405
+  },
+  {
+   "name": "Nalus",
+   "lat": 36.983502,
+   "lon": 45.143155
+  },
+  {
+   "name": "Nanor",
+   "lat": 35.865284,
+   "lon": 46.011553
+  },
+  {
+   "name": "new Bazalan",
+   "lat": 36.814677,
+   "lon": 42.914364
+  },
+  {
+   "name": "New Halabja",
+   "lat": 35.321172,
+   "lon": 45.690133
+  },
+  {
+   "name": "new Rawa",
+   "lat": 34.483308,
+   "lon": 41.923679
+  },
+  {
+   "name": "Nowdeshah",
+   "lat": 35.1808,
+   "lon": 46.2544
+  },
+  {
+   "name": "Nowsud",
+   "lat": 35.161268,
+   "lon": 46.204246
+  },
+  {
+   "name": "Nusaybin",
+   "lat": 37.069175,
+   "lon": 41.216467
+  },
+  {
+   "name": "Oshnaviyeh",
+   "lat": 37.041824,
+   "lon": 45.09835
+  },
+  {
+   "name": "Paveh",
+   "lat": 35.045831,
+   "lon": 46.362219
+  },
+  {
+   "name": "Pebaz",
+   "lat": 34.824686,
+   "lon": 45.508479
+  },
+  {
+   "name": "Penjwen",
+   "lat": 35.622207,
+   "lon": 45.948845
+  },
+  {
+   "name": "Piramagroon",
+   "lat": 35.731763,
+   "lon": 45.143862
+  },
+  {
+   "name": "Piran",
+   "lat": 36.906868,
+   "lon": 44.353111
+  },
+  {
+   "name": "Piranshahr",
+   "lat": 36.699456,
+   "lon": 45.140337
+  },
+  {
+   "name": "Pirmam",
+   "lat": 36.382703,
+   "lon": 44.202575
+  },
+  {
+   "name": "Pirzin",
+   "lat": 36.266807,
+   "lon": 44.071456
+  },
+  {
+   "name": "Prde",
+   "lat": 35.754096,
+   "lon": 44.142761
+  },
+  {
+   "name": "Qadir Karam",
+   "lat": 35.198224,
+   "lon": 44.889424
+  },
+  {
+   "name": "Qaladiza",
+   "lat": 36.180876,
+   "lon": 45.124141
+  },
+  {
+   "name": "Qamishli",
+   "lat": 37.040253,
+   "lon": 41.232884
+  },
+  {
+   "name": "Qara Hanjir",
+   "lat": 35.494863,
+   "lon": 44.641881
+  },
+  {
+   "name": "Qara Tapa",
+   "lat": 34.432775,
+   "lon": 44.934786
+  },
+  {
+   "name": "Qaradagh",
+   "lat": 35.309874,
+   "lon": 45.391495
+  },
+  {
+   "name": "Qaraj",
+   "lat": 35.641539,
+   "lon": 43.545778
+  },
+  {
+   "name": "Qasre",
+   "lat": 36.55799,
+   "lon": 44.824508
+  },
+  {
+   "name": "Qazaniyat al Jadidah",
+   "lat": 33.659634,
+   "lon": 45.550529
+  },
+  {
+   "name": "Qoratu",
+   "lat": 34.606562,
+   "lon": 45.494853
+  },
+  {
+   "name": "Qushtapa",
+   "lat": 36.006385,
+   "lon": 44.031344
+  },
+  {
+   "name": "Rabat",
+   "lat": 36.209211,
+   "lon": 45.554247
+  },
+  {
+   "name": "Ramadi",
+   "lat": 33.425986,
+   "lon": 43.299922
+  },
+  {
+   "name": "Ramadi Barrage",
+   "lat": 33.438588,
+   "lon": 43.266689
+  },
+  {
+   "name": "Ranya",
+   "lat": 36.256525,
+   "lon": 44.882789
+  },
+  {
+   "name": "Rashad",
+   "lat": 35.134438,
+   "lon": 44.087075
+  },
+  {
+   "name": "Rawanduz",
+   "lat": 36.614596,
+   "lon": 44.526519
+  },
+  {
+   "name": "Rizgari",
+   "lat": 34.660608,
+   "lon": 45.237239
+  },
+  {
+   "name": "Ruvia",
+   "lat": 36.625098,
+   "lon": 43.702024
+  },
+  {
+   "name": "Sab al Bor",
+   "lat": 33.463237,
+   "lon": 44.150801
+  },
+  {
+   "name": "Sadiyah",
+   "lat": 34.186303,
+   "lon": 45.118283
+  },
+  {
+   "name": "Said Sadiq",
+   "lat": 35.35278,
+   "lon": 45.86682
+  },
+  {
+   "name": "Saleh Abad",
+   "lat": 33.469426,
+   "lon": 46.188889
+  },
+  {
+   "name": "Samarra",
+   "lat": 34.204288,
+   "lon": 43.899944
+  },
+  {
+   "name": "Samarra Barrage",
+   "lat": 34.195688,
+   "lon": 43.853459
+  },
+  {
+   "name": "Sangasar",
+   "lat": 36.243863,
+   "lon": 45.005716
+  },
+  {
+   "name": "Sangaw",
+   "lat": 35.285515,
+   "lon": 45.179774
+  },
+  {
+   "name": "Saqqez",
+   "lat": 36.242745,
+   "lon": 46.270523
+  },
+  {
+   "name": "Sarableh",
+   "lat": 33.76758,
+   "lon": 46.565491
+  },
+  {
+   "name": "Sardasht",
+   "lat": 36.155318,
+   "lon": 45.479964
+  },
+  {
+   "name": "Sargaran",
+   "lat": 35.704627,
+   "lon": 43.894741
+  },
+  {
+   "name": "Sarkapkan",
+   "lat": 36.286664,
+   "lon": 44.823302
+  },
+  {
+   "name": "Sarkawtn",
+   "lat": 35.343439,
+   "lon": 45.638266
+  },
+  {
+   "name": "Sarpol-e Zahab",
+   "lat": 34.460769,
+   "lon": 45.863763
+  },
+  {
+   "name": "Sarqala",
+   "lat": 34.742806,
+   "lon": 45.065683
+  },
+  {
+   "name": "Sarsang",
+   "lat": 37.042485,
+   "lon": 43.341777
+  },
+  {
+   "name": "Sarvabad",
+   "lat": 35.31232,
+   "lon": 46.365955
+  },
+  {
+   "name": "Sarwchawa",
+   "lat": 36.277097,
+   "lon": 44.75068
+  },
+  {
+   "name": "Sewsenan",
+   "lat": 35.217301,
+   "lon": 45.501566
+  },
+  {
+   "name": "Shaikh Tawil",
+   "lat": 35.019269,
+   "lon": 45.459911
+  },
+  {
+   "name": "Shanaf",
+   "lat": 36.11513,
+   "lon": 43.471909
+  },
+  {
+   "name": "Shaqlawa",
+   "lat": 36.400227,
+   "lon": 44.335124
+  },
+  {
+   "name": "Sharqat",
+   "lat": 35.518314,
+   "lon": 43.233828
+  },
+  {
+   "name": "Shawes",
+   "lat": 36.247689,
+   "lon": 44.08476
+  },
+  {
+   "name": "Shervenineh",
+   "lat": 34.828,
+   "lon": 46.3578
+  },
+  {
+   "name": "Sheykh Salleh",
+   "lat": 34.970788,
+   "lon": 45.926027
+  },
+  {
+   "name": "Shkarta",
+   "lat": 36.296073,
+   "lon": 44.706323
+  },
+  {
+   "name": "Shorsh",
+   "lat": 35.50741,
+   "lon": 44.845682
+  },
+  {
+   "name": "Shovi",
+   "lat": 36.048293,
+   "lon": 45.862193
+  },
+  {
+   "name": "Shwan",
+   "lat": 35.736396,
+   "lon": 44.480301
+  },
+  {
+   "name": "SidaKan",
+   "lat": 36.804736,
+   "lon": 44.663646
+  },
+  {
+   "name": "Sileman Bag",
+   "lat": 34.795151,
+   "lon": 44.66697
+  },
+  {
+   "name": "Silvaneh",
+   "lat": 37.421653,
+   "lon": 44.854321
+  },
+  {
+   "name": "Simelan",
+   "lat": 36.679759,
+   "lon": 44.731882
+  },
+  {
+   "name": "Simineh",
+   "lat": 36.730345,
+   "lon": 46.153419
+  },
+  {
+   "name": "Sinjar",
+   "lat": 36.319273,
+   "lon": 41.859858
+  },
+  {
+   "name": "Sirwan",
+   "lat": 35.254165,
+   "lon": 45.939939
+  },
+  {
+   "name": "Sitak",
+   "lat": 35.635874,
+   "lon": 45.515799
+  },
+  {
+   "name": "Sktan",
+   "lat": 36.236085,
+   "lon": 44.61612
+  },
+  {
+   "name": "Snooni",
+   "lat": 36.463624,
+   "lon": 41.705499
+  },
+  {
+   "name": "Soran",
+   "lat": 36.653242,
+   "lon": 44.539015
+  },
+  {
+   "name": "Sory",
+   "lat": 37.017953,
+   "lon": 43.814387
+  },
+  {
+   "name": "Sulaymaniyah",
+   "lat": 35.559143,
+   "lon": 45.431101
+  },
+  {
+   "name": "Suldoz",
+   "lat": 36.955597,
+   "lon": 45.387893
+  },
+  {
+   "name": "Sumar",
+   "lat": 33.886205,
+   "lon": 45.638824
+  },
+  {
+   "name": "Surdash",
+   "lat": 35.861654,
+   "lon": 45.103342
+  },
+  {
+   "name": "Takiay Kaka Mand",
+   "lat": 35.625816,
+   "lon": 44.959749
+  },
+  {
+   "name": "Tal Afar",
+   "lat": 36.374043,
+   "lon": 42.443479
+  },
+  {
+   "name": "Tal Awinat",
+   "lat": 36.680373,
+   "lon": 42.396857
+  },
+  {
+   "name": "Tall Birak",
+   "lat": 36.685135,
+   "lon": 41.050203
+  },
+  {
+   "name": "Tall Hamis",
+   "lat": 36.751401,
+   "lon": 41.399917
+  },
+  {
+   "name": "Tamugheh",
+   "lat": 36.2048,
+   "lon": 46.1245
+  },
+  {
+   "name": "Tanahi",
+   "lat": 36.863724,
+   "lon": 42.901862
+  },
+  {
+   "name": "Taq Kasra",
+   "lat": 33.093735,
+   "lon": 44.585148
+  },
+  {
+   "name": "Taqtaq",
+   "lat": 35.888861,
+   "lon": 44.585565
+  },
+  {
+   "name": "Tasluja",
+   "lat": 35.595758,
+   "lon": 45.2282
+  },
+  {
+   "name": "Tawela",
+   "lat": 35.199444,
+   "lon": 46.186111
+  },
+  {
+   "name": "Taza Khurmatu",
+   "lat": 35.301228,
+   "lon": 44.331285
+  },
+  {
+   "name": "Tazehabad",
+   "lat": 34.739018,
+   "lon": 46.149584
+  },
+  {
+   "name": "Telkif",
+   "lat": 36.490324,
+   "lon": 43.120574
+  },
+  {
+   "name": "Tesqopa",
+   "lat": 36.601327,
+   "lon": 43.107054
+  },
+  {
+   "name": "Tikrit",
+   "lat": 34.615807,
+   "lon": 43.678606
+  },
+  {
+   "name": "Topzawe",
+   "lat": 36.281169,
+   "lon": 43.734165
+  },
+  {
+   "name": "Tuz Khormato",
+   "lat": 34.891401,
+   "lon": 44.62834
+  },
+  {
+   "name": "Umm adh Dhiban",
+   "lat": 36.275399,
+   "lon": 41.369358
+  },
+  {
+   "name": "Uraman Takht",
+   "lat": 35.2526,
+   "lon": 46.2624
+  },
+  {
+   "name": "Urmia",
+   "lat": 37.549347,
+   "lon": 45.068286
+  },
+  {
+   "name": "Warte",
+   "lat": 36.501611,
+   "lon": 44.7535
+  },
+  {
+   "name": "Yaaroubia",
+   "lat": 36.81229,
+   "lon": 42.062403
+  },
+  {
+   "name": "Yathrib",
+   "lat": 33.995563,
+   "lon": 44.349785
+  },
+  {
+   "name": "Yaychi",
+   "lat": 35.439894,
+   "lon": 44.232795
+  },
+  {
+   "name": "Zakho",
+   "lat": 37.143376,
+   "lon": 42.682291
+  },
+  {
+   "name": "Zalan",
+   "lat": 35.679332,
+   "lon": 45.689849
+  },
+  {
+   "name": "Zarayan",
+   "lat": 35.314722,
+   "lon": 45.668775
+  },
+  {
+   "name": "Zarneh",
+   "lat": 33.928499,
+   "lon": 46.18262
+  },
+  {
+   "name": "Zharawa",
+   "lat": 36.222932,
+   "lon": 45.067245
+  },
+  {
+   "name": "Zinana Big",
+   "lat": 34.878739,
+   "lon": 44.854257
+  }
+ ]
+}
