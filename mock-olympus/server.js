@@ -1286,6 +1286,7 @@ function startConsole() {
   console.log('  create <cs> [<type>] [<coal>] [H S A]  e.g. create HORNET41 FA-18C BLU H210 S310 A250')
   console.log('  delete <n>                  remove a unit')
   console.log('  rename <n> <callsign>       rename a unit')
+  console.log('  fire <n> <hdg> [<weapon>]   launch a missile from <n> on heading <hdg> (default AGM_84A)')
   console.log('  ident <n>                   squawk IDENT (blinks a few seconds, then reverts to NORMAL)')
   console.log('  stby <n>                    transponder to STANDBY/OFF (blanks squawk)')
   console.log('  norm <n>                    transponder to NORMAL (restores squawk)')
