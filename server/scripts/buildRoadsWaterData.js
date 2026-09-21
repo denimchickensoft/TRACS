@@ -29,6 +29,9 @@ const https = require('https')
 const http  = require('http')
 const fs    = require('fs')
 const path  = require('path')
+const { parser }     = require('stream-json')
+const { pick }        = require('stream-json/filters/Pick')
+const { streamArray } = require('stream-json/streamers/StreamArray')
 const { simplifyAndRound } = require('./lib/simplify.js')
 
 const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
@@ -170,6 +173,15 @@ function clipWaterFeatures(features, theatreBbox, type) {
 // fresh read+parse of every country file per theatre (no cross-theatre
 // cache), which is slower for a full "all theatres" run but no longer a
 // correctness problem.
+//
+// Each country file is parsed via stream-json rather than
+// fs.readFileSync(..., 'utf8') + JSON.parse() - a single JS string can't
+// exceed V8's ~536MB max string length (Node's ERR_STRING_TOO_LONG), and
+// France's filtered file (added for Normandy, 2026-09-21) came in at 562MB,
+// just over that line. Germany (413MB) was previously the largest and had
+// been quietly right at the edge of the same ceiling. Streaming avoids ever
+// materializing a whole country file as one string, so there's no ceiling
+// tied to any single file's size anymore.
 function clipRoadsRail(theatreBbox) {
   if (!fs.existsSync(ROADS_RAIL_RAW_DIR)) {
     throw new Error(
@@ -181,23 +193,38 @@ function clipRoadsRail(theatreBbox) {
   const roads = []
   const rail  = []
   let total = 0
-  for (const file of files) {
-    const { features } = JSON.parse(fs.readFileSync(path.join(ROADS_RAIL_RAW_DIR, file), 'utf8'))
-    total += features.length
-    for (const f of features) {
-      if (!f.coords || f.coords.length < 2) continue
-      const bbox = bboxOf(f.coords)
-      if (!bboxIntersects(bbox, padded)) continue
-      const coords = simplifyAndRound(f.coords)
-      if (f.railway) {
-        rail.push({ coords, name: f.name || null })
-      } else if (f.class) {
-        roads.push({ coords, class: f.class, name: f.name || null })
-      }
-    }
+
+  function scanFile(file) {
+    return new Promise((resolve, reject) => {
+      let fileCount = 0
+      const stream = fs.createReadStream(path.join(ROADS_RAIL_RAW_DIR, file))
+        .pipe(parser())
+        .pipe(pick({ filter: 'features' }))
+        .pipe(streamArray())
+      stream.on('data', ({ value: f }) => {
+        fileCount++
+        if (!f.coords || f.coords.length < 2) return
+        const bbox = bboxOf(f.coords)
+        if (!bboxIntersects(bbox, padded)) return
+        const coords = simplifyAndRound(f.coords)
+        if (f.railway) {
+          rail.push({ coords, name: f.name || null })
+        } else if (f.class) {
+          roads.push({ coords, class: f.class, name: f.name || null })
+        }
+      })
+      stream.on('end', () => resolve(fileCount))
+      stream.on('error', reject)
+    })
   }
-  process.stdout.write(`  scanned ${total} features across ${files.length} countries\n`)
-  return { roads, rail }
+
+  return (async () => {
+    for (const file of files) {
+      total += await scanFile(file)
+    }
+    process.stdout.write(`  scanned ${total} features across ${files.length} countries\n`)
+    return { roads, rail }
+  })()
 }
 
 // ── Driver ────────────────────────────────────────────────────────────────────
@@ -210,7 +237,7 @@ async function buildTheatre(name, conf, opts) {
 
   let roads = [], rail = []
   if (!opts.waterOnly) {
-    ;({ roads, rail } = clipRoadsRail(clipBbox))
+    ;({ roads, rail } = await clipRoadsRail(clipBbox))
   }
 
   const [riverFeatures, lakeFeatures] = await Promise.all([

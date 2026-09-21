@@ -23,6 +23,7 @@
     "polylabel": "^2.0.1",
     "shapefile": "^0.6.6",
     "sql.js": "^1.12.0",
+    "stream-json": "^1.9.1",
     "tracs-geo-math": "*",
     "ws": "^8.18.0",
     "yauzl": "^3.4.0"

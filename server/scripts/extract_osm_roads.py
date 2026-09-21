@@ -135,6 +135,13 @@ EXTRACTS = [
     # few hundred meters of edge coverage each.
     ('https://download.geofabrik.de/asia/afghanistan-latest.osm.pbf', 'afghanistan'),
     ('https://download.geofabrik.de/asia/pakistan-latest.osm.pbf', 'pakistan'),
+    # Normandy - bbox [-6.0, 47.0, 4.0, 53.0] covers northern/western France
+    # plus a sliver of southern England across the Channel. Never added when
+    # the theatre was — same class of oversight as the Sweden/Marianas fixes
+    # above, caught 2026-09-21 because Normandy's roads.json/roads.png were
+    # simply never being written (no France/GB extract to clip from).
+    ('https://download.geofabrik.de/europe/france-latest.osm.pbf', 'france'),
+    ('https://download.geofabrik.de/europe/great-britain-latest.osm.pbf', 'great-britain'),
 ]
 
 ROAD_CLASSES = {'motorway', 'trunk', 'primary', 'secondary', 'tertiary'}
