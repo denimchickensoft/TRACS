@@ -788,6 +788,31 @@ export function BEDB_TOGGLE({ context }) {
   return next ? 'BULLSEYE DATABLOCK ON' : 'BULLSEYE DATABLOCK OFF'
 }
 
+// .malert — feature toggle for enemy missile-launch alerting (sound + blink,
+// see missileAlert/useMissileAlertTracker.js). Independent of .vol: this
+// gates whether the alert is computed at all, .vol only scales its tone.
+export function MALERT_TOGGLE({ context }) {
+  const next = !(getWin(context.windowId)?.missileAlertEnabled ?? true)
+  updateWin(context.windowId, { missileAlertEnabled: next })
+  saveAbmPrefs({ missileAlertEnabled: next })
+  return next ? 'MISSILE ALERT ON' : 'MISSILE ALERT OFF'
+}
+
+// .vol [0-10] — master volume for ABM alert tones (0 = mute). Shared knob
+// for any alert channel, not just missile-launch (currently its only
+// consumer) — same role as STARS' windowSettings.vol.
+export function VOL_SHOW({ context }) {
+  return `VOL: ${getWin(context.windowId)?.alertVol ?? 10}`
+}
+
+export function VOL_SET({ captures, context }) {
+  const n = parseInt(captures.n, 10)
+  if (isNaN(n) || n < 0 || n > 10) return 'ILL VAL'
+  updateWin(context.windowId, { alertVol: n })
+  saveAbmPrefs({ alertVol: n })
+  return `VOL ${n}`
+}
+
 export function DDM({ context }) {
   updateWin(context.windowId, { coordFormat: 'ddm' })
   saveAbmPrefs({ coordFormat: 'ddm' })
@@ -1080,7 +1105,7 @@ const ACTION_MAP = {
   FOCUS_DEFAULT_RANGE, FOCUS_OPEN_RANGE, FOCUS_OPEN,
   RUNWAYS_TOGGLE, POLYGONS_TOGGLE, MGRS_TOGGLE, TOWNS_TOGGLE, BASE_TOGGLE, TERRAIN_TOGGLE,
   MAP_TOGGLE, WATER_TOGGLE, ROADS_TOGGLE,
-  COORDS_TOGGLE, BEC_TOGGLE, BEDB_TOGGLE, DDM, DMS, METERS, FEET,
+  COORDS_TOGGLE, BEC_TOGGLE, BEDB_TOGGLE, MALERT_TOGGLE, VOL_SHOW, VOL_SET, DDM, DMS, METERS, FEET,
   PTL, FADED, HISTORY_TOGGLE, HISTORY_LEN_RATE, HISTORY_LEN,
   DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,

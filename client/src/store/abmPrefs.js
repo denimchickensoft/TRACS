@@ -47,6 +47,8 @@ const DEFAULTS = {
   roeVisible:     true,  // ROE readout visibility default, seeded per window at open — see store/display.js
   compassVisible: true,  // compass rose visibility default, seeded per window at open (as windows[].briteCmp)
   bedbVisible:    false, // .bedb — bullseye-on-datablock 3rd line, off by default
+  missileAlertEnabled: true, // .malert — enemy missile-launch sound+blink alert, on by default
+  alertVol:       10,    // .vol (0-10, 0=mute) — master volume for ABM alert tones (missile-launch today, shared by any future alert channel)
 
   // ── Per-window UI toggles, merged in from store/abmUiPrefs.js (removed
   // 2026-09-14 — see resources/specs/refactor-spec.md §10 follow-up: every

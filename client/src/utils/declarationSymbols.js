@@ -61,7 +61,14 @@ export function drawHistoryTrail(ctx, view, trail, historyLimit, color, symHalf 
 // ptlSeconds/history/historyLimit default off so AIC's call site (which
 // passes neither) keeps its current minimal treatment (triangle + PTL, no
 // trail) without needing any changes there beyond ptlSeconds.
-export function drawAbmMissiles(ctx, view, missiles, getDecl, ptlSeconds = 0, history = null, historyLimit = 0) {
+//
+// blinkingIds/blinkOn drive the missile-launch alert cue (see
+// abm/missileAlert/useMissileAlertTracker.js): while a missile's id is in
+// blinkingIds, its triangle + PTL are skipped every other tick (blinkOn ===
+// false) to produce an on/off flash. History trail still draws every frame
+// — it's flight context, not the alert cue itself. Both default off/true so
+// AIC's call site (which passes neither) is unaffected.
+export function drawAbmMissiles(ctx, view, missiles, getDecl, ptlSeconds = 0, history = null, historyLimit = 0, blinkingIds = null, blinkOn = true) {
   for (const [id, weapon] of Object.entries(missiles)) {
     if (!weapon.position) continue
     const decl = getDecl(id, weapon)
@@ -69,6 +76,9 @@ export function drawAbmMissiles(ctx, view, missiles, getDecl, ptlSeconds = 0, hi
     const { x, y } = latLngToCanvas(weapon.position.lat, weapon.position.lng, view)
 
     drawHistoryTrail(ctx, view, (history ?? {})[id] || [], historyLimit, color)
+
+    const isBlinkedOff = blinkingIds?.has(id) && !blinkOn
+    if (isBlinkedOff) continue
 
     if (ptlSeconds > 0) drawPtl(ctx, x, y, { ...weapon, track: weapon.heading }, view, ptlSeconds, color)
 

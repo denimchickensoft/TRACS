@@ -40,6 +40,8 @@ import { drawAbmFixSymbols } from './canvas/drawAbmFixSymbols.js'
 import { drawAbmAirportPolygons } from './canvas/drawAbmAirportPolygons.js'
 import { drawAbmContacts, typeAbbrev, computeSuppressedIds, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { drawAbmMissiles } from '../../utils/declarationSymbols.js'
+import { useMissileAlertTracker } from './missileAlert/useMissileAlertTracker.js'
+import { useAbmMissileAlertStore } from '../../store/abmMissileAlert.js'
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
 import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
@@ -301,6 +303,37 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   )
   const visibleMissilesRef = useRef(visibleMissiles)
   useEffect(() => { visibleMissilesRef.current = visibleMissiles }, [visibleMissiles])
+
+  // Enemy missile-launch alert (sound + blink) — see missileAlert/useMissileAlertTracker.js
+  // and store/abmMissileAlert.js. Only the main window (isOwner) runs
+  // detection/audio — a focus panel/pop-out is either the same renderer
+  // (would double-drive the same audio channel) or a genuinely separate one
+  // (window.open() pop-out, its own AudioContext) where running this
+  // per-window would sound an uncoordinated second tone. Every window
+  // (owner or not) reads the shared store reactively for blink rendering
+  // and click-to-dismiss.
+  useMissileAlertTracker({
+    visibleMissiles,
+    myCoalitionNum,
+    enabled: windowSettings?.missileAlertEnabled ?? true,
+    vol:     windowSettings?.alertVol ?? 10,
+    isOwner: windowId === DEFAULT_windowId,
+  })
+  const missileAlertActiveIds = useAbmMissileAlertStore(s => s.activeIds)
+  const missileAlertIdSet = useMemo(
+    () => new Set(Object.keys(missileAlertActiveIds)),
+    [missileAlertActiveIds]
+  )
+  // Only alerting missiles are click-to-dismiss targets (handleMouseUp).
+  const activeAlertMissiles = useMemo(() => {
+    const out = {}
+    for (const id of Object.keys(missileAlertActiveIds)) {
+      if (visibleMissiles[id]) out[id] = visibleMissiles[id]
+    }
+    return out
+  }, [missileAlertActiveIds, visibleMissiles])
+  const activeAlertMissilesRef = useRef(activeAlertMissiles)
+  useEffect(() => { activeAlertMissilesRef.current = activeAlertMissiles }, [activeAlertMissiles])
 
   // Transponder correlation (§D of resources/specs/transponder-correlation-spec.md)
   // — continuous, unconditional reveal gate: binds an srsCapable unit to a
@@ -970,6 +1003,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       roeVisible: abmPrefs.roeVisible,
       briteCmp: abmPrefs.compassVisible ? null : 0,
       bedbVisible: abmPrefs.bedbVisible,
+      missileAlertEnabled: abmPrefs.missileAlertEnabled, alertVol: abmPrefs.alertVol,
       // Per-window UI toggles (2026-09-14) — seeded from abmPrefs same as
       // everything above; see store/abmPrefs.js header and actions/index.js's
       // GEO_TOGGLE comment for why these moved out of the old windowId-less
@@ -1306,6 +1340,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       (windowSettings?.ptlMinutes ?? 1) * 60,
       missileHistoryRef.current,
       historyLimit,
+      missileAlertIdSet,
+      blinkOn,
     )
 
     // Selected FRAG flight's route, if any, plus any routes toggled on via
@@ -1332,7 +1368,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
       windowSettings?.bedbVisible, hasBullseye, bullseyeLat, bullseyeLng, theatre,
       threatRingSet, autoThreatRingIds, threatRadius, braaList, rbl, acqHidden, engHidden, findMarker, dbHiddenIdSet, highlightedIds, selectedRoute, selectedRouteRawType, selectedRouteGroupLabel, extraRoutes,
-      blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor, windowSettings?.dbSize, windowSettings?.csMap])
+      blinkIdSet, blinkOn, blinkTick, pendingDraw, drawCursor, windowSettings?.dbSize, windowSettings?.csMap, missileAlertIdSet])
 
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {
@@ -1782,6 +1818,20 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
         displayStore.updateWindow(windowId, { pendingDraw: result.pending })
       }
       return
+    }
+
+    // Click a blinking missile symbol to cancel its alert (sound + blink) —
+    // takes priority over the modifier-key contact commands below, but only
+    // when the click actually lands on a currently-alerting missile (same
+    // resolveSlew 20px hit-radius used everywhere else, generous relative to
+    // the small triangle symbol). Falls through to normal handling otherwise.
+    if (e.button === 0 && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      const missileHit = resolveSlew(pos, activeAlertMissilesRef.current, viewRef.current)
+      if (missileHit) {
+        useAbmMissileAlertStore.getState().dismiss(missileHit.unitId)
+        setCmdFeedback('MISSILE ALERT CANCELLED')
+        return
+      }
     }
 
     if (e.button === 1) {
