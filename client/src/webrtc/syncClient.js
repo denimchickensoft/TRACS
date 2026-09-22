@@ -243,6 +243,12 @@ export function joinRoom(cfg, roomId) {
         cfgInUse = null // suppress reconnect — this is an intentional teardown
         ws?.close()
         ws = null
+        // Mint a fresh peerId on the next joinRoom() rather than reusing this
+        // one -- reusing it raced the relay's close-triggered eviction timer
+        // against the new registration's cancelEvictionTimer (arrival order
+        // of the two isn't guaranteed across independent connections), which
+        // could delete the new, correct clientList entry ~30s later.
+        selfId = null
       }
     },
   }
