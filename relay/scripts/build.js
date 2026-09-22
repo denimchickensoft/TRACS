@@ -25,6 +25,7 @@ const EXE_NAME    = process.platform === 'win32' ? 'TracsRelay.exe' : 'TracsRela
 const BUNDLE      = path.join(DIR, 'index.bundle.js')
 const BLOB        = path.join(DIR, 'index.blob')
 const SEA_CONFIG  = path.join(DIR, 'sea-config.json')
+const ICON_PNG    = path.join(RELAY_DIR, '..', 'resources', 'art', 'TRACS-Relay-icon.png')
 
 function run(cmd, args) {
   console.log(`$ ${cmd} ${args.join(' ')}`)
@@ -38,11 +39,40 @@ function resolveBin(pkgName, binName) {
   return path.join(path.dirname(pkgJsonPath), rel)
 }
 
-function main() {
+// Embeds ICON_PNG into exePath as the exe's icon (RT_ICON_GROUP id 1, the
+// convention Explorer looks at). Runs on the plain copied node.exe, BEFORE
+// postject injects the SEA blob -- postject is purpose-built and tested
+// against Node's own SEA workflow, and resedit's full PE regenerate could
+// risk not round-tripping a section postject already added.
+async function embedIcon(exePath) {
+  const { default: pngToIco } = await import('png-to-ico')
+  const { NtExecutable, NtExecutableResource, Data, Resource } = await import('resedit')
+
+  const icoBuffer = await pngToIco(ICON_PNG)
+  // The copied node.exe ships Authenticode-signed; editing resources
+  // invalidates that signature regardless (same as postject's own blob
+  // injection right after this step), so ignoreCert just lets pe-library
+  // parse it rather than refusing on principle.
+  const exe = NtExecutable.from(fs.readFileSync(exePath), { ignoreCert: true })
+  const res = NtExecutableResource.from(exe)
+  const iconFile = Data.IconFile.from(icoBuffer)
+
+  Resource.IconGroupEntry.replaceIconsForResource(
+    res.entries,
+    1,
+    1033,
+    iconFile.icons.map((item) => item.data),
+  )
+
+  res.outputResource(exe)
+  fs.writeFileSync(exePath, Buffer.from(exe.generate()))
+}
+
+async function main() {
   fs.mkdirSync(DIST_DIR, { recursive: true })
   const exePath = path.join(DIST_DIR, EXE_NAME)
 
-  console.log('\n[1/4] Bundling with esbuild...')
+  console.log('\n[1/5] Bundling with esbuild...')
   run(process.execPath, [
     resolveBin('esbuild', 'esbuild'),
     path.join(RELAY_DIR, 'index.js'),
@@ -52,14 +82,17 @@ function main() {
     `--outfile=${BUNDLE}`,
   ])
 
-  console.log('\n[2/4] Generating Node SEA blob...')
+  console.log('\n[2/5] Generating Node SEA blob...')
   if (fs.existsSync(BLOB)) fs.rmSync(BLOB)
   run(process.execPath, ['--experimental-sea-config', SEA_CONFIG])
 
-  console.log('\n[3/4] Copying node executable...')
+  console.log('\n[3/5] Copying node executable...')
   fs.copyFileSync(process.execPath, exePath)
 
-  console.log('\n[4/4] Injecting blob with postject...')
+  console.log('\n[4/5] Embedding icon...')
+  await embedIcon(exePath)
+
+  console.log('\n[5/5] Injecting blob with postject...')
   run(process.execPath, [
     resolveBin('postject', 'postject'),
     exePath,
@@ -84,4 +117,7 @@ function main() {
   console.log(`\nBuilt ${path.relative(process.cwd(), exePath)}\n`)
 }
 
-main()
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
