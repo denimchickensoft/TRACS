@@ -25,7 +25,7 @@ const EXE_NAME    = process.platform === 'win32' ? 'TracsRelay.exe' : 'TracsRela
 const BUNDLE      = path.join(DIR, 'index.bundle.js')
 const BLOB        = path.join(DIR, 'index.blob')
 const SEA_CONFIG  = path.join(DIR, 'sea-config.json')
-const ICON_PNG    = path.join(RELAY_DIR, '..', 'resources', 'art', 'TRACS-Relay-icon.png')
+const ICON_PNG    = path.join(RELAY_DIR, 'icon.png')
 
 function run(cmd, args) {
   console.log(`$ ${cmd} ${args.join(' ')}`)
