@@ -11,6 +11,8 @@ Controllers sync with each other through the relay when one is available, and pe
 
 **Operator guides** live in [`docs/`](docs/index.md): connecting, signing in, and every module's commands.
 
+**Discord:** [discord.gg/5W6cuezyPD](https://discord.gg/5W6cuezyPD) — support, feedback, and release announcements.
+
 | Module | What it is |
 |---|---|
 | [ATC](docs/atc.md) | STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
