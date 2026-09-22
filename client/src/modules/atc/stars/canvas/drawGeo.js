@@ -1,4 +1,4 @@
-import { latLngToCanvas, projectRingCached } from '../../../../utils/projection.js'
+import { projectRingCached, screenBoundsOfBbox } from '../../../../utils/projection.js'
 
 const COAST_FALLBACK    = '#6699AA'
 const BOUNDARY_FALLBACK = '#557788'
@@ -19,11 +19,7 @@ export function drawGeo(ctx, view, boundaries, coastlines, visible, brite = 50, 
     ctx.strokeStyle = colors?.GEO_COAST?.stroke ?? COAST_FALLBACK
     ctx.setLineDash([])
     for (const seg of coastlines) {
-      const [minLon, minLat, maxLon, maxLat] = seg.bbox
-      const sw = latLngToCanvas(minLat, minLon, view)
-      const ne = latLngToCanvas(maxLat, maxLon, view)
-      const x0 = Math.min(sw.x, ne.x), x1 = Math.max(sw.x, ne.x)
-      const y0 = Math.min(sw.y, ne.y), y1 = Math.max(sw.y, ne.y)
+      const { x0, x1, y0, y1 } = screenBoundsOfBbox(seg.bbox, view)
       if (x1 < -5 || x0 > width + 5 || y1 < -5 || y0 > height + 5) continue
 
       ctx.beginPath()
@@ -42,11 +38,7 @@ export function drawGeo(ctx, view, boundaries, coastlines, visible, brite = 50, 
     ctx.strokeStyle = colors?.GEO_BOUNDARY?.stroke ?? BOUNDARY_FALLBACK
     ctx.setLineDash([4, 3])
     for (const seg of boundaries) {
-      const [minLon, minLat, maxLon, maxLat] = seg.bbox
-      const sw = latLngToCanvas(minLat, minLon, view)
-      const ne = latLngToCanvas(maxLat, maxLon, view)
-      const x0 = Math.min(sw.x, ne.x), x1 = Math.max(sw.x, ne.x)
-      const y0 = Math.min(sw.y, ne.y), y1 = Math.max(sw.y, ne.y)
+      const { x0, x1, y0, y1 } = screenBoundsOfBbox(seg.bbox, view)
       if (x1 < -5 || x0 > width + 5 || y1 < -5 || y0 > height + 5) continue
 
       ctx.beginPath()

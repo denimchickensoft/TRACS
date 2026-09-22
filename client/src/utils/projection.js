@@ -91,6 +91,27 @@ export function latLngToCanvas(lat, lng, view) {
   }
 }
 
+// Screen-space bounding box of a [minLon, minLat, maxLon, maxLat] bbox,
+// projecting all 4 corners (not just the SW/NE diagonal) — with a nonzero
+// declinationDeg the view is rotated, and a rotated rectangle's true bounding
+// box generally needs all 4 corners: the SW/NE diagonal alone under-estimates
+// it (the error grows with the rotation angle and with how "chunky", vs.
+// thin-sliver, the bbox is), which was silently culling on-screen geometry
+// as fully off-screen once zoomed in enough that the true overlap was a
+// small sliver of the shape's full extent. Mirrors drawMora.js's inline
+// 4-corner check, which already got this right.
+export function screenBoundsOfBbox(bbox, view) {
+  const [minLon, minLat, maxLon, maxLat] = bbox
+  const sw = latLngToCanvas(minLat, minLon, view)
+  const se = latLngToCanvas(minLat, maxLon, view)
+  const ne = latLngToCanvas(maxLat, maxLon, view)
+  const nw = latLngToCanvas(maxLat, minLon, view)
+  return {
+    x0: Math.min(sw.x, se.x, ne.x, nw.x), x1: Math.max(sw.x, se.x, ne.x, nw.x),
+    y0: Math.min(sw.y, se.y, ne.y, nw.y), y1: Math.max(sw.y, se.y, ne.y, nw.y),
+  }
+}
+
 export function canvasToLatLng(x, y, view) {
   const { centerLat, centerLng, pixelsPerNm, width, height, declinationDeg = 0, theatre } = view
   const params = tmParamsFor(theatre)

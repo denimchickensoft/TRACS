@@ -1,4 +1,4 @@
-import { latLngToCanvas, projectRingCached } from '../../../../utils/projection.js'
+import { projectRingCached, screenBoundsOfBbox } from '../../../../utils/projection.js'
 
 const RELIEF_COLOR_FALLBACK = '#88AA88'
 
@@ -29,12 +29,7 @@ export function drawRelief(ctx, view, relief, visible, brite = 40, colors = null
   ctx.globalAlpha = perBand
 
   for (const region of relief) {
-    const [minLon, minLat, maxLon, maxLat] = region.bbox
-
-    const sw = latLngToCanvas(minLat, minLon, view)
-    const ne = latLngToCanvas(maxLat, maxLon, view)
-    const x0 = Math.min(sw.x, ne.x), x1 = Math.max(sw.x, ne.x)
-    const y0 = Math.min(sw.y, ne.y), y1 = Math.max(sw.y, ne.y)
+    const { x0, x1, y0, y1 } = screenBoundsOfBbox(region.bbox, view)
     if (x1 < -5 || x0 > width + 5 || y1 < -5 || y0 > height + 5) continue
 
     ctx.beginPath()

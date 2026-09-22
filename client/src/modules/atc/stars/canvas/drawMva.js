@@ -1,4 +1,4 @@
-import { latLngToCanvas } from '../../../../utils/projection.js'
+import { latLngToCanvas, screenBoundsOfBbox } from '../../../../utils/projection.js'
 
 const MVA_STROKE_FALLBACK = '#7788AA'
 const MVA_LABEL_FALLBACK  = '#AABBDD'
@@ -32,11 +32,7 @@ export function drawMva(ctx, view, mva, visible, brite = 50, colors = null) {
   ctx.lineWidth   = 0.6
 
   for (const sector of mva) {
-    const [minLon, minLat, maxLon, maxLat] = sector.bbox
-    const sw = latLngToCanvas(minLat, minLon, view)
-    const ne = latLngToCanvas(maxLat, maxLon, view)
-    const x0 = Math.min(sw.x, ne.x), x1 = Math.max(sw.x, ne.x)
-    const y0 = Math.min(sw.y, ne.y), y1 = Math.max(sw.y, ne.y)
+    const { x0, x1, y0, y1 } = screenBoundsOfBbox(sector.bbox, view)
     if (x1 < -5 || x0 > width + 5 || y1 < -5 || y0 > height + 5) continue
 
     // Boundary strokes (outer + holes)
