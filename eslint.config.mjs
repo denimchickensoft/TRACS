@@ -24,7 +24,7 @@ const unusedVarsRule = ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^
 
 export default [
   {
-    ignores: ['**/dist/**', '**/build/**', 'resources/**', 'docs/**', 'server/state/**'],
+    ignores: ['**/dist/**', '**/build/**', 'dist-electron/**', 'electron/build-staging/**', 'resources/**', 'docs/**', 'server/state/**'],
   },
 
   js.configs.recommended,
@@ -76,9 +76,15 @@ export default [
     },
   },
 
-  // Server + mock-olympus — CommonJS, Node
+  // Server + mock-olympus + relay + electron main process — CommonJS, Node.
+  // relay/ was missing from this block entirely (a pre-existing gap, not
+  // introduced by adding it here) — it's a standalone app excluded from the
+  // npm workspace, but it's still plain CommonJS/Node code that deserves the
+  // same globals/rules as everything else, not the browser-less default
+  // eslint:recommended treatment that flagged every console/require/process
+  // reference as undefined.
   {
-    files: ['server/**/*.js', 'mock-olympus/**/*.js'],
+    files: ['server/**/*.js', 'mock-olympus/**/*.js', 'relay/**/*.js', 'electron/**/*.js', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'commonjs',
