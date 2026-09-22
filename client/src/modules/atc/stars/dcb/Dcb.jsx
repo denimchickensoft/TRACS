@@ -15,6 +15,7 @@ import { useGeoStore }        from '../../../../store/geo.js'
 import { useFixesStore }      from '../../../../store/fixes.js'
 import { useProceduresStore } from '../../../../store/procedures.js'
 import { saveStarsPrefs }     from '../../../../store/starsPrefs.js'
+import { recenterScope }      from '../../actions/index.js'
 import { LDR_DIR_SEQUENCE, LDR_DIR_CANVAS_ANGLES, ldrDirWraparound, clampValueDelta } from '../../../../utils/dcbSpinner.js'
 import { useNonPassiveWheel } from '../../../../utils/useNonPassiveWheel.js'
 import '../../dcb.css'
@@ -35,7 +36,7 @@ const MAIN_BUTTONS = [
 
   // 2 — halfV: PLACE CNTR / OFF CNTR
   { id: 'slot_cntr', slotType: 'halfV', buttons: [
-    { id: 'PLACE_CNTR', lines: ['PLACE', 'CNTR'], type: 'stub'   },
+    { id: 'PLACE_CNTR', lines: ['PLACE', 'CNTR'], type: 'action' },
     { id: 'OFF_CNTR',   lines: ['OFF',   'CNTR'], type: 'action' },
   ]},
 
@@ -632,11 +633,10 @@ export function Dcb({ profile, briteDcb, csDcb }) {
 
       case 'action':
         if (btn.id === 'OFF_CNTR' && windowSettings?.offCntr) {
-          updateWindow(WINDOW_ID, {
-            centerLat: windowSettings.homeCenterLat ?? 0,
-            centerLng: windowSettings.homeCenterLng ?? 0,
-            offCntr:   false,
-          })
+          recenterScope(WINDOW_ID)
+        } else if (btn.id === 'PLACE_CNTR') {
+          const already = windowSettings?.pendingAction === 'PLACE_CNTR'
+          updateWindow(WINDOW_ID, { pendingAction: already ? null : 'PLACE_CNTR' })
         } else if (btn.id === 'PLACE_RR') {
           const already = windowSettings?.pendingAction === 'PLACE_RR'
           updateWindow(WINDOW_ID, { pendingAction: already ? null : 'PLACE_RR' })
@@ -791,8 +791,8 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     if (btn.id === 'OFF_CNTR') {
       isToggled = windowSettings?.offCntr ?? false
     }
-    if (btn.id === 'PLACE_RR') {
-      isToggled = windowSettings?.pendingAction === 'PLACE_RR'
+    if (btn.id === 'PLACE_RR' || btn.id === 'PLACE_CNTR') {
+      isToggled = windowSettings?.pendingAction === btn.id
     }
     if (btn.id === 'RR_CNTR') {
       isToggled = windowSettings?.rrOffCenter ?? false

@@ -4,6 +4,7 @@
 import { preloadAirdromes, getAirdromeName } from './airdromes.js'
 import { matchFixName } from './fixMatch.js'
 import { formatIcaoRoutePoint } from './coords.js'
+import { AID_MAX_LEN } from './callsign.js'
 
 const M_TO_FT = 3.28084
 
@@ -85,7 +86,7 @@ export async function mapMizFlightPlans(flights, theatre) {
       if (!aid) continue
 
       results.push({
-        aid: aid.toUpperCase(),
+        aid: aid.toUpperCase().slice(0, AID_MAX_LEN),
         typ: unit.type ?? '',
         eq: '',
         dep: dep.code,

@@ -322,13 +322,19 @@ export const useAbmMissionStore = create((set, get) => ({
   // silently invisible to Frag.jsx's own render gate (`found.coalition ===
   // sessionCoalition`, blue/red sessions only) — Ctrl+Shift+Click would open
   // the panel but it'd render nothing at all. `coalition` (the session's own
-  // string coalition, 'blue'/'red'/'gm'/'admin' — AbmScope.jsx already
-  // gates the click to same-coalition contacts before calling this, so it's
-  // always the caller's own side) must be set on creation, same as
+  // string coalition — AbmScope.jsx passes the caller's own side, or for
+  // GM/Admin the clicked aircraft's own 'blue'/'red') must be set on creation, same as
   // AddAtoFlight.jsx's manual flights already do.
   ensureManualRosterEntry: (callsignPrefix, unitCallsign, coalition) => {
+    // Imported rosters carry the mission file's callsign ("FORD 1-1") while
+    // the caller passes the live one ("FORD11") — compare both normalized,
+    // same as resolveGroupIdForUnit, or an imported aircraft never matches
+    // and a duplicate manual flight gets created instead.
+    const wanted = stripAcid(unitCallsign ?? '')
     const existing = get().flights.find((f) =>
-      f.manual ? f.iffRoster?.some((u) => u.callsign === unitCallsign) : f.units?.some((u) => u.callsign === unitCallsign)
+      f.manual
+        ? f.iffRoster?.some((u) => stripAcid(u.callsign ?? '') === wanted)
+        : f.units?.some((u) => stripAcid(u.callsign ?? '') === wanted)
     )
     if (existing) {
       // Backfill a flight created before this shape was complete (a real

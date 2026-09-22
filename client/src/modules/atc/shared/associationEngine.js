@@ -24,13 +24,12 @@
 // against Tacview-sourced unit IDs (a real false-positive-match risk, not
 // just an ineffective no-op).
 
-import { resolveCallsign } from '../../../utils/callsign.js'
+import { resolveCallsign, AID_MAX_LEN } from '../../../utils/callsign.js'
 import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
 
-// Every AID-entry point (FPE, StripBay's add-strip box) caps at 8 chars, so
-// the canonical identifier for any aircraft is always its live callsign
-// truncated to exactly this length.
-const AID_MAX_LEN = 8
+// Every AID-entry point (FPE, StripBay's add-strip box, imports) caps at
+// AID_MAX_LEN, so the canonical identifier for any aircraft is always its
+// live callsign truncated to exactly that length.
 
 /**
  * @param {Object} units          live units keyed by id (useUnitsStore().units)

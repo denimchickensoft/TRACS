@@ -3,6 +3,7 @@ import { useFpeStore }          from '../../store/fpe.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../store/strips.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
+import { AID_MAX_LEN }          from '../../utils/callsign.js'
 import './FPE.css'
 
 // 4 octal digits (0-7) — matches utils/bcn.js's generateBcn() output shape.
@@ -82,12 +83,12 @@ export function FPE({ scope = null }) {
   useEffect(() => {
     if (!open) return
     setConfirmDelete(false)
-    // Match the AID field's own maxLength={8} — otherwise a ctrl-click
+    // Match the AID field's own maxLength (AID_MAX_LEN) — otherwise a ctrl-click
     // prefill (which sets this state programmatically, bypassing the
     // input's typing limit) can produce a longer AID than a controller
     // could ever type by hand for the same aircraft, silently diverging
     // into two different flight plans for one contact.
-    const upperAid = (prefillAid?.toUpperCase() ?? '').slice(0, 8)
+    const upperAid = (prefillAid?.toUpperCase() ?? '').slice(0, AID_MAX_LEN)
     const plan = plans[upperAid]
 
     setAid(upperAid)
@@ -209,7 +210,11 @@ export function FPE({ scope = null }) {
       // specific contact — otherwise a plan filed without a unit link (e.g.
       // entered manually before radar correlation) never gains one just by a
       // controller later ctrl-clicking the matching target into an amend.
+      // A hand-edited ALT supersedes a ++### scope amendment, so the
+      // datablock's R### readout goes away with it.
+      const altChanged = alt !== (plans[normalizedAid].alt ?? '')
       amend(normalizedAid, { typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk, bcn,
+             ...(altChanged ? { altAmended: false } : {}),
              ...(unitId ? { unitId } : {}) })
       setHighlight(normalizedAid, STRIP_HIGHLIGHT.AMENDED)
       // Broadcast the resolved plan (not the raw form fields) so every peer
@@ -264,7 +269,7 @@ export function FPE({ scope = null }) {
                 onKeyDown={inputKeyDown(setAid)}
                 readOnly={isExisting || disabled}
                 placeholder="ACID"
-                maxLength={8}
+                maxLength={AID_MAX_LEN}
               />
             </div>
 

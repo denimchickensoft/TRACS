@@ -20,8 +20,7 @@ export const STARS_KEY_MAP = [
   { code: 'F7',                ctrl: false, token: 'MF ' },   // MULTI FUNC
   { code: 'F9',                ctrl: false, token: 'FP ' },   // VFR flight plan
   { code: 'F11',               ctrl: false, token: 'CA ' },   // CA
-  { code: 'F13',               ctrl: false, token: 'F13 '},   // F13 (Shift+F3 alias handled in handler)
-  { code: 'F3',                shift: true, token: 'F13 '},   // F13 (Shift+F3)
+  { code: 'F13',               ctrl: false, token: 'F13 '},   // F13
   { code: 'End',               ctrl: false, token: 'MIN' },   // MIN
 
   // Δ key — backtick

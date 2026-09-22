@@ -34,13 +34,14 @@ export function useStarsAtcData() {
   const blinkTracks  = useAtcStore((s) => s.blinkTracks)
   const displayFdb   = useAtcStore((s) => s.displayFdb)
   const conflictAcks = useAtcStore((s) => s.conflictAcks)
+  const scratchpads  = useAtcStore((s) => s.scratchpads)
   const conflicts    = useStcaStore((s) => s.conflicts)
   const coalition    = useSessionStore((s) => s.coalition)
   const positionName = useSessionStore((s) => s.positionName)
   const myControllerId = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
   return {
     units, ownership, handoffs, pointOuts, blinkTracks, displayFdb, conflictAcks,
-    conflicts, coalition, positionName, myControllerId,
+    scratchpads, conflicts, coalition, positionName, myControllerId,
   }
 }
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useSessionStore } from './session.js'
+import { useFlightPlansStore } from './flightPlans.js'
 
 // What caused the auto-add — drives the highlight color
 export const STRIP_HIGHLIGHT = {
@@ -288,6 +289,31 @@ if (typeof window !== 'undefined') {
   useStripsStore.subscribe((state) => {
     if (!_isSyncing && _ch) _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(state) })
   })
+
+  // DEP/DEST auto-add: a plan that's new, or whose DEP/DEST just changed,
+  // gets a strip when its airport is in the list (your own facility always
+  // counts). Main window only — a popup's strips mirror the main window's
+  // over the channel above, so running it in both would double-trigger.
+  if (!_isPopup) {
+    useFlightPlansStore.subscribe((state, prev) => {
+      const session = useSessionStore.getState()
+      if (session.activeModule !== 'ATC') return
+      const st = useStripsStore.getState()
+      if (!st.autoAddOnDepMatch && !st.autoAddOnDestMatch) return
+      const facility = (session.facilityId || '').toUpperCase()
+      const matches = (list, apt) => {
+        const a = (apt || '').toUpperCase()
+        return !!a && (a === facility || list.includes(a))
+      }
+      for (const [aid, plan] of Object.entries(state.plans)) {
+        const before = prev.plans[aid]
+        if (before && before.dep === plan.dep && before.dest === plan.dest) continue
+        const hit = (st.autoAddOnDepMatch  && matches(st.depAirports,  plan.dep))
+                 || (st.autoAddOnDestMatch && matches(st.destAirports, plan.dest))
+        if (hit) st.addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: plan.unitId ?? null })
+      }
+    })
+  }
 
   if (_isPopup) {
     // A popup already knows its owning position from the URL the moment it

@@ -4,6 +4,7 @@
 // resources/specs/pilot-flightplan-ingestion-spec.md §5.
 
 import { fixNameExists } from './fixMatch.js'
+import { AID_MAX_LEN } from './callsign.js'
 
 const COLUMNS = ['aid', 'typ', 'eq', 'dep', 'dest', 'spd', 'alt', 'rte', 'rmk', 'flightRules']
 
@@ -57,7 +58,7 @@ export function parseCsvFlightPlans(text) {
     const fields = splitCsvLine(lines[i])
     const get = (col) => (colIndex[col] != null ? (fields[colIndex[col]] ?? '') : '')
 
-    const aid = get('aid').toUpperCase()
+    const aid = get('aid').toUpperCase().slice(0, AID_MAX_LEN)
     if (!aid) continue
 
     const rte = get('rte')

@@ -97,25 +97,46 @@ function resolveHandoffId(uid, handoffs, myId) {
 // Empty substitution: if the phase-specific data is absent, falls back to the
 // phase-1 value — the field never goes blank.
 
-function computeLine2(phase, alt, sp1, sp2, handoffId, gs, actype) {
+// Right side of line 2 rotates on its own clock, independent of the
+// left-side SP phases: gs -> type -> gs -> R### -> gs ... An empty slot
+// (no type, or no amended requested altitude) falls back to gs.
+const RIGHT_SLOT_MS = 2000
+const RIGHT_SLOTS   = ['gs', 'type', 'gs', 'req']
+
+function getRightSlot() {
+  return RIGHT_SLOTS[Math.floor(Date.now() / RIGHT_SLOT_MS) % RIGHT_SLOTS.length]
+}
+
+function computeLine2(phase, rightSlot, alt, sp1, sp2, handoffId, gs, actype, reqAlt) {
   const hid    = handoffId
   const sp1Set = sp1 && sp1.trim() !== ''
   const sp2Set = sp2 && sp2.trim() !== ''
-  const acSet  = actype && actype.trim() !== ''
 
-  let left, right
+  let left
   if (phase === 3 && sp2Set) {
-    left  = sp2.slice(0, 3).padEnd(3) + hid
-    right = gs
+    left = sp2.slice(0, 3).padEnd(3) + hid
   } else if (phase !== 1 && sp1Set) {
-    left  = sp1.slice(0, 3).padEnd(3) + hid
-    right = acSet ? actype.slice(0, 4) : gs
+    left = sp1.slice(0, 3).padEnd(3) + hid
   } else {
-    left  = alt + hid
-    right = gs
+    left = alt + hid
   }
 
+  let right = gs
+  if (rightSlot === 'type' && actype && actype.trim() !== '') right = actype.slice(0, 4)
+  else if (rightSlot === 'req' && reqAlt) right = 'R' + reqAlt
+
   return left + ' ' + right.padStart(4)
+}
+
+// FDB line 3: beacon-code mismatch on the left, temporary assigned altitude
+// (A###) right-aligned with line 2's right edge. Rendered with
+// white-space: pre so the padding survives.
+function computeLine3(codeMismatchText, tempAlt, line2Len) {
+  const a = tempAlt ? 'A' + tempAlt : ''
+  if (codeMismatchText && a) return codeMismatchText + ' ' + a
+  if (codeMismatchText) return codeMismatchText
+  if (a) return a.padStart(line2Len)
+  return null
 }
 
 // ── Per-unit datablock ───────────────────────────────────────────────────────
@@ -124,7 +145,7 @@ const Datablock = memo(function Datablock({
   id, unit, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks,
   ownership, handoffs, pointOuts, quickLook, displayFdb, scratchpads,
   myId, unitLeaderDir, globalLeaderDir, placement,
-  clockPhase, actype, slewed, isBlinking, blinkOn, isHighlighted,
+  clockPhase, rightSlot, actype, reqAlt, slewed, isBlinking, blinkOn, isHighlighted,
   conflict, wingman, assoc, assignedBcn, isIdent, beaconReadout,
 }) {
   const pos = unit.position
@@ -218,7 +239,10 @@ const Datablock = memo(function Datablock({
   const isPoReceiving = po?.state === POINTOUT_STATE.RECEIVING && po?.to   === myId
   const isPoSent      = po?.state === POINTOUT_STATE.SENT      && po?.from === myId
   const isPoRejected  = po?.state === POINTOUT_STATE.REJECTED  && po?.from === myId
-  const line2     = computeLine2(clockPhase, alt, sp1, sp2, handoffId, gs, actype ?? '')
+  const line2     = computeLine2(clockPhase, rightSlot, alt, sp1, sp2, handoffId, gs, actype ?? '', '')
+  // R### (amended requested altitude) time-shares on FDB line 2 only
+  const fdbLine2  = computeLine2(clockPhase, rightSlot, alt, sp1, sp2, handoffId, gs, actype ?? '', reqAlt)
+  const tempAlt   = scratchpads[uid]?.tempAlt ?? ''
 
   const leader = leaderLen > 0
     ? <line x1={lx0} y1={ly0} x2={lx1} y2={ly1} stroke={colors.leaderLine} strokeWidth={0.8} />
@@ -345,7 +369,7 @@ const Datablock = memo(function Datablock({
   const reportedCode = unit.transponder?.mode3 != null ? String(unit.transponder.mode3).padStart(4, '0') : null
   const assignedCode = assignedBcn != null ? String(assignedBcn).padStart(4, '0') : null
   const codeMismatch = reportedCode != null && assignedCode != null && reportedCode !== assignedCode
-  const line3 = codeMismatch ? `${reportedCode} ${assignedCode}` : null
+  const line3 = computeLine3(codeMismatch ? `${reportedCode} ${assignedCode}` : null, tempAlt, fdbLine2.length)
 
   return (
     <g>
@@ -355,10 +379,10 @@ const Datablock = memo(function Datablock({
         {acidLine}
       </text>
       <text x={tx} y={ty + lh} fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
-        <tspan>{line2}</tspan>{identTspan}
+        <tspan>{fdbLine2}</tspan>{identTspan}
       </text>
       {line3 && (
-        <text x={tx} y={ty + lh * 2} fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={style}>
+        <text x={tx} y={ty + lh * 2} fill={fdbColor} opacity={briteFdb} textAnchor={anchor} style={{ ...style, whiteSpace: 'pre' }}>
           {line3}
         </text>
       )}
@@ -438,6 +462,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   }, [])
 
   const clockPhase = getClockPhase(clockSeq, clockInts)
+  const rightSlot  = getRightSlot()
   const now        = Date.now()
 
   const entries = useMemo(() => Object.entries(units), [units])
@@ -477,7 +502,10 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       const sp2    = scratchpads[uid]?.sp2 ?? ''
       const handoffId = resolveHandoffId(uid, handoffs, myId)
       const actype = plansByUnit[uid]?.typ ?? ''
-      const line2  = computeLine2(clockPhase, alt, sp1, sp2, handoffId, gs, actype)
+      const plan   = plansByUnit[uid]
+      const reqAlt = plan?.altAmended ? (plan.alt ?? '') : ''
+      const line2  = computeLine2(clockPhase, rightSlot, alt, sp1, sp2, handoffId, gs, actype, dbType === 'FDB' ? reqAlt : '')
+      const tempAlt = scratchpads[uid]?.tempAlt ?? ''
 
       let lines
       if (dbType === 'LDB') {
@@ -489,7 +517,10 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
         }
       }
       else if (dbType === 'PDB') lines = slewedPdbs?.has(uid) ? [cs, line2] : [line2]
-      else lines = [cs, line2] // FDB — Line 3 mismatch (rare) isn't accounted for in bbox sizing, same tradeoff as the conflict indicator above
+      // FDB — Line 3 beacon mismatch (rare) isn't accounted for in bbox
+      // sizing, same tradeoff as the conflict indicator above; a temporary
+      // altitude is, since it stays up for as long as it's assigned
+      else lines = tempAlt ? [cs, line2, ('A' + tempAlt).padStart(line2.length)] : [cs, line2]
 
       const unitDir = leaderDirs[uid] ?? null
       contacts.push({
@@ -514,7 +545,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       padding: 2,
     })
   }, [dbca, view, entries, ownership, handoffs, pointOuts, quickLook, displayFdb, myId,
-      scratchpads, clockPhase, plansByUnit, slewedPdbs, leaderDirs, globalLeaderDir,
+      scratchpads, clockPhase, rightSlot, plansByUnit, slewedPdbs, leaderDirs, globalLeaderDir,
       ldrLength, csDatablocks, visual, isAssociated, beaconReadout, identUnacked])
 
   if (!view) return null
@@ -551,7 +582,9 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
           globalLeaderDir={globalLeaderDir}
           placement={placements ? (placements[String(id)] ?? null) : null}
           clockPhase={clockPhase}
+          rightSlot={rightSlot}
           actype={plansByUnit[String(id)]?.typ ?? ''}
+          reqAlt={plansByUnit[String(id)]?.altAmended ? (plansByUnit[String(id)]?.alt ?? '') : ''}
           slewed={slewedPdbs?.has(String(id)) ?? false}
           isBlinking={!!blinkTracks[String(id)] && now < blinkTracks[String(id)]}
           isIdent={!!identUnacked[String(id)]}

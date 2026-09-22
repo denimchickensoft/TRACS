@@ -5,6 +5,7 @@
 import { dcsPointToLatLng } from './dcsCoords.js'
 import { matchFixName } from './fixMatch.js'
 import { formatIcaoRoutePoint } from './coords.js'
+import { AID_MAX_LEN } from './callsign.js'
 
 const M_TO_FT = 3.28084
 const ROUTE_SLOTS = ['R1', 'R2', 'R3']
@@ -71,7 +72,7 @@ export function buildDtcFlightPlan(family, theatre, slotPoints, aid) {
   const maxAlt = alts.length ? metersToAltField(Math.max(...alts)) : ''
 
   return {
-    aid: (aid ?? '').toUpperCase(),
+    aid: (aid ?? '').toUpperCase().slice(0, AID_MAX_LEN),
     typ: family === 'f16c' ? 'F16C' : 'FA18C',
     eq: '',
     dep: '',

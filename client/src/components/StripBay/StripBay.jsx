@@ -7,6 +7,7 @@ import { useControllersStore }  from '../../store/controllers.js'
 import { dispatchWebrtcEvent, dispatchOpenFpe } from '../../utils/commandChannel.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import { FlightPlanImport }     from '../FlightPlanImport/FlightPlanImport.jsx'
+import { AID_MAX_LEN } from '../../utils/callsign.js'
 import './StripBay.css'
 
 const SORT_OPTIONS = [
@@ -37,6 +38,8 @@ function sortStrips(strips, plans, plansByUnitId, sortBy) {
 function AnnCell({ stripId, cellIndex, value }) {
   const setAnnotation = useStripsStore((s) => s.setAnnotation)
   const [local, setLocal] = useState(value)
+  // Escape = cancel: the blur it triggers must not save the typed text
+  const cancelRef = useRef(false)
 
   function handleChange(e) {
     const v = e.target.value.toUpperCase().slice(0, 3)
@@ -44,12 +47,17 @@ function AnnCell({ stripId, cellIndex, value }) {
   }
 
   function handleBlur() {
+    if (cancelRef.current) {
+      cancelRef.current = false
+      setLocal(value)
+      return
+    }
     setAnnotation(stripId, cellIndex, local)
   }
 
   function handleKeyDown(e) {
     if (e.key === 'Enter') e.target.blur()
-    if (e.key === 'Escape') { setLocal(''); e.target.blur() }
+    if (e.key === 'Escape') { cancelRef.current = true; e.target.blur() }
   }
 
   // Sync when external value changes (e.g. strip pass)
@@ -649,7 +657,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
             value={addAid}
             onChange={(e) => setAddAid(e.target.value.toUpperCase())}
             placeholder="Callsign"
-            maxLength={8}
+            maxLength={AID_MAX_LEN}
           />
           <button type="submit" className="sb-btn-add" disabled={!addAid.trim()}>
             Add Strip

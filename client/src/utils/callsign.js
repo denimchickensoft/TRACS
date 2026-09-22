@@ -9,6 +9,11 @@ export function stripAcid(s) {
   return s.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
 }
 
+// Longest aircraft ID (AID) any entry point accepts, and the length every
+// AID key is truncated to. 13 fits the longest stock DCS callsign word plus
+// flight and element digits (Springfield 1-1 -> SPRINGFIELD11).
+export const AID_MAX_LEN = 13
+
 // Split "VIPER1 | John Smith" → { acid: 'VIPER1', pilotName: 'John Smith' }
 // No pipe → { acid: stripped unitName, pilotName: null }
 export function parseUnitName(unitName) {
@@ -112,9 +117,11 @@ export function findFlightPlanAid(unit, plans) {
     )
     if (byDcsId) return byDcsId.aid
   }
-  const primary = resolveCallsign(unit)?.toUpperCase()
+  // Truncated to AID_MAX_LEN so a long live callsign resolves to the same
+  // key the FPE/Strip Bay would have filed it under.
+  const primary = resolveCallsign(unit)?.toUpperCase().slice(0, AID_MAX_LEN)
   if (primary && plans[primary]) return primary
-  const fallback = stripAcid(unit.callsign ?? '')
+  const fallback = stripAcid(unit.callsign ?? '').slice(0, AID_MAX_LEN)
   if (fallback && plans[fallback]) return fallback
   return primary ?? fallback ?? null
 }

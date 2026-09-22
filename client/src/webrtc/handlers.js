@@ -137,14 +137,8 @@ function handleAtc(type, payload) {
     case 'FLIGHT_PLAN_DELETE':
       fps.remove(payload.aid)
       break
-    case 'HANDOFF_INITIATED': {
-      const myControllerId = getMyControllerId()
-      if (payload.toControllerId === myControllerId && strips.autoAddOnHandoff) {
-        const plan = Object.values(fps.plans).find((p) => String(p.unitId) === String(payload.unitId))
-        if (plan) strips.addStrip(plan.aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: payload.unitId ?? null })
-      }
-      break
-    }
+    // Strip auto-add on handoff fires when *this* controller accepts it (see
+    // atc/actions/index.js's autoAddStripOnHandoffAccept), not on receipt.
     case 'STRIP_PASSED': {
       const myPosition = useSessionStore.getState().positionName
       if (payload.toPosition && payload.toPosition !== myPosition) break

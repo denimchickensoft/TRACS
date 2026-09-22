@@ -1857,13 +1857,18 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     // for a single-ship/human callsign with no such suffix (e.g. "DENIM"),
     // silently no-opping the whole handler. Falls back to the bare live
     // callsign as its own one-aircraft group in that case.
+    //
+    // GM/Admin aren't tied to a side, so they can open either side's
+    // aircraft; the flight is filed under the aircraft's own coalition.
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
-      if (target?.unit && target.unit.coalition === myCoalitionNum) {
+      const isGmOrAdmin = coalition === 'gm' || coalition === 'admin'
+      const unitSide = target?.unit?.coalition === 2 ? 'blue' : target?.unit?.coalition === 1 ? 'red' : null
+      if (target?.unit && (isGmOrAdmin ? unitSide != null : target.unit.coalition === myCoalitionNum)) {
         const liveCallsign = resolveCallsign(target.unit)
         const fe = parseFlightElement(target.unit)
         const flightKey = fe ? fe.flightKey : liveCallsign
         if (flightKey && liveCallsign) {
-          const groupId = useAbmMissionStore.getState().ensureManualRosterEntry(flightKey, liveCallsign, coalition)
+          const groupId = useAbmMissionStore.getState().ensureManualRosterEntry(flightKey, liveCallsign, isGmOrAdmin ? unitSide : coalition)
           selectAtoGroup(groupId)
         }
       }

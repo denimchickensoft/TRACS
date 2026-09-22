@@ -84,6 +84,19 @@ register('DT', (parts, ctx) => {
   return []
 })
 
+// .DROPALL — drop every track you own, broadcasting each drop
+register('.DROPALL', () => {
+  const { ownership, dropTrack, clearHandoff } = useAtcStore.getState()
+  const controllerId = getMyControllerId()
+  for (const [unitId, owner] of Object.entries(ownership)) {
+    if (owner !== controllerId) continue
+    clearHandoff(unitId)
+    dropTrack(unitId)
+    sendWebrtcEvent('TRACK_DROPPED', { unitId })
+  }
+  return []
+})
+
 // HO <callsign|side> <tcp> — handoff to controller.
 // Bare "HO" (no args) — accept the nearest incoming handoff. Was formerly
 // STARS' HND_OFF_ACCEPT_NEAR (commandParser.js `/^HO$/` ENTER), reachable

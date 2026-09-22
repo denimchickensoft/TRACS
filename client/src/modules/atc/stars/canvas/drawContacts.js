@@ -62,8 +62,8 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
   ctx.clearRect(0, 0, width, height)
 
   // ── PTL first pass — drawn under everything ───────────────────────
-  if (ptlOpts && ptlOpts.mode && ptlOpts.minutes > 0) {
-    const { minutes, mode, ownership, myPosition } = ptlOpts
+  if (ptlOpts && ptlOpts.minutes > 0) {
+    const { minutes, mode, ownership, myPosition, perTrack } = ptlOpts
     ctx.strokeStyle = colors.ptlLine ?? colors.contact
     ctx.lineWidth   = 0.8
 
@@ -71,8 +71,11 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
       const pos = unit.position
       if (!pos || unit.track == null || !unit.speed) continue
 
-      // Ownership filter
-      if (mode === 'OWN' && ownership[String(id)] !== myPosition) continue
+      // Per-track (MF R) PTLs always draw; otherwise the facility-wide mode decides
+      const shown = perTrack?.has(String(id))
+        || mode === 'ALL'
+        || (mode === 'OWN' && ownership[String(id)] === myPosition)
+      if (!shown) continue
 
       const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
       if (x < -100 || x > width + 100 || y < -100 || y > height + 100) continue

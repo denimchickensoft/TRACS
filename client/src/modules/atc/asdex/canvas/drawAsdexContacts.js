@@ -103,7 +103,8 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     // state) but in teal, with no datablock at all. Only for srsCapable
     // units — AI/non-SRS units keep the old full-identity fallback. See
     // resources/specs/transponder-correlation-spec.md §5.
-    const isUnknownTarget = !!unit.srsCapable && !hasLiveSquawk(unit)
+    // A manual .TAG turns an Unknown Target into a normal, identified one.
+    const isUnknownTarget = !!unit.srsCapable && !hasLiveSquawk(unit) && !manualTags[String(id)]
 
     const useHeading = unit.speed != null && unit.speed < 1 && unit.heading != null
     const symbolTrack = useHeading ? unit.heading : (unit.track ?? 0)

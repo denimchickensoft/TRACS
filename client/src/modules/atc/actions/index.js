@@ -79,11 +79,23 @@ export function INIT_CNTL({ slewTarget }) {
   }
   claimTrack(slewTarget.unitId, controllerId)
   sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, controllerId })
-  if (useSessionStore.getState().activeModule === 'ATC') {
+  if (useSessionStore.getState().activeModule === 'ATC' && useStripsStore.getState().autoAddOnTrack) {
     const aid = findFlightPlanAid(slewTarget.unit, useFlightPlansStore.getState().plans)
     useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: slewTarget.unitId })
   }
   ok()
+}
+
+// Strip Bay "On handoff acceptance" trigger — called from every path that
+// accepts an incoming handoff.
+function autoAddStripOnHandoffAccept(unitId) {
+  if (useSessionStore.getState().activeModule !== 'ATC') return
+  const strips = useStripsStore.getState()
+  if (!strips.autoAddOnHandoff) return
+  const unit = useUnitsStore.getState().units[unitId]
+  if (!unit) return
+  const aid = findFlightPlanAid(unit, useFlightPlansStore.getState().plans)
+  if (aid) strips.addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId })
 }
 
 // Acknowledge a conflict-alert pair — called directly from StarsScope.jsx's
@@ -147,6 +159,7 @@ export function TERM_CNTL_ALL() {
     if (owner === controllerId) {
       clearHandoff(id)
       dropTrack(id)
+      sendWebrtcEvent('TRACK_DROPPED', { unitId: id })
       if (deleteOnDropTrack) {
         const plan = Object.values(plans).find((p) => p.unitId === Number(id))
         if (plan) deleteByAid(plan.aid)
@@ -201,6 +214,7 @@ export function HND_OFF_BARE({ slewTarget }) {
     claimTrack(slewTarget.unitId, controllerId)
     clearHandoff(slewTarget.unitId)
     sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: slewTarget.unitId, fromControllerId: ho.from, toControllerId: controllerId })
+    autoAddStripOnHandoffAccept(slewTarget.unitId)
     return ok()
   }
 
@@ -216,6 +230,7 @@ export function HND_OFF_ACCEPT_NEAR() {
       claimTrack(id, controllerId)
       clearHandoff(id)
       sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: id, fromControllerId: ho.from, toControllerId: controllerId })
+      autoAddStripOnHandoffAccept(id)
       return ok()
     }
   }
@@ -312,10 +327,59 @@ export function SET_LEADER_GLOBAL({ captures, windowId }) {
   ok()
 }
 
+// MF R + SLEW — per-track PTL, drawn regardless of the DCB's PTL OWN/ALL
+// mode (see drawContacts.js).
 export function TOGGLE_PTL({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
-  getAtc().setScratchpad(slewTarget.unitId, '_ptl', 'toggle')
+  const current = getAtc().scratchpads[slewTarget.unitId]?._ptl ?? false
+  getAtc().setScratchpad(slewTarget.unitId, '_ptl', !current)
   ok()
+}
+
+// LD (0-7) + ENTER — same window setting as the DCB LDR LEN spinner.
+export function SET_LEADER_LEN({ captures, windowId }) {
+  getDisplay().updateWindow(windowId ?? WINDOW_ID, { ldrLength: parseInt(captures.len, 10) })
+  ok()
+}
+
+// +(###) + SLEW — temporary assigned altitude, shown as A### on FDB line 3.
+// +000 clears it.
+export function SET_ALT_ASSIGNED({ captures, slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
+  const alt = captures.alt
+  getAtc().setScratchpad(slewTarget.unitId, 'tempAlt', alt === '000' ? '' : alt)
+  ok()
+}
+
+// ++(###) + SLEW — amend the linked flight plan's requested (filed)
+// altitude. altAmended drives the time-shared R### on FDB line 2.
+export function SET_ALT_REQUESTED({ captures, slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
+  const fps = useFlightPlansStore.getState()
+  const aid = findFlightPlanAid(slewTarget.unit, fps.plans)
+  if (!aid || !fps.plans[aid]) return err('NO FLIGHT PLAN')
+  fps.amend(aid, { alt: captures.alt, altAmended: true })
+  useStripsStore.getState().setHighlight(aid, STRIP_HIGHLIGHT.AMENDED)
+  sendWebrtcEvent('FLIGHT_PLAN_AMEND', useFlightPlansStore.getState().plans[aid])
+  ok()
+}
+
+// .CENTER + ENTER / Ctrl+F1 — back to the scope's original center, same as
+// the DCB's OFF CNTR.
+export function RECENTER({ windowId }) {
+  recenterScope(windowId ?? WINDOW_ID)
+  ok()
+}
+
+export function recenterScope(windowId) {
+  const win = getDisplay().windows[windowId]
+  getDisplay().updateWindow(windowId, {
+    centerLat: win?.homeCenterLat ?? 0,
+    centerLng: win?.homeCenterLng ?? 0,
+    offCntr:   false,
+  })
 }
 
 // ── Minimum separation ────────────────────────────────────────────────────────
@@ -487,6 +551,7 @@ export function BARE_SLEW({ slewTarget }) {
     getAtc().claimTrack(id, controllerId)
     getAtc().clearHandoff(id)
     sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: id, fromControllerId: ho.from, toControllerId: controllerId })
+    autoAddStripOnHandoffAccept(id)
     return ok()
   }
 
@@ -921,8 +986,12 @@ const ACTION_MAP = {
   CONVERT_POINT_OUT,
   SET_SP1,       SET_SP1_MF: SET_SP1,
   CLEAR_SP1,     CLEAR_SP1_MF: CLEAR_SP1,
-  SET_SP2,       SET_SP2_MF: SET_SP2,
-  CLEAR_SP2,     CLEAR_SP2_MF: CLEAR_SP2,
+  SET_SP2,
+  CLEAR_SP2,
+  SET_ALT_ASSIGNED,
+  SET_ALT_REQUESTED,
+  SET_LEADER_LEN,
+  RECENTER,
   SET_LEADER_SHORT,
   SET_LEADER_MF,
   SET_LEADER_GLOBAL,

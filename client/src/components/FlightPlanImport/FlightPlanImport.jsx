@@ -7,6 +7,7 @@ import { dtcRouteSlots, buildDtcFlightPlan } from '../../utils/dtcFlightPlans.js
 import { useFlightPlansStore } from '../../store/flightPlans.js'
 import { useSessionStore } from '../../store/session.js'
 import { sendWebrtcEvent } from '../../webrtc/client.js'
+import { AID_MAX_LEN } from '../../utils/callsign.js'
 import './FlightPlanImport.css'
 
 // Shared bulk import for the three flight-plan ingestion paths --
@@ -235,7 +236,7 @@ export function FlightPlanImport({ onClose }) {
                   value={dtcAid}
                   onChange={e => setDtcAid(e.target.value.toUpperCase())}
                   placeholder="Callsign"
-                  maxLength={8}
+                  maxLength={AID_MAX_LEN}
                 />
                 <button type="submit" className="fpi-btn fpi-btn-primary" disabled={!dtcAid.trim()}>
                   Continue

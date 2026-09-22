@@ -56,7 +56,7 @@ import { AlertList }            from './lists/AlertList.jsx'
 import { VFRList }              from './lists/VFRList.jsx'
 import { resolveSlew }          from './input/slewResolver.js'
 import { parseCommand, looksLikeKnownCommand } from './input/commandParser.js'
-import { dispatch as dispatchAction, INIT_CNTL, ackConflict } from '../actions/index.js'
+import { dispatch as dispatchAction, INIT_CNTL, ackConflict, recenterScope } from '../actions/index.js'
 import { useStcaStore }         from '../../../store/stca.js'
 import { resolvePrimaryOnlyIds } from './stca/formations.js'
 import { useAssociationStore }  from '../../../store/association.js'
@@ -84,7 +84,7 @@ export default function StarsScope() {
 
   const {
     units, ownership, handoffs, pointOuts, blinkTracks, displayFdb, conflictAcks,
-    conflicts, coalition, positionName, myControllerId,
+    scratchpads, conflicts, coalition, positionName, myControllerId,
   } = useStarsAtcData()
   const {
     mission, airbases, facilityDcsName, facilityType, positionSuffix, facilityId,
@@ -551,9 +551,14 @@ export default function StarsScope() {
   // ── Render contacts ───────────────────────────────────────────────
   useEffect(() => {
     if (!view || !ctxCanvasRef.current || !activeProfile) return
-    const ptlOpts = (activeProfile.features?.PTL && windowSettings?.ptlMode)
-      ? { minutes: windowSettings?.ptlLength ?? 2, mode: windowSettings?.ptlMode,
-          ownership, myPosition: myControllerId }
+    // MF R per-track PTLs draw regardless of the facility-wide ptlMode
+    const perTrackPtl = new Set()
+    for (const [uid, sp] of Object.entries(scratchpads)) {
+      if (sp?._ptl) perTrackPtl.add(String(uid))
+    }
+    const ptlOpts = (activeProfile.features?.PTL && (windowSettings?.ptlMode || perTrackPtl.size > 0))
+      ? { minutes: windowSettings?.ptlLength ?? 2, mode: windowSettings?.ptlMode ?? null,
+          ownership, myPosition: myControllerId, perTrack: perTrackPtl }
       : null
 
     // Units whose symbol should blink: incoming HO to me, or active post-accept timer
@@ -596,7 +601,7 @@ export default function StarsScope() {
     }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef is a stable ref returned by useHistoryCapture
-  }, [filteredUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick, blinkOn,
+  }, [filteredUnits, view, symbolMap, ownership, handoffs, pointOuts, blinkTracks, blinkTick, blinkOn, scratchpads,
       myControllerId, positionName,
       windowSettings?.britePos, windowSettings?.briteHst, windowSettings?.csPos,
       windowSettings?.ptlMode, windowSettings?.ptlLength, windowSettings?.historyLength,
@@ -739,6 +744,8 @@ export default function StarsScope() {
       displayStore.updateWindow(WINDOW_ID, { pendingAction: null, minWip: null })
     } else if (pending === 'WNG_P2') {
       displayStore.updateWindow(WINDOW_ID, { pendingAction: null, wngWip: null })
+    } else if (pending === 'PLACE_CNTR' || pending === 'PLACE_RR') {
+      displayStore.updateWindow(WINDOW_ID, { pendingAction: null })
     }
   }, [displayStore])
 
@@ -746,7 +753,7 @@ export default function StarsScope() {
   const handleImmediateAction = useCallback((action) => {
     switch (action) {
       case 'RECENTER':
-        // TODO: re-center to facility-defined center
+        recenterScope(WINDOW_ID)
         break
       case 'TOGGLE_DCB':
         setDcbVisible(v => !v)
@@ -938,6 +945,16 @@ export default function StarsScope() {
 
       // Consume pending one-shot actions before falling through to slew
       const pending = windowSettings?.pendingAction
+      if (pending === 'PLACE_CNTR' && viewRef.current) {
+        const { lat, lng } = canvasToLatLng(canvasPos.x, canvasPos.y, viewRef.current)
+        displayStore.updateWindow(WINDOW_ID, {
+          centerLat:     lat,
+          centerLng:     lng,
+          offCntr:       true,
+          pendingAction: null,
+        })
+        return
+      }
       if (pending === 'PLACE_RR' && viewRef.current) {
         const { lat, lng } = canvasToLatLng(canvasPos.x, canvasPos.y, viewRef.current)
         displayStore.updateWindow(WINDOW_ID, {

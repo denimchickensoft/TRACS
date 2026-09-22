@@ -855,7 +855,7 @@ export default function AicScope() {
       if (!target) return
       const nearestId = findNearestBogey(
         target.unitId, target.unit, visibleUnitsRef.current,
-        (id, unit) => declarationsRef.current[id] ?? (unit.coalition === myCoalitionNum ? 'FRIENDLY' : 'BOGEY'),
+        (id, unit) => getAicEffectiveDeclaration(id, unit, myCoalitionNum),
       )
       if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
       else setCmdFeedback('NO BOGEY')
@@ -898,7 +898,7 @@ export default function AicScope() {
       if (!target) return
       const nearestId = findNearestBogey(
         target.unitId, target.unit, visibleUnitsRef.current,
-        (id, unit) => declarationsRef.current[id] ?? (unit.coalition === myCoalitionNum ? 'FRIENDLY' : 'BOGEY'),
+        (id, unit) => getAicEffectiveDeclaration(id, unit, myCoalitionNum),
       )
       if (nearestId) { addBraaPair(target.unitId, nearestId); setCmdFeedback('BOGEY DOPE') }
       else setCmdFeedback('NO BOGEY')

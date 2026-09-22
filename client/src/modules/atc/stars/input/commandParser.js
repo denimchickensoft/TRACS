@@ -43,6 +43,7 @@ const COMMANDS = [
   { id: 'RELOCATE_VFR',         pattern: /^MF TV$/,               trigger: 'SLEW'  },
 
   // ── Display manipulation ────────────────────────────────────────
+  { id: 'RECENTER',             pattern: /^\.CENTER$/,            trigger: 'ENTER' },
   { id: 'RELOCATE_PREVIEW',     pattern: /^MF P$/,                trigger: 'SLEW'  },
   { id: 'TOGGLE_PTL',           pattern: /^MF R$/,                trigger: 'SLEW'  },
   { id: 'TOGGLE_MODE_C',        pattern: /^MF M$/,                trigger: 'SLEW'  },
@@ -135,6 +136,7 @@ const COMMANDS = [
   { id: 'INIT_CNTL',            pattern: /^IC$/,                  trigger: 'SLEW'  },
   { id: 'INIT_CNTL_BY_ID',      pattern: /^IC (.+)$/,             trigger: 'ENTER', captures: ['flid'] },
   { id: 'TERM_CNTL_ALL',        pattern: /^TC ALL$/,              trigger: 'ENTER' },
+  { id: 'TERM_CNTL_ALL',        pattern: /^\.DROPALL$/,           trigger: 'ENTER' },
   { id: 'TERM_CNTL_BY_ID',      pattern: /^TC (.+)$/,             trigger: 'ENTER', captures: ['flid'] },
   { id: 'TERM_CNTL',            pattern: /^TC$/,                  trigger: 'SLEW'  },
 
@@ -168,26 +170,22 @@ const COMMANDS = [
   { id: 'MIN_CLEAR',            pattern: /^MIN$/,                trigger: 'ENTER' },
 
   // ── Scratchpads ─────────────────────────────────────────────────
-  // SP1 via MF Y
+  // SP1 via MF Y (SP2 has no MF form - only the + shorthand below)
   { id: 'SET_SP1_MF',           pattern: /^MF Y(.+)$/,            trigger: 'SLEW',  captures: ['sp'] },
   { id: 'CLEAR_SP1_MF',         pattern: /^MF Y$/,                trigger: 'SLEW'  },
-  // SP2 via MF Y+
-  { id: 'SET_SP2_MF',           pattern: /^MF Y\+(.+)$/,          trigger: 'SLEW',  captures: ['sp'] },
-  { id: 'CLEAR_SP2_MF',         pattern: /^MF Y\+$/,              trigger: 'SLEW'  },
-  // SP1 shorthand: (text) + SLEW
+  // SP1 shorthand: (text) + SLEW — a bare 3-digit entry lands here too
   { id: 'SET_SP1',              pattern: /^([A-Z0-9/]{3,4})$/,    trigger: 'SLEW',  captures: ['sp'], contextFree: true },
+  // Temporary assigned altitude: +(###) + SLEW (+000 clears) — must
+  // precede SET_SP2, whose pattern also matches +###
+  { id: 'SET_ALT_ASSIGNED',     pattern: /^\+(\d{3})$/,           trigger: 'SLEW',  captures: ['alt'], contextFree: true },
+  // Amend requested (filed) altitude: ++(###) + SLEW
+  { id: 'SET_ALT_REQUESTED',    pattern: /^\+\+(\d{3})$/,         trigger: 'SLEW',  captures: ['alt'], contextFree: true },
   // SP2 shorthand: +(text) + SLEW
   { id: 'SET_SP2',              pattern: /^\+([A-Z0-9/]{1,4})$/,  trigger: 'SLEW',  captures: ['sp'], contextFree: true },
   // Clear SP1: . + SLEW
   { id: 'CLEAR_SP1',            pattern: /^\.$/,                  trigger: 'SLEW',  contextFree: true },
   // Clear SP2: + + SLEW
   { id: 'CLEAR_SP2',            pattern: /^\+$/,                  trigger: 'SLEW',  contextFree: true },
-
-  // ── Altitude ────────────────────────────────────────────────────
-  // Pilot-reported altitude: (###) + SLEW
-  { id: 'SET_ALT_REPORTED',     pattern: /^(\d{3})$/,             trigger: 'SLEW',  captures: ['alt'], contextFree: true },
-  // Assigned altitude: +(###) + SLEW
-  { id: 'SET_ALT_ASSIGNED',     pattern: /^\+(\d{3})$/,           trigger: 'SLEW',  captures: ['alt'], contextFree: true },
 
   // ── Range bearing line ──────────────────────────────────────────
   // *T + ENTER → clear all RBLs; *Tn + ENTER → clear RBL #n
@@ -214,7 +212,7 @@ const DOT_VERBS = [
   'CA', 'WNG', 'ASP', 'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
   'CLASSA', 'CLASSB', 'CLASSC', 'CLASSD', 'CLASSE', 'CLASSF', 'CLASSG',
   'MSA', 'HOLDS', 'RELIEF', 'MVA', 'SAT', 'COORDS', 'FIND', 'FIX', 'PROC',
-  'FP', 'RENAME', 'LABELSIZE',
+  'FP', 'RENAME', 'LABELSIZE', 'DROPALL', 'CENTER',
 ]
 
 /**
