@@ -43,6 +43,11 @@ const DEFAULT_SETTINGS = {
   deleteOnDropTrack:    false,
 }
 
+// Keyed off DEFAULT_SETTINGS so a new setting is persisted + popup-synced
+// automatically.
+const pickSettings = (s) =>
+  Object.fromEntries(Object.keys(DEFAULT_SETTINGS).map((k) => [k, s[k]]))
+
 export const useStripsStore = create(
   persist(
     (set, get) => ({
@@ -242,7 +247,7 @@ export const useStripsStore = create(
     }),
     {
       name: 'tracs.strips',
-      partialize: (state) => ({ strips: state.strips, bays: state.bays }),
+      partialize: (state) => ({ strips: state.strips, bays: state.bays, ...pickSettings(state) }),
     }
   )
 )
@@ -261,7 +266,7 @@ export const useStripsStore = create(
 if (typeof window !== 'undefined') {
   const _params  = new URLSearchParams(window.location.search)
   const _isPopup = !!_params.get('window')
-  const _pick    = (s) => ({ strips: s.strips, bays: s.bays })
+  const _pick    = (s) => ({ strips: s.strips, bays: s.bays, ...pickSettings(s) })
 
   let _ch        = null
   let _isSyncing = false
