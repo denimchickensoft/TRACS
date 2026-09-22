@@ -288,9 +288,9 @@ function ConnectPhase({ onConnected }) {
       // side effects above still run immediately either way.
       if (relayUrl && !syncResult.capable) {
         setRelayWarning(
-          syncResult.reason === 'password'
-            ? 'Relay password rejected — using peer-to-peer.'
-            : 'Relay unreachable — using peer-to-peer.'
+          syncResult.reason === 'password' ? 'Relay password rejected — using peer-to-peer.'
+          : syncResult.reason === 'protocol' ? `Relay ${syncResult.detail ?? 'protocol mismatch'} — using peer-to-peer.`
+          : 'Relay unreachable — using peer-to-peer.'
         )
         setAwaitingContinue(true)
         // connecting must clear here too, not just in the catch block below —

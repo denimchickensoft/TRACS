@@ -7,5 +7,9 @@
   "passwords": {},
   "unitUpdateMs": 4000,
   "detectionMs": 4000,
-  "missileDetectionMs": 4000
+  "missileDetectionMs": 4000,
+  "autoUpdate": {
+    "mode": "window",
+    "window": { "start": "04:00", "end": "05:00", "timezone": "America/New_York" }
+  }
 }

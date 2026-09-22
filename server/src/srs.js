@@ -14,6 +14,7 @@
 
 const WebSocket = require('ws')
 const state = require('./state')
+const { PROTOCOL_VERSION } = require('./protocolVersion')
 
 const RECONNECT_MS = 3000
 
@@ -107,7 +108,7 @@ function connect() {
     // Always sent, even with no password configured (password stays null/
     // empty) -- the relay's auth gate waits for this message regardless of
     // whether it actually has passwords configured, so it can't be skipped.
-    socket.send(JSON.stringify({ type: 'auth', coalition, password }))
+    socket.send(JSON.stringify({ type: 'auth', coalition, password, protocolVersion: PROTOCOL_VERSION }))
   })
 
   socket.on('message', (raw) => {
@@ -133,18 +134,25 @@ function connect() {
     // close reason (network blip, relay restart), which genuinely is worth
     // retrying.
     if (reason?.toString() === 'invalid password') {
-      console.error('[srs] relay rejected our password — not retrying until reconnected with a corrected one')
+      console.error('[srs] relay rejected our password - not retrying until reconnected with a corrected one')
+      ws = null
+      return
+    }
+    // Same reasoning as the password case above — a protocol mismatch needs
+    // a software update on one side, not a network retry.
+    if (reason?.toString().startsWith('protocol mismatch')) {
+      console.error(`[srs] ${reason} - not retrying until one side is updated`)
       ws = null
       return
     }
 
-    console.log(`[srs] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) — reconnecting in ${RECONNECT_MS}ms`)
+    console.log(`[srs] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${RECONNECT_MS}ms`)
     reconnectTimer = setTimeout(connect, RECONNECT_MS)
   })
 
   socket.on('error', (err) => {
     if (socket !== ws) return
-    console.error(`[srs] relay connection error: ${err.code ?? err.name ?? 'unknown'} — ${err.message || '(no message)'} — url: ${url}`)
+    console.error(`[srs] relay connection error: ${err.code ?? err.name ?? 'unknown'} - ${err.message || '(no message)'} - url: ${url}`)
   })
 }
 

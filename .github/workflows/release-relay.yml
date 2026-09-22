@@ -1,0 +1,44 @@
+name: Release TRACS Relay
+
+# Tag-triggered matrix build producing standalone Relay executables (Node
+# SEA — no installer, just a binary + config.example.json), attached to one
+# GitHub Release. See resources/specs/production-spec.md §§5,9. Windows +
+# Linux only — no Mac VPS hosting market (spec §5).
+on:
+  push:
+    tags:
+      - 'relay-v*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set version from tag
+        shell: bash
+        working-directory: relay
+        run: |
+          VERSION="${GITHUB_REF_NAME#relay-v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Install dependencies
+        working-directory: relay
+        run: npm install
+
+      - name: Build
+        working-directory: relay
+        run: npm run build
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: relay/dist/*

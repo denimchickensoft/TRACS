@@ -30,6 +30,8 @@ npm-debug.log*
 # Build output
 dist/
 build/
+dist-electron/
+electron/build-staging/
 
 # Runtime state files (per-machine, not committed)
 server/state/

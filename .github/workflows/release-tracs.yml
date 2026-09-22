@@ -1,0 +1,58 @@
+name: Release TRACS
+
+# Tag-triggered matrix build producing installers for all three platforms,
+# attached to one GitHub Release. See resources/specs/production-spec.md §9.
+# The git tag is the single source of truth for the version — read here and
+# written into package.json at build time, never hand-edited.
+on:
+  push:
+    tags:
+      - 'tracs-v*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+          - os: macos-latest
+            target: mac
+          # Pinned older Ubuntu LTS, not floating ubuntu-latest, to maximize
+          # glibc backward-compatibility with older distros for the AppImage
+          # target (production-spec.md §5).
+          - os: ubuntu-20.04
+            target: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#tracs-v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm run build
+
+      - name: Stage bundled navdata
+        run: npm run stage-navdata
+
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No code signing cert is purchased (production-spec.md §6) - skip
+          # electron-builder's cert auto-discovery so it doesn't try to fetch
+          # its winCodeSign helper package (macOS signing tooling probed even
+          # for non-mac targets) at all.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder --${{ matrix.target }} --publish always

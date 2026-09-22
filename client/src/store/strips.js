@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useSessionStore } from './session.js'
 
 // What caused the auto-add — drives the highlight color
 export const STRIP_HIGHLIGHT = {
@@ -245,24 +246,70 @@ export const useStripsStore = create(
   )
 )
 
+// Bidirectional, but scoped to "this position's main window + its own
+// popup" — NOT a global broadcast like the symmetric syncStore() helper
+// (utils/storeSync.js) other stores use. Strip bays are personal/per-
+// position (a controller's own strip bay is theirs alone — they hand a
+// strip to another controller explicitly via STRIP_PASSED, never via this
+// channel), so two independent positions open at once (routine now that
+// Electron's "New Window" can sign into multiple positions from one running
+// instance) must never see each other's strips. The channel name is keyed
+// by facilityId+positionName so a popup only ever syncs with its own owning
+// position, never an unrelated one that happens to share the browser/app
+// origin.
 if (typeof window !== 'undefined') {
-  const _isPopup  = !!new URLSearchParams(window.location.search).get('window')
-  const _stripsCh = new BroadcastChannel('tracs-strips')
-  const _pick     = (s) => ({ strips: s.strips, bays: s.bays })
+  const _params  = new URLSearchParams(window.location.search)
+  const _isPopup = !!_params.get('window')
+  const _pick    = (s) => ({ strips: s.strips, bays: s.bays })
 
-  if (!_isPopup) {
-    // Main window: broadcast changes and respond to requests, but never apply
-    // incoming state — each main window owns its own strip bays independently.
-    useStripsStore.subscribe((state) => _stripsCh.postMessage({ type: 'STATE_UPDATE', state: _pick(state) }))
-    _stripsCh.onmessage = (e) => {
-      if (e.data?.type === 'REQUEST_STATE') _stripsCh.postMessage({ type: 'STATE_UPDATE', state: _pick(useStripsStore.getState()) })
+  let _ch        = null
+  let _isSyncing = false
+
+  const _channelName = (facilityId, positionName) => `tracs-strips-${facilityId}-${positionName}`
+
+  function _setupChannel(facilityId, positionName) {
+    _ch?.close()
+    _ch = new BroadcastChannel(_channelName(facilityId, positionName))
+    _ch.onmessage = (e) => {
+      if (e.data?.type === 'STATE_UPDATE') {
+        _isSyncing = true
+        useStripsStore.setState(e.data.state)
+        _isSyncing = false
+      } else if (e.data?.type === 'REQUEST_STATE') {
+        _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(useStripsStore.getState()) })
+      }
     }
+    _ch.postMessage({ type: 'REQUEST_STATE' })
+  }
+
+  // Broadcast every local change (from either a main window or its popup),
+  // guarded so applying an incoming update doesn't immediately re-broadcast
+  // an echo of itself.
+  useStripsStore.subscribe((state) => {
+    if (!_isSyncing && _ch) _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(state) })
+  })
+
+  if (_isPopup) {
+    // A popup already knows its owning position from the URL the moment it
+    // opens (see App.jsx's handleStripsUndock) — no need to wait for anything.
+    _setupChannel(_params.get('facilityId') ?? '', _params.get('positionName') ?? '')
   } else {
-    // Popup window: receive strips from the main window, never broadcast.
-    _stripsCh.onmessage = (e) => {
-      if (e.data?.type === 'STATE_UPDATE') useStripsStore.setState(e.data.state)
+    // Main window: facilityId/positionName are blank until login completes
+    // (session.js's setFacility(), which runs well after this module's
+    // top-level code does) — defer channel setup until they're actually
+    // known, and re-key it if they ever change (e.g. signing into a
+    // different position later without restarting the window).
+    let _lastKey = null
+    const _trySetup = () => {
+      const { facilityId, positionName } = useSessionStore.getState()
+      if (!facilityId || !positionName) return
+      const key = _channelName(facilityId, positionName)
+      if (key === _lastKey) return
+      _lastKey = key
+      _setupChannel(facilityId, positionName)
     }
-    _stripsCh.postMessage({ type: 'REQUEST_STATE' })
+    useSessionStore.subscribe(_trySetup)
+    _trySetup()
   }
 }
 

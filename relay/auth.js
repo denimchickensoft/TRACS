@@ -4,6 +4,9 @@
 // (relay/transponders.js, relay/syncRelay.js, and whatever comes next).
 // See resources/specs/data-sources/tracs-relay-architecture-spec.md §7/§8.
 
+const { PROTOCOL_VERSION } = require('./protocolVersion')
+const { version: RELAY_VERSION } = require('./package.json')
+
 const AUTH_TIMEOUT_MS = 5_000
 
 // Always waits for the client's {type:'auth', coalition, password, peerId?}
@@ -34,7 +37,7 @@ function gateConnection(ws, validPasswords, { onAuthenticated, timeoutMs = AUTH_
 
   const authTimeout = setTimeout(() => {
     if (!authenticated) {
-      console.warn(`${tag} client did not authenticate in time — closing connection`)
+      console.warn(`${tag} client did not authenticate in time - closing connection`)
       ws.close(4001, 'auth timeout')
     }
   }, timeoutMs)
@@ -52,14 +55,20 @@ function gateConnection(ws, validPasswords, { onAuthenticated, timeoutMs = AUTH_
     }
     if (msg.type !== 'auth') return
 
+    if (msg.protocolVersion !== PROTOCOL_VERSION) {
+      console.warn(`${tag} protocol mismatch - relay speaks ${PROTOCOL_VERSION}, client sent ${msg.protocolVersion ?? 'none'} - closing connection`)
+      ws.close(4002, `protocol mismatch: relay=${PROTOCOL_VERSION} client=${msg.protocolVersion ?? 'none'} — update whichever side is behind`)
+      return
+    }
+
     if (!authRequired || validPasswords[msg.coalition] === msg.password) {
       authenticated = true
       clearTimeout(authTimeout)
       ws.off('message', authListener)
-      ws.send(JSON.stringify({ type: 'auth_ok' }))
+      ws.send(JSON.stringify({ type: 'auth_ok', relayVersion: RELAY_VERSION, protocolVersion: PROTOCOL_VERSION }))
       onAuthenticated?.(msg)
     } else {
-      console.warn(`${tag} client sent an invalid coalition/password — closing connection`)
+      console.warn(`${tag} client sent an invalid coalition/password - closing connection`)
       ws.close(4001, 'invalid password')
     }
   })

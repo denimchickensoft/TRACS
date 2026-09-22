@@ -2,10 +2,9 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useStripsStore, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
-import { useFpeStore }          from '../../store/fpe.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
-import { dispatchWebrtcEvent }  from '../../utils/commandChannel.js'
+import { dispatchWebrtcEvent, dispatchOpenFpe } from '../../utils/commandChannel.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import { FlightPlanImport }     from '../FlightPlanImport/FlightPlanImport.jsx'
 import './StripBay.css'
@@ -460,7 +459,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const sorted    = sortStrips(bayStrips, plans, plansByUnitId, bay.sortBy)
 
   const handleOpenFpe = useCallback((strip) => {
-    useFpeStore.getState().openFpe({ aid: strip.aid, unitId: strip.unitId ?? null, scope: 'atc' })
+    dispatchOpenFpe({ aid: strip.aid, unitId: strip.unitId ?? null, scope: 'atc' })
   }, [])
 
   const handleAddStrip = useCallback((e) => {

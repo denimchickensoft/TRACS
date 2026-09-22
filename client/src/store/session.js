@@ -1,5 +1,4 @@
-import { create }    from 'zustand'
-import { syncStore } from '../utils/storeSync.js'
+import { create } from 'zustand'
 
 export const MODULE = {
   ATC:   'ATC',
@@ -270,21 +269,77 @@ export const useSessionStore = create((set) => ({
 // Sync the subset of session state every popup window (StatusBoard, BraaList,
 // Ato, Frag, AbmScope's focus panel, ControllerList, AsdexScope, ...) may
 // depend on. Only these fields are broadcast — positionSet, webrtcStatus,
-// etc. are local. Syncs only session-wide data (shared across all windows in
-// the same session): coalition/positionName/activeModule are each set exactly
-// once (at login / on module switch, see setConnection/setActiveModule) and
-// never legitimately differ between two windows in the same session, unlike
-// facilityId/facilityName/facilityDcsName/carrierUnitId, which are per-scope
-// and must NOT be synced here — doing so causes scope windows to overwrite
-// each other's facility/carrier identity when multiple scopes are open
-// simultaneously (those are instead passed as URL params by whichever window
-// opens the popup — see App.jsx's undock handlers).
-syncStore(useSessionStore, 'tracs-session-cl', (s) => ({
-  airbases:     s.airbases,
-  bullseyes:    s.bullseyes,
-  mission:      s.mission,
-  peers:        s.peers,
-  coalition:    s.coalition,
-  positionName: s.positionName,
-  activeModule: s.activeModule,
-}))
+// etc. are local. facilityId/facilityName/facilityDcsName/carrierUnitId are
+// per-scope and must NOT be synced here — those are instead passed as URL
+// params by whichever window opens the popup (see App.jsx's undock handlers).
+//
+// Scoped to "this position's own windows" specifically (facilityId +
+// positionName keyed into the channel name), NOT a global broadcast — unlike
+// the older assumption behind this code ("coalition/positionName/
+// activeModule... never legitimately differ between two windows in the same
+// session"), which held for every case before Electron's "New Window"
+// feature made a second, genuinely independent, Login-capable window
+// possible. A global channel here would let signing into position B in one
+// window silently overwrite position A's identity in a completely unrelated
+// window. Mirrors store/strips.js's identical scoped-sync structure exactly.
+if (typeof window !== 'undefined') {
+  const _params  = new URLSearchParams(window.location.search)
+  const _isPopup = !!_params.get('window')
+  const _pick    = (s) => ({
+    airbases:     s.airbases,
+    bullseyes:    s.bullseyes,
+    mission:      s.mission,
+    peers:        s.peers,
+    coalition:    s.coalition,
+    positionName: s.positionName,
+    activeModule: s.activeModule,
+  })
+
+  let _ch        = null
+  let _isSyncing = false
+
+  const _channelName = (facilityId, positionName) => `tracs-session-cl-${facilityId}-${positionName}`
+
+  function _setupChannel(facilityId, positionName) {
+    _ch?.close()
+    _ch = new BroadcastChannel(_channelName(facilityId, positionName))
+    _ch.onmessage = (e) => {
+      if (e.data?.type === 'STATE_UPDATE') {
+        _isSyncing = true
+        useSessionStore.setState(e.data.state)
+        _isSyncing = false
+      } else if (e.data?.type === 'REQUEST_STATE') {
+        _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(useSessionStore.getState()) })
+      }
+    }
+    _ch.postMessage({ type: 'REQUEST_STATE' })
+  }
+
+  useSessionStore.subscribe((state) => {
+    if (!_isSyncing && _ch) _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(state) })
+  })
+
+  if (_isPopup) {
+    // A popup already knows its owning position from the URL the moment it
+    // opens (see App.jsx's makeUndockHandler / bespoke undock handlers).
+    _setupChannel(_params.get('facilityId') ?? '', _params.get('positionName') ?? '')
+  } else {
+    // Main window (the original one, or any additional one opened via New
+    // Window): facilityId/positionName are blank until login completes
+    // (setFacility()/setConnection(), which run well after this module's
+    // top-level code does) — defer channel setup until they're actually
+    // known, and re-key it if they ever change (e.g. signing into a
+    // different position later without restarting the window).
+    let _lastKey = null
+    const _trySetup = () => {
+      const { facilityId, positionName } = useSessionStore.getState()
+      if (!facilityId || !positionName) return
+      const key = _channelName(facilityId, positionName)
+      if (key === _lastKey) return
+      _lastKey = key
+      _setupChannel(facilityId, positionName)
+    }
+    useSessionStore.subscribe(_trySetup)
+    _trySetup()
+  }
+}

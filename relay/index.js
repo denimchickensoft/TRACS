@@ -16,12 +16,21 @@ const { WebSocketServer } = require('ws')
 const { createTransponderRelay } = require('./transponders')
 const { createSyncRelay }        = require('./syncRelay')
 const { createTacviewRelay }     = require('./tacview')
+const { checkAndApplyUpdate }    = require('./update')
+
+// __dirname inside a Node SEA binary (see scripts/build.js) doesn't
+// correspond to a real directory on disk — config/state must instead be
+// read relative to the running executable itself, mirroring the identical
+// isSeaBinary/exeDir pattern in server/scripts/terrainDataExe/main.js.
+let isSeaBinary = false
+try { isSeaBinary = require('node:sea').isSea() } catch { /* Node < 21, or not built as SEA */ }
+const RELAY_DIR = isSeaBinary ? path.dirname(process.execPath) : __dirname
 
 // config.json (gitignored — holds passwords) overrides env vars, which
 // override the built-in defaults. See config.example.json for the shape.
 function loadConfig() {
   try {
-    return JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'))
+    return JSON.parse(fs.readFileSync(path.join(RELAY_DIR, 'config.json'), 'utf8'))
   } catch {
     return {}
   }
@@ -62,6 +71,16 @@ const config = {
   unitUpdateMs:       Number(fileConfig.unitUpdateMs ?? process.env.UNIT_UPDATE_MS ?? 1000),
   detectionMs:        Number(fileConfig.detectionMs ?? process.env.DETECTION_MS ?? 1000),
   missileDetectionMs: Number(fileConfig.missileDetectionMs ?? process.env.MISSILE_DETECTION_MS ?? 1000),
+  // Hand-rolled auto-update — see update.js and production-spec.md §4. Only
+  // meaningful when running as the packaged SEA binary (isSeaBinary above);
+  // a plain `node index.js` dev run never self-updates. mode: "notify" logs
+  // only, "immediate" swaps+exits as soon as a new release is seen,
+  // "window" (default) gates that swap+exit to a daily maintenance window so
+  // an unannounced restart doesn't drop every live connection.
+  autoUpdate: {
+    mode:   fileConfig.autoUpdate?.mode ?? 'window',
+    window: fileConfig.autoUpdate?.window ?? { start: '04:00', end: '05:00', timezone: 'America/New_York' },
+  },
 }
 
 const server = http.createServer()
@@ -89,3 +108,11 @@ createTacviewRelay(tacviewWss, config)
 server.listen(config.wsPort, () => {
   console.log(`[relay] listening on :${config.wsPort} (/transponders, /sync, /tacview)`)
 })
+
+// Auto-update only applies to the packaged SEA binary — a dev running
+// `node index.js` has no standalone executable to swap out from under
+// itself, and would just be repeatedly re-downloading its own source.
+if (isSeaBinary) {
+  checkAndApplyUpdate(config.autoUpdate, { exePath: process.execPath, exeDir: RELAY_DIR })
+    .catch((err) => console.error('[relay:update] check failed:', err.message))
+}

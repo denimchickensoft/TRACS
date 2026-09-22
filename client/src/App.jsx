@@ -29,6 +29,7 @@ import { Par }           from './components/par/Par'
 import { ControllerList } from './components/ControllerList/ControllerList'
 import { Messages }        from './components/Messages/Messages'
 import { disconnectWebrtc } from './webrtc/client'
+import { relayInfo } from './webrtc/syncClient'
 import { setProjectionParams } from './utils/magvar'
 import { resumeAudioContext } from './audio/audioEngine'
 
@@ -83,35 +84,70 @@ export function App() {
 
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [settingsOpen,    setSettingsOpen]    = useState(false)
-  const [lnmDbPathInput,  setLnmDbPathInput]  = useState('')
-  const [lnmStatus,       setLnmStatus]       = useState({ state: 'idle' }) // idle | loading | saving | ok | error
+  const [tracsVersion,    setTracsVersion]    = useState(null)
+  const [relaySnapshot,   setRelaySnapshot]   = useState({ version: null, protocolVersion: null })
+  const isElectron = typeof window !== 'undefined' && !!window.electronAPI
+  const firstRunPromptedRef = useRef(false)
 
-  useEffect(() => {
-    if (!settingsOpen) return
-    setLnmStatus({ state: 'loading' })
-    fetch('/api/navdata/lnm-config')
-      .then((r) => r.json())
-      .then((data) => {
-        setLnmDbPathInput(data.lnmDbPath ?? '')
-        setLnmStatus({ state: data.ready ? 'ok' : 'idle', builtAt: data.builtAt })
-      })
-      .catch((err) => setLnmStatus({ state: 'error', message: err.message }))
-  }, [settingsOpen])
+  // No Settings-panel UI for this anymore (removed per user request) — the
+  // only remaining way to configure an LNM database is this first-run
+  // Electron picker, or the LNM_DB_PATH env var in dev. Neither of these
+  // needs to track status in React state since nothing renders it.
+  const checkLnmConfig = useCallback(() => {
+    return fetch('/api/navdata/lnm-config').then((r) => r.json()).catch(() => null)
+  }, [])
 
-  const saveLnmDbPath = useCallback(() => {
-    setLnmStatus({ state: 'saving' })
+  const saveLnmDbPath = useCallback((path) => {
     fetch('/api/navdata/lnm-config', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ lnmDbPath: lnmDbPathInput }),
+      body:    JSON.stringify({ lnmDbPath: path }),
+    }).catch((err) => console.error('[lnm] failed to save database path:', err.message))
+  }, [])
+
+  const pickLnmDatabase = useCallback(() => {
+    if (!isElectron) return
+    window.electronAPI.pickLnmDatabase().then((path) => {
+      if (path) saveLnmDbPath(path)
     })
-      .then(async (r) => {
-        const data = await r.json()
-        if (!r.ok) throw new Error(data.error ?? 'save failed')
-        setLnmStatus({ state: 'ok', builtAt: data.builtAt })
-      })
-      .catch((err) => setLnmStatus({ state: 'error', message: err.message }))
-  }, [lnmDbPathInput])
+  }, [isElectron, saveLnmDbPath])
+
+  // "Check on launch, ask before downloading" (production-spec.md §4) —
+  // electronAPI events only fire inside the packaged Electron app; a plain
+  // browser tab never receives them.
+  const [updateBanner, setUpdateBanner] = useState(null) // null | 'available' | 'notify-only' | 'downloading' | 'ready'
+  const [updateVersion, setUpdateVersion] = useState(null)
+  const [updateProgress, setUpdateProgress] = useState(0)
+
+  useEffect(() => {
+    if (!isElectron) return
+    window.electronAPI.onUpdateAvailable((version) => { setUpdateVersion(version); setUpdateBanner('available') })
+    window.electronAPI.onUpdateNotifyOnly((version) => { setUpdateVersion(version); setUpdateBanner('notify-only') })
+    window.electronAPI.onUpdateProgress((percent) => setUpdateProgress(percent))
+    window.electronAPI.onUpdateDownloaded(() => setUpdateBanner('ready'))
+  }, [isElectron])
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    setRelaySnapshot({ ...relayInfo })
+    if (isElectron && tracsVersion === null) {
+      window.electronAPI.getVersion().then(setTracsVersion)
+    }
+  }, [settingsOpen, isElectron, tracsVersion])
+
+  // First-run prompt: only in the packaged Electron app (no native file
+  // dialog exists in a plain browser tab), only once per app load, only
+  // when nothing is configured yet.
+  useEffect(() => {
+    if (!isElectron || firstRunPromptedRef.current) return
+    checkLnmConfig().then((data) => {
+      if (data && !data.lnmDbPath) {
+        firstRunPromptedRef.current = true
+        pickLnmDatabase()
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [activeOds,       setActiveOds]       = useState('atc')
   const [clVisible,  setClVisible]  = useState(() => localStorage.getItem(CL_VISIBLE_KEY)  === 'true')
   const [msgVisible, setMsgVisible] = useState(() => localStorage.getItem(MSG_VISIBLE_KEY) === 'true')
@@ -209,9 +245,25 @@ export function App() {
   }, [])
 
   // ── Helper: build undock handler for any docked panel ─────────────
+  // `url` may be a plain string (resolved once, at call-construction time)
+  // or a function returning one (resolved fresh on every actual undock click
+  // — needed by handlers that must embed current session state in the
+  // popup's URL). Every popup gets facilityId/positionName merged in here,
+  // regardless of what `url` already contains — session.js's cross-window
+  // sync (positionName/coalition/etc.) runs generically in every window and
+  // needs this identity to scope itself to "this position's own windows
+  // only," so a genuinely independent position (opened via New Window)
+  // never bleeds into an unrelated one. See feedback_webrtc_relay_sync_invariants.
   function makeUndockHandler(url, winName, widthRef, setDocked, popupRef) {
     return () => {
-      const popup = window.open(url, winName, `width=${widthRef.current},height=800,resizable=yes`)
+      const resolvedUrl = typeof url === 'function' ? url() : url
+      const [path, query] = resolvedUrl.split('?')
+      const params = new URLSearchParams(query ?? '')
+      const { facilityId, positionName } = useSessionStore.getState()
+      params.set('facilityId', facilityId)
+      params.set('positionName', positionName)
+      const scopedUrl = `${path}?${params}`
+      const popup = window.open(scopedUrl, winName, `width=${widthRef.current},height=800,resizable=yes`)
       if (!popup) return
       popupRef.current = popup
       setDocked(false)
@@ -243,8 +295,8 @@ export function App() {
 
   // ── ASDE-X ODS undock handler ──────────────────────────────────────
   const handleAsdexUndock = useCallback(() => {
-    const { facilityDcsName, positionSuffix } = useSessionStore.getState()
-    const p = new URLSearchParams({ window: 'asdex-ods', facilityDcsName, positionSuffix })
+    const { facilityDcsName, positionSuffix, facilityId, positionName } = useSessionStore.getState()
+    const p = new URLSearchParams({ window: 'asdex-ods', facilityDcsName, positionSuffix, facilityId, positionName })
     const popup = window.open(`/?${p}`, 'tracs-asdex-ods', 'width=1024,height=768,resizable=yes')
     if (!popup) return
     asdexPopupRef.current = popup
@@ -276,8 +328,8 @@ export function App() {
   // facility/carrier identity is per-scope and must not leak across windows).
   // Passed via URL param instead, same pattern as handleAsdexUndock below.
   const handleDeckUndock = useCallback(() => {
-    const { coalition, carrierUnitId } = useSessionStore.getState()
-    const p = new URLSearchParams({ window: 'catcc-deck', coalition: coalition ?? '' })
+    const { coalition, carrierUnitId, facilityId, positionName } = useSessionStore.getState()
+    const p = new URLSearchParams({ window: 'catcc-deck', coalition: coalition ?? '', facilityId, positionName })
     if (carrierUnitId != null) p.set('carrierUnitId', String(carrierUnitId))
     const popup = window.open(`/?${p}`, 'tracs-catcc-deck', `width=${catccWidthRef.current},height=800,resizable=yes`)
     if (!popup) return
@@ -361,9 +413,9 @@ export function App() {
   }, [abmSelectNonce]) // eslint-disable-line
 
   const handleParUndock = useCallback(() => {
-    const { mission, carrierUnitId: cid, activeModule: am, facilityDcsName } = useSessionStore.getState()
+    const { mission, carrierUnitId: cid, activeModule: am, facilityDcsName, facilityId, positionName } = useSessionStore.getState()
     const theatre = mission?.mission?.theatre ?? null
-    const p       = new URLSearchParams({ window: 'par' })
+    const p       = new URLSearchParams({ window: 'par', facilityId, positionName })
     if (theatre) p.set('theatre', theatre)
     if (facilityDcsName) p.set('facilityDcsName', facilityDcsName)
     if (am === MODULE.CATCC) {
@@ -383,8 +435,8 @@ export function App() {
   }, [])
 
   const handleClUndock = useCallback(() => {
-    const { facilityId, facilityName: facName } = useSessionStore.getState()
-    const params = new URLSearchParams({ window: 'cl', facilityId, facilityName: facName }).toString()
+    const { facilityId, facilityName: facName, positionName } = useSessionStore.getState()
+    const params = new URLSearchParams({ window: 'cl', facilityId, facilityName: facName, positionName }).toString()
     const popup = window.open(`/?${params}`, 'tracs-cl', 'width=360,height=520,resizable=yes')
     if (!popup) return
     clPopupRef.current = popup
@@ -440,6 +492,48 @@ export function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: activeProfile?.visual.colors.background ?? '#1A1A1A', overflow: 'hidden' }}>
+
+      {updateBanner && (
+        <div style={{
+          display:        'flex',
+          alignItems:     'center',
+          gap:            '10px',
+          padding:        '4px 10px',
+          background:     '#1a2a1a',
+          color:          '#9c9',
+          fontSize:       '0.7rem',
+          fontFamily:     'Roboto Mono, monospace',
+          flexShrink:     0,
+        }}>
+          {updateBanner === 'available'   && <span>Update available — v{updateVersion}</span>}
+          {updateBanner === 'notify-only' && <span>Update available — v{updateVersion} (download manually — auto-update isn't supported on Mac without a code-signing certificate)</span>}
+          {updateBanner === 'downloading' && <span>Downloading update... {Math.round(updateProgress)}%</span>}
+          {updateBanner === 'ready'       && <span>Update downloaded — restart to install</span>}
+
+          {updateBanner === 'available' && (
+            <button onClick={() => { setUpdateBanner('downloading'); window.electronAPI.downloadUpdate() }}
+              style={{ background: '#254', border: '1px solid #4a6', borderRadius: '2px', color: '#cfc', fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer' }}>
+              Download
+            </button>
+          )}
+          {updateBanner === 'notify-only' && (
+            <button onClick={() => window.electronAPI.openReleasePage()}
+              style={{ background: '#254', border: '1px solid #4a6', borderRadius: '2px', color: '#cfc', fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer' }}>
+              View release
+            </button>
+          )}
+          {updateBanner === 'ready' && (
+            <button onClick={() => window.electronAPI.installUpdate()}
+              style={{ background: '#254', border: '1px solid #4a6', borderRadius: '2px', color: '#cfc', fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer' }}>
+              Restart to install
+            </button>
+          )}
+          <button onClick={() => setUpdateBanner(null)}
+            style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#688', cursor: 'pointer', fontSize: '0.7rem' }}>
+            dismiss
+          </button>
+        </div>
+      )}
 
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <div style={{
@@ -677,48 +771,9 @@ export function App() {
               Sounds
             </label>
 
-            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ color: '#666', fontSize: '0.68rem' }}>LittleNavMap Database</div>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <input
-                  type="text"
-                  value={lnmDbPathInput}
-                  onChange={(e) => setLnmDbPathInput(e.target.value)}
-                  placeholder="path to little_navmap_navigraph.sqlite"
-                  style={{
-                    flex:         1,
-                    minWidth:     0,
-                    background:   '#111',
-                    border:       '1px solid #333',
-                    borderRadius: '2px',
-                    color:        '#ccc',
-                    fontSize:     '0.7rem',
-                    padding:      '3px 5px',
-                  }}
-                />
-                <button
-                  onClick={saveLnmDbPath}
-                  disabled={lnmStatus.state === 'saving'}
-                  style={{
-                    background:   '#222',
-                    border:       '1px solid #444',
-                    borderRadius: '2px',
-                    color:        '#aaa',
-                    fontSize:     '0.7rem',
-                    padding:      '3px 8px',
-                    cursor:       lnmStatus.state === 'saving' ? 'default' : 'pointer',
-                  }}
-                >
-                  Save
-                </button>
-              </div>
-              <div style={{ fontSize: '0.65rem', color: lnmStatus.state === 'error' ? '#c66' : '#555' }}>
-                {lnmStatus.state === 'loading' && 'loading…'}
-                {lnmStatus.state === 'saving'  && 'building navdata…'}
-                {lnmStatus.state === 'ok'      && `loaded — built ${lnmStatus.builtAt ?? ''}`}
-                {lnmStatus.state === 'idle'    && 'not configured — real-world navdata (fixes/airways/procedures) will not load'}
-                {lnmStatus.state === 'error'   && `error: ${lnmStatus.message}`}
-              </div>
+            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.65rem', color: '#555' }}>
+              {isElectron ? `TRACS v${tracsVersion ?? '…'}` : 'TRACS (dev)'}
+              {relaySnapshot.version && ` — Relay v${relaySnapshot.version} (protocol ${relaySnapshot.protocolVersion})`}
             </div>
 
             <a

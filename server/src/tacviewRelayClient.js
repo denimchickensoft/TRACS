@@ -18,6 +18,7 @@
 // dataminer-architecture-placeholder-spec.md §4 for the shared dispatch slot).
 
 const WebSocket = require('ws')
+const { PROTOCOL_VERSION } = require('./protocolVersion')
 const state = require('./state')
 const navdata = require('../navdata')
 const tacviewDetection = require('./tacviewDetection')
@@ -249,7 +250,7 @@ function connect() {
   socket.on('open', () => {
     if (socket !== ws) { socket.close(); return }
     console.log(`[tacviewRelayClient] connected to relay at ${url}`)
-    socket.send(JSON.stringify({ type: 'auth', coalition, password }))
+    socket.send(JSON.stringify({ type: 'auth', coalition, password, protocolVersion: PROTOCOL_VERSION }))
   })
 
   socket.on('message', (raw) => {
@@ -304,18 +305,23 @@ function connect() {
     if (intentionalClose) return
 
     if (reason?.toString() === 'invalid password') {
-      console.error('[tacviewRelayClient] relay rejected our password — not retrying until reconnected with a corrected one')
+      console.error('[tacviewRelayClient] relay rejected our password - not retrying until reconnected with a corrected one')
+      ws = null
+      return
+    }
+    if (reason?.toString().startsWith('protocol mismatch')) {
+      console.error(`[tacviewRelayClient] ${reason} - not retrying until one side is updated`)
       ws = null
       return
     }
 
-    console.log(`[tacviewRelayClient] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) — reconnecting in ${RECONNECT_MS}ms`)
+    console.log(`[tacviewRelayClient] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${RECONNECT_MS}ms`)
     reconnectTimer = setTimeout(connect, RECONNECT_MS)
   })
 
   socket.on('error', (err) => {
     if (socket !== ws) return
-    console.error(`[tacviewRelayClient] relay connection error: ${err.code ?? err.name ?? 'unknown'} — ${err.message || '(no message)'} — url: ${url}`)
+    console.error(`[tacviewRelayClient] relay connection error: ${err.code ?? err.name ?? 'unknown'} - ${err.message || '(no message)'} - url: ${url}`)
   })
 }
 
@@ -358,7 +364,7 @@ function start(cfg, callbacks = {}) {
   // (armRateTimers() re-runs then). Warn if a local file exists anyway, since
   // it'll silently do nothing in this mode — easy to mistake for a bug.
   if (rateConfig.localConfigFileExists()) {
-    console.log('[tacviewRelayClient] relay-hosted mode active — local server/rateConfig.json, if present, is ignored; rate is controlled by the relay operator\'s config.json')
+    console.log('[tacviewRelayClient] relay-hosted mode active - local server/rateConfig.json, if present, is ignored; rate is controlled by the relay operator\'s config.json')
   }
   rateConfig.resetToDefaults()
 
@@ -449,7 +455,7 @@ async function probe(cfg) {
     }, 5000)
 
     probeSocket.on('open', () => {
-      probeSocket.send(JSON.stringify({ type: 'auth', coalition: cfg.coalition, password: cfg.password }))
+      probeSocket.send(JSON.stringify({ type: 'auth', coalition: cfg.coalition, password: cfg.password, protocolVersion: PROTOCOL_VERSION }))
     })
 
     probeSocket.on('message', (raw) => {
@@ -461,7 +467,9 @@ async function probe(cfg) {
     probeSocket.on('close', (code, reason) => {
       settle(reject, reason?.toString() === 'invalid password'
         ? identifiedError('Relay rejected the connection — check the coalition password')
-        : new Error('Relay closed the connection before authenticating'))
+        : reason?.toString().startsWith('protocol mismatch')
+          ? identifiedError(`Relay ${reason}`)
+          : new Error('Relay closed the connection before authenticating'))
     })
 
     probeSocket.on('error', (err) => {

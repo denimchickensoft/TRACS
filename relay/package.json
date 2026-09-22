@@ -5,9 +5,14 @@
   "description": "Standalone TRACS relay. Runs on the DCS server side, alongside Olympus/SRS — not inside any controller's TRACS backend. Listens to SRS's LotATC UDP export locally and serves transponder data over WebSocket to any number of independently-running TRACS backends. See resources/specs/data-sources/tracs-relay-architecture-spec.md.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "node scripts/build.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "postject": "^1.0.0-alpha.6"
   }
 }

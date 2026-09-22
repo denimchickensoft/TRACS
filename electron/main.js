@@ -1,0 +1,283 @@
+'use strict'
+
+// TRACS desktop wrapper. Wraps the existing Express server (server/src/index.js)
+// and React client (client/dist) in an Electron BrowserWindow. See
+// resources/specs/production-spec.md for the packaging decisions this
+// implements.
+//
+// The server is required in-process (same Node process as Electron's main
+// process) rather than spawned as a child — it's already a plain CJS module
+// with startup side effects, so requiring it here is identical to `npm start`
+// running it directly, just with a few env vars set first (see resolvePort()
+// and the userData state-dir line below).
+
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
+const path = require('path')
+const fs   = require('fs')
+const net  = require('net')
+const log  = require('electron-log/main')
+
+// log.initialize() alone only wires up renderer-console forwarding - it does
+// NOT touch this (main) process's own global console. Object.assign(console,
+// log.functions) is electron-log's own documented way to do that: it
+// overrides console.log/warn/error/info/debug so every existing call site
+// across server/src/, server/navdata/, etc. - hundreds of them, none touched
+// - automatically also writes to a log file, with zero per-call-site
+// changes. Still prints to an attached terminal too (dev mode unaffected).
+// Must run before startServer() requires the server.
+log.initialize()
+Object.assign(console, log.functions)
+console.log(`[electron] logging to ${log.transports.file.getFile().path}`)
+
+const DEFAULT_PORT   = 3000
+const PORT_RANGE      = 20   // how many ports to try past the default/saved one before giving up
+const PORT_FILE       = () => path.join(app.getPath('userData'), 'port.json')
+let   currentPort     = null
+
+// Nothing stops a user from launching TRACS.exe a second time the normal
+// way (double-clicking the icon again) rather than using File > New Window
+// - without this, that second process would run its own resolvePort()/
+// startServer() and race the first one for the same port, crashing with
+// EADDRINUSE. requestSingleInstanceLock() makes that second launch attempt
+// hand off to the already-running instance instead (via 'second-instance'
+// below) and quit immediately, rather than starting a competing server.
+if (!app.requestSingleInstanceLock()) {
+  // app.quit() alone schedules a shutdown but doesn't synchronously stop
+  // this process's JS from continuing to run — process.exit() guarantees
+  // this losing instance can never reach the app.whenReady() below and race
+  // the real instance for the same port, regardless of quit()'s exact timing.
+  app.quit()
+  process.exit(0)
+} else {
+  app.on('second-instance', () => {
+    if (currentPort) openNewWindow(currentPort)
+  })
+}
+
+let mainWindow = null
+
+// ── Port resolution ───────────────────────────────────────────────────────
+// Origin stability matters here: client-side localStorage (serverProfiles,
+// *Prefs/*Bookmarks stores) is tied to http://localhost:<port> as an origin.
+// A port that drifted between launches would silently orphan that data. So:
+// first-ever launch picks (and persists) whichever port actually binds;
+// every later launch reuses that exact port, only re-searching (and
+// re-persisting, with a warning) if it's no longer available.
+
+function probePort(port) {
+  return new Promise((resolve) => {
+    const tester = net.createServer()
+    tester.once('error', () => resolve(false))
+    tester.once('listening', () => tester.close(() => resolve(true)))
+    tester.listen(port, '127.0.0.1')
+  })
+}
+
+async function findFreePort(startPort) {
+  for (let port = startPort; port < startPort + PORT_RANGE; port++) {
+    if (await probePort(port)) return port
+  }
+  throw new Error(`no free port found in range ${startPort}-${startPort + PORT_RANGE - 1}`)
+}
+
+async function resolvePort() {
+  let saved = null
+  try {
+    saved = JSON.parse(fs.readFileSync(PORT_FILE(), 'utf8')).port
+  } catch {
+    // no saved port yet — first launch
+  }
+
+  if (saved && await probePort(saved)) return saved
+
+  const port = await findFreePort(saved ?? DEFAULT_PORT)
+  fs.mkdirSync(app.getPath('userData'), { recursive: true })
+  fs.writeFileSync(PORT_FILE(), JSON.stringify({ port }))
+
+  if (saved && saved !== port) {
+    dialog.showMessageBoxSync({
+      type:    'warning',
+      title:   'TRACS',
+      message: `Port ${saved} was unavailable — TRACS is now using port ${port} instead. Previously-saved app preferences won't carry over to this session.`,
+    })
+  }
+  return port
+}
+
+// ── Server bootstrap ──────────────────────────────────────────────────────
+
+function startServer(port) {
+  process.env.PORT                  = String(port)
+  process.env.TRACS_STATE_DIR       = app.getPath('userData')
+  // Keeps LNM-derived extraction output (and the seeded copy of the bundled
+  // non-LNM theatre files) out of the app's own install directory - not
+  // reliably writable, and wiped on every app update. See
+  // server/navdata/parser.js's seedBundledCache()/CACHE_DIR.
+  process.env.TRACS_NAVDATA_CACHE_DIR = path.join(app.getPath('userData'), 'navdata-cache')
+  require('../server/src/index.js')
+}
+
+// ── Window ────────────────────────────────────────────────────────────────
+
+const WINDOW_OPTS = {
+  width:          1600,
+  height:         900,
+  webPreferences: {
+    preload:         path.join(__dirname, 'preload.js'),
+    contextIsolation: true,
+    nodeIntegration:  false,
+  },
+}
+
+function createWindow(port) {
+  mainWindow = new BrowserWindow(WINDOW_OPTS)
+  mainWindow.loadURL(`http://localhost:${port}`)
+}
+
+// Opens an additional, fully independent top-level window at the same root
+// URL (no query params -> lands on Login, since a fresh window has no
+// session yet) - lets one running TRACS instance sign into multiple
+// positions at once, same as opening a second browser tab already did.
+// Deliberately does NOT reassign `mainWindow` - dialog.showOpenDialog(
+// mainWindow, ...) and the update-banner IPC below both depend on that
+// staying pointed at the original/primary window.
+function openNewWindow(port) {
+  const win = new BrowserWindow(WINDOW_OPTS)
+  win.loadURL(`http://localhost:${port}`)
+  return win
+}
+
+function buildMenu(port) {
+  const isMac = process.platform === 'darwin'
+
+  const template = [
+    ...(isMac ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    }] : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label:       'New Window',
+          accelerator: 'CmdOrCtrl+N',
+          click:       () => openNewWindow(port),
+        },
+        {
+          label: 'Open Logs Folder',
+          click: () => shell.showItemInFolder(log.transports.file.getFile().path),
+        },
+        { type: 'separator' },
+        isMac ? { role: 'close' } : { role: 'quit' },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+  ]
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+// ── IPC ───────────────────────────────────────────────────────────────────
+
+ipcMain.handle('app:getVersion', () => app.getVersion())
+
+ipcMain.handle('lnm:pickDatabase', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title:      'Select your LittleNavMap Navigraph database',
+    filters:    [{ name: 'SQLite database', extensions: ['sqlite'] }],
+    properties: ['openFile'],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  return result.filePaths[0]
+})
+
+// ── Auto-update ("check on launch, ask before downloading") ─────────────
+// autoDownload:false per spec §4 — respects variable end-user bandwidth
+// rather than silently consuming data. Mac has no code-signing cert (spec
+// §6), so electron-updater's Squirrel.Mac backend can't verify unsigned
+// updates — Mac falls back to notify-only (link to the release page).
+
+function setupAutoUpdate() {
+  if (process.platform === 'darwin') {
+    const { autoUpdater } = require('electron-updater')
+    autoUpdater.on('update-available', (info) => {
+      mainWindow?.webContents.send('update:notify-only', info.version)
+    })
+    autoUpdater.checkForUpdates().catch((err) => console.error('[update] check failed:', err.message))
+    return
+  }
+
+  const { autoUpdater } = require('electron-updater')
+  autoUpdater.autoDownload = false
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update:available', info.version)
+  })
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update:progress', progress.percent)
+  })
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents.send('update:downloaded')
+  })
+  autoUpdater.on('error', (err) => console.error('[update] error:', err.message))
+
+  ipcMain.handle('update:download', () => autoUpdater.downloadUpdate())
+  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall())
+
+  autoUpdater.checkForUpdates().catch((err) => console.error('[update] check failed:', err.message))
+}
+
+ipcMain.handle('update:openReleasePage', () => shell.openExternal('https://github.com/denimchickensoft/TRACS/releases/latest'))
+
+// ── Lifecycle ─────────────────────────────────────────────────────────────
+
+app.whenReady().then(async () => {
+  const port = await resolvePort()
+  currentPort = port
+  startServer(port)
+  createWindow(port)
+  buildMenu(port)
+  setupAutoUpdate()
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(port)
+  })
+})
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
+})

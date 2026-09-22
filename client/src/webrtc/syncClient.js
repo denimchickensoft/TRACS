@@ -9,6 +9,8 @@
 //     modules (nostrStrategy/wsRelayStrategy) closely enough that
 //     client.js can select this as a third `strategy` value.
 
+import { PROTOCOL_VERSION } from './protocolVersion'
+
 const CHECK_TIMEOUT_MS     = 6_000
 const RECONNECT_MS         = 3_000
 const CAPABILITY_CHECK_ID  = 'capability-check'
@@ -46,7 +48,7 @@ export function checkSyncCapable({ relayUrl, coalition, password }) {
     const timer = setTimeout(() => finish({ capable: false, reason: 'unreachable' }), CHECK_TIMEOUT_MS)
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'auth', coalition, password, peerId: CAPABILITY_CHECK_ID }))
+      ws.send(JSON.stringify({ type: 'auth', coalition, password, peerId: CAPABILITY_CHECK_ID, protocolVersion: PROTOCOL_VERSION }))
     }
     ws.onmessage = (ev) => {
       let msg
@@ -54,7 +56,13 @@ export function checkSyncCapable({ relayUrl, coalition, password }) {
       if (msg.type === 'auth_ok') finish({ capable: true })
     }
     ws.onclose = (ev) => {
-      finish({ capable: false, reason: ev.reason === 'invalid password' ? 'password' : 'unreachable' })
+      finish({
+        capable: false,
+        reason: ev.reason === 'invalid password' ? 'password'
+              : ev.reason?.startsWith('protocol mismatch') ? 'protocol'
+              : 'unreachable',
+        detail: ev.reason,
+      })
     }
     ws.onerror = () => {} // onclose always follows; let it resolve
   })
@@ -66,6 +74,12 @@ export function checkSyncCapable({ relayUrl, coalition, password }) {
 // webrtc-centralized-sync-spec.md §2.1 rather than opening one connection
 // per room the way Trystero's two joinRoom() calls do.
 export let selfId = null
+
+// Populated from the relay's auth_ok ack once connected — read by the
+// settings gear menu to display Relay's version/protocol alongside TRACS's
+// own (see production-spec.md §8's version-display decision). null fields
+// mean "not connected to a relay this session".
+export const relayInfo = { version: null, protocolVersion: null }
 
 let ws           = null
 let ready        = false
@@ -90,7 +104,7 @@ function connect(cfg) {
   ws = new WebSocket(syncUrl(cfg.relayUrl))
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'auth', coalition: cfg.coalition, password: cfg.password, peerId: selfId }))
+    ws.send(JSON.stringify({ type: 'auth', coalition: cfg.coalition, password: cfg.password, peerId: selfId, protocolVersion: PROTOCOL_VERSION }))
   }
 
   ws.onmessage = (ev) => {
@@ -99,6 +113,8 @@ function connect(cfg) {
 
     if (msg.type === 'auth_ok') {
       ready = true
+      relayInfo.version         = msg.relayVersion ?? null
+      relayInfo.protocolVersion = msg.protocolVersion ?? null
       // Re-subscribe to every room already joined (first connect, or a
       // reconnect after a drop) and flush anything queued meanwhile.
       for (const t of topicState.keys()) ws.send(JSON.stringify({ type: 'subscribe', topic: t }))
@@ -153,6 +169,8 @@ function connect(cfg) {
 
   ws.onclose = (ev) => {
     ready = false
+    relayInfo.version         = null
+    relayInfo.protocolVersion = null
     if (!cfgInUse) return // intentional teardown (leave() cleared it) — no reconnect
 
     // A password rejection won't resolve itself by retrying (same reasoning
@@ -161,13 +179,19 @@ function connect(cfg) {
     // before initWebrtc() ever selects this transport, but a relay
     // reconfigured mid-session is a real enough edge case to not loop on.
     if (ev.reason === 'invalid password') {
-      console.error('[sync] relay rejected our password — not retrying')
+      console.error('[sync] relay rejected our password - not retrying')
+      cfgInUse = null
+      ws = null
+      return
+    }
+    if (ev.reason?.startsWith('protocol mismatch')) {
+      console.error(`[sync] ${ev.reason} - not retrying until one side is updated`)
       cfgInUse = null
       ws = null
       return
     }
 
-    console.warn(`[sync] disconnected from relay — reconnecting in ${RECONNECT_MS}ms`)
+    console.warn(`[sync] disconnected from relay - reconnecting in ${RECONNECT_MS}ms`)
     setTimeout(() => { if (cfgInUse) connect(cfgInUse) }, RECONNECT_MS)
   }
 

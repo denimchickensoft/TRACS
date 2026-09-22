@@ -1,0 +1,5 @@
+{
+  "main": "index.bundle.js",
+  "output": "index.blob",
+  "disableExperimentalSEAWarning": true
+}

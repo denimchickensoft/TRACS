@@ -1,6 +1,8 @@
 {
   "name": "tracs",
+  "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "workspaces": [
     "client",
     "server",
@@ -11,6 +13,9 @@
     "dev": "concurrently -n server,client -c cyan,green \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
     "build": "npm run build --workspace=client",
     "start": "npm run start --workspace=server",
+    "electron:dev": "npm run build && electron .",
+    "stage-navdata": "node electron/scripts/stage-navdata.js",
+    "dist:electron": "npm run build && npm run stage-navdata && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "lint": "eslint . && npm run check:tacview-core",
     "knip": "knip",
     "sync:tacview-core": "node scripts/sync-tacview-core.js",
@@ -20,10 +25,76 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
     "eslint": "^10.8.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.9.0",
     "knip": "^6.32.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.0.0",
+    "d3-contour": "^4.0.2",
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.3.9",
+    "express": "^4.19.2",
+    "marked": "^12.0.2",
+    "polylabel": "^2.0.1",
+    "shapefile": "^0.6.6",
+    "sql.js": "^1.12.0",
+    "stream-json": "^1.9.1",
+    "tracs-geo-math": "*",
+    "ws": "^8.18.0",
+    "yauzl": "^3.4.0"
+  },
+  "build": {
+    "appId": "com.tracs.desktop",
+    "productName": "TRACS",
+    "asar": false,
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/main.js",
+      "electron/preload.js",
+      "server/**/*",
+      "packages/geo-math/**/*",
+      "docs/**/*",
+      "client/public/**/*",
+      "!server/navdata/cache/**",
+      "!server/data/elevation.db",
+      "!server/state/**",
+      "client/dist/**/*",
+      "node_modules/**/*",
+      "!node_modules/electron/**",
+      "!node_modules/electron-builder/**",
+      "!node_modules/.bin/**",
+      {
+        "from": "electron/build-staging/server/navdata/cache",
+        "to": "server/navdata/cache"
+      },
+      {
+        "from": "electron/build-staging/server/data",
+        "to": "server/data"
+      }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "denimchickensoft",
+      "repo": "TRACS"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "client/public/favicon.ico"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

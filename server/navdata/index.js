@@ -2,7 +2,7 @@
 
 const fs         = require('fs')
 const path       = require('path')
-const { buildCache, CACHE_DIR, CONFIG_DIR } = require('./parser')
+const { buildCache, seedBundledCache, CACHE_DIR, CONFIG_DIR } = require('./parser')
 const { runExtract, validateLnmDb } = require('./tools/extract-navdata')
 const stateFiles = require('../src/stateFiles')
 
@@ -73,16 +73,35 @@ function refreshReady() {
   if (fs.existsSync(mp)) {
     _manifest = JSON.parse(fs.readFileSync(mp, 'utf8'))
     _ready    = true
-    console.log(`[navdata] ready — built ${_manifest.builtAt}`)
+    console.log(`[navdata] ready - built ${_manifest.builtAt}`)
   } else {
     _manifest = null
     _ready    = false
-    console.log('[navdata] no LNM cache — fixes/navaids/airways/procedures/etc. will return 503 until an LNM database is configured')
+    console.log('[navdata] no LNM cache - fixes/navaids/airways/procedures/etc. will return 503 until an LNM database is configured')
+  }
+}
+
+// Dev-environment override, mirroring the TRACS_STATE_DIR/PORT pattern in
+// stateFiles.js/index.js — lets a developer running the plain Node server
+// (no Electron, no native file picker available) point at their own LNM
+// sqlite via a shell var or .env file with no UI involved. Authoritative
+// when set: persisted into the same stateFiles key the Electron picker and
+// the (now-removed) manual Settings text field both write to, so the rest of
+// the pipeline (buildCache's change-detection, extraction, manifest, GET
+// status) behaves identically regardless of which path set it.
+function applyLnmDbPathEnvOverride() {
+  const envPath = process.env.LNM_DB_PATH
+  if (!envPath) return
+  const current = stateFiles.read('navdata').lnmDbPath
+  if (current !== envPath) {
+    stateFiles.patch('navdata', { lnmDbPath: envPath })
   }
 }
 
 async function init() {
   try {
+    seedBundledCache()
+    applyLnmDbPathEnvOverride()
     await buildCache()
     refreshReady()
   } catch (err) {
@@ -329,6 +348,7 @@ async function handleSetLnmConfig(req, res) {
 
 module.exports = {
   init,
+  CACHE_DIR,
   theatreFolder,
   theatreUtcOffset,
   theatreTacviewRealUtcOffset,

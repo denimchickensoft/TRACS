@@ -13,7 +13,12 @@ const SERVER_DIR     = path.resolve(NAVDATA_DIR, '..')   // server
 const PROJECT_DIR    = path.resolve(SERVER_DIR, '..')    // project root
 
 const CONFIG_DIR         = path.join(NAVDATA_DIR, 'config')
-const CACHE_DIR          = path.join(NAVDATA_DIR, 'cache')
+// Same TRACS_NAVDATA_CACHE_DIR override as server/navdata/parser.js's
+// CACHE_DIR — duplicated rather than imported to avoid a circular require
+// (parser.js already requires this file for runExtract).
+const CACHE_DIR          = process.env.TRACS_NAVDATA_CACHE_DIR
+  ? path.resolve(process.env.TRACS_NAVDATA_CACHE_DIR)
+  : path.join(NAVDATA_DIR, 'cache')
 const ICAO_MAPPING_PATH  = path.join(PROJECT_DIR, 'client', 'public', 'icaoMapping.json')
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -659,8 +664,10 @@ async function runExtract(lnmDbPath) {
   const theatresRaw = fs.readFileSync(path.join(CONFIG_DIR, 'theatres.json'), 'utf8')
   const theatres    = JSON.parse(theatresRaw)
   const icaoMapping = JSON.parse(fs.readFileSync(ICAO_MAPPING_PATH, 'utf8'))
-  const bboxHash    = crypto.createHash('sha256').update(theatresRaw).digest('hex').slice(0, 16)
-  const lnmMtime    = fs.statSync(lnmDbPath).mtime.toISOString()
+  const bboxHash     = crypto.createHash('sha256').update(theatresRaw).digest('hex').slice(0, 16)
+  const lnmStat      = fs.statSync(lnmDbPath)
+  const lnmMtime     = lnmStat.mtime.toISOString()
+  const lnmSize      = lnmStat.size
 
   console.log('[extract] loading LNM database...')
   const initSqlJs = require('sql.js')
@@ -753,6 +760,7 @@ async function runExtract(lnmDbPath) {
 
   const manifest = {
     lnmMtime,
+    lnmSize,
     bboxHash,
     builtAt:         new Date().toISOString(),
     proceduresBuilt: true,
@@ -765,7 +773,7 @@ async function main() {
   const args  = process.argv.slice(2)
   const dpIdx = args.indexOf('--lnm-db-path')
   if (dpIdx === -1) {
-    console.error('error: --lnm-db-path <path> is required (resources/ is gitignored — no default location can be assumed)')
+    console.error('error: --lnm-db-path <path> is required (resources/ is gitignored - no default location can be assumed)')
     console.error('usage: node server/navdata/tools/extract-navdata.js --lnm-db-path <path>')
     process.exit(1)
   }

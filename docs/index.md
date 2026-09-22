@@ -8,4 +8,4 @@ Operator guides for running TRACS positions in a live DCS World session.
 - [AIC](aic.md) — airborne intercept control, BRAA list
 - [ABM](abm.md) — air battle management, ATO/FRAG, mission overlays
 
-These guides cover day-to-day operation. For setup and running the server/client from source, see the [README](../README.md).
+These guides cover day-to-day operation. For setup and running the server/client from source, see the [README](https://github.com/denimchickensoft/TRACS/blob/main/README.md).
