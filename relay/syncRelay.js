@@ -21,7 +21,7 @@ const { resolvePosition, mintEntry } = require('./registryAuthority')
 // intervals of going quiet, not left registered in `topics` forever (the
 // gap that let a stale session hold a position name hostage indefinitely --
 // see resources/specs/data-sources/webrtc-centralized-sync-spec.md).
-const HEARTBEAT_INTERVAL_MS = 20_000
+const HEARTBEAT_INTERVAL_MS = 15_000
 
 // Registry-authority state (Bug-2 relay-authority path — see the
 // feedback_webrtc_relay_sync_invariants project memory). Session-topic-only:
@@ -30,7 +30,7 @@ const HEARTBEAT_INTERVAL_MS = 20_000
 // keep using the plain `topics` pub/sub above unchanged. Matches client.js's
 // DISCONNECT_TIMEOUT_MS so a brief drop/refresh gets the same reconnect
 // grace on both sides before a position/letter is actually freed.
-const SESSION_DISCONNECT_TIMEOUT_MS = 30_000
+const SESSION_DISCONNECT_TIMEOUT_MS = 5_000
 const SESSIONS_FILE          = path.join(__dirname, 'sessions.json')
 const PERSIST_DEBOUNCE_MS    = 500
 

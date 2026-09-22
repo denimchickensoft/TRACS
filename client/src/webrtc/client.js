@@ -35,7 +35,7 @@ async function fetchIceServers() {
   }
 }
 
-const DISCONNECT_TIMEOUT_MS    = 30_000
+const DISCONNECT_TIMEOUT_MS    = 5_000
 const PEER_ID_STORAGE_KEY      = 'tracs.previousPeerId'
 const CONNECTED_AT_STORAGE_KEY = 'tracs.connectedAt'
 const CLIENT_ID_STORAGE_KEY    = 'tracs.clientId'
