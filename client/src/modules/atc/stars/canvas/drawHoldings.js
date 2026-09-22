@@ -133,9 +133,9 @@ export function drawHoldings(ctx, view, holdings, visible, brite = 50, csMap = 2
 
       // Close the inbound leg to just before the fix triangle
       const last = cpts[cpts.length - 1]
-      const dxL = fixPt.x - last.x, dyL = fixPt.y - last.y
+      const dxL = last.x - fixPt.x, dyL = last.y - fixPt.y
       const lenL = Math.hypot(dxL, dyL)
-      if (lenL > TRI_GAP) ctx.lineTo(last.x + dxL * TRI_GAP / lenL, last.y + dyL * TRI_GAP / lenL)
+      if (lenL > TRI_GAP) ctx.lineTo(fixPt.x + dxL * TRI_GAP / lenL, fixPt.y + dyL * TRI_GAP / lenL)
       ctx.stroke()
     }
 
