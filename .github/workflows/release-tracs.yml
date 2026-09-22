@@ -47,6 +47,9 @@ jobs:
       - name: Stage bundled navdata
         run: npm run stage-navdata
 
+      - name: Stage better-sqlite3 rebuilt for Electron
+        run: npm run stage-better-sqlite3
+
       - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

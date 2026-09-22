@@ -15,7 +15,8 @@
     "start": "npm run start --workspace=server",
     "electron:dev": "npm run build && electron .",
     "stage-navdata": "node electron/scripts/stage-navdata.js",
-    "dist:electron": "npm run build && npm run stage-navdata && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "stage-better-sqlite3": "node electron/scripts/stage-better-sqlite3.js",
+    "dist:electron": "npm run build && npm run stage-navdata && npm run stage-better-sqlite3 && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "lint": "eslint . && npm run check:tacview-core",
     "knip": "knip",
     "sync:tacview-core": "node scripts/sync-tacview-core.js",
@@ -23,6 +24,7 @@
     "postinstall": "git config core.hooksPath .githooks || exit 0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.6.1",
     "@eslint/js": "^10.0.1",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
@@ -35,7 +37,7 @@
     "knip": "^6.32.0"
   },
   "dependencies": {
-    "better-sqlite3": "^9.0.0",
+    "better-sqlite3": "^12.11.1",
     "d3-contour": "^4.0.2",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.3.9",
@@ -71,7 +73,9 @@
       "node_modules/**/*",
       "!node_modules/electron/**",
       "!node_modules/electron-builder/**",
+      "!node_modules/@electron/rebuild/**",
       "!node_modules/.bin/**",
+      "!node_modules/better-sqlite3/**",
       {
         "from": "electron/build-staging/server/navdata/cache",
         "to": "server/navdata/cache"
@@ -79,6 +83,10 @@
       {
         "from": "electron/build-staging/server/data",
         "to": "server/data"
+      },
+      {
+        "from": "electron/build-staging-node/node_modules/better-sqlite3",
+        "to": "node_modules/better-sqlite3"
       }
     ],
     "publish": {
