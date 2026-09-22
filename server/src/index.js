@@ -1,5 +1,7 @@
 'use strict'
 
+require('./seedConfigFiles').seedUserConfigDir()
+
 const http = require('http')
 const path = require('path')
 const express = require('express')
@@ -22,7 +24,6 @@ elevation.init()
 const PORT = process.env.PORT ?? 3000
 const SERVER_INSTANCE_ID = Date.now().toString(36) + Math.random().toString(36).slice(2)
 const CLIENT_DIST  = path.join(__dirname, '../../client/dist')
-const PRESETS_PATH = path.join(__dirname, '../data/presets.json')
 
 const app = express()
 app.use(express.json())
@@ -60,7 +61,6 @@ registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayClient, stat
 
 registerApiRoutes(app, {
   sourceRegistry, tacviewRelayClient, state, stateFiles, navdata, elevation, getWsClientCount,
-  presetsPath: PRESETS_PATH,
 })
 
 // SRS transponder enrichment — orthogonal to whichever primary source is

@@ -114,6 +114,11 @@ function startServer(port) {
   // reliably writable, and wiped on every app update. See
   // server/navdata/parser.js's seedBundledCache()/CACHE_DIR.
   process.env.TRACS_NAVDATA_CACHE_DIR = path.join(app.getPath('userData'), 'navdata-cache')
+  // Same reasoning as TRACS_NAVDATA_CACHE_DIR above: operator-edited config
+  // (rateConfig.json, tacviewDetectionConfig.json, airspace_colors.json,
+  // asdex_colors.json) must live outside the install directory to survive an
+  // app update. See server/src/seedConfigFiles.js.
+  process.env.TRACS_CONFIG_DIR        = path.join(app.getPath('userData'), 'config')
   require('../server/src/index.js')
 }
 
@@ -176,6 +181,10 @@ function buildMenu(port) {
         {
           label: 'Open Logs Folder',
           click: () => shell.showItemInFolder(log.transports.file.getFile().path),
+        },
+        {
+          label: 'Open Config Folder',
+          click: () => shell.showItemInFolder(path.join(app.getPath('userData'), 'config', 'rateConfig.json')),
         },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },

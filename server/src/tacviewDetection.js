@@ -34,6 +34,7 @@
 const fs = require('fs')
 const path = require('path')
 const { METERS_PER_NM, toDeg, distanceNm, bearingDeg, angleDiff, quickReject, hasLineOfSight } = require('./utils/geo')
+const { CONFIG_DIR } = require('./configDir')
 
 const DETECTION_RADAR = 4
 const DETECTION_RWR = 16
@@ -45,7 +46,9 @@ const KM_PER_NM = 1.852
 // gitignored — mirrors relay/index.js's config.json loading pattern: read
 // once at startup, merge over hardcoded defaults, tolerate the file being
 // entirely absent). ----
-const CONFIG_PATH = path.join(__dirname, '..', 'tacviewDetectionConfig.json')
+const CONFIG_PATH = CONFIG_DIR
+  ? path.join(CONFIG_DIR, 'tacviewDetectionConfig.json')
+  : path.join(__dirname, '..', 'tacviewDetectionConfig.json')
 
 function loadUserConfig() {
   try {

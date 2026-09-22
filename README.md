@@ -43,6 +43,7 @@ The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will wa
 **Menu:**
 - **File → New Window** opens another TRACS window.
 - **File → Open Logs Folder** shows the log file.
+- **File → Open Config Folder** shows the config files described below.
 
 **Navigation data (LittleNavMap):**
 - The installer bundles theatre geography, terrain, elevation, and airport data.
@@ -50,6 +51,14 @@ The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will wa
 - On launch, if no database is configured, TRACS asks you to pick one. It extracts the data, and at each later launch re-extracts automatically if the file has changed.
 - Without a database, those layers are unavailable and everything else works.
 - There is no in-app setting to change the database once it's configured.
+
+**Config files:**
+- TRACS stores a few hand-editable config files in `%APPDATA%\TRACS\config\` (Windows) — seeded from bundled defaults on first launch, and never overwritten once present, so your edits survive every update.
+- `rateConfig.json` — radar scan-rate cadence (unit position/detection refresh intervals) for direct-mode Olympus/Tacview connections.
+- `tacviewDetectionConfig.json` — synthetic radar-detection model tuning for Tacview-sourced connections (sensor ranges, RWR behavior, scan cone).
+- `airspace_colors.json` / `asdex_colors.json` — STARS/ASDE-X display color palettes.
+- Edits take effect immediately, no restart needed.
+- There is no in-app editor for these — edit the JSON files directly. Use **File → Open Config Folder** to find them.
 
 Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
 

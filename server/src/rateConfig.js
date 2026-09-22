@@ -15,8 +15,11 @@
 
 const fs = require('fs')
 const path = require('path')
+const { CONFIG_DIR } = require('./configDir')
 
-const CONFIG_PATH = path.join(__dirname, '..', 'rateConfig.json')
+const CONFIG_PATH = CONFIG_DIR
+  ? path.join(CONFIG_DIR, 'rateConfig.json')
+  : path.join(__dirname, '..', 'rateConfig.json')
 
 function loadUserConfig() {
   try {

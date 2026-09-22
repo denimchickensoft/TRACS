@@ -11,7 +11,7 @@ const ABM_RASTER_LAYERS = new Set(['basemap', 'terrain', 'water', 'roads'])
 
 // Registers every boilerplate REST endpoint onto `app` — /api/connect and
 // its theatre-override/reset companions live in routes/sourceConnect.js.
-function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, stateFiles, navdata, elevation, getWsClientCount, presetsPath }) {
+function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, stateFiles, navdata, elevation, getWsClientCount }) {
   // GET /api/debug/units — live unit snapshot (dev/debug)
   app.get('/api/debug/units', (req, res) => {
     const { updated } = state.getSnapshot()
@@ -100,7 +100,7 @@ function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, sta
 
   // GET /api/asdex/colors — ASDE-X display colors config
   app.get('/api/asdex/colors', (req, res) => {
-    const filePath = path.join(__dirname, '../../navdata/config/asdex_colors.json')
+    const filePath = path.join(navdata.COLOR_CONFIG_DIR, 'asdex_colors.json')
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'colors config not found' })
     try {
       res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')))
@@ -154,22 +154,15 @@ function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, sta
     })
   })
 
-  // GET /api/presets — load saved preset slots from disk
+  // GET /api/presets — load saved preset slots
   app.get('/api/presets', (req, res) => {
-    try {
-      if (!fs.existsSync(presetsPath)) return res.json({ slots: Array(12).fill(null) })
-      res.json(JSON.parse(fs.readFileSync(presetsPath, 'utf8')))
-    } catch (err) {
-      res.status(500).json({ error: err.message })
-    }
+    res.json(stateFiles.read('presets'))
   })
 
-  // POST /api/presets — persist preset slots to disk
+  // POST /api/presets — persist preset slots
   app.post('/api/presets', (req, res) => {
     try {
-      const dir = path.dirname(presetsPath)
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-      fs.writeFileSync(presetsPath, JSON.stringify(req.body, null, 2))
+      stateFiles.write('presets', req.body)
       res.json({ ok: true })
     } catch (err) {
       res.status(500).json({ error: err.message })

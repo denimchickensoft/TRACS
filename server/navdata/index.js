@@ -2,7 +2,7 @@
 
 const fs         = require('fs')
 const path       = require('path')
-const { buildCache, seedBundledCache, CACHE_DIR, CONFIG_DIR } = require('./parser')
+const { buildCache, seedBundledCache, CACHE_DIR, CONFIG_DIR, COLOR_CONFIG_DIR } = require('./parser')
 const { runExtract, validateLnmDb } = require('./tools/extract-navdata')
 const stateFiles = require('../src/stateFiles')
 
@@ -153,7 +153,7 @@ function handleAirspace(req, res) {
   if (!fs.existsSync(fp)) return res.status(404).json({ error: 'airspace data not built' })
   try {
     const data = JSON.parse(fs.readFileSync(fp, 'utf8'))
-    data.palettes = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, 'airspace_colors.json'), 'utf8'))
+    data.palettes = JSON.parse(fs.readFileSync(path.join(COLOR_CONFIG_DIR, 'airspace_colors.json'), 'utf8'))
     res.set('Cache-Control', 'no-store')
     res.json(data)
   } catch (err) { res.status(500).json({ error: err.message }) }
@@ -288,7 +288,7 @@ function handleRelief(req, res) {
 
 function handlePalettes(req, res) {
   try {
-    serveJson(res, path.join(CONFIG_DIR, 'airspace_colors.json'))
+    serveJson(res, path.join(COLOR_CONFIG_DIR, 'airspace_colors.json'))
   } catch (err) { res.status(500).json({ error: err.message }) }
 }
 
@@ -349,6 +349,7 @@ async function handleSetLnmConfig(req, res) {
 module.exports = {
   init,
   CACHE_DIR,
+  COLOR_CONFIG_DIR,
   theatreFolder,
   theatreUtcOffset,
   theatreTacviewRealUtcOffset,

@@ -18,6 +18,7 @@ const FILES = {
   catcc:   path.join(STATE_DIR, 'catcc.json'),
   session: path.join(STATE_DIR, 'session.json'),
   navdata: path.join(STATE_DIR, 'navdata.json'),
+  presets: path.join(STATE_DIR, 'presets.json'),
 }
 
 const DEFAULTS = {
@@ -45,9 +46,13 @@ const DEFAULTS = {
   navdata: {
     lnmDbPath: null,
   },
+  presets: {
+    slots:       Array(12).fill(null),
+    defaultSlot: null,
+  },
 }
 
-const VALID_KEYS = new Set(['atc', 'catcc', 'session', 'navdata'])
+const VALID_KEYS = new Set(['atc', 'catcc', 'session', 'navdata', 'presets'])
 
 function ensureDir() {
   if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true })

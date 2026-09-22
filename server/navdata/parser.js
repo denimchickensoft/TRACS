@@ -5,8 +5,19 @@ const path       = require('path')
 const crypto     = require('crypto')
 const stateFiles = require('../src/stateFiles')
 const { runExtract } = require('./tools/extract-navdata')
+const { copyIfStaleOrMissing } = require('../src/utils/seedFile')
+const { CONFIG_DIR: USER_CONFIG_DIR } = require('../src/configDir')
 
 const CONFIG_DIR = path.join(__dirname, 'config')
+
+// Effective location for the two operator-tunable color-palette files only
+// (airspace_colors.json, asdex_colors.json). Falls back to this module's own
+// bundled CONFIG_DIR (unchanged) when no TRACS_CONFIG_DIR override is active.
+// theatres.json/airport_name_map.json/projection_params.json are NOT
+// operator-tunable and always resolve via CONFIG_DIR itself, never this —
+// a shipped update to those must always take effect, never be shadowed by a
+// stale seeded copy.
+const COLOR_CONFIG_DIR = USER_CONFIG_DIR ?? CONFIG_DIR
 
 // BUNDLED_CACHE_DIR is always wherever this code ships from (read-only in a
 // packaged app — the install directory). CACHE_DIR is the effective,
@@ -47,12 +58,7 @@ function seedBundledCache() {
         copyRecursive(srcPath, destPath)
         continue
       }
-      const srcMtime = fs.statSync(srcPath).mtimeMs
-      const destStat = fs.existsSync(destPath) ? fs.statSync(destPath) : null
-      if (!destStat || srcMtime > destStat.mtimeMs) {
-        fs.mkdirSync(destDir, { recursive: true })
-        fs.copyFileSync(srcPath, destPath)
-      }
+      copyIfStaleOrMissing(srcPath, destPath)
     }
   }
   copyRecursive(BUNDLED_CACHE_DIR, CACHE_DIR)
@@ -113,4 +119,4 @@ async function buildCache() {
   console.log('[navdata] extraction complete')
 }
 
-module.exports = { buildCache, seedBundledCache, CACHE_DIR, CONFIG_DIR }
+module.exports = { buildCache, seedBundledCache, CACHE_DIR, CONFIG_DIR, COLOR_CONFIG_DIR }

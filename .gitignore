@@ -36,6 +36,7 @@ electron/build-staging-node/
 
 # Runtime state files (per-machine, not committed)
 server/state/
+server/data/presets.json
 
 # Navdata — source files (large Navigraph data) and built cache (generated at runtime)
 server/navdata/source/
