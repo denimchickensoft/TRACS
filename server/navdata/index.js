@@ -1,8 +1,10 @@
 'use strict'
 
-const fs   = require('fs')
-const path = require('path')
+const fs         = require('fs')
+const path       = require('path')
 const { buildCache, CACHE_DIR, CONFIG_DIR } = require('./parser')
+const { runExtract, validateLnmDb } = require('./tools/extract-navdata')
+const stateFiles = require('../src/stateFiles')
 
 let _ready    = false
 let _manifest = null
@@ -66,17 +68,23 @@ function theatresContaining(lat, lng) {
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
+function refreshReady() {
+  const mp = path.join(CACHE_DIR, 'manifest.json')
+  if (fs.existsSync(mp)) {
+    _manifest = JSON.parse(fs.readFileSync(mp, 'utf8'))
+    _ready    = true
+    console.log(`[navdata] ready — built ${_manifest.builtAt}`)
+  } else {
+    _manifest = null
+    _ready    = false
+    console.log('[navdata] no LNM cache — fixes/navaids/airways/procedures/etc. will return 503 until an LNM database is configured')
+  }
+}
+
 async function init() {
   try {
     await buildCache()
-    const mp = path.join(CACHE_DIR, 'manifest.json')
-    if (fs.existsSync(mp)) {
-      _manifest = JSON.parse(fs.readFileSync(mp, 'utf8'))
-      _ready    = true
-      console.log(`[navdata] ready — built ${_manifest.builtAt}`)
-    } else {
-      console.log('[navdata] no cache — endpoints will return 503')
-    }
+    refreshReady()
   } catch (err) {
     console.error('[navdata] init failed:', err.message)
   }
@@ -250,7 +258,6 @@ function handleMora(req, res) {
 }
 
 function handleRelief(req, res) {
-  if (!_ready) return notReady(res)
   const { theatre } = req.query
   if (!theatre) return res.status(400).json({ error: 'theatre is required' })
   const folder = theatreFolder(theatre)
@@ -267,7 +274,6 @@ function handlePalettes(req, res) {
 }
 
 function handleGeo(req, res) {
-  if (!_ready) return notReady(res)
   const { theatre } = req.query
   if (!theatre) return res.status(400).json({ error: 'theatre is required' })
   const folder = theatreFolder(theatre)
@@ -280,7 +286,6 @@ function handleGeo(req, res) {
 // MVA is facility-scoped (per ICAO, ~50 NM radius), served like procedures —
 // search every theatre folder for cache/<folder>/mva/<ICAO>.json.
 function handleMva(req, res) {
-  if (!_ready) return notReady(res)
   const { icao } = req.query
   if (!icao) return res.status(400).json({ error: 'icao is required' })
   for (const [, tConf] of Object.entries(loadTheatres())) {
@@ -288,6 +293,38 @@ function handleMva(req, res) {
     if (fs.existsSync(fp)) return serveJson(res, fp)
   }
   res.status(404).json({ error: `no MVA data for ${icao}` })
+}
+
+// GET /api/navdata/lnm-config — current LNM database path + readiness, for the
+// Settings panel.
+function handleLnmConfig(req, res) {
+  const { lnmDbPath } = stateFiles.read('navdata')
+  res.json({ lnmDbPath, ready: _ready, builtAt: _manifest?.builtAt ?? null })
+}
+
+// POST /api/navdata/lnm-config { lnmDbPath } — validate, persist, and
+// extract immediately so the running server doesn't need a restart. Each
+// user points this at their own legally-obtained LittleNavMap/Navigraph
+// database; TRACS never bundles or redistributes this data itself (see
+// resources/specs/production-spec.md §7).
+async function handleSetLnmConfig(req, res) {
+  const { lnmDbPath } = req.body ?? {}
+  if (!lnmDbPath || typeof lnmDbPath !== 'string') {
+    return res.status(400).json({ error: 'lnmDbPath is required' })
+  }
+  try {
+    await validateLnmDb(lnmDbPath)
+  } catch (err) {
+    return res.status(400).json({ error: err.message })
+  }
+  try {
+    stateFiles.write('navdata', { lnmDbPath })
+    await runExtract(lnmDbPath)
+    refreshReady()
+    res.json({ ok: true, ready: _ready, builtAt: _manifest?.builtAt ?? null })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 }
 
 module.exports = {
@@ -313,4 +350,6 @@ module.exports = {
   handleMva,
   handleGeo,
   handlePalettes,
+  handleLnmConfig,
+  handleSetLnmConfig,
 }

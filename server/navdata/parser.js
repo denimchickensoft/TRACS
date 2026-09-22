@@ -1,13 +1,12 @@
 'use strict'
 
-const fs     = require('fs')
-const path   = require('path')
-const crypto = require('crypto')
+const fs         = require('fs')
+const path       = require('path')
+const crypto     = require('crypto')
+const stateFiles = require('../src/stateFiles')
 
 const CONFIG_DIR = path.join(__dirname, 'config')
 const CACHE_DIR  = path.join(__dirname, 'cache')
-
-const LNM_DB_PATH = path.resolve(__dirname, '..', '..', 'resources', 'littlenavmap', 'little_navmap_db', 'little_navmap_navigraph.sqlite')
 
 // Files required in every theatre cache folder for the cache to be valid
 const REQUIRED_THEATRE_FILES = [
@@ -16,8 +15,13 @@ const REQUIRED_THEATRE_FILES = [
 ]
 
 async function buildCache() {
+  const LNM_DB_PATH = stateFiles.read('navdata').lnmDbPath
+  if (!LNM_DB_PATH) {
+    console.log('[navdata] no LNM database configured — set it in Settings')
+    return
+  }
   if (!fs.existsSync(LNM_DB_PATH)) {
-    console.log('[navdata] LNM database not found — run: npm run extract')
+    console.log('[navdata] LNM database not found — set it in Settings')
     return
   }
 

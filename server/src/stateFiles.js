@@ -17,6 +17,7 @@ const FILES = {
   atc:     path.join(STATE_DIR, 'atc.json'),
   catcc:   path.join(STATE_DIR, 'catcc.json'),
   session: path.join(STATE_DIR, 'session.json'),
+  navdata: path.join(STATE_DIR, 'navdata.json'),
 }
 
 const DEFAULTS = {
@@ -41,9 +42,12 @@ const DEFAULTS = {
     olympusAddress:   '',
     intentionalReset: false,
   },
+  navdata: {
+    lnmDbPath: null,
+  },
 }
 
-const VALID_KEYS = new Set(['atc', 'catcc', 'session'])
+const VALID_KEYS = new Set(['atc', 'catcc', 'session', 'navdata'])
 
 function ensureDir() {
   if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true })

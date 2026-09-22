@@ -36,6 +36,8 @@ function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, sta
   app.get('/api/navdata/mva',         navdata.handleMva)
   app.get('/api/navdata/geo',         navdata.handleGeo)
   app.get('/api/navdata/palettes',    navdata.handlePalettes)
+  app.get('/api/navdata/lnm-config',  navdata.handleLnmConfig)
+  app.post('/api/navdata/lnm-config', navdata.handleSetLnmConfig)
 
   // GET /api/elevation?lat=&lng= — point terrain elevation (metres MSL) from the
   // same SRTM-backed DB used internally for per-unit AGL (server/src/elevation.js).

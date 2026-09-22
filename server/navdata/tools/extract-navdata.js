@@ -12,7 +12,6 @@ const NAVDATA_DIR    = path.resolve(TOOL_DIR, '..')      // server/navdata
 const SERVER_DIR     = path.resolve(NAVDATA_DIR, '..')   // server
 const PROJECT_DIR    = path.resolve(SERVER_DIR, '..')    // project root
 
-const LNM_DB_PATH        = path.join(PROJECT_DIR, 'resources', 'littlenavmap', 'little_navmap_db', 'little_navmap_navigraph.sqlite')
 const CONFIG_DIR         = path.join(NAVDATA_DIR, 'config')
 const CACHE_DIR          = path.join(NAVDATA_DIR, 'cache')
 const ICAO_MAPPING_PATH  = path.join(PROJECT_DIR, 'client', 'public', 'icaoMapping.json')
@@ -628,24 +627,45 @@ function extractSectors(db, allIcaos) {
   return sectors
 }
 
+// Cheap sanity check that a user-supplied path is really an LNM navigraph DB
+// (not some other little_navmap_*.sqlite, and not an unrelated/corrupt file) —
+// used by the settings endpoint to fail fast with a clear message before
+// committing to a full runExtract().
+async function validateLnmDb(lnmDbPath) {
+  if (!fs.existsSync(lnmDbPath)) {
+    throw new Error(`file not found: ${lnmDbPath}`)
+  }
+  const initSqlJs = require('sql.js')
+  const SQL = await initSqlJs()
+  let db
+  try {
+    db = new SQL.Database(fs.readFileSync(lnmDbPath))
+    const row = queryOne(db, 'SELECT 1 FROM airport LIMIT 1')
+    if (!row) throw new Error('no rows in airport table')
+  } catch (err) {
+    throw new Error(`not a valid LNM navigraph database: ${err.message}`, { cause: err })
+  } finally {
+    db?.close()
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-async function main() {
-  if (!fs.existsSync(LNM_DB_PATH)) {
-    console.error(`[extract] LNM database not found:\n  ${LNM_DB_PATH}`)
-    process.exit(1)
+async function runExtract(lnmDbPath) {
+  if (!fs.existsSync(lnmDbPath)) {
+    throw new Error(`LNM database not found: ${lnmDbPath}`)
   }
 
   const theatresRaw = fs.readFileSync(path.join(CONFIG_DIR, 'theatres.json'), 'utf8')
   const theatres    = JSON.parse(theatresRaw)
   const icaoMapping = JSON.parse(fs.readFileSync(ICAO_MAPPING_PATH, 'utf8'))
   const bboxHash    = crypto.createHash('sha256').update(theatresRaw).digest('hex').slice(0, 16)
-  const lnmMtime    = fs.statSync(LNM_DB_PATH).mtime.toISOString()
+  const lnmMtime    = fs.statSync(lnmDbPath).mtime.toISOString()
 
   console.log('[extract] loading LNM database...')
   const initSqlJs = require('sql.js')
   const SQL = await initSqlJs()
-  const db  = new SQL.Database(fs.readFileSync(LNM_DB_PATH))
+  const db  = new SQL.Database(fs.readFileSync(lnmDbPath))
   console.log('[extract] database loaded')
 
   await fsp.mkdir(CACHE_DIR, { recursive: true })
@@ -741,4 +761,19 @@ async function main() {
   console.log('[extract] done')
 }
 
-main().catch(err => { console.error('[extract] fatal:', err); process.exit(1) })
+async function main() {
+  const args  = process.argv.slice(2)
+  const dpIdx = args.indexOf('--lnm-db-path')
+  if (dpIdx === -1) {
+    console.error('error: --lnm-db-path <path> is required (resources/ is gitignored — no default location can be assumed)')
+    console.error('usage: node server/navdata/tools/extract-navdata.js --lnm-db-path <path>')
+    process.exit(1)
+  }
+  await runExtract(args[dpIdx + 1])
+}
+
+module.exports = { runExtract, validateLnmDb }
+
+if (require.main === module) {
+  main().catch(err => { console.error('[extract] fatal:', err); process.exit(1) })
+}

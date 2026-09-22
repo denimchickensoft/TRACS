@@ -83,6 +83,35 @@ export function App() {
 
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [settingsOpen,    setSettingsOpen]    = useState(false)
+  const [lnmDbPathInput,  setLnmDbPathInput]  = useState('')
+  const [lnmStatus,       setLnmStatus]       = useState({ state: 'idle' }) // idle | loading | saving | ok | error
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    setLnmStatus({ state: 'loading' })
+    fetch('/api/navdata/lnm-config')
+      .then((r) => r.json())
+      .then((data) => {
+        setLnmDbPathInput(data.lnmDbPath ?? '')
+        setLnmStatus({ state: data.ready ? 'ok' : 'idle', builtAt: data.builtAt })
+      })
+      .catch((err) => setLnmStatus({ state: 'error', message: err.message }))
+  }, [settingsOpen])
+
+  const saveLnmDbPath = useCallback(() => {
+    setLnmStatus({ state: 'saving' })
+    fetch('/api/navdata/lnm-config', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ lnmDbPath: lnmDbPathInput }),
+    })
+      .then(async (r) => {
+        const data = await r.json()
+        if (!r.ok) throw new Error(data.error ?? 'save failed')
+        setLnmStatus({ state: 'ok', builtAt: data.builtAt })
+      })
+      .catch((err) => setLnmStatus({ state: 'error', message: err.message }))
+  }, [lnmDbPathInput])
   const [activeOds,       setActiveOds]       = useState('atc')
   const [clVisible,  setClVisible]  = useState(() => localStorage.getItem(CL_VISIBLE_KEY)  === 'true')
   const [msgVisible, setMsgVisible] = useState(() => localStorage.getItem(MSG_VISIBLE_KEY) === 'true')
@@ -623,7 +652,7 @@ export function App() {
             borderRadius:  '3px',
             padding:       '10px 14px',
             zIndex:        200,
-            minWidth:      '220px',
+            minWidth:      '320px',
             display:       'flex',
             flexDirection: 'column',
             gap:           '8px',
@@ -647,6 +676,51 @@ export function App() {
               />
               Sounds
             </label>
+
+            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ color: '#666', fontSize: '0.68rem' }}>LittleNavMap Database</div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <input
+                  type="text"
+                  value={lnmDbPathInput}
+                  onChange={(e) => setLnmDbPathInput(e.target.value)}
+                  placeholder="path to little_navmap_navigraph.sqlite"
+                  style={{
+                    flex:         1,
+                    minWidth:     0,
+                    background:   '#111',
+                    border:       '1px solid #333',
+                    borderRadius: '2px',
+                    color:        '#ccc',
+                    fontSize:     '0.7rem',
+                    padding:      '3px 5px',
+                  }}
+                />
+                <button
+                  onClick={saveLnmDbPath}
+                  disabled={lnmStatus.state === 'saving'}
+                  style={{
+                    background:   '#222',
+                    border:       '1px solid #444',
+                    borderRadius: '2px',
+                    color:        '#aaa',
+                    fontSize:     '0.7rem',
+                    padding:      '3px 8px',
+                    cursor:       lnmStatus.state === 'saving' ? 'default' : 'pointer',
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+              <div style={{ fontSize: '0.65rem', color: lnmStatus.state === 'error' ? '#c66' : '#555' }}>
+                {lnmStatus.state === 'loading' && 'loading…'}
+                {lnmStatus.state === 'saving'  && 'building navdata…'}
+                {lnmStatus.state === 'ok'      && `loaded — built ${lnmStatus.builtAt ?? ''}`}
+                {lnmStatus.state === 'idle'    && 'not configured — real-world navdata (fixes/airways/procedures) will not load'}
+                {lnmStatus.state === 'error'   && `error: ${lnmStatus.message}`}
+              </div>
+            </div>
+
             <a
               href={docsHref}
               target="_blank"
