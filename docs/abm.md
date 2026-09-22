@@ -2,13 +2,47 @@
 
 [← All docs](index.md)
 
-Mission-wide package tracking: a radar scope with map/reference layers, an ATO summary of every tasked flight, a FRAG drawer for per-package detail, and custom drawing overlays.
+Mission-wide package tracking: a radar scope with map and reference layers, an ATO summary of every tasked flight, a FRAG drawer for per-package detail, and custom drawing overlays.
 
-Sign-in requires a Callsign and Frequency, same as AIC — see [Getting Started](getting-started.md). ABM does not yet use SRS transponder data on its datablocks (unlike ATC's association/IDENT/Beaconator features) — that's planned but not yet built.
+Sign-in requires a Callsign and Frequency, same as AIC — see [Getting Started](getting-started.md).
+
+## SRS transponder data (IFF correlation)
+
+When SRS transponder data reaches TRACS through a relay, ABM uses it for every contact that has reported SRS data at any point in the session ("SRS-fielded"):
+
+- **Default declaration:** an SRS-fielded aircraft on your own side defaults to **BOGEY** until it's declared.
+- **Correlation:** a contact is *correlated* when two things are true:
+  - its live callsign matches an aircraft on a FRAG roster, and
+  - either one of its live Mode 1/2/3 codes equals that roster row's assigned code, or its Mode 4 is on. Mode 4 has no assigned value.
+- **Uncorrelated datablock:** line 1 cycles through the contact's live codes, one every 2 seconds (`M1 nn`, `M2 nnnn`, `M3 nnnn`, `M4 ON`). With no live codes, the datablock shows only the altitude/speed line.
+- **Correlated datablock:** shows the callsign and aircraft type on the datablock and in the cursor readout. This depends on correlation alone, not on declaration. A contact declared FRIENDLY that stops correlating goes back to cycling codes.
+- `.autodec iff` uses the same correlation (see Declaration below).
+
+ABM has no IDENT or Beaconator display.
 
 ## Command line
 
-Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `.dope`, `.rename`, `.be`, `.frag`, `.route`, and the free-hand drawing commands below) work by typing without pressing Enter, then clicking the map instead — noted below. `Escape` clears state in this priority order: a pending drawing-clear click → a pending "clear all drawings" confirm → a pending free-hand drawing in progress → find marker → pending F-key declaration → pending BRAA fighter → open RBL → brevity definition readout → command buffer → every route line on the scope (toggled via `.route`/FRAG), once the command buffer is already empty. `ArrowUp`/`ArrowDown` cycle your last 50 commands.
+Type into the buffer and press **Enter**.
+
+A few commands are completed by clicking instead of Enter: type the command, then click the map or a contact. These are:
+- `.be`, `.threat`, `.db`, `.dope`, `.rename`, `.frag`, and `.route`
+- a bare digit 1–9 (leader direction)
+
+The drawing commands (`.line`, `.rect`, `.circ`, `.poly`, `.sect`, `.race`, `.text`) run on **Enter**. After that, they wait for clicks on the scope to place any points you didn't type.
+
+`ArrowUp`/`ArrowDown` cycle your last 50 commands. While a `.define` readout is open, they step through the brevity glossary instead.
+
+`Escape` clears one thing per press, in this order:
+1. a pending drawing-clear click
+2. a pending "clear all drawings" confirm
+3. an in-progress drawing
+4. the find marker
+5. a pending F-key declaration
+6. a pending BRAA fighter
+7. the RBL
+8. the brevity definition readout
+9. the command buffer and feedback
+10. once the command line is empty, every route line on the scope
 
 ### Bullseye
 
@@ -59,13 +93,16 @@ Type into the buffer, press **Enter**. A number of commands (`.threat`, `.db`, `
 | `.towns` | Toggle towns |
 | `.base` / `.terrain` / `.water` / `.roads` | Toggle individual terrain raster layers; `.map` toggles all four together plus `.geo` |
 
-**MGRS grid detail**: `.mgrs` isn't a flat overlay — it auto-detects how many real UTM zones the current view actually spans and draws a correct zone-boundary seam, with reprojected 100 km grid-square labels on each side of the seam, a grid-zone designator (e.g. "38S"), and finer 1 km/10 km subdivision lines as you zoom in.
+**MGRS grid:**
+- `.mgrs` detects how many UTM zones the current view spans and draws each zone-boundary seam.
+- 100 km grid-square labels are reprojected on each side of a seam, alongside a grid-zone designator (e.g. "38S").
+- 1 km and 10 km subdivision lines appear as you zoom in.
 
-Note: SID/STAR/approach procedures are deliberately display-only here — there's no `.proc`-style command in ABM.
+ABM does not display SID/STAR/approach procedures.
 
 ### Brevity glossary
 
-`.define <term>` (or the shorter `.def <term>`) — look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition in a dedicated readout above the command line. Multi-word terms work as typed, e.g. `.define bogey dope`. The readout stays up until you dismiss it (Escape, another `.define`, or clicking it) rather than disappearing on the next command ack.
+`.define <term>` (or `.def <term>`) looks up a tactical brevity term (ATP 1-02.1, April 2025) and shows its full definition in a readout above the command line. Multi-word terms work as typed, e.g. `.define bogey dope`. The readout stays up until you dismiss it: press Escape, run another `.define`, or click it.
 
 ### Cursor readout
 
@@ -87,25 +124,25 @@ Note: SID/STAR/approach procedures are deliberately display-only here — there'
 | `.dbreset` | Clear all per-contact `.db` overrides |
 | `.dbca` | Datablock collision-avoidance placement (off by default) |
 | `.dbsize [0-5]` | Set aircraft datablock size; bare form reports the current value |
-| `.dbs` | Formation datablock suppression: only the flight lead's datablock shows when 2+ same-flight aircraft are within a 3 NM box (along-track/cross-track relative to the lead's heading, not a simple radius) (on by default) |
-| `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction |
+| `.dbs` | Formation datablock suppression (on by default). Among aircraft whose callsigns end in two or more digits (e.g. `ENFIELD11`, `ENFIELD12`), only the flight lead shows a datablock while the others are inside a 6×6 NM box around it. The box extends ±3 NM along and across the lead's heading |
+| `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction; direction `5` uses the default direction |
 | `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
 ### Missile tracking & launch alert
 
-In-flight enemy missiles show as a small triangle (heading-oriented, colored by declaration) once independently detected by a friendly AWACS/EWR unit — same fog-of-war rule as everything else on the scope. Only medium/large threats (cruise missiles, anti-ship missiles, SAMs) are trackable at all; typical fighter-launched air-to-air shots are too small to register and never appear. `.ptl` and `.history` (see Contacts above) apply to missile symbols too.
+In-flight missiles show as a small heading-oriented triangle, colored by the missile's actual coalition. Your own side's and neutral missiles always show. An enemy missile shows only once a friendly AWACS/EWR unit detects it. Only medium/large missiles (cruise missiles, anti-ship missiles, SAMs) can be detected; typical fighter-launched air-to-air missiles never appear. `.ptl` and `.history` (see Contacts above) apply to missiles too.
 
-A newly-detected enemy missile triggers an alert: a repeating tone plus the missile's symbol/PTL blinking, both continuing for as long as it stays tracked and clearing automatically on impact, expiry, or lost detection. Click the blinking symbol to cancel the alert early (sound + blink both stop) — the missile itself keeps rendering normally afterward.
+A newly detected hostile missile triggers an alert: a repeating tone, plus a blinking symbol and PTL. The alert lasts as long as the missile stays tracked, and clears automatically on impact, expiry, or lost detection. Click the blinking symbol to cancel the alert early. The sound and blink stop, and the missile keeps rendering normally.
 
 | Command | Effect |
 |---|---|
 | `.malert` | Toggle the missile-launch alert on/off entirely |
 | `.vol` | Show current master alert volume |
-| `.vol <0-10>` | Set master alert volume (0 = mute) — shared by any ABM alert tone, not missile-specific |
+| `.vol <0-10>` | Set master alert volume (0 = mute) — shared by any ABM alert tone |
 
-The app-wide **Sounds** checkbox in Settings (see [Getting Started](getting-started.md)) is a master mute that overrides `.vol` — if it's unchecked, the missile-launch alert stays silent regardless of `.vol`.
+The app-wide **Sounds** checkbox in Settings (see [Getting Started](getting-started.md)) is a master mute that overrides `.vol`.
 
-Alert audio/state is shared across every open ABM window (main scope, focus panels, pop-outs) — only one tone ever plays regardless of how many windows are open, and dismissing it from any window silences it everywhere.
+Only one tone plays however many ABM windows are open (main scope, focus panels, pop-outs), and dismissing it from any window silences it everywhere. `.malert` and `.vol` take effect from the main scope window.
 
 ### BRAA, bogey dope, threat rings
 
@@ -114,17 +151,19 @@ Alert audio/state is shared across every open ABM window (main scope, focus pane
 | `.threat` (Enter) | Clear all rings; `.threat <nm>` (Enter) sets the default radius instead |
 | `.threat` / `.threat <nm>`, then click a contact | Toggle that contact's ring (optionally set radius) |
 | `.tclear` | Clears RBL, all BRAA pairs, and all threat rings at once |
-| `.dope`, then click | Bogey-dope the clicked contact to its nearest hostile/bogey air contact |
+| `.dope`, then click | Bogey-dope the clicked contact to the nearest air contact declared hostile or bogey |
 | `.rename` / `.rename <newcallsign>`, then click | Rename or reset a contact's callsign (synced to other controllers) |
+
+BRAA pairs are drawn on the scope as a dashed line with an inline bearing/range label. ABM has no BRAA-list side panel.
 
 ### Declaration
 
 | Command | Effect |
 |---|---|
-| `.dec` | Reset all declarations to default |
+| `.dec` | Reset all declarations to default and turn auto-declare off |
 | `.dec <old> <new>` | Bulk redeclare, letters `f`/`n`/`b`/`h` (friendly/neutral/bogey/hostile), e.g. `.dec b h` |
-| `.autodec` | Toggle auto-declare (true-coalition-based, unconditional — Mode 4 never consulted). Turning it **off** does not revert contacts it already declared — only a bare `.dec` reset does that |
-| `.autodec iff` | Toggle IFF-gated auto-declare — FRIENDLY only. A non-SRS-fielded same-coalition contact declares unconditionally; an SRS-fielded one only when correlated to a FRAG-assigned aircraft (see FRAG's IFF section below). Never touches hostile/neutral/bogey. Mutually exclusive with `.autodec` |
+| `.autodec` | Toggle auto-declare by true coalition, with no IFF check. Turning it on applies to every visible contact; while on, newly visible undeclared contacts are declared too. Turning it off leaves existing declarations in place |
+| `.autodec iff` | Toggle IFF-gated auto-declare, FRIENDLY only. A same-coalition contact without SRS data is declared unconditionally; an SRS-fielded one only when it's correlated (see SRS transponder data above). It never declares hostile/neutral/bogey. Mutually exclusive with `.autodec` |
 | `.autothreat` | Auto-light threat rings on friendlies near hostiles/bogeys |
 
 ### ROE
@@ -135,82 +174,97 @@ Alert audio/state is shared across every open ABM window (main scope, focus pane
 
 `.acq` / `.eng` (all) or `.acq <f|n|b|h>` / `.eng <f|n|b|h>` (one class)
 
-### Free-hand scope drawing
+### Scope drawing
 
-Draw directly on the scope by typing a command and clicking, the same type-then-click pattern as `.threat`/`.dope`/`.rename`/`.be`:
+Each command runs on Enter. Arguments you type are used directly; anything missing is placed by clicking on the scope. A point argument can be a fix/navaid/airport name or a coordinate (e.g. `N20W040`).
 
 | Command | Effect |
 |---|---|
-| `.line` `.rect` `.circ` | Line, rectangle, circle |
-| `.poly` | Polygon; keep clicking to add vertices, `Escape` or re-typing the command finishes it |
-| `.sect <id> <brg1>...<brgN> <radius>` | A sector (or multiple sectors sharing one id) defined by a list of bearings and a radius |
-| `.race` | A racetrack shape |
-| `.text` | A text label |
+| `.line [p1] [p2]` | Line between two points |
+| `.rect [anchor]` | Rectangle: click the anchor (if not typed), then the opposite corner |
+| `.circ [center] [radiusNm]` | Circle |
+| `.poly [p1 p2 ...]` | Polygon. Typing 3+ points draws it immediately; otherwise click to add vertices, and click within 12 px of the first vertex (with 3+ vertices placed) to close it |
+| `.sect <center> <brg1> <brg2> ... <brgN> <radiusNm>` | N-1 adjoining sectors at one center and radius (e.g. `.sect OMDM 270 090 100`). Bearings are magnetic |
+| `.sect` | Click the center, then click again: draws a ±15° sector toward that point, with radius set by the click distance |
+| `.race [fix] [radial] [leg] [L\|R] [turnRadius]` | Racetrack. Typing fix, radial (magnetic), leg length and turn direction draws it immediately (turn radius defaults to 1 NM); otherwise click the fix, then click to set the leg |
+| `.text [anchor] <text>` | Text label: click to place it (if no anchor was typed), then click again to commit |
 
-While a shape is pending, magnetic-heading snapping and whole-NM distance snapping apply automatically, and the scroll wheel rotates the shape before you commit it with a click.
+While placing a shape, headings snap to whole magnetic degrees and distances to whole NM. The scroll wheel rotates `.rect`, `.race`, and `.text` before you commit them. Escape discards an in-progress shape.
 
-Clearing: `.dclear` (bare, then click a drawing) removes one shape; `.dclear all` removes every hand-drawn shape (confirm-gated — you'll be asked to type `y`/`n`); `.dclear <name>` removes by name.
+Clearing:
+- `.dclear` (bare), then click a drawing — removes one shape.
+- `.dclear all` — removes every hand-drawn shape after a `y`/`n` confirmation.
+- `.dclear <name>` — removes shapes by name.
 
-All hand-drawn shapes show up in the Drawings panel alongside imported layers — see Drawings panel management below.
+Hand-drawn shapes appear in the Drawings panel alongside imported layers. The drawings store is shared by every ABM window, so drawing or clearing in one window affects all of them.
 
 ### Callsign/route lookup by name
 
-Alternatives to clicking a contact directly, useful when you know the callsign but the contact is hard to click precisely:
-
 | Command | Effect |
 |---|---|
-| `.where <callsign>` | Drop a marker on that contact |
+| `.where <callsign>` | Toggle a blink on that contact's datablock |
 | `.frag <callsign>` | Open FRAG for that contact's flight |
 | `.route <callsign>` | Toggle that flight's route line on the scope |
 
-All three accept a partial/prefix match and will tell you if it's ambiguous between multiple live callsigns. `.rclear` clears every currently-shown route line at once (both ones toggled via `.route`/FRAG's own ROUTE header) — as does `Escape`, once the command line is already empty (see Keyboard shortcuts below).
-
-`.frag` and `.route` also work bare, type-then-click style (no Enter): type `.frag` or `.route` with no callsign, then click a contact to open its FRAG or toggle its route line — same effect as the named form, for when it's faster to click than to type a callsign.
+All three accept a partial/prefix match and report `AMBIGUOUS` or `NOT FOUND` when a match isn't unique. `.frag` and `.route` also work typed without a callsign, then completed by clicking a contact. `.rclear` clears every route line on the scope, whether it was toggled with `.route`, Ctrl+Right-click, or FRAG's ROUTE header. Escape does the same once the command line is empty.
 
 ### Focus windows
 
-A floating mini-scope locked onto one contact, for tracking it without losing your place on the main scope.
+A floating mini-scope locked onto one contact.
 
 | Command | Effect |
 |---|---|
 | `.focus <callsign>` | Open (or bring to front) a focus window on that contact, at your saved default range |
 | `.focus <callsign> <range>` | Same, with an explicit range in NM |
-| `.focus <range>` | Sets the default range used by future opens, without opening a window |
-| Double-click a contact on the main scope | Shortcut for `.focus <callsign>` |
+| `.focus <range>` | Set the default range for future focus windows, without opening one |
+| Double-click a contact on the main scope | Same as `.focus <callsign>` |
 
-All three accept the same partial/prefix matching (and ambiguity reporting) as `.where`/`.frag`/`.route`.
+The callsign forms accept the same partial/prefix matching as `.where`/`.frag`/`.route`.
 
-The focus window itself is a real independent scope: drag to move it, drag an edge/corner to resize, and use the mouse wheel over its title bar to adjust its opacity. Its **⬡** button pops it out into a separate OS window (popping out the same callsign twice refocuses the existing popup instead of opening a duplicate); its **×** button closes it. Every display toggle above (`.coords`, `.db`, `.geo`, etc.) is independent per window — turning one on/off in a focus window never affects the main scope or any other focus window.
+A focus window is a full independent scope:
+- Drag it to move it, and drag an edge or corner to resize it.
+- The mouse wheel over its title bar adjusts its opacity.
+- **⬡** pops it out into a separate OS window and closes the in-page panel. Popping out the same callsign twice refocuses the existing popup.
+- **×** closes it.
+
+Display toggles (`.coords`, `.db`, `.geo`, etc.) apply to the window you type them in. Each toggle also becomes the starting setting for windows you open afterward. Drawings, `.custom`, `.malert`, and `.vol` are shared rather than per-window (see above).
 
 ## Mouse gestures
 
 | Gesture | Effect |
 |---|---|
-| **Ctrl+Shift+Click** a contact | Opens **FRAG** for that contact's flight (coalition-restricted — you can only open your own side's packages unless you're GM/admin) |
-| **Ctrl+Right-click** a contact | Toggle that flight's route line on the scope, without opening FRAG |
+| **Ctrl+Shift+Click** an aircraft | Open **FRAG** for its flight (see FRAG drawer below). Blue/red sessions can only do this on their own side's aircraft; GM/Admin can do it on either side |
+| **Ctrl+Right-click** a contact | Toggle that flight's route line on the scope |
 | **Shift+Click** | Remove BRAA pairs involving that contact |
 | **Ctrl+Alt+Click** | Toggle a threat ring on that contact |
 | **Ctrl+Click** | Start/complete a BRAA pair (first click arms a pending fighter, second click pairs it) |
-| **Alt+Click** | Bogey-dope — auto-pair with nearest hostile/bogey air contact |
-| **Middle-click** | Toggle a persistent highlight; for ground/naval units this pins their last known position on screen even after they drop out of visibility |
+| **Alt+Click** | Bogey-dope — auto-pair with the nearest air contact declared hostile or bogey |
+| **Middle-click** | Toggle a persistent highlight; for ground/naval units this also pins their last known position on screen after they drop out of visibility |
 | **Right-click + drag** | Pan the scope |
 | **Left-click + drag** | Draw a range/bearing line |
-| **Digit 1–9, then click** | Set that contact's leader-line direction |
-| **Double-click** a contact | Open a Focus window on it (see Focus windows above) |
-| **Click** a blinking missile symbol | Cancel its launch alert (sound + blink stop) — see Missile tracking & launch alert above |
-| **Mouse wheel** | Zoom (1 NM/step inside 10 NM range, else 10 NM — 25 NM with Ctrl) |
+| **Digit 1–9, then click** | Set that contact's leader-line direction (`5` returns it to the global direction) |
+| **Double-click** a contact | Open a Focus window on it |
+| **Click** a blinking missile symbol | Cancel its launch alert |
+| **Mouse wheel** | Zoom, 1–600 NM: 1 NM per step inside 10 NM, 10 NM per step beyond (25 NM with Ctrl) |
 
-**F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly); the next click declares every contact within a small radius of the click point, so dense clusters aren't unreachable one-at-a-time.
+**F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly). The next click declares every contact within 10 px of the click point. Pressing the same key again cancels.
 
-FRAG also drives the scope indirectly: clicking a flight's Base or a route waypoint in FRAG drops a marker on the scope; clicking a roster row makes that contact's datablock blink.
+FRAG also drives the scope: clicking a flight's Base or a route waypoint in FRAG drops a marker on the scope, and clicking a roster row makes that contact's datablock blink.
 
 ## ATO drawer
 
-A sortable table of every tasked flight: Flight name, Task, Type/Num, Callsign (resolved once live), **TASKUNIT** (airfield ICAO, carrier hull abbreviation, or "Air Start" — labeled "Base" in FRAG's own Tasking view, but shown as the TASKUNIT column here), Frequency, and Status (**RESERVE** / **ACTIVE** / **AIR** / **TAXI** / **GROUND** — the most-advanced state across all live-matched aircraft in the flight; RESERVE just means the flight hasn't spawned yet and clears the instant any of its aircraft appears).
+A sortable table of every tasked flight, with these columns:
+- Flight name
+- Task
+- Type/Num
+- Callsign (resolved once live)
+- **TASKUNIT** — airfield ICAO, carrier hull abbreviation, or "Air Start". FRAG's Tasking view labels this "Base".
+- Frequency
+- Status — **RESERVE** / **ACTIVE** / **AIR** / **TAXI** / **GROUND**. This is the most advanced state across all live-matched aircraft in the flight. RESERVE means none of the flight's aircraft has spawned yet.
 
-Base/taskunit resolution: departure wins if the mission recorded one; air-start flights fall back to their recorded recovery/landing point if known.
+Taskunit uses the flight's recorded departure. Air-start flights use their recorded recovery/landing point instead, if the mission has one.
 
-Click a column header to sort (click again to reverse); click a row to select that flight and open it in FRAG. Coalition-restricted like everywhere else in ABM. Mouse wheel over the title bar zooms the panel (50–200%).
+Click a column header to sort (click again to reverse). Click a row to select that flight and open it in FRAG. Blue/red sessions see only their own coalition's flights; GM/Admin see all. Mouse wheel over the title bar zooms the panel (50–200%). Manually-added flights have a **×** to remove them.
 
 **Footer:**
 
@@ -218,82 +272,118 @@ Click a column header to sort (click again to reverse); click a row to select th
 |---|---|
 | **⬆ Load Mission** | Import flights from a mission file (see Mission Import below) |
 | **+ Add Flight** | Manually add a flight (see Add Flight below) |
-| **✕ Clear Mission** | Clears imported flights only |
+| **✕ Clear Mission** | Clears imported flights only (shown when imported flights exist) |
 | **✕ Clear ALL** | Confirm-gated, wipes manual flights too |
 
 ## FRAG drawer
 
-Detail view for the flight selected in ATO or via Ctrl+Shift+Click on the scope.
+Detail view for the flight selected in ATO, or opened with Ctrl+Shift+Click on the scope.
 
-- **Tasking** — editable Task field, full Base name, Status (same rollup as ATO). Click Base to drop a scope marker.
-- **Roster** — one row per aircraft. For imported flights: callsign, type, live-resolved callsign, onboard number, skill, air/ground state, ordnance summary, a collapsible comms/radio list, and Link16 station if present. For manually-added flights: callsign, type, and state, live-matched against whoever's currently flying that callsign — there's no mission data behind them for ordnance/radios/Link16. A **+ Add Aircraft** field at the bottom of a manual flight's roster lets you type a callsign in directly, before that aircraft is even live — it shows as **PENDING** until a live match appears. A **×** on any manually-added row removes it (a live-matched row with nothing added to it has nothing to remove).
-- **IFF** — Mode 1/2/3 fields under each roster row (imported and manual alike). This is the assigned code the correlation engine matches a live contact's transponder against (any of Mode 1/2/3/4 matching, plus a callsign check) to reveal its real callsign on the scope in place of the cycling code readout — see "Declaration" above for `.autodec iff`. Synced live to every ABM controller (the rest of FRAG isn't).
-- **Route** — each waypoint's name, altitude, and speed; click one to drop a marker on the scope. Click the ROUTE header (yellow, green when active) to toggle the flight's route as a dashed line on the scope; Escape also clears it. Hidden by default each time a flight is (re)selected.
+- **Tasking** — editable Task field, full Base name, and Status (same rollup as ATO). Click an airbase or carrier Base to drop a scope marker.
+- **Roster** — one row per aircraft.
+  - Imported flights: callsign, type, live-resolved callsign, onboard number, skill, air/ground state, ordnance summary (grouped by weapon with counts), a collapsible comms/radio list, and Link16 station if present.
+  - Manually-added flights: callsign, type, and state, matched live against aircraft flying that callsign prefix.
+  - A manual flight's roster ends with a **+ Add Aircraft** field. A typed callsign shows as **PENDING** until a matching aircraft goes live.
+  - A **×** on a manually-added row removes its roster/IFF entry. A row matched live by callsign prefix stays listed after that.
+- **IFF** — Mode 1 (2 digits), Mode 2 and Mode 3 (4 digits) fields under each roster row, for imported and manual flights alike. These are the assigned codes used for IFF correlation (see SRS transponder data above).
+- **Route** — each waypoint's name, altitude, and speed; click one to drop a marker on the scope. Click the ROUTE header (yellow, green when active) to toggle the flight's route as a dashed line on the scope. The route line is hidden each time a flight is selected.
 
 Mouse wheel over the title bar zooms the panel independently of ATO.
 
-Unlike AIC, ABM has no BRAA-list side panel — BRAA pairs are drawn only as an on-scope dashed line with an inline bearing/range label.
+**What syncs to other ABM controllers:**
+- IFF codes.
+- Manual flights (name, callsign prefix, coalition, and roster) once they're created or changed through Ctrl+Shift+Click, + Add Aircraft, ×, or an IFF edit. A flight created with **+ Add Flight** is sent at its first such change.
+- Imported mission data stays local to each controller.
 
-**Ctrl+Shift+Click** on a friendly contact opens its FRAG flight, creating one if it doesn't exist yet (grouped by callsign, e.g. every "ENFIELD1x" aircraft together) and adding that exact aircraft to its roster if it isn't already there. Safe to repeat — an already-tracked aircraft just opens its existing flight, never duplicates it. New roster rows start with blank IFF fields.
+**Ctrl+Shift+Click** on an aircraft opens its FRAG flight:
+- The aircraft's live callsign is matched against every roster, imported and manual. `FORD11` matches an imported roster entry named `FORD 1-1`.
+- If the aircraft is already on a roster, that flight opens.
+- Otherwise TRACS opens (or creates) a manual flight for its callsign prefix (e.g. every `ENFIELD1x` aircraft together) and adds the aircraft with blank IFF fields.
+- Repeating the click never creates duplicates.
+- GM/Admin sessions file the flight under the aircraft's own coalition.
 
 ## Mission Import
 
 **⬆ Load Mission** in ATO's footer.
 
 - Drop a `.miz` file or a raw mission text file, or click to browse.
-- Blue/red sessions only ever see their own coalition's tasked flights — the other side's tasking is filtered out before you even see a preview, not just hidden after import.
-- Preview shows a count-by-task summary and the list of flights found (with a RESERVE badge for late-activation flights). **Import** replaces the previously-imported set but keeps any manually-added flights.
-- ABM's mission parsing deliberately reads only structural mission data (groups, units, routes, payloads, radios, Link16) — it never touches trigger scripts, trigger rules, or the mission's localization dictionary, so nothing an author scripted as a hidden narrative or timing surprise leaks through.
-- **Dropping a `.csv` here instead** bulk-assigns IFF codes: a `callsign,mode1,mode2,mode3` header row, one row per aircraft. This is assign-only — it fills in Mode 1/2/3 on roster rows that already exist (from a prior mission import, or from Ctrl+Shift+Click/manual typing), matched by callsign, and never creates a new flight. A callsign with no matching roster row anywhere is skipped and reported, not silently dropped.
+- Blue/red sessions only see their own coalition's tasked flights. The other side's flights are filtered out before the preview.
+- The preview shows a count-by-task summary and the list of flights found, with a RESERVE badge for late-activation flights. **Import** replaces the previously imported set and keeps manually-added flights.
+- ABM reads groups, units, routes, payloads, radios, and Link16 from the mission. It does not read triggers, trigger rules, or the mission's localization dictionary.
+- **Dropping a `.csv` here instead** bulk-assigns IFF codes:
+  - The header row must include a `callsign` column. `mode1`, `mode2`, and `mode3` columns are optional and can be in any order. Values are cut to 4 digits.
+  - A preview lists what will be applied; **Apply** writes the codes.
+  - It only fills in rows that already exist (from a mission import, Ctrl+Shift+Click, or manual entry), matched by callsign, and never creates flights. The first matching roster row wins.
+  - Callsigns with no matching row are listed as skipped.
 
 ## Custom Drawing Import
 
-**⬆ Load Drawing** in the Drawings panel, or drag a file directly onto the panel.
+**⬆ Load Drawing** in the Drawings panel, or drag a file onto the panel.
 
-- Accepts `.geojson`, `.json`, `.ndgeojson`, `.ndjson` (multiple files at once — both single-document and newline-delimited GeoJSON are supported, and a few bad lines in an ndjson file won't sink the whole import), a `.zip` bundle (e.g. re-importing something previously exported from the Drawings panel — see below), and **`.miz` mission files** — pulling in DCS's own F10-map trigger-zone geometry and Drawing layers as importable custom layers. A `.miz` or zip import that contains multiple shapes/layers shows a per-row **Split** button to explode a group (e.g. a mission's whole trigger-zone table) into one layer per shape, preserving each shape's own DCS-authored color.
-- Preview lets you rename each layer (defaults to the filename) before importing; a failed file shows its error inline without blocking the others.
-- Each imported layer defaults to the current airspace palette's CUSTOM color (Drawings panel swatch to override per-layer). Polygon fill is gated by `.fill` (same toggle as airspace): a feature's own GeoJSON `fill`, or an overridden stroke color (source `stroke` or the swatch), fills with that color; an unstyled shape only fills if the palette's CUSTOM entry itself defines a `fill`.
-- Feature labels come from the GeoJSON's `title`/`name` properties, gated by the same `.labels` toggle used for airspace names.
-- Drawings are stored per-theatre locally and shared across your own open windows, but are **not** broadcast to other controllers — they're your own reference overlays.
+- **Accepted files:**
+  - `.geojson`, `.json`, `.ndgeojson`, and `.ndjson`, several at once. Newline-delimited GeoJSON is supported, and bad lines in an ndjson file are skipped.
+  - A `.zip` bundle, such as one exported from the Drawings panel.
+  - A **`.miz` mission file** — imports its F10-map trigger zones and Drawing layers.
+- A preview row with more than one feature has a **Split** button that turns each feature into its own layer, keeping each feature's own color.
+- The preview lets you rename each layer (defaults to the filename) before importing. A failed file shows its error inline without blocking the others.
+- **Layer color:** a layer whose features carry a GeoJSON `stroke` color takes that color, with Override turned on. Other layers use the current airspace palette's CUSTOM color.
+- **Fill** is controlled by `.fill` (the same toggle as airspace). A feature fills with its own GeoJSON `fill`, or with its layer's overridden color. An unstyled shape only fills if the palette's CUSTOM entry defines a `fill`.
+- Feature labels come from the GeoJSON's `title`/`name` properties, shown when `.labels` is on.
+- Drawings are stored per theatre in your browser and shared across your own open windows. They are not sent to other controllers.
 
 ### Drawings panel management
 
-Beyond importing, the Drawings panel lets you manage every layer (imported or hand-drawn via the scope commands above):
-
 | Item | Effect |
 |---|---|
+| Visibility checkbox | Show/hide the layer; the column header's checkbox toggles every layer |
 | Layer name | Click to rename it inline |
-| Color swatch + **Override** checkbox | Pick a custom color, or leave it inheriting the airspace palette's CUSTOM color |
+| Color swatch + **Override** checkbox | Pick a custom color, or inherit the airspace palette's CUSTOM color |
 | "Always show label" checkbox | Per-layer, independent of the global `.labels` toggle |
-| Grip handle | Drag to manually reorder the layer (draw/z-order) — only available while the list isn't otherwise sorted |
-| Sortable columns (visibility / color / name+label) | Each has a third "off" sort state |
-| Disclosure-arrow parameter editor | Command-drawn shapes only — rotation, radius, start/end bearing, leg length, turn radius/direction, text label, whichever fields apply to that shape type, for fine adjustment after drawing |
-| **⬇ Export** | Bundles the panel's drawings into a zip you can re-import later (including into someone else's TRACS instance, since drawings aren't otherwise shared) |
+| INFO column | Feature count |
+| Grip handle | Drag to reorder layers (draw/z-order) — available while the list isn't sorted |
+| Color / name / label column headers | Sort, with a third click turning sorting off |
+| Disclosure-arrow parameter editor | Command-drawn rectangles, circles, sectors, racetracks, and text only — rotation, radius, start/end bearing (magnetic), leg length, turn radius/direction, text, whichever apply |
+| **×** | Delete the layer |
+| **⬇ Export** | Bundle the panel's drawings into a zip that can be re-imported through Load Drawing on any TRACS instance |
+| **✕ Clear ALL** | Delete every layer, with a confirmation |
+
+Mouse wheel over the title bar zooms the panel.
 
 ## Add Flight (manual entry)
 
-**+ Add Flight** in ATO's footer, for flights that don't come from a mission file.
+**+ Add Flight** in ATO's footer adds a flight that isn't in a mission file.
 
-Fields: Flight Name, Task, Type, Num (aircraft count), **Callsign Prefix** (required — flight name + flight number, e.g. `SHELL1`, no element digit), Base/Taskunit (dropdown of theatre airbases and live carriers), Frequency, and Coalition (GM/admin only — blue/red sessions get their own coalition automatically).
+Fields:
+- Flight Name (required)
+- Task
+- Type
+- Num (aircraft count)
+- **Callsign Prefix** (required) — flight name plus flight number, e.g. `SHELL1`, with no element digit
+- Base/Taskunit — a dropdown of theatre airbases and live carriers
+- Frequency
+- Coalition — GM/Admin only; blue/red sessions use their own coalition
 
-**Live-callsign matching:** the Callsign Prefix is how TRACS finds real aircraft for this flight, since a manual entry has no mission-file unit to match. DCS concatenates flight and element numbers with no separator (flight 1's aircraft are `SHELL11`/`SHELL12`), so the prefix must include the flight number but *not* the element digit — `SHELL1` matches both elements of flight 1 but won't also sweep in `SHELL21`. Manual flights have no route, ordnance, radio, or Link16 data — there's no mission file behind them to provide it.
+**Live-callsign matching:** a manual flight is matched to live aircraft by its Callsign Prefix. DCS joins flight and element numbers with no separator, so flight 1's aircraft are `SHELL11` and `SHELL12`. The prefix `SHELL1` matches both of them but not `SHELL21`.
 
 ## Keyboard shortcuts
 
 | Key | Effect |
 |---|---|
-| `F1`–`F4` | Arm a pending declaration (Hostile/Bogey/Neutral/Friendly) |
-| `Escape` | Clear pending state, in priority order: an in-progress interactive mode (drawing, RBL, declaration, BRAA pairing, `.define` readout, find marker, clear/clear-all confirmation) first, then any text/feedback in the command line, then — once the command line is already empty — every route line on the scope (same as `.rclear`) |
+| `F1`–`F4` | Arm a pending declaration (Hostile/Bogey/Neutral/Friendly); press again to cancel |
+| `Escape` | Clear pending state in the order listed under Command line |
 | `Enter` | Run the buffered command |
-| `ArrowUp`/`ArrowDown` | Cycle command history |
+| `ArrowUp`/`ArrowDown` | Cycle command history, or step through the glossary while a `.define` readout is open |
 | `1`–`9`, then click | Set a contact's leader-line direction |
-| `Ctrl+M` | Open Messages (app-wide, not ABM-specific) |
+| `Ctrl+V` | Paste into the command line |
+| `Ctrl+Alt+0`–`9` | Save the current view to bookmark slot 0–9 |
+| `Ctrl+0`–`9` | Load view bookmark 0–9 |
+| `Ctrl+M` | Open Messages (app-wide) |
 
 ---
 
 ## Known limitations
 
-- Manually-added flights (via Add Flight or Ctrl+Shift+Click) never get route, ordnance, radio, or Link16 data — only imported mission flights have that detail.
-- Turning `.autodec`/`.autodec iff` off doesn't revert contacts already declared; only `.dec` (bare reset) does.
-- Bogey-dope (`.dope` / Alt+click) only ever targets air contacts, even though BRAA pairs themselves can include ground/naval units.
-- Pylon station numbers shown in FRAG are a best-effort index, not necessarily the true DCS station number, for aircraft with non-contiguous pylon tables.
+- Manually-added flights have no route, ordnance, radio, or Link16 data; only flights imported from a mission file have it.
+- `.frag <callsign>`, `.route <callsign>`, and Ctrl+Right-click find only imported flights. Routes come only from `.miz` imports.
+- Turning `.autodec`/`.autodec iff` off doesn't revert contacts it already declared; only a bare `.dec` does.
+- Bogey dope (`.dope` / Alt+click) only targets air contacts, although BRAA pairs can include ground/naval units.

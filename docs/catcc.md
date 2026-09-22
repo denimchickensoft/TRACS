@@ -2,20 +2,32 @@
 
 [← All docs](index.md)
 
-Carrier air traffic control: a radar scope with a text command line, a synchronized Status Board, and a Deck view for visual traffic on/around the carrier.
+Carrier air traffic control: a radar scope with a text command line, a synchronized Status Board, and a Deck view for visual traffic on and around the carrier.
+
+## Side numbers and correlation
+
+A track's side number comes from the Status Board. TRACS matches each Status Board row to a live unit, either by the unit the row was created from (rows added with Ctrl+Click) or by callsign. What the datablock's first line shows depends on whether the unit is SRS-fielded (has reported SRS transponder data through a relay):
+
+| Unit | Datablock line 1 |
+|---|---|
+| No SRS data, on the Status Board | The row's side number |
+| No SRS data, not on the Status Board | `XXX` |
+| SRS-fielded, not squawking | `XXX` |
+| SRS-fielded, squawking the row's **BCN** code and flying the row's callsign | The row's side number |
+| SRS-fielded, squawking but not matching a row | The live 4-digit squawk |
+
+Line 2 is altitude and groundspeed. Only a track that shows a side number (a *correlated* track) can be taken under control with `IT`, `IC`, or Ctrl+Shift+Click. For SRS-fielded aircraft, that means entering the assigned code in the Status Board's BCN column. There's no command to assign a side number to a track directly.
 
 ## Scope commands
 
-Type into the command line, then press **Enter** to execute or click a target on the scope to complete a "slew" command (see below). Commands are case-insensitive; the scope uppercases as you type.
-
-Aircraft are addressed by side number or callsign. A track's side number comes from the Status Board: TRACS auto-correlates a live unit's callsign against the Status Board's callsign/side-number entries, so an aircraft shows its real side number on the scope only once it's on the board (via the Status Board itself, or by adding it directly with Ctrl+Click below). An uncorrelated contact's datablock shows `XXX` instead of a side number. There's no manual "assign side number to this track" command — correlation is always driven by the Status Board.
-
-CATCC does not yet use SRS transponder data (unlike ATC's association/IDENT features) — its datablock is always the fixed side-number-or-`XXX` / altitude-groundspeed format described above, regardless of squawk. Transponder-aware CATCC datablocks are planned but not yet built.
+Type into the command line, then press **Enter**, or click a target to complete a slew command (see below). Commands are case-insensitive; the scope uppercases as you type. Aircraft are addressed by side number or callsign.
 
 | Command | Effect |
 |---|---|
-| `IT <callsign\|side>` | Initiate Track — claim ownership of a contact |
+| `IT <callsign\|side>` | Initiate Track — claim ownership of a correlated, unowned contact |
 | `DT <callsign\|side>` | Drop Track |
+| `.DROPALL` | Drop every track you own |
+| `HO` | Accept the first incoming handoff |
 | `HO <callsign\|side> <tcp>` | Hand off to another controller position (`tcp` = their position id, e.g. `1D`) |
 | `PO <callsign\|side> <tcp>` | Point out a track to another controller |
 | `RN <callsign\|side> [newCallsign]` | Rename a track's callsign, or omit the second argument to reset to default |
@@ -35,18 +47,21 @@ CATCC does not yet use SRS transponder data (unlike ATC's association/IDENT feat
 | `.ASPCOLORS <name>` | Select an airspace color palette (e.g. `CATCC` — the default, all-yellow) |
 | `.REFRESH` | Re-fetch airspace color palettes without reloading |
 
-Errors appear in the ODS response area: `NO TRACK: <id>` (unit not found), `ILL TRK` (you don't own that track), `ILL POS` / `ILL POS: <tcp>` (invalid handoff target).
+Errors appear in the ODS response area:
+- `NO TRACK: <id>` — unit not found.
+- `ILL TRK` — the track isn't yours to drop or hand off, or you tried to take control of a track that is uncorrelated or already owned.
+- `ILL POS` / `ILL POS: <tcp>` — invalid handoff target.
 
-**Slew commands** (type the command, then left-click the target to complete it) — CATCC has its own local implementation of these (mirrors the ATC/STARS scope's bindings, but targets CATCC's own state independently — no shared dispatcher):
+**Slew commands** (type the command, then left-click the target):
 
 | Command | Effect |
 |---|---|
-| `IC` | Initiate control on the clicked contact |
+| `IC` | Initiate control on the clicked contact (must be correlated and unowned) |
 | `TC` | Terminate control |
-| `HO` (bare) | Accept the nearest incoming handoff; `HO <tcp>` then slew hands off to a position |
-| `<id>*` / `**` / `UN`, then slew | Point out / accept an incoming point-out as a handoff / reject a point-out |
-| A 3–4 character alphanumeric, then slew | Set scratchpad 1; prefix with `+` for scratchpad 2 |
-| `MF L<n><n>` (e.g. `MF L33`), then slew | Set leader-line direction globally; `MF L<n>` sets it for a single track |
+| `HO <tcp>` | Hand off the clicked track to a position |
+| `<tcp>*` / `**` / `UN` | Point out / accept an incoming point-out as a handoff / reject a point-out |
+| `<text>` (3–4 characters) | Set scratchpad 1 on a track you own; `+<text>` (1–4 characters) sets scratchpad 2; `.` / `+` clear them. Scratchpads are stored but not drawn on CATCC datablocks |
+| `MF L<n><n>` (e.g. `MF L33`) | Set leader-line direction globally; `MF L<n>` sets it for the clicked track |
 | `MF S`, then click anywhere on the scope | Relocate the status-text overlay |
 
 ## Mouse & keyboard
@@ -55,26 +70,28 @@ Errors appear in the ODS response area: `NO TRACK: <id>` (unit not found), `ILL 
 |---|---|
 | **Ctrl+Shift+Click** a contact | Initiate Control |
 | **Shift+Click** a contact | Terminate Control |
-| **Ctrl+Click** a contact | Add it to the Status Board directly (CATCC-only shortcut, no command-line equivalent) |
-| **Mouse wheel** over the scope | Zoom range (hold Ctrl for larger steps) |
+| **Ctrl+Click** a contact | Add it to the Status Board |
+| **Mouse wheel** over the scope | Zoom range, 1 NM per step (3 NM with Ctrl), 6–256 NM |
 | Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
 | **Alt+T** | Toggle top-down display mode |
 | **Ctrl+Alt+0**–**9** | Save current range to bookmark slot 0–9 |
 | **Ctrl+0**–**9** | Load range bookmark 0–9 |
-| `F2`–`F13` and other function keys | Map to STARS-style command prefixes (`F3`=IC, `F4`=TC, `F5`=HO, `F7`=MF, `F9`=FP, etc.) — same key-to-token mapping table as the ATC scope (purely a keyboard convenience, no shared command dispatch) |
+| `F3` / `F4` / `F5` / `F7` | Insert `IC` / `TC` / `HO ` / `MF ` into the command line. `F2`, `F6`, `F9`, and `F11` insert `TR `, `FD `, `FP `, and `CA `, which CATCC has no commands for |
 | `Escape` / `Backspace` | Clears the command line / deletes the last character |
 
 ## Status Board
 
-A synchronized event/recovery board, visible to and editable by every CATCC position via WebRTC.
+An event/recovery board shared by every CATCC position over the session's sync transport. Anyone can view and edit it.
 
-**Header fields:** Event, Launch/Recovery time (4-digit clock), Ceiling, Visibility, QNH, Case (Launch/Recovery — the NATOPS recovery case letter/number), MAR/APP/TWR/DEP button frequencies, RAD (radial). Sunrise/sunset, magnetic variation, timezone, BRC, FB, and speed are computed automatically and read-only. **Case Recovery** matters beyond display: setting it to `3` switches the status overlay to show RAD+FB (instrument recovery) instead of BRC.
+**Header fields:**
+- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial).
+- **Computed and read-only:** sunrise/sunset, magnetic variation, timezone, BRC, FB, and speed.
 
-The on-scope status overlay also shows a context-sensitive next-handoff line — `<label> BTN <freq>` — based on your own position: Marshal sees Approach's frequency, Approach sees Tower's, Tower sees Departure's.
+**Status overlay on the scope:** shows the case lines. When Case Recovery is a number, it adds a line with BRC, or with RAD and FB when Case Recovery is `3`. That same line also shows the next handoff's button number (`<label> BTN <n>`), based on your position: Marshal sees Approach's button, Approach sees Tower's, Tower sees Departure's. Departure gets no handoff entry.
 
-BRC/FB/speed flash if they drift more than 5° and haven't restabilized for 20 seconds — a heads-up that the boat is maneuvering.
+**Drift flash:** BRC and FB flash when they drift more than 5° from their baseline, and speed flashes when it drifts more than 5 kt. The flash stops once the value has held steady for 20 seconds.
 
-**Aircraft table** — 15 columns: EVT, side number, BCN (beacon/squawk code, with a ↻ button per row to recycle it), callsign, pilot (auto-filled from the unit name if left blank), type, mission, ATD (actual departure time), radial, bingo fuel, a read-only side-number mirror, EAT (estimated arrival), Angels (altitude in thousands), fuel state, ATA (actual arrival time).
+**Aircraft table** — 15 columns: EVT, side number, BCN (beacon/squawk code, with a ↻ button per row to recycle it), callsign, pilot (auto-filled from the unit name if left blank), type, mission, ATD (actual departure time), radial, bingo fuel, a read-only side-number mirror, EAT (estimated arrival), Angels (altitude in thousands), fuel state, ATA (actual arrival time). BCN and callsign together drive side-number correlation for SRS-fielded aircraft (see above).
 
 **Adding entries:**
 
@@ -84,34 +101,44 @@ BRC/FB/speed flash if they drift more than 5° and haven't restabilized for 20 s
 | **Ctrl+Click** a contact on the scope | Adds it with callsign pre-filled |
 | **⬆ Load Mission** | Import from a mission file (see below) |
 
-**Editing:** click a cell to edit it. `Tab`/`Shift+Tab` moves between fields, `Enter` commits, **`Shift+Enter` commits and inserts a new blank row directly below**, `Escape` cancels without saving. Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted red. Click a column header to sort (display only — doesn't reorder the underlying data).
+**Editing:**
+- Click a cell to edit it.
+- `Tab`/`Shift+Tab` moves between fields, `Enter` commits, `Shift+Enter` commits and inserts a new blank row directly below, and `Escape` cancels without saving.
+- Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted red.
+- Click a column header to sort. This changes the display only and doesn't reorder the underlying data.
 
 **Row controls:** ▲/▼ reorder, × deletes.
 
-**Clearing:** **✕ Clear Mission** removes only rows imported from a mission file and blanks the weather fields (only shown once mission data exists). **✕ Clear ALL** (two-step confirm) wipes everything and resets RAD to the current reciprocal of FB.
+**Clearing:**
+- **✕ Clear Mission** removes only rows imported from a mission file and blanks the weather fields. It's shown once mission data exists.
+- **✕ Clear ALL** (two-step confirm) wipes everything and resets RAD to the reciprocal of FB.
 
 **Board scale:** mouse wheel over the title bar zooms the whole board 50–200%. Click the title-bar clock to toggle Zulu/Local time.
 
-**Undocking:** the popped-out Status Board window's "dock" button just closes the popup — state stays synced regardless via the same WebRTC/cross-window channel.
+**Undocking:** the popped-out Status Board window's "dock" button closes the popup. The board's state stays in sync between the popup and the main window either way.
 
 ## Deck
 
 A top-down carrier deck view for visual traffic near the boat.
 
-- **Mouse wheel** — zoom (1x–4x; 1x is a hard floor equal to fit-to-panel)
+- **Mouse wheel** — zoom (1x–4x; 1x is fit-to-panel)
 - **Right-click + drag** — pan
 - Aircraft near deck altitude and within the hull footprint are plotted as small triangles, labeled with side number or callsign, oriented to heading relative to the carrier
 - Zoom resets when you switch carrier class
 
-**Lat/lon calibration tool (debug aid):** **Ctrl+Alt+Click** on the deck copies a text string to the clipboard with the clicked point's real-world lat/lon, its pixel position in the source deck image, and the carrier's own lat/lon. There's no on-screen confirmation — check your clipboard or the browser console. This exists to help calibrate deck art against real carrier geometry; it's not an operator feature and has no button or menu entry.
+**Lat/lon calibration (debug aid):** **Ctrl+Alt+Click** on the deck copies a text string to the clipboard. The string holds the clicked point's lat/lon, its pixel position in the source deck image, and the carrier's own lat/lon. There's no on-screen confirmation.
 
 ## Mission Import
 
-Available from the Status Board's **⬆ Load Mission** button, or the equivalent ABM/general mission-import flow.
+Opened from the Status Board's **⬆ Load Mission** button.
 
-- Drop a `.miz` file (parsed directly as a zip) or a raw mission text file onto the dropzone, or click to browse.
+- Drop a `.miz` file or a raw mission text file onto the dropzone, or click to browse.
 - The importer extracts:
-  - **Weather** — QNH, visibility, and ceiling (with a warning note if the cloud preset can't be mapped confidently — verify manually in that case).
-  - **Carriers and their launching aircraft** — only aircraft whose first waypoint is a carrier departure (parking/hot-start/runway) count as "launching from" that carrier; overflights and land-based aircraft that later recover aboard are not included.
-- If multiple carriers are found, pick one from the selector — it re-scopes the aircraft list to that carrier's launches. Aircraft flown by a human (`Client` skill) are highlighted.
-- Select which aircraft to import (checkboxes; header checkbox selects all visible), then **Import**. Weather is imported independently — partial data (e.g. QNH only) is fine. Duplicate callsigns are skipped.
+  - **Weather** — QNH, visibility, and ceiling, with a note describing how the cloud preset was mapped to a ceiling.
+  - **Carriers and their launching aircraft** — only aircraft whose first waypoint is a carrier departure (parking, hot start, or runway) count as launching from that carrier.
+- A mission with no carriers fails with "No carrier ships found in this mission."
+- If several carriers are found, pick one from the selector. The carrier matching your signed-in carrier is pre-selected. The list shows that carrier's launches, all pre-checked. Aircraft flown by a human (`Client` skill) are highlighted.
+- Select which aircraft to import (checkboxes; the header checkbox selects all visible), then click **Import**.
+  - Each imported row gets callsign, side number (from the modex), type, and mission. BCN is left blank.
+  - Duplicate callsigns are skipped.
+  - Weather is imported independently of the aircraft selection, and partial data (e.g. QNH only) is fine.

@@ -4,33 +4,39 @@
 
 ## 1. Connect
 
-On first launch you're prompted to connect. Pick a **Primary Data Source** first — this changes which of the fields below actually apply:
+When you launch TRACS, it asks you to connect. Pick a **Primary Data Source** first, because it determines which of the fields below apply:
 
 | Mode | What it is |
 |---|---|
 | **Olympus** | Polls the DCS Olympus mod's REST API directly. |
 | **Tacview** | Connects straight to a DCS server's Tacview Real-Time Telemetry export. |
-| **Relay** | Connects to a standalone TRACS Relay app instead of DCS directly — the relay is what actually talks to Tacview (or, in the future, another TRACS-authored source) on your behalf, and fans the data out to any number of controllers. |
+| **Relay** | Connects to a TRACS Relay instead of DCS directly. The relay connects to Tacview and to SRS on your behalf, and fans that data out to any number of controllers. |
 
-Fields shown/required depend on the mode:
+Which fields are shown and required depends on the mode:
 
-- **Server Name** — optional label; click the save icon to store this connection as a favorite for next time. Saved servers appear in a dropdown as you type, and remember which mode they were saved under.
+- **Server Name** — optional label.
+  - Clicking the save icon saves the connection as a profile.
+  - Connecting with a Server Name filled in also saves it.
+  - Saved profiles appear in a dropdown and remember which mode they were saved under. Click a profile's **★** to mark it as a favorite.
 - **Server URL** — the DCS server's address, e.g. `1.2.3.4`. `http://` is added automatically if omitted.
-- **Source Port** — the Olympus or Tacview port. Shown and optional in **Olympus**/**Tacview** modes (leave it blank to use the URL's own scheme default, e.g. a reverse-proxied `https://host` with no port exposed); hidden entirely in **Relay** mode (the relay is the connection, there's no separate source port to give).
-- **Relay Port** — the TRACS Relay app's port.
-  - In **Olympus**/**Tacview** modes this is optional — fill it in to also get SRS transponder/IFF data merged onto tracks, and centralized sync with other controllers (see below) instead of the peer-to-peer fallback.
-  - In **Relay** mode this is required — it's your entire connection.
+- **Source Port** — the Olympus or Tacview port. Optional in **Olympus**/**Tacview** modes; leave it blank to use the URL's own scheme default (e.g. a reverse-proxied `https://host` with no port exposed). Hidden in **Relay** mode.
+- **Relay Port** — the TRACS Relay's port. The relay is always reached at the Server URL's host on this port (`ws://<host>:<Relay Port>`).
+  - In **Olympus**/**Tacview** modes this is optional. Fill it in to get SRS transponder/IFF data merged onto tracks, and to sync with other controllers through the relay rather than peer-to-peer.
+  - In **Relay** mode it's required.
 - **Coalition Role** — Blue Commander, Red Commander, Game Master, or Admin. Determines which units you can see and control.
 - **Password field(s)** — the label and meaning depend on mode:
   - **Olympus**: "Coalition Password" — the Olympus password for your role, set on the DCS server.
-  - **Tacview**: "Tacview RTT Password" — Tacview's own export password, set once in DCS's own options and shared by every coalition (it is *not* a per-coalition secret). If you also fill in a Relay Port, a *second*, separate "Coalition Password" field appears above it — this one is your coalition's password for the relay itself, and is genuinely different from Tacview's own password.
-  - **Relay**: "Coalition Password" — your coalition's password for the relay, set by whoever runs it. This single field both authenticates you to the relay and drives which contacts you're allowed to see if the relay is filtering by coalition.
+  - **Tacview**: "Tacview RTT Password" — Tacview's own export password. It's set once in DCS's options and is the same for every coalition. If you also fill in a Relay Port, a second "Coalition Password" field appears for the relay itself.
+  - **Relay**: "Coalition Password" — your coalition's password for the relay, set by whoever runs it. The relay uses it to authenticate the coalition you're connecting as.
 
-Click **Connect to Network**. This calls the local TRACS server's `/api/connect`, which authenticates against your chosen source and starts polling. If you see "Cannot reach TRACS server — is it running?", the local Node server (`npm run dev` / `npm start`) isn't up.
+Click **Connect to Network**. TRACS authenticates against your chosen source and starts polling. If you see "Cannot reach TRACS server — is it running?", TRACS's local server isn't responding. In the desktop app, check **File → Open Logs Folder**. When running from source, start it with `npm run dev` or `npm start`.
 
-If a Relay Port is set, TRACS also checks whether centralized sync is available in parallel. This never blocks connecting — if the relay's password is wrong or it's unreachable, you'll see a non-blocking warning ("Relay password rejected — using peer-to-peer" / "Relay unreachable — using peer-to-peer") and a **Continue** button; everything still works over the peer-to-peer fallback described under Session Password below.
+If a Relay Port is set, TRACS checks in parallel whether relay sync is available. This never blocks connecting. If the relay can't be used, you'll see one of these warnings with a **Continue** button, and TRACS falls back to peer-to-peer sync (see Session Password below):
+- "Relay password rejected — using peer-to-peer."
+- "Relay unreachable — using peer-to-peer."
+- "Relay protocol mismatch: relay=N client=M — update whichever side is behind — using peer-to-peer." — the relay and TRACS versions are incompatible.
 
-**Theatre override** (Tacview/Relay modes only): Tacview has no reliable built-in way to report which DCS theatre a mission is running on, so TRACS guesses from unit positions. If it guesses wrong, a "Theatre override" control appears on the sign-in screen (step 2 below) letting you pick the correct theatre manually.
+**Theatre** (Tacview and Relay modes): Tacview doesn't report which DCS theatre a mission runs on, so TRACS detects it from unit positions and shows "Theatre (detected: X)" on the sign-in screen. **▸ Override** lets you pick the theatre manually, and **⟲ Reset to auto-detect** undoes that.
 
 ## 2. Sign in to a position
 
@@ -43,32 +49,35 @@ Once connected, pick a **Module** — ATC, CATCC, AIC, or ABM — and fill in th
 | [AIC](aic.md) | Callsign, frequency |
 | [ABM](abm.md) | Callsign, frequency |
 
-Frequency must fall in VHF (118.000–136.975) or UHF (225.000–399.975). If two controllers try to sign in on the same frequency without sharing a facility/position, TRACS blocks the second sign-in as a conflict — this is a pre-flight check against other clients already in the session, not a hard source-side restriction.
+Frequency must fall in VHF (118.000–136.975) or UHF (225.000–399.975).
 
-For ATC, selecting a facility auto-fills its ICAO/LID from local navdata when available; if nothing resolves, type it manually (4 characters max). Frequency is similarly suggested from navdata when a facility+position match is found, but you can override it.
+TRACS checks the frequency against other controllers already in the session. If another controller with a different facility/callsign or position is already on it, sign-in fails with "Frequency X MHz is already in use by <position>." If that check can't reach the session list, sign-in proceeds and the check happens during the handshake with other controllers instead.
 
-**Session Password** scopes the peer-to-peer WebRTC room used when centralized sync (see step 1) isn't active. Leave it blank for an open session, or set it so only controllers who know the password can join your session's mesh. **This field only appears when you're on the peer-to-peer fallback** — if centralized sync via a relay is active, it's hidden entirely, since it has no effect there (the relay's own coalition password already governs who can join).
+For ATC, selecting a facility auto-fills its ICAO/LID from local navdata when available; otherwise type it manually (4 characters max). Frequency is also suggested from navdata when a facility+position match is found, and you can override it.
 
-Click **Sign In**. This establishes your position, registers you with other controllers, and joins the sync transport that was actually negotiated in step 1 (centralized relay sync if available, otherwise the peer-to-peer WebRTC mesh).
+**Session Password** scopes the peer-to-peer room. Leave it blank for an open session, or set one so only controllers who know it can join. The field only appears when TRACS is using peer-to-peer sync. It's hidden when relay sync is active, where the relay's coalition password governs who can join.
+
+Click **Sign In**. This establishes your position, registers you with other controllers, and joins the sync transport chosen in step 1 (relay sync if available, otherwise peer-to-peer).
 
 ## Reconnecting / refreshing
 
-A browser refresh rejoins the same session automatically — your peer identity is persisted locally, so other controllers see you reconnect rather than see you as dropped. A full **Disconnect** (bottom of the position sign-in screen) clears this and returns you to the connect screen.
+Reloading the window rejoins the same session automatically. Your peer identity is stored locally, so other controllers see you reconnect rather than drop. **Disconnect** (bottom of the position sign-in screen) clears this and returns you to the connect screen.
 
 ## Settings
 
-The **⚙** icon (top right, once signed in) opens a small settings panel:
+The **⚙** icon (top right, once signed in) opens the settings panel:
 
-- **Use DCS Multiplayer Names** — toggles whether callsigns/labels use DCS multiplayer names instead of the in-mission unit naming.
-- **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking this silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
-- **Help / Docs** — opens this documentation in a new tab.
+- **Use DCS Multiplayer Names** — callsigns/labels use DCS multiplayer names instead of the in-mission unit names.
+- **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking it silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
+- **Version line** — the TRACS version (`TRACS (dev)` when running from source), plus the relay's version and protocol number when connected to one.
+- **Help / Docs** — opens the documentation page for the module you're signed into, in a new tab.
 
 ## Local testing without a live DCS server
 
-Run the bundled mock Olympus server:
+A source checkout includes a mock Olympus server:
 
 ```bash
 node mock-olympus/server.js
 ```
 
-Connect TRACS to `http://localhost:4001` with any password, Olympus mode. This is useful for exercising the UI or reproducing a bug without a running mission.
+Connect TRACS to `http://localhost:4001` in Olympus mode, with any password.
