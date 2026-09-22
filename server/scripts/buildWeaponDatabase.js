@@ -93,7 +93,7 @@ function main() {
   const args = process.argv.slice(2)
   const dpIdx = args.indexOf('--datamine-path')
   if (dpIdx === -1) {
-    console.error('error: --datamine-path <path> is required (resources/ is gitignored — no default location can be assumed)')
+    console.error('error: --datamine-path <path> is required (resources/ is gitignored - no default location can be assumed)')
     console.error('usage: node server/scripts/buildWeaponDatabase.js --datamine-path <path>')
     process.exit(1)
   }

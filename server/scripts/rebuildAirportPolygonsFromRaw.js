@@ -54,7 +54,7 @@ async function main() {
   })
 
   if (result.status === 'skip') {
-    console.error(`${theatre}: skipped — ${result.reason}`)
+    console.error(`${theatre}: skipped - ${result.reason}`)
     process.exit(1)
   }
 
@@ -88,7 +88,7 @@ async function main() {
     )
   } else if (fs.existsSync(unmatchedPath)) {
     fs.unlinkSync(unmatchedPath)
-    console.log(`                all stems matched — removed stale unmatched_airports.json`)
+    console.log(`                all stems matched - removed stale unmatched_airports.json`)
   }
 }
 

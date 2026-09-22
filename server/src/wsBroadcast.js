@@ -58,7 +58,7 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRela
       console.log(`[ws] client disconnected (total: ${clients.size})`)
       if (clients.size === 0) {
         stateFiles.patch('session', { clientList: [] })
-        console.log('[ws] all clients gone — session clientList cleared')
+        console.log('[ws] all clients gone - session clientList cleared')
       }
     })
 

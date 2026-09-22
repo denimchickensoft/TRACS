@@ -273,7 +273,7 @@ async function main() {
   const db = new Database(DB_PATH, { readonly: true, fileMustExist: true })
 
   const entries = only ? [[only, theatres[only]]] : Object.entries(theatres)
-  console.log(`\nBuilding terrain relief — ${entries.length} theatre(s)  ·  grid ${STEP_DEG}° · ${BAND_FT}ft bands\n`)
+  console.log(`\nBuilding terrain relief - ${entries.length} theatre(s)  ·  grid ${STEP_DEG}° · ${BAND_FT}ft bands\n`)
 
   let anyVectorized = false
   for (const [name, conf] of entries) {

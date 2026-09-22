@@ -288,7 +288,7 @@ function buildTheatre(theatreKey) {
   const conf = THEATRES[theatreKey]
   const airports = loadTheatreAirports(theatreKey)
   if (!airports) {
-    console.log(`  ${theatreKey}: skipped — no airports_polygons.json`)
+    console.log(`  ${theatreKey}: skipped - no airports_polygons.json`)
     return
   }
 

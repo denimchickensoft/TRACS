@@ -212,7 +212,7 @@ export const useControllersStore = create((set, get) => ({
     set({ _cachedClientList: clientList })
     const { registry: prevRegistry, groupAssignments: prevGroups, nextGroupNumber: prevNext, positionTypes } = get()
     if (positionTypes.length === 0) {
-      console.warn('[controllers] rebuildFromClientList called before positionTypes loaded — IDs will be null until loadPositionTypes completes')
+      console.warn('[controllers] rebuildFromClientList called before positionTypes loaded - IDs will be null until loadPositionTypes completes')
     }
 
     const positions = new Set(clientList.map((c) => c.position))

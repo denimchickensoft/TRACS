@@ -127,7 +127,7 @@ function createSyncRelay(wss, config) {
 
       if (session.clientList.length === 0) {
         sessions.delete(topic)
-        console.log(`[relay:sync] session ${topic} fully departed — registry record deleted`)
+        console.log(`[relay:sync] session ${topic} fully departed - registry record deleted`)
       } else {
         broadcastRegistryUpdate(topic)
       }

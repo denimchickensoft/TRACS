@@ -154,7 +154,7 @@ function main() {
   const args = process.argv.slice(2)
   const dpIdx = args.indexOf('--datamine-path')
   if (dpIdx === -1) {
-    console.error('error: --datamine-path <path> is required (resources/ is gitignored — no default location can be assumed)')
+    console.error('error: --datamine-path <path> is required (resources/ is gitignored - no default location can be assumed)')
     console.error('usage: node server/scripts/buildAircraftSensorDb.js --datamine-path <path>')
     process.exit(1)
   }
@@ -180,7 +180,7 @@ function main() {
   for (const [name, entry] of Object.entries(raw)) {
     if (!knownNames.has(name)) { discarded++; continue }
     if (entry.detectionRangeMaxKm > MAX_PLAUSIBLE_DETECTION_RANGE_KM) {
-      console.warn(`  warn: "${name}" detectionRangeMaxKm=${entry.detectionRangeMaxKm} exceeds plausibility cap (${MAX_PLAUSIBLE_DETECTION_RANGE_KM}km) — not using directly, will try a substitute`)
+      console.warn(`  warn: "${name}" detectionRangeMaxKm=${entry.detectionRangeMaxKm} exceeds plausibility cap (${MAX_PLAUSIBLE_DETECTION_RANGE_KM}km) - not using directly, will try a substitute`)
       implausible++
       continue
     }
@@ -200,7 +200,7 @@ function main() {
 
   for (const [name, sourceName] of Object.entries(LIVE_DATA_CORRECTIONS)) {
     const source = result[sourceName]
-    if (!source) { console.warn(`  warn: cannot apply live-data correction for "${name}" — "${sourceName}" not resolved`); continue }
+    if (!source) { console.warn(`  warn: cannot apply live-data correction for "${name}" - "${sourceName}" not resolved`); continue }
     result[name] = { rcs: source.rcs, detectionRangeMaxKm: source.detectionRangeMaxKm, sourceFile: `corrected:${sourceName} (confirmed via live walls-test data)` }
     console.log(`  corrected "${name}" <- "${sourceName}" (live-data cross-validation, overriding own datamine value)`)
   }

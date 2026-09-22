@@ -31,7 +31,7 @@ function tmParamsFor(theatre) {
   const params = getProjectionParams(theatre)
   if (!params && !_warnedTheatres.has(theatre)) {
     _warnedTheatres.add(theatre)
-    console.warn(`projection.js: no TM params for theatre "${theatre}" — falling back to flat equirectangular approximation`)
+    console.warn(`projection.js: no TM params for theatre "${theatre}" - falling back to flat equirectangular approximation`)
   }
   return params
 }

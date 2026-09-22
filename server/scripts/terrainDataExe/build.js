@@ -73,9 +73,9 @@ function main() {
   fs.rmSync(BLOB, { force: true })
 
   if (fs.existsSync(MANIFEST_DIR)) {
-    console.log(`\ndist/manifest already exists — left as-is (run "node scripts/terrainDataExe/seedManifest.js" to refresh it from current repo config).`)
+    console.log(`\ndist/manifest already exists - left as-is (run "node scripts/terrainDataExe/seedManifest.js" to refresh it from current repo config).`)
   } else {
-    console.log('\nNo dist/manifest yet — seeding it from current repo config...')
+    console.log('\nNo dist/manifest yet - seeding it from current repo config...')
     seed()
   }
 

@@ -29,7 +29,7 @@ function buildAndWriteTheatre(theatre, dcsPath) {
   const result = core.buildTheatre({ theatre, terrainsDir: dcsPath, dcsFolder })
 
   if (result.status === 'skip') {
-    console.log(`  ${theatre}: skipped — ${result.reason}`)
+    console.log(`  ${theatre}: skipped - ${result.reason}`)
     return
   }
 

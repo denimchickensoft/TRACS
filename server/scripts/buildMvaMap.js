@@ -545,7 +545,7 @@ async function main() {
   for (const [tKey, fields] of Object.entries(icaoMap)) {
     if (tKey === '_note') continue
     const folder = folders[tKey]
-    if (!folder) { console.log(`(theatre "${tKey}" not in theatres.json — skipped)`); continue }
+    if (!folder) { console.log(`(theatre "${tKey}" not in theatres.json - skipped)`); continue }
     for (const [name, icao] of Object.entries(fields)) {
       const c = resolveCoords(name, icao)
       if (!c) { unresolved.push(`${icao}(${name})`); continue }
@@ -575,7 +575,7 @@ async function main() {
   fs.mkdirSync(PREVIEW_DIR, { recursive: true })
   const db = new Database(DB_PATH, { readonly: true, fileMustExist: true })
 
-  console.log(`\nBuilding MVA — ${jobs.length} fac/ies · R=${R_NM} G=${G_NM} T=${T_FT}ft\n`)
+  console.log(`\nBuilding MVA - ${jobs.length} fac/ies · R=${R_NM} G=${G_NM} T=${T_FT}ft\n`)
 
   let built = 0
   const written = new Set()
@@ -627,7 +627,7 @@ async function main() {
     }
   }
 
-  console.log(`\nDone — ${built} built${pruned ? `, ${pruned} stale pruned` : ''}.` +
+  console.log(`\nDone - ${built} built${pruned ? `, ${pruned} stale pruned` : ''}.` +
     (unresolved.length && !arg ? `  ${unresolved.length} unresolved (no coords): ${unresolved.join(', ')}` : '') +
     `\nPreviews → ${PREVIEW_DIR}\n`)
 }

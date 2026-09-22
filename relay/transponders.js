@@ -71,7 +71,7 @@ function createTransponderRelay(wss, config) {
   setInterval(() => {
     if (Date.now() - lastPacketAt <= STALE_AFTER_MS) return
     if (Object.keys(transponders).length === 0) return
-    console.warn(`[relay:transponders] no LotATC packet in ${STALE_AFTER_MS}ms — clearing transponder data`)
+    console.warn(`[relay:transponders] no LotATC packet in ${STALE_AFTER_MS}ms - clearing transponder data`)
     transponders = {}
     broadcast()
   }, STALE_AFTER_MS)

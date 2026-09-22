@@ -144,7 +144,7 @@ async function pollUnits() {
     consecutiveErrors++
     console.error(`[olympus] units poll error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, err.message)
     if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-      console.error('[olympus] too many consecutive errors — stopping polling')
+      console.error('[olympus] too many consecutive errors - stopping polling')
       stop()
       if (onDisconnect) onDisconnect()
       return

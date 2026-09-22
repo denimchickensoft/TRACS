@@ -484,7 +484,7 @@ function moveUnits() {
     for (const id of toDelete) {
       const u = units.get(id)
       units.delete(id)
-      console.log(`\n  ${u?.unitName ?? id}: on deck — removed`)
+      console.log(`\n  ${u?.unitName ?? id}: on deck - removed`)
       rl.prompt()
     }
     broadcastTransponders()
@@ -961,7 +961,7 @@ function cmdTheatre(parts) {
     carrier.lng = defaults.lng
     carrier.hdg = defaults.hdg
     carrier.targetHdg = null
-    console.log(`  Theatre: ${theatre}  — carrier and ${[...units.values()].filter(u => u.category === 'Aircraft').length} aircraft translated`)
+    console.log(`  Theatre: ${theatre}  - carrier and ${[...units.values()].filter(u => u.category === 'Aircraft').length} aircraft translated`)
   } else {
     console.log(`  Theatre: ${theatre}`)
   }
@@ -1089,7 +1089,7 @@ function cmdNorm(parts) {
 
 function cmdSquawk(parts) {
   if (!/^[0-7]{1,4}$/.test(parts[1] ?? '')) {
-    console.log('  Usage: squawk <code> <n>  — code is 1-4 octal digits (0-7), e.g. squawk 2000 1')
+    console.log('  Usage: squawk <code> <n>  - code is 1-4 octal digits (0-7), e.g. squawk 2000 1')
     return
   }
   const unit = resolveAircraft(parts[2])
@@ -1280,8 +1280,8 @@ function startConsole() {
   console.log('  <n> tr|tl <hdg>             turn right/left to heading')
   console.log('  <n> h <hdg>                 turn shortest direction to heading')
   console.log('  <n> m <alt>                 climb or descend (hundreds of feet, e.g. 050 = 5000ft)')
-  console.log('  <n> c <alt>                 climb only — ignored if already at or above')
-  console.log('  <n> d <alt>                 descend only — ignored if already at or below')
+  console.log('  <n> c <alt>                 climb only - ignored if already at or above')
+  console.log('  <n> d <alt>                 descend only - ignored if already at or below')
   console.log('  <n> s <spd>                 set speed (KTAS)')
   console.log('  create <cs> [<type>] [<coal>] [H S A]  e.g. create HORNET41 FA-18C BLU H210 S310 A250')
   console.log('  delete <n>                  remove a unit')

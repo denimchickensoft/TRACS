@@ -28,15 +28,15 @@ const THEATRES    = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/
 function reprocessTheatre(theatre, tmInverse) {
   const conf = THEATRES[theatre]
   const tm   = TM_PARAMS[theatre]
-  if (!conf || !tm) { console.log(`  ${theatre}: skipped — no theatres.json/projection_params.json entry`); return }
+  if (!conf || !tm) { console.log(`  ${theatre}: skipped - no theatres.json/projection_params.json entry`); return }
 
   const rawPath = path.join(RAW_DIR, `${conf.folder}.json`)
-  if (!fs.existsSync(rawPath)) { console.log(`  ${theatre}: skipped — no raw dump at ${path.relative(ROOT, rawPath)}`); return }
+  if (!fs.existsSync(rawPath)) { console.log(`  ${theatre}: skipped - no raw dump at ${path.relative(ROOT, rawPath)}`); return }
   const rawDump = JSON.parse(fs.readFileSync(rawPath, 'utf8'))
 
   const rwFile = conf.runwayKey || theatre
   const rwPath = path.join(RUNWAYS_DIR, `${rwFile}.json`)
-  if (!fs.existsSync(rwPath)) { console.log(`  ${theatre}: skipped — no runway JSON at ${path.relative(ROOT, rwPath)}`); return }
+  if (!fs.existsSync(rwPath)) { console.log(`  ${theatre}: skipped - no runway JSON at ${path.relative(ROOT, rwPath)}`); return }
   const rwJson = JSON.parse(fs.readFileSync(rwPath, 'utf8'))
 
   const nameMap = NAME_MAP[theatre] || {}

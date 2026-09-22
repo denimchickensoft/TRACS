@@ -150,7 +150,7 @@ async function build() {
   const insert = db.prepare('INSERT INTO elevation_tiles (lat0, lon0, data) VALUES (?, ?, ?)')
 
   const tiles = [...tileSet].map((k) => k.split(',').map(Number))
-  console.log(`\nBuilding elevation DB — ${tiles.length} tiles across ${THEATRES.length} theatres`)
+  console.log(`\nBuilding elevation DB - ${tiles.length} tiles across ${THEATRES.length} theatres`)
   console.log(`Source: AWS elevation-tiles-prod (SRTM, public domain)\n`)
 
   const BATCH = 10

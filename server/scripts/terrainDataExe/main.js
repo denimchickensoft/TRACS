@@ -67,7 +67,7 @@ function loadManifest(manifestDir) {
   if (!fs.existsSync(manifestDir)) {
     console.error(`Could not find a manifest folder at ${manifestDir}.`)
     console.error('The engine needs theatres.json, projection_params.json, and a runways/ folder')
-    console.error('next to the .exe — a fresh build seeds these under dist/manifest.')
+    console.error('next to the .exe - a fresh build seeds these under dist/manifest.')
     process.exit(1)
   }
 
@@ -114,7 +114,7 @@ function buildAirports(theatre, terrainsDir, outRoot, manifest, tmInverse) {
   const result = airportCore.buildTheatre({ theatre, terrainsDir, tm, nameMap: nMap, conf, rwJson, tmInverse })
 
   if (result.status === 'skip') {
-    console.log(`  airports  ${theatre}: skipped — ${result.reason}`)
+    console.log(`  airports  ${theatre}: skipped - ${result.reason}`)
     return
   }
 
@@ -155,7 +155,7 @@ function buildTowns(theatre, terrainsDir, outRoot, manifest) {
   const result = townsCore.buildTheatre({ theatre, terrainsDir, dcsFolder })
 
   if (result.status === 'skip') {
-    console.log(`  towns     ${theatre}: skipped — ${result.reason}`)
+    console.log(`  towns     ${theatre}: skipped - ${result.reason}`)
     return
   }
 

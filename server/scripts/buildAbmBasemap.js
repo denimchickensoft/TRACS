@@ -118,14 +118,14 @@ function writeRaster(dataDir, layerName, buf, width, height, meta) {
 
 async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   if (!params) {
-    console.log(`${name.padEnd(16)} skipped — no TM projection params`)
+    console.log(`${name.padEnd(16)} skipped - no TM projection params`)
     return
   }
   const dataDir = path.join(CACHE_DIR, conf.folder)
   const geo     = readJson(path.join(dataDir, 'geo.json'))
   const relief  = readJson(path.join(dataDir, 'relief.json'))
   if (!geo && !relief) {
-    console.log(`${name.padEnd(16)} skipped — no geo.json/relief.json`)
+    console.log(`${name.padEnd(16)} skipped - no geo.json/relief.json`)
     return
   }
   const mapctx = readJson(path.join(dataDir, 'mapcontext.json'))
@@ -347,7 +347,7 @@ async function main() {
   if (fs.existsSync(WORLD_LAND_PATH)) {
     worldLandFeatures = JSON.parse(fs.readFileSync(WORLD_LAND_PATH, 'utf8')).features
   } else {
-    console.log(`No ${WORLD_LAND_PATH} — basemap layer will be skipped (run buildGeoData.js first for any theatre to fetch it).\n`)
+    console.log(`No ${WORLD_LAND_PATH} - basemap layer will be skipped (run buildGeoData.js first for any theatre to fetch it).\n`)
   }
 
   const only = process.argv[2]
@@ -357,7 +357,7 @@ async function main() {
   }
   const entries = only ? [[only, theatres[only]]] : Object.entries(theatres)
 
-  console.log(`\nBuilding ABM rasters — ${entries.length} theatre(s)\n`)
+  console.log(`\nBuilding ABM rasters - ${entries.length} theatre(s)\n`)
   for (const [name, conf] of entries) {
     const t0 = process.hrtime.bigint()
     const result = await buildTheatre(name, conf, allParams[name], tm, worldLandFeatures)

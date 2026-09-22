@@ -143,7 +143,7 @@ function connect() {
 
   socket.onclose = () => {
     if (intentionalClose) return
-    console.log(`[ws] disconnected — reconnecting in ${RECONNECT_INTERVAL_MS}ms`)
+    console.log(`[ws] disconnected - reconnecting in ${RECONNECT_INTERVAL_MS}ms`)
     useSessionStore.getState().setConnected(false)
     reconnectTimer = setTimeout(connect, RECONNECT_INTERVAL_MS)
   }

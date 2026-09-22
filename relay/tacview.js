@@ -100,7 +100,7 @@ function createTacviewRelay(wss, config) {
     })
 
     socket.on('close', () => {
-      console.log(`[relay:tacview] disconnected from Tacview — reconnecting in ${RECONNECT_MS}ms`)
+      console.log(`[relay:tacview] disconnected from Tacview - reconnecting in ${RECONNECT_MS}ms`)
       parser = tacviewCore.createParser() // fresh per-connection delta state
       lineBuffer = ''
       snapshotUnits = {}
@@ -109,14 +109,14 @@ function createTacviewRelay(wss, config) {
     })
 
     socket.on('error', (err) => {
-      console.error(`[relay:tacview] connection error: ${err.code ?? err.name ?? 'unknown'} — ${err.message || '(no message)'}`)
+      console.error(`[relay:tacview] connection error: ${err.code ?? err.name ?? 'unknown'} - ${err.message || '(no message)'}`)
     })
   }
 
   if (config.tacviewHost && config.tacviewPort) {
     connect()
   } else {
-    console.log('[relay:tacview] no tacviewHost/tacviewPort configured — capability idle')
+    console.log('[relay:tacview] no tacviewHost/tacviewPort configured - capability idle')
   }
 
   wss.on('connection', (ws) => {

@@ -13,7 +13,7 @@ function init() {
     db = new Database(DB_PATH, { readonly: true, fileMustExist: true })
     console.log('[elevation] database ready')
   } catch {
-    console.warn('[elevation] no elevation database — AGL unavailable (run scripts/buildElevationDb.js)')
+    console.warn('[elevation] no elevation database - AGL unavailable (run scripts/buildElevationDb.js)')
   }
 }
 

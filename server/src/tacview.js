@@ -285,18 +285,18 @@ function connect() {
     if (receivedTelemetry) {
       handshakeFailures = 0
     } else if (++handshakeFailures >= MAX_HANDSHAKE_FAILURES) {
-      console.error(`[tacview] rejected ${handshakeFailures}x in a row right after the handshake — likely a wrong RTT password. Giving up.`)
+      console.error(`[tacview] rejected ${handshakeFailures}x in a row right after the handshake - likely a wrong RTT password. Giving up.`)
       if (onDisconnect) onDisconnect()
       return
     }
 
-    console.log(`[tacview] disconnected — reconnecting in ${RECONNECT_MS}ms`)
+    console.log(`[tacview] disconnected - reconnecting in ${RECONNECT_MS}ms`)
     reconnectTimer = setTimeout(connect, RECONNECT_MS)
   })
 
   localSocket.on('error', (err) => {
     if (localSocket !== socket) return
-    console.error(`[tacview] connection error: ${err.code ?? err.name ?? 'unknown'} — ${err.message || '(no message)'}`)
+    console.error(`[tacview] connection error: ${err.code ?? err.name ?? 'unknown'} - ${err.message || '(no message)'}`)
   })
 }
 

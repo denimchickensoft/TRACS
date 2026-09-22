@@ -37,7 +37,7 @@ function buildAndWriteTheatre(theatre, dcsPath, tmInverse) {
   const conf    = THEATRES[theatre]
 
   if (!conf) {
-    console.log(`  ${theatre}: skipped — no theatres.json entry`)
+    console.log(`  ${theatre}: skipped - no theatres.json entry`)
     return
   }
 
@@ -48,7 +48,7 @@ function buildAndWriteTheatre(theatre, dcsPath, tmInverse) {
   const result = core.buildTheatre({ theatre, terrainsDir: dcsPath, tm, nameMap, conf, rwJson, tmInverse })
 
   if (result.status === 'skip') {
-    console.log(`  ${theatre}: skipped — ${result.reason}`)
+    console.log(`  ${theatre}: skipped - ${result.reason}`)
     return
   }
 

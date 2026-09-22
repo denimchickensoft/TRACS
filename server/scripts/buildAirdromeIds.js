@@ -24,7 +24,7 @@ const path = require('path')
 const args  = process.argv.slice(2)
 const ppIdx = args.indexOf('--pydcs-path')
 if (ppIdx === -1) {
-  console.error('error: --pydcs-path <path> is required (resources/ is gitignored — no default location can be assumed)')
+  console.error('error: --pydcs-path <path> is required (resources/ is gitignored - no default location can be assumed)')
   console.error('usage: node server/scripts/buildAirdromeIds.js --pydcs-path <path>')
   process.exit(1)
 }
@@ -63,14 +63,14 @@ fs.mkdirSync(OUT_DIR, { recursive: true })
 for (const [folder, theatre] of Object.entries(THEATRE_FOLDERS)) {
   const pyPath = path.join(PYDCS_DIR, folder, 'airports.py')
   if (!fs.existsSync(pyPath)) {
-    console.log(`  ${theatre}: skipped — ${pyPath} not found`)
+    console.log(`  ${theatre}: skipped - ${pyPath} not found`)
     continue
   }
   const src = fs.readFileSync(pyPath, 'utf8')
   const airports = extractAirports(src)
   const count = Object.keys(airports).length
   if (count === 0) {
-    console.log(`  ${theatre}: skipped — no id/name pairs found`)
+    console.log(`  ${theatre}: skipped - no id/name pairs found`)
     continue
   }
   fs.writeFileSync(path.join(OUT_DIR, `${theatre}.json`), JSON.stringify(airports))

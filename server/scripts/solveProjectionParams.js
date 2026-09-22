@@ -38,7 +38,7 @@ const path = require('path')
 const args     = process.argv.slice(2)
 const ddIdx    = args.indexOf('--dump-dir')
 if (ddIdx === -1) {
-  console.error('error: --dump-dir <path> is required (resources/ is gitignored — no default location can be assumed)')
+  console.error('error: --dump-dir <path> is required (resources/ is gitignored - no default location can be assumed)')
   console.error('usage: node server/scripts/solveProjectionParams.js --dump-dir <path> [theatre]')
   process.exit(1)
 }
@@ -114,7 +114,7 @@ async function main() {
         .filter((t) => !(t in existing))
 
   if (!candidates.length) {
-    console.log(`Nothing to solve — no ${RESOURCES_DIR}/<Theatre>.json without an existing projection_params.json entry.`)
+    console.log(`Nothing to solve - no ${RESOURCES_DIR}/<Theatre>.json without an existing projection_params.json entry.`)
     return
   }
 
@@ -125,7 +125,7 @@ async function main() {
   for (const theatre of candidates) {
     const dump = loadDump(theatre)
     if (!dump) {
-      console.log(`${theatre.padEnd(16)}  skipped — ${RESOURCES_DIR}/${theatre}.json missing or not a projection dump`)
+      console.log(`${theatre.padEnd(16)}  skipped - ${RESOURCES_DIR}/${theatre}.json missing or not a projection dump`)
       continue
     }
 
