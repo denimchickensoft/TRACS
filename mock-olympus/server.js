@@ -30,6 +30,19 @@
  *   norm <n>                — transponder to NORMAL (restores the unit's assigned squawk code)
  *   squawk <code> <n>       — set unit <n>'s squawk code (4 octal digits, e.g. "squawk 2000 1")
  *
+ * Airfield surface traffic (for ASDE-X — current theatre's client/public/runways/<Theatre>.json):
+ *   ground <cs> <airbase> [rwy <nn>] [<type>] [<coal>] [D<m>] [O<m>] [S<spd>] [H<hdg>]
+ *                           — spawn on the ground at field elevation. Default position is the
+ *                             runway threshold; D = metres down the runway, O = metres right of
+ *                             centreline (negative = left). <airbase> is an ICAO code (e.g. "URKA")
+ *                             or a case-insensitive name substring (e.g. "anapa"). Taxi with h/s.
+ *   <n> takeoff [rwy <nn>]  — takeoff roll from current position (or snap to runway <nn>), climb out
+ *   <n> land <airbase> [rwy <nn>] [at <nm>]
+ *                           — 3° final (default 4 NM), touch down, roll out to taxi speed
+ *   asdex <airbase> [rwy <nn>]
+ *                           — preset: parked/taxiing/departing/arriving traffic, one transponder
+ *                             on standby, one hovering helicopter
+ *
  * Also serves a relay-compatible `/transponders` WebSocket on the same port (any password
  * accepted, matching the REST API) — point a real TRACS backend's "Relay Port" field at this
  * same host:port to receive live squawk data for correlation/Beaconator/IDENT testing without
@@ -67,6 +80,19 @@ const AZ_TOL_DEG      = 2.5  // azimuth full-scale deflection
 const TURN_RATE_RPS   = 3 * DEG_TO_RAD        // standard rate: 3°/s in radians
 const CLIMB_RATE_MPS  = (1000 / 60) * FT_TO_M // 1000 fpm in m/s
 const ACCEL_KTS_PER_S = 5                     // knots/s speed change rate
+
+// Airfield surface traffic (ground/takeoff/land/asdex commands)
+const M_PER_NM             = 1852
+const GROUND_TURN_RATE_RPS = 20 * DEG_TO_RAD  // taxi turns, much tighter than standard rate
+const TAXI_KTS             = 15
+const ROTATE_KTS           = 140
+const TAKEOFF_TARGET_KTS   = 160
+const CLIMB_OUT_KTS        = 250
+const CLIMB_OUT_FT_AGL     = 3000
+const LANDING_SPD_KTS      = 140
+const LANDING_GS_DEG       = 3.0
+const LANDING_RANGE_NM     = 4
+const HELO_TYPES           = new Set(['UH-1H', 'AH-64D_BLK_II', 'Mi-8MT', 'Mi-24P', 'Ka-50', 'SA342M', 'CH-47Fbl1', 'UH-60A', 'OH58D'])
 
 // ─── Weapons (missile fire simulation) ─────────────────────────────────────────
 // Straight-line flight only (no homing/target lock) — enough to exercise
@@ -106,12 +132,22 @@ const TYPE_ALIASES = {
   'su-33':'Su-33',           'su33': 'Su-33',
   'b-52': 'B-52H',          'b52':  'B-52H',
   'kc-135':'KC135MPRS',     'kc135':'KC135MPRS',
+  'a-10': 'A-10C',          'a10':  'A-10C',
+  'c-130':'C-130',          'c130': 'C-130',
+  'uh-1': 'UH-1H',          'uh1':  'UH-1H',   'huey': 'UH-1H',
+  'ah-64':'AH-64D_BLK_II',  'ah64': 'AH-64D_BLK_II',
+  'yak-52':'Yak-52',        'yak52':'Yak-52',
 }
 
 const COALITION_MAP = { blu: 2, blue: 2, red: 1, neu: 0, neutral: 0 }
 
 function resolveType(input) {
   return TYPE_ALIASES[input.toLowerCase()] ?? input
+}
+
+// Aircraft + helicopters — everything with a transponder, controllable by number
+function isAirframe(u) {
+  return u.category === 'Aircraft' || u.category === 'Helicopter'
 }
 
 // ─── World state ──────────────────────────────────────────────────────────────
@@ -235,7 +271,7 @@ const transponderClients = new Set()
 function buildTransponderSnapshot() {
   const data = {}
   for (const u of units.values()) {
-    if (u.category !== 'Aircraft') continue
+    if (!isAirframe(u)) continue
     data[String(u.id)] = transponderOf(u)
   }
   return data
@@ -257,7 +293,7 @@ const units = new Map(unitDefs.map((u) => [u.id, {
   targetHdg: null,   // radians, null = no turn commanded
   targetAlt: null,   // meters, null = no altitude commanded
   targetSpd: null,   // knots, null = no speed commanded
-  ...(u.category === 'Aircraft' ? { squawk: randomSquawk(), iffStatus: IFF_STATUS.NORMAL, identTimer: null } : {}),
+  ...(isAirframe(u) ? { squawk: randomSquawk(), iffStatus: IFF_STATUS.NORMAL, identTimer: null } : {}),
 }]))
 
 // Fired missiles — keyed by synthetic weapon id (see cmdFire). Offset well
@@ -319,7 +355,7 @@ function applyTurn(unit, dt) {
 
   const cur    = unit.hdg
   const target = unit.targetHdg
-  const step   = TURN_RATE_RPS * dt
+  const step   = (unit.onGround ? GROUND_TURN_RATE_RPS : TURN_RATE_RPS) * dt
 
   // Angular distance remaining in the commanded direction
   const dist = unit.turnDir === 'r'
@@ -455,10 +491,12 @@ function moveUnits() {
 
   for (const unit of units.values()) {
     // PAR aircraft: stepParApproach controls position directly — skip generic advance
+    // Longitude needs 1/cos(lat) — without it east/west motion covers too
+    // little ground and the path disagrees with the reported track.
     if (!unit.parApproach) {
       const distDeg = unit.spd * dt * NM_PER_SEC * NM_DEG
       unit.lat += Math.cos(unit.hdg) * distDeg
-      unit.lng += Math.sin(unit.hdg) * distDeg
+      unit.lng += Math.sin(unit.hdg) * distDeg / Math.cos(unit.lat * DEG_TO_RAD)
     }
 
     if (unit.category === 'NavyUnit') {
@@ -466,15 +504,22 @@ function moveUnits() {
       if (unit.targetHdg !== null) applyTurn(unit, dt)
     } else if (unit.parApproach) {
       const onDeck = stepParApproach(unit, dt)
-      if (onDeck) toDelete.push(unit.id)
+      if (onDeck && unit.parApproach.rollout) touchdown(unit)
+      else if (onDeck) toDelete.push(unit.id)
+    } else if (unit.onGround) {
+      // Surface: no drift, no climb, pinned to field elevation
+      applyTurn(unit, dt)
+      applySpeed(unit, dt)
+      unit.alt = unit.groundElevM
+      if (unit.takeoffRoll && unit.spd >= unit.takeoffRoll.rotateKts) liftoff(unit)
     } else if (unit.targetHdg !== null) {
       // Under positive heading control — execute commanded turn, no drift
       applyTurn(unit, dt)
       applyClimb(unit, dt)
       applySpeed(unit, dt)
     } else {
-      // Free flight — gentle random heading drift
-      unit.hdg = normalizeAngle(unit.hdg + (Math.random() - 0.5) * 0.02)
+      // Free flight — gentle random heading drift (not while hovering/stopped)
+      if (unit.spd >= 1) unit.hdg = normalizeAngle(unit.hdg + (Math.random() - 0.5) * 0.02)
       applyClimb(unit, dt)
       applySpeed(unit, dt)
     }
@@ -554,7 +599,7 @@ function encodeUnitsBuffer() {
     w.uint8(DI.heading);   w.float64(unit.hdg)
     w.uint8(DI.track);     w.float64(unit.hdg)
     w.uint8(DI.contacts);  w.contactVector(unit.contacts)
-    w.uint8(DI.airborne);  w.bool(true)
+    w.uint8(DI.airborne);  w.bool(!unit.onGround)
 
     w.uint8(DI.endOfData)
   }
@@ -676,11 +721,18 @@ function handleBullseyes(req, res) {
   })
 }
 
-function handleAirbases(req, res) {
+function loadAirbases() {
   const file = path.join(__dirname, '..', 'client', 'public', 'runways', `${theatre}.json`)
   try {
-    const data   = JSON.parse(fs.readFileSync(file, 'utf8'))
-    const result = (data.airbases ?? []).map((ab) => {
+    return JSON.parse(fs.readFileSync(file, 'utf8')).airbases ?? []
+  } catch {
+    return []
+  }
+}
+
+function handleAirbases(req, res) {
+  try {
+    const result = loadAirbases().map((ab) => {
       const rwy = ab.runways?.[0]
       return {
         callsign:  ab.airbase,
@@ -702,7 +754,7 @@ function handleAirbases(req, res) {
 // Dynamic numbered list — aircraft only, sorted by ID
 function getAircraftIds() {
   return [...units.values()]
-    .filter(u => u.category === 'Aircraft')
+    .filter(isAirframe)
     .sort((a, b) => a.id - b.id)
     .map(u => u.id)
 }
@@ -717,6 +769,9 @@ function altFt(unit) {
 
 function unitStatus(unit) {
   const parts = []
+  if (unit.takeoffRoll)          parts.push('T/O ROLL')
+  else if (unit.onGround)        parts.push('GND')
+  if (unit.parApproach?.rollout) parts.push(`FINAL ${unit.parApproach.airbase}`)
   if (unit.targetHdg !== null) {
     const dir = unit.turnDir === 'r' ? '→' : '←'
     const tgt = Math.round(unit.targetHdg * RAD_TO_DEG).toString().padStart(3, '0')
@@ -1161,32 +1216,338 @@ function cmdPar(parts) {
     return
   }
 
-  const inboundHdgRad = normalizeAngle(inboundHdgDeg * DEG_TO_RAD)
+  startApproach(unit, {
+    threshLat, threshLng, inboundHdgRad: normalizeAngle(inboundHdgDeg * DEG_TO_RAD),
+    gsAngleDeg, deckHeightFt, approachSpd, rangeNm, devFactor, carrierId,
+  })
+
+  const fbStr = Math.round(inboundHdgDeg).toString().padStart(3, '0')
+  const altFt = Math.round((unit.alt / FT_TO_M))
+  console.log(`  ${unit.unitName}: PAR ${modeName}  FB ${fbStr}°  GS ${gsAngleDeg}°  ${rangeNm}NM  ${altFt}ft  ${approachSpd}kt`)
+}
+
+// Put a unit on a glidepath <rangeNm> out from the threshold and hand it to
+// stepParApproach. Shared by `par` (carrier/airfield PAR) and `land`.
+// opts.rollout: on touchdown, convert to a ground unit instead of deleting.
+function startApproach(unit, opts) {
+  const { threshLat, threshLng, inboundHdgRad, gsAngleDeg, deckHeightFt, approachSpd, rangeNm } = opts
   const outboundHdgRad = normalizeAngle(inboundHdgRad + Math.PI)
 
-  // Place unit on the glideslope at the requested range
-  const distDeg = rangeNm * NM_DEG
-  unit.lat = threshLat + Math.cos(outboundHdgRad) * distDeg
-  unit.lng = threshLng + Math.sin(outboundHdgRad) * distDeg
+  const cosLat = Math.cos(threshLat * DEG_TO_RAD)
+  unit.lat = threshLat + Math.cos(outboundHdgRad) * rangeNm * NM_DEG
+  unit.lng = threshLng + Math.sin(outboundHdgRad) * rangeNm * NM_DEG / cosLat
   unit.alt = (deckHeightFt + rangeNm * NM_TO_FEET * Math.tan(gsAngleDeg * DEG_TO_RAD)) * FT_TO_M
   unit.hdg = inboundHdgRad
   unit.spd = approachSpd
-  unit.targetHdg = null
-  unit.targetAlt = null
-  unit.targetSpd = null
+  unit.targetHdg   = null
+  unit.targetAlt   = null
+  unit.targetSpd   = null
+  unit.onGround    = false
+  unit.takeoffRoll = null
 
   unit.parApproach = {
     threshLat, threshLng, inboundHdgRad, gsAngleDeg, deckHeightFt, approachSpd,
     rangeNm,
     vertTolFt: rangeNm * NM_TO_FEET * Math.tan(GS_TOL_DEG * DEG_TO_RAD),
     latTolNm:  rangeNm * Math.tan(AZ_TOL_DEG * DEG_TO_RAD),
-    devFactor,
-    altDevFt: 0, latDevNm: 0, carrierId,
+    devFactor: opts.devFactor ?? 0,
+    altDevFt: 0, latDevNm: 0, carrierId: opts.carrierId ?? null,
+    rollout:  !!opts.rollout,
+    airbase:  opts.airbase ?? null,
+  }
+}
+
+// ─── Airfield surface traffic ─────────────────────────────────────────────────
+
+// Same DCS-name -> ICAO mapping the client uses (client/public/icaoMapping.json)
+function loadIcaoMap() {
+  const file = path.join(__dirname, '..', 'client', 'public', 'icaoMapping.json')
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))[theatre.toLowerCase()] ?? {}
+  } catch {
+    return {}
+  }
+}
+
+// <name> is an ICAO code (e.g. URKA) or a case-insensitive DCS-name substring (e.g. anapa)
+function findAirbase(name) {
+  const q   = (name ?? '').toLowerCase()
+  const abs = loadAirbases()
+  if (!q) return null
+  const icaoMap = loadIcaoMap()
+  const byIcao  = Object.keys(icaoMap).find(dcsName => icaoMap[dcsName].toLowerCase() === q)
+  return (byIcao && abs.find(a => a.airbase === byIcao))
+      ?? abs.find(a => a.airbase.toLowerCase() === q)
+      ?? abs.find(a => a.airbase.toLowerCase().includes(q))
+      ?? null
+}
+
+function printAirbaseNames() {
+  const icaoMap = loadIcaoMap()
+  const names   = loadAirbases().map(a => icaoMap[a.airbase] ? `${icaoMap[a.airbase]} (${a.airbase})` : a.airbase)
+  console.log(names.length ? `  Airbases in ${theatre}: ${names.join(', ')}` : `  No runway data for ${theatre}`)
+}
+
+function angDistDeg(a, b) {
+  const d = Math.abs(((a - b) % 360 + 360) % 360)
+  return d > 180 ? 360 - d : d
+}
+
+// Every landing/takeoff direction at an airbase, same convention as the
+// client's STARS centerlines (client/src/store/runways.js): rwy.name is the
+// primary designator; its landing direction is -course_true_deg oriented to
+// within 90° of name*10; the threshold is whichever end that direction
+// departs from. Headings use the end1/end2 geometry.
+function runwayDirections(ab) {
+  const dirs = []
+  const seen = new Set()
+  for (const r of ab.runways ?? []) {
+    if (r.end1?.lat == null || r.end2?.lat == null || r.course_true_deg == null) continue
+
+    const primName  = r.name
+    const recipName = ((r.name + 18) % 36) || 36
+    let primHdgDeg  = ((-r.course_true_deg) % 360 + 360) % 360
+    if (angDistDeg(primHdgDeg - magvarDeg, primName * 10) > 90) primHdgDeg = (primHdgDeg + 180) % 360
+
+    const e2ToE1   = bearingRad(r.end2.lat, r.end2.lon, r.end1.lat, r.end1.lon)
+    const fromEnd2 = angDistDeg(primHdgDeg, e2ToE1 * RAD_TO_DEG) <= 90
+    const primThr  = fromEnd2 ? r.end2 : r.end1
+    const recipThr = fromEnd2 ? r.end1 : r.end2
+    const primHdg  = fromEnd2 ? e2ToE1 : normalizeAngle(e2ToE1 + Math.PI)
+
+    const elevFt = r.elevation_ft ?? 0
+    const lenM   = distNm(r.end1.lat, r.end1.lon, r.end2.lat, r.end2.lon) * M_PER_NM
+    const add = (name, thr, hdgRad) => {
+      const ident = String(name).padStart(2, '0')
+      if (seen.has(ident)) return // DCS lists some strips once per direction
+      seen.add(ident)
+      dirs.push({ ident, threshLat: thr.lat, threshLng: thr.lon, hdgRad, elevFt, lenM })
+    }
+    add(primName,  primThr,  primHdg)
+    add(recipName, recipThr, normalizeAngle(primHdg + Math.PI))
+  }
+  return dirs
+}
+
+// Runway direction by designator (e.g. "22"), or the first one if none given.
+function pickRunway(ab, ident) {
+  const dirs = runwayDirections(ab)
+  if (!dirs.length) return null
+  if (ident == null) return dirs[0]
+  const n = parseInt(ident, 10)
+  const match = dirs.find(d => parseInt(d.ident, 10) === n)
+  if (!match) console.log(`  ${ab.airbase}: no runway ${ident} (have ${dirs.map(d => d.ident).join(', ')})`)
+  return match ?? null
+}
+
+// Point <alongM> metres down the runway heading and <rightM> metres right of it
+function offsetPoint(lat, lng, hdgRad, alongM, rightM) {
+  const along  = alongM / M_PER_NM
+  const right  = rightM / M_PER_NM
+  const rh     = hdgRad + Math.PI / 2
+  const cosLat = Math.cos(lat * DEG_TO_RAD)
+  return {
+    lat: lat + (Math.cos(hdgRad) * along + Math.cos(rh) * right) * NM_DEG,
+    lng: lng + (Math.sin(hdgRad) * along + Math.sin(rh) * right) * NM_DEG / cosLat,
+  }
+}
+
+function spawnGroundUnit({ callsign, typeName, coalition, lat, lng, elevFt, hdgRad, spd, airbase }) {
+  const id = Math.max(...units.keys()) + 1
+  const groundElevM = elevFt * FT_TO_M
+  const unit = {
+    id,
+    unitName:  callsign,
+    name:      typeName,
+    category:  HELO_TYPES.has(typeName) ? 'Helicopter' : 'Aircraft',
+    coalition,
+    lat, lng,
+    alt:       groundElevM,
+    hdg:       normalizeAngle(hdgRad),
+    spd,
+    contacts:  [],
+    turnDir:   null, targetHdg: null, targetAlt: null, targetSpd: null,
+    squawk: randomSquawk(), iffStatus: IFF_STATUS.NORMAL, identTimer: null,
+    onGround:  true, groundElevM, homeBase: airbase, takeoffRoll: null,
+  }
+  units.set(id, unit)
+  return unit
+}
+
+function liftoff(unit) {
+  unit.onGround    = false
+  unit.takeoffRoll = null
+  unit.targetAlt   = unit.groundElevM + CLIMB_OUT_FT_AGL * FT_TO_M
+  unit.targetSpd   = CLIMB_OUT_KTS
+  console.log(`\n  ${unit.unitName}: airborne - climbing to ${Math.round(unit.targetAlt / FT_TO_M)}ft`)
+  rl?.prompt()
+}
+
+function touchdown(unit) {
+  const pa = unit.parApproach
+  unit.parApproach = null
+  unit.onGround    = true
+  unit.groundElevM = pa.deckHeightFt * FT_TO_M
+  unit.alt         = unit.groundElevM
+  unit.hdg         = pa.inboundHdgRad
+  unit.homeBase    = pa.airbase
+  unit.targetSpd   = TAXI_KTS
+  console.log(`\n  ${unit.unitName}: touchdown at ${pa.airbase} - rolling out to ${TAXI_KTS}kt`)
+  rl?.prompt()
+}
+
+// ground <cs> <airbase> [rwy <nn>] [<type>] [<coal>] [D<m>] [O<m>] [S<spd>] [H<hdg>]
+function cmdGround(parts) {
+  if (parts.length < 3) {
+    console.log('  Usage: ground <cs> <airbase> [rwy <nn>] [<type>] [<coal>] [D<m>] [O<m>] [S<spd>] [H<hdg>]')
+    console.log('  e.g.   ground AAL101 URKA rwy 04 C-130 O120 D300 S15')
+    return
+  }
+  const callsign = parts[1]
+  const ab = findAirbase(parts[2])
+  if (!ab) { console.log(`  Unknown airbase: ${parts[2]}`); printAirbaseNames(); return }
+
+  let ident = null, typeName = 'FA-18C_hornet', coalition = 2
+  let alongM = 0, rightM = 0, spd = 0, hdgOverride = null
+  for (let i = 3; i < parts.length; i++) {
+    const tok = parts[i]
+    const opt = tok.match(/^([DOSH])(-?\d+)$/i)
+    if (tok.toLowerCase() === 'rwy') { ident = parts[++i]; continue }
+    if (opt) {
+      const v = parseInt(opt[2], 10)
+      const k = opt[1].toUpperCase()
+      if (k === 'D') alongM      = v
+      if (k === 'O') rightM      = v
+      if (k === 'S') spd         = v
+      if (k === 'H') hdgOverride = v
+      continue
+    }
+    if (COALITION_MAP[tok.toLowerCase()] !== undefined) { coalition = COALITION_MAP[tok.toLowerCase()]; continue }
+    typeName = resolveType(tok)
   }
 
-  const fbStr = Math.round(inboundHdgDeg).toString().padStart(3, '0')
-  const altFt = Math.round((unit.alt / FT_TO_M))
-  console.log(`  ${unit.unitName}: PAR ${modeName}  FB ${fbStr}°  GS ${gsAngleDeg}°  ${rangeNm}NM  ${altFt}ft  ${approachSpd}kt`)
+  const rw = pickRunway(ab, ident)
+  if (!rw) return
+  const pos    = offsetPoint(rw.threshLat, rw.threshLng, rw.hdgRad, alongM, rightM)
+  const hdgRad = hdgOverride != null ? hdgOverride * DEG_TO_RAD : rw.hdgRad
+  spawnGroundUnit({
+    callsign, typeName, coalition, lat: pos.lat, lng: pos.lng,
+    elevFt: rw.elevFt, hdgRad, spd, airbase: ab.airbase,
+  })
+  console.log(`  Created on ground: ${callsign} (${typeName}) at ${ab.airbase} rwy ${rw.ident}  ${spd}kt  elev ${Math.round(rw.elevFt)}ft`)
+  printList()
+  broadcastTransponders()
+}
+
+// <n> takeoff [rwy <nn>]
+function cmdTakeoff(parts) {
+  const unit = resolveAircraft(parts[0])
+  if (!unit) { console.log(`  Unknown unit number: ${parts[0]}`); return }
+  if (!unit.onGround) { console.log(`  ${unit.unitName}: not on the ground`); return }
+
+  const rwyIdx = parts.findIndex(p => p.toLowerCase() === 'rwy')
+  if (rwyIdx >= 0) {
+    const ab = unit.homeBase ? findAirbase(unit.homeBase) : null
+    if (!ab) { console.log(`  ${unit.unitName}: unknown home airbase`); return }
+    const rw = pickRunway(ab, parts[rwyIdx + 1])
+    if (!rw) return
+    unit.lat = rw.threshLat
+    unit.lng = rw.threshLng
+    unit.hdg = rw.hdgRad
+    unit.spd = 0
+    unit.groundElevM = rw.elevFt * FT_TO_M
+  }
+  unit.targetHdg   = null
+  unit.turnDir     = null
+  unit.takeoffRoll = { rotateKts: ROTATE_KTS }
+  unit.targetSpd   = TAKEOFF_TARGET_KTS
+  console.log(`  ${unit.unitName}: takeoff roll, heading ${hdgDeg(unit)}`)
+}
+
+// <n> land <airbase> [rwy <nn>] [at <nm>]
+function cmdLand(parts) {
+  const unit = resolveAircraft(parts[0])
+  if (!unit) { console.log(`  Unknown unit number: ${parts[0]}`); return }
+  const ab = findAirbase(parts[2])
+  if (!ab) { console.log(`  Unknown airbase: ${parts[2] ?? ''}`); printAirbaseNames(); return }
+
+  let ident = null, rangeNm = LANDING_RANGE_NM
+  for (let i = 3; i < parts.length; i++) {
+    const tok = parts[i].toLowerCase()
+    if (tok === 'rwy') ident = parts[++i]
+    else if (tok === 'at') rangeNm = parseFloat(parts[++i]) || rangeNm
+  }
+  const rw = pickRunway(ab, ident)
+  if (!rw) return
+
+  startApproach(unit, {
+    threshLat: rw.threshLat, threshLng: rw.threshLng, inboundHdgRad: rw.hdgRad,
+    gsAngleDeg: LANDING_GS_DEG, deckHeightFt: rw.elevFt, approachSpd: LANDING_SPD_KTS,
+    rangeNm, rollout: true, airbase: ab.airbase,
+  })
+  console.log(`  ${unit.unitName}: ${rangeNm}NM final ${ab.airbase} rwy ${rw.ident}`)
+}
+
+// asdex <airbase> [rwy <nn>] — one-shot ASDE-X test scenario
+function cmdAsdex(parts) {
+  const ab = findAirbase(parts[1])
+  if (!ab) { console.log(`  Usage: asdex <airbase> [rwy <nn>]  - unknown airbase: ${parts[1] ?? ''}`); printAirbaseNames(); return }
+  const rwyIdx = parts.findIndex(p => p.toLowerCase() === 'rwy')
+  const rw = pickRunway(ab, rwyIdx >= 0 ? parts[rwyIdx + 1] : null)
+  if (!rw) return
+
+  const SIDE   = 120 // metres right of centreline — "beside the runway"
+  const facing = normalizeAngle(rw.hdgRad - Math.PI / 2) // parked, nose toward the runway
+  const at     = (alongM, rightM) => offsetPoint(rw.threshLat, rw.threshLng, rw.hdgRad, alongM, rightM)
+  const spawn  = (callsign, typeName, p, hdgRad) => spawnGroundUnit({
+    callsign, typeName, coalition: 2, lat: p.lat, lng: p.lng,
+    elevFt: rw.elevFt, hdgRad, spd: 0, airbase: ab.airbase,
+  })
+
+  const park1 = spawn('AAL101', 'C-130',         at(150, SIDE),           facing)
+  const park2 = spawn('DAL202', 'KC135MPRS',     at(rw.lenM - 150, SIDE), facing)
+  const taxi  = spawn('UAL303', 'F-16C_50',      at(300, SIDE),           rw.hdgRad)
+  taxi.targetSpd = TAXI_KTS
+  const dep   = spawn('SWA404', 'FA-18C_hornet', at(0, 0),                rw.hdgRad)
+  const stby  = spawn('N123AB', 'Yak-52',        at(600, SIDE),           facing)
+  stby.iffStatus = IFF_STATUS.OFF
+  // Same code as the taxiing F-16 — associate either one to see DUP BCN
+  park2.squawk = taxi.squawk
+
+  const helo  = spawn('LIFE1', 'UH-1H', at(rw.lenM / 2, SIDE * 2), rw.hdgRad)
+  helo.onGround = false
+  helo.alt      = (rw.elevFt + 50) * FT_TO_M
+
+  // Arrival: put straight onto final, rolls out on touchdown
+  const arr = spawn('JBU505', 'A-10C', at(0, 0), rw.hdgRad)
+  startApproach(arr, {
+    threshLat: rw.threshLat, threshLng: rw.threshLng, inboundHdgRad: rw.hdgRad,
+    gsAngleDeg: LANDING_GS_DEG, deckHeightFt: rw.elevFt, approachSpd: LANDING_SPD_KTS,
+    rangeNm: LANDING_RANGE_NM, rollout: true, airbase: ab.airbase,
+  })
+
+  setTimeout(() => {
+    if (!units.has(dep.id) || !dep.onGround || dep.takeoffRoll) return
+    dep.takeoffRoll = { rotateKts: ROTATE_KTS }
+    dep.targetSpd   = TAKEOFF_TARGET_KTS
+    console.log(`\n  ${dep.unitName}: takeoff roll`)
+    rl?.prompt()
+  }, 5000)
+
+  const sq = (u) => String(u.squawk).padStart(4, '0')
+  console.log(`  ASDE-X scenario at ${ab.airbase} rwy ${rw.ident} (elev ${Math.round(rw.elevFt)}ft):`)
+  console.log(`    ${park1.unitName}  parked near the threshold`)
+  console.log(`    ${park2.unitName}  parked near the far end, squawking ${sq(park2)} (same as ${taxi.unitName})`)
+  console.log(`    ${taxi.unitName}  taxiing at ${TAXI_KTS}kt beside the runway, squawking ${sq(taxi)}`)
+  console.log(`    ${dep.unitName}  lined up - takeoff roll in 5s`)
+  console.log(`    ${arr.unitName}  on ${LANDING_RANGE_NM}NM final - lands and rolls out`)
+  console.log(`    ${stby.unitName}  parked, transponder STANDBY (Unknown Target)`)
+  console.log(`    ${helo.unitName}   helicopter hovering 50ft AGL`)
+  console.log(`  Log in to TRACS with facility "${ab.airbase}" and open ASDEX.`)
+  console.log(`  Point TRACS's Relay Port at this server for SRS/transponder behaviour (Unknown Target, beacon codes, DUP BCN).`)
+  console.log(`  DUP BCN also needs ${taxi.unitName} or ${park2.unitName} associated: file a plan for it with code ${sq(taxi)}.`)
+  printList()
+  broadcastTransponders()
 }
 
 // ── Carrier heading commands ──────────────────────────────────────────────────
@@ -1268,7 +1629,11 @@ function parseCommand(line) {
   if (first === 'brc')     { cmdBrc(parts);     return }
   if (first === 'fb')      { cmdFb(parts);      return }
   if (first === 'magvar')  { cmdMagvar(parts);  return }
+  if (first === 'ground')  { cmdGround(parts);  return }
+  if (first === 'asdex')   { cmdAsdex(parts);   return }
   if (second === 'par')    { cmdPar(parts);     return }
+  if (second === 'takeoff') { cmdTakeoff(parts); return }
+  if (second === 'land')   { cmdLand(parts);    return }
   cmdControl(parts)
 }
 
@@ -1294,6 +1659,12 @@ function startConsole() {
   console.log('  theatre [name]              show or set theatre (translates carrier + aircraft to default position)')
   console.log('  <n> par [at <nm>] [gs <°>] [spd <kt>] [dev <0-1>]   fly PAR to carrier (dev=0 perfect)')
   console.log('  <n> par rwy <lat> <lng> <hdg> [...]                  fly PAR to airfield')
+  console.log('  ground <cs> <airbase> [rwy <nn>] [<type>] [<coal>] [D<m>] [O<m>] [S<spd>] [H<hdg>]')
+  console.log('                              spawn on the ground (D = m down runway, O = m right of centreline)')
+  console.log('                              <airbase> = ICAO (URKA) or part of the DCS name (anapa)')
+  console.log('  <n> takeoff [rwy <nn>]      takeoff roll and climb out')
+  console.log('  <n> land <airbase> [rwy <nn>] [at <nm>]   3 deg final, touch down, roll out to taxi speed')
+  console.log('  asdex <airbase> [rwy <nn>]  ASDE-X test scenario (parked/taxi/departure/arrival/standby/helo)')
   console.log('  brc <hdg°mag>               turn carrier to BRC (shortest direction)')
   console.log('  fb  <hdg°mag>               turn carrier to FB  (shortest direction)')
   console.log('  magvar [degrees]            show or set magnetic variation')
