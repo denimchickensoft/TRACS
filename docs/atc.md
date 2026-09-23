@@ -103,7 +103,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `RG <n>` + ENTER | — | Set range, 6–256 NM |
 | `RR (2\|5\|10\|20)` + ENTER | — | Set range-ring spacing |
 | `.CENTER` + ENTER | `Ctrl+F1` | Return the scope to its original center (same as the DCB's OFF CNTR) |
-| `MF P` + SLEW | `F7` | Relocate the command-line/response readout to the clicked point |
+| `MF P` + SLEW | `F7` | Relocate the preview area (command line/response readout) to the clicked point |
 | `MF S` + SLEW | `F7` | Relocate the SSA overlay |
 | `MF S<atis>` + ENTER | — | Set the SSA overlay's ATIS code letter |
 | `MF S<atis> <giText>` + ENTER | — | Set the SSA overlay's ATIS code letter and general-info text |
