@@ -4,6 +4,7 @@ import { useDisplayStore }   from '../../../store/display.js'
 import { saveAsdexPrefs }   from '../../../store/asdexPrefs.js'
 import { LDR_DIR_SEQUENCE, LDR_DIR_CANVAS_ANGLES, ldrDirWraparound, clampValueDelta } from '../../../utils/dcbSpinner.js'
 import { useNonPassiveWheel } from '../../../utils/useNonPassiveWheel.js'
+import { setAllDatablocks } from './asdexDatablockToggle.js'
 import '../dcb.css'
 
 export const ASDEX_WINDOW_ID = 'asdex-main'
@@ -19,7 +20,10 @@ const VALUE_CONFIG = {
   H_RATE:   { min: 0,   max: 4.5, step: 0.5, dir: -1, fmt: v => v.toFixed(1)                },
 }
 
-const BUTTONS = [
+const ON_OFF    = [['ON', true], ['OFF', false]]
+const FULL_PART = [['FULL', true], ['PART', false]]
+
+const MAIN_BUTTONS = [
   { id: 'RANGE',        lines: ['RANGE'],           type: 'value' },
   { id: 'slot_ldr',     slotType: 'halfV', buttons: [
     { id: 'LDR_DIR',    lines: ['LDR DIR'], type: 'value' },
@@ -30,7 +34,35 @@ const BUTTONS = [
     { id: 'HISTORY',    lines: ['HISTORY'],  type: 'value' },
     { id: 'H_RATE',     lines: ['H_RATE'],   type: 'value' },
   ]},
+  { id: 'slot_db',      slotType: 'halfV', buttons: [
+    { id: 'DB_ON',      lines: ['DB'],       type: 'select', key: 'dbOn', options: ON_OFF },
+    { id: 'DB_EDIT',    lines: ['DB EDIT'],  type: 'submenu', target: 'dbEdit' },
+  ]},
 ]
+
+// CRC ASDE-X Data Block Edit submenu — only the fields TRACS implements
+// (A/B/C are always on; E/G deliberately omitted).
+const DB_EDIT_BUTTONS = [
+  { id: 'DB_FULL',      lines: [],                 type: 'select', key: 'dbFull', options: FULL_PART },
+  { id: 'slot_alt_type', slotType: 'halfV', buttons: [
+    { id: 'DB_ALT',     lines: ['ALTITUDE'],    type: 'select', key: 'dbAltitude', options: ON_OFF },
+    { id: 'DB_TYPE',    lines: ['TYPE'],        type: 'select', key: 'dbType',     options: ON_OFF },
+  ]},
+  { id: 'slot_fix_vel', slotType: 'halfV', buttons: [
+    { id: 'DB_FIX',     lines: ['FIX'],         type: 'select', key: 'dbFix',      options: ON_OFF },
+    { id: 'DB_VEL',     lines: ['VELOCITY'],    type: 'select', key: 'dbVelocity', options: ON_OFF },
+  ]},
+  { id: 'DB_SCRATCH',   lines: ['SCRATCH', 'PAD'],  type: 'select', key: 'dbScratch',  options: ON_OFF },
+  { id: 'DONE',         lines: ['DONE'],             type: 'done' },
+]
+
+const MENUS = { main: MAIN_BUTTONS, dbEdit: DB_EDIT_BUTTONS }
+
+function applySelect(key, value, updateWindow) {
+  if (key === 'dbOn') { setAllDatablocks(value); return }
+  updateWindow(ASDEX_WINDOW_ID, { [key]: value })
+  saveAsdexPrefs({ [key]: value })
+}
 
 const COLORS = {
   background:             '#3a3a3a',
@@ -41,6 +73,7 @@ const COLORS = {
   buttonActiveBorder:     '#aaaaaa',
   buttonActiveText:       '#ffffff',
   valueColor:             '#ffffff',
+  selectedColor:          '#FFB300',
 }
 
 function getValue(id, win) {
@@ -111,14 +144,57 @@ function AsdexDcbButton({ btn, isActive, valStr, half, onClick }) {
   )
 }
 
+// Two-word selector (ON/OFF, FULL/PART): title line(s), then "ON/OFF" on the
+// last line — each word independently clickable, the selected word amber.
+function AsdexDcbSelect({ btn, value, half, onSelect }) {
+  const style = {
+    background:  COLORS.buttonBackground,
+    borderColor: COLORS.buttonBorder,
+    color:       COLORS.buttonText,
+  }
+  return (
+    <div
+      className={`dcb-btn dcb-btn--select${half ? ' dcb-btn--half' : ''}`}
+      style={style}
+    >
+      <span className="dcb-btn-label">
+        {btn.lines.map((line, i) => <span key={i} className="dcb-btn-line">{line}</span>)}
+      </span>
+      <span className="dcb-btn-value dcb-select-opts">
+        {btn.options.map(([label, v], i) => (
+          <span key={label}>
+            {i > 0 && '/'}
+            <span
+              className="dcb-select-opt"
+              style={{ color: value === v ? COLORS.selectedColor : COLORS.valueColor }}
+              onClick={() => onSelect(v)}
+            >
+              {label}
+            </span>
+          </span>
+        ))}
+      </span>
+    </div>
+  )
+}
+
 export function AsdexDcb() {
   const wheelDir         = useWheelDirection()
   const barRef           = useRef(null)
   const { updateWindow } = useDisplayStore()
   const win              = useDisplayStore(s => s.windows[ASDEX_WINDOW_ID])
   const activeSpinner    = win?.dcbActiveSpinner ?? null
+  const menu             = win?.dcbMenu ?? 'main'
 
   const handleClick = useCallback((btn) => {
+    if (btn.type === 'submenu') {
+      updateWindow(ASDEX_WINDOW_ID, { dcbMenu: btn.target, dcbActiveSpinner: null })
+      return
+    }
+    if (btn.type === 'done') {
+      updateWindow(ASDEX_WINDOW_ID, { dcbMenu: 'main', dcbActiveSpinner: null })
+      return
+    }
     const cur = win?.dcbActiveSpinner ?? null
     updateWindow(ASDEX_WINDOW_ID, { dcbActiveSpinner: cur === btn.id ? null : btn.id })
   }, [win, updateWindow])
@@ -135,6 +211,17 @@ export function AsdexDcb() {
   useNonPassiveWheel(barRef, handleWheel)
 
   function renderBtn(btn, half = false) {
+    if (btn.type === 'select') {
+      return (
+        <AsdexDcbSelect
+          key={btn.id}
+          btn={btn}
+          value={win?.[btn.key] ?? true}
+          half={half}
+          onSelect={(v) => applySelect(btn.key, v, updateWindow)}
+        />
+      )
+    }
     const isActive = activeSpinner === btn.id
     const raw      = btn.type === 'value' ? getValue(btn.id, win) : null
     let   valStr   = null
@@ -158,11 +245,11 @@ export function AsdexDcb() {
   return (
     <div
       ref={barRef}
-      className="dcb-bar"
+      className="dcb-bar dcb-bar--asdex"
       data-pos="top"
       style={{ background: COLORS.background, borderBottomColor: COLORS.buttonBorder }}
     >
-      {BUTTONS.map(slot => {
+      {(MENUS[menu] ?? MAIN_BUTTONS).map(slot => {
         if (slot.slotType === 'halfV') {
           return (
             <div key={slot.id} className="dcb-halfV">

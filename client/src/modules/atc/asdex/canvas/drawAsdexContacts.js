@@ -5,11 +5,15 @@ import { DIR_TO_ANGLE }    from '../../stars/constants.js'
 import { hasLiveSquawk }   from '../../../../utils/transponder.js'
 
 const M_PER_S_TO_KT       = 1.94384
+const M_TO_FT              = 3.28084
+const LINE_H               = 13
+const TIMESHARE_MS         = 2000 // line 2: F/H/I <-> J/K scratchpad alternation per phase
 const SYMBOL_R             = 7
 const RIGHT_ALIGN_ANGLES   = new Set([90, 135, 180, 225])
 const UNKNOWN_TARGET_COLOR = '#00e0d0' // teal — real transponder standby (status 0), see transponder-correlation-spec.md §5
 
-export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors, associated = {}, manualTags = {}) {
+// extras: { scratchpads: { unitId: { sp1, sp2 } }, dupBeacon: Set<unitId>, pairedFixFor: (plan) => string }
+export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors, associated = {}, manualTags = {}, extras = {}) {
   ctx.clearRect(0, 0, view.width, view.height)
 
   // Runway centerlines
@@ -35,6 +39,20 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
   const ptlMinutes   = win?.ptlLength     ?? 0.5
   const historyLimit = win?.historyLength ?? 5
   const leaderDirs   = win?.leaderDirs    ?? {}
+
+  // DB ON/OFF + per-track click toggle, and DB EDIT field toggles
+  const dbOn       = win?.dbOn       ?? true
+  const dbToggled  = win?.dbToggled  ?? {}
+  const dbFull     = win?.dbFull     ?? true
+  const dbAltitude = win?.dbAltitude ?? true
+  const dbType     = win?.dbType     ?? true
+  const dbFix      = win?.dbFix      ?? true
+  const dbVelocity = win?.dbVelocity ?? true
+  const dbScratch  = win?.dbScratch  ?? true
+  const scratchpads  = extras.scratchpads  ?? {}
+  const dupBeacon    = extras.dupBeacon    ?? new Set()
+  const pairedFixFor = extras.pairedFixFor ?? (() => '')
+  const sharePhase   = Math.floor(Date.now() / TIMESHARE_MS) % 2
 
   const plansByUnit = {}
   for (const p of Object.values(plans ?? {})) {
@@ -121,6 +139,7 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     ctx.restore()
 
     if (isUnknownTarget) continue // no leader line, no datablock
+    if (dbOn === !!dbToggled[String(id)]) continue // Data Block toggled off (globally or per track)
 
     // Leader line
     const unitDir    = leaderDirs[String(id)]
@@ -141,28 +160,56 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     ctx.lineTo(lx1, ly1)
     ctx.stroke()
 
-    // Datablock — Partial Data Block: field B (aircraft ID) once associated
-    // (real match, or manually tagged) or field C (beacon code only)
-    // otherwise. Non-srsCapable units keep the old always-full-ID behavior.
-    // Real safety-logic-alert-driven Full Data Blocks aren't implemented —
-    // no such alert logic exists in TRACS yet. See
+    // Datablock (CRC ASDE-X fields). Field B (aircraft ID) once associated
+    // (real match, or manually tagged), field C (beacon code) otherwise.
+    // Non-srsCapable units keep the old always-full-ID behavior. Real
+    // safety-logic alerts aren't implemented — see
     // resources/specs/transponder-correlation-spec.md §5.
-    const isKnown = !unit.srsCapable || !!associated[String(id)] || !!manualTags[String(id)]
+    //   Line 0: A  (DUP BCN)
+    //   Line 1: B|C  D (altitude, FULL only)
+    //   Line 2: F H I, timeshared with J K (FULL only)
+    // E (sensor coverage) and G (category) are deliberately not implemented.
+    const uid     = String(id)
+    const isKnown = !unit.srsCapable || !!associated[uid] || !!manualTags[uid]
     const beacon  = unit.transponder?.mode3 != null ? String(unit.transponder.mode3).padStart(4, '0') : null
-    const line1   = isKnown ? resolveCallsign(unit).toUpperCase() : beacon
+    const ident   = isKnown ? resolveCallsign(unit).toUpperCase() : beacon
 
-    if (line1) {
-      const plan  = plansByUnit[String(id)]
-      const typ   = plan?.typ  ? plan.typ.trim()  : ''
-      const dest  = plan?.dest ? plan.dest.trim() : ''
-      const line2 = isKnown ? [typ, dest].filter(Boolean).join(' ') : ''
-      const tx    = lx1 + (rightAlign ? -2 : 2)
+    if (ident) {
+      const line0 = dupBeacon.has(uid) ? 'DUP BCN' : ''
 
+      let line1 = ident
+      let line2 = ''
+      if (dbFull) {
+        if (dbAltitude) {
+          // No Mode C without a live squawk — only for SRS-fielded units;
+          // non-SRS units fall back to ground truth like their callsign does.
+          const noModeC = !!unit.srsCapable && !hasLiveSquawk(unit)
+          const altHds  = Math.max(0, Math.round((pos.alt ?? 0) * M_TO_FT / 100))
+          line1 += ' ' + (noModeC ? 'XXX' : String(altHds).padStart(3, '0'))
+        }
+
+        const plan  = isKnown ? plansByUnit[uid] : null
+        const typ   = dbType && plan?.typ ? plan.typ.trim() : ''
+        const fix   = dbFix  && plan ? pairedFixFor(plan) : ''
+        const vel   = dbVelocity && unit.speed != null
+          ? String(Math.round(unit.speed * M_PER_S_TO_KT / 10)).padStart(2, '0')
+          : ''
+        const fieldsFHI = [typ, fix, vel].filter(Boolean).join(' ')
+
+        const pads     = dbScratch ? scratchpads[uid] : null
+        const fieldsJK = [pads?.sp1, pads?.sp2].filter(Boolean).join(' ')
+
+        if (fieldsJK && fieldsFHI) line2 = sharePhase === 1 ? fieldsJK : fieldsFHI
+        else                       line2 = fieldsJK || fieldsFHI
+      }
+
+      const tx = lx1 + (rightAlign ? -2 : 2)
       ctx.fillStyle    = colors.datablock
       ctx.textAlign    = rightAlign ? 'right' : 'left'
       ctx.textBaseline = 'alphabetic'
+      if (line0) ctx.fillText(line0, tx, ly1 - LINE_H)
       ctx.fillText(line1, tx, ly1)
-      if (line2) ctx.fillText(line2, tx, ly1 + 13)
+      if (line2) ctx.fillText(line2, tx, ly1 + LINE_H)
     }
   }
 }

@@ -292,16 +292,30 @@ A ground-movement sub-scope showing surface traffic (aircraft/helicopters below 
 | `.COLORS <name>` + ENTER | Switch color profile (e.g. Day/Night) |
 | `<d>` (1–9) + SLEW | Set/clear a contact's leader-line direction (`5` clears) |
 | `.TAG <id>` + SLEW | Manually tag a target: type the aircraft ID, then click the target. The ID must match the callsign TRACS displays for that aircraft; a mismatch returns `ILL TRK` |
+| `MF Y`, click target, `<text>` + ENTER | Set the aircraft's scratchpad 1 (up to 7 letters/digits; empty clears it) |
+| `MF H`, click target, `<text>` + ENTER | Set the aircraft's scratchpad 2 |
+| Left-click, empty buffer | Toggle that aircraft's datablock on/off |
 
 **Unknown Targets:** an SRS-fielded target with no live squawk renders as a **teal** triangle with no datablock or leader line. It stops being an Unknown Target when it squawks or is tagged with `.TAG`.
 
-**Datablock content:** a target that's associated, tagged, or has no SRS data shows its aircraft ID, with type and destination from its flight plan on line 2. A squawking target that's neither associated nor tagged shows its beacon code.
+**Datablock content:** a target that's associated, tagged, or has no SRS data shows its aircraft ID; a squawking target that's neither associated nor tagged shows its beacon code. In **FULL** mode the datablock adds:
+
+| Line | Content |
+|---|---|
+| 0 | `DUP BCN` when two displayed targets squawk the same code and one of them is associated (shown in PART mode too) |
+| 1 | Altitude in hundreds of feet after the ID/beacon code (`XXX` for an SRS target with no live squawk) |
+| 2 | Aircraft type, fix, and velocity (groundspeed in tens of knots). If scratchpads are set, line 2 alternates every 2 seconds between these and the scratchpads |
+
+The fix field shows the first three letters of the first known fix in the flight plan's route. If the route has no known fix, it shows the four-character destination, or nothing if the destination is this airport. **PART** mode shows only the ID/beacon code (plus `DUP BCN`). ASDE-X scratchpads are separate from STARS scratchpads, and they aren't shared with other controllers.
 
 **Mouse:** Ctrl+Click opens a contact's FPE; right-click+drag pans; mouse wheel zooms (0.1–2.0 NM range, in 0.1 steps).
 
-**DCB:** a single bar — RANGE, LDR DIR, LDR LEN, PTL LNTH, HISTORY, H_RATE — with the same click-then-wheel interaction as the main ATC DCB.
+**DCB:** RANGE, LDR DIR, LDR LEN, PTL LNTH, HISTORY, H_RATE (same click-then-wheel interaction as the main ATC DCB), plus a split **DB ON/OFF** / **DB EDIT** button:
 
-ASDE-X has no function-key mappings.
+- **DB ON/OFF** — show or hide every datablock. This also resets any per-aircraft toggles made by clicking targets.
+- **DB EDIT** — submenu with **FULL/PART** and ON/OFF selectors for **ALTITUDE**, **TYPE**, **FIX**, **VELOCITY**, and **SCRATCH PAD**. Click either word to choose it; the current choice is amber. **DONE** returns to the main bar. DB EDIT settings persist across reloads, as do the `.COLORS` profile and the `.CENTERLINE`/`.COORDS` toggles.
+
+**Function keys:** **F6** toggles all datablocks (same as DB ON/OFF); **F7** is MULTIFUNC (`MF`).
 
 ## PAR (precision approach radar)
 

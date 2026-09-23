@@ -9,7 +9,11 @@ import { useFpeStore }         from '../../../store/fpe.js'
 import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
 import { useAssociationStore }  from '../../../store/association.js'
 import { useAsdexManualTagsStore } from '../../../store/asdexManualTags.js'
-import { loadAsdexPrefs } from '../../../store/asdexPrefs.js'
+import { useAsdexScratchpadsStore } from '../../../store/asdexScratchpads.js'
+import { useNavdataStore }     from '../../../store/navdata.js'
+import { hasLiveSquawk }       from '../../../utils/transponder.js'
+import { pairedFix }           from './pairedFix.js'
+import { loadAsdexPrefs, saveAsdexPrefs } from '../../../store/asdexPrefs.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../../../utils/projection.js'
 import { resolveCallsign, findFlightPlanAid } from '../../../utils/callsign.js'
 import { computeMagvar }       from '../../../utils/magvar.js'
@@ -60,6 +64,10 @@ export default function AsdexScope() {
   const plans           = useFlightPlansStore(s => s.plans)
   const associated      = useAssociationStore(s => s.associated)
   const manualTags      = useAsdexManualTagsStore(s => s.tagged)
+  const scratchpads     = useAsdexScratchpadsStore(s => s.pads)
+  const navFixes        = useNavdataStore(s => s.fixes)
+  const navNavaids      = useNavdataStore(s => s.navaids)
+  const [facilityIcao, setFacilityIcao] = useState(null)
   const [centerlines, setCenterlines] = useState([])
   const myControllerId  = useControllersStore(s => s.registry[positionName]?.controllerId ?? null)
   const displayStore    = useDisplayStore()
@@ -74,6 +82,7 @@ export default function AsdexScope() {
   const plansRef           = useRef(plans)
   const associatedRef      = useRef(associated)
   const manualTagsRef      = useRef(manualTags)
+  const extrasRef          = useRef({})
   const historyRef         = useRef({})
   const histRateRef          = useRef(4.5)
   const myControllerIdRef    = useRef(myControllerId)
@@ -94,8 +103,8 @@ export default function AsdexScope() {
   const [polygonData, setPolygonData]         = useState(null)    // raw GeoJSON features for theatre
   const [nameMap, setNameMap]                 = useState(null)    // { dcsName: stemName }
   const [profiles, setProfiles]               = useState(DEFAULT_PROFILES)
-  const [centerlineVisible, setCenterlineVisible] = useState(false)
-  const [coordsVisible, setCoordsVisible]     = useState(false)
+  const [centerlineVisible, setCenterlineVisible] = useState(() => loadAsdexPrefs().centerlineVisible)
+  const [coordsVisible, setCoordsVisible]     = useState(() => loadAsdexPrefs().coordsVisible)
   const coordsRef = useRef(null)
 
   // Pan drag state: during drag, update center refs directly for perf;
@@ -152,6 +161,10 @@ export default function AsdexScope() {
       rangeNm: 1,
       ptlLength: prefs.ptlLength, ldrLength: prefs.ldrLength, ldrAngleDeg: prefs.ldrAngleDeg,
       historyLength: prefs.historyLength, historyRate: prefs.historyRate,
+      dbFull: prefs.dbFull, dbAltitude: prefs.dbAltitude, dbType: prefs.dbType,
+      dbFix: prefs.dbFix, dbVelocity: prefs.dbVelocity, dbScratch: prefs.dbScratch,
+      dbOn: true, dbToggled: {},
+      colorIdx: Math.max(0, DEFAULT_PROFILES.findIndex(p => p.name === prefs.colorProfile)),
       centerLat: lat, centerLng: lng,
     })
     centerLatRef.current = lat
@@ -201,6 +214,19 @@ export default function AsdexScope() {
       .catch(() => {})
   }, [theatre, facilityDcsName])
 
+  // ── Navdata (field H route-fix lookup) and facility ICAO ─────────────────────
+  useEffect(() => {
+    if (theatre) useNavdataStore.getState().loadForTheatre(theatre)
+  }, [theatre])
+
+  useEffect(() => {
+    if (!theatre || !facilityDcsName) return
+    fetch('/icaoMapping.json')
+      .then(r => r.ok ? r.json() : {})
+      .then(map => setFacilityIcao(map?.[theatre.toLowerCase()]?.[facilityDcsName] ?? null))
+      .catch(() => setFacilityIcao(null))
+  }, [theatre, facilityDcsName])
+
   // ── Fetch polygon data, name map, and colors ─────────────────────────────────
   useEffect(() => {
     if (!theatre) return
@@ -217,7 +243,14 @@ export default function AsdexScope() {
   useEffect(() => {
     fetch('/api/asdex/colors')
       .then(r => r.ok ? r.json() : null)
-      .then(arr => { if (Array.isArray(arr) && arr.length) setProfiles(arr) })
+      .then(arr => {
+        if (!Array.isArray(arr) || !arr.length) return
+        setProfiles(arr)
+        // Re-resolve the saved .COLORS profile against the server's list
+        const saved = loadAsdexPrefs().colorProfile
+        const idx   = saved ? arr.findIndex(p => p.name === saved) : -1
+        if (idx >= 0) useDisplayStore.getState().updateWindow(ASDEX_WINDOW_ID, { colorIdx: idx })
+      })
       .catch(() => {})
   }, [])
 
@@ -317,6 +350,7 @@ export default function AsdexScope() {
           centerlinesRef.current, centerlineVisibleRef.current,
           colorsRef.current,
           associatedRef.current, manualTagsRef.current,
+          extrasRef.current,
         )
       }
       rafRef.current = requestAnimationFrame(draw)
@@ -330,7 +364,24 @@ export default function AsdexScope() {
 
   // ── Command handling ─────────────────────────────────────────────────────────
   const handleEnter = useCallback(() => {
-    const buffer = useAsdexPreviewStore.getState().buffer
+    const { buffer, pending } = useAsdexPreviewStore.getState()
+    // MF Y / MF H, target already clicked: commit the typed scratchpad.
+    if (pending) {
+      const m = buffer.match(/^MF [YH]\s*(.*)$/)
+      if (!m) {
+        useAsdexPreviewStore.getState().clear()
+        useAsdexPreviewStore.getState().setResponse('INVALID INPUT')
+        return
+      }
+      const value = m[1].replace(/[^A-Z0-9]/g, '')
+      if (value.length > 7) {
+        useAsdexPreviewStore.getState().setResponse('FORMAT')
+        return
+      }
+      useAsdexScratchpadsStore.getState().set(pending.unitId, pending.field, value)
+      useAsdexPreviewStore.getState().clearAfterCommand()
+      return
+    }
     const parsed = parseAsdexCommand(buffer, 'ENTER')
     if (!parsed) {
       useAsdexPreviewStore.getState().setResponse('INVALID INPUT')
@@ -341,11 +392,11 @@ export default function AsdexScope() {
       useAsdexPreviewStore.getState().clearAfterCommand()
     }
     if (parsed.command.id === 'TOGGLE_CENTERLINE') {
-      setCenterlineVisible(v => !v)
+      setCenterlineVisible(v => { saveAsdexPrefs({ centerlineVisible: !v }); return !v })
       useAsdexPreviewStore.getState().clearAfterCommand()
     }
     if (parsed.command.id === 'TOGGLE_COORDS') {
-      setCoordsVisible(v => !v)
+      setCoordsVisible(v => { saveAsdexPrefs({ coordsVisible: !v }); return !v })
       useAsdexPreviewStore.getState().clearAfterCommand()
     }
     if (parsed.command.id === 'SET_COLORS') {
@@ -354,6 +405,7 @@ export default function AsdexScope() {
       const idx = profiles.findIndex(p => p.name.toUpperCase() === name.toUpperCase())
       if (idx >= 0) {
         displayStore.updateWindow(ASDEX_WINDOW_ID, { colorIdx: idx })
+        saveAsdexPrefs({ colorProfile: profiles[idx].name })
         useAsdexPreviewStore.getState().setResponse(`COLORS ${profiles[idx].name.toUpperCase()}`)
       } else {
         useAsdexPreviewStore.getState().setResponse('INVALID PROFILE')
@@ -476,7 +528,31 @@ export default function AsdexScope() {
       return
     }
 
-    const buffer = useAsdexPreviewStore.getState().buffer
+    const { buffer, pending } = useAsdexPreviewStore.getState()
+
+    // Empty buffer: toggle this aircraft's Data Block (relative to global DB ON/OFF)
+    if (!buffer.trim()) {
+      const nearest = findNearest()
+      if (!nearest) return
+      const cur  = useDisplayStore.getState().windows[ASDEX_WINDOW_ID]?.dbToggled ?? {}
+      const next = { ...cur }
+      if (next[String(nearest.id)]) delete next[String(nearest.id)]
+      else next[String(nearest.id)] = true
+      useDisplayStore.getState().updateWindow(ASDEX_WINDOW_ID, { dbToggled: next })
+      return
+    }
+
+    // MF Y / MF H: pick the target first, then type the scratchpad and Enter
+    const mf = !pending && buffer.match(/^MF ([YH])$/)
+    if (mf) {
+      const nearest = findNearest()
+      if (!nearest) { useAsdexPreviewStore.getState().setResponse('NO TGT'); return }
+      useAsdexPreviewStore.getState().setPending({ field: mf[1] === 'Y' ? 'sp1' : 'sp2', unitId: String(nearest.id) })
+      useAsdexPreviewStore.getState().appendToken(' ')
+      return
+    }
+    if (pending) return
+
     const parsed = parseAsdexCommand(buffer, 'SLEW')
     if (!parsed) return
     const nearest = findNearest()
@@ -518,6 +594,36 @@ export default function AsdexScope() {
   [units])
 
   useEffect(() => { unitsRef.current = airUnits }, [airUnits])
+
+  // Field A: DUP BCN when a live code is shared by 2+ displayed targets and
+  // at least one of them is associated with that code.
+  const dupBeacon = useMemo(() => {
+    const byCode = {}
+    for (const [id, u] of Object.entries(airUnits)) {
+      if (!hasLiveSquawk(u)) continue
+      const code = u.transponder.mode3
+      if (!byCode[code]) byCode[code] = []
+      byCode[code].push(id)
+    }
+    const dup = new Set()
+    for (const ids of Object.values(byCode)) {
+      if (ids.length < 2) continue
+      if (!ids.some(id => associated[id] || manualTags[id])) continue
+      for (const id of ids) dup.add(id)
+    }
+    return dup
+  }, [airUnits, associated, manualTags])
+
+  // Field H lookup sets
+  const pairedFixFor = useMemo(() => {
+    const facilityIds = new Set([facilityDcsName, facilityIcao].filter(Boolean).map(s => s.toUpperCase()))
+    const fixIds      = new Set([...navFixes, ...navNavaids].map(f => String(f.id).toUpperCase()))
+    return (plan) => pairedFix(plan, facilityIds, fixIds)
+  }, [facilityDcsName, facilityIcao, navFixes, navNavaids])
+
+  useEffect(() => {
+    extrasRef.current = { scratchpads, dupBeacon, pairedFixFor }
+  }, [scratchpads, dupBeacon, pairedFixFor])
 
   if (!windowSettings) return null
 

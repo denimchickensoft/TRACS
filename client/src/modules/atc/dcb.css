@@ -175,3 +175,36 @@
   letter-spacing: 0.03em;
   margin-top: 1px;
 }
+
+/* ── Two-word selector (ON/OFF, FULL/PART) — each word clickable ───────── */
+
+.dcb-btn--select {
+  cursor: default;
+}
+
+.dcb-select-opts {
+  white-space: nowrap;
+}
+
+.dcb-select-opt {
+  cursor: pointer;
+}
+
+/* ── ASDE-X DCB: wider buttons, uniform text size (full = half) ────────── */
+
+.dcb-bar--asdex .dcb-btn {
+  width: 96px;
+}
+
+.dcb-bar--asdex .dcb-halfV {
+  flex: 0 0 96px;
+  width: 96px;
+}
+
+.dcb-bar--asdex .dcb-btn .dcb-btn-label {
+  font-size: 0.8em;
+}
+
+.dcb-bar--asdex .dcb-btn .dcb-btn-value {
+  font-size: 0.83em;
+}
