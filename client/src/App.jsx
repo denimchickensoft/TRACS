@@ -8,6 +8,7 @@ import { useAssociationStore } from './store/association'
 import { computeAssociations } from './modules/atc/shared/associationEngine.js'
 import { dcsUnitIdReliable } from './utils/callsign.js'
 import { useAtcStore }         from './store/atc.js'
+import { useFpeStore }         from './store/fpe.js'
 import { Login }         from './components/Login/Login'
 import StarsScope        from './modules/atc/stars/StarsScope'
 import AsdexScope        from './modules/atc/asdex/AsdexScope'
@@ -149,6 +150,8 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [activeOds,       setActiveOds]       = useState('atc')
+  // Scope-less FPE opens (Strip Bay double-click) land on whichever ODS is showing
+  useEffect(() => { useFpeStore.getState().setDefaultScope(activeOds === 'asdex' ? 'asdex' : 'atc') }, [activeOds])
   const [clVisible,  setClVisible]  = useState(() => localStorage.getItem(CL_VISIBLE_KEY)  === 'true')
   const [msgVisible, setMsgVisible] = useState(() => localStorage.getItem(MSG_VISIBLE_KEY) === 'true')
   const [clDocked,   setClDocked]   = useState(true)

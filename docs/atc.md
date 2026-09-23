@@ -363,7 +363,7 @@ All of these settings are saved across reloads, and changes made in an undocked 
 |---|---|
 | Click | Acknowledge a highlight (e.g. auto-added flag) |
 | Shift+Click | Delete immediately, no confirmation |
-| Ctrl+Click or double-click | Open the strip's Flight Plan Editor |
+| Ctrl+Click or double-click | Open the strip's Flight Plan Editor on whichever scope is showing (STARS or ASDE-X) |
 | Right-click | Context menu: Delete, or "Send to `<position>`" for any known controller |
 | Drag | Reorder strips (switches sort mode to Manual) |
 

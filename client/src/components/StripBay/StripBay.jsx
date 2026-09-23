@@ -467,7 +467,8 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const sorted    = sortStrips(bayStrips, plans, plansByUnitId, bay.sortBy)
 
   const handleOpenFpe = useCallback((strip) => {
-    dispatchOpenFpe({ aid: strip.aid, unitId: strip.unitId ?? null, scope: 'atc' })
+    // No scope: the main window opens it on whichever ODS is showing (STARS or ASDE-X)
+    dispatchOpenFpe({ aid: strip.aid, unitId: strip.unitId ?? null })
   }, [])
 
   const handleAddStrip = useCallback((e) => {
