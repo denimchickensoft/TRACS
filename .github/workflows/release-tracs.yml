@@ -3,11 +3,18 @@ name: Release TRACS
 # Tag-triggered matrix build producing installers for all three platforms,
 # attached to one GitHub Release.
 # The git tag is the single source of truth for the version — read here and
-# written into package.json at build time, never hand-edited.
+# written into package.json at build time, never hand-edited. TRACS tags are
+# plain `vX.Y.Z` because that's the tag electron-builder publishes to and
+# electron-updater looks for; the relay uses `relay-vX.Y.Z`.
 on:
   push:
     tags:
-      - 'tracs-v*'
+      - 'v*'
+
+# The repo's default GITHUB_TOKEN is read-only; publishing a release needs
+# write access to contents.
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -35,7 +42,7 @@ jobs:
       - name: Set version from tag
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#tracs-v}"
+          VERSION="${GITHUB_REF_NAME#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Install dependencies

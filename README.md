@@ -1,7 +1,7 @@
 # TRACS — Tactical Radar And Control Suite
 
 [![Discord](https://img.shields.io/discord/1521314576409559100?style=flat-square&label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/5W6cuezyPD)
-[![Release](https://img.shields.io/github/v/release/denimchickensoft/TRACS?filter=tracs-v*&style=flat-square&label=release)](https://github.com/denimchickensoft/TRACS/releases/latest)
+[![Release](https://img.shields.io/github/v/release/denimchickensoft/TRACS?filter=v*&style=flat-square&label=release)](https://github.com/denimchickensoft/TRACS/releases/latest)
 [![Build](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml/badge.svg)](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml)
 [![Downloads](https://img.shields.io/github/downloads/denimchickensoft/TRACS/total?style=flat-square)](https://github.com/denimchickensoft/TRACS/releases)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
@@ -29,7 +29,7 @@ Controllers sync with each other through the relay when one is available, and pe
 
 ## Installing TRACS (controllers)
 
-Download the installer for your platform from the latest `tracs-v*` release on the [Releases page](https://github.com/denimchickensoft/TRACS/releases):
+Download the installer for your platform from the latest `v*` release on the [Releases page](https://github.com/denimchickensoft/TRACS/releases):
 
 | Platform | Package |
 |---|---|
@@ -184,11 +184,11 @@ Releases are built by GitHub Actions when a version tag is pushed. The tag is th
 
 | Tag | Workflow | Produces |
 |---|---|---|
-| `tracs-vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS dmg, and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-20.04 and published to one GitHub Release by electron-builder. This release is what installed apps update from |
-| `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TRACS-Relay.exe` (Windows), `TRACS-Relay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from |
+| `vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS dmg, and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-22.04 and published directly (not as a draft) to one GitHub Release by electron-builder. This release is what installed apps update from |
+| `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TRACS-Relay.exe` (Windows), `TRACS-Relay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from. Relay releases are never marked as the repo's "latest" release, because installed TRACS apps find their updates through that pointer |
 
 ```bash
-git tag tracs-v0.2.0 && git push origin tracs-v0.2.0
+git tag v0.2.0 && git push origin v0.2.0
 git tag relay-v0.2.0 && git push origin relay-v0.2.0
 ```
 

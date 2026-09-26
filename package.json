@@ -93,7 +93,8 @@
     "publish": {
       "provider": "github",
       "owner": "denimchickensoft",
-      "repo": "TRACS"
+      "repo": "TRACS",
+      "releaseType": "release"
     },
     "win": {
       "target": "nsis",

@@ -9,6 +9,11 @@ on:
     tags:
       - 'relay-v*'
 
+# The repo's default GITHUB_TOKEN is read-only; publishing a release needs
+# write access to contents.
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -44,3 +49,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: relay/dist/*
+          # Never mark a relay release as the repo's "latest": TRACS's
+          # electron-updater resolves updates via GitHub's single latest-release
+          # pointer, so a relay release there would hide TRACS updates.
+          make_latest: false

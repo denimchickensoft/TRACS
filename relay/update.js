@@ -68,7 +68,7 @@ function downloadFile(url, destPath) {
 }
 
 // Parses "relay-vX.Y.Z" -> "X.Y.Z"; returns null for anything that isn't a
-// Relay release tag (e.g. a tracs-vX.Y.Z release from the *other* app, which
+// Relay release tag (e.g. a vX.Y.Z TRACS release from the *other* app, which
 // /releases lists right alongside Relay's own since both share one repo).
 function parseRelayTag(tag) {
   const m = /^relay-v(\d+\.\d+\.\d+)$/.exec(tag)
