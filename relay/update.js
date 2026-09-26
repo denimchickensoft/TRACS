@@ -95,7 +95,7 @@ async function findLatestRelayRelease() {
 }
 
 function assetNameForPlatform() {
-  return process.platform === 'win32' ? 'TracsRelay.exe' : 'TracsRelay'
+  return process.platform === 'win32' ? 'TRACS-Relay.exe' : 'TRACS-Relay'
 }
 
 // Intl.DateTimeFormat gives the current time-of-day in the configured

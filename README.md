@@ -91,7 +91,7 @@ All three are served on one WebSocket port.
 
 ### Setup
 
-1. From the latest `relay-v*` release, download `TracsRelay.exe` (Windows) or `TracsRelay` (Linux), plus `config.example.json`.
+1. From the latest `relay-v*` release, download `TRACS-Relay.exe` (Windows) or `TRACS-Relay` (Linux), plus `config.example.json`.
 2. Put them in one folder, and copy `config.example.json` to `config.json` in that folder.
 3. In SRS's server settings, enable the LotATC export and point it at the relay machine, on the port set as `srsLotatcPort` (10712 by default).
 4. Open `wsPort` (8765 by default) to controllers.
@@ -163,7 +163,7 @@ Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). 
 cd relay
 npm install
 npm start            # node index.js, reads relay/config.json
-npm run build        # produce relay/dist/TracsRelay(.exe) + config.example.json
+npm run build        # produce relay/dist/TRACS-Relay(.exe) + config.example.json
 ```
 
 A relay run from source never updates itself.
@@ -185,7 +185,7 @@ Releases are built by GitHub Actions when a version tag is pushed. The tag is th
 | Tag | Workflow | Produces |
 |---|---|---|
 | `tracs-vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS dmg, and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-20.04 and published to one GitHub Release by electron-builder. This release is what installed apps update from |
-| `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TracsRelay.exe` (Windows), `TracsRelay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from |
+| `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TRACS-Relay.exe` (Windows), `TRACS-Relay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from |
 
 ```bash
 git tag tracs-v0.2.0 && git push origin tracs-v0.2.0

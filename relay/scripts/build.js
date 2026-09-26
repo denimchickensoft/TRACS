@@ -1,6 +1,6 @@
 'use strict'
 
-// Builds a standalone TracsRelay executable — a Node SEA (Single Executable
+// Builds a standalone TRACS Relay executable — a Node SEA (Single Executable
 // Application) wrapping relay/index.js, for distribution to a VPS or a DCS
 // dedicated server with no Node install and no copy of this repo. Mirrors
 // server/scripts/terrainDataExe/build.js's already-proven recipe almost
@@ -21,7 +21,7 @@ const path = require('path')
 const DIR        = __dirname
 const RELAY_DIR   = path.resolve(DIR, '..')
 const DIST_DIR    = path.join(RELAY_DIR, 'dist')
-const EXE_NAME    = process.platform === 'win32' ? 'TracsRelay.exe' : 'TracsRelay'
+const EXE_NAME    = process.platform === 'win32' ? 'TRACS-Relay.exe' : 'TRACS-Relay'
 const BUNDLE      = path.join(DIR, 'index.bundle.js')
 const BLOB        = path.join(DIR, 'index.blob')
 const SEA_CONFIG  = path.join(DIR, 'sea-config.json')
