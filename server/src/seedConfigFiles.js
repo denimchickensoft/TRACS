@@ -67,8 +67,8 @@ function seedConfigFile(srcPath, destPath) {
 }
 
 // Runs once at server startup, before anything reads these files. No-ops
-// when TRACS_CONFIG_DIR isn't set (dev/plain `npm start`) — mirrors
-// navdata/parser.js's seedBundledCache() override-inactive no-op.
+// when TRACS_CONFIG_DIR isn't set (dev/plain `npm start`), where the bundled
+// files are used in place.
 function seedUserConfigDir() {
   if (!CONFIG_DIR) return
   for (const { src, dest } of SEED_FILES) seedConfigFile(src, path.join(CONFIG_DIR, dest))

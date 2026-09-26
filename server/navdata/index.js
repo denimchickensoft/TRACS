@@ -2,7 +2,7 @@
 
 const fs         = require('fs')
 const path       = require('path')
-const { buildCache, seedBundledCache, CACHE_DIR, CONFIG_DIR, COLOR_CONFIG_DIR } = require('./parser')
+const { buildCache, CACHE_DIR, BUNDLED_CACHE_DIR, CONFIG_DIR, COLOR_CONFIG_DIR } = require('./parser')
 const { runExtract, validateLnmDb } = require('./tools/extract-navdata')
 const stateFiles = require('../src/stateFiles')
 
@@ -99,7 +99,6 @@ function applyLnmDbPathEnvOverride() {
 
 async function init() {
   try {
-    seedBundledCache()
     applyLnmDbPathEnvOverride()
     await buildCache()
     refreshReady()
@@ -279,7 +278,7 @@ function handleRelief(req, res) {
   if (!theatre) return res.status(400).json({ error: 'theatre is required' })
   const folder = theatreFolder(theatre)
   if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
-  const fp = path.join(CACHE_DIR, folder, 'relief.json')
+  const fp = path.join(BUNDLED_CACHE_DIR, folder, 'relief.json')
   if (!fs.existsSync(fp)) return res.status(404).json({ error: 'relief data not built' })
   serveJson(res, fp)
 }
@@ -295,7 +294,7 @@ function handleGeo(req, res) {
   if (!theatre) return res.status(400).json({ error: 'theatre is required' })
   const folder = theatreFolder(theatre)
   if (!folder) return res.status(404).json({ error: `unknown theatre: ${theatre}` })
-  const fp = path.join(CACHE_DIR, folder, 'geo.json')
+  const fp = path.join(BUNDLED_CACHE_DIR, folder, 'geo.json')
   if (!fs.existsSync(fp)) return res.status(404).json({ error: 'geo data not built' })
   serveJson(res, fp)
 }
@@ -306,7 +305,7 @@ function handleMva(req, res) {
   const { icao } = req.query
   if (!icao) return res.status(400).json({ error: 'icao is required' })
   for (const [, tConf] of Object.entries(loadTheatres())) {
-    const fp = path.join(CACHE_DIR, tConf.folder, 'mva', `${icao.toUpperCase()}.json`)
+    const fp = path.join(BUNDLED_CACHE_DIR, tConf.folder, 'mva', `${icao.toUpperCase()}.json`)
     if (fs.existsSync(fp)) return serveJson(res, fp)
   }
   res.status(404).json({ error: `no MVA data for ${icao}` })
@@ -347,6 +346,7 @@ async function handleSetLnmConfig(req, res) {
 module.exports = {
   init,
   CACHE_DIR,
+  BUNDLED_CACHE_DIR,
   COLOR_CONFIG_DIR,
   theatreFolder,
   theatreUtcOffset,

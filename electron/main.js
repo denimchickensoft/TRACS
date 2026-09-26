@@ -159,10 +159,10 @@ async function resolvePort() {
 function startServer(port) {
   process.env.PORT                  = String(port)
   process.env.TRACS_STATE_DIR       = app.getPath('userData')
-  // Keeps LNM-derived extraction output (and the seeded copy of the bundled
-  // non-LNM theatre files) out of the app's own install directory - not
-  // reliably writable, and wiped on every app update. See
-  // server/navdata/parser.js's seedBundledCache()/CACHE_DIR.
+  // Keeps LNM-derived extraction output out of the app's own install
+  // directory - not reliably writable, and replaced on every app update. The
+  // bundled theatre data is read in place from the install directory. See
+  // server/navdata/parser.js's CACHE_DIR/BUNDLED_CACHE_DIR.
   process.env.TRACS_NAVDATA_CACHE_DIR = path.join(app.getPath('userData'), 'navdata-cache')
   // Same reasoning as TRACS_NAVDATA_CACHE_DIR above: operator-edited config
   // (rateConfig.json, tacviewDetectionConfig.json, airspace_colors.json,
