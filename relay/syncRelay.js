@@ -180,7 +180,29 @@ function createSyncRelay(wss, config) {
   // this transport. Ported step-for-step from that handler: stale-slot
   // eviction, frequency deconfliction, position resolution, upsert,
   // mint-if-not-already-registered, broadcast.
+  // Shape check for a client-supplied `register` message. The real client
+  // always sends these types; anything else is a malformed or hand-crafted
+  // message and must be rejected before it reaches resolvePosition/mintEntry
+  // (a non-string position, for one, throws inside resolvePosition).
+  const isOptString = (v) => v == null || typeof v === 'string'
+  const isOptNumber = (v) => v == null || (typeof v === 'number' && Number.isFinite(v))
+  function isValidRegister(msg) {
+    return typeof msg.position === 'string' && msg.position.length > 0
+      && isOptString(msg.clientId) && isOptString(msg.previousPeerId)
+      && isOptString(msg.module) && isOptString(msg.facility) && isOptString(msg.suffix)
+      && (isOptString(msg.frequency) || isOptNumber(msg.frequency))
+      && isOptNumber(msg.connectedAt) && isOptNumber(msg.roomJoinedAt)
+      && isOptString(msg.preferredLetter) && isOptString(msg.displayName)
+      && (msg.canAssumeTrack == null || typeof msg.canAssumeTrack === 'boolean')
+  }
+
   function handleRegister(topic, ws, peerId, msg) {
+    if (!isValidRegister(msg)) {
+      console.error(`[relay:sync] rejecting malformed register from peerId=${peerId} topic=${topic}`)
+      ws.send(JSON.stringify({ type: 'register_rejected', topic, reason: 'INVALID_REGISTRATION' }))
+      return
+    }
+
     let session = sessions.get(topic)
     if (!session) {
       session = { clientList: [], registry: {}, groupAssignments: {}, nextGroupNumber: 1, evictionTimers: {} }
@@ -373,7 +395,7 @@ function createSyncRelay(wss, config) {
     gateConnection(ws, config.passwords, {
       label: 'sync',
       onAuthenticated: (authMsg) => {
-        peerId = authMsg.peerId ?? null
+        peerId = typeof authMsg.peerId === 'string' && authMsg.peerId ? authMsg.peerId : null
         console.log(`[relay:sync] client authenticated coalition=${authMsg.coalition} peerId=${peerId}`)
       },
     })
@@ -389,12 +411,20 @@ function createSyncRelay(wss, config) {
         return
       }
 
-      if (msg.type === 'subscribe' && typeof msg.topic === 'string') {
-        subscribe(msg.topic, ws, peerId)
-      } else if (msg.type === 'publish' && typeof msg.topic === 'string') {
-        publish(msg.topic, msg.payload, ws, msg.targetPeerId)
-      } else if (msg.type === 'register' && typeof msg.topic === 'string') {
-        handleRegister(msg.topic, ws, peerId, msg)
+      if (!msg || typeof msg !== 'object') return
+
+      // Safety net: a bug or an unexpected message shape in one handler must
+      // not take down the whole relay for every other connected controller.
+      try {
+        if (msg.type === 'subscribe' && typeof msg.topic === 'string') {
+          subscribe(msg.topic, ws, peerId)
+        } else if (msg.type === 'publish' && typeof msg.topic === 'string') {
+          publish(msg.topic, msg.payload, ws, msg.targetPeerId)
+        } else if (msg.type === 'register' && typeof msg.topic === 'string') {
+          handleRegister(msg.topic, ws, peerId, msg)
+        }
+      } catch (err) {
+        console.error(`[relay:sync] error handling '${msg.type}' from peerId=${peerId}:`, err)
       }
     })
 
