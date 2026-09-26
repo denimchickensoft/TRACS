@@ -18,7 +18,13 @@ const rateConfig = require('./rateConfig')
 const { splitByCategory, computeDateAndTime, identifiedError, createDeltaBuffer } = require('./tacviewShared')
 
 const DEFAULT_PORT = 42674
-const RECONNECT_MS = 3000
+// Reconnect backoff: starts at RECONNECT_MIN_MS, doubles per failed attempt
+// up to RECONNECT_MAX_MS, and resets once telemetry flows. Covers the long
+// gap while DCS restarts a mission (Tacview's RTT port refuses connections
+// until the mission is running) without hammering it, since rapid reconnect
+// churn is known to crash tacview.dll.
+const RECONNECT_MIN_MS = 3000
+const RECONNECT_MAX_MS = 60000
 // Not a measured minimum; kept short to cut Login's facility-picker wait.
 // The manual theatre override is the real safety net against a
 // border-overlap-zone misvote, not this window's length.
@@ -83,6 +89,7 @@ let onMission = null
 let onBullseyes = null
 let onDisconnect = null
 let handshakeFailures = 0
+let reconnectDelayMs = RECONNECT_MIN_MS
 
 // Accumulates at full stream rate; flushed to state/broadcast once per
 // rateConfig.unitUpdateMs by unitsBuffer.flush(). Both processIncoming and
@@ -279,14 +286,21 @@ function connect() {
 
     if (receivedTelemetry) {
       handshakeFailures = 0
-    } else if (++handshakeFailures >= MAX_HANDSHAKE_FAILURES) {
+      reconnectDelayMs = RECONNECT_MIN_MS
+    } else if (handshakeSent && ++handshakeFailures >= MAX_HANDSHAKE_FAILURES) {
+      // Only a close right after OUR handshake counts as a rejection. A
+      // refused or silent connection (no greeting, so no handshake sent) is
+      // DCS/Tacview not running yet - e.g. a mission restart - and just
+      // keeps retrying below.
       console.error(`[tacview] rejected ${handshakeFailures}x in a row right after the handshake - likely a wrong RTT password. Giving up.`)
       if (onDisconnect) onDisconnect()
       return
     }
 
-    console.log(`[tacview] disconnected - reconnecting in ${RECONNECT_MS}ms`)
-    reconnectTimer = setTimeout(connect, RECONNECT_MS)
+    const delay = reconnectDelayMs
+    reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
+    console.log(`[tacview] disconnected - reconnecting in ${Math.round(delay / 1000)}s`)
+    reconnectTimer = setTimeout(connect, delay)
   })
 
   localSocket.on('error', (err) => {
@@ -315,6 +329,7 @@ function start(cfg, callbacks = {}) {
   internalUnits = {}
   internalWeapons = {}
   handshakeFailures = 0
+  reconnectDelayMs = RECONNECT_MIN_MS
   unitsBuffer.reset()
   weaponsBuffer.reset()
   // Guards against a prior relay-hosted session (tacviewRelayClient.js)
