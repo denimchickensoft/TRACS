@@ -141,7 +141,61 @@ The executable checks GitHub Releases for newer `relay-v*` versions at startup a
 | `immediate` | Downloads it, swaps the executable in place, and exits |
 | `window` | Does the same as `immediate`, but only inside the daily maintenance window |
 
-The relay exits after swapping, so run it under a supervisor that restarts it: a Windows service wrapper, systemd, or similar.
+The relay exits after swapping, so run it under a supervisor that restarts it (see [Running as a service](#running-as-a-service)).
+
+### Running as a service
+
+Run the relay under a service manager, so it starts with the machine and restarts after it exits. It exits after each self-update, so without a supervisor it stays down until someone restarts it. Always set the working directory to the executable's folder; `config.json` and the relay's state files live there.
+
+**Windows (NSSM).** With [NSSM](https://nssm.cc/), from an administrator prompt (adjust the paths):
+
+```bat
+nssm install TRACS-Relay "C:\TRACS-Relay\TRACS-Relay.exe"
+nssm set TRACS-Relay AppDirectory "C:\TRACS-Relay"
+nssm set TRACS-Relay AppStdout "C:\TRACS-Relay\relay.log"
+nssm set TRACS-Relay AppStderr "C:\TRACS-Relay\relay.log"
+nssm set TRACS-Relay AppRotateFiles 1
+nssm set TRACS-Relay AppRotateBytes 10485760
+nssm start TRACS-Relay
+```
+
+**Linux (systemd).** Save as `/etc/systemd/system/tracs-relay.service`, then run `sudo systemctl enable --now tracs-relay`:
+
+```ini
+[Unit]
+Description=TRACS Relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=tracs
+WorkingDirectory=/opt/tracs-relay
+ExecStart=/opt/tracs-relay/TRACS-Relay
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+The service user needs write access to the folder, since self-updates replace the executable in place.
+
+### Firewall
+
+- **Inbound TCP `wsPort`** (8765 by default) from controllers.
+- **Inbound UDP `srsLotatcPort`** (10712 by default) **only from the SRS server's address.** The relay trusts whatever arrives on this port.
+- **Outbound** to Tacview's RTT port (if `tacviewHost` is set), and to `github.com` over HTTPS for self-updates.
+
+### Security
+
+- **Always set `passwords`.** An empty `passwords` object lets anyone who can reach the relay connect as any coalition.
+- **Keep `config.json` private.** It holds the passwords in plain text, so make it readable only by the account that runs the relay.
+- **Coalition passwords control who can connect, not what they receive.** The relay forwards every unit (Tacview telemetry and transponders) to every authenticated client, and each controller's own TRACS applies fog of war. A player with a valid password and a modified client could see the other side's full picture, so only give passwords to players you trust.
+- **Traffic isn't encrypted.** Controllers connect over plain `ws://`, so passwords and data can be read by anyone who can watch the network between them and the relay. Prefer a trusted network or a VPN for internet-facing relays.
+
+### Logs
+
+The relay writes its log to the console only. Keep it with your service manager: NSSM's `AppStdout`/`AppStderr` settings above, or `journalctl -u tracs-relay` on Linux.
 
 ### Version compatibility
 
