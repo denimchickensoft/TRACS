@@ -88,8 +88,14 @@ async function main() {
   console.log('\n[3/5] Copying node executable...')
   fs.copyFileSync(process.execPath, exePath)
 
-  console.log('\n[4/5] Embedding icon...')
-  await embedIcon(exePath)
+  // Windows only: resedit parses PE executables, and ELF binaries have no
+  // embedded-icon convention to write to.
+  if (process.platform === 'win32') {
+    console.log('\n[4/5] Embedding icon...')
+    await embedIcon(exePath)
+  } else {
+    console.log('\n[4/5] Embedding icon... skipped (not a Windows build)')
+  }
 
   console.log('\n[5/5] Injecting blob with postject...')
   run(process.execPath, [
