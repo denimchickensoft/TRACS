@@ -288,7 +288,7 @@ function connect() {
       // missileDetectionMs values (file → env var → hardcoded default), never
       // truly "unset".
       rateConfig.applyRelayConfig(msg.config)
-      console.log(`[tacviewRelayClient] relay rate config received: unitUpdateMs=${msg.config.unitUpdateMs} detectionMs=${msg.config.detectionMs} missileDetectionMs=${msg.config.missileDetectionMs}`)
+      console.log(`[tacviewRelayClient] relay rate config received: unitUpdateMs=${rateConfig.unitUpdateMs} detectionMs=${rateConfig.detectionMs} missileDetectionMs=${rateConfig.missileDetectionMs}`)
       armRateTimers()
       return
     }

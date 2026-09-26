@@ -36,6 +36,15 @@ function loadConfig() {
 }
 const fileConfig = loadConfig()
 
+// Scan-rate intervals are pushed to every connected backend, which uses them
+// as timer periods, so a non-numeric or absurd value must never leave here.
+function rateMs(key, fileValue, envValue, fallback) {
+  const value = Number(fileValue ?? envValue ?? fallback)
+  if (Number.isFinite(value) && value >= 100 && value <= 60000) return value
+  console.warn(`[relay] config ${key}=${JSON.stringify(fileValue ?? envValue)} is invalid (need 100-60000ms) - using ${fallback}ms`)
+  return fallback
+}
+
 const config = {
   srsLotatcPort: Number(fileConfig.srsLotatcPort ?? process.env.SRS_LOTATC_PORT ?? 10712),
   wsPort:        Number(fileConfig.wsPort ?? process.env.RELAY_WS_PORT ?? 8765),
@@ -66,9 +75,9 @@ const config = {
   // real-world radar scan-rate context) — 1000ms matches this project's
   // original testing-fidelity default; see config.example.json for a more
   // realistic value.
-  unitUpdateMs:       Number(fileConfig.unitUpdateMs ?? process.env.UNIT_UPDATE_MS ?? 1000),
-  detectionMs:        Number(fileConfig.detectionMs ?? process.env.DETECTION_MS ?? 1000),
-  missileDetectionMs: Number(fileConfig.missileDetectionMs ?? process.env.MISSILE_DETECTION_MS ?? 1000),
+  unitUpdateMs:       rateMs('unitUpdateMs', fileConfig.unitUpdateMs, process.env.UNIT_UPDATE_MS, 1000),
+  detectionMs:        rateMs('detectionMs', fileConfig.detectionMs, process.env.DETECTION_MS, 1000),
+  missileDetectionMs: rateMs('missileDetectionMs', fileConfig.missileDetectionMs, process.env.MISSILE_DETECTION_MS, 1000),
   // Hand-rolled auto-update — see update.js. Only
   // meaningful when running as the packaged SEA binary (isSeaBinary above);
   // a plain `node index.js` dev run never self-updates. mode: "notify" logs

@@ -39,8 +39,28 @@ const DEFAULTS = {
   missileDetectionMs: 1000,
 }
 
+// Every value here becomes a setInterval/setTimeout period, and a bad one
+// (null, NaN, 0, a string) makes Node fire the timer about every 1ms, pinning
+// a CPU core. So each key must be a finite number, clamped to a sane range;
+// anything else falls back to its default with a warning.
+const MIN_MS = 100
+const MAX_MS = 60000
+
 function mergeConfig(rawConfig) {
-  return { ...DEFAULTS, ...(rawConfig ?? {}) }
+  const raw = rawConfig && typeof rawConfig === 'object' ? rawConfig : {}
+  const merged = { ...DEFAULTS }
+  for (const key of Object.keys(DEFAULTS)) {
+    if (raw[key] === undefined) continue
+    const value = raw[key]
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      console.warn(`[rateConfig] ${key}=${JSON.stringify(value)} is not a number - using ${DEFAULTS[key]}ms`)
+      continue
+    }
+    const clamped = Math.min(Math.max(value, MIN_MS), MAX_MS)
+    if (clamped !== value) console.warn(`[rateConfig] ${key}=${value}ms is outside ${MIN_MS}-${MAX_MS}ms - using ${clamped}ms`)
+    merged[key] = clamped
+  }
+  return merged
 }
 
 let config = DEFAULTS
