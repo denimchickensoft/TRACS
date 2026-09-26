@@ -53,7 +53,12 @@ A bare click with an empty buffer depends on the track's state:
 | `**` + SLEW | — | Convert an incoming point-out into a claimed handoff |
 | `UN` + SLEW | — | Reject an incoming point-out |
 
-A bare click (empty buffer) also resolves pending point-outs. No function key is mapped to point outs.
+A bare click (empty buffer) on a track with a pending point-out also resolves it:
+- on your own outgoing point-out, it **recalls** it;
+- on a point-out sent to you, it **acknowledges** it;
+- on your point-out that the other position rejected (shown as `UN`), it **dismisses** the `UN` indicator.
+
+No function key is mapped to point outs.
 
 ## Scratchpads and altitudes
 
