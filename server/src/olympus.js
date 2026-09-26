@@ -39,8 +39,8 @@ let lastSessionHash = null
 // weapons store — mirrors tacview.js's internalUnits/internalWeapons split.
 // Necessary because Olympus's own /olympus/weapons endpoint, unlike
 // /olympus/units, sends full unredacted position data for every coalition's
-// missiles regardless of which coalition authenticated (confirmed live
-// 2026-09-15 — see missileDetection.js's createMissileFogFilter). state.js's
+// missiles regardless of which coalition authenticated (confirmed live —
+// see missileDetection.js's createMissileFogFilter). state.js's
 // weapons store (what a newly-connected browser gets hydrated with) must
 // only ever hold the fog-filtered PUBLIC view, matching what's already been
 // broadcast — so pollMissileDetection() needs its own omniscient copy to
@@ -155,7 +155,7 @@ async function pollUnits() {
 }
 
 // Weapon objects need two guards real units don't (confirmed against a live
-// capture, 2026-09-15 — see the "Add missile tracking to AIC/ABM" plan):
+// capture):
 // Olympus never purges a dead weapon from its internal registry, so it keeps
 // reporting the same id forever — a proper {category, alive:false} on every
 // full-refresh poll, and a completely bare {id}-only stub (no position, no
@@ -171,8 +171,8 @@ async function pollWeapons() {
     // Olympus's weapons endpoint never streams real position on an
     // incremental (?time=X, X>0) poll, only a bare {id} stub. Relying on
     // FULL_REFRESH_EVERY the way pollUnits() does left real missile position
-    // updates landing only once every 10 polls (~10s at 1Hz) — client-
-    // reported 2026-09-15. Live weapon counts (missiles only) are small
+    // updates landing only once every 10 polls (~10s at 1Hz). Live weapon
+    // counts (missiles only) are small
     // enough that a full fetch every poll is cheap, and it's the only way to
     // get real position data every poll.
     const buffer = await fetchOlympusBinary('/olympus/weapons?time=0')
@@ -212,7 +212,7 @@ async function pollWeapons() {
     // raw position data is only forwarded once missileFogFilter has actually
     // confirmed it detected — see that filter's own comment for why this
     // redaction is necessary here (Olympus's /olympus/weapons endpoint sends
-    // unredacted omniscient data, confirmed live 2026-09-15).
+    // unredacted omniscient data, confirmed live).
     const publicUpdated = missileFogFilter ? missileFogFilter.filterFrameUpdate(updatedMap) : updatedMap
 
     const delta = { updated: publicUpdated, removed: removedIds, time: updateTime }

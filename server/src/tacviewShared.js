@@ -28,8 +28,8 @@ function splitByCategory(updated) {
 // 'Z', e.g. "2011-06-25T09:30:01Z"). DCS's own dateAndTime (what Olympus
 // sends, and what useMissionClock()/toUtcDateTime() expect) is theatre-local
 // relative to DCS's own INTERNAL clock — a separate thing from real-world
-// UTC, skewed from it by its own fixed per-theatre amount (confirmed live,
-// 2026-09-06: PersianGulf needed a real-UTC→local offset of +3.5, distinct
+// UTC, skewed from it by its own fixed per-theatre amount (confirmed live:
+// PersianGulf needed a real-UTC→local offset of +3.5, distinct
 // from the existing +4 used for the internal-Zulu→local leg — see
 // navdata.theatreTacviewRealUtcOffset()'s comment for the full story). This
 // converts real UTC straight to the theatre-local shape the existing
@@ -56,8 +56,8 @@ function identifiedError(message) {
 // creation); `merge` selects the two files' two different queue semantics:
 // units merge partial writes together (processIncoming's full unit vs.
 // runDetectionPass's partial {contacts:[...]} racing into the same buffer
-// before one flush would otherwise wholesale-replace each other — confirmed
-// live 2026-09-15: a radar-equipped unit's position freezing intermittently),
+// before one flush would otherwise wholesale-replace each other — seen live
+// as a radar-equipped unit's position freezing intermittently),
 // weapons simply overwrite (no equivalent partial-write race for weapons).
 //
 // The delta callback (onUnitsDelta/onWeaponsDelta) is intentionally NOT

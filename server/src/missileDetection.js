@@ -115,7 +115,7 @@ function computeMissileContacts(units, weapons, friendlyCoalitionId) {
 }
 
 // Fog-of-war redaction for weapon data — needed on BOTH sources, not just
-// Tacview. Confirmed live 2026-09-15: Olympus's own /olympus/weapons endpoint
+// Tacview. Confirmed against live data: Olympus's own /olympus/weapons endpoint
 // sends full, unredacted position telemetry for every coalition's missiles
 // regardless of which coalition authenticated (a Blue-authenticated capture
 // received complete real-time Red-coalition missile positions) — unlike

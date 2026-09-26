@@ -1,9 +1,8 @@
 'use strict'
 
-// Douglas-Peucker line simplification + coordinate rounding, extracted from
-// buildRoadsWaterData.js (2026-08-11) so a second caller (buildOsmLand.js)
-// can shrink OSM coastline vertex density the same way roads/rail/water
-// already are, without duplicating this logic.
+// Douglas-Peucker line simplification + coordinate rounding, shared by
+// buildRoadsWaterData.js and buildOsmLand.js (which shrinks OSM coastline
+// vertex density the same way roads/rail/water are).
 
 const SIMPLIFY_TOLERANCE_DEG = 0.0002 // ~20m at these latitudes — see buildRoadsWaterData.js
                                        // for the sizing rationale (matched to the ABM raster's

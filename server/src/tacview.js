@@ -3,12 +3,9 @@
 // Direct-mode Tacview Real-Time Telemetry source — a normal sourceRegistry
 // entry, exactly like olympus.js. Each controller's TRACS backend opens its
 // own TCP connection straight to Tacview's RTT port and parses the ACMI
-// stream itself via the shared tacviewCore parser.
-//
-// See resources/specs/data-sources/custom-datasource-tacview-spec.md
-// (protocol facts, §0.1 for the relay-hosted alternative mode) and
-// pluggable-source-architecture-spec.md (the {start,stop,isPolling,
-// getConfig,probe} contract this implements).
+// stream itself via the shared tacviewCore parser. The relay-hosted
+// alternative mode lives in tacviewRelayClient.js. Implements
+// sourceRegistry's {start,stop,isPolling,getConfig,probe} contract.
 
 const net = require('net')
 const state = require('./state')
@@ -22,10 +19,9 @@ const { splitByCategory, computeDateAndTime, identifiedError, createDeltaBuffer 
 
 const DEFAULT_PORT = 42674
 const RECONNECT_MS = 3000
-// Was 5000 — never a measured minimum, just an untested comfortable margin
-// (see custom-datasource-tacview-spec.md §4.2). Shortened 2026-09-06 to cut
-// Login's facility-picker wait; the manual theatre override remains the real
-// safety net against a border-overlap-zone misvote, not this window's length.
+// Not a measured minimum; kept short to cut Login's facility-picker wait.
+// The manual theatre override is the real safety net against a
+// border-overlap-zone misvote, not this window's length.
 const THEATRE_VOTE_WINDOW_MS = 2000
 // Detection pass, missile-detection pass, and browser-facing broadcast
 // cadence all live in server/src/rateConfig.js now (rateConfig.detectionMs/
@@ -168,7 +164,7 @@ function runDetectionPass() {
 // not just the units-side missileContacts[] update — see
 // missileDetection.js's createMissileFogFilter for why weapons need this at
 // all (Olympus's own /olympus/weapons endpoint sends unredacted omniscient
-// data, confirmed live 2026-09-15).
+// data, confirmed live).
 function runMissileDetectionPass() {
   if (!connected || !missileFogFilter) return
   const { contactsUpdate, revealed, hidden } = missileFogFilter.computeVisibility(internalUnits, internalWeapons)
@@ -246,10 +242,9 @@ function connect() {
   // connection while an older one's handler is still in flight, and reading
   // `socket` at that point would act on the wrong connection instead of the
   // one that actually emitted the event -- e.g. writing the RTT handshake
-  // (below) onto a not-yet-connected socket. Same race class fixed the same
-  // way in tacviewRelayClient.js/srs.js earlier the same day; this is
-  // plausibly tangled up with the real ACCESS_VIOLATION crash documented in
-  // that memory ("cross-request rapid-reconnect guard still missing"). The
+  // (below) onto a not-yet-connected socket. Same race class, fixed the same
+  // way, as in tacviewRelayClient.js/srs.js, and plausibly related to the
+  // tacview.dll ACCESS_VIOLATION crash on rapid reconnects. The
   // `localSocket !== socket` guards additionally drop events from a
   // connection that's since been superseded, rather than letting a stale
   // one's data/reconnect-timer race a newer one.
@@ -388,8 +383,8 @@ function overrideTheatre(name) {
 // Undo an override (or a bad initial auto-vote) without touching the live
 // Tacview connection — routes/api.js's alreadyOnSameSource skip means a
 // browser relogin never restarts it (a genuine restart risks the
-// rapid-reconnect tacview.dll crash, custom-datasource-tacview-spec.md /
-// 2026-09-06 crash log), so this is the only way back to auto-detection short
+// rapid-reconnect tacview.dll crash), so this is the only way back to
+// auto-detection short
 // of that. Clears the stale vote tally and re-arms the same one-shot timer
 // start() uses, so the next THEATRE_VOTE_WINDOW_MS of live positions gets a
 // fresh, honest vote.
@@ -413,7 +408,7 @@ function getConfig() {
 // port also accepts a TCP connection, which would make the auto-detect race
 // (api.js) a coin flip on an Olympus-only deployment. Tacview's RTT server
 // proactively sends its handshake greeting the instant a client connects
-// (confirmed live, custom-datasource-tacview-spec.md §5 item 1); Olympus's
+// (confirmed live); Olympus's
 // HTTP server sends nothing until it receives a request. So waiting for that
 // unsolicited greeting and checking its prefix is what actually tells the
 // two apart.

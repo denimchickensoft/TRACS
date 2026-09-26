@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
 Downloads Geofabrik .osm.pbf country extracts (cached locally) and filters
-them down to the road/rail tag scope decided in abm-map-context-spec.md:
+them down to the road/rail tag scope ABM's roads layer uses:
 motorway/trunk/primary/secondary/tertiary highways + rail.
 
-This replaces live Overpass API queries for roads/rail (see spec §5 item 5-6)
-with a one-time bulk static-file download - gentler on shared infrastructure,
+This replaces live Overpass API queries for roads/rail with a one-time bulk static-file download - gentler on shared infrastructure,
 no rate limiting, no query timeouts.
 
 Output: resources/osm-build/roads_rail_raw/<country>.json - one file per
@@ -16,7 +15,7 @@ in that directory, clips per theatre bbox, and writes the final per-theatre
 mapcontext.json. Per-country (not one combined file) so re-running this
 script only re-filters newly-added countries, and so the total never hits
 Node's V8 max string length once enough countries pile up (a single combined
-file did, at 568MB/977K features - see 2026-07-29 fix).
+file did, at 568MB/977K features).
 
 Raw country .pbf downloads and the per-country filtered output are cached in
 resources/osm-build/ (gitignored, like the rest of resources/) rather than
@@ -117,13 +116,11 @@ EXTRACTS = [
     ('https://download.geofabrik.de/europe/switzerland-latest.osm.pbf', 'switzerland'),
     ('https://download.geofabrik.de/europe/denmark-latest.osm.pbf', 'denmark'),
     # Germany bbox also reaches southern Sweden (Malmo/ESMS area, across the
-    # Oresund from Denmark) - missed on the first pass since water (Natural
-    # Earth, bbox-only clipped) covered it but roads (Geofabrik, per-country)
-    # didn't.
+    # Oresund from Denmark). Water (Natural Earth, bbox-clipped) covers it
+    # regardless, but roads come per-country, so Sweden must be listed.
     ('https://download.geofabrik.de/europe/sweden-latest.osm.pbf', 'sweden'),
-    # MarianaIslands - initially skipped as "low payoff" without actually
-    # checking; Geofabrik's american-oceania extract covers Guam/CNMI at
-    # only 5.1MB, effectively free.
+    # MarianaIslands - Geofabrik's american-oceania extract covers Guam/CNMI
+    # at only 5.1MB.
     ('https://download.geofabrik.de/australia-oceania/american-oceania-latest.osm.pbf', 'american-oceania'),
     # Afghanistan - bbox [60,23,75,39] extends well past the country's own
     # borders (south to lat 23, deep into Pakistan) per explicit direction
@@ -136,10 +133,8 @@ EXTRACTS = [
     ('https://download.geofabrik.de/asia/afghanistan-latest.osm.pbf', 'afghanistan'),
     ('https://download.geofabrik.de/asia/pakistan-latest.osm.pbf', 'pakistan'),
     # Normandy - bbox [-6.0, 47.0, 4.0, 53.0] covers northern/western France
-    # plus a sliver of southern England across the Channel. Never added when
-    # the theatre was — same class of oversight as the Sweden/Marianas fixes
-    # above, caught 2026-09-21 because Normandy's roads.json/roads.png were
-    # simply never being written (no France/GB extract to clip from).
+    # plus a sliver of southern England across the Channel. Without these,
+    # Normandy's roads.json/roads.png are never written (nothing to clip from).
     ('https://download.geofabrik.de/europe/france-latest.osm.pbf', 'france'),
     ('https://download.geofabrik.de/europe/great-britain-latest.osm.pbf', 'great-britain'),
 ]

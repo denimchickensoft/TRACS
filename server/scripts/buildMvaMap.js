@@ -5,7 +5,7 @@
 // layer (continuous terrain contours), this produces a *coarse partition* of one
 // approach control's airspace into a handful of labeled sectors, each carrying a
 // single conservative "don't vector below this here" floor — the artifact shape
-// of a real FAA MVA chart. See resources/specs/mva-spec.md.
+// of a real FAA MVA chart.
 //
 // Terrain-only approximation: clears the highest terrain in each sector + buffer
 // + clearance, rounded up to 100 ft. No man-made obstacles (no data for DCS).

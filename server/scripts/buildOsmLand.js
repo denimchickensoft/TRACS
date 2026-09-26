@@ -18,7 +18,7 @@
 //     ~100m (GEO_COASTLINE_SIMPLIFY_TOLERANCE_DEG — coarser than
 //     simplify.js's roads-grade 20m default), and with any piece smaller
 //     than GEO_COASTLINE_MIN_SIZE_M dropped outright. Both exist for
-//     performance, not just file size (2026-08-11): drawGeo.js reprojects
+//     performance, not just file size: drawGeo.js reprojects
 //     every point through full Transverse Mercator math live on every pan/
 //     zoom/rotate (no baking) — fjord/archipelago theatres (Kola, South
 //     Atlantic) carry tens of thousands of skerry-sized rings from the
@@ -38,7 +38,7 @@
 // disagree in harbors/deltas/reclaimed land, making roads appear to run
 // into the ocean wherever Natural Earth's coarser coastline cuts differently
 // than OSM's actual one. This gives every consumer the same coastline the
-// roads layer is already built from, so they finally agree (2026-08-11).
+// roads layer is already built from, so they agree.
 //
 // IMPORTANT ordering note: this script MERGES into geo.json rather than
 // replacing it outright — it reads whatever buildGeoData.js already wrote
@@ -48,8 +48,8 @@
 // coastlines back to Natural Earth — re-run this script after any
 // buildGeoData.js run to restore the OSM merge.
 //
-// Why TWO sources (2026-08-11, after the first version shipped with "split"
-// for both and geo.json's coastline stroke came out as a visible grid):
+// Why TWO sources (using "split" for both makes geo.json's coastline stroke
+// come out as a visible grid):
 // osmdata.openstreetmap.de's "split" variant deliberately chunks large
 // landmasses into smaller, overlapping tiles on a regular grid — great for
 // bulk area FILL (a fill only cares which pixels end up covered, not the

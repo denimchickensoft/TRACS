@@ -3,9 +3,8 @@
 const fs   = require('fs')
 const path = require('path')
 
-// Overridable so two backend instances sharing one server/ checkout (the
-// two-backends-on-one-machine testing pattern in
-// resources/specs/data-sources/README.md's testing guide) don't race on the
+// Overridable so two backend instances sharing one server/ checkout (e.g.
+// when testing two controllers on one machine) don't race on the
 // same .tmp files -- two processes writing+renaming the identical path
 // concurrently produces a real ENOENT on Windows. Defaults to the original
 // hardcoded path, unaffected for every normal single-instance deployment.

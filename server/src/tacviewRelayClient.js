@@ -9,13 +9,11 @@
 // does for direct mode.
 //
 // Detection enrichment (tacviewDetection.js) and theatre bbox-voting run
-// here, per-controller-backend, not inside the relay's tacview.js — see
-// resources/specs/data-sources/custom-datasource-tacview-spec.md §0.1/§7 for
-// why (the relay isn't meant to bundle theatre-specific terrain data).
+// here, per-controller-backend, not inside the relay's tacview.js, because
+// the relay isn't meant to bundle theatre-specific terrain data.
 //
-// Dispatched via the "Relay Port filled, Source Port blank" branch in
-// routes/api.js — not a sourceRegistry entry (see
-// dataminer-architecture-placeholder-spec.md §4 for the shared dispatch slot).
+// Dispatched via the relay-as-primary branch in routes/sourceConnect.js
+// (relayUrl set, no olympusUrl) — not a sourceRegistry entry.
 
 const WebSocket = require('ws')
 const { PROTOCOL_VERSION } = require('./protocolVersion')

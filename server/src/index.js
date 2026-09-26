@@ -70,8 +70,6 @@ registerApiRoutes(app, {
 // backend. Optional server-side default — normally set per-session from the
 // browser's Login screen instead (routes/api.js's /api/connect), which is
 // where most controllers would actually configure this.
-// See resources/specs/data-sources/tracs-relay-architecture-spec.md and
-// resources/specs/data-sources/custom-datasource-srs-transponder-spec.md.
 if (process.env.TRACS_RELAY_URL) {
   srs.start(
     { relayUrl: process.env.TRACS_RELAY_URL },

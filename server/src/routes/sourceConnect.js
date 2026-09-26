@@ -8,9 +8,8 @@
 // for why `broadcast` is threaded in from the app-WS layer.
 function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state, broadcast }) {
   // Races probe() across every registered source type, resolving to whichever
-  // answers first — this is what lets Login.jsx's "Source Port" field work
-  // without a manual Olympus/Tacview selector (see
-  // pluggable-source-architecture-spec.md §5's 2026-09-03 decision). Each
+  // answers first. Only used when the request doesn't name a sourceType
+  // (Login.jsx's source selector normally does). Each
   // source's own probe() is responsible for actually distinguishing itself
   // (e.g. tacview.js's probe waits for Tacview's unsolicited handshake greeting
   // rather than just checking the TCP connection succeeded, since a bare
@@ -53,13 +52,11 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
   // multiple controllers/tabs connecting around the same time, or just
   // re-clicking Connect) — Tacview's own RTT server can't tolerate that
   // churn and corrupts its internal state, crashing tacview.dll with an
-  // ACCESS_VIOLATION on DCS's next export tick (confirmed live twice now,
-  // 2026-09-06: dcs.20260906-202834.crash and dcs.log-20260906-211347 — the
-  // latter shows three full /api/connect cycles ~3-4s apart, each restarting
-  // the connection from scratch, the third crashing mid-handshake of the
-  // second). The in-request double-probe within a single /api/connect was
-  // already fixed (the comment below this covers that); this is the
-  // remaining gap between *separate* requests. 5s comfortably covers the
+  // ACCESS_VIOLATION on DCS's next export tick (reproduced live: three full
+  // /api/connect cycles ~3-4s apart, the third crashing mid-handshake of the
+  // second). The in-request double-probe within a single /api/connect is
+  // handled separately (see the comment further down); this guards the gap
+  // between *separate* requests. 5s comfortably covers the
   // observed 3-4s cadence with margin, without being so long it blocks a
   // genuine "fix my password, try again" retry.
   let lastTacviewConnectAt = 0
@@ -68,10 +65,9 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     return Date.now() - lastTacviewConnectAt < TACVIEW_RECONNECT_COOLDOWN_MS
   }
 
-  // POST /api/connect — start a primary data source with supplied credentials.
-  // See resources/specs/data-sources/pluggable-source-architecture-spec.md
-  // (registry/dispatch) and custom-datasource-tacview-spec.md §0.1 (the two
-  // Tacview connection modes this now dispatches between).
+  // POST /api/connect — start a primary data source with supplied credentials,
+  // dispatched through sourceRegistry (including the two Tacview connection
+  // modes: direct RTT, or via a TRACS relay).
   app.post('/api/connect', async (req, res) => {
     const { sourceType: requestedSourceType, relayUrl, ...sourceCfg } = req.body ?? {}
 
@@ -85,13 +81,11 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     // logged into one) would tear down and rebuild a perfectly working relay
     // connection for no reason, same class of check olympus.js's
     // alreadyOnSameSource does below.
-    // See resources/specs/data-sources/tracs-relay-architecture-spec.md.
     // relayPassword is only ever distinct from `password` in Tacview-Direct
     // mode with a relay also configured (Tacview's RTT password is flat, not
     // coalition-scoped, so it can't double as the relay's per-coalition
     // secret there) -- every other source mode leaves relayPassword unset
-    // client-side, falling back to `password` here. See
-    // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+    // client-side, falling back to `password` here.
     const relayConfig = srs.getConfig()
     const relayAuthPassword = sourceCfg.relayPassword || sourceCfg.password
     const alreadyOnSameRelay = srs.isConnected()
@@ -127,11 +121,9 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
       }
     }
 
-    // Relay-hosted Tacview as the PRIMARY source — "Relay Port filled, Source
-    // Port blank" (the dispatch slot custom-datasource-tacview-spec.md §0.1
-    // and dataminer-architecture-placeholder-spec.md §4 reserved for this,
-    // shared with a future dataminer — a relay only ever runs one occupant of
-    // this slot). Distinct from the SRS-relay block above, which always runs
+    // Relay-hosted Tacview as the PRIMARY source — relayUrl set with no
+    // olympusUrl (a slot a future relay-hosted dataminer could share; a relay
+    // only ever runs one occupant of it). Distinct from the SRS-relay block above, which always runs
     // whenever relayUrl is set, regardless of which primary source is active.
     const usingRelayAsPrimary = Boolean(relayUrl) && !sourceCfg.olympusUrl
     if (usingRelayAsPrimary) {
@@ -212,7 +204,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
       // `sourceType` moments ago (that's how it was identified) — re-probing
       // here would be a second connect/handshake/disconnect round-trip against
       // the same server in near-zero elapsed time. Harmless against Olympus,
-      // but observed live (2026-09-06 crash log) to land two back-to-back
+      // but observed live (DCS crash log) to land two back-to-back
       // Tacview RTT connections close enough together to crash tacview.dll
       // with an ACCESS_VIOLATION on its next export tick — so only probe here
       // when `sourceType` was client-specified and genuinely never probed yet.
@@ -256,8 +248,8 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
   })
 
   // POST /api/tacview/theatre-override — Login.jsx's Theatre control
-  // (Tacview-only; see custom-datasource-tacview-spec.md §4.2 for why
-  // auto-detection alone can't always be trusted, e.g. the unbreakable
+  // (Tacview-only: bbox auto-detection alone can't always be trusted, e.g.
+  // the unbreakable
   // MarianaIslands/MarianaIslandsWWII bbox tie). Dispatches to whichever
   // Tacview connection mode is actually active — direct (sourceRegistry) or
   // relay-hosted-primary (tacviewRelayClient) — same distinction /api/connect

@@ -51,8 +51,8 @@ function fetch(url, depth = 0) {
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 // bboxOf/bboxIntersects/clipRingToBbox/extractLandRings live in
-// lib/polygonClip.js (shared with buildAbmBasemap.js's land-fill layer,
-// 2026-08-11) — this file only keeps the logic that's still specific to it:
+// lib/polygonClip.js (shared with buildAbmBasemap.js's land-fill layer)
+// — this file only keeps the logic that's still specific to it:
 // extractSegments (boundaries/coastlines, whole-feature filtering, no ring
 // clipping needed since those are already small pre-chunked features).
 
@@ -84,7 +84,7 @@ function extractSegments(features, theatreBbox) {
 // including vertices on the opposite side of the planet — for every Old
 // World theatre, and feeding vertices 90°+ from a regional TM's central
 // meridian through tmForward risks numerically undefined output that
-// corrupts fillPolygonEvenOdd's scanline fill (see 2026-08-03 discussion).
+// corrupts fillPolygonEvenOdd's scanline fill.
 // So land rings get genuinely clipped to the padded theatre bbox here, in
 // lat/lon space, before ever reaching the projection step (clipLandRings,
 // from lib/polygonClip.js — standard Sutherland–Hodgman against the convex

@@ -21,8 +21,7 @@
 // actual runtime values directly (not parsing shipped source text), so it
 // covers both cases in one mechanism — confirmed by 3-for-3 exact agreement
 // against this script's own already-validated local-extraction values
-// (F-16C_50, KJ-2000, A-10A) before switching over. See
-// resources/specs/tacview-detection-spec.md for the full investigation.
+// (F-16C_50, KJ-2000, A-10A) before switching over.
 //
 // Usage:
 //   node server/scripts/buildAircraftSensorDb.js --datamine-path <path>
@@ -88,8 +87,8 @@ const SUBSTITUTE_FROM = {
   'RQ-1A Predator': ['MQ-9 Reaper'],
 }
 
-// Confirmed WRONG via direct live-flight cross-validation (walls test,
-// 2026-09-08), not a plausibility-cap case — these values are individually
+// Confirmed WRONG via direct live-flight cross-validation, not a
+// plausibility-cap case — these values are individually
 // sane (150km, well within range), just empirically incorrect. Three
 // separate F-14 units independently converged on ~189.5-189.8nm real
 // detection range against a Tu-142 in the same live session: F-14A-135-GR

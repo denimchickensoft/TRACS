@@ -18,9 +18,9 @@ let sourceType = 'olympus'
 // with Olympus's own clock — if that were allowed to overwrite the same
 // field the incremental fetch cursor read from, it would silently corrupt
 // pollUnits()'s next `?time=` request whenever a missile-detection delta
-// landed in between two unit polls (found 2026-09-15, investigating a
-// client-reported position stutter/jump — any friendly AWACS/EWR alive is
-// enough to trigger this, no missile needs to be in the air).
+// landed in between two unit polls (seen as position stutter/jumps — any
+// friendly AWACS/EWR alive is enough to trigger this, no missile needs to be
+// in the air).
 let sourceCursorTime = 0
 
 function applyDelta(delta) {

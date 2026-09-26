@@ -1,9 +1,8 @@
 'use strict'
 
-// Shared 2D polygon clipping primitives, extracted from buildGeoData.js
-// (2026-08-11) so a second caller (buildAbmBasemap.js's land-fill layer)
-// can clip Natural Earth land polygons to its own, much wider bbox without
-// duplicating this logic. Pure geometry — no lon/lat assumptions baked in,
+// Shared 2D polygon clipping primitives, used by buildGeoData.js and by
+// buildAbmBasemap.js's land-fill layer (which clips Natural Earth land
+// polygons to its own, much wider bbox). Pure geometry — no lon/lat assumptions baked in,
 // works equally on projected nm-space points if a caller ever needs that.
 
 function bboxOf(coords) {
@@ -50,7 +49,7 @@ function clipRingToBbox(ring, bbox) {
 // handed back flat — fillPolygonEvenOdd doesn't need holes paired with their
 // own outer ring, just the full set together in one call, since even-odd
 // parity across disjoint real-world landmasses/holes works out the same
-// either way (see 2026-08-03 discussion). `bbox` must already include
+// either way. `bbox` must already include
 // whatever padding the caller wants — this function does not add any.
 function extractLandRings(features, bbox) {
   const out = []
@@ -78,8 +77,8 @@ function extractLandRings(features, bbox) {
 // extends past the bbox it inserts new points running along the bbox's own
 // rectangle edge to close the gap — invisible/correct for a fill (that edge
 // just marks where the fill stops), but drawn as a fake straight "coastline"
-// hugging the clip rectangle when the result is stroked instead (2026-08-11,
-// see buildOsmLand.js's geo.json coastline merge). This clips each segment
+// hugging the clip rectangle when the result is stroked instead (e.g.
+// buildOsmLand.js's geo.json coastline merge). This clips each segment
 // of the ring individually and, whenever a segment enters/exits the bbox,
 // BREAKS the line there instead of closing it — real coastline in, real
 // coastline out, with a genuine gap (not a fake edge) wherever it leaves the

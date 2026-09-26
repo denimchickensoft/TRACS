@@ -6,15 +6,13 @@
 // laid out in that theatre's own unrotated TM nm-plane. The client places
 // each with a single translate/rotate/scale (see drawAbmRaster.js) instead
 // of reprojecting every pixel live the way the vector layers reproject every
-// point — see the 2026-07-29 discussion on why Leaflet doesn't fit under
-// ABM's TM + declination-rotated projection.
+// point (a tile library like Leaflet doesn't fit under ABM's TM +
+// declination-rotated projection).
 //
 // Draw order (client, furthest-back first): basemap, terrain, water, roads,
-// then the live vector layers (relief overlay, geo, etc). basemap/terrain
-// were named "landfill"/"basemap" respectively until 2026-08-11 — renamed
-// once terrain stopped being the sole land/sea source (see terrain's own
-// comment below) and basemap graduated from a theatre-local preview to the
-// layer that's actually responsible for land/sea color everywhere.
+// then the live vector layers (relief overlay, geo, etc). basemap is the
+// layer responsible for land/sea color everywhere; terrain is relief only
+// (see terrain's own comment below).
 //
 // water/roads are separate images (not baked into basemap/terrain) so they
 // can be toggled independently (.water / .roads vs .map) — both transparent
@@ -50,10 +48,10 @@ const WORLD_LAND_PATH = path.join(__dirname, '../data/geo/land.geojson')
 const M_PER_NM = 1852
 const MAX_DIM  = 4800 // longer image axis, px — draw cost is a flat GPU blit regardless of
                        // source resolution, so this is a memory/build-time tradeoff, not a
-                       // frame-rate one (2026-07-29 discussion) — doubled from 2400 for sharper
-                       // roads/coastlines; well under typical 8192px+ texture-size limits
+                       // frame-rate one — 4800 for sharp roads/coastlines; well under
+                       // typical 8192px+ texture-size limits
 const PAD_NM   = 15   // margin beyond bbox so panning slightly past the edge isn't blank —
-                       // buildReliefMap.js's FIELD_PAD_NM (2026-08-11) must stay >= this or
+                       // buildReliefMap.js's FIELD_PAD_NM must stay >= this or
                        // the relief wash goes dead/flat inside this canvas's own outer ring;
                        // raise that constant too if this one grows
 
@@ -190,8 +188,7 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   // detail, drawn on its own MUCH larger, coarser canvas so it can fill the
   // screen at true max zoom-out (AbmScope.jsx's RANGE_MAX=600nm) on a target
   // worst-case monitor aspect ratio, without touching terrain/water/roads'
-  // resolution or extent at all — those stay exactly as they are below,
-  // completely unchanged. 2026-08-11.
+  // resolution or extent at all.
   //
   // Sizing: the scope's own zoom math (pixelsPerNm = min(w,h)/(2*rangeNm))
   // makes rangeNm the center-to-edge distance along the screen's SHORT axis
@@ -232,8 +229,8 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   // polygons, already pre-clipped+simplified per-theatre to this exact
   // bmClipBbox reach — since that's the same coastline data the roads layer
   // (mapcontext.json) is built from, so land/sea fill and roads finally
-  // agree at the coast (2026-08-11, see the "roads jutting into the ocean"
-  // investigation). Falls back to the raw, full-world land.geojson
+  // agree at the coast (otherwise roads visibly jut into the ocean). Falls
+  // back to the raw, full-world land.geojson
   // (worldLandFeatures, loaded once in main() below) — NOT geo.json's land
   // rings, which are only clipped to bbox+1° (BBOX_PAD in buildGeoData.js),
   // far narrower than basemap's own ±bmHalfExtentNm reach — for theatres
@@ -261,7 +258,7 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
     // even-odd parity across a batched multi-ring fill treats a doubly-
     // covered seam strip as OUTSIDE (crossed twice = even), punching a thin
     // sea-colored seam through real land along every chunk boundary —
-    // visible as a "dashed squares" tiling artifact (2026-08-11). Filling
+    // visible as a "dashed squares" tiling artifact. Filling
     // per-ring instead just repaints the same land color redundantly in
     // overlap zones. Costs any legitimate hole semantics (an enclosed lake
     // fully inside a landmass ring would incorrectly paint as land instead
@@ -275,24 +272,20 @@ async function buildTheatre(name, conf, params, tm, worldLandFeatures) {
   }
 
   // ── terrain: relief bands only, transparent everywhere else ──────────────
-  // 2026-08-11: used to be fully opaque (SEA_COLOR background + geo.json's
-  // land polygon as a flat base coat under the relief bands) so that true
-  // sea-level land — relief has nothing to draw there, since vectorize() in
-  // buildReliefMap.js explicitly skips the elev=0 contour — never read as
-  // ocean. Now that basemap.png exists as its own dedicated, wider-clipped
-  // land/sea layer drawn underneath this one (see AbmScope.jsx draw order),
-  // that job is basemap's alone: terrain only needs to show real elevation
-  // detail and stays transparent wherever it has none, letting basemap show
-  // through cleanly instead of terrain's own default color masking it in
-  // its own PAD_NM margin (the "background water fill" symptom this
-  // replaces). Extent/resolution otherwise unchanged (bbox+PAD_NM, MAX_DIM).
+  // Transparent, not opaque: keeping true sea-level land (which relief
+  // leaves blank, since vectorize() in buildReliefMap.js skips the elev=0
+  // contour) from reading as ocean is basemap.png's job — it's the
+  // wider-clipped land/sea layer drawn underneath this one (see AbmScope.jsx
+  // draw order). Terrain only shows real elevation detail and stays
+  // transparent wherever it has none, so basemap shows through cleanly
+  // instead of being masked by a default fill in the PAD_NM margin.
+  // Extent/resolution: bbox+PAD_NM, MAX_DIM.
   //
-  // Coastline/boundary strokes used to be baked in here too — removed
-  // 2026-08-11: AbmScope.jsx already draws geo.json's boundaries/coastlines
+  // Coastline/boundary strokes are deliberately NOT baked in here:
+  // AbmScope.jsx already draws geo.json's boundaries/coastlines
   // live every frame (drawGeo, toggled by the .geo command), on top of this
-  // raster. Baking a second copy was pure redundancy — and worse, wrong
-  // toggle semantics, since .geo OFF couldn't actually hide a copy that was
-  // permanently baked into terrain.png. geo.json itself (and its OSM
+  // raster. A baked second copy would be redundant, and .geo OFF couldn't
+  // hide it. geo.json itself (and its OSM
   // coastline source, buildOsmLand.js) is still needed — just for that live
   // layer, not for this raster.
   const terrainBuf = newBuffer(width, height, null)

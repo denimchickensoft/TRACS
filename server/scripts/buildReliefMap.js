@@ -34,11 +34,10 @@ const MOSAIC_PAD_NM = 2           // small extra mosaic-only pad so edge nodes o
                                    // (already FIELD_PAD_NM-padded, see below) field
                                    // have real data on both sides to sample/interpolate
 
-// 2026-08-11 fix: relief's own contour data used to be computed over the exact,
-// unpadded theatre bbox — but every *other* layer that shares that bbox extends
-// beyond it (buildGeoData.js pads +1°; buildAbmBasemap.js's canvas itself pads
-// +15NM, "PAD_NM" there, so panning past the edge isn't blank). The gap between
-// relief's zero-pad edge and those wider edges reads as land (correctly drawn by
+// Relief's contour field is padded beyond the theatre bbox because every *other*
+// layer that shares that bbox extends beyond it (buildGeoData.js pads +1°; buildAbmBasemap.js's canvas itself pads
+// +15NM, "PAD_NM" there, so panning past the edge isn't blank). Without padding,
+// the gap between relief's edge and those wider edges reads as land (correctly drawn by
 // geo.json) with an abrupt, dead-straight cutoff to zero relief shading — often
 // mid-terrain, not at any real coastline or feature boundary, once a theatre's
 // bbox edge happens to land inside a mountain range instead of open desert/sea.

@@ -3,7 +3,7 @@
 // Registry of primary unit-data sources. Each module exports the shared
 // contract: { start(cfg, callbacks), stop(), isPolling(), getConfig(), probe(cfg) }.
 // Mutually exclusive — routes/api.js stops every other source before starting
-// a new one. See resources/specs/data-sources/pluggable-source-architecture-spec.md.
+// a new one.
 
 const SOURCE_TYPES = ['olympus', 'tacview']
 

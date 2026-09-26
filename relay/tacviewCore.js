@@ -24,13 +24,10 @@
 // project's existing posture for transponders.js/srs.js, which also produce
 // a parallel shape without sharing a literal file.
 //
-// See resources/specs/data-sources/custom-datasource-tacview-spec.md for the
-// full protocol research this implements (§1 handshake/format, §2.1
-// reference-offset, §4.1 unitId correlation, §7 detection — handled by a
-// separate module, tacviewDetection.js, not here).
+// Detection/fog-of-war is handled separately, in tacviewDetection.js.
 
-// unitId = tacviewObjectId + 0xFFFFFF — confirmed live 2026-09-06 against 34
-// real aircraft (custom-datasource-tacview-spec.md §4.1). Normalizing here
+// unitId = tacviewObjectId + 0xFFFFFF — confirmed live against 34 real
+// aircraft. Normalizing here
 // means server/src/srs.js's existing merge-by-unitId logic works unchanged
 // for Tacview-sourced units — no new SRS-correlation code needed anywhere.
 const UNIT_ID_OFFSET = 0xFFFFFF
@@ -72,8 +69,8 @@ const EARTH_RADIUS_M = 6371008.8
 // corrects the longitude term for how far the point is from the equator.
 // Feeding it a near-zero delta instead of the real latitude makes cos(lat)
 // read as ~1 regardless of theatre, inflating any east/west distance
-// component by ~1/cos(actualLat) — confirmed live 2026-09-07 as a Tacview
-// groundspeed reading ~17% high (610kt vs Olympus's 520kt on the same
+// component by ~1/cos(actualLat) — seen live as a Tacview groundspeed
+// reading ~17% high (610kt vs Olympus's 520kt on the same
 // aircraft) at a ~30-35°N theatre.
 function distanceM(lat1, lon1, lat2, lon2) {
   const toRad = (d) => (d * Math.PI) / 180
@@ -93,10 +90,10 @@ function classify(typeTag) {
   if (tags.includes('Air')) return tags.includes('Rotorcraft') ? 'Helicopter' : 'Aircraft'
   if (tags.includes('Ground')) return 'GroundUnit'
   if (tags.includes('Sea')) return 'NavyUnit'
-  // Confirmed live 2026-09-15 (real DCS export, not just the documented ACMI
+  // Confirmed against a real DCS export (not just the documented ACMI
   // taxonomy): a fired missile's Type is exactly "Weapon+Missile". Bombs/
-  // shells (Weapon+Bomb, etc.) are deliberately still excluded — out of scope
-  // for v1 (see the "Add missile tracking to AIC/ABM" plan). This still flows
+  // shells (Weapon+Bomb, etc.) are deliberately excluded — only missiles are
+  // tracked (AIC/ABM missile display). This still flows
   // through the same `updated` map as every other category below — callers
   // that need to treat missiles differently (tacview.js) split them out by
   // category afterward, same way olympus.js's pollWeapons() does.
@@ -136,8 +133,8 @@ function coercePropValue(key, value) {
 // multiple ACMI frames can arrive in a single TCP chunk (network/processing
 // jitter), which would otherwise timestamp two real, seconds-apart position
 // samples only milliseconds apart by wall-clock and divide by a near-zero
-// delta, producing wildly inflated speeds (confirmed live, 2026-09-06).
-// Widened from 1 to 3, 2026-09-06: at 1s, a steady real aircraft's displayed
+// delta, producing wildly inflated speeds (confirmed live).
+// 3s rather than 1s: at 1s, a steady real aircraft's displayed
 // speed visibly hovered between two adjacent tens-of-knots values — the
 // window's actual length varies (~1.0-1.1s, tied to the ~9Hz frame cadence,
 // not exactly 1.000s), and real flight isn't perfectly constant at that
@@ -187,10 +184,9 @@ function createParser() {
   // unitID: an INLINE property on the unit object, separate from the outer
   // map key — Olympus's decoder.js sets both (decoder.js:236), and real
   // client code reads unit.unitID directly (ABM's AddAtoFlight.jsx/Ato.jsx/
-  // Frag.jsx carrier correlation, STARS' formations.js tiebreaker). This was
-  // never set here at all, silently breaking carrier/ATO correlation for
-  // every Tacview-sourced unit — found 2026-09-06 during a full audit against
-  // Olympus's decoder, not caught by the original per-field spec pass.
+  // Frag.jsx carrier correlation, STARS' formations.js tiebreaker); without
+  // it, carrier/ATO correlation silently breaks for every Tacview-sourced
+  // unit. Keep this field-for-field in step with Olympus's decoder.
   function buildCanonicalUnit(obj, unitID) {
     const unit = { unitID }
     const p = obj.props
@@ -198,8 +194,8 @@ function createParser() {
     if (p.Pilot !== undefined) unit.unitName = p.Pilot
     if (p.CallSign !== undefined) unit.callsign = p.CallSign
     // `Group` is free text (e.g. "Iran Mig-29 1"), not a numeric ID — real
-    // captured evidence confirms flight-mates DO share the same string
-    // (custom-datasource-tacview-spec.md §2), so it correctly identifies
+    // captured evidence confirms flight-mates DO share the same string,
+    // so it correctly identifies
     // formations for STARS' formations.js (a plain Map key, string works
     // identically to a number). It will never equal ABM's real numeric
     // mission-group IDs (AddAtoFlight.jsx/Ato.jsx/Frag.jsx's `===` matches
@@ -229,8 +225,8 @@ function createParser() {
     // client/src/modules/atc/stars/DatablockOverlay.jsx's fmtSpd(mps) and its
     // M_PER_S_TO_KNOTS conversion) — NOT knots. An earlier version of this
     // stored knots directly, which fmtSpd then converted *again*, inflating
-    // the displayed speed by ~1.94x (confirmed live, 2026-09-06: a real
-    // 474kt aircraft displayed near STARS' 990kt display cap).
+    // the displayed speed by ~1.94x (a real 474kt aircraft displayed near
+    // STARS' 990kt display cap).
     if (obj.groundSpeedMps !== undefined) unit.speed = obj.groundSpeedMps
     if (obj.category) unit.category = obj.category
 
@@ -238,8 +234,8 @@ function createParser() {
     if (t && t[0] !== null && t[1] !== null) {
       unit.position = { lat: refLat + t[1], lng: refLon + t[0], alt: t[2] ?? 0 }
     }
-    // Heading is not fully resolved (custom-datasource-tacview-spec.md §3/§5
-    // item 2) — prefer the T= trailing Heading field (Syntax #4), fall back
+    // Which heading field DCS's exporter populates isn't fully pinned down —
+    // prefer the T= trailing Heading field (Syntax #4), fall back
     // to HDM, then raw yaw as a last resort. Converted to radians here (see
     // DEG_TO_RAD) to match unit.heading's app-wide contract.
     const heading = t?.[8] ?? (p.HDM !== undefined ? p.HDM : t?.[5])
@@ -327,8 +323,8 @@ function createParser() {
           // Groundspeed for EVERY object is derived from consecutive position
           // samples, never read from a wire field — `IAS` (indicated airspeed,
           // not groundspeed) is confirmed present only on whichever aircraft
-          // belongs to the DCS client hosting the export (custom-datasource-
-          // tacview-spec.md §5 item 2/9), an arbitrary aircraft from a
+          // belongs to the DCS client hosting the export, an arbitrary
+          // aircraft from a
           // controller's perspective, and using it just for that one aircraft
           // while deriving for everyone else would be an inconsistent
           // "airspeed vs. groundspeed" mix on the same field. Matches
@@ -345,7 +341,7 @@ function createParser() {
           // updates for it at all (e.g. parked, no further deltas), this
           // branch never re-fires and `groundSpeedMps` freezes forever at
           // its last real in-motion value instead of decaying to 0 —
-          // confirmed live 2026-09-16: a parked aircraft held a stale
+          // confirmed live: a parked aircraft held a stale
           // ~2.0 m/s reading. Downstream consumers of `unit.speed` (e.g.
           // ASDE-X's PTL) can't treat "nonzero" as proof of current motion
           // when the source is Tacview.
@@ -409,7 +405,7 @@ function createParser() {
 
   // The mission's live current simulated UTC moment (ms since epoch), or
   // null if the wire hasn't sent a ReferenceTime yet (or ever — some
-  // exporters might omit it, though the real 2026-09-06 capture always
+  // exporters might omit it, though real DCS captures have always
   // included it). tacview.js calls this once, at theatre-finalization time,
   // to synthesize the dateAndTime payload Login.jsx/useMissionClock expect.
   function getCurrentMissionUtcMs() {
@@ -421,7 +417,7 @@ function createParser() {
 
 // Standard CRC-32 (IEEE 802.3 / zlib polynomial 0xEDB88320, reflected,
 // init/xorout 0xFFFFFFFF) — NOT the CRC-64/WE the current public RTT
-// protocol docs describe. Confirmed live, 2026-09-06, against a real DCS
+// protocol docs describe. Confirmed live against a real DCS
 // dedicated server with an RTT password set: CRC-64/WE (in every hex-string
 // framing tried: padded/unpadded, upper/lower, 0x-prefixed, decimal) was
 // rejected every time, while plain 32-bit CRC-32 of the UTF-16LE password
@@ -430,7 +426,7 @@ function createParser() {
 // ("DCS2ACMI") still uses the older 32-bit CRC scheme Tacview's own
 // documentation says it falls back to for legacy exporters — the public
 // docs describe the *current* protocol, not what this exporter actually
-// implements. See custom-datasource-tacview-spec.md §1 for the full story.
+// implements.
 function crc32(bytes) {
   let crc = 0xFFFFFFFF
   for (const b of bytes) {

@@ -5,8 +5,7 @@ const path = require('path')
 
 // GET /api/abm/raster/:theatre/:layer(/image.png) — layer is one of
 // basemap (.base)/terrain (.terrain)/water (.water)/roads (.roads); see
-// buildAbmBasemap.js / client's drawAbmRaster.js. basemap/terrain renamed
-// 2026-08-11 (formerly landfill/basemap respectively).
+// buildAbmBasemap.js / client's drawAbmRaster.js.
 const ABM_RASTER_LAYERS = new Set(['basemap', 'terrain', 'water', 'roads'])
 
 // Registers every boilerplate REST endpoint onto `app` — /api/connect and

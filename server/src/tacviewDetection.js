@@ -16,10 +16,8 @@
 // client/public/units/*.json) and a small hand-authored tiered
 // approximation where it doesn't (aircraft/helicopter — see
 // aircraftSensorRangeNm()). Plus a synthetic RWR pass (computeRwrContacts).
-// See resources/specs/data-sources/custom-datasource-tacview-spec.md §7 and
-// resources/specs/tacview-detection-spec.md for the full design discussion,
-// including numbers still pending live-calibration against real Olympus/DCS
-// detection.
+// Some numbers are still approximate, pending further calibration against
+// real Olympus/DCS detection.
 //
 // Known, accepted limitation: DCS's real detection gates on whether a
 // target's radar is actually transmitting. Tacview's ACMI export has no
@@ -84,9 +82,8 @@ const DEFAULTS = {
   // rangeMultiplier: 1 (no boost) — RWR range equals the emitter's own
   // detection range exactly. A one-way passive-reception boost above the
   // radar's own two-way range is real-world physically justifiable in
-  // principle, but the Phase 0 live-calibration capture (see
-  // resources/specs/tacview-detection-spec.md's "RWR-specific findings")
-  // found the opposite in real DCS data: three independent standalone EWRs
+  // principle, but a live-calibration capture against real DCS data found
+  // the opposite: three independent standalone EWRs
   // all showed an RWR/radar range ratio BELOW 1.0 (0.97, 0.96, 0.67), not
   // above — and live-observed on a Tacview session, the original 1.75
   // default was producing RWR hits at unrealistic range in practice (a
@@ -184,8 +181,7 @@ const navyUnitDb = loadUnitDb('navyunitdatabase.json')
 const aircraftUnitDb = loadUnitDb('aircraftdatabase.json')
 const helicopterUnitDb = loadUnitDb('helicopterdatabase.json')
 // Real per-airframe RCS (m^2) / detectionRangeMaxKm, extracted from the DCS
-// install itself by server/scripts/buildAircraftSensorDb.js (see
-// resources/specs/tacview-detection-spec.md's "Major discovery" section).
+// install itself by server/scripts/buildAircraftSensorDb.js.
 // Tolerates absence exactly like the DBs above — a fresh clone before that
 // script's first run just falls back to the pre-existing role-tier system.
 const aircraftSensorDb = loadUnitDb('aircraftSensorDatabase.json')
@@ -288,10 +284,9 @@ function isGroundRadarTarget(unit) {
 // helicopterdatabase.json carry loadouts/liveries/description only), so this
 // is a small, one-time hand-authored approximation, not a per-airframe
 // table — grouped by role using the `roles` array those files already ship
-// (no new curated list to maintain). PROVISIONAL pending the Phase 0 live-
-// calibration capture against real Olympus/DCS detection (see
-// resources/specs/tacview-detection-spec.md) — treat these as a starting
-// point, not a researched constant.
+// (no new curated list to maintain). PROVISIONAL — only roughly calibrated
+// against real Olympus/DCS detection; treat these as a starting point, not
+// a researched constant.
 const AWACS_RANGE_NM = 200
 const FIGHTER_RANGE_NM = 55
 
@@ -523,7 +518,7 @@ function computeContacts(units, friendlyCoalitionId) {
 // confirmed 0 for real airframes with no air-to-air radar (A-10A, most
 // attack/bomber/transport types). This module treats "has no air-to-air
 // radar" and "emits nothing RWR could ever pick up" as the same fact — but
-// live flight data (2026-09-08 walls test) showed a real bomber-class
+// live flight data showed a real bomber-class
 // aircraft with a confirmed zero radar-detection range still registering
 // as a genuine RWR-detectable emitter in practice (some other onboard
 // emission — a nav/attack radar, presumably — clearly carries even though
@@ -533,8 +528,7 @@ function computeContacts(units, friendlyCoalitionId) {
 // constant — config.rwr.zeroDetectionEmitterFallbackNm (default 0,
 // disabled) is an inert escape hatch for an operator who wants to
 // compensate for a specific aircraft, not a default this module ships
-// itself. See resources/specs/tacview-detection-spec.md for the full
-// investigation.
+// itself.
 function computeRwrContacts(units, friendlyCoalitionId) {
   const rwrById = new Map()
   if (!config.rwr.enabled) return {}
@@ -658,8 +652,7 @@ function coalitionId(coalition) {
 // feed needs and Olympus doesn't (Olympus's own backend already restricts
 // what a coalition-authenticated session ever receives; Tacview's RTT
 // protocol has no such concept, so TRACS must enforce it itself before
-// anything reaches `state`/the browser). See
-// custom-datasource-tacview-spec.md §7's fog-of-war note.
+// anything reaches `state`/the browser).
 //
 // One instance per active Tacview connection (direct or relay-hosted),
 // holding just the running set of currently-exposed non-friendly unit IDs —

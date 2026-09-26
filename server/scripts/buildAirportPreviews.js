@@ -202,7 +202,7 @@ function loadTheatreAirports(theatreKey) {
 
     const { lonMin, lonMax, latMin, latMax, medianLon, medianLat } = robustBbox(features)
 
-    // Skip airports with no correlated runway — see feedback_airport_runway_correlation:
+    // Skip airports with no correlated runway (no entry in runways/*.json):
     // these aren't selectable TRACS facilities (Login.jsx filters the same way), and a
     // lot of them are real fixed-wing fields whose runway just isn't exposed via the API
     // yet, not helipads/heliports — drawing them with a "HELIPAD" label was actively wrong.

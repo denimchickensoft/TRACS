@@ -5,8 +5,7 @@
 //
 // Roads/rail: pre-filtered from Geofabrik .osm.pbf country extracts by
 // server/scripts/extract_osm_roads.py (run that first - see its docstring).
-// This replaced live Overpass API queries (see abm-map-context-spec.md §5
-// items 5-6): one big per-theatre Overpass request was unreliable (406s,
+// This replaced live Overpass API queries: one big per-theatre Overpass request was unreliable (406s,
 // 504s, hangs), and even tiling into small chunks still means many requests
 // against a shared live query service - a one-time bulk download from
 // Geofabrik's static file host is a fundamentally gentler pattern, and is
@@ -138,8 +137,7 @@ function paddedBbox(theatreBbox) {
 // vertex density and coordinate precision is far more than needed. Both
 // levers below (lib/simplify.js) are visually lossless at ABM's overview zoom
 // levels but cut output size drastically (coordinate arrays are ~100% of
-// file size: see abm-map-context-spec.md, ~4.5M points measured at ~25
-// bytes/point = the entire 113MB before this was added).
+// file size: ~4.5M points measured at ~25 bytes/point = 113MB unsimplified).
 
 function clipWaterFeatures(features, theatreBbox, type) {
   const padded = paddedBbox(theatreBbox)
@@ -177,9 +175,8 @@ function clipWaterFeatures(features, theatreBbox, type) {
 // Each country file is parsed via stream-json rather than
 // fs.readFileSync(..., 'utf8') + JSON.parse() - a single JS string can't
 // exceed V8's ~536MB max string length (Node's ERR_STRING_TOO_LONG), and
-// France's filtered file (added for Normandy, 2026-09-21) came in at 562MB,
-// just over that line. Germany (413MB) was previously the largest and had
-// been quietly right at the edge of the same ceiling. Streaming avoids ever
+// France's filtered file (for Normandy) is 562MB, just over that line, and
+// Germany (413MB) is not far below it. Streaming avoids ever
 // materializing a whole country file as one string, so there's no ceiling
 // tied to any single file's size anymore.
 function clipRoadsRail(theatreBbox) {

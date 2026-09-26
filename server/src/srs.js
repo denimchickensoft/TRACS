@@ -7,10 +7,6 @@
 // relay could in principle be serving a different mission than whatever
 // primary source this backend is polling. Fully optional: does nothing
 // unless started with a relay URL.
-//
-// See resources/specs/data-sources/tracs-relay-architecture-spec.md,
-// resources/specs/data-sources/custom-datasource-srs-transponder-spec.md,
-// and resources/specs/transponder-correlation-spec.md.
 
 const WebSocket = require('ws')
 const state = require('./state')
@@ -38,12 +34,12 @@ function applyTransponders(transponders) {
     let resolvedId = srsId
 
     // SRS's raw DCS unitId only reliably equals a Tacview-sourced unit's own
-    // id for one specific case (custom-datasource-tacview-spec.md §4.1: a
-    // respawning player aircraft, unitId = tacviewObjectId + 0xFFFFFF) — for
+    // id for one specific case (a respawning player aircraft, unitId =
+    // tacviewObjectId + 0xFFFFFF; see tacviewCore.js) — for
     // every other Tacview unit (AI, or a different player's aircraft) the
     // two ID spaces are simply unrelated, confirmed by the earlier, separate
     // groupID-correlation work. Fall back to matching on name when the
-    // direct lookup misses — verified live 2026-09-07 (raw LotATC capture)
+    // direct lookup misses — verified against a raw LotATC capture
     // that SRS's `Name` and a Tacview unit's `unitName` (== Tacview's
     // `Pilot`, tacviewCore.js) match exactly for the same real aircraft, no
     // parsing needed. Harmless no-op for Olympus sessions, where the direct
@@ -63,8 +59,7 @@ function applyTransponders(transponders) {
 
     incomingIds.add(resolvedId)
     // srsCapable is a permanent per-unit latch — set once, never cleared —
-    // so consumers can tell "never had SRS" apart from "briefly dropped"
-    // (see transponder-correlation-spec.md §2).
+    // so consumers can tell "never had SRS" apart from "briefly dropped".
     updated[resolvedId] = { transponder: iff, srsCapable: true }
   }
 
@@ -92,8 +87,7 @@ function applyTransponders(transponders) {
 
 function connect() {
   // The relay mounts the transponder capability at /transponders (one of
-  // several capabilities sharing its port) — see
-  // resources/specs/data-sources/tracs-relay-architecture-spec.md §2.1.
+  // several capabilities sharing its port).
   const url = `${relayUrl.replace(/\/+$/, '')}/transponders`
   // See tacviewRelayClient.js's identical connect() for the full race
   // explanation -- every handler closes over `socket` (this instance), never
