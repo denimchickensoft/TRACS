@@ -21,7 +21,6 @@ import { drawRbls }             from './canvas/drawRbls.js'
 import { drawMinSep }          from './canvas/drawMinSep.js'
 import { drawMaps }                   from './canvas/drawMaps.js'
 import { drawExtendedCenterlines }    from './canvas/drawExtendedCenterlines.js'
-import { drawObstructions }           from './canvas/drawObstructions.js'
 import { drawHoldings }               from './canvas/drawHoldings.js'
 import { drawAirways }                from './canvas/drawAirways.js'
 import { drawMsa }                    from './canvas/drawMsa.js'
@@ -95,7 +94,7 @@ export default function StarsScope() {
     mora, moraVisible, relief, reliefVisible, mva, mvaVisible,
     geoBoundaries, geoCoastlines, geoVisible, fixes, fixesVisible,
     procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
-    centerlines, cltrVisible, obstructions, obstVisible,
+    centerlines, cltrVisible,
   } = useStarsNavdataLayers()
 
   const displayStore   = useDisplayStore()
@@ -447,7 +446,6 @@ export default function StarsScope() {
       windowSettings?.briteMapA ?? 50, briteB, csMap, activeColors,
       windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0)
     drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, briteB)
-    drawObstructions(ctx, view, obstructions, obstVisible, windowSettings?.briteMapA ?? 50)
     drawHoldings(ctx, view, holdings, holdsVisible, briteB, csMap, activeColors)
     drawAirways(ctx, view, airways, airwaysVisible, briteB, activeColors, mapVisible.lbl, csMap)
     drawMsa(ctx, view, msa.filter(r => r.ident === facilityId), msaVisible, briteB, csMap, activeColors)
@@ -463,7 +461,7 @@ export default function StarsScope() {
     const pinnedIds  = new Set(windowSettings?.pinnedFixes?.[theatre] ?? [])
     const fixesToDraw = fixesVisible ? fixes : fixes.filter((f) => pinnedIds.has(f.id.toUpperCase()))
     drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, mapVisible.lbl)
-  }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible, obstructions, obstVisible,
+  }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible,
       holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible, mva, mvaVisible, facilityId,
       procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
       fixes, fixesVisible, windowSettings?.pinnedFixes, theatre,

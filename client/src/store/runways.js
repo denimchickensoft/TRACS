@@ -91,8 +91,6 @@ export const useRunwaysStore = create((set, get) => ({
   centerlines:      [],
   cltrVisible:      {},
   satBuckets:       [],   // [{ label: 'NW', ids: [...] }, { label: 'SE', ids: [...] }]
-  obstructions:     [],
-  obstVisible:      false,
   airportPositions: {},   // ICAO → {lat, lon} — all theatre airports, no distance filter
 
   theatre:         null,
@@ -314,16 +312,6 @@ export const useRunwaysStore = create((set, get) => ({
         }
       }
 
-      // Load obstruction points (per-theatre, silently skip if unavailable)
-      let obstructions = get().obstructions
-      if (isNewTheatre) {
-        try {
-          const obsRes = await fetch(`/obstructions/${encodeURIComponent(theatre)}.json`)
-          obstructions = obsRes.ok ? await obsRes.json() : []
-        } catch {
-          obstructions = []
-        }
-      }
 
       // ── Satellite flow buckets ───────────────────────────────────────────────
       // Group non-facility centerlines into two directional buckets derived from
@@ -349,7 +337,7 @@ export const useRunwaysStore = create((set, get) => ({
         if (bucketB.ids.length > 0) satBuckets.push(bucketB)
       }
 
-      set({ centerlines, cltrVisible, satBuckets, obstructions, obstVisible: isNewTheatre ? false : get().obstVisible, theatre, facilityAirbase: facilityAirbase || null, airportPositions, _lastLoadKey: loadKey })
+      set({ centerlines, cltrVisible, satBuckets, theatre, facilityAirbase: facilityAirbase || null, airportPositions, _lastLoadKey: loadKey })
       console.log(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
     } catch (err) {
       console.error('[runways] load error:', err.message)
@@ -357,7 +345,6 @@ export const useRunwaysStore = create((set, get) => ({
   },
 
   toggleCenterline: (id) => set((s) => ({ cltrVisible: { ...s.cltrVisible, [id]: !s.cltrVisible[id] } })),
-  toggleObst:       ()   => set((s) => ({ obstVisible: !s.obstVisible })),
 
   toggleSatBucket: (label) => set((s) => {
     const bucket = s.satBuckets.find((b) => b.label === label)
@@ -368,5 +355,5 @@ export const useRunwaysStore = create((set, get) => ({
     return { cltrVisible: { ...s.cltrVisible, ...updates } }
   }),
 
-  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], obstructions: [], obstVisible: false, theatre: null, facilityAirbase: null, airportPositions: {} }),
+  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], theatre: null, facilityAirbase: null, airportPositions: {} }),
 }))
