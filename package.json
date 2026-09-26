@@ -83,6 +83,10 @@
       "!node_modules/@electron/rebuild/**",
       "!node_modules/.bin/**",
       "!node_modules/better-sqlite3/**",
+      "!node_modules/sql.js/dist/sql-asm*",
+      "!node_modules/sql.js/dist/*-debug*",
+      "!node_modules/sql.js/dist/sql-wasm-browser*",
+      "!node_modules/sql.js/dist/worker.*",
       {
         "from": "electron/build-staging/server/navdata/cache",
         "to": "server/navdata/cache"
