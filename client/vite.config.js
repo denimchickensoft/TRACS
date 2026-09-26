@@ -17,15 +17,17 @@ export default defineConfig({
     },
   },
   server: {
+    // 127.0.0.1, not localhost: the backend binds IPv4 loopback only, and
+    // "localhost" can resolve to ::1 first.
     proxy: {
-      '/api':  `http://localhost:${backendPort}`,
-      '/docs': `http://localhost:${backendPort}`,
+      '/api':  `http://127.0.0.1:${backendPort}`,
+      '/docs': `http://127.0.0.1:${backendPort}`,
       '/ws': {
-        target: `ws://localhost:${backendPort}`,
+        target: `ws://127.0.0.1:${backendPort}`,
         ws: true,
       },
       '/signal': {
-        target: `ws://localhost:${backendPort}`,
+        target: `ws://127.0.0.1:${backendPort}`,
         ws: true,
       },
     },

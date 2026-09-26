@@ -212,7 +212,7 @@ No code-signing certificate is used for any platform.
       └── SRS transponder data + Tacview telemetry to any number of controllers
 ```
 
-- Each controller runs their own local server; in the desktop app it runs inside the app. The only component installed on the DCS server side is the optional TRACS Relay. Controllers' local servers are never reachable from other controllers.
+- Each controller runs their own local server; in the desktop app it runs inside the app. The only component installed on the DCS server side is the optional TRACS Relay. Each controller's local server listens only on this machine (127.0.0.1), so other machines can't reach it. Setting the `TRACS_HOST` environment variable (e.g. `0.0.0.0`) opts in to LAN access; the server has no authentication, so only do that on a trusted network.
 - Controller-to-controller sync uses the relay when one is reachable. Otherwise it uses peer-to-peer WebRTC.
   - Peer discovery uses the public Nostr relay network.
   - If no Nostr relay connects within ~8 s, it uses a self-hosted ws-relay instead.

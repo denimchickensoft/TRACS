@@ -22,6 +22,12 @@ const { createSignalRelay }  = require('./signalRelay')
 elevation.init()
 
 const PORT = process.env.PORT ?? 8722
+// Loopback only by default: this server's REST/WS endpoints are
+// unauthenticated (live picture, /api/connect, state writes), so they must
+// not be reachable from the LAN. The UI loads http://localhost:<port>, which
+// Chromium and Node both resolve to loopback. TRACS_HOST (e.g. 0.0.0.0) is
+// an explicit opt-in for anyone who really needs LAN access.
+const HOST = process.env.TRACS_HOST || '127.0.0.1'
 const SERVER_INSTANCE_ID = Date.now().toString(36) + Math.random().toString(36).slice(2)
 const CLIENT_DIST  = path.join(__dirname, '../../client/dist')
 
@@ -86,7 +92,7 @@ app.get('*', (req, res) => {
 // Endpoints return 503 until the cache is ready.
 navdata.init().catch((err) => console.error('[navdata] unexpected init error:', err.message))
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   // The signal relay is fresh on every start — any WebRTC peers from the previous
   // run are gone. Clear the persisted clientList so pre-flight frequency checks
   // don't reject new sign-ons based on stale entries.
@@ -96,4 +102,7 @@ server.listen(PORT, () => {
   stateFiles.write('catcc', stateFiles.DEFAULTS.catcc)
   stateFiles.patch('session', { clientList: [] })
   console.log(`TRACS server running on http://localhost:${PORT}`)
+  if (HOST !== '127.0.0.1') {
+    console.warn(`[server] WARNING: listening on ${HOST} (TRACS_HOST) - this server has no authentication; anyone who can reach port ${PORT} can read and control it`)
+  }
 })
