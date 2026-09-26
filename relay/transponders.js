@@ -36,8 +36,17 @@ function createTransponderRelay(wss, config) {
       return
     }
 
+    // Anyone who can reach this UDP port can send it anything, so validate
+    // the shape instead of trusting it — one bad packet must not crash the
+    // relay.
+    if (!data || typeof data !== 'object' || (data.Clients != null && !Array.isArray(data.Clients))) {
+      console.error('[relay:transponders] ignoring LotATC packet with unexpected shape')
+      return
+    }
+
     const next = {}
     for (const client of data.Clients ?? []) {
+      if (!client || typeof client !== 'object') continue
       const unitId = client.RadioInfo?.unitId
       const iff = client.RadioInfo?.iff
       if (!unitId || !iff) continue

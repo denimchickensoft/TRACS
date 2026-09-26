@@ -18,7 +18,7 @@
 const fs    = require('fs')
 const path  = require('path')
 const https = require('https')
-const { version: CURRENT_VERSION } = require('../package.json')
+const { version: CURRENT_VERSION } = require('./package.json')
 
 const REPO = 'denimchickensoft/TRACS'
 // Re-checks periodically (not just at startup) so a "window" mode config
