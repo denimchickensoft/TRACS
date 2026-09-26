@@ -31,7 +31,40 @@ const HOST = process.env.TRACS_HOST || '127.0.0.1'
 const SERVER_INSTANCE_ID = Date.now().toString(36) + Math.random().toString(36).slice(2)
 const CLIENT_DIST  = path.join(__dirname, '../../client/dist')
 
+// Browser-origin guard. Any web page open in the user's browser can try to
+// reach localhost, so:
+//   - Host must be a loopback name (defeats DNS rebinding, where an attacker's
+//     domain resolves to 127.0.0.1). Skipped when TRACS_HOST opts in to LAN
+//     access, since LAN clients legitimately use other host names.
+//   - A browser request carrying Origin must be same-origin (Origin host ==
+//     Host header). Every legitimate page — the UI, popups, docs, and the Vite
+//     dev server's proxied requests — is same-origin; cross-site pages aren't.
+//   - Requests with no Origin (curl, Node clients) aren't browser-driven and
+//     are allowed.
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+function isAllowedRequest(req) {
+  const host = req.headers.host
+  if (!host) return false
+  if (!process.env.TRACS_HOST) {
+    const hostname = host.replace(/:\d+$/, '').toLowerCase()
+    if (!LOOPBACK_HOSTNAMES.has(hostname)) return false
+  }
+  const origin = req.headers.origin
+  if (origin === undefined) return true
+  try {
+    return new URL(origin).host === host
+  } catch {
+    return false // includes Origin: null (file://, sandboxed frames)
+  }
+}
+
 const app = express()
+app.use((req, res, next) => {
+  if (isAllowedRequest(req)) return next()
+  console.warn(`[server] rejected ${req.method} ${req.url} (host=${req.headers.host}, origin=${req.headers.origin ?? '-'})`)
+  res.status(403).send('Forbidden')
+})
 app.use(express.json())
 
 registerDocsRoutes(app)
@@ -47,6 +80,12 @@ const signalWss = new WebSocketServer({ noServer: true })
 
 // Route WebSocket upgrade requests by path so both servers share one HTTP port.
 server.on('upgrade', (req, socket, head) => {
+  if (!isAllowedRequest(req)) {
+    console.warn(`[server] rejected WebSocket upgrade ${req.url} (host=${req.headers.host}, origin=${req.headers.origin ?? '-'})`)
+    socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
+    socket.destroy()
+    return
+  }
   const { pathname } = new URL(req.url, 'http://localhost')
   if (pathname === '/ws') {
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req))
