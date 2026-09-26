@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Root npm workspace (desktop app, local server, client).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+  # The relay has its own package.json and lockfile (not part of the workspace).
+  - package-ecosystem: npm
+    directory: /relay
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

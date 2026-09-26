@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - ATC (STARS / ASDE-X / PAR)
+        - CATCC
+        - AIC
+        - ABM
+        - TRACS Relay
+        - General
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the situation or workflow, not just the solution. If a real-world system (STARS, CRC, etc.) does this, say how.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like TRACS to do?

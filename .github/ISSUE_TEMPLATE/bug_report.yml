@@ -1,0 +1,57 @@
+name: Bug report
+description: Something in TRACS or the TRACS Relay isn't working
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: TRACS version
+      description: Shown at the bottom of the Settings panel (gear icon). For relay bugs, include the relay version too.
+      placeholder: e.g. TRACS v0.2.0, Relay v0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Data source
+      options:
+        - DCS Olympus
+        - Tacview (direct)
+        - TRACS Relay
+        - Not connected / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - ATC (STARS / ASDE-X / PAR)
+        - CATCC
+        - AIC
+        - ABM
+        - TRACS Relay
+        - Login / setup / other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as ...
+        2. Type ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected vs. what happened
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log file
+      description: In the desktop app, use File → Open Logs Folder and attach main.log (drag it into this box). For the relay, paste the console output around the problem.
