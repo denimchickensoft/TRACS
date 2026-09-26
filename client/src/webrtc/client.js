@@ -849,7 +849,46 @@ function onModuleMessage(msg) {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 // Send a module-room event (called from actions/store subscriptions)
+// ── Pop-out windows ───────────────────────────────────────────────────────────
+// Only the main window runs initWebrtc() and owns the peer connection. A
+// pop-out window (?window=…) forwards its outbound events to the main window
+// over a BroadcastChannel, and the main window transmits them. Messages carry
+// the popup's position identity (from its URL, same scoping store/session.js
+// uses), because a second main window signed into another position (File >
+// New Window) hears the same channel and must not transmit them too.
+//
+// Only locally-originated changes ever reach these send functions: incoming
+// network events and cross-window store sync apply state without calling
+// them, so forwarding can't echo a change back out.
+const _params          = new URLSearchParams(window.location.search)
+const IS_POPUP         = !!_params.get('window')
+const POPUP_IDENTITY   = { facilityId: _params.get('facilityId') ?? '', positionName: _params.get('positionName') ?? '' }
+const outboundChannel  = new BroadcastChannel('tracs-webrtc-outbound')
+
+function forwardToMainWindow(kind, type, payload) {
+  outboundChannel.postMessage({ kind, type, payload, ...POPUP_IDENTITY })
+}
+
+if (IS_POPUP) {
+  // Store-level broadcast hooks are otherwise only registered by the main
+  // window's initWebrtc(); in a popup they forward instead.
+  registerStatusBoardBroadcast((payload) => sendWebrtcEvent('STATUS_BOARD_UPDATE', payload))
+  registerAicBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+  registerAbmBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+  registerAbmMissionBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+  registerRoeBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
+} else {
+  outboundChannel.onmessage = ({ data }) => {
+    if (!data) return
+    const { facilityId, positionName } = useSessionStore.getState()
+    if (data.facilityId !== facilityId || data.positionName !== positionName) return
+    if (data.kind === 'module')       sendWebrtcEvent(data.type, data.payload)
+    else if (data.kind === 'session') sendWebrtcSessionEvent(data.type, data.payload)
+  }
+}
+
 export function sendWebrtcEvent(type, payload) {
+  if (IS_POPUP) { forwardToMainWindow('module', type, payload); return }
   if (!sendModule || _applying) return
   const msg = envelope(type, payload)
   logMsg('→ module', msg)
@@ -858,6 +897,7 @@ export function sendWebrtcEvent(type, payload) {
 
 // Send a session-room event visible to all peers regardless of module
 export function sendWebrtcSessionEvent(type, payload) {
+  if (IS_POPUP) { forwardToMainWindow('session', type, payload); return }
   if (!sendSession) return
   const msg = envelope(type, payload, activeModule)
   logMsg('→ session', msg)

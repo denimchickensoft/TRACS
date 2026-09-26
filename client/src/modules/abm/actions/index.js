@@ -652,7 +652,10 @@ export function openAbmFocusPanel(callsign, rangeNm) {
 // the popup name and the focus scope's own windowId are derived identically.
 export function popOutAbmFocusPanel(callsign, rangeNm) {
   const token = sanitizeFocusToken(callsign)
-  const params = new URLSearchParams({ window: 'abm-focus', callsign, range: String(rangeNm) })
+  // facilityId/positionName scope the popup's cross-window sync to this
+  // position, the same as every other pop-out (see App.jsx's makeUndockHandler).
+  const { facilityId, positionName } = useSessionStore.getState()
+  const params = new URLSearchParams({ window: 'abm-focus', callsign, range: String(rangeNm), facilityId, positionName })
   const popup = window.open(`/?${params}`, `abm-focus-${token}`, 'width=520,height=580,resizable=yes')
   popup?.focus()
 }

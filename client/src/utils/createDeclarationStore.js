@@ -126,9 +126,11 @@ export function createDeclarationStore({ storageKey, legacyStorageKey, channelNa
   })
 
   // Cross-window sync for this controller's own popup windows (e.g. AIC's
-  // BraaList popup, ABM's focus-panel popup) — NOT the cross-controller
-  // broadcast above (declarations/braaList are deliberately local to this
-  // controller, never sent to other controllers). pendingBraaFighter is
+  // BraaList popup, ABM's focus-panel popup) — separate from the
+  // cross-controller broadcast in the setters above, which sends declaration
+  // and auto-declare changes to other controllers (braaList stays local to
+  // this controller). Applying synced state here never re-broadcasts, since
+  // it doesn't go through those setters. pendingBraaFighter is
   // excluded: it's transient in-progress-click state specific to whichever
   // window's cursor is mid-BRAA-pair, not something that should leak across
   // windows.

@@ -4,7 +4,7 @@ import { useStripsStore, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useSessionStore }      from '../../store/session.js'
 import { useControllersStore }  from '../../store/controllers.js'
-import { dispatchWebrtcEvent, dispatchOpenFpe } from '../../utils/commandChannel.js'
+import { dispatchOpenFpe } from '../../utils/commandChannel.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import { FlightPlanImport }     from '../FlightPlanImport/FlightPlanImport.jsx'
 import { AID_MAX_LEN } from '../../utils/callsign.js'
@@ -111,7 +111,7 @@ function StripContextMenu({ x, y, strip, onClose }) {
   }
 
   function handleSendTo(controller) {
-    dispatchWebrtcEvent('STRIP_PASSED', {
+    sendWebrtcEvent('STRIP_PASSED', {
       aid:         strip.aid,
       unitId:      strip.unitId ?? null,
       annotations: strip.annotations,
