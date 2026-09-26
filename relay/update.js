@@ -18,6 +18,7 @@
 const fs    = require('fs')
 const path  = require('path')
 const https = require('https')
+const crypto = require('crypto')
 const { version: CURRENT_VERSION } = require('./package.json')
 
 const REPO = 'denimchickensoft/TRACS'
@@ -26,44 +27,71 @@ const REPO = 'denimchickensoft/TRACS'
 // not only on the rare occasion it happens to be restarted inside the window.
 const CHECK_INTERVAL_MS = 15 * 60 * 1000
 
-function httpsGetJson(url) {
+// Only ever talk to GitHub. Release downloads redirect from github.com to a
+// GitHub-owned asset host; anything else is refused rather than followed.
+const ALLOWED_HOSTS = new Set([
+  'api.github.com',
+  'github.com',
+  'objects.githubusercontent.com',
+  'release-assets.githubusercontent.com',
+])
+const MAX_REDIRECTS = 5
+const IDLE_TIMEOUT_MS = 60 * 1000
+
+// GET `url`, following up to MAX_REDIRECTS redirects within ALLOWED_HOSTS,
+// and hand the final 200 response to onResponse(res, resolve, reject). Every
+// failure mode (bad host, non-200, stalled or dropped connection) rejects
+// instead of hanging.
+function httpsGet(url, onResponse, redirectsLeft = MAX_REDIRECTS) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'tracs-relay-updater' } }, (res) => {
+    let parsed
+    try { parsed = new URL(url) } catch { reject(new Error(`invalid URL: ${url}`)); return }
+    if (parsed.protocol !== 'https:' || !ALLOWED_HOSTS.has(parsed.hostname)) {
+      reject(new Error(`refusing to fetch from ${parsed.hostname}`))
+      return
+    }
+    const req = https.get(parsed, { headers: { 'User-Agent': 'tracs-relay-updater' } }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        resolve(httpsGetJson(res.headers.location))
+        res.resume()
+        if (redirectsLeft <= 0) { reject(new Error('too many redirects')); return }
+        resolve(httpsGet(new URL(res.headers.location, parsed).href, onResponse, redirectsLeft - 1))
         return
       }
       if (res.statusCode !== 200) {
         res.resume()
-        reject(new Error(`GitHub API returned ${res.statusCode}`))
+        reject(new Error(`${parsed.hostname} returned ${res.statusCode}`))
         return
       }
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) } catch (err) { reject(err) }
-      })
-    }).on('error', reject)
+      res.on('aborted', () => reject(new Error('connection dropped mid-response')))
+      res.on('error', reject)
+      onResponse(res, resolve, reject)
+    })
+    req.setTimeout(IDLE_TIMEOUT_MS, () => req.destroy(new Error('request timed out')))
+    req.on('error', reject)
   })
 }
 
+function httpsGetJson(url) {
+  return httpsGet(url, (res, resolve, reject) => {
+    let data = ''
+    res.on('data', (chunk) => { data += chunk })
+    res.on('end', () => {
+      try { resolve(JSON.parse(data)) } catch (err) { reject(err) }
+    })
+  })
+}
+
+// Streams the response to destPath, hashing it on the way. Resolves with
+// { size, sha256 } once the file is fully written.
 function downloadFile(url, destPath) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'tracs-relay-updater' } }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        resolve(downloadFile(res.headers.location, destPath))
-        return
-      }
-      if (res.statusCode !== 200) {
-        res.resume()
-        reject(new Error(`download failed: ${res.statusCode}`))
-        return
-      }
-      const file = fs.createWriteStream(destPath)
-      res.pipe(file)
-      file.on('finish', () => file.close(resolve))
-      file.on('error', reject)
-    }).on('error', reject)
+  return httpsGet(url, (res, resolve, reject) => {
+    const hash = crypto.createHash('sha256')
+    let size = 0
+    const file = fs.createWriteStream(destPath)
+    res.on('data', (chunk) => { hash.update(chunk); size += chunk.length })
+    res.pipe(file)
+    file.on('finish', () => file.close(() => resolve({ size, sha256: hash.digest('hex') })))
+    file.on('error', reject)
   })
 }
 
@@ -132,9 +160,24 @@ async function applyUpdate(latest, { exePath, exeDir }) {
   fs.rmSync(oldPath, { force: true })
 
   console.log(`[relay:update] downloading ${latest.release.tag_name}...`)
-  await downloadFile(asset.browser_download_url, tmpPath)
-  const { size } = fs.statSync(tmpPath)
-  if (size === 0) throw new Error('downloaded file is empty')
+  const { size, sha256 } = await downloadFile(asset.browser_download_url, tmpPath)
+  // Verify against the release's own metadata before swapping anything: the
+  // byte count, and the SHA-256 digest GitHub records for every uploaded
+  // asset. A truncated or corrupted download never replaces the binary.
+  try {
+    if (size === 0) throw new Error('downloaded file is empty')
+    if (typeof asset.size === 'number' && size !== asset.size) {
+      throw new Error(`size mismatch: expected ${asset.size} bytes, got ${size}`)
+    }
+    const expected = typeof asset.digest === 'string' && asset.digest.startsWith('sha256:')
+      ? asset.digest.slice('sha256:'.length).toLowerCase()
+      : null
+    if (!expected) throw new Error('release asset has no sha256 digest to verify against')
+    if (sha256 !== expected) throw new Error(`sha256 mismatch: expected ${expected}, got ${sha256}`)
+  } catch (err) {
+    fs.rmSync(tmpPath, { force: true })
+    throw err
+  }
 
   // Windows won't let you overwrite (or reliably delete) a running exe's
   // bytes directly — renaming it aside is permitted where deleting/
