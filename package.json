@@ -53,7 +53,7 @@
     "yauzl": "^3.4.0"
   },
   "build": {
-    "appId": "com.tracs.desktop",
+    "appId": "io.github.denimchickensoft.tracs",
     "productName": "TRACS",
     "asar": false,
     "npmRebuild": false,
