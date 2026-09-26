@@ -72,6 +72,7 @@ import { matchLiveByPrefix, sanitizeFocusToken } from '../../../utils/callsign.j
 import { DIR_TO_ANGLE } from '../../atc/stars/constants.js'
 import { trueDeclaration, drawCmdTokens } from '../abmScopeHelpers.js'
 import { parseDrawCommand } from '../draw/drawCommands.js'
+import { navdataNotFound } from '../../../store/lnm.js'
 
 const WINDOW_ID = 'abm-main'
 const MAX_HISTORY = 10 // absolute cap on captured trail points, same as AbmScope.jsx's own constant
@@ -167,7 +168,7 @@ export function RR_SET_ANCHOR({ captures, context }) {
     return `RANGE RINGS ${nm}NM @ BULLSEYE`
   }
   const result = useNavdataStore.getState().lookupFix(anchor)
-  if (!result) return 'FIX NOT FOUND'
+  if (!result) return navdataNotFound('FIX NOT FOUND')
   // Anchor lat/lng/id intentionally excluded from saveAbmPrefs — mission-
   // specific fix, not a persisted preference (see store/abmPrefs.js header).
   updateWin(context.windowId, { ringsVisible: true, ringSpacingNm: nm, ringAnchorLat: result.lat, ringAnchorLng: result.lon, ringAnchorId: result.id })
@@ -191,7 +192,7 @@ export function BE_LATLNG({ captures, context }) {
 
 export function BE_FIX({ captures, context }) {
   const result = useNavdataStore.getState().lookupFix(captures.fix)
-  if (!result) return 'FIX NOT FOUND'
+  if (!result) return navdataNotFound('FIX NOT FOUND')
   updateWin(context.windowId, { bullseyeOverride: { lat: result.lat, lng: result.lon } })
   return `BULLSEYE SET @ ${result.id}`
 }
@@ -513,7 +514,7 @@ export function FIX_PIN({ captures, context }) {
   // search — a name that resolves elsewhere would never actually draw pinned.
   const knownIds = new Set(useNavdataStore.getState().fixes.map(f => f.id.toUpperCase()))
   const notFound = names.filter(n => !knownIds.has(n))
-  if (notFound.length) return `${notFound.join(' ')} NOT FOUND`
+  if (notFound.length) return navdataNotFound(`${notFound.join(' ')} NOT FOUND`)
   const pinnedFixes = getWin(windowId)?.pinnedFixes ?? {}
   const current = new Set(pinnedFixes[theatre] ?? [])
   for (const name of names) {
@@ -530,7 +531,7 @@ export function FIX_PIN({ captures, context }) {
 // cleared by Escape or another .find.
 export function FIND({ captures, context }) {
   const result = useNavdataStore.getState().lookupFix(captures.fix)
-  if (!result) return 'NOT FOUND'
+  if (!result) return navdataNotFound()
   updateWin(context.windowId, { findMarker: result })
   useAbmMissionStore.getState().clearFind() // this find isn't tied to a FRAG row
   return `FIND ${result.id}`

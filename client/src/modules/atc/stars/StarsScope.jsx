@@ -68,6 +68,7 @@ import { formatElevation } from '../../../utils/coords.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
 import { loadStarsPrefs, saveStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
+import { navdataNotFound } from '../../../store/lnm.js'
 
 const WINDOW_ID  = 'atc-main'
 
@@ -688,7 +689,7 @@ export default function StarsScope() {
       const buf = usePreviewStore.getState().buffer.trim()
       if (buf) {
         const result = useNavdataStore.getState().lookupFix(buf)
-        if (!result) { usePreviewStore.getState().setResponse('NOT FOUND'); return }
+        if (!result) { usePreviewStore.getState().setResponse(navdataNotFound()); return }
         const rblWip = useDisplayStore.getState().windows[WINDOW_ID]?.rblWip
         if (!rblWip) { displayStore.updateWindow(WINDOW_ID, { pendingAction: null }); return }
         const currentRbls = windowSettings?.rbls ?? []

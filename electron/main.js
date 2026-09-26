@@ -274,9 +274,12 @@ function buildMenu(port) {
 
 handleFromApp('app:getVersion', () => app.getVersion())
 
-handleFromApp('lnm:pickDatabase', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title:      'Select your LittleNavMap Navigraph database',
+handleFromApp('lnm:pickDatabase', async (event) => {
+  // Start in LittleNavMap's usual database folder when it exists.
+  const lnmDir = path.join(app.getPath('appData'), 'ABarthel', 'little_navmap_db')
+  const result = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender) ?? mainWindow, {
+    title:      'Select your LittleNavMap Navigraph database (little_navmap_navigraph.sqlite)',
+    defaultPath: fs.existsSync(lnmDir) ? lnmDir : undefined,
     filters:    [{ name: 'SQLite database', extensions: ['sqlite'] }],
     properties: ['openFile'],
   })

@@ -33,6 +33,8 @@ import { disconnectWebrtc } from './webrtc/client'
 import { relayInfo } from './webrtc/syncClient'
 import { setProjectionParams } from './utils/magvar'
 import { resumeAudioContext } from './audio/audioEngine'
+import { useLnmStore, lnmPromptDismissed } from './store/lnm.js'
+import { LnmSetupDialog } from './components/LnmSetup/LnmSetupDialog'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
 const MSG_VISIBLE_KEY = 'tracs.msg.visible'
@@ -90,27 +92,15 @@ export function App() {
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
   const firstRunPromptedRef = useRef(false)
 
-  // There's no Settings-panel UI for this — the only way to configure an LNM database is this first-run
-  // Electron picker, or the LNM_DB_PATH env var in dev. Neither of these
-  // needs to track status in React state since nothing renders it.
-  const checkLnmConfig = useCallback(() => {
-    return fetch('/api/navdata/lnm-config').then((r) => r.json()).catch(() => null)
+  // LittleNavMap database setup (desktop app only - it needs the native file
+  // picker). Opens automatically once per launch while no database is set,
+  // unless the operator chose "Don't ask again"; Settings reopens it anytime.
+  const lnmDbPath = useLnmStore((s) => s.lnmDbPath)
+  const [lnmDialog, setLnmDialog] = useState(null) // null | 'first-run' | 'settings'
+  const openLnmDialog = useCallback((mode) => {
+    useLnmStore.setState({ error: null })
+    setLnmDialog(mode)
   }, [])
-
-  const saveLnmDbPath = useCallback((path) => {
-    fetch('/api/navdata/lnm-config', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ lnmDbPath: path }),
-    }).catch((err) => console.error('[lnm] failed to save database path:', err.message))
-  }, [])
-
-  const pickLnmDatabase = useCallback(() => {
-    if (!isElectron) return
-    window.electronAPI.pickLnmDatabase().then((path) => {
-      if (path) saveLnmDbPath(path)
-    })
-  }, [isElectron, saveLnmDbPath])
 
   // "Check on launch, ask before downloading" —
   // electronAPI events only fire inside the packaged Electron app; a plain
@@ -135,19 +125,11 @@ export function App() {
     }
   }, [settingsOpen, isElectron, tracsVersion])
 
-  // First-run prompt: only in the packaged Electron app (no native file
-  // dialog exists in a plain browser tab), only once per app load, only
-  // when nothing is configured yet.
   useEffect(() => {
-    if (!isElectron || firstRunPromptedRef.current) return
-    checkLnmConfig().then((data) => {
-      if (data && !data.lnmDbPath) {
-        firstRunPromptedRef.current = true
-        pickLnmDatabase()
-      }
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!isElectron || firstRunPromptedRef.current || lnmDbPath !== null) return
+    firstRunPromptedRef.current = true
+    if (!lnmPromptDismissed()) openLnmDialog('first-run')
+  }, [isElectron, lnmDbPath, openLnmDialog])
   const [activeOds,       setActiveOds]       = useState('atc')
   // Scope-less FPE opens (Strip Bay double-click) land on whichever ODS is showing
   useEffect(() => { useFpeStore.getState().setDefaultScope(activeOds === 'asdex' ? 'asdex' : 'atc') }, [activeOds])
@@ -451,7 +433,11 @@ export function App() {
   }, [])
 
 
-  if (!positionSet) return <Login />
+  const lnmDialogEl = lnmDialog && (
+    <LnmSetupDialog firstRun={lnmDialog === 'first-run'} onClose={() => setLnmDialog(null)} />
+  )
+
+  if (!positionSet) return <>{lnmDialogEl}<Login /></>
 
   const hasAtc   = activeModule === MODULE.ATC
   const hasCatcc = activeModule === MODULE.CATCC
@@ -492,6 +478,7 @@ export function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: activeProfile?.visual.colors.background ?? '#1A1A1A', overflow: 'hidden' }}>
+      {lnmDialogEl}
 
       {updateBanner && (
         <div style={{
@@ -770,6 +757,20 @@ export function App() {
               />
               Sounds
             </label>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lnmDbPath ?? ''}>
+                Navigation data: {typeof lnmDbPath === 'string' ? lnmDbPath.split(/[\\/]/).pop() : 'not configured'}
+              </span>
+              {isElectron && (
+                <button
+                  onClick={() => { setSettingsOpen(false); openLnmDialog('settings') }}
+                  style={{ background: 'transparent', border: '1px solid #444', borderRadius: '3px', color: '#888', cursor: 'pointer', fontSize: '0.65rem', padding: '1px 8px' }}
+                >
+                  Change…
+                </button>
+              )}
+            </div>
 
             <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.65rem', color: '#555' }}>
               {isElectron ? `TRACS v${tracsVersion ?? '…'}` : 'TRACS (dev)'}

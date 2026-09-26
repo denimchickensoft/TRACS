@@ -53,9 +53,9 @@ The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will wa
 **Navigation data (LittleNavMap):**
 - The installer bundles theatre geography, terrain, elevation, and airport data.
 - Fixes, navaids, airways, and procedures come from your own LittleNavMap Navigraph database (a `.sqlite` file).
-- On launch, if no database is configured, TRACS asks you to pick one. It extracts the data, and at each later launch re-extracts automatically if the file has changed.
-- Without a database, those layers are unavailable and everything else works.
-- There is no in-app setting to change the database once it's configured.
+- On launch, if no database is configured, TRACS explains what it needs and lets you pick the file, skip for now, or stop being asked. It extracts the data, and at each later launch re-extracts automatically if the file has changed.
+- Without a database, those layers are unavailable (fix and procedure commands reply `NO NAVDATA`) and everything else works.
+- To set or change the database later, open **Settings → Navigation data → Change…**. The new data takes effect the next time you sign in to a position.
 
 **Config files:**
 - TRACS stores a few hand-editable config files in `%APPDATA%\TRACS\config\` (Windows) — seeded from bundled defaults on first launch, and never overwritten once present, so your edits survive every update.

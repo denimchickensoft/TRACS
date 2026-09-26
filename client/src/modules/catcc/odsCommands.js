@@ -21,6 +21,7 @@ import { useNavdataStore }     from '../../store/navdata.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { applyCallsignChange } from '../../utils/callsignRename.js'
+import { navdataNotFound } from '../../store/lnm.js'
 
 const WINDOW_ID = 'catcc-main'
 
@@ -323,7 +324,7 @@ register('.FIX', (parts) => {
   // actually draw as pinned.
   const knownIds = new Set(useNavdataStore.getState().fixes.map(f => f.id.toUpperCase()))
   const notFound = names.filter((n) => !knownIds.has(n.toUpperCase()))
-  if (notFound.length) return [`${notFound.join(' ')} NOT FOUND`]
+  if (notFound.length) return [navdataNotFound(`${notFound.join(' ')} NOT FOUND`)]
   const ws        = useDisplayStore.getState().windows[WINDOW_ID]
   const byTheatre = ws?.pinnedFixes ?? {}
   const current   = new Set(byTheatre[theatre] ?? [])

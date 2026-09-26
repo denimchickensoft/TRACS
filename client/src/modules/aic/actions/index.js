@@ -40,6 +40,7 @@ import { useBrevityStore } from '../../../store/brevity.js'
 import { getIffStatus } from '../../../utils/transponder.js'
 import { toTrueFromMagnetic } from '../../../utils/bearing.js'
 import { sectorAxisBearing } from '../canvas/computePicture.js'
+import { navdataNotFound } from '../../../store/lnm.js'
 
 const WINDOW_ID = 'aic-main'
 
@@ -88,14 +89,14 @@ export function CENTER_BRG_RNG({ captures, context }) {
 
 export function CENTER_FIX({ captures }) {
   const result = useNavdataStore.getState().lookupFix(captures.fix)
-  if (!result) return 'NOT FOUND'
+  if (!result) return navdataNotFound()
   updateWin({ centerLat: result.lat, centerLng: result.lon, centerOverridden: true })
   return `CENTER ${captures.fix.toUpperCase()}`
 }
 
 export function FIND({ captures }) {
   const result = useNavdataStore.getState().lookupFix(captures.fix)
-  if (!result) return 'NOT FOUND'
+  if (!result) return navdataNotFound()
   updateWin({ findMarker: result })
   return `FIND ${result.id}`
 }
@@ -339,7 +340,7 @@ export function BE_LATLNG({ captures }) {
 
 export function BE_FIX({ captures }) {
   const result = useNavdataStore.getState().lookupFix(captures.fix)
-  if (!result) return 'FIX NOT FOUND'
+  if (!result) return navdataNotFound('FIX NOT FOUND')
   updateWin({ bullseyeOverride: { lat: result.lat, lng: result.lon } })
   return `BULLSEYE SET @ ${result.id}`
 }

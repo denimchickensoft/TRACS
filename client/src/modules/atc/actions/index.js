@@ -40,6 +40,7 @@ import { WORD_VERBS } from '../stars/input/commandParser.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
+import { navdataNotFound } from '../../../store/lnm.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -942,14 +943,14 @@ export function TOGGLE_WINGMEN() {
 
 export function FIND_FIX({ captures }) {
   const result = useNavdataStore.getState().lookupFix(captures?.query)
-  if (!result) return err('NOT FOUND')
+  if (!result) return err(navdataNotFound())
   getDisplay().updateWindow(WINDOW_ID, { findMarker: result })
   ok()
 }
 
 export function RBL_INIT_FIX({ captures }) {
   const result = useNavdataStore.getState().lookupFix(captures?.query)
-  if (!result) return err('NOT FOUND')
+  if (!result) return err(navdataNotFound())
   getDisplay().updateWindow(WINDOW_ID, {
     pendingAction: 'RBL_P2',
     rblWip: { p0: { lat: result.lat, lng: result.lon } },
@@ -972,7 +973,7 @@ export function TOGGLE_FIX({ captures }) {
   // airport name would resolve there but never actually draw as pinned.
   const knownIds = new Set(useNavdataStore.getState().fixes.map(f => f.id.toUpperCase()))
   const notFound = names.filter(n => !knownIds.has(n))
-  if (notFound.length) return err(`${notFound.join(' ')} NOT FOUND`)
+  if (notFound.length) return err(navdataNotFound(`${notFound.join(' ')} NOT FOUND`))
   const win      = getDisplay().windows[WINDOW_ID]
   const byTheatre = win?.pinnedFixes ?? {}
   const current  = new Set(byTheatre[theatre] ?? [])
@@ -1111,9 +1112,9 @@ export function SHOW_PROC({ captures }) {
   const name = captures?.name?.trim().toUpperCase()
   if (!name) return err('INVALID')
   const { raw } = useProceduresStore.getState()
-  if (!raw) return err('NO PROC DATA')
+  if (!raw) return err(navdataNotFound('NO PROC DATA'))
   const found = raw.SID?.[name] || raw.STAR?.[name] || raw.APPCH?.[name]
-  if (!found) return err('NOT FOUND')
+  if (!found) return err(navdataNotFound())
   useProceduresStore.getState().toggleProc(name)
   ok()
 }
