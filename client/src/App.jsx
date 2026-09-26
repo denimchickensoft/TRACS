@@ -2,12 +2,6 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSessionStore, MODULE } from './store/session'
 import { useOdsStore }        from './store/ods'
 import { useControllersStore } from './store/controllers'
-import { useUnitsStore }       from './store/units'
-import { useFlightPlansStore } from './store/flightPlans'
-import { useAssociationStore } from './store/association'
-import { computeAssociations } from './modules/atc/shared/associationEngine.js'
-import { dcsUnitIdReliable } from './utils/callsign.js'
-import { useAtcStore }         from './store/atc.js'
 import { useFpeStore }         from './store/fpe.js'
 import { Login }         from './components/Login/Login'
 import StarsScope        from './modules/atc/stars/StarsScope'
@@ -35,6 +29,7 @@ import { setProjectionParams } from './utils/magvar'
 import { resumeAudioContext } from './audio/audioEngine'
 import { useLnmStore, lnmPromptDismissed } from './store/lnm.js'
 import { LnmSetupDialog } from './components/LnmSetup/LnmSetupDialog'
+import { AssociationOwner } from './components/AssociationOwner'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
 const MSG_VISIBLE_KEY = 'tracs.msg.visible'
@@ -153,41 +148,6 @@ export function App() {
   useEffect(() => {
     if (activeProfileId) localStorage.setItem(PROFILE_STORAGE_KEY, activeProfileId)
   }, [activeProfileId])
-
-  // ── Transponder-based association — single compute owner ─────────────
-  // Mounted here, not inside StarsScope/AsdexScope, because App is the one
-  // component always mounted regardless of which ODS is active. Neither
-  // units.js nor flightPlans.js needs to know association exists — this is
-  // the only place they're read together.
-  const unitsForAssoc     = useUnitsStore((s) => s.units)
-  const plansForAssoc     = useFlightPlansStore((s) => s.plans)
-  const ownershipForAssoc = useAtcStore((s) => s.ownership)
-  const sourceTypeForAssoc = useSessionStore((s) => s.sourceType)
-  useEffect(() => {
-    const previous = useAssociationStore.getState().associated
-    const next = computeAssociations({
-      units: unitsForAssoc, flightPlans: plansForAssoc, ownership: ownershipForAssoc, previousAssociated: previous,
-      dcsUnitIdReliable: dcsUnitIdReliable(),
-    })
-    useAssociationStore.getState().setAssociated(next)
-  }, [unitsForAssoc, plansForAssoc, ownershipForAssoc, sourceTypeForAssoc])
-
-  // ── IDENT onset detection ─────────────────────────────────────────────
-  // Latches identUnacked on the edge (status becomes 2) — same blink
-  // treatment as a handoff, cleared only by slewing the contact (see
-  // StarsScope.jsx's bare-slew handler and dispatch call), not by a timer
-  // and not just because status reverts.
-  const prevIdentStatusRef = useRef({})
-  useEffect(() => {
-    const prev = prevIdentStatusRef.current
-    const nextStatus = {}
-    for (const [uid, unit] of Object.entries(unitsForAssoc)) {
-      const status = unit.transponder?.status
-      if (status === 2 && prev[uid] !== 2) useAtcStore.getState().markIdent(uid)
-      if (status != null) nextStatus[uid] = status
-    }
-    prevIdentStatusRef.current = nextStatus
-  }, [unitsForAssoc])
 
   // Chromium suspends AudioContexts until a user gesture — resume once on
   // the first interaction anywhere in the app so alert tones can play later.
@@ -437,7 +397,7 @@ export function App() {
     <LnmSetupDialog firstRun={lnmDialog === 'first-run'} onClose={() => setLnmDialog(null)} />
   )
 
-  if (!positionSet) return <>{lnmDialogEl}<Login /></>
+  if (!positionSet) return <><AssociationOwner />{lnmDialogEl}<Login /></>
 
   const hasAtc   = activeModule === MODULE.ATC
   const hasCatcc = activeModule === MODULE.CATCC
@@ -476,7 +436,12 @@ export function App() {
     return 0
   })()
 
+  // AssociationOwner is the first child of a top-level fragment in both this
+  // return and the sign-in one above, so React keeps the same instance (and
+  // its IDENT edge-detection state) when switching between them.
   return (
+    <>
+    <AssociationOwner />
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: activeProfile?.visual.colors.background ?? '#1A1A1A', overflow: 'hidden' }}>
       {lnmDialogEl}
 
@@ -1069,5 +1034,6 @@ export function App() {
         )}
       </div>
     </div>
+    </>
   )
 }
