@@ -90,8 +90,7 @@ export function App() {
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
   const firstRunPromptedRef = useRef(false)
 
-  // No Settings-panel UI for this anymore (removed per user request) — the
-  // only remaining way to configure an LNM database is this first-run
+  // There's no Settings-panel UI for this — the only way to configure an LNM database is this first-run
   // Electron picker, or the LNM_DB_PATH env var in dev. Neither of these
   // needs to track status in React state since nothing renders it.
   const checkLnmConfig = useCallback(() => {
@@ -113,7 +112,7 @@ export function App() {
     })
   }, [isElectron, saveLnmDbPath])
 
-  // "Check on launch, ask before downloading" (production-spec.md §4) —
+  // "Check on launch, ask before downloading" —
   // electronAPI events only fire inside the packaged Electron app; a plain
   // browser tab never receives them.
   const [updateBanner, setUpdateBanner] = useState(null) // null | 'available' | 'notify-only' | 'downloading' | 'ready'
@@ -177,8 +176,7 @@ export function App() {
   // Mounted here, not inside StarsScope/AsdexScope, because App is the one
   // component always mounted regardless of which ODS is active. Neither
   // units.js nor flightPlans.js needs to know association exists — this is
-  // the only place they're read together. See
-  // resources/specs/transponder-correlation-spec.md §7.
+  // the only place they're read together.
   const unitsForAssoc     = useUnitsStore((s) => s.units)
   const plansForAssoc     = useFlightPlansStore((s) => s.plans)
   const ownershipForAssoc = useAtcStore((s) => s.ownership)
@@ -196,8 +194,7 @@ export function App() {
   // Latches identUnacked on the edge (status becomes 2) — same blink
   // treatment as a handoff, cleared only by slewing the contact (see
   // StarsScope.jsx's bare-slew handler and dispatch call), not by a timer
-  // and not just because status reverts. See
-  // resources/specs/transponder-correlation-spec.md §4.
+  // and not just because status reverts.
   const prevIdentStatusRef = useRef({})
   useEffect(() => {
     const prev = prevIdentStatusRef.current
@@ -256,7 +253,7 @@ export function App() {
   // sync (positionName/coalition/etc.) runs generically in every window and
   // needs this identity to scope itself to "this position's own windows
   // only," so a genuinely independent position (opened via New Window)
-  // never bleeds into an unrelated one. See feedback_webrtc_relay_sync_invariants.
+  // never bleeds into an unrelated one.
   function makeUndockHandler(url, winName, widthRef, setDocked, popupRef) {
     return () => {
       const resolvedUrl = typeof url === 'function' ? url() : url

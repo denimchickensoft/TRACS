@@ -56,11 +56,9 @@ const COALITION_OPTIONS = [
   { value: 'admin', label: 'Admin'          },
 ]
 
-// Primary data source — an explicit choice, not auto-detected (superseded
-// 2026-09-07; see resources/specs/data-sources/pluggable-source-architecture-spec.md
-// §5's correction). 'relay' is named for the relay itself, not for Tacview —
-// what it forwards today is a relay-operator config choice
-// (dataminer-architecture-placeholder-spec.md §4), invisible to the controller.
+// Primary data source — an explicit choice, not auto-detected. 'relay' is
+// named for the relay itself, not for Tacview — what it forwards is a
+// relay-operator config choice, invisible to the controller.
 const SOURCE_MODES = [
   { value: 'olympus',        label: 'Olympus' },
   { value: 'tacview-direct', label: 'Tacview' },
@@ -79,8 +77,7 @@ function ConnectPhase({ onConnected }) {
   const [coalition,  setCoalition]  = useState(() => lastConnection?.coalition ?? lastProfile?.lastCoalition ?? localStorage.getItem('tracs.lastCoalition') ?? 'blue')
   // Meaning depends on sourceMode: Olympus/Relay -> genuinely per-coalition
   // (profile.passwords[coalition]); Tacview-Direct -> Tacview's own flat RTT
-  // password (profile.tacviewPassword), never coalition-keyed. See
-  // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+  // password (profile.tacviewPassword), never coalition-keyed.
   const [password,   setPassword]   = useState(() => lastConnection?.password
     ?? (sourceMode === 'tacview-direct' ? lastProfile?.tacviewPassword : lastProfile?.passwords?.[coalition]) ?? '')
   // XPNDR port is optional — most deployments have no relay at all. Same host
@@ -89,8 +86,7 @@ function ConnectPhase({ onConnected }) {
   const [xpndrPort,  setXpndrPort]  = useState(() => parseHostPort(lastConnection?.relayUrl ?? lastProfile?.relayUrl ?? '').port)
   // Only meaningful (and only ever shown) in Tacview-Direct mode with Relay
   // Port also filled — the relay's genuinely per-coalition secret, distinct
-  // from the flat Tacview RTT password above in that one combination. See
-  // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+  // from the flat Tacview RTT password above in that one combination.
   const [relayPassword, setRelayPassword] = useState(() => lastConnection?.relayPassword ?? lastProfile?.relayPasswords?.[coalition] ?? '')
   const [error,        setError]        = useState(null)
   // Non-blocking — a relay-sync problem never prevents connecting, unlike
@@ -232,15 +228,15 @@ function ConnectPhase({ onConnected }) {
     // dispatch is already driven purely by relayUrl + blank olympusUrl.
     const requestedSourceType = sourceMode === 'olympus' ? 'olympus' : 'tacview'
     // Only genuinely distinct from `password` in Tacview-Direct mode with a
-    // relay also configured — see resources/specs/data-sources/
-    // pluggable-source-architecture-spec.md §7 for the full reasoning.
+    // relay also configured (Tacview's RTT password is flat, not
+    // coalition-scoped, so it can't double as the relay's secret).
     const effectiveRelayPassword = (sourceMode === 'tacview-direct' && xpndrPort) ? relayPassword : ''
     const syncPassword = effectiveRelayPassword || password
 
     // Checked in parallel with the Olympus connect below, not after sign-in —
     // this is the one place in the flow that already has password/relayUrl in
     // hand, already gates on an async check, and already has somewhere to show
-    // a result. See resources/specs/data-sources/webrtc-centralized-sync-spec.md §1.
+    // a result.
     const syncCheck = relayUrl
       ? checkSyncCapable({ relayUrl, coalition, password: syncPassword })
       : Promise.resolve({ capable: false })
@@ -544,8 +540,7 @@ function PositionPhase({ onSignedIn }) {
 
   // Manual theatre override — Tacview-only (gated on sourceType below): it
   // has no reliable auto-detected theatre signal at all
-  // (custom-datasource-tacview-spec.md §4.2), and even its majority-vote
-  // mitigation can never disambiguate MarianaIslands vs. MarianaIslandsWWII
+  // beyond a bbox majority vote, and even that vote can never disambiguate MarianaIslands vs. MarianaIslandsWWII
   // (identical bboxes). Olympus reports its own theatre directly and
   // reliably, so this control would be pure clutter for that source — the
   // whole reason this needs sourceType at all rather than always showing.
@@ -615,8 +610,7 @@ function PositionPhase({ onSignedIn }) {
   const [runwayBaseNames, setRunwayBaseNames] = useState(null)
 
   // Synthetic airbases fallback — Tacview has no live airbases feed at all
-  // (DCS's exporter emits no Aerodrome objects, confirmed in
-  // custom-datasource-tacview-spec.md §6.0), so `airbases` from the live WS
+  // (DCS's exporter emits no Aerodrome objects, confirmed live), so `airbases` from the live WS
   // feed never arrives and the facility picker below would otherwise be
   // stuck on "Waiting for data…" forever for a Tacview-sourced connection.
   // Built from the same runways/<theatre>.json already fetched just below
@@ -1025,8 +1019,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
     // Tacview-Direct mode with a relay configured) -- PositionPhase has no
     // closure over ConnectPhase's local state (separate components), so
     // these ride through the session store instead, same as olympusUrl
-    // already does. See store/session.js's setConnection and
-    // resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
+    // already does. See store/session.js's setConnection.
     const { olympusUrl, coalition, relayPassword } = useSessionStore.getState()
     let rtcPosition  = ''
     let rtcFrequency = ''
@@ -1372,7 +1365,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
       )}
 
       {/* ── Session password (P2P fallback only — no function for relay-hosted
-          sync, see webrtc-centralized-sync-spec.md) ─────────────────────── */}
+          sync) ────────────────────────────────────────────────────────── */}
       {!syncCapable && (
         <section>
           <label>Session Password</label>

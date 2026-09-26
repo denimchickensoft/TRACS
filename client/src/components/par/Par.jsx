@@ -537,7 +537,7 @@ export function Par({
       // TEST HARDWIRE: TDZ is TDZ_OFFSET_FT feet aft of the carrier's
       // reported position (along the outbound bearing, toward the
       // approaching aircraft) — the reported point doesn't line up with
-      // the actual wires/ramp. See project memory on PAR carrier TDZ offset.
+      // the actual wires/ramp.
       const tdz        = destPoint(carrierUnit.position.lat, carrierUnit.position.lng, (trueHdg + 180) % 360, TDZ_OFFSET_FT)
       return {
         ...base,

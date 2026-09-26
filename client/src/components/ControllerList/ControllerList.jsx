@@ -86,7 +86,7 @@ function resolveFacilityName(facilityId, icaoMap, units) {
 
 // ── Build sorted groups from registry + peers ─────────────────────────────────
 //
-// Viewer-relative module ordering (see abm-spec.md / session decision 2026-07-05):
+// Viewer-relative module ordering:
 // Pairs are FACILITY = [ATC, CATCC] and TACTICAL = [ABM, AIC]. Your own pair
 // always renders first — your own module first (self position/facility pinned
 // to the top of it), then its sibling in that pair. The OTHER pair follows in

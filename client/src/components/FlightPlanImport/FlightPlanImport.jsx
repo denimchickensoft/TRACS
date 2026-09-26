@@ -11,7 +11,7 @@ import { AID_MAX_LEN } from '../../utils/callsign.js'
 import './FlightPlanImport.css'
 
 // Shared bulk import for the three flight-plan ingestion paths --
-// .miz / CSV / DTC -- see resources/specs/pilot-flightplan-ingestion-spec.md.
+// .miz / CSV / DTC.
 // Controller-side, ATC/STARS only. Same drag-drop pattern as
 // modules/abm/AbmMissionImport.jsx, adapted for a unified review list across
 // all three source formats plus DTC's extra route-slot/callsign step.
