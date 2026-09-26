@@ -12,13 +12,13 @@
 
 export const STARS_KEY_MAP = [
   // ── Operational keys ──────────────────────────────────────────────
-  { code: 'F2',                ctrl: false, token: 'TR ' },   // TRK RPOS
+  { code: 'F2',                ctrl: false, token: 'RP ' },   // TRK RPOS
   { code: 'F3',                ctrl: false, token: 'IC'  },   // INIT CNTL
   { code: 'F4',                ctrl: false, token: 'TC'  },   // TERM CNTL
   { code: 'F5',                ctrl: false, token: 'HO ' },   // HND OFF
-  { code: 'F6',                ctrl: false, token: 'FD ' },   // FLT DATA
+  { code: 'F6',                ctrl: false, token: 'DA ' },   // FLT DATA
   { code: 'F7',                ctrl: false, token: 'MF ' },   // MULTI FUNC
-  { code: 'F9',                ctrl: false, token: 'FP ' },   // VFR flight plan
+  { code: 'F9',                ctrl: false, token: 'VP ' },   // VFR PLAN
   { code: 'F11',               ctrl: false, token: 'CA ' },   // CA
   { code: 'F13',               ctrl: false, token: 'F13 '},   // F13
   { code: 'End',               ctrl: false, token: 'MIN' },   // MIN

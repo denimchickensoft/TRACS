@@ -15,6 +15,8 @@ Each command below reads as `COMMAND + ENTER` or `COMMAND + SLEW`.
 
 When a command starts with a function key, the preview area shows the key's label on its own line and the rest of the entry below it. For `MF`, the label includes the next key: F7 then `S` shows `FS`, with the rest of the entry on the next line.
 
+A **FLID** (flight ID) in an ENTER form can be a flight plan's AID, a 4-digit beacon code, or a live callsign.
+
 A bare click with an empty buffer depends on the track's state:
 1. If the track has an unacknowledged conflict alert, the click acknowledges it (see Conflict Alert below).
 2. Otherwise, if a handoff or point-out involving that track is pending, the click accepts or recalls it.
@@ -67,6 +69,12 @@ You must own a track to edit its scratchpads or temporary altitude.
 | `+` + SLEW | — | Clear SP2 |
 | `+###` + SLEW | — | Set the temporary assigned altitude, shown as `A###` on FDB line 3. `+000` clears it |
 | `++###` + SLEW | — | Amend the flight plan's requested (filed) altitude |
+| `Δ<text>` + SLEW | `` ` `` | Set SP1 (up to 3 characters) |
+| `MF MΔ<text>` + SLEW / `MF M<flid> Δ<text>` + ENTER | `F7` | Set SP1 |
+| `MF M+<text>` + SLEW / `MF M<flid> +<text>` + ENTER | `F7` | Set SP2 |
+| `MF MΔ###` + SLEW / `MF M<flid> Δ###` + ENTER | `F7` | Set the temporary assigned altitude. `000` clears it |
+| `MF M###` + SLEW / `MF M<flid> ###` + ENTER | `F7` | Amend the requested (filed) altitude. The ENTER form also works on a flight plan with no track yet |
+| `MF M####` + SLEW / `MF M<flid> ####` + ENTER | `F7` | Assign a specific beacon code to the flight plan (octal). `DUP BCN` if another plan has it |
 
 `F7` inserts the `MF ` prefix.
 
@@ -109,7 +117,13 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `MF S` + SLEW | `F7` | Relocate the SSA overlay |
 | `MF S<atis>` + ENTER | — | Set the SSA overlay's ATIS code letter |
 | `MF S<atis> <giText>` + ENTER | — | Set the SSA overlay's ATIS code letter and general-info text |
-| `MF S` + ENTER | — | Clear the SSA overlay's ATIS code letter and general-info text |
+| `MF S` + ENTER | — | Clear the SSA overlay's ATIS code letter and general-info text (line 1) |
+| `MF S*` + ENTER | — | Clear the ATIS code only |
+| `MF S* <giText>` + ENTER | — | Clear the ATIS code and set the general-info text |
+| `MF S<atis>*` + ENTER | — | Set the ATIS code and clear the general-info text |
+| `MF S<1-9> <text>` + ENTER | — | Set an auxiliary general-info line, shown below line 1 in the SSA |
+| `MF S<1-9>` + ENTER | — | Clear an auxiliary general-info line |
+| `MF D` + SLEW / `MF D<flid>` + ENTER | `F7` | Show the flight plan (AID, type, beacon, altitude, route, flight rules) in the preview area |
 | `.ALTIM <val>` / `.QNH <val>` + ENTER | — | Set altimeter (inHg or hPa, auto-detected by range) |
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
@@ -167,6 +181,29 @@ When SRS transponder data reaches TRACS through a relay (in Tacview or Olympus s
 | **IDENT** | A pilot's IDENT press appends a blinking "ID" to the datablock (only the suffix blinks), latched until you acknowledge it with a slew on that track. A PDB that IDENTs displays as an LDB (beacon code + ID, then altitude) until acknowledged |
 | **Beaconator** | Press and hold `F1`. Every squawking SRS-fielded track shows its beacon code: PDBs switch to FDB layout with the callsign replaced by the code, and LDBs switch to the code-and-altitude layout. Tracks the altitude filter would hide are shown too. Release to return to normal |
 
+## Flight plan creation
+
+| Command | Shortcut | Effect |
+|---|---|---|
+| `DA <aid> [fields]` + ENTER | `F6` (FLT DATA) | Create an abbreviated flight plan, or amend it if the AID already exists |
+| `VP <aid> [dep*] <dest> <type>[/eq] [###]` + ENTER | `F9` (VFR PLAN) | Create or amend a VFR flight plan, e.g. `N925RC BOS* BTV C172/G 065` |
+| `<aid> [fields]` + ENTER | — | Implied form, with no function key first. Tried as FLT DATA fields, then as VFR PLAN fields |
+
+FLT DATA fields can be in any order:
+
+| Field | Format |
+|---|---|
+| Beacon code | 4 octal digits, e.g. `4304`. Assigned automatically if omitted |
+| Scratchpad 1 | `Δ` + up to 3 characters |
+| Scratchpad 2 | `+` + up to 3 characters |
+| Aircraft type | 4 characters starting with a letter (pad with `*`), optional `/equipment` |
+| Requested altitude | 3 digits, hundreds of feet |
+| Flight rules | `.V` VFR, `.P` VFR-on-top, `.E` IFR. A new plan is VFR if omitted |
+
+Example: `N925RC 4304 ΔVFF C182 065`. After a plan is created or amended, the preview area shows its AID and beacon code. Scratchpads entered this way are stored on the plan and show in the datablock once the track associates, until the track's own scratchpad is set or cleared.
+
+In the implied form, a command word (`RG`, `HO`, `MIN` and so on) is never taken as an AID. An airport code like `KBTV` also looks like an aircraft type, so an ambiguous implied entry is read as FLT DATA; use `F9` to force the VFR PLAN reading.
+
 ## Conflict Alert / MCI (STCA)
 
 `.CA` + ENTER toggles automated conflict detection (Short-Term Conflict Alert). When on:
@@ -177,6 +214,8 @@ When SRS transponder data reaches TRACS through a relay (in Tacview or Olympus s
 - Suppression zones along final approach courses prevent alerts between aircraft established on approach.
 
 The DCB aux bar (SHIFT) has a **CA** toggle button next to **WNG**.
+
+`CA K` + SLEW, or `CA K <flid>` + ENTER (`F11` inserts `CA `), turns conflict alerts off or on for one track. The preview area shows `CA INHIBITED` or `CA ENABLED`. The setting is local to your client.
 
 ## Simulated wingmen
 
@@ -258,11 +297,14 @@ These keys insert text into the buffer; you still complete the command with a cl
 | `F3` (also `Shift+F3`) | `IC` | Init Control — click a track to claim it |
 | `F4` | `TC` | Term Control — click a track to drop it |
 | `F5` | `HO ` | Hand Off — type a position id, then click a track |
+| `F6` | `DA ` | Flight Data — create an abbreviated flight plan |
 | `F7` | `MF ` | Multi-Function prefix — follow with a list/scratchpad/leader command |
+| `F9` | `VP ` | VFR Plan — create or amend a VFR flight plan |
+| `F11` | `CA ` | Conflict Alert — `CA K` inhibits alerts for one track |
 | `End` | `MIN` | Minimum-separation tool |
 | `` ` `` (backquote) | `Δ` | Inserts the delta glyph |
 
-`F2`, `F6`, `F9`, `F11`, and `F13` insert `TR `, `FD `, `FP `, `CA `, and `F13 `. No command uses these prefixes.
+`F2` (TRK RPOS) and `F13` insert `RP ` and `F13 `. No command uses these prefixes yet.
 
 These act immediately, without the buffer:
 

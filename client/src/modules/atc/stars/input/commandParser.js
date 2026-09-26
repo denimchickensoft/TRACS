@@ -16,9 +16,16 @@ const COMMANDS = [
   // ── List management ─────────────────────────────────────────────
   // SSA — relocate only (always visible)
   { id: 'RELOCATE_SSA',         pattern: /^MF S$/,                trigger: 'SLEW'  },
-  // SSA — ATIS/GI text (main line only; no aux lines/delete variants)
-  { id: 'SET_ATIS_GI',          pattern: /^MF S(\S+) (.+)$/,      trigger: 'ENTER', captures: ['atis', 'giText'] },
-  { id: 'SET_ATIS',             pattern: /^MF S(\S+)$/,           trigger: 'ENTER', captures: ['atis'] },
+  // SSA — ATIS code (one letter) / GI text. Aux lines and * (delete)
+  // variants precede the plain set patterns, which would otherwise read
+  // "S1" or "SA*" as an ATIS code.
+  { id: 'SET_GI_AUX',           pattern: /^MF S([1-9]) (.+)$/,    trigger: 'ENTER', captures: ['line', 'text'] },
+  { id: 'CLEAR_GI_AUX',         pattern: /^MF S([1-9])$/,         trigger: 'ENTER', captures: ['line'] },
+  { id: 'CLEAR_ATIS',           pattern: /^MF S\*$/,              trigger: 'ENTER' },
+  { id: 'CLEAR_ATIS_SET_GI',    pattern: /^MF S\* ?(.+)$/,        trigger: 'ENTER', captures: ['giText'] },
+  { id: 'SET_ATIS_CLEAR_GI',    pattern: /^MF S([A-Z])\*$/,       trigger: 'ENTER', captures: ['atis'] },
+  { id: 'SET_ATIS_GI',          pattern: /^MF S([A-Z]) (.+)$/,    trigger: 'ENTER', captures: ['atis', 'giText'] },
+  { id: 'SET_ATIS',             pattern: /^MF S([A-Z])$/,         trigger: 'ENTER', captures: ['atis'] },
   { id: 'CLEAR_ATIS_GI',        pattern: /^MF S$/,                trigger: 'ENTER' },
   // Sign-On List
   { id: 'TOGGLE_SIGNON',        pattern: /^MF TS$/,               trigger: 'ENTER' },
@@ -47,7 +54,23 @@ const COMMANDS = [
   { id: 'RECENTER',             pattern: /^\.CENTER$/,            trigger: 'ENTER' },
   { id: 'RELOCATE_PREVIEW',     pattern: /^MF P$/,                trigger: 'SLEW'  },
   { id: 'TOGGLE_PTL',           pattern: /^MF R$/,                trigger: 'SLEW'  },
+  // MF M family (Tables 23/24/31) — FLID directly after M for the ENTER
+  // forms. Δ### (temp altitude) must precede Δ(scratchpad); all of these
+  // precede the bare MF M (Mode C toggle).
+  { id: 'MF_M_TEMP_ALT',        pattern: /^MF MΔ(\d{3})$/,              trigger: 'SLEW',  captures: ['alt'] },
+  { id: 'MF_M_SP1',             pattern: /^MF MΔ(\S{1,3})$/,            trigger: 'SLEW',  captures: ['sp'] },
+  { id: 'MF_M_SP2',             pattern: /^MF M\+(\S{1,3})$/,           trigger: 'SLEW',  captures: ['sp'] },
+  { id: 'SET_BEACON',           pattern: /^MF M([0-7]{4})$/,            trigger: 'SLEW',  captures: ['bcn'] },
+  { id: 'MF_M_REQ_ALT',         pattern: /^MF M(\d{3})$/,               trigger: 'SLEW',  captures: ['alt'] },
+  { id: 'MF_M_TEMP_ALT',        pattern: /^MF M(\S+) Δ(\d{3})$/,        trigger: 'ENTER', captures: ['flid', 'alt'] },
+  { id: 'MF_M_SP1',             pattern: /^MF M(\S+) Δ(\S{1,3})$/,      trigger: 'ENTER', captures: ['flid', 'sp'] },
+  { id: 'MF_M_SP2',             pattern: /^MF M(\S+) \+(\S{1,3})$/,     trigger: 'ENTER', captures: ['flid', 'sp'] },
+  { id: 'SET_BEACON',           pattern: /^MF M(\S+) ([0-7]{4})$/,      trigger: 'ENTER', captures: ['flid', 'bcn'] },
+  { id: 'MF_M_REQ_ALT',         pattern: /^MF M(\S+) (\d{3})$/,         trigger: 'ENTER', captures: ['flid', 'alt'] },
   { id: 'TOGGLE_MODE_C',        pattern: /^MF M$/,                trigger: 'SLEW'  },
+  // MF D — flight plan readout in the preview area (D* / D+ left free)
+  { id: 'SHOW_FP',              pattern: /^MF D$/,                trigger: 'SLEW'  },
+  { id: 'SHOW_FP',              pattern: /^MF D([A-Z0-9]+)$/,     trigger: 'ENTER', captures: ['flid'] },
   { id: 'TOGGLE_BEACON',        pattern: /^MF B$/,                trigger: 'SLEW'  },
   { id: 'TOGGLE_FDB_OVERFLIGHT',pattern: /^MF E$/,                trigger: 'ENTER' },
 
@@ -165,6 +188,18 @@ const COMMANDS = [
   { id: 'QUICK_LOOK_TCP',       pattern: /^\*\*([A-Z0-9]+)$/,     trigger: 'SLEW',  captures: ['tcp'], contextFree: true },
   { id: 'QUICK_LOOK_ALL',       pattern: /^\*\*ALL$/,             trigger: 'SLEW',  contextFree: true },
 
+  // ── Conflict alert (Table 27) ───────────────────────────────────
+  // CA K — toggle CA warnings for one track
+  { id: 'CA_INHIBIT',           pattern: /^CA ?K$/,               trigger: 'SLEW'  },
+  { id: 'CA_INHIBIT',           pattern: /^CA ?K (.+)$/,          trigger: 'ENTER', captures: ['flid'] },
+
+  // ── Flight plan creation (Table 23) ─────────────────────────────
+  // FLT DATA (F6): abbreviated plan, optional fields in any order.
+  // VFR PLAN (F9): [DEP*] DEST TYPE[/EQ] [###]. Implied (no key) form is
+  // at the end of the ENTER patterns.
+  { id: 'CREATE_FP_ABBREV',     pattern: /^DA ([A-Z][A-Z0-9]{1,12})(?: (.+))?$/, trigger: 'ENTER', captures: ['aid', 'rest'] },
+  { id: 'CREATE_VFR_FP',        pattern: /^VP ([A-Z][A-Z0-9]{1,12}) (.+)$/,      trigger: 'ENTER', captures: ['aid', 'rest'] },
+
   // ── Minimum separation ──────────────────────────────────────────
   // Must precede SET_SP1 — "MIN" matches the 3-char scratchpad pattern
   { id: 'MIN_INIT',             pattern: /^MIN$/,                trigger: 'SLEW'  },
@@ -174,6 +209,8 @@ const COMMANDS = [
   // SP1 via MF Y (SP2 has no MF form - only the + shorthand below)
   { id: 'SET_SP1_MF',           pattern: /^MF Y(.+)$/,            trigger: 'SLEW',  captures: ['sp'] },
   { id: 'CLEAR_SP1_MF',         pattern: /^MF Y$/,                trigger: 'SLEW'  },
+  // SP1 via Δ key: Δ(text) + SLEW
+  { id: 'SET_SP1',              pattern: /^Δ(\S{1,3})$/,          trigger: 'SLEW',  captures: ['sp'] },
   // SP1 shorthand: (text) + SLEW — a bare 3-digit entry lands here too
   { id: 'SET_SP1',              pattern: /^([A-Z0-9/]{3,4})$/,    trigger: 'SLEW',  captures: ['sp'], contextFree: true },
   // Temporary assigned altitude: +(###) + SLEW (+000 clears) — must
@@ -196,6 +233,11 @@ const COMMANDS = [
   { id: 'RBL_INIT_FIX',         pattern: /^\*T (.+)$/,            trigger: 'ENTER', captures: ['query'] },
   { id: 'RBL_INIT',             pattern: /^\*T$/,                 trigger: 'SLEW'  },
 
+  // ── Implied flight plan: <AID>(fields)<ENTER> — MUST be the last
+  // ENTER pattern. The handler rejects known command verbs as AIDs and
+  // tries the FLT DATA fields before the VFR PLAN fields.
+  { id: 'CREATE_FP_IMPLIED',    pattern: /^([A-Z][A-Z0-9]{1,12})(?: (.+))?$/,    trigger: 'ENTER', captures: ['aid', 'rest'], contextFree: true },
+
   // ── Context-sensitive bare slew — MUST be last ──────────────────
   { id: 'BARE_SLEW',            pattern: /^$/,                    trigger: 'SLEW'  },
 ]
@@ -207,7 +249,7 @@ const COMMANDS = [
 // the literal keyword each command family starts with; context-free shorthand
 // (bare digits, TCP shorthand, scratchpad shorthand, altitude shorthand) has
 // no fixed verb and is excluded, so those fall back to INVALID INPUT.
-const WORD_VERBS = ['MF', 'RG', 'RR', 'LD', 'IC', 'TC', 'HO', 'MIN', 'UN']
+export const WORD_VERBS = ['MF', 'RG', 'RR', 'LD', 'IC', 'TC', 'HO', 'MIN', 'UN', 'DA', 'VP', 'CA', 'RP']
 const DOT_VERBS = [
   'ALTIM', 'QNH', 'ASPCOLORS', 'REFRESH', 'DBCA', 'LABELS', 'LBL', 'LABEL', 'FIXES', 'FILL',
   'CA', 'WNG', 'ASP', 'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',

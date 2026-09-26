@@ -77,17 +77,19 @@ function updateVertRate(vertRates, id, altFt, now) {
  * @param {Array}  params.suppressionZones  from suppressionZones.buildSuppressionZones()
  * @param {Function} params.isSuppressed    suppressionZones.isSuppressed
  * @param {Set<string>} params.wingmanIds   from formations.computeWingmanIds() — excluded entirely
+ * @param {Set<string>} [params.inhibitedIds] CA K per-track inhibits — excluded entirely
  * @param {Map} params.vertRates          caller-owned, mutated in place
  * @param {Map} params.latched            caller-owned, mutated in place — pairId -> { unitAId, unitBId, type }
  * @returns {Array<{id, unitAId, unitBId, type}>}
  */
-export function computeConflicts({ units, ownership, suppressionZones, isSuppressed, wingmanIds, vertRates, latched }) {
+export function computeConflicts({ units, ownership, suppressionZones, isSuppressed, wingmanIds, inhibitedIds, vertRates, latched }) {
   const now = Date.now()
   const airborne = []
 
   for (const [id, unit] of Object.entries(units)) {
     if (!AIRBORNE.has(unit.category) || !unit.position) continue
     if (wingmanIds?.has(id)) continue
+    if (inhibitedIds?.has(id)) continue
 
     const altFt = unit.position.alt * M_TO_FT
     const rate  = updateVertRate(vertRates, id, altFt, now)

@@ -32,7 +32,10 @@ import { useProceduresStore }  from '../../../store/procedures.js'
 import { useUnitsStore }       from '../../../store/units.js'
 import { useAssociationStore } from '../../../store/association.js'
 import { computeWingmanIds }   from '../stars/stca/formations.js'
-import { findFlightPlanAid } from '../../../utils/callsign.js'
+import { findFlightPlanAid, resolveCallsign, AID_MAX_LEN } from '../../../utils/callsign.js'
+import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
+import { parseAbbreviatedFields, parseVfrFields } from '../stars/input/flightPlanFields.js'
+import { WORD_VERBS } from '../stars/input/commandParser.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
@@ -51,6 +54,54 @@ function getDisplay() { return useDisplayStore.getState() }
 function getMyControllerId() {
   const positionName = useSessionStore.getState().positionName
   return useControllersStore.getState().registry[positionName]?.controllerId ?? null
+}
+
+// Resolve a typed FLID (AID, beacon code, or live callsign) to its flight
+// plan and/or track. Any part may be null — a plan with no track yet, or a
+// live track with no plan.
+function resolveFlid(flid) {
+  const key = flid?.trim().toUpperCase()
+  if (!key) return { aid: null, unitId: null, unit: null }
+  const plans = useFlightPlansStore.getState().plans
+  const units = useUnitsStore.getState().units
+  const associated = useAssociationStore.getState().associated
+
+  const withUnit = (aid, unitId) => {
+    const unit = unitId != null ? units[unitId] ?? null : null
+    return { aid, unitId: unit ? String(unitId) : null, unit }
+  }
+  const unitForAid = (aid) =>
+    plans[aid]?.unitId ?? Object.keys(associated).find((uid) => associated[uid] === aid) ?? null
+
+  if (plans[key]) return withUnit(key, unitForAid(key))
+
+  if (/^[0-7]{4}$/.test(key)) {
+    const plan = Object.values(plans).find((p) => p.bcn === key)
+    if (plan) return withUnit(plan.aid, unitForAid(plan.aid))
+    // mode3 is numeric (e.g. 1200), so compare in padded 4-digit form.
+    const uid = Object.keys(units).find(
+      (id) => hasLiveSquawk(units[id]) && normalizeCode(units[id].transponder.mode3) === key
+    )
+    if (uid) {
+      const aid = findFlightPlanAid(units[uid], plans)
+      return withUnit(plans[aid] ? aid : null, uid)
+    }
+  }
+
+  const uid = Object.keys(units).find(
+    (id) => resolveCallsign(units[id])?.toUpperCase().slice(0, AID_MAX_LEN) === key
+  )
+  if (uid) return withUnit(null, uid)
+  return { aid: null, unitId: null, unit: null }
+}
+
+// The track a command acts on: the slewed one, or the one named by the
+// typed FLID (ENTER forms). null when neither resolves to a live track.
+function targetOf({ slewTarget, captures }) {
+  if (slewTarget) return slewTarget
+  if (!captures?.flid) return null
+  const { unitId, unit } = resolveFlid(captures.flid)
+  return unitId ? { unitId, unit } : null
 }
 
 // ── Action handlers ───────────────────────────────────────────────────────────
@@ -273,10 +324,11 @@ export function CONVERT_POINT_OUT({ slewTarget }) {
 }
 
 export function SET_SP1({ captures, slewTarget }) {
-  if (!slewTarget) return err('NO TARGET')
-  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
+  const target = targetOf({ slewTarget, captures })
+  if (!target) return err(captures?.flid ? 'ILL FLID' : 'NO TARGET')
+  if (getAtc().ownership[target.unitId] !== getMyControllerId()) return err('ILL TRK')
   const sp = captures?.sp ?? ''
-  getAtc().setScratchpad(slewTarget.unitId, 'sp1', sp)
+  getAtc().setScratchpad(target.unitId, 'sp1', sp)
   ok()
 }
 
@@ -288,10 +340,11 @@ export function CLEAR_SP1({ slewTarget }) {
 }
 
 export function SET_SP2({ captures, slewTarget }) {
-  if (!slewTarget) return err('NO TARGET')
-  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
+  const target = targetOf({ slewTarget, captures })
+  if (!target) return err(captures?.flid ? 'ILL FLID' : 'NO TARGET')
+  if (getAtc().ownership[target.unitId] !== getMyControllerId()) return err('ILL TRK')
   const sp = captures?.sp ?? ''
-  getAtc().setScratchpad(slewTarget.unitId, 'sp2', sp)
+  getAtc().setScratchpad(target.unitId, 'sp2', sp)
   ok()
 }
 
@@ -345,25 +398,125 @@ export function SET_LEADER_LEN({ captures, windowId }) {
 // +(###) + SLEW — temporary assigned altitude, shown as A### on FDB line 3.
 // +000 clears it.
 export function SET_ALT_ASSIGNED({ captures, slewTarget }) {
-  if (!slewTarget) return err('NO TARGET')
-  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
+  const target = targetOf({ slewTarget, captures })
+  if (!target) return err(captures?.flid ? 'ILL FLID' : 'NO TARGET')
+  if (getAtc().ownership[target.unitId] !== getMyControllerId()) return err('ILL TRK')
   const alt = captures.alt
-  getAtc().setScratchpad(slewTarget.unitId, 'tempAlt', alt === '000' ? '' : alt)
+  getAtc().setScratchpad(target.unitId, 'tempAlt', alt === '000' ? '' : alt)
   ok()
 }
 
 // ++(###) + SLEW — amend the linked flight plan's requested (filed)
 // altitude. altAmended drives the time-shared R### on FDB line 2.
+// Also MF M(###) + SLEW and MF M<FLID> (###) + ENTER; the FLID form works on
+// a plan with no track yet.
 export function SET_ALT_REQUESTED({ captures, slewTarget }) {
-  if (!slewTarget) return err('NO TARGET')
-  if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
   const fps = useFlightPlansStore.getState()
-  const aid = findFlightPlanAid(slewTarget.unit, fps.plans)
+  let aid
+  if (!slewTarget && captures?.flid) {
+    const r = resolveFlid(captures.flid)
+    if (!r.aid) return err('NO FLIGHT PLAN')
+    if (r.unitId && getAtc().ownership[r.unitId] !== getMyControllerId()) return err('ILL TRK')
+    aid = r.aid
+  } else {
+    if (!slewTarget) return err('NO TARGET')
+    if (getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
+    aid = findFlightPlanAid(slewTarget.unit, fps.plans)
+  }
   if (!aid || !fps.plans[aid]) return err('NO FLIGHT PLAN')
   fps.amend(aid, { alt: captures.alt, altAmended: true })
   useStripsStore.getState().setHighlight(aid, STRIP_HIGHLIGHT.AMENDED)
   sendWebrtcEvent('FLIGHT_PLAN_AMEND', useFlightPlansStore.getState().plans[aid])
   ok()
+}
+
+// MF M(####) + SLEW / MF M<FLID> (####) + ENTER — assign a specific beacon
+// code to the flight plan. The FLID form works on a plan with no track yet.
+export function SET_BEACON({ captures, slewTarget }) {
+  const fps = useFlightPlansStore.getState()
+  if (slewTarget && getAtc().ownership[slewTarget.unitId] !== getMyControllerId()) return err('ILL TRK')
+  const aid = slewTarget
+    ? findFlightPlanAid(slewTarget.unit, fps.plans)
+    : resolveFlid(captures?.flid).aid
+  if (!aid || !fps.plans[aid]) return err('NO FLIGHT PLAN')
+  const bcn = captures.bcn
+  if (Object.values(fps.plans).some((p) => p.aid !== aid && p.bcn === bcn)) return err('DUP BCN')
+  fps.amend(aid, { bcn })
+  useStripsStore.getState().setHighlight(aid, STRIP_HIGHLIGHT.AMENDED)
+  sendWebrtcEvent('FLIGHT_PLAN_AMEND', useFlightPlansStore.getState().plans[aid])
+  ok()
+}
+
+// MF D + SLEW / MF D<FLID> + ENTER — flight plan readout in the preview area.
+export function SHOW_FP({ captures, slewTarget }) {
+  const plans = useFlightPlansStore.getState().plans
+  const aid = slewTarget
+    ? findFlightPlanAid(slewTarget.unit, plans)
+    : resolveFlid(captures?.flid).aid
+  const p = aid ? plans[aid] : null
+  if (!p) return err('NO FLIGHT PLAN')
+  const typ   = [p.typ, p.eq].filter(Boolean).join('/')
+  const route = p.dep || p.dest ? `${p.dep ?? ''}-${p.dest ?? ''}` : ''
+  usePreviewStore.getState().showInfo(
+    [p.aid, typ, p.bcn, p.alt, route, p.flightRules].filter(Boolean).join(' ')
+  )
+}
+
+// CA K + SLEW / CA K <FLID> + ENTER — toggle conflict alerts for one track.
+export function CA_INHIBIT({ captures, slewTarget }) {
+  const target = targetOf({ slewTarget, captures })
+  if (!target) return err(captures?.flid ? 'ILL FLID' : 'NO TARGET')
+  getAtc().toggleCaInhibit(target.unitId)
+  const inhibited = !!getAtc().caInhibited[target.unitId]
+  usePreviewStore.getState().showInfo(inhibited ? 'CA INHIBITED' : 'CA ENABLED')
+}
+
+// Create a flight plan, or amend it if the AID already exists — same
+// create/amend + broadcast flow as the FPE's handleAmend. Shows the AID and
+// (possibly auto-assigned) beacon code in the preview area.
+function createOrAmendPlan(aid, fields) {
+  const fps = useFlightPlansStore.getState()
+  if (fields.bcn && Object.values(fps.plans).some((p) => p.aid !== aid && p.bcn === fields.bcn)) {
+    return err('DUP BCN')
+  }
+  if (fps.plans[aid]) {
+    fps.amend(aid, fields)
+    useStripsStore.getState().setHighlight(aid, STRIP_HIGHLIGHT.AMENDED)
+    sendWebrtcEvent('FLIGHT_PLAN_AMEND', useFlightPlansStore.getState().plans[aid])
+  } else {
+    // New plans from these commands are VFR unless the entry says otherwise.
+    fps.add({ aid, source: 'manual', flightRules: 'VFR', ...fields })
+    useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED })
+    sendWebrtcEvent('FLIGHT_PLAN_CREATE', useFlightPlansStore.getState().plans[aid])
+  }
+  const plan = useFlightPlansStore.getState().plans[aid]
+  usePreviewStore.getState().showInfo(`${aid} ${plan?.bcn ?? ''}`.trim())
+}
+
+const splitFields = (rest) => (rest ?? '').trim().split(/\s+/).filter(Boolean)
+
+// FLT DATA (F6) <AID>(OPTIONAL FIELDS) + ENTER — abbreviated flight plan.
+export function CREATE_FP_ABBREV({ captures }) {
+  const fields = parseAbbreviatedFields(splitFields(captures.rest))
+  if (!fields) return err('FORMAT')
+  createOrAmendPlan(captures.aid, fields)
+}
+
+// VFR PLAN (F9) <AID> [DEP*] DEST TYPE[/EQ] [###] + ENTER.
+export function CREATE_VFR_FP({ captures }) {
+  const fields = parseVfrFields(splitFields(captures.rest))
+  if (!fields) return err('FORMAT')
+  createOrAmendPlan(captures.aid, fields)
+}
+
+// Implied form: <AID>(fields) + ENTER with no function key. Command verbs
+// are never AIDs; FLT DATA fields are tried before VFR PLAN fields.
+export function CREATE_FP_IMPLIED({ captures }) {
+  if (WORD_VERBS.includes(captures.aid)) return err('FORMAT')
+  const tokens = splitFields(captures.rest)
+  const fields = parseAbbreviatedFields(tokens) ?? parseVfrFields(tokens)
+  if (!fields) return err('INVALID INPUT')
+  createOrAmendPlan(captures.aid, fields)
 }
 
 // .CENTER + ENTER / Ctrl+F1 — back to the scope's original center, same as
@@ -469,6 +622,34 @@ export function SET_ATIS_GI({ captures }) {
   getDisplay().updateWindow(WINDOW_ID, { atis: captures.atis, giText: captures.giText })
   ok()
 }
+
+// MF S* — delete the ATIS code, keep GI text
+export function CLEAR_ATIS() {
+  getDisplay().updateWindow(WINDOW_ID, { atis: null })
+  ok()
+}
+
+// MF S*(GI TEXT) — delete the ATIS code, set GI line 1
+export function CLEAR_ATIS_SET_GI({ captures }) {
+  getDisplay().updateWindow(WINDOW_ID, { atis: null, giText: captures.giText })
+  ok()
+}
+
+// MF S(ATIS)* — set the ATIS code, delete GI line 1
+export function SET_ATIS_CLEAR_GI({ captures }) {
+  getDisplay().updateWindow(WINDOW_ID, { atis: captures.atis, giText: null })
+  ok()
+}
+
+// MF S(1-9) (GI TEXT) / MF S(1-9) — set/clear an auxiliary GI line
+function setGiAux(line, text) {
+  const next = [...(getDisplay().windows[WINDOW_ID]?.giAux ?? [])]
+  next[Number(line) - 1] = text
+  getDisplay().updateWindow(WINDOW_ID, { giAux: next })
+  ok()
+}
+export function SET_GI_AUX({ captures })   { setGiAux(captures.line, captures.text) }
+export function CLEAR_GI_AUX({ captures }) { setGiAux(captures.line, null) }
 
 export function CLEAR_ATIS_GI() {
   getDisplay().updateWindow(WINDOW_ID, { atis: null, giText: null })
@@ -989,10 +1170,18 @@ const ACTION_MAP = {
   POINT_OUT,
   REJECT_POINT_OUT,
   CONVERT_POINT_OUT,
-  SET_SP1,       SET_SP1_MF: SET_SP1,
+  SET_SP1,       SET_SP1_MF: SET_SP1,  MF_M_SP1: SET_SP1,
   CLEAR_SP1,     CLEAR_SP1_MF: CLEAR_SP1,
-  SET_SP2,
+  SET_SP2,       MF_M_SP2: SET_SP2,
   CLEAR_SP2,
+  MF_M_TEMP_ALT: SET_ALT_ASSIGNED,
+  MF_M_REQ_ALT:  SET_ALT_REQUESTED,
+  SET_BEACON,
+  SHOW_FP,
+  CA_INHIBIT,
+  CREATE_FP_ABBREV,
+  CREATE_VFR_FP,
+  CREATE_FP_IMPLIED,
   SET_ALT_ASSIGNED,
   SET_ALT_REQUESTED,
   SET_LEADER_LEN,
@@ -1005,6 +1194,11 @@ const ACTION_MAP = {
   SET_ATIS,
   SET_ATIS_GI,
   CLEAR_ATIS_GI,
+  CLEAR_ATIS,
+  CLEAR_ATIS_SET_GI,
+  SET_ATIS_CLEAR_GI,
+  SET_GI_AUX,
+  CLEAR_GI_AUX,
   SHOW_ALT_FILTER,
   SET_ALT_FILTER,
   SET_ALT_FILTER_ASSOC,

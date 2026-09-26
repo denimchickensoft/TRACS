@@ -145,7 +145,7 @@ const Datablock = memo(function Datablock({
   id, unit, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks,
   ownership, handoffs, pointOuts, quickLook, displayFdb, scratchpads,
   myId, unitLeaderDir, globalLeaderDir, placement,
-  clockPhase, rightSlot, actype, reqAlt, slewed, isBlinking, blinkOn, isHighlighted,
+  clockPhase, rightSlot, actype, reqAlt, planSp1, planSp2, slewed, isBlinking, blinkOn, isHighlighted,
   conflict, wingman, assoc, assignedBcn, isIdent, beaconReadout,
 }) {
   const pos = unit.position
@@ -231,8 +231,10 @@ const Datablock = memo(function Datablock({
   const identTspan = isIdent ? <tspan opacity={blinkOn ? 1 : 0.25}>ID</tspan> : null
   const alt       = fmtAlt(pos.alt)
   const gs        = fmtSpd(unit.speed)
-  const sp1       = scratchpads[uid]?.sp1 ?? ''
-  const sp2       = scratchpads[uid]?.sp2 ?? ''
+  // A track's own scratchpad wins (even '' from a clear); otherwise the one
+  // entered on its flight plan (FLT DATA) before the track existed.
+  const sp1       = scratchpads[uid]?.sp1 ?? planSp1 ?? ''
+  const sp2       = scratchpads[uid]?.sp2 ?? planSp2 ?? ''
   const handoffId = resolveHandoffId(uid, handoffs, myId)
   const cs        = resolveCallsign(unit).toUpperCase()
   const po            = pointOuts[uid]
@@ -498,8 +500,8 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
         : resolveCallsign(unit).toUpperCase()
       const alt    = fmtAlt(pos.alt)
       const gs     = fmtSpd(unit.speed)
-      const sp1    = scratchpads[uid]?.sp1 ?? ''
-      const sp2    = scratchpads[uid]?.sp2 ?? ''
+      const sp1    = scratchpads[uid]?.sp1 ?? plansByUnit[uid]?.sp1 ?? ''
+      const sp2    = scratchpads[uid]?.sp2 ?? plansByUnit[uid]?.sp2 ?? ''
       const handoffId = resolveHandoffId(uid, handoffs, myId)
       const actype = plansByUnit[uid]?.typ ?? ''
       const plan   = plansByUnit[uid]
@@ -585,6 +587,8 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
           rightSlot={rightSlot}
           actype={plansByUnit[String(id)]?.typ ?? ''}
           reqAlt={plansByUnit[String(id)]?.altAmended ? (plansByUnit[String(id)]?.alt ?? '') : ''}
+          planSp1={plansByUnit[String(id)]?.sp1 ?? null}
+          planSp2={plansByUnit[String(id)]?.sp2 ?? null}
           slewed={slewedPdbs?.has(String(id)) ?? false}
           isBlinking={!!blinkTracks[String(id)] && now < blinkTracks[String(id)]}
           isIdent={!!identUnacked[String(id)]}

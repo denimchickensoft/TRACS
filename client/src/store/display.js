@@ -64,6 +64,7 @@ const SCOPE_DEFAULTS = {
   qnh: '29.92',
   atis: null,
   giText: null,
+  giAux: [],                // MF S1-9 auxiliary GI text lines (index 0 = line 1)
   tdmMode: false,
   // AIC-only session state (§9.2 of resources/specs/refactor-spec.md) —
   // present in every window's shape like STARS's rbls/minSep above, but only

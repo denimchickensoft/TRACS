@@ -76,6 +76,11 @@ export const useAtcStore = create(
   // conflict set, so a resolved-then-recurring conflict re-alerts.
   conflictAcks: {},
 
+  // CA K — per-track conflict-alert inhibit: unitId → true. Local to this
+  // client (STCA itself is computed per client); inhibited units are
+  // dropped from computeConflicts entirely.
+  caInhibited: {},
+
   claimTrack: (unitId, positionName) =>
     set((state) => ({
       ownership: { ...state.ownership, [unitId]: positionName },
@@ -177,6 +182,14 @@ export const useAtcStore = create(
       conflictAcks: { ...state.conflictAcks, [pairId]: true },
     })),
 
+  toggleCaInhibit: (unitId) =>
+    set((state) => {
+      const next = { ...state.caInhibited }
+      if (next[unitId]) delete next[unitId]
+      else next[unitId] = true
+      return { caInhibited: next }
+    }),
+
   pruneConflictAcks: (activeIds) =>
     set((state) => {
       const activeSet = new Set(activeIds)
@@ -188,7 +201,7 @@ export const useAtcStore = create(
     }),
 
   reset: () =>
-    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {}, identUnacked: {}, conflictAcks: {} }),
+    set({ ownership: {}, handoffs: {}, pointOuts: {}, scratchpads: {}, callsignOverrides: {}, quickLook: new Set(), displayFdb: {}, blinkTracks: {}, identUnacked: {}, conflictAcks: {}, caInhibited: {} }),
 
   // Atomically replace ownership/handoffs/pointOuts from an authoritative
   // STATE_DUMP in a single set() — unlike reset() followed by a
@@ -204,7 +217,7 @@ export const useAtcStore = create(
     set({
       ownership, handoffs, pointOuts,
       scratchpads: {}, quickLook: new Set(), displayFdb: {},
-      blinkTracks: {}, identUnacked: {}, conflictAcks: {},
+      blinkTracks: {}, identUnacked: {}, conflictAcks: {}, caInhibited: {},
     }),
     }),
     {

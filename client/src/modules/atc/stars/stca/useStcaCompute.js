@@ -49,6 +49,7 @@ export function useStcaTracker({ centerlines, conflicts, conflictAcks, ownership
         suppressionZones: zones,
         isSuppressed,
         wingmanIds:       liveWingmen,
+        inhibitedIds:     new Set(Object.keys(useAtcStore.getState().caInhibited)),
         vertRates:        vertRatesRef.current,
         latched:          latchedRef.current,
       })
