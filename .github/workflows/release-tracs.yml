@@ -19,10 +19,10 @@ jobs:
             target: win
           - os: macos-latest
             target: mac
-          # Pinned older Ubuntu LTS, not floating ubuntu-latest, to maximize
-          # glibc backward-compatibility with older distros for the AppImage
-          # target.
-          - os: ubuntu-20.04
+          # Oldest hosted Ubuntu runner, not floating ubuntu-latest:
+          # better-sqlite3 is compiled from source here, so this runner's
+          # glibc (2.35) is the AppImage's minimum. Bump when GitHub retires it.
+          - os: ubuntu-22.04
             target: linux
     runs-on: ${{ matrix.os }}
     steps:
@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Set version from tag
         shell: bash

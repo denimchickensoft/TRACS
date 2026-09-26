@@ -137,7 +137,7 @@ TRACS and the relay exchange a protocol version when they connect. If they don't
 
 ## Running from source (developers)
 
-Requirements: Node.js 20+ and Git.
+Requirements: Node.js 22+ and Git.
 
 ```bash
 npm install          # once, and after pulling dependency changes

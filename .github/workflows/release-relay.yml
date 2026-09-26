@@ -14,14 +14,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-20.04]
+        # ubuntu-latest is fine: the SEA embeds the official Node binary,
+        # whose glibc floor doesn't depend on the runner.
+        os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Set version from tag
         shell: bash
