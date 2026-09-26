@@ -94,8 +94,8 @@ function decodeGeometry(raw) {
 // ── displayCategory mapping ───────────────────────────────────────────────────
 
 // LNM boundary.type codes — meanings are fixed by LittleNavmap's
-// airspaceTypeFromDatabaseMap (resources/littlenavmap/.../src/common/maptypes.cpp).
-// Do NOT guess these from intuition; see lnm-data-spec.md §6.3.
+// airspaceTypeFromDatabaseMap (LittleNavMap source, src/common/maptypes.cpp).
+// Do NOT guess these from intuition.
 //   T=TOWER(CTR)  GCA=General Control Area(terminal→TMA)  CA=CLASS A  CN=CAUTION(→SUA)
 //   C=CENTER(→CTA)  M=MOA  MCTR=Military Control Zone(→CTR)  RD=RADAR(→MIL)  DA=DANGER
 const TYPE_TO_CATEGORY = {
@@ -773,7 +773,7 @@ async function main() {
   const args  = process.argv.slice(2)
   const dpIdx = args.indexOf('--lnm-db-path')
   if (dpIdx === -1) {
-    console.error('error: --lnm-db-path <path> is required (resources/ is gitignored - no default location can be assumed)')
+    console.error('error: --lnm-db-path <path> is required (there is no default location)')
     console.error('usage: node server/navdata/tools/extract-navdata.js --lnm-db-path <path>')
     process.exit(1)
   }

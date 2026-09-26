@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "GPL-3.0-or-later",
-  "description": "Standalone TRACS relay. Runs on the DCS server side, alongside Olympus/SRS — not inside any controller's TRACS backend. Listens to SRS's LotATC UDP export locally and serves transponder data over WebSocket to any number of independently-running TRACS backends. See resources/specs/data-sources/tracs-relay-architecture-spec.md.",
+  "description": "Standalone TRACS relay. Runs on the DCS server side, alongside Olympus/SRS — not inside any controller's TRACS backend. Serves SRS transponder data, relay-hosted Tacview telemetry and controller sync over WebSocket to any number of independently-running TRACS backends.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

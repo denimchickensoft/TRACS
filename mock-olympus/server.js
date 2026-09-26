@@ -246,8 +246,7 @@ const unitDefs = [
 // Aircraft only — mirrors real SRS: mode1/mode2 unused for civilian correlation,
 // mode3 is the 4-digit octal-style squawk (-1/blanked while OFF, same as real SRS
 // resetting `iff` to a blank Transponder on status OFF), mode4 unused, status is
-// 0 OFF / 1 NORMAL / 2 IDENT (see resources/specs/data-sources/
-// custom-datasource-srs-transponder-spec.md).
+// 0 OFF / 1 NORMAL / 2 IDENT.
 
 function randomSquawk() {
   return parseInt(Array.from({ length: 4 }, () => Math.floor(Math.random() * 8)).join(''), 10)

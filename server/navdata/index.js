@@ -36,7 +36,7 @@ function theatreUtcOffset(theatre) {
 // Fixed per-terrain offset from REAL-WORLD UTC (Tacview's `ReferenceTime`,
 // confirmed live to be true calendar UTC, e.g. "2011-06-25T09:30:01Z") to
 // theatre-local time — a genuinely different constant from theatreUtcOffset()
-// above, discovered 2026-09-06 via a live DCS-clock-vs-Tacview cross-check on
+// above, found via a live DCS-clock-vs-Tacview cross-check on
 // PersianGulf (real UTC → local needed +3.5, not the existing table's +4,
 // which is correct only for the separate DCS-internal-Zulu → local leg).
 // DCS's own internal mission clock is evidently skewed from real-world UTC by
@@ -55,8 +55,7 @@ function theatreTacviewRealUtcOffset(theatre) {
 // extract-navdata.js's inBbox and the other build scripts that duplicate it.
 // Returns every theatre whose bbox contains the point — usually one, more in
 // an overlap zone (Syria/Sinai/Iraq, PersianGulf/Iraq/Afghanistan). Used by
-// tacview.js's majority-vote theatre detection — see
-// resources/specs/data-sources/custom-datasource-tacview-spec.md §4.2.
+// tacview.js's majority-vote theatre detection.
 function theatresContaining(lat, lng) {
   const names = []
   for (const [name, cfg] of Object.entries(loadTheatres())) {
@@ -135,9 +134,8 @@ function handleStatus(req, res) {
 
 // GET /api/navdata/theatres — every known theatre name, for the manual
 // theatre-override control (Login.jsx). Needed regardless of which primary
-// source is active: Tacview has no reliable auto-detected theatre signal at
-// all (custom-datasource-tacview-spec.md §4.2), and even the majority-vote
-// mitigation can never disambiguate MarianaIslands/MarianaIslandsWWII, whose
+// source is active: Tacview has no reliable auto-detected theatre signal
+// beyond a bbox majority vote, and that vote can never disambiguate MarianaIslands/MarianaIslandsWWII, whose
 // bboxes are identical.
 function handleTheatres(req, res) {
   res.json({ theatres: Object.keys(loadTheatres()) })
@@ -314,8 +312,8 @@ function handleMva(req, res) {
   res.status(404).json({ error: `no MVA data for ${icao}` })
 }
 
-// GET /api/navdata/lnm-config — current LNM database path + readiness, for the
-// Settings panel.
+// GET /api/navdata/lnm-config — current LNM database path + readiness, for
+// the setup dialog, the Settings panel and NO NAVDATA command replies.
 function handleLnmConfig(req, res) {
   const { lnmDbPath } = stateFiles.read('navdata')
   res.json({ lnmDbPath, ready: _ready, builtAt: _manifest?.builtAt ?? null })
@@ -324,8 +322,8 @@ function handleLnmConfig(req, res) {
 // POST /api/navdata/lnm-config { lnmDbPath } — validate, persist, and
 // extract immediately so the running server doesn't need a restart. Each
 // user points this at their own legally-obtained LittleNavMap/Navigraph
-// database; TRACS never bundles or redistributes this data itself (see
-// resources/specs/production-spec.md §7).
+// database; TRACS never bundles or redistributes this data itself (it's
+// licensed per user).
 async function handleSetLnmConfig(req, res) {
   const { lnmDbPath } = req.body ?? {}
   if (!lnmDbPath || typeof lnmDbPath !== 'string') {
