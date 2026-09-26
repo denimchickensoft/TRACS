@@ -180,9 +180,9 @@ export function OPEN_FPE({ captures, slewTarget }) {
   ok()
 }
 
-export function INIT_CNTL_BY_ID({ captures: _captures, positionName: _positionName }) {
-  // TODO: resolve unit by callsign/FLID when flight plan store exists
-  err('NOT YET SUPPORTED')
+// IC <flight id> + ENTER isn't implemented; use IC + click on the track.
+export function INIT_CNTL_BY_ID() {
+  err('NOT SUPPORTED')
 }
 
 export function TERM_CNTL({ slewTarget }) {
@@ -713,15 +713,15 @@ export function RELOCATE_PREVIEW({ canvasPos }) {
   ok()
 }
 
-export function QUICK_LOOK_TCP({ captures: _captures, slewTarget }) {
-  if (!slewTarget) return err('NO TARGET')
-  // TODO: implement quicklook
-  ok()
+// Quicklook isn't implemented yet (real STARS quicklook is per position, but
+// the atc store's quickLook set is per track). Say so rather than clearing
+// the buffer as if it had worked.
+export function QUICK_LOOK_TCP() {
+  err('NOT SUPPORTED')
 }
 
 export function QUICK_LOOK_ALL() {
-  // TODO
-  ok()
+  err('NOT SUPPORTED')
 }
 
 export function BARE_SLEW({ slewTarget }) {
@@ -1239,7 +1239,10 @@ const ACTION_MAP = {
 export function dispatch(parsed, slewTarget, context) {
   const handler = ACTION_MAP[parsed.command.id]
   if (!handler) {
-    usePreviewStore.getState().setResponse(`UNIMPLEMENTED: ${parsed.command.id}`)
+    // Recognized STARS syntax TRACS doesn't implement yet (see docs/atc.md's
+    // Known limitations). The command id is internal, so it's only logged.
+    console.info(`[atc] unimplemented command: ${parsed.command.id}`)
+    usePreviewStore.getState().setResponse('NOT SUPPORTED')
     return
   }
   handler({ captures: parsed.captures, slewTarget, ...context })

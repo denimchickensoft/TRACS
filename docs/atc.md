@@ -427,7 +427,7 @@ All of these settings are saved across reloads, and changes made in an undocked 
 
 These ATC commands are recognized but not functional:
 
-- `IC <flightid>` + ENTER returns `NOT YET SUPPORTED`. `TC <flightid>` + ENTER and `HO <tcp> <flightid>` + ENTER return `UNIMPLEMENTED`. Use the SLEW forms.
-- `MF M` (Mode C toggle), `MF B` (beacon toggle), and `MF E` (FDB overflight toggle) return `UNIMPLEMENTED`.
-- Quicklook (`**<tcp>`, `**ALL`) has no effect.
+- `IC <flightid>`, `TC <flightid>` and `HO <tcp> <flightid>` + ENTER reply `NOT SUPPORTED`. Use the SLEW forms (type the command, then click the track).
+- `MF M` (Mode C toggle), `MF B` (beacon toggle), and `MF E` (FDB overflight toggle) reply `NOT SUPPORTED`.
+- Quicklook (`**<tcp>`, `**ALL`) replies `NOT SUPPORTED`.
 - Ctrl+F2–F5, Ctrl+F7, Ctrl+F9, Ctrl+F10, and Insert have no effect.
