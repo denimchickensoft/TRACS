@@ -1,6 +1,7 @@
 {
   "name": "tracs-server",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "version": "0.1.0",
   "main": "src/index.js",
   "scripts": {

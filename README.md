@@ -1,6 +1,11 @@
 # TRACS — Tactical Radar And Control Suite
 
 [![Discord](https://img.shields.io/discord/1521314576409559100?style=flat-square&label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/5W6cuezyPD)
+[![Release](https://img.shields.io/github/v/release/denimchickensoft/TRACS?filter=tracs-v*&style=flat-square&label=release)](https://github.com/denimchickensoft/TRACS/releases/latest)
+[![Build](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml/badge.svg)](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml)
+[![Downloads](https://img.shields.io/github/downloads/denimchickensoft/TRACS/total?style=flat-square)](https://github.com/denimchickensoft/TRACS/releases)
+![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
 A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC, AIC, and ABM positions.
 
@@ -212,3 +217,9 @@ No code-signing certificate is used for any platform.
   - Peer discovery uses the public Nostr relay network.
   - If no Nostr relay connects within ~8 s, it uses a self-hosted ws-relay instead.
 - Sync rooms are coalition-scoped. A relay-hosted room is keyed on coalition, since each relay serves one mission. A peer-to-peer room is derived from the server address, the coalition, and the optional session password.
+
+---
+
+## License
+
+TRACS is licensed under the GNU General Public License v3.0 or later — see [LICENSE](LICENSE).
