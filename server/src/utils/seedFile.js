@@ -4,8 +4,10 @@ const fs = require('fs')
 const path = require('path')
 
 // Copies srcPath to destPath only if destPath is missing or older (by mtime)
-// than srcPath — so a newer bundled default (shipped in an update) refreshes
-// an untouched copy, but never clobbers a file the operator has since edited.
+// than srcPath — so newer bundled data (shipped in an update) replaces the
+// old copy. Only for app-owned files like the bundled navdata cache: it WILL
+// overwrite edits whenever the bundled file is newer. Operator-editable
+// config uses seedConfigFiles.js's seedConfigFile() instead.
 function copyIfStaleOrMissing(srcPath, destPath) {
   if (!fs.existsSync(srcPath)) return
   const srcMtime = fs.statSync(srcPath).mtimeMs
