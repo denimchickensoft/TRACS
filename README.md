@@ -1,5 +1,7 @@
 # TRACS — Tactical Radar And Control Suite
 
+[![Discord](https://img.shields.io/discord/1521314576409559100?style=flat-square&label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/5W6cuezyPD)
+
 A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC, AIC, and ABM positions.
 
 Each controller runs TRACS on their own machine. TRACS reads unit data from one of three sources:
@@ -10,8 +12,6 @@ Each controller runs TRACS on their own machine. TRACS reads unit data from one 
 Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer mode needs no port forwarding and no shared server.
 
 **Operator guides** live in [`docs/`](docs/index.md): connecting, signing in, and every module's commands.
-
-**Discord:** [discord.gg/5W6cuezyPD](https://discord.gg/5W6cuezyPD) — support, feedback, and release announcements.
 
 | Module | What it is |
 |---|---|
