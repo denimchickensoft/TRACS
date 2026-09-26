@@ -333,7 +333,9 @@ function start(cfg, callbacks = {}) {
   rateConfig.resetToLocalConfig()
   friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = friendlyCoalitionId !== null ? tacviewDetection.createFogFilter(friendlyCoalitionId) : null
-  missileFogFilter = friendlyCoalitionId !== null ? missileDetection.createMissileFogFilter(friendlyCoalitionId) : null
+  missileFogFilter = friendlyCoalitionId !== null
+    ? missileDetection.createMissileFogFilter(friendlyCoalitionId, { isOmniscient: () => !tacviewDetection.isFogOfWarEnabled() })
+    : null
 
   connect()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)

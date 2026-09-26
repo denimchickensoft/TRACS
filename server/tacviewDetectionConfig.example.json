@@ -1,4 +1,5 @@
 {
+  "fogOfWarEnabled": true,
   "sensorRangeNm": { "Aircraft": 40, "Helicopter": 15, "GroundUnit": 30, "NavyUnit": 35 },
   "groundNavalDetectionEnabled": true,
   "unitTypeRangeOverridesNm": {},

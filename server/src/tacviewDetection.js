@@ -59,6 +59,16 @@ function loadUserConfig() {
 }
 
 const DEFAULTS = {
+  // false = a deliberate "see everything" toggle for a blue/red session (a
+  // training/debug cheat, not a realism knob). Unlike the GM/Admin role —
+  // which skips the fog filter entirely and relies on the client's own role
+  // bypass — this keeps the session's coalition and instead has every
+  // non-friendly unit/missile "detected" each pass (see
+  // computeOmniscientContacts()), since the client's blue/red visibility
+  // gates only ever key off contacts[]/missileContacts[]. Still honors
+  // minDetectableAglM. Relay-hosted mode: only the relay operator's config
+  // decides this (applyRelayConfig), never the local file.
+  fogOfWarEnabled: true,
   sensorRangeNm: { Aircraft: 40, Helicopter: 15, GroundUnit: 30, NavyUnit: 35 },
   groundNavalDetectionEnabled: true,
   unitTypeRangeOverridesNm: {},
@@ -578,6 +588,44 @@ function computeRwrContacts(units, friendlyCoalitionId) {
   return updated
 }
 
+function isFogOfWarEnabled() {
+  return config.fogOfWarEnabled !== false
+}
+
+// fogOfWarEnabled=false's anchor: the one friendly unit every "detected"
+// contact gets attached to, so the payload stays O(enemies) rather than
+// O(friendlies × enemies). Sticky — keeps the previous anchor while it's
+// still a live friendly with a position, so contacts don't hop between
+// units every pass. Returns null if the coalition has no such unit at all,
+// in which case nothing can carry contacts and no enemy is exposed (known,
+// accepted — use the GM role for a truly unit-less view). Shared with
+// missileDetection.js's missileContacts anchor.
+function pickAnchorUnitId(units, friendlyCoalitionId, previousId) {
+  const isAnchorable = (u) => u && u.coalition === friendlyCoalitionId && u.position && u.alive !== false
+  if (previousId != null && isAnchorable(units[previousId])) return previousId
+  for (const [id, unit] of Object.entries(units)) {
+    if (isAnchorable(unit)) return id
+  }
+  return null
+}
+
+// fogOfWarEnabled=false's replacement for computeContacts(): every
+// non-friendly unit is RADAR-"detected" by the anchor, skipping range/LOS/
+// scan-cone, the ground/naval category switch and the ground-radar-site
+// exclusion. The air AGL floor (minDetectableAglM) still applies.
+function computeOmniscientContacts(units, friendlyCoalitionId, anchorId) {
+  if (anchorId == null) return {}
+  const contacts = []
+  for (const [id, target] of Object.entries(units)) {
+    if (!target.position || target.coalition === undefined) continue
+    if (target.coalition === friendlyCoalitionId) continue
+    const isAir = target.category === 'Aircraft' || target.category === 'Helicopter'
+    if (isAir && target.agl !== undefined && target.agl < MIN_DETECTABLE_AGL_M) continue
+    contacts.push({ ID: Number(id), detectionMethod: DETECTION_RADAR })
+  }
+  return { [anchorId]: { contacts } }
+}
+
 // Merges partial-update maps of the same { [id]: { contacts: [...] } } shape,
 // concatenating contacts[] when the same unit id appears in more than one
 // (e.g. a friendly aircraft with both a radar contact and an RWR contact in
@@ -619,6 +667,8 @@ function coalitionId(coalition) {
 // internal unit map, never in this module.
 function createFogFilter(friendlyCoalitionId) {
   let exposedEnemyIds = new Set()
+  // fogOfWarEnabled=false only — see pickAnchorUnitId().
+  let anchorId = null
 
   return {
     // Called on every incoming frame update (tacview.js's processIncoming /
@@ -664,9 +714,22 @@ function createFogFilter(friendlyCoalitionId) {
     // units are always exposed — this only affects whether the *emitter's*
     // own data is ever sent.
     computeVisibility(internalUnits) {
-      const radarUpdate = computeContacts(internalUnits, friendlyCoalitionId)
+      let radarUpdate
+      const previousAnchorId = anchorId
+      if (isFogOfWarEnabled()) {
+        anchorId = null
+        radarUpdate = computeContacts(internalUnits, friendlyCoalitionId)
+      } else {
+        anchorId = pickAnchorUnitId(internalUnits, friendlyCoalitionId, anchorId)
+        radarUpdate = computeOmniscientContacts(internalUnits, friendlyCoalitionId, anchorId)
+      }
       const rwrUpdate = computeRwrContacts(internalUnits, friendlyCoalitionId)
       const contactsUpdate = mergeContactMaps(radarUpdate, rwrUpdate)
+      // Anchor moved (or omniscient mode went off): explicitly clear the old
+      // anchor's list, unless this pass already writes it a fresh one.
+      if (previousAnchorId != null && previousAnchorId !== anchorId && internalUnits[previousAnchorId] && !contactsUpdate[previousAnchorId]) {
+        contactsUpdate[previousAnchorId] = { contacts: [] }
+      }
 
       const nowVisible = new Set()
       for (const { contacts } of Object.values(radarUpdate)) {
@@ -694,13 +757,14 @@ function createFogFilter(friendlyCoalitionId) {
     // "hidden" (still exists, just out of detection range).
     forget(id) {
       exposedEnemyIds.delete(id)
+      if (id === anchorId) anchorId = null
     },
   }
 }
 
 module.exports = {
   computeContacts, computeRwrContacts, coalitionId, createFogFilter, DETECTION_RADAR, DETECTION_RWR, DETECTION_VISUAL,
-  resetToLocalConfig, resetToDefaults, applyRelayConfig,
+  resetToLocalConfig, resetToDefaults, applyRelayConfig, isFogOfWarEnabled, pickAnchorUnitId,
   // Reused by missileDetection.js — a separate, dedicated module (per
   // explicit direction) but no reason to re-derive these from scratch.
   hasAwacsRole, ewrRangeNm, AWACS_RANGE_NM, aircraftSensorRangeNm,

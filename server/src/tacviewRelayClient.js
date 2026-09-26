@@ -351,7 +351,9 @@ function start(cfg, callbacks = {}) {
   // tacviewDetectionConfig handler in connect() below), missileFogFilter has
   // no relay-provided config dependency — created synchronously here so
   // there's no "not ready yet" gap for weapon data to race against.
-  missileFogFilter = friendlyCoalitionId !== null ? missileDetection.createMissileFogFilter(friendlyCoalitionId) : null
+  missileFogFilter = friendlyCoalitionId !== null
+    ? missileDetection.createMissileFogFilter(friendlyCoalitionId, { isOmniscient: () => !tacviewDetection.isFogOfWarEnabled() })
+    : null
   // Baseline while waiting for the relay's own tacviewDetectionConfig
   // message (see the message handler in connect() above) — never the local
   // server/tacviewDetectionConfig.json file, which relay-hosted mode must

@@ -45,7 +45,7 @@
 // partial update that omits a field leaves the client's previous value in
 // place rather than clearing it.
 
-const { hasAwacsRole, ewrRangeNm, aircraftSensorRangeNm, DETECTION_RADAR } = require('./tacviewDetection')
+const { hasAwacsRole, ewrRangeNm, aircraftSensorRangeNm, pickAnchorUnitId, DETECTION_RADAR } = require('./tacviewDetection')
 const { distanceNm, quickReject, hasLineOfSight } = require('./utils/geo')
 const { getWeaponRcs } = require('./weaponDatabase')
 
@@ -126,8 +126,28 @@ function computeMissileContacts(units, weapons, friendlyCoalitionId) {
 // (same revealed/hidden exposure-tracking shape), but kept in this module
 // since it's specifically about missile visibility, not a modification of
 // that file.
-function createMissileFogFilter(friendlyCoalitionId) {
+//
+// isOmniscient: optional () => boolean, read every pass — Tacview's
+// fogOfWarEnabled=false (tacviewDetection.js). When true, every non-friendly,
+// non-neutral missile is "detected" by a single friendly anchor unit
+// (pickAnchorUnitId) instead of by AWACS/EWR. A getter rather than a flag
+// because relay-hosted mode creates this filter before the relay's config
+// arrives. Olympus never passes it.
+function createMissileFogFilter(friendlyCoalitionId, { isOmniscient } = {}) {
   let exposedEnemyWeaponIds = new Set()
+  let anchorId = null
+
+  function computeOmniscientMissileContacts(units, weapons) {
+    anchorId = pickAnchorUnitId(units, friendlyCoalitionId, anchorId)
+    if (anchorId == null) return {}
+    const missileContacts = []
+    for (const [weaponId, weapon] of Object.entries(weapons)) {
+      if (!weapon.position) continue
+      if (weapon.coalition === friendlyCoalitionId || weapon.coalition === 0) continue
+      missileContacts.push({ ID: Number(weaponId), detectionMethod: DETECTION_RADAR })
+    }
+    return { [anchorId]: { missileContacts } }
+  }
 
   return {
     // Called on every incoming weapon update, before it's ever queued for
@@ -152,7 +172,19 @@ function createMissileFogFilter(friendlyCoalitionId) {
     // just dropped out of detection (need an explicit removal — the missile
     // may still be alive, just no longer detected).
     computeVisibility(units, weapons) {
-      const contactsUpdate = computeMissileContacts(units, weapons, friendlyCoalitionId)
+      const previousAnchorId = anchorId
+      let contactsUpdate
+      if (isOmniscient?.()) {
+        contactsUpdate = computeOmniscientMissileContacts(units, weapons)
+      } else {
+        anchorId = null
+        contactsUpdate = computeMissileContacts(units, weapons, friendlyCoalitionId)
+      }
+      // Anchor moved (or omniscient mode went off): explicitly clear the old
+      // anchor's list, unless this pass already writes it a fresh one.
+      if (previousAnchorId != null && previousAnchorId !== anchorId && units[previousAnchorId] && !contactsUpdate[previousAnchorId]) {
+        contactsUpdate[previousAnchorId] = { missileContacts: [] }
+      }
 
       const nowVisible = new Set()
       for (const { missileContacts } of Object.values(contactsUpdate)) {
