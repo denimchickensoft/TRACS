@@ -61,7 +61,30 @@ async function main() {
     force:           true,
     buildFromSource: true,
   })
+  pruneBuildOutputs()
   console.log('[stage-better-sqlite3] done')
+}
+
+// A from-source build leaves ~57 MB of compiler intermediates (obj/, .pdb,
+// .lib, .iobj, test_extension) plus the SQLite sources in deps/ and src/.
+// At runtime better-sqlite3 needs only lib/, package.json and the compiled
+// build/Release/better_sqlite3.node (found via the `bindings` package), so
+// drop everything else from the staged copy.
+function pruneBuildOutputs() {
+  const KEEP_TOP = new Set(['lib', 'build', 'package.json', 'LICENSE', 'README.md'])
+  for (const entry of fs.readdirSync(DST_MODULE)) {
+    if (!KEEP_TOP.has(entry)) fs.rmSync(path.join(DST_MODULE, entry), { recursive: true, force: true })
+  }
+  const buildDir   = path.join(DST_MODULE, 'build')
+  const releaseDir = path.join(buildDir, 'Release')
+  const addon      = path.join(releaseDir, 'better_sqlite3.node')
+  if (!fs.existsSync(addon)) throw new Error(`rebuilt addon not found at ${addon}`)
+  for (const entry of fs.readdirSync(buildDir)) {
+    if (entry !== 'Release') fs.rmSync(path.join(buildDir, entry), { recursive: true, force: true })
+  }
+  for (const entry of fs.readdirSync(releaseDir)) {
+    if (entry !== 'better_sqlite3.node') fs.rmSync(path.join(releaseDir, entry), { recursive: true, force: true })
+  }
 }
 
 main().catch((err) => { console.error(err); process.exit(1) })
