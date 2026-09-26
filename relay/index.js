@@ -5,9 +5,8 @@
 //
 // Bootstrap only: loads config, hosts one HTTP server with WebSocket
 // upgrades routed by path across this relay's capabilities. Each capability
-// is its own module — see resources/specs/data-sources/
-// tracs-relay-architecture-spec.md §2.1 for why, and what's next to land
-// here (Tacview-side capture, eventually a native dataminer).
+// is its own module on the same port, dispatched by path; a new capability
+// becomes another path, not another port.
 
 const fs = require('fs')
 const path = require('path')
@@ -55,8 +54,7 @@ const config = {
   // coalition (a Red client can't authenticate as Blue by supplying Red's
   // own password under a false coalition claim), checked per-connection by
   // relay/auth.js's gateConnection(). Empty/missing = no auth required (the
-  // original, still-supported open-access posture). See
-  // resources/specs/data-sources/webrtc-centralized-sync-spec.md §5.
+  // original, still-supported open-access posture).
   passwords: (fileConfig.passwords && typeof fileConfig.passwords === 'object' && !Array.isArray(fileConfig.passwords))
     ? fileConfig.passwords
     : {},
@@ -71,7 +69,7 @@ const config = {
   unitUpdateMs:       Number(fileConfig.unitUpdateMs ?? process.env.UNIT_UPDATE_MS ?? 1000),
   detectionMs:        Number(fileConfig.detectionMs ?? process.env.DETECTION_MS ?? 1000),
   missileDetectionMs: Number(fileConfig.missileDetectionMs ?? process.env.MISSILE_DETECTION_MS ?? 1000),
-  // Hand-rolled auto-update — see update.js and production-spec.md §4. Only
+  // Hand-rolled auto-update — see update.js. Only
   // meaningful when running as the packaged SEA binary (isSeaBinary above);
   // a plain `node index.js` dev run never self-updates. mode: "notify" logs
   // only, "immediate" swaps+exits as soon as a new release is seen,

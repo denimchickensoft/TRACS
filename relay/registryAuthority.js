@@ -8,9 +8,9 @@
 //   - client/src/store/controllers.js's registerController() minting formula
 //     (nextAvailableLetter/globalUsedLetters/group-number assignment)
 // Duplicated deliberately rather than shared (small, stable logic; the
-// browser-ESM and Node-CommonJS runtimes don't share a build step) — see the
-// feedback_webrtc_relay_sync_invariants project memory for the full
-// rationale behind relay-side registry authority.
+// browser-ESM and Node-CommonJS runtimes don't share a build step). In relay
+// mode the relay is the single authority for position/controller-ID
+// assignment, so concurrent joins can't mint duplicate IDs.
 
 const ALL_LETTERS = Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 

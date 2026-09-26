@@ -8,8 +8,6 @@
 // standalone relay isn't meant to bundle, so it runs per-controller-backend
 // instead (server/src/tacviewRelayClient.js), same posture as AGL enrichment
 // already has for Olympus. This module only parses and forwards.
-//
-// See resources/specs/data-sources/custom-datasource-tacview-spec.md §0.1.
 
 const fs = require('fs')
 const path = require('path')
@@ -20,8 +18,7 @@ const tacviewCore = require('./tacviewCore')
 const RECONNECT_MS = 3000
 
 // Relay-operator-owned detection/fog-of-war tuning — gitignored, optional,
-// same key shape as server/tacviewDetectionConfig.json (see
-// resources/specs/tacview-detection-spec.md). Loaded once at relay startup,
+// same key shape as server/tacviewDetectionConfig.json. Loaded once at relay startup,
 // tolerate-absent, same convention as relay/index.js's own config.json.
 // Forwarded to every authenticated /tacview client as-is (no DEFAULTS
 // merge/shape validation here — server/src/tacviewDetection.js's
@@ -52,8 +49,8 @@ function createTacviewRelay(wss, config) {
   // missionUtcMs rides alongside every message (not just the snapshot) so a
   // connecting backend's tacviewRelayClient.js — which never sees the raw
   // wire itself — can still synthesize a mission clock the same way direct
-  // mode's tacview.js does from its own parser. See custom-datasource-
-  // tacview-spec.md §5 item 2's ReferenceTime finding.
+  // mode's tacview.js does from its own parser (from Tacview's
+  // ReferenceTime).
   function broadcast(payload) {
     const msg = JSON.stringify({ type: 'tacview', data: payload, missionUtcMs: parser.getCurrentMissionUtcMs() })
     for (const ws of authenticatedClients) {

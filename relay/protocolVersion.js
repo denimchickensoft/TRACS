@@ -5,8 +5,7 @@
 // client's declared version before checking its password). Bumped only when
 // the actual message shapes exchanged over /transponders, /sync, or /tacview
 // change in an incompatible way — independent of, and far less frequent
-// than, either app's own release version (see resources/specs/
-// production-spec.md §8).
+// than, either app's own release version.
 //
 // Hand-synced with the client-side copies of this same constant, since
 // relay/ is deliberately excluded from the npm workspace and has no

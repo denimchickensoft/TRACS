@@ -8,8 +8,7 @@
 // running node executable -> inject the blob with postject.
 //
 // Native modules: relay/'s only runtime dependency is `ws`, which is pure
-// JS — no sidecar-file handling (per resources/specs/production-spec.md §1)
-// is needed here. Re-check this comment if a native dependency is ever added.
+// JS — no sidecar-file handling is needed here. Re-check this comment if a native dependency is ever added.
 //
 // Usage: node relay/scripts/build.js
 // (or:   npm run build --workspace=relay, once wired up)

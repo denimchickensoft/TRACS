@@ -4,9 +4,6 @@
 // and serves the resulting data over WebSocket (mounted at /transponders by
 // relay/index.js) to any number of independently-running TRACS backends
 // that connect to it as clients.
-//
-// See resources/specs/data-sources/tracs-relay-architecture-spec.md and
-// resources/specs/data-sources/custom-datasource-srs-transponder-spec.md.
 
 const dgram = require('dgram')
 const { gateConnection } = require('./auth')

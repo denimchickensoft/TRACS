@@ -7,8 +7,6 @@
 // connection, subscribe to N topics, publish fans out within a topic), with
 // three additions the existing client-side WebRTC protocol depends on:
 // peer-presence events, self-broadcast exclusion, and targeted send.
-//
-// See resources/specs/data-sources/webrtc-centralized-sync-spec.md §2.
 const fs   = require('fs')
 const path = require('path')
 const { gateConnection } = require('./auth')
@@ -19,12 +17,12 @@ const { resolvePosition, mintEntry } = require('./registryAuthority')
 // it never answered the ping sent on the PREVIOUS tick) is presumed dead
 // and terminated. So a truly dead connection is reaped within one to two
 // intervals of going quiet, not left registered in `topics` forever (the
-// gap that let a stale session hold a position name hostage indefinitely --
-// see resources/specs/data-sources/webrtc-centralized-sync-spec.md).
+// gap that would let a stale session hold a position name hostage
+// indefinitely).
 const HEARTBEAT_INTERVAL_MS = 15_000
 
-// Registry-authority state (Bug-2 relay-authority path — see the
-// feedback_webrtc_relay_sync_invariants project memory). Session-topic-only:
+// Registry-authority state (the relay assigns positions/controller IDs in
+// relay mode; see registryAuthority.js). Session-topic-only:
 // a topic only ever gains a `sessions` entry once a client sends it a
 // `register` message, so this never applies to module-room topics, which
 // keep using the plain `topics` pub/sub above unchanged. Matches client.js's

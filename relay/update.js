@@ -1,12 +1,11 @@
 'use strict'
 
-// Hand-rolled auto-update for the packaged Relay SEA binary — see
-// resources/specs/production-spec.md §4. No off-the-shelf equivalent exists
+// Hand-rolled auto-update for the packaged Relay SEA binary. No off-the-shelf equivalent exists
 // for a standalone Node SEA the way electron-updater covers TRACS itself.
 //
 // Mechanism: within the configured mode/window, check GitHub Releases for a
-// newer relay-vX.Y.Z tag (the repo is public per spec §4's "Repo visibility"
-// note, so no token is needed), download the new binary, swap it onto disk
+// newer relay-vX.Y.Z tag (the repo is public, so no token is needed),
+// download the new binary, swap it onto disk
 // at the existing launch path, log a clear message, then exit cleanly.
 // Deliberately supervisor-agnostic — it never tries to manage its own
 // process lifecycle beyond that clean exit; an external supervisor

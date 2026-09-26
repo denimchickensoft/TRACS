@@ -2,7 +2,6 @@
 
 // Shared per-connection password gate, used by every relay capability
 // (relay/transponders.js, relay/syncRelay.js, and whatever comes next).
-// See resources/specs/data-sources/tracs-relay-architecture-spec.md §7/§8.
 
 const { PROTOCOL_VERSION } = require('./protocolVersion')
 const { version: RELAY_VERSION } = require('./package.json')
@@ -22,9 +21,10 @@ const AUTH_TIMEOUT_MS = 5_000
 // a flat list, so a Red client can't authenticate by supplying Blue's
 // password under a false coalition claim. This only gates the connection
 // itself; it does not separately restrict which topics an authenticated
-// connection may subscribe to afterward (see
-// resources/specs/data-sources/tracs-relay-architecture-spec.md §7 for why
-// that's intentional, not an oversight).
+// connection may subscribe to afterward. That's intentional: it lets a
+// GM/Admin session subscribe to every coalition's sync topic, and the relay
+// is trusted single-mission infrastructure, not a hardened multi-tenant
+// boundary.
 // `label` identifies which capability's connection this is in the logs
 // (e.g. 'transponders', 'sync') — two capabilities rejecting two unrelated
 // connections at the same moment (e.g. a bad password tested through both
