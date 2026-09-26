@@ -36,6 +36,15 @@ function loadConfig() {
 }
 const fileConfig = loadConfig()
 
+// The relay serves every connected controller, so one unexpected error must
+// not take it down for all of them: log it with its stack and keep running.
+process.on('uncaughtException', (err) => {
+  console.error('[relay] uncaught error (relay kept running):', err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[relay] unhandled promise rejection (relay kept running):', reason)
+})
+
 // Scan-rate intervals are pushed to every connected backend, which uses them
 // as timer periods, so a non-numeric or absurd value must never leave here.
 function rateMs(key, fileValue, envValue, fallback) {

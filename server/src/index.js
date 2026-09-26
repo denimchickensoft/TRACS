@@ -19,6 +19,13 @@ const { registerDocsRoutes } = require('./routes/docs')
 const { createWsBroadcast }  = require('./wsBroadcast')
 const { createSignalRelay }  = require('./signalRelay')
 
+// Standalone server (npm start / dev) only: log unexpected errors and keep
+// running. Under Electron, electron/main.js's log.errorHandler owns this.
+if (!process.versions.electron) {
+  process.on('uncaughtException', (err) => console.error('[server] uncaught error:', err))
+  process.on('unhandledRejection', (reason) => console.error('[server] unhandled promise rejection:', reason))
+}
+
 elevation.init()
 
 const PORT = process.env.PORT ?? 8722

@@ -25,6 +25,10 @@ const log  = require('electron-log/main')
 // Must run before startServer() requires the server.
 log.initialize()
 Object.assign(console, log.functions)
+// Uncaught exceptions/rejections anywhere in the main process (including the
+// in-process server) are written to the log file instead of vanishing;
+// exceptions also get an error dialog. The app keeps running.
+log.errorHandler.startCatching()
 console.log(`[electron] logging to ${log.transports.file.getFile().path}`)
 
 const DEFAULT_PORT   = 8722
