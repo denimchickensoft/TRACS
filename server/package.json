@@ -18,19 +18,19 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
-    "d3-contour": "^4.0.2",
     "express": "^4.19.2",
     "marked": "^12.0.2",
-    "polylabel": "^2.0.1",
-    "shapefile": "^0.6.6",
     "sql.js": "^1.12.0",
-    "stream-json": "^1.9.1",
-    "tracs-geo-math": "*",
-    "ws": "^8.18.0",
-    "yauzl": "^3.4.0"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
+    "d3-contour": "^4.0.2",
     "esbuild": "^0.21.5",
-    "postject": "^1.0.0-alpha.6"
+    "polylabel": "^2.0.1",
+    "postject": "^1.0.0-alpha.6",
+    "shapefile": "^0.6.6",
+    "stream-json": "^1.9.1",
+    "tracs-geo-math": "*",
+    "yauzl": "^3.4.0"
   }
 }
