@@ -59,7 +59,7 @@ const DECL_LABEL = {
   [DECLARATION.FRIENDLY]: 'FR',
 }
 
-// .autodec (2026-07-08) — a unit's TRUE declaration, straight off
+// .autodec — a unit's TRUE declaration, straight off
 // coalition: own side is FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL,
 // anything else is an enemy, i.e. HOSTILE (not BOGEY — autodec means no
 // more fog-of-war ambiguity for that contact).
@@ -228,8 +228,7 @@ export default function AicScope() {
   // real one (fix, explicit lat/lon, or a map click). Not persisted: it's a
   // mission-specific placement, not a saved preference. Lives in
   // displayStore's windows[WINDOW_ID] (not local state) so it's reachable
-  // from actions/index.js-style standalone command handlers — see
-  // resources/specs/refactor-spec.md §9.
+  // from actions/index.js-style standalone command handlers.
   const bullseyeOverride = windowSettings?.bullseyeOverride ?? null // { lat, lng } | null
 
   const bullseyeLat = bullseyeOverride?.lat ?? bullseyeEntry?.latitude  ?? 0
@@ -285,7 +284,7 @@ export default function AicScope() {
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
 
-  // .autodec / .autodec iff (2026-07-08, reworked for SRS/IFF gating) —
+  // .autodec / .autodec iff —
   // while a mode is active, any unit that becomes visible with no explicit
   // declaration yet gets auto-declared: 'coalition' mode declares every unit
   // to its TRUE declaration unconditionally; 'iff' mode only ever declares
@@ -411,11 +410,11 @@ export default function AicScope() {
   // ── All state — declared before any effect that references them in deps ───────
 
   // threatRings/showCentroid/showAxis/sector/sectorVisible/sectorPreviewOrigin/
-  // ackPicture/rbl/findMarker/defineEntry now live in displayStore's
+  // ackPicture/rbl/findMarker/defineEntry live in displayStore's
   // windows[WINDOW_ID] (not local useState) so they're reachable from
-  // actions/index.js-style standalone command handlers — see
-  // resources/specs/refactor-spec.md §9. autoThreat/showPicture/becVisible
-  // similarly moved to their own reactive store (store/aicPrefs.js) since,
+  // actions/index.js-style standalone command handlers.
+  // autoThreat/showPicture/becVisible similarly live in their own reactive
+  // store (store/aicPrefs.js) since,
   // unlike ABM/STARS/CATCC/ASDE-X's equivalent prefs, these need to be
   // readable/writable without a closure too.
   const threatRings = windowSettings?.threatRings ?? EMPTY_ARRAY
@@ -427,7 +426,7 @@ export default function AicScope() {
   }, [])
   const threatRadius = windowSettings?.threatRadius ?? 35
 
-  // .autothreat (2026-07-10) — local UI toggle (not shared with other
+  // .autothreat — local UI toggle (not shared with other
   // controllers). While on, rings light automatically on every friendly
   // aircraft within threatRadius of a HOSTILE/BOGEY aircraft; auto-lit rings
   // are tracked separately from threatRings (manual Ctrl+Alt+click/.threat+
@@ -697,8 +696,7 @@ export default function AicScope() {
 
   function clearCmd() { setCmdBuffer(''); setCmdFeedback('') }
 
-  // Parses + dispatches via input/commandParser.js + actions/index.js (ported
-  // 2026-08-21, see resources/specs/refactor-spec.md §9 phase 4) — each
+  // Parses + dispatches via input/commandParser.js + actions/index.js — each
   // action reads/writes state via .getState(), no closures, and returns its
   // feedback string; this wrapper just supplies the render-derived context
   // values actions have no independent store to read from.
@@ -953,14 +951,12 @@ export default function AicScope() {
     const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
     // Callsign/type reveal is no longer gated purely on the Declaration — a
     // VALID Mode 4 IFF reply reveals identity too, independent of whether
-    // the contact has actually been declared FRIENDLY yet (see
-    // resources/specs/transponder-correlation-spec.md). The Declaration
+    // the contact has actually been declared FRIENDLY yet. The Declaration
     // field itself (`decl` above) is never touched by this — it only ever
     // reflects the actual effective/explicit declaration state.
     //
-    // Reveal is decoupled from declaration for srsCapable contacts
-    // (2026-09-14, corrected after a live report on ABM's identical
-    // pattern): a sticky FRIENDLY declaration (manual F4 or .autodec iff)
+    // Reveal is decoupled from declaration for srsCapable contacts (same
+    // rule as ABM): a sticky FRIENDLY declaration (manual F4 or .autodec iff)
     // does NOT by itself keep the callsign revealed — only a currently
     // VALID Mode 4 reply does, AIC's equivalent of ABM's live "correlated"
     // signal. If Mode 4 later drops, the callsign hides again even though

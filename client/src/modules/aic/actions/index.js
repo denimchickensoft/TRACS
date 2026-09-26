@@ -3,8 +3,7 @@
  *
  * Every command action is implemented here as a standalone function reading/
  * writing state via .getState() (never a closure) — same shape as STARS'
- * action library (atc/actions/index.js). Ported from AicScope.jsx's original
- * inline execCommand 2026-08-21 — see resources/specs/refactor-spec.md §9.
+ * action library (atc/actions/index.js).
  *
  * Each action receives:
  *   captures — named captures from commandParser.js
@@ -152,7 +151,7 @@ export function CLEAR_ALL() {
   return 'ALL CLEARED'
 }
 
-// Returns every explicit declaration to its fog-of-war default (2026-07-07).
+// Returns every explicit declaration to its fog-of-war default.
 export function DECLARATION_RESET() {
   useAicStore.getState().resetDeclarations()
   return 'DEC RESET'
@@ -160,7 +159,7 @@ export function DECLARATION_RESET() {
 
 // `.dec <old> <new>` bulk-redeclares every currently-visible contact whose
 // *effective* declaration is <old> to <new> — e.g. `.dec b h` turns every
-// bogey into a hostile (2026-07-07).
+// bogey into a hostile.
 export function DECLARATION_SET_BULK({ captures, context }) {
   const { myCoalitionNum, visibleUnits } = context
   const oldDecl = DECLARATION_LETTER[captures.oldLetter]
@@ -215,7 +214,7 @@ export function AUTO_DECLARE_IFF({ context }) {
   return 'AUTODEC IFF ON'
 }
 
-// Toggles automatic threat rings (2026-07-10): while on, every friendly
+// Toggles automatic threat rings: while on, every friendly
 // aircraft within threatRadius of a HOSTILE/BOGEY aircraft gets its ring lit
 // until the breach clears — see AicScope's own useEffect.
 export function AUTOTHREAT() {

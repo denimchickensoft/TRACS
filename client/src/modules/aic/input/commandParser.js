@@ -13,18 +13,9 @@
  * SLEW trigger field — AIC has no generic mechanism for "type a command,
  * then click to complete it." That interaction (bare `.sector`/`.be` awaiting
  * a map click) stays bespoke logic in AicScope.jsx (pendingSector/pendingBe),
- * deliberately not generalized here — see resources/specs/refactor-spec.md
- * §9.3 for why. This parser only covers commands that resolve entirely from
+ * deliberately not generalized here, since only those two commands need a
+ * click to complete. This parser only covers commands that resolve entirely from
  * their typed text.
- *
- * Source: the original inline execCommand in AicScope.jsx (ported 2026-08-21,
- * see refactor-spec.md §9.4/§9.5 phase 2). A handful of malformed/incomplete-
- * input edge cases resolve slightly differently than the original inline
- * if/else chain did (e.g. `.center <2 non-numeric words>` now falls through
- * to a failed fix lookup instead of an "INVALID: .CENTER <BRG> <RNG>"
- * message) — all in the same category: an unmatched or malformed command
- * still fails safely, just with a different feedback string. None of the
- * documented, intentional command forms are affected.
  */
 
 const COMMANDS = [

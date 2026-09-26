@@ -180,9 +180,9 @@ function drawRbl(ctx, view, rbl, declinationDeg) {
 
 // Ring color signals whether a BOGEY/HOSTILE contact is inside — green
 // (clear) or purple (violated), matching ABM's threat rings
-// (drawAbmBraa.js) so both scopes read the same way (2026-07-07).
+// (drawAbmBraa.js) so both scopes read the same way.
 // Clipped to the inner (on-scope) circle so a ring near the edge of range
-// doesn't bleed into the gold dugout band (2026-08-01).
+// doesn't bleed into the gold dugout band.
 function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl, clipR, cx, cy) {
   if (!threatRings.size) return
   ctx.save()
