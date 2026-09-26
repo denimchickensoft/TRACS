@@ -215,10 +215,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // BRAA line / bogey dope — ported from AIC, same keypresses/commands.
   const braaList          = useAbmStore(s => s.braaList)
   const pendingBraaFighter = useAbmStore(s => s.pendingBraaFighter)
-  const {
-    addBraaPair, removeBraaPairsForUnit,
-    setPendingBraaFighter, clearPendingBraa,
-  } = useAbmStore()
+  const addBraaPair            = useAbmStore(s => s.addBraaPair)
+  const removeBraaPairsForUnit = useAbmStore(s => s.removeBraaPairsForUnit)
+  const setPendingBraaFighter  = useAbmStore(s => s.setPendingBraaFighter)
+  const clearPendingBraa       = useAbmStore(s => s.clearPendingBraa)
   // threatRings/dbHiddenIds/bullseyeOverride/findMarker/defineEntry live in
   // displayStore's windows[windowId] (not local useState), same as AIC's
   // equivalents (threatRings/bullseyeOverride/findMarker/defineEntry are

@@ -389,7 +389,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const [menuKey, setMenuKey] = useState('main')
   const [toggles, setToggles] = useState(() => new Set())
 
-  const { updateWindow } = useDisplayStore()
+  const updateWindow = useDisplayStore((s) => s.updateWindow)
   const windowSettings   = useDisplayStore((s) => s.windows[WINDOW_ID])
 
   const presetSlots    = usePresetsStore((s) => s.slots)

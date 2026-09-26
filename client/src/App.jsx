@@ -136,7 +136,11 @@ export function App() {
   const [asdexDocked, setAsdexDocked] = useState(true)
   const asdexPopupRef = useRef(null)
 
-  const { loadManifest, loadProfile, availableProfiles, activeProfileId, activeProfile } = useOdsStore()
+  const loadManifest      = useOdsStore((s) => s.loadManifest)
+  const loadProfile       = useOdsStore((s) => s.loadProfile)
+  const availableProfiles = useOdsStore((s) => s.availableProfiles)
+  const activeProfileId   = useOdsStore((s) => s.activeProfileId)
+  const activeProfile     = useOdsStore((s) => s.activeProfile)
   const myEntry = useControllersStore((s) => s.registry[positionName])
 
   useEffect(() => {

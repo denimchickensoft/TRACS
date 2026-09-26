@@ -190,10 +190,11 @@ export default function AicScope() {
   const autoDeclareMode   = useAicStore(s => s.autoDeclareMode)
   const braaList          = useAicStore(s => s.braaList)
   const pendingBraaFighter = useAicStore(s => s.pendingBraaFighter)
-  const {
-    setDeclaration, addBraaPair, removeBraaPairsForUnit,
-    setPendingBraaFighter, clearPendingBraa,
-  } = useAicStore()
+  const setDeclaration         = useAicStore(s => s.setDeclaration)
+  const addBraaPair            = useAicStore(s => s.addBraaPair)
+  const removeBraaPairsForUnit = useAicStore(s => s.removeBraaPairsForUnit)
+  const setPendingBraaFighter  = useAicStore(s => s.setPendingBraaFighter)
+  const clearPendingBraa       = useAicStore(s => s.clearPendingBraa)
   const getEffectiveDeclaration = getAicEffectiveDeclaration
 
   const geoBoundaries  = useGeoStore(s => s.boundaries)

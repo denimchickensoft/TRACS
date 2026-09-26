@@ -181,7 +181,7 @@ function AsdexDcbSelect({ btn, value, half, onSelect }) {
 export function AsdexDcb() {
   const wheelDir         = useWheelDirection()
   const barRef           = useRef(null)
-  const { updateWindow } = useDisplayStore()
+  const updateWindow = useDisplayStore((s) => s.updateWindow)
   const win              = useDisplayStore(s => s.windows[ASDEX_WINDOW_ID])
   const activeSpinner    = win?.dcbActiveSpinner ?? null
   const menu             = win?.dcbMenu ?? 'main'
