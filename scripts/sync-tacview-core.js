@@ -14,8 +14,8 @@
 // server/src/tacviewCore.js is canonical. Edit that file, then run:
 //   npm run sync:tacview-core
 // `npm run check:tacview-core` (no write) fails if the two have diverged --
-// wire that into CI/pre-commit; found this exact drift twice in one day
-// before this script existed (resources/specs/data-sources/README.md).
+// wire that into CI/pre-commit (hand-syncing the two drifted more than
+// once).
 
 const fs   = require('fs')
 const path = require('path')

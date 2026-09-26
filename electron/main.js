@@ -1,9 +1,7 @@
 'use strict'
 
 // TRACS desktop wrapper. Wraps the existing Express server (server/src/index.js)
-// and React client (client/dist) in an Electron BrowserWindow. See
-// resources/specs/production-spec.md for the packaging decisions this
-// implements.
+// and React client (client/dist) in an Electron BrowserWindow.
 //
 // The server is required in-process (same Node process as Electron's main
 // process) rather than spawned as a child — it's already a plain CJS module
@@ -235,9 +233,8 @@ ipcMain.handle('lnm:pickDatabase', async () => {
 })
 
 // ── Auto-update ("check on launch, ask before downloading") ─────────────
-// autoDownload:false per spec §4 — respects variable end-user bandwidth
-// rather than silently consuming data. Mac has no code-signing cert (spec
-// §6), so electron-updater's Squirrel.Mac backend can't verify unsigned
+// autoDownload:false — respects variable end-user bandwidth rather than
+// silently consuming data. Mac builds aren't code-signed, so electron-updater's Squirrel.Mac backend can't verify unsigned
 // updates — Mac falls back to notify-only (link to the release page).
 
 function setupAutoUpdate() {

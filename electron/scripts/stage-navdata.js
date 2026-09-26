@@ -1,8 +1,8 @@
 'use strict'
 
 // Pre-package build step: stages exactly the navdata files that are safe to
-// redistribute (non-LNM/Navigraph-derived runtime files, per
-// resources/specs/production-spec.md §7) into a clean staging directory for
+// redistribute (non-LNM/Navigraph-derived runtime files — Navigraph data is
+// licensed per user and must never ship) into a clean staging directory for
 // electron-builder's `extraResources` to pick up.
 //
 // Uses `git ls-files` as the authoritative list of what's actually committed

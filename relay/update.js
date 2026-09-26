@@ -1,7 +1,8 @@
 'use strict'
 
-// Hand-rolled auto-update for the packaged Relay SEA binary. No off-the-shelf equivalent exists
-// for a standalone Node SEA the way electron-updater covers TRACS itself.
+// Hand-rolled auto-update for the packaged Relay SEA binary. No off-the-shelf
+// equivalent exists for a standalone Node SEA the way electron-updater covers
+// TRACS itself.
 //
 // Mechanism: within the configured mode/window, check GitHub Releases for a
 // newer relay-vX.Y.Z tag (the repo is public, so no token is needed),

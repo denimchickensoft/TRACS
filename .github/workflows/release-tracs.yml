@@ -1,7 +1,7 @@
 name: Release TRACS
 
 # Tag-triggered matrix build producing installers for all three platforms,
-# attached to one GitHub Release. See resources/specs/production-spec.md §9.
+# attached to one GitHub Release.
 # The git tag is the single source of truth for the version — read here and
 # written into package.json at build time, never hand-edited.
 on:
@@ -21,7 +21,7 @@ jobs:
             target: mac
           # Pinned older Ubuntu LTS, not floating ubuntu-latest, to maximize
           # glibc backward-compatibility with older distros for the AppImage
-          # target (production-spec.md §5).
+          # target.
           - os: ubuntu-20.04
             target: linux
     runs-on: ${{ matrix.os }}
@@ -53,7 +53,7 @@ jobs:
       - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No code signing cert is purchased (production-spec.md §6) - skip
+          # Builds aren't code-signed - skip
           # electron-builder's cert auto-discovery so it doesn't try to fetch
           # its winCodeSign helper package (macOS signing tooling probed even
           # for non-mac targets) at all.

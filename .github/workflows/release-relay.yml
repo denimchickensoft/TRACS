@@ -2,8 +2,8 @@ name: Release TRACS Relay
 
 # Tag-triggered matrix build producing standalone Relay executables (Node
 # SEA — no installer, just a binary + config.example.json), attached to one
-# GitHub Release. See resources/specs/production-spec.md §§5,9. Windows +
-# Linux only — no Mac VPS hosting market (spec §5).
+# GitHub Release. Windows + Linux only — there's no real Mac server
+# hosting market for a relay.
 on:
   push:
     tags:
