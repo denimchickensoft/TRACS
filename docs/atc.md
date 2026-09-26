@@ -107,6 +107,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `MF S` + SLEW | `F7` | Relocate the SSA overlay |
 | `MF S<atis>` + ENTER | — | Set the SSA overlay's ATIS code letter |
 | `MF S<atis> <giText>` + ENTER | — | Set the SSA overlay's ATIS code letter and general-info text |
+| `MF S` + ENTER | — | Clear the SSA overlay's ATIS code letter and general-info text |
 | `.ALTIM <val>` / `.QNH <val>` + ENTER | — | Set altimeter (inHg or hPa, auto-detected by range) |
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |

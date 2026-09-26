@@ -19,6 +19,7 @@ const COMMANDS = [
   // SSA — ATIS/GI text (main line only; no aux lines/delete variants)
   { id: 'SET_ATIS_GI',          pattern: /^MF S(\S+) (.+)$/,      trigger: 'ENTER', captures: ['atis', 'giText'] },
   { id: 'SET_ATIS',             pattern: /^MF S(\S+)$/,           trigger: 'ENTER', captures: ['atis'] },
+  { id: 'CLEAR_ATIS_GI',        pattern: /^MF S$/,                trigger: 'ENTER' },
   // Sign-On List
   { id: 'TOGGLE_SIGNON',        pattern: /^MF TS$/,               trigger: 'ENTER' },
   { id: 'RELOCATE_SIGNON',      pattern: /^MF TS$/,               trigger: 'SLEW'  },

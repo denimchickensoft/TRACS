@@ -470,6 +470,11 @@ export function SET_ATIS_GI({ captures }) {
   ok()
 }
 
+export function CLEAR_ATIS_GI() {
+  getDisplay().updateWindow(WINDOW_ID, { atis: null, giText: null })
+  ok()
+}
+
 // ── Altitude filters (Table 29) ─────────────────────────────────────────────
 // Values are hundreds of feet (3-digit STARS convention, e.g. "001" = 100ft).
 // U = unassociated tracks, A = associated tracks. Persisted locally like other
@@ -999,6 +1004,7 @@ const ACTION_MAP = {
   SET_ALTIM,
   SET_ATIS,
   SET_ATIS_GI,
+  CLEAR_ATIS_GI,
   SHOW_ALT_FILTER,
   SET_ALT_FILTER,
   SET_ALT_FILTER_ASSOC,
