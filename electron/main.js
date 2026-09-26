@@ -54,6 +54,54 @@ if (!app.requestSingleInstanceLock()) {
 
 let mainWindow = null
 
+// ── Navigation / window-open / IPC guards ─────────────────────────────────
+// Every TRACS window carries the preload's electronAPI (update install, file
+// picker), so only TRACS's own pages may ever load in one. Pop-out windows
+// (window.open to the same origin) are allowed; any other http(s) URL opens
+// in the user's normal browser instead; everything else is refused.
+
+function isAppUrl(url) {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:'
+      && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')
+      && currentPort !== null && u.port === String(currentPort)
+  } catch {
+    return false
+  }
+}
+
+function openExternally(url) {
+  try {
+    const { protocol } = new URL(url)
+    if (protocol === 'http:' || protocol === 'https:') shell.openExternal(url)
+  } catch { /* not a URL - ignore */ }
+}
+
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isAppUrl(url)) return { action: 'allow' }
+    openExternally(url)
+    return { action: 'deny' }
+  })
+  contents.on('will-navigate', (event, url) => {
+    if (isAppUrl(url)) return
+    event.preventDefault()
+    openExternally(url)
+  })
+})
+
+// ipcMain.handle, but only for requests from a TRACS page.
+function handleFromApp(channel, handler) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!isAppUrl(event.senderFrame?.url ?? '')) {
+      console.warn(`[electron] refused IPC '${channel}' from ${event.senderFrame?.url ?? 'unknown frame'}`)
+      throw new Error('IPC not allowed from this page')
+    }
+    return handler(event, ...args)
+  })
+}
+
 // ── Port resolution ───────────────────────────────────────────────────────
 // Origin stability matters here: client-side localStorage (serverProfiles,
 // *Prefs/*Bookmarks stores) is tied to http://localhost:<port> as an origin.
@@ -220,9 +268,9 @@ function buildMenu(port) {
 
 // ── IPC ───────────────────────────────────────────────────────────────────
 
-ipcMain.handle('app:getVersion', () => app.getVersion())
+handleFromApp('app:getVersion', () => app.getVersion())
 
-ipcMain.handle('lnm:pickDatabase', async () => {
+handleFromApp('lnm:pickDatabase', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title:      'Select your LittleNavMap Navigraph database',
     filters:    [{ name: 'SQLite database', extensions: ['sqlite'] }],
@@ -261,13 +309,13 @@ function setupAutoUpdate() {
   })
   autoUpdater.on('error', (err) => console.error('[update] error:', err.message))
 
-  ipcMain.handle('update:download', () => autoUpdater.downloadUpdate())
-  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall())
+  handleFromApp('update:download', () => autoUpdater.downloadUpdate())
+  handleFromApp('update:install', () => autoUpdater.quitAndInstall())
 
   autoUpdater.checkForUpdates().catch((err) => console.error('[update] check failed:', err.message))
 }
 
-ipcMain.handle('update:openReleasePage', () => shell.openExternal('https://github.com/denimchickensoft/TRACS/releases/latest'))
+handleFromApp('update:openReleasePage', () => shell.openExternal('https://github.com/denimchickensoft/TRACS/releases/latest'))
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
 

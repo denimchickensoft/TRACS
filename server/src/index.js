@@ -65,6 +65,30 @@ app.use((req, res, next) => {
   console.warn(`[server] rejected ${req.method} ${req.url} (host=${req.headers.host}, origin=${req.headers.origin ?? '-'})`)
   res.status(403).send('Forbidden')
 })
+
+// Content-Security-Policy, currently REPORT-ONLY: violations are logged to
+// the page's DevTools console but nothing is blocked. Once every module has
+// run with a clean console, switch the header name to
+// Content-Security-Policy to enforce it. connect-src allows any ws/wss host
+// because TRACS Relay and Nostr relay addresses are user-configured.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: blob:",
+  "media-src 'self' data: blob:",
+  "connect-src 'self' ws: wss:",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+].join('; ')
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy-Report-Only', CSP)
+  next()
+})
+
 app.use(express.json())
 
 registerDocsRoutes(app)
