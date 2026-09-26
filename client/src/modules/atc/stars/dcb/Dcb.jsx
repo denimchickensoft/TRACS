@@ -18,6 +18,7 @@ import { saveStarsPrefs }     from '../../../../store/starsPrefs.js'
 import { recenterScope }      from '../../actions/index.js'
 import { LDR_DIR_SEQUENCE, LDR_DIR_CANVAS_ANGLES, ldrDirWraparound, clampValueDelta } from '../../../../utils/dcbSpinner.js'
 import { useNonPassiveWheel } from '../../../../utils/useNonPassiveWheel.js'
+import { snapshotLayerVisibility, applyLayerVisibility } from '../layerVisibility.js'
 import '../../dcb.css'
 
 const WINDOW_ID = 'atc-main'
@@ -608,16 +609,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
               dcbActiveSpinner: null,
             })
             const s = slot.settings
-            if (s.mapsVisible)              useMapsStore.getState().setVisible(s.mapsVisible)
-            if (s.reliefVisible  != null)   useReliefStore.getState().setVisible(s.reliefVisible)
-            if (s.geoVisible     != null)   useGeoStore.getState().setVisible(s.geoVisible)
-            if (s.fixesVisible   != null)   useFixesStore.getState().setVisible(s.fixesVisible)
-            if (s.mvaVisible     != null)   useMvaStore.getState().setVisible(s.mvaVisible)
-            if (s.msaVisible     != null)   useMsaStore.getState().setVisible(s.msaVisible)
-            if (s.moraVisible    != null)   useMoraStore.getState().setVisible(s.moraVisible)
-            if (s.holdsVisible   != null)   useHoldingsStore.getState().setVisible(s.holdsVisible)
-            if (s.airwaysVisible != null)   useAirwaysStore.getState().setVisible(s.airwaysVisible)
-            if (s.procVisible    != null)   useProceduresStore.getState().setVisible(s.procVisible)
+            applyLayerVisibility(s)
             if (s.previewPosition !== undefined)
               usePreviewStore.getState().setPosition(s.previewPosition)
             usePresetsStore.getState().setActiveSlot(idx)
@@ -653,16 +645,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           const win      = useDisplayStore.getState().windows[WINDOW_ID]
           const enriched = {
             ...win,
-            mapsVisible:     useMapsStore.getState().visible,
-            reliefVisible:   useReliefStore.getState().visible,
-            geoVisible:      useGeoStore.getState().visible,
-            fixesVisible:    useFixesStore.getState().visible,
-            mvaVisible:      useMvaStore.getState().visible,
-            msaVisible:      useMsaStore.getState().visible,
-            moraVisible:     useMoraStore.getState().visible,
-            holdsVisible:    useHoldingsStore.getState().visible,
-            airwaysVisible:  useAirwaysStore.getState().visible,
-            procVisible:     [...useProceduresStore.getState().visible],
+            ...snapshotLayerVisibility(),
             previewPosition: usePreviewStore.getState().position,
           }
           const saved = usePresetsStore.getState().saveActive(enriched)

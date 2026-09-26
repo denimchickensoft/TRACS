@@ -32,16 +32,7 @@ import { drawAbmFixSymbols }          from '../../abm/canvas/drawAbmFixSymbols.j
 import { drawProcedures }             from './canvas/drawProcedures.js'
 import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
-import { useMapsStore }         from '../../../store/maps.js'
-import { useHoldingsStore }     from '../../../store/holdings.js'
-import { useAirwaysStore }      from '../../../store/airways.js'
-import { useMsaStore }          from '../../../store/msa.js'
-import { useMoraStore }         from '../../../store/mora.js'
-import { useReliefStore }       from '../../../store/relief.js'
-import { useMvaStore }          from '../../../store/mva.js'
-import { useGeoStore }          from '../../../store/geo.js'
-import { useFixesStore }        from '../../../store/fixes.js'
-import { useProceduresStore }   from '../../../store/procedures.js'
+import { snapshotLayerVisibility, applyLayerVisibility } from './layerVisibility.js'
 import { DatablockOverlay }     from './DatablockOverlay.jsx'
 import { InputHandler }         from './input/InputHandler.jsx'
 import { PreviewArea }          from './PreviewArea.jsx'
@@ -247,16 +238,7 @@ export default function StarsScope() {
           pendingAction:   null,
           dcbActiveSpinner: null,
         })
-        if (settings.mapsVisible)              useMapsStore.getState().setVisible(settings.mapsVisible)
-        if (settings.reliefVisible  != null)   useReliefStore.getState().setVisible(settings.reliefVisible)
-        if (settings.geoVisible     != null)   useGeoStore.getState().setVisible(settings.geoVisible)
-        if (settings.fixesVisible   != null)   useFixesStore.getState().setVisible(settings.fixesVisible)
-        if (settings.mvaVisible     != null)   useMvaStore.getState().setVisible(settings.mvaVisible)
-        if (settings.msaVisible     != null)   useMsaStore.getState().setVisible(settings.msaVisible)
-        if (settings.moraVisible    != null)   useMoraStore.getState().setVisible(settings.moraVisible)
-        if (settings.holdsVisible   != null)   useHoldingsStore.getState().setVisible(settings.holdsVisible)
-        if (settings.airwaysVisible != null)   useAirwaysStore.getState().setVisible(settings.airwaysVisible)
-        if (settings.procVisible    != null)   useProceduresStore.getState().setVisible(settings.procVisible)
+        applyLayerVisibility(settings)
         if (settings.previewPosition !== undefined)
           usePreviewStore.getState().setPosition(settings.previewPosition)
         usePresetsStore.getState().setActiveSlot(defaultSlot)
@@ -714,7 +696,7 @@ export default function StarsScope() {
       const win      = useDisplayStore.getState().windows[WINDOW_ID]
       const enriched = {
         ...win,
-        mapsVisible:     useMapsStore.getState().visible,
+        ...snapshotLayerVisibility(),
         previewPosition: usePreviewStore.getState().position,
       }
       usePresetsStore.getState().saveToSlot(pending.slotIndex, name, enriched)
@@ -773,15 +755,7 @@ export default function StarsScope() {
             offCntr:        win?.offCntr ?? false,
             rangeNm:        win?.rangeNm,
             tdmMode:        win?.tdmMode ?? false,
-            mapsVisible:    useMapsStore.getState().visible,
-            reliefVisible:  useReliefStore.getState().visible,
-            geoVisible:     useGeoStore.getState().visible,
-            mvaVisible:     useMvaStore.getState().visible,
-            msaVisible:     useMsaStore.getState().visible,
-            moraVisible:    useMoraStore.getState().visible,
-            holdsVisible:   useHoldingsStore.getState().visible,
-            airwaysVisible: useAirwaysStore.getState().visible,
-            procVisible:    [...useProceduresStore.getState().visible],
+            ...snapshotLayerVisibility(),
           })
           usePreviewStore.getState().setResponse('BOOKMARK SAVED')
           break
@@ -798,15 +772,7 @@ export default function StarsScope() {
             rangeNm:   bm.rangeNm,
             tdmMode:   bm.tdmMode,
           })
-          if (bm.mapsVisible)            useMapsStore.getState().setVisible(bm.mapsVisible)
-          if (bm.reliefVisible  != null) useReliefStore.getState().setVisible(bm.reliefVisible)
-          if (bm.geoVisible     != null) useGeoStore.getState().setVisible(bm.geoVisible)
-          if (bm.mvaVisible     != null) useMvaStore.getState().setVisible(bm.mvaVisible)
-          if (bm.msaVisible     != null) useMsaStore.getState().setVisible(bm.msaVisible)
-          if (bm.moraVisible    != null) useMoraStore.getState().setVisible(bm.moraVisible)
-          if (bm.holdsVisible   != null) useHoldingsStore.getState().setVisible(bm.holdsVisible)
-          if (bm.airwaysVisible != null) useAirwaysStore.getState().setVisible(bm.airwaysVisible)
-          if (bm.procVisible    != null) useProceduresStore.getState().setVisible(bm.procVisible)
+          applyLayerVisibility(bm)
           break
         }
         break
