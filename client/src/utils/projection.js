@@ -155,7 +155,7 @@ export function rangeToPixelsPerNm(rangeNm, width, height) {
 // free whenever the underlying data is reloaded/replaced (e.g. a theatre
 // switch produces brand-new ring arrays).
 //
-// Tier 2 (_ringTmCache, 2026-08-11): each point's theatre-fixed TM
+// Tier 2 (_ringTmCache): each point's theatre-fixed TM
 // easting/northing. Unlike the final screen point, this genuinely never
 // changes for the life of a ring — pan/zoom/rotate don't move a coastline's
 // real-world position, only the screen mapping of it — so it's cached
@@ -165,16 +165,14 @@ export function rangeToPixelsPerNm(rangeNm, width, height) {
 // rotate by declination, scale to pixels), skipping tmForward's
 // sinh/cosh/atanh/asinh entirely on repeat draws. This is what fixed the
 // severe pan/zoom stutter on fjord/archipelago theatres (Kola, South
-// Atlantic — tens of thousands of coastline rings, see the 2026-08-11 perf
-// investigation): reprojecting every point through full TM math on every
+// Atlantic — tens of thousands of coastline rings): reprojecting every point through full TM math on every
 // single pan frame was the dominant cost.
 //
 // Only applies to theatres with real TM params — the flat equirectangular
 // fallback (no theatre in projection_params.json) computes its nm-offset
 // directly from the view's own center, so it can't be cached this way and
 // always falls through to the uncached per-point path below. In practice
-// this fallback is unreachable as of 2026-08-11 (every theatre has real
-// params) — kept only as a defensive path, not a currently-exercised one.
+// this fallback is unreachable (every theatre has real params) — kept only as a defensive path, not a currently-exercised one.
 //
 // getProjectionParamsVersion() in the signature closes a narrow startup
 // race: projection_params.json loads asynchronously (App.jsx), so a ring

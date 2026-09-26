@@ -2,8 +2,8 @@
 // System, not DCS's own per-theatre grid (see utils/transverseMercator.js).
 // Reuses the same Krüger TM engine with real UTM zone parameters (6° zones,
 // k0=0.9996, 500,000m false easting) so this matches what DCS's own
-// F10/kneeboard MGRS readout shows — confirmed 2026-07-07 against real
-// in-game coordinates.
+// F10/kneeboard MGRS readout shows — confirmed against real in-game
+// coordinates.
 
 const ROW_LETTERS = 'ABCDEFGHJKLMNPQRSTUV' // 20 letters, I/O skipped
 const COL_SETS    = ['ABCDEFGH', 'JKLMNPQR', 'STUVWXYZ']

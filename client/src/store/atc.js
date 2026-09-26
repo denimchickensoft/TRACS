@@ -22,8 +22,8 @@ export const POINTOUT_STATE = {
 // applyCatccDump (client/src/webrtc/client.js) to compute the next value
 // *before* touching the store, so the whole transition can land in one set()
 // via applyStateDump() below instead of reset()-then-per-item-replay (which
-// exposes an intermediate all-empty tick to every live subscriber — see
-// feedback_webrtc_relay_sync_invariants memory, invariant #1).
+// exposes an intermediate all-empty tick to every live subscriber). Dump
+// restoration must be an additive merge, never reset-then-rebuild.
 export function filterAtcDumpPayload(payload, activeIds) {
   const ownership = {}
   for (const [uid, cid] of Object.entries(payload.trackOwnership ?? {}))
@@ -67,8 +67,7 @@ export const useAtcStore = create(
 
   // Real transponder IDENT (status 2) — latched, same blink treatment as a
   // handoff, cleared only when the controller slews the contact (not on a
-  // timer, not just because status reverts). unitId → true. See
-  // resources/specs/transponder-correlation-spec.md §4.
+  // timer, not just because status reverts). unitId → true.
   identUnacked: {},
 
   // Acknowledged conflict-alert pairs: pairId → true. Pruned each STCA
@@ -240,9 +239,8 @@ export const useAtcStore = create(
 // wired from webrtc/client.js — is the only writer there, and stays
 // completely untouched by this); popups (e.g. ASDE-X ODS) never write
 // `ownership` locally, so they only ever receive and mirror it. This
-// asymmetry is deliberate: this store has a documented history of
-// regressions from naive-merge sync (see feedback_webrtc_relay_sync_invariants
-// memory) — a plain whole-field replace here is safe specifically because
+// asymmetry is deliberate: this store has a history of regressions from
+// naive-merge sync — a plain whole-field replace here is safe specifically because
 // there's nothing local on the popup side to reconcile against, and the
 // value arriving is always the main window's already-correctly-merged
 // current state. Only `ownership` is synced (not handoffs/pointOuts/etc.) —

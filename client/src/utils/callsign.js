@@ -181,12 +181,12 @@ export function matchLiveByPrefix(prefix, liveUnits) {
  *      reliable match.
  *   2. Normalized-callsign text match — Tacview's live unitID has NO
  *      relationship to the mission file's unitId for statically-placed (AI)
- *      units: confirmed 2026-09-06 against a real mission (Colt 2-1/2-2/1-1/
+ *      units: confirmed against a real mission (Colt 2-1/2-2/1-1/
  *      1-2's Tacview object IDs incremented by an exact constant step
  *      regardless of the real, irregularly-spaced DCS unitId gaps — Tacview
  *      assigns IDs from its own internal enumeration counter, unrelated to
  *      DCS's engine state, for any unit that wasn't dynamically created at
- *      runtime). The formula in custom-datasource-tacview-spec.md §4.1 only
+ *      runtime). tacviewCore.js's unitId = objectId + 0xFFFFFF formula only
  *      holds for dynamically-created player slots, not AI-authored units.
  *      What DOES carry over reliably: the mission file's per-unit
  *      `callsign.name` (e.g. "Colt21") and Tacview's `Pilot` (e.g.

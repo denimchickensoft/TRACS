@@ -1,8 +1,7 @@
 // Converts a DCS .miz mission's F10-map drawing geometry into ABM's
-// normalized {geometry, properties, bbox, label} feature shape — see
-// resources/specs/miz-drawings-spec.md for the full format writeup this
-// implements (Part A: source schemas, Part B: coordinate conversion,
-// Part C: mapping into ABM's drawing layer).
+// normalized {geometry, properties, bbox, label} feature shape: reads the
+// source schemas, converts DCS coordinates, and maps the result into ABM's
+// drawing layer.
 //
 // Two independent sources are read, per §A.1/§A.2:
 //   - mission.triggers.zones   — quad (type 2) and circular (type 0) zones,

@@ -25,8 +25,7 @@ export function parseHostPort(raw) {
 // ambiguous (could've meant Olympus or direct Tacview, indistinguishable —
 // that was the whole point of auto-detect), so it defaults to Olympus, the
 // pre-existing majority case; a wrong guess surfaces immediately as a failed
-// connect and the user flips the selector once. See
-// resources/specs/data-sources/pluggable-source-architecture-spec.md §5.
+// connect and the user flips the selector once.
 export function inferLegacySourceType(record) {
   if (!record) return 'olympus'
   if (record.sourceType) return record.sourceType
@@ -71,8 +70,7 @@ export function findProfileByName(profiles, name) {
 //
 // Which password slot `password`/`relayPassword` land in depends on
 // `sourceType`, since the three primary-source modes have structurally
-// different password semantics (see
-// resources/specs/data-sources/pluggable-source-architecture-spec.md §7):
+// different password semantics:
 //   - 'olympus' / 'relay': `password` is genuinely per-coalition -> merged into
 //     the `passwords` map, same slot reused by both modes (a profile only
 //     has one active sourceType at a time, same pattern lastCoalition uses).

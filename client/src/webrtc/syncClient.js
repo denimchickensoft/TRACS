@@ -1,6 +1,5 @@
 // Centralized-sync transport — an automatic substitute for the
-// Trystero/WebRTC P2P mesh whenever a TRACS relay is reachable. See
-// resources/specs/data-sources/webrtc-centralized-sync-spec.md §2/§3.
+// Trystero/WebRTC P2P mesh whenever a TRACS relay is reachable.
 //
 // Two exports:
 //   - checkSyncCapable(): one-shot reachability+auth check, used by
@@ -70,14 +69,14 @@ export function checkSyncCapable({ relayUrl, coalition, password }) {
 
 // ── Shared connection, subscribed to N topics ──────────────────────────────
 // One WebSocket per browser tab, reused across joinRoom() calls (session
-// room + module room), matching the topic-based pub/sub design in
-// webrtc-centralized-sync-spec.md §2.1 rather than opening one connection
+// room + module room), matching the relay's topic-based pub/sub
+// (relay/syncRelay.js) rather than opening one connection
 // per room the way Trystero's two joinRoom() calls do.
 export let selfId = null
 
 // Populated from the relay's auth_ok ack once connected — read by the
 // settings gear menu to display Relay's version/protocol alongside TRACS's
-// own (see production-spec.md §8's version-display decision). null fields
+// own. null fields
 // mean "not connected to a relay this session".
 export const relayInfo = { version: null, protocolVersion: null }
 

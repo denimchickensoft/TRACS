@@ -1,6 +1,5 @@
-// Shared datablock leader-direction / collision-avoidance placement,
-// extracted from CATCC's original implementation (2026-07-27) so ATC/STARS
-// and ABM can opt into the same algorithm behind their own .dbca toggles.
+// Shared datablock leader-direction / collision-avoidance placement, used by
+// CATCC, with ATC/STARS and ABM able to opt into the same algorithm behind their own .dbca toggles.
 //
 // Pure geometry — callers measure text themselves (ctx.measureText for
 // canvas renderers, a monospace char-count estimate for STARS' SVG
@@ -10,7 +9,7 @@
 // each by summed pixel-overlap against every other contact's symbol and
 // every label already placed earlier in the same pass (labels accumulate as
 // obstacles, so processing order matters — Object.entries order today).
-// Confirmed priority order (2026-07-27):
+// Priority order:
 //   1. extraObstacles (e.g. CATCC's marshal radial) — large penalty, a near-hard veto
 //   2. prefTier 'unit'   — individually-set (numpad) leader direction — strong bias
 //   3. prefTier 'global' — module-wide default leader direction        — soft tiebreaker

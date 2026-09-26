@@ -5,13 +5,10 @@ import { create } from 'zustand'
 // starsPrefs.js. Those four back a plain component useState with a manual
 // dual-write (setState + saveXPrefs) at every toggle site; that works for
 // them because none of their scope's execCommand needs to be closure-free.
-// AIC's does (see resources/specs/refactor-spec.md §9), so these three need
+// AIC's does, so these three need
 // a single reactive source of truth that any file can read/write via
 // .getState() — same auto-persist-on-change shape utils/createDeclarationStore.js
 // already uses for autoDeclareMode.
-//
-// Before 2026-08-21 these three each hand-rolled their own separate
-// localStorage key/try-catch pair directly in AicScope.jsx.
 
 const KEY = 'tracs-aic-prefs'
 

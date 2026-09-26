@@ -57,9 +57,10 @@ function getClientId() {
 
 // ── Signaling strategy selection ───────────────────────────────────────────────
 // Primary: public Nostr relay network (serverless, no port forwarding needed).
-// Fallback: this deployment's own self-hosted ws-relay (server/src/index.js
-// `/signal`), for LAN/offline deployments the public internet can't reach.
-// See resources/specs/webrtc-spec.md for the full rationale.
+// Fallback: this controller's own local backend's ws-relay (server/src/index.js
+// `/signal`, via getSignalUrl()). It only connects windows on the same machine,
+// so controllers on different machines need a working Nostr relay or a TRACS
+// Relay.
 const NOSTR_REDUNDANCY       = 5     // how many public relays to use simultaneously
 const RELAY_PROBE_TIMEOUT_MS = 8_000 // how long to wait for a Nostr relay to open before falling back
 const RELAY_PROBE_POLL_MS    = 250
@@ -120,8 +121,8 @@ let _applying = false
 let handshakeAcked = false
 
 // ── Deferred self-minting (P2P/Nostr transport only) ───────────────────────────
-// See feedback_webrtc_relay_sync_invariants memory, invariant #2: a peer must
-// never mint its own controllerId against an incomplete local view. Login.jsx
+// A peer must never mint its own controllerId against an incomplete local
+// view: IDs come from exactly one authority. Login.jsx
 // writes a `pending` stub (registerPendingController) at sign-in, before any
 // networking happens; these two mechanisms are what eventually finalize it on
 // this transport (the relay transport finalizes via registerSelf/
@@ -176,8 +177,7 @@ function scheduleHandshakeRetry(hsMsg) {
 // independently-deployed app not guaranteed to ship alongside
 // client/public/positionTypes.json, so the client (which already loads it for
 // registerController's own use) resolves and forwards these instead of the
-// relay reading the file itself. See Bug 2 Part A in
-// feedback_webrtc_relay_sync_invariants memory for the full rationale.
+// relay reading the file itself.
 function positionTypeHints(suffix) {
   const typeDef = useControllersStore.getState().positionTypes.find((t) => t.suffix === suffix)
   return {
@@ -190,7 +190,7 @@ function positionTypeHints(suffix) {
 export function isApplying() { return _applying }
 
 // ── Room ID derivation (P2P/Trystero fallback only — relay-hosted sync uses
-// relayTopicFor() below instead, see webrtc-centralized-sync-spec.md) ─────────
+// relayTopicFor() below instead) ───────────────────────────────────────────────
 // `coalition` is an optional trailing param (added after `password`, not
 // before it) so existing two-arg callers (`deriveRoomId(olympusUrl, password)`)
 // keep working unchanged.
@@ -212,8 +212,10 @@ export async function deriveRoomId(olympusAddress, password = '', coalition = ''
   // The one address-ambiguity case worth actually fixing: independent local
   // testers overwhelmingly default to one of these two for the same machine,
   // with nothing else to tell their rooms apart. Domain vs. its raw IP stays
-  // an accepted, documented limitation (webrtc-centralized-sync-spec.md) --
-  // no DNS lookup here (see that doc for why it was rejected).
+  // an accepted limitation (two controllers must type the address the same
+  // way) -- no DNS lookup here: browsers have no DNS API, and resolving on
+  // each machine's own resolver/hosts file would reintroduce the same
+  // cross-machine mismatch.
   if (host === 'localhost' || host === '::1') host = '127.0.0.1'
   const normalized = port ? `${host}:${port}` : host
   const input = [normalized, coalition, password].filter(Boolean).join(':')
@@ -231,8 +233,7 @@ export async function deriveRoomId(olympusAddress, password = '', coalition = ''
 // need for a hash or any address-collision defense here. Plain and
 // deterministic on purpose: this is also what will let GM/Admin trivially
 // derive every other coalition's topic name too, once initWebrtc() joins
-// multiple rooms for that role (not yet implemented -- see
-// resources/specs/data-sources/webrtc-centralized-sync-spec.md) -- no secret
+// multiple rooms for that role (not yet implemented) -- no secret
 // is needed to compute a topic name, only the relay's own connection-level
 // auth (coalition-scoped password) gates who gets in at all.
 function relayTopicFor(coalition) {
@@ -426,9 +427,9 @@ async function maybeSendModuleDump(mod, toPeerId) {
 // intermediate "everything wiped" tick to every live subscriber
 // (DatablockOverlay's ownership read, associationEngine's sticky-while-owned
 // check, which bails on a momentarily-missing flight plan just as readily as
-// a momentarily-missing ownership entry), which is exactly the class of bug
-// feedback_webrtc_relay_sync_invariants exists to prevent. See that memory /
-// the STARS-datablock-flicker fix (both rounds) for the history.
+// a momentarily-missing ownership entry) and shows up as STARS datablock
+// flicker. Dump restoration must be an additive merge, never
+// reset-then-rebuild.
 function applyAtcDump(payload) {
   useFlightPlansStore.getState().applyPlansDump(payload.flightPlans ?? {})
 
@@ -557,8 +558,7 @@ function startDisconnectTimer(peerId) {
     // transport the relay itself owns eviction and re-broadcast (its own
     // eviction timer + registry_update — see initWebrtc's onRegistryUpdate
     // handler), so a client must never also assert a registry view of its
-    // own onto the shared topic (see feedback_webrtc_relay_sync_invariants
-    // memory, invariant #2 — exactly one authority).
+    // own onto the shared topic (exactly one registry authority).
     if (!usingSyncRelay) {
       const ctrl = useControllersStore.getState()
       const cluMsg = envelope('CLIENT_LIST_UPDATE', {
@@ -936,8 +936,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   // usingSyncRelay decided up front (not inside the branch below) because it
   // also determines how the room/topic identity itself is computed: relay-
   // hosted sync uses a plain per-coalition topic (relayTopicFor), P2P/Trystero
-  // keeps the address+password+coalition hash (deriveRoomId) -- see
-  // resources/specs/data-sources/webrtc-centralized-sync-spec.md.
+  // keeps the address+password+coalition hash (deriveRoomId).
   usingSyncRelay = useSessionStore.getState().syncCapable
   const sessionRoomId = usingSyncRelay
     ? relayTopicFor(coalition)
@@ -968,14 +967,13 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   if (usingSyncRelay) {
     // Login's ConnectPhase already proved the relay's /sync is reachable and
     // authenticated (checkSyncCapable) before sign-in completed, so no
-    // runtime probing is needed here -- go straight to it. See
-    // resources/specs/data-sources/webrtc-centralized-sync-spec.md §1/§3.
+    // runtime probing is needed here -- go straight to it.
     // The relay's own auth gate (relay/config.json's `passwords`) is
     // coalition-scoped access control, same credential srs.js/tacviewRelayClient.js
     // already authenticate with -- unrelated to the optional Session Password
     // below, which only ever isolates/encrypts the room, never gates the relay
     // itself. Login's ConnectPhase capability-check already validated this
-    // exact value. See resources/specs/data-sources/webrtc-centralized-sync-spec.md.
+    // exact value.
     strategy    = syncClient
     cfg         = { relayUrl: useSessionStore.getState().relayUrl, coalition, password: relayPassword }
     sessionRoom = strategy.joinRoom(cfg, sessionRoomId)
@@ -1026,8 +1024,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   registerRoeBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
 
   if (usingSyncRelay) {
-    // The relay is the sole registry authority on this transport (see
-    // feedback_webrtc_relay_sync_invariants memory, invariant #2) — no local
+    // The relay is the sole registry authority on this transport — no local
     // self-upsert/mint here. registerSelf() below is answered by the relay's
     // own resolvePosition()/minting (relay/registryAuthority.js), and every
     // subsequent registry/clientList change (ours or anyone else's) arrives

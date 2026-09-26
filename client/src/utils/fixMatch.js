@@ -2,7 +2,7 @@
 // import (.miz / DTC route waypoints). Deliberately a name-lookup-plus-
 // sanity-check, NOT a nearest-neighbor search: a mission-specific label like
 // "REJOIN" that happens to sit near a real fix must never get silently
-// rewritten to that unrelated fix. See resources/specs/pilot-flightplan-ingestion-spec.md §3.
+// rewritten to that unrelated fix.
 
 import { useNavdataStore } from '../store/navdata.js'
 import { nmBetween } from './findNearestBogey.js'
@@ -23,7 +23,7 @@ export function matchFixName(name, lat, lng) {
 }
 
 // CSV route tokens have no independent coordinate to sanity-check against --
-// existence in navdata is the only signal available (see spec §5).
+// existence in navdata is the only signal available.
 export function fixNameExists(name) {
   if (!name) return false
   return useNavdataStore.getState().lookupFix(name) != null

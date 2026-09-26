@@ -66,7 +66,7 @@ const SCOPE_DEFAULTS = {
   giText: null,
   giAux: [],                // MF S1-9 auxiliary GI text lines (index 0 = line 1)
   tdmMode: false,
-  // AIC-only session state (§9.2 of resources/specs/refactor-spec.md) —
+  // AIC-only session state —
   // present in every window's shape like STARS's rbls/minSep above, but only
   // read/written by AicScope.
   threatRings: [],          // unitId[] — .threat/Ctrl+Alt+click manual threat rings
@@ -80,7 +80,7 @@ const SCOPE_DEFAULTS = {
   findMarker: null,         // { lat, lng, id } | null — .find fix marker
   defineEntry: null,        // { term, text } | null — .define brevity glossary readout
   bullseyeOverride: null,   // { lat, lng } | null — .be bullseye override
-  // ABM-only session state (resources/specs/refactor-spec.md §10) — reuses
+  // ABM-only session state — reuses
   // threatRings/rbl/bullseyeOverride/findMarker/defineEntry above (same
   // concept, independent per-window instance); only dbHiddenIds has no AIC
   // equivalent.

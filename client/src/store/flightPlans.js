@@ -43,8 +43,7 @@ export const useFlightPlansStore = create(
             flightRules: 'IFR',
             // 'manual' (FPE/pilot page) vs 'miz'/'csv'/'dtc' (bulk import) --
             // lets the Strip Bay's "Clear Mission" distinguish imported
-            // plans from controller/pilot-filed ones. See
-            // resources/specs/pilot-flightplan-ingestion-spec.md.
+            // plans from controller/pilot-filed ones.
             source:      'manual',
             unitId:      null,
             suspended:   false,
@@ -146,8 +145,7 @@ export const useFlightPlansStore = create(
   // exposes an intermediate "no flight plans" tick to subscribers
   // (associationEngine.js's sticky-while-owned retention bails if
   // flightPlans?.[aid] is momentarily missing, the same class of bug fixed
-  // for atc.js's ownership/handoffs/pointOuts — see
-  // feedback_webrtc_relay_sync_invariants memory). The dump's plans are
+  // for atc.js's ownership/handoffs/pointOuts). The dump's plans are
   // already complete records (real cid/bcn from the sender's own fps.plans,
   // not freshly generated), so this bypasses add()'s per-plan defaulting
   // entirely rather than needing a separate filter step.

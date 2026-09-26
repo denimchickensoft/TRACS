@@ -28,7 +28,6 @@ export {
 // NOT edited into createDeclarationStore.js's shared getEffectiveDeclaration
 // itself — ABM reads that same function for its own (unrelated) declaration-
 // color computation, and this default change is AIC-specific.
-// See resources/specs/transponder-correlation-spec.md.
 export function getAicEffectiveDeclaration(unitId, unit, myCoalitionNum) {
   const explicit = useAicStore.getState().declarations[String(unitId)]
   if (explicit !== undefined) return explicit

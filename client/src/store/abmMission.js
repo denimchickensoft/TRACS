@@ -3,9 +3,9 @@
 // the loaded mission and any in-store edits aren't lost, so it isn't a
 // re-import-every-session flow like CATCC's MissionImport), and also synced
 // live across same-machine windows (main window + undocked ATO/FRAG popups)
-// via BroadcastChannel — same pattern as store/statusBoard.js, minus the
-// WebRTC broadcast (flights are local to this controller's imported
-// mission, not shared with other controllers).
+// via BroadcastChannel — same pattern as store/statusBoard.js. Flights are
+// local to this controller's imported mission and aren't broadcast to other
+// controllers, except for the IFF/manual-flight changes described below.
 //
 // "flights" not "packages": each entry is one DCS Mission Editor Group (one
 // callsign, one route, one task) — a real-world "flight." DCS has no native
@@ -64,10 +64,9 @@ function MANUAL_FLIGHT_DEFAULTS(name, callsignPrefix, coalition) {
 
 const saved = loadSaved() ?? {}
 
-// New cross-controller sync (2026-09-14) — the rest of this store is
-// deliberately local-only (see header comment), but per-aircraft IFF
-// assignments (Mode 1/2/3, resources/specs/transponder-correlation-spec.md)
-// need to reach every ABM controller, not just this browser's other windows.
+// Cross-controller sync — the rest of this store is deliberately
+// local-only (see header comment), but per-aircraft IFF assignments
+// (Mode 1/2/3) need to reach every ABM controller, not just this browser's other windows.
 // Scoped narrowly: only IFF-field changes and manual-flight roster
 // creation/edits broadcast — mission import/routes/tasking stay exactly as
 // local as they are today.
@@ -222,7 +221,7 @@ export const useAbmMissionStore = create((set, get) => ({
   // directly. Tacview's unit.groupID is free text (the ACMI `Group`
   // property — see tacviewCore.js), which can never equal a real numeric
   // groupId, so for that case this falls back to per-unit correlation
-  // instead: NOT via unit.unitID (confirmed 2026-09-06 to have zero
+  // instead: NOT via unit.unitID (confirmed live to have zero
   // relationship to the mission file's unitId for statically-placed/AI
   // units — Tacview assigns its own object IDs from an internal enumeration
   // counter; see utils/callsign.js's buildLiveUnitLookup for the full
@@ -239,8 +238,8 @@ export const useAbmMissionStore = create((set, get) => ({
     return match?.groupId ?? null
   },
 
-  // Sets one unit's assigned Mode 1/2/3 IFF codes (transponder-correlation-
-  // spec.md's FRAG section). Imported flights store this directly on their
+  // Sets one unit's assigned Mode 1/2/3 IFF codes (edited from the FRAG
+  // window). Imported flights store this directly on their
   // real `units[]` roster (parseMission.js-derived, one entry per aircraft).
   // Manual flights DON'T — their `units[]` is a lightweight placeholder-count
   // array Ato.jsx's NUM/TYPE column reads (`{unitId, type, rawType}`, no

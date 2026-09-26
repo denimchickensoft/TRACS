@@ -5,8 +5,7 @@
 // From a civilian-ATC-correlation standpoint that's operationally identical
 // to standby: there's no code to show on a datablock or match against a
 // flight plan, regardless of what `status` says. mode1/mode2 (military
-// mission/unit codes) are never used for this — see
-// resources/specs/transponder-correlation-spec.md §4.
+// mission/unit codes) are never used for this.
 export function hasLiveSquawk(unit) {
   const t = unit?.transponder
   if (!t) return false

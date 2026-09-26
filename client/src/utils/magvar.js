@@ -357,14 +357,14 @@ export function computeMagvar(latDeg, lngDeg, dateOrYear = new Date()) {
 // It is NOT, however, something DCS's own instruments apply to the heading
 // values it exports or displays.
 //
-// Verified empirically (2026-07-27) against live DCS readouts across three
+// Verified empirically against live DCS readouts across
 // theatres (Caucasus, Persian Gulf) and multiple positions, including one
 // (Vaziani, Caucasus) with ~8° of real convergence: a unit's raw exported
 // heading/track always matches what DCS itself labels "True" heading, to
 // within normal display rounding — even where real convergence is large.
 // DCS's "Magnetic" is then just that same raw value minus a per-theatre
-// declination, no convergence step. Subtracting convergence on top (as this
-// codebase did until 2026-07-27) produces an error equal to the local
+// declination, no convergence step. Subtracting convergence on top produces
+// an error equal to the local
 // convergence angle: small on theatres close to their central meridian
 // (Persian Gulf), large and obvious far from it (Caucasus).
 //
@@ -416,7 +416,7 @@ export function getProjectionParams(theatre) {
 // Bumped every time setProjectionParams runs — lets projection.js's ring
 // cache invalidate itself the moment params actually become available,
 // instead of possibly holding onto a pre-params fallback-computed result
-// until some unrelated view change happens to come along (2026-08-11).
+// until some unrelated view change happens to come along.
 export function getProjectionParamsVersion() {
   return _projectionParamsVersion
 }

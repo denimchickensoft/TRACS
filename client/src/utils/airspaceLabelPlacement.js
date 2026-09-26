@@ -1,6 +1,5 @@
-// Shared airspace label geometry + collision-avoidance placement, extracted
-// from drawMaps.js/drawAbmAirspace.js (2026-08-08) so STARS and ABM's
-// airspace layers stop duplicating identical label logic.
+// Shared airspace label geometry + collision-avoidance placement, used by
+// both STARS' and ABM's airspace layers (drawMaps.js/drawAbmAirspace.js).
 //
 // Pure geometry — callers measure text themselves (ctx.measureText, since
 // STARS' font size depends on csMap and ABM's is fixed) and pass widths in;

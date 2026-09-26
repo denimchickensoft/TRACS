@@ -2,8 +2,8 @@
 // mission/options/warehouse files use: nested `{ ["key"] = value, name =
 // value, [n] = value, value, ... }` tables, string/number/boolean/nil
 // literals, `--` line comments and `--[[ ]]` block comments. No variables,
-// no function calls, no operators — see resources/specs/miz-drawings-spec.md
-// Part A for why this grammar (and not a general Lua VM) is sufficient.
+// no function calls, no operators — DCS writes these files as pure data
+// serializations, so this grammar (and not a general Lua VM) is sufficient.
 //
 // Every table — keyed or positional — becomes a plain JS object with
 // string keys (JS has no other kind). Positional entries (`{a, b, c}`,

@@ -10,9 +10,8 @@ export const NM_TO_FEET = 6076.115
 // deckLoaFt/deckBeamFt are the effective length/beam used to calibrate
 // aircraft positions onto it — see projectOntoDeck() below, which maps
 // forwardFt/rightFt = 0 to the image's plain geometric center. A per-carrier
-// origin correction was tried (2026-07-27 through 2026-08-02, several
-// rounds) and dropped 2026-08-02 as not worth the complexity — see git
-// history if revisiting.
+// origin correction was tried and dropped as not worth the complexity — see
+// git history if revisiting.
 //
 // nimitz.png's numbers are measured, not textbook LOA/beam: deckLoaFt/
 // deckBeamFt came out larger than published hull LOA/beam because the

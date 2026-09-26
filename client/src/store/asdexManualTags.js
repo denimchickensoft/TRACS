@@ -3,8 +3,7 @@ import { syncStore } from '../utils/storeSync.js'
 
 // ASDE-X-local manual tagging (CRC ASDE-X: "type the Target's aircraft ID,
 // then left-click the unknown Target"). Deliberately NOT merged into
-// store/association.js for v1 — see
-// resources/specs/transponder-correlation-spec.md §5. TRACS's version isn't
+// store/association.js. TRACS's version isn't
 // a guess like CRC's: the typed ID is checked against Olympus's real
 // ground-truth callsign before a tag is ever recorded here, so every entry
 // in this store is already known-correct.

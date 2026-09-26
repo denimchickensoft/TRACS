@@ -1,5 +1,5 @@
 // Maps parseMission.js's findAtoFlights() output onto flight-plan store
-// records. See resources/specs/pilot-flightplan-ingestion-spec.md §4.
+// records.
 
 import { preloadAirdromes, getAirdromeName } from './airdromes.js'
 import { matchFixName } from './fixMatch.js'
@@ -8,8 +8,8 @@ import { AID_MAX_LEN } from './callsign.js'
 
 const M_TO_FT = 3.28084
 
-// ALT is stored as hundreds of feet MSL (e.g. 35,000 ft -> "350"), per
-// resources/specs/flightplans-strips-spec.md's field convention.
+// ALT is stored as hundreds of feet MSL (e.g. 35,000 ft -> "350"), the
+// flight-plan store's field convention.
 function metersToAltField(m) {
   return String(Math.round(m * M_TO_FT / 100))
 }

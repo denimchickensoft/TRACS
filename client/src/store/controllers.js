@@ -38,8 +38,9 @@ function globalUsedLetters(registry) {
 // first (by clientList connectedAt, tie-broken by positionName so every peer
 // computing this over the same inputs reaches the same answer), re-mints the
 // loser(s) via the same nextAvailableLetter/globalUsedLetters machinery
-// registerController uses. See feedback_webrtc_relay_sync_invariants memory,
-// invariant #4 — this is the backstop for every registry merge, not just one
+// registerController uses. Merging independently-computed registries must
+// reconcile controllerId uniqueness, not just union keys — this is the
+// backstop for every registry merge, not just one
 // call site, so it's wired into setRegistry() itself.
 function dedupeByControllerId(registry, clientList) {
   const connectedAtByPos = Object.fromEntries(clientList.map((c) => [c.position, c.connectedAt ?? Infinity]))
@@ -163,8 +164,8 @@ export const useControllersStore = create((set, get) => ({
   // before we can know whether we're the session host (P2P/Nostr) or what
   // the relay's authoritative registry says (relay transport). Writes a
   // stub with no controllerId so nothing can self-mint against an
-  // incomplete view (see feedback_webrtc_relay_sync_invariants memory,
-  // invariant #2). finalizeController() below promotes this to a real,
+  // incomplete view (IDs come from exactly one authority, never minted
+  // locally before that authority is known). finalizeController() below promotes this to a real,
   // minted entry once the actual authority is known. canAssumeTrack/
   // displayName are still safe to resolve immediately, since they're derived
   // purely from local positionTypes.json, not from any authority.

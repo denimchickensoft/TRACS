@@ -20,8 +20,7 @@ export const useSessionStore = create((set) => ({
   // local PositionPhase state) specifically so PositionPhase's initWebrtc()
   // call can reach it for relay auth; ConnectPhase and PositionPhase are
   // separate components with no shared closure, same reason olympusUrl/
-  // coalition/relayUrl already flow through here instead of props. See
-  // resources/specs/data-sources/webrtc-centralized-sync-spec.md.
+  // coalition/relayUrl already flow through here instead of props.
   password: '',
   // The password actually used to authenticate to the relay (SRS/sync/relay-
   // primary auth) — usually equal to `password` (Olympus and Relay-mode
@@ -31,7 +30,6 @@ export const useSessionStore = create((set) => ({
   // not coalition-scoped, so it can't double as the relay's per-coalition
   // secret there. Set by ConnectPhase's handleConnect, read by PositionPhase's
   // initWebrtc() call — same no-shared-closure reason as `password` above.
-  // See resources/specs/data-sources/pluggable-source-architecture-spec.md §7.
   relayPassword: '',
   relayUrl: '',   // SRS relay — optional, empty means none configured/reachable
   syncCapable: false,   // relay's /sync reachable + authenticated (checked in Login's ConnectPhase)

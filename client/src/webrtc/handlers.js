@@ -174,8 +174,7 @@ function handleAic(type, payload) {
   }
 }
 
-// ABM keeps its own independent declaration state — NOT synced with AIC's
-// (deferred cross-module sharing decision, see abm-spec.md §1.2).
+// ABM keeps its own independent declaration state — NOT synced with AIC's.
 function handleAbm(type, payload) {
   switch (type) {
     case 'DECLARATION_SET':

@@ -3,8 +3,7 @@ import { DECLARATION, createDeclarationStore } from '../utils/createDeclarationS
 export { DECLARATION }
 
 // ABM's declarations/BRAA state was ported from AIC's store/aic.js as-is —
-// own room, NOT shared with AIC's declarations (deferred, see abm-spec.md
-// §1.2). ROE, however, IS shared between AIC and ABM — it lives in its own
+// own room, NOT shared with AIC's declarations. ROE, however, IS shared between AIC and ABM — it lives in its own
 // cross-module store/roe.js, not here.
 const {
   useStore: useAbmStore,
@@ -32,7 +31,6 @@ export {
 // shared store's usual auto-FRIENDLY default, until manually declared or
 // auto-declared via .autodec/.autodec iff. Deliberately NOT edited into
 // createDeclarationStore.js's shared getEffectiveDeclaration itself.
-// See resources/specs/transponder-correlation-spec.md.
 export function getAbmEffectiveDeclaration(unitId, unit, myCoalitionNum) {
   const explicit = useAbmStore.getState().declarations[String(unitId)]
   if (explicit !== undefined) return explicit

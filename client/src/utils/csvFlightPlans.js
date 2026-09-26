@@ -1,7 +1,6 @@
 // CSV bulk flight-plan import. Hand-rolled parser (consistent with
 // parseMission.js/luaTable.js -- no CSV dependency exists in the codebase
-// and none is needed for this controlled, simple format). See
-// resources/specs/pilot-flightplan-ingestion-spec.md §5.
+// and none is needed for this controlled, simple format).
 
 import { fixNameExists } from './fixMatch.js'
 import { AID_MAX_LEN } from './callsign.js'
@@ -40,7 +39,7 @@ function splitCsvLine(line) {
 // Each candidate carries `_rteWarnings` (route tokens not found in theatre
 // navdata) for the controller to review before committing -- the route
 // field itself is trusted as typed (no coordinate cross-check possible for
-// a human-authored CSV, unlike .miz/DTC -- see spec §5).
+// a human-authored CSV, unlike .miz/DTC).
 export function parseCsvFlightPlans(text) {
   const lines = text.split(/\r\n|\r|\n/).filter((l) => l.trim().length > 0)
   if (lines.length === 0) throw new Error('CSV file is empty.')

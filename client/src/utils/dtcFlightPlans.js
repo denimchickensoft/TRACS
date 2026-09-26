@@ -1,6 +1,6 @@
 // Parses DCS's in-game Data Transfer Cartridge (.dtc, JSON) files for
 // flight-plan import. Schema reverse-engineered from sample files (no public
-// spec exists) -- see resources/specs/pilot-flightplan-ingestion-spec.md §6.
+// spec exists).
 
 import { dcsPointToLatLng } from './dcsCoords.js'
 import { matchFixName } from './fixMatch.js'
@@ -10,8 +10,8 @@ import { AID_MAX_LEN } from './callsign.js'
 const M_TO_FT = 3.28084
 const ROUTE_SLOTS = ['R1', 'R2', 'R3']
 
-// ALT is stored as hundreds of feet MSL (e.g. 35,000 ft -> "350"), per
-// resources/specs/flightplans-strips-spec.md's field convention.
+// ALT is stored as hundreds of feet MSL (e.g. 35,000 ft -> "350"), the
+// flight-plan store's field convention.
 function metersToAltField(m) {
   return String(Math.round(m * M_TO_FT / 100))
 }
@@ -31,7 +31,7 @@ function getNavPts(data, family) {
 
 // F-16C carries a single `note` field per point; the F/A-18C carries two
 // (`note` and `text_note`) -- confirmed via sample data that `text_note`,
-// not `note`, is the Hornet's intended fix-name field (spec §6.2).
+// not `note`, is the Hornet's intended fix-name field.
 function fixNameField(family) {
   return family === 'fa18c' ? 'text_note' : 'note'
 }
@@ -40,7 +40,7 @@ function fixNameField(family) {
 // populated R1/R2/R3 route (points ordered by that slot's own `_order`
 // field) -- a DTC point can belong to up to three independently-ordered
 // stored routes at once, and the file carries no signal for which one the
-// pilot means, so the import UI must let the controller pick (spec §6.3).
+// pilot means, so the import UI must let the controller pick.
 export function dtcRouteSlots(dtcJson) {
   const family = detectFamily(dtcJson?.type)
   if (!family) throw new Error(`Unsupported DTC aircraft type: "${dtcJson?.type}"`)

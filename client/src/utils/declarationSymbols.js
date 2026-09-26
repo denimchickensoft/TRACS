@@ -1,8 +1,8 @@
 /**
  * Declaration-based contact color and shared canvas symbology used across
  * AIC and ABM (own declaration stores, same DECLARATION enum from
- * createDeclarationStore.js — see abm-spec.md §1.2 for why the enum is
- * shared but the declarations themselves are kept independent).
+ * createDeclarationStore.js — the enum is shared, but each module keeps its
+ * own independent declarations).
  */
 
 import { latLngToCanvas } from './projection.js'

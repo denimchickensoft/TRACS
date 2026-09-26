@@ -3,7 +3,7 @@
 // datablock behavior) survives a reload/relaunch. Deliberately separate
 // from store/display.js's windows state, which also carries per-session
 // pan/zoom/mission-specific values (centerLat/Lng, ringAnchor*, leaderDirs,
-// declarations, etc.) that must NOT persist — see 2026-07-08 discussion.
+// declarations, etc.) that must NOT persist across sessions.
 // Same plain-localStorage pattern as store/maps.js's saveVisible/loadSaved,
 // not zustand's persist middleware, since only a subset of two different
 // stores' fields need saving here.
@@ -14,13 +14,11 @@
 // point of each command) plus aspColorIdx (loaded once into
 // store/abmAirspace.js at mount, saved at the .aspcolors command site).
 // The ~24 navdata-layer/airspace-visibility/coord-readout/acq-eng toggles
-// briefly lived in their own reactive store, store/abmUiPrefs.js
-// (2026-08-22 - 2026-09-14), but that store was windowId-less — a single
-// value shared by every open ABM window/`.focus` panel, so toggling e.g.
-// `.coords` in one window silently toggled it everywhere. Merged back here
-// 2026-09-14 as per-window seed defaults instead (same role dbVisible/
-// historyVisible already played) — see actions/index.js's GEO_TOGGLE
-// comment for the live-value side of this fix.
+// are per-window seed defaults here (same role dbVisible/historyVisible
+// play), not a shared reactive store: a single windowId-less value would
+// make toggling e.g. `.coords` in one ABM window/`.focus` panel toggle it
+// everywhere. See actions/index.js's GEO_TOGGLE comment for the live-value
+// side.
 
 import { makePrefsStore } from '../utils/prefsStore.js'
 
@@ -50,15 +48,10 @@ const DEFAULTS = {
   missileAlertEnabled: true, // .malert — enemy missile-launch sound+blink alert, on by default
   alertVol:       10,    // .vol (0-10, 0=mute) — master volume for ABM alert tones (missile-launch today, shared by any future alert channel)
 
-  // ── Per-window UI toggles, merged in from store/abmUiPrefs.js (removed
-  // 2026-09-14 — see resources/specs/refactor-spec.md §10 follow-up: every
-  // ABM display toggle previously lived in a single windowId-less shared
-  // store, so a `.focus` window's `.coords`/etc. leaked into every other
-  // open ABM window. These are now seeded per-window at open time (like
-  // dbVisible/historyVisible above) instead of read live from a shared
-  // store; this DEFAULTS entry only supplies the seed value. Same on-disk
-  // keys as the old store (shared 'tracs-abm-prefs' localStorage key), so
-  // existing users' saved preferences carry over unchanged.
+  // ── Per-window UI toggles — seeded per-window at open time (like
+  // dbVisible/historyVisible above) rather than read live from a shared
+  // store, so a `.focus` window's `.coords`/etc. can't leak into every other
+  // open ABM window; this DEFAULTS entry only supplies the seed value.
   // Named timeVisible (not clockVisible) to match the on-disk key
   // store/abmUiPrefs.js's old JSON_KEY mapping already used — makePrefsStore
   // has no key-remapping mechanism, so keeping the field name identical to
@@ -88,7 +81,7 @@ const DEFAULTS = {
   engHidden:          [],
   autoThreat:         false,
 
-  // ── Per-window navdata-layer visibility (2026-09-14) — geo/relief/
+  // ── Per-window navdata-layer visibility — geo/relief/
   // holdings/mora/airways stores are shared with STARS/CATCC/AIC (data
   // fetch + cache), but their single `visible` flag is not — those modules
   // have no window multiplicity, so they keep reading the shared store's

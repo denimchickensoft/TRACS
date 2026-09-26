@@ -9,8 +9,7 @@ import { syncStore } from '../utils/storeSync.js'
 // squawking but hasn't matched a Status Board entry's assigned BCN yet — the
 // STARS-LDB-style "reduced info instead of full anonymity" case. Written by
 // the same StatusBoard.jsx sync effect that writes `correlations`, read only
-// by CatccScope's datablock renderer. See
-// resources/specs/transponder-correlation-spec.md.
+// by CatccScope's datablock renderer.
 export const useCorrelationStore = create((set) => ({
   correlations: {},
   pendingCodes: {},

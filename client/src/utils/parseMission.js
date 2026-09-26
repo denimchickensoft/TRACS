@@ -180,13 +180,12 @@ export function extractWeather(mission) {
 // ── Aircraft extraction ───────────────────────────────────────────────────────
 
 // Aircraft whose own cockpit numbers waypoints starting at 0, one behind the
-// mission editor's route order — confirmed in-sim (2026-08-02): ME waypoint 1
+// mission editor's route order — confirmed in-sim: ME waypoint 1
 // (the launch point) shows as WP0 in the jet, ME waypoint 2 as WP1, etc. Not
 // the same as the Hornet's separate "WP0 = spawn position" DTC concept (that
-// one is additive and doesn't shift ME numbering — see
-// project_frag_waypoint_naming memory). Other aircraft keep the natural
-// 1-based ME numbering (WP1 = route.points[0]) until verified otherwise —
-// don't add to this set without an in-sim check, per that same memory.
+// one is additive and doesn't shift ME numbering). Other aircraft keep the
+// natural 1-based ME numbering (WP1 = route.points[0]) until verified
+// otherwise — don't add to this set without an in-sim check.
 export const ZERO_INDEXED_WAYPOINT_TYPES = new Set([
   'FA-18C_hornet',
 ])

@@ -18,7 +18,7 @@
 //   - unit.heading / carrier.heading are DCS's raw engine-frame heading, and
 //     match what DCS itself displays as "True" heading almost exactly, even
 //     at positions with several degrees of real grid convergence (verified
-//     2026-07-27 against live DCS readouts on Caucasus and Persian Gulf).
+//     against live DCS readouts on Caucasus and Persian Gulf).
 //     DCS's own instruments don't correct engine heading for grid
 //     convergence, so treat it as the same "true" frame as everything above.
 //

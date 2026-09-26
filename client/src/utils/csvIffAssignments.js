@@ -1,5 +1,4 @@
-// CSV bulk IFF-code assignment for ABM's FRAG (resources/specs/
-// transponder-correlation-spec.md). Hand-rolled parser matching
+// CSV bulk IFF-code assignment for ABM's FRAG. Hand-rolled parser matching
 // csvFlightPlans.js's style/level of robustness — a different feature/
 // module (this one feeds useAbmMissionStore().applyIffCsv, not
 // store/flightPlans.js), not shared code.

@@ -4,7 +4,7 @@
 // airspace features already use (see store/abmAirspace.js), except bbox is
 // computed here client-side since there's no build step for user files.
 //
-// Permissive by design (2026-08-03 discussion): whatever geometry types or
+// Permissive by design: whatever geometry types or
 // extra properties a file contains are kept as-is and handed to the draw
 // layer, which decides what it knows how to render. The only failure mode
 // is a file with no usable geometry at all — that throws, and the caller
