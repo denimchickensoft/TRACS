@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const backendPort = process.env.BACKEND_PORT ?? 3000
+const backendPort = process.env.BACKEND_PORT ?? 8722
 
 export default defineConfig({
   plugins: [react()],

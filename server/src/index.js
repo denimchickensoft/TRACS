@@ -21,7 +21,7 @@ const { createSignalRelay }  = require('./signalRelay')
 
 elevation.init()
 
-const PORT = process.env.PORT ?? 3000
+const PORT = process.env.PORT ?? 8722
 const SERVER_INSTANCE_ID = Date.now().toString(36) + Math.random().toString(36).slice(2)
 const CLIENT_DIST  = path.join(__dirname, '../../client/dist')
 

@@ -38,7 +38,7 @@ The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will wa
 - On Windows and Linux it asks before downloading an update, then offers to restart and install it.
 - On macOS it shows a notice with a link to the release page, and you install the new `.dmg` yourself.
 
-**Local server and port:** the app runs its own local server in-process, on port 3000 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If that port becomes unavailable, TRACS picks another and tells you that saved preferences won't carry over for that session.
+**Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If that port becomes unavailable, TRACS picks another and tells you that saved preferences won't carry over for that session.
 
 **Menu:**
 - **File → New Window** opens another TRACS window.
@@ -136,14 +136,14 @@ Requirements: Node.js 20+ and Git.
 
 ```bash
 npm install          # once, and after pulling dependency changes
-npm run dev          # local server on :3000 + Vite dev server on :5173 (proxies /api and /ws)
+npm run dev          # local server on :8722 + Vite dev server on :5173 (proxies /api and /ws)
 ```
 
 Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). Firefox and Safari are not supported.
 
 | Command | What it does |
 |---|---|
-| `npm run build` then `npm start` | Build the client and serve it from the local server on `http://localhost:3000` |
+| `npm run build` then `npm start` | Build the client and serve it from the local server on `http://localhost:8722` |
 | `npm run electron:dev` | Build the client and run it inside Electron, as the desktop app does |
 | `npm run dist:electron` | Build an installer for the current platform into `dist-electron/` (stages bundled navdata first) |
 | `npm run lint` | ESLint, plus a check that `relay/tacviewCore.js` matches its generated source |

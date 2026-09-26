@@ -29,8 +29,8 @@ log.initialize()
 Object.assign(console, log.functions)
 console.log(`[electron] logging to ${log.transports.file.getFile().path}`)
 
-const DEFAULT_PORT   = 3000
-const PORT_RANGE      = 20   // how many ports to try past the default/saved one before giving up
+const DEFAULT_PORT   = 8722
+const PORT_RANGE      = 10   // how many ports to try past the default/saved one before giving up
 const PORT_FILE       = () => path.join(app.getPath('userData'), 'port.json')
 let   currentPort     = null
 
