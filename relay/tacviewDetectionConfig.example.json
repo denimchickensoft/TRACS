@@ -6,6 +6,6 @@
   "losSampleCount": 8,
   "azimuthConeHalfAngleDeg": 60,
   "elevationConeHalfAngleDeg": 45,
-  "rwr": { "enabled": true, "rangeMultiplier": 1.75, "zeroDetectionEmitterFallbackNm": 0 },
+  "rwr": { "enabled": true, "rangeMultiplier": 1, "zeroDetectionEmitterFallbackNm": 0 },
   "aircraftSensorScaling": { "referenceRcsM2": 100, "rangeScalingExponent": 0.25 }
 }
