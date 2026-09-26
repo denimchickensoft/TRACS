@@ -69,6 +69,20 @@ Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
 
 ---
 
+## Known limitations
+
+- **Peer-to-peer sync depends on public Nostr relays.**
+  - Without a TRACS Relay, controllers find each other through public Nostr relays; TRACS uses five at once.
+  - Some of them reject TRACS's messages, and each rejection is logged to the developer console as a relay failure (for example `pow: insufficient leading-zero bits` or `blocked: kind not accepted here`). Others are sometimes unreachable. These errors are harmless while at least one relay works.
+  - If none connects within about 8 seconds, TRACS falls back to its own local server. That only connects windows on the same machine, so controllers on different machines won't see each other.
+  - **If sync is unreliable, run a [TRACS Relay](#running-a-tracs-relay-server-operators).** With a relay configured, TRACS doesn't use Nostr at all.
+- **No TURN server.** Peer-to-peer connections can fail between two strict-NAT networks (for example, two cellular hotspots) and between machines behind the same router. A TRACS Relay avoids this.
+- **Privacy of peer-to-peer signaling.** Without a TRACS Relay, connection setup messages pass through public Nostr relays, and Google's STUN servers see your public IP address. The connection details are encrypted only when you set a session password, so set one if that matters to you.
+- **Unsigned builds.** Windows SmartScreen and macOS Gatekeeper warn on first launch. On macOS, updates are installed by hand from the Releases page.
+- **Navigation data needs your own LittleNavMap Navigraph database.** Without it, fixes, navaids, airways and procedures aren't available.
+- **Not every STARS command is implemented.** See [ATC known limitations](docs/atc.md#known-limitations) for the list.
+- **Tacview detection is simulated.** In Tacview mode, radar and RWR fog-of-war is TRACS's own approximation, not DCS's detection data.
+
 ## Data sources
 
 - **Olympus** — requires the Olympus mod and its server application on the DCS server. TRACS polls its REST API with your coalition's Olympus password.
@@ -215,7 +229,7 @@ No code-signing certificate is used for any platform.
 - Each controller runs their own local server; in the desktop app it runs inside the app. The only component installed on the DCS server side is the optional TRACS Relay. Each controller's local server listens only on this machine (127.0.0.1), so other machines can't reach it. Setting the `TRACS_HOST` environment variable (e.g. `0.0.0.0`) opts in to LAN access; the server has no authentication, so only do that on a trusted network.
 - Controller-to-controller sync uses the relay when one is reachable. Otherwise it uses peer-to-peer WebRTC.
   - Peer discovery uses the public Nostr relay network.
-  - If no Nostr relay connects within ~8 s, it uses a self-hosted ws-relay instead.
+  - If no Nostr relay connects within ~8 s, it falls back to the controller's own local server, which only connects windows on the same machine (see [Known limitations](#known-limitations)).
 - Sync rooms are coalition-scoped. A relay-hosted room is keyed on coalition, since each relay serves one mission. A peer-to-peer room is derived from the server address, the coalition, and the optional session password.
 
 ---
