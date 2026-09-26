@@ -3,7 +3,7 @@ import { latLngToCanvas } from '../../utils/projection.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 
-// .autodec (2026-07-08) — same TRUE-declaration rule as AIC's
+// .autodec — same TRUE-declaration rule as AIC's
 // (client/src/modules/aic/AicScope.jsx trueDeclaration): own coalition is
 // FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL, anything else is HOSTILE.
 export function trueDeclaration(unit, myCoalitionNum) {
@@ -53,7 +53,7 @@ export function getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
   return result
 }
 
-// Same fog-of-war rule as air (§7.2) — friendly ground/naval always shown,
+// Same fog-of-war rule as air — friendly ground/naval always shown,
 // enemy only if in a friendly's contacts[] — but no AGL floor (ground units
 // sit at/near 0 AGL by definition, so that filter doesn't apply here).
 // Unlike air (RADAR/DLINK only), ground/naval detection counts any method —
@@ -110,9 +110,9 @@ export function getAbmVisibleMissiles(weapons, units, myCoalitionNum) {
 }
 
 // Bogey dope helper — ported from AIC's AicScope.jsx findNearestBogey as-is.
-// Air contacts only, BOGEY/HOSTILE only (excludes FRIENDLY/NEUTRAL and,
-// per 2026-07-07 direction, ground/naval contacts — "bogey" means air).
-// Declaration-only multi-select (2026-07-08) — local to ABM, not shared
+// Air contacts only, BOGEY/HOSTILE only (excludes FRIENDLY/NEUTRAL and
+// ground/naval contacts — "bogey" means air).
+// Declaration-only multi-select — local to ABM, not shared
 // with resolveSlew (used everywhere else: BRAA, threat rings, bogey dope,
 // leader-dir override) which always picks the single nearest hit. Dense
 // ground/naval clusters can bury a unit behind closer neighbors so that
@@ -145,7 +145,7 @@ export function formatNmRange(meters, suffix) {
 // Empty string/null/0 fields are dropped per spec — a 0 acq/eng range means
 // "no ring drawn" (see drawAbmGroundContacts.js), not "range is zero". No
 // labels on the lines themselves — the acq/eng lines carry their own
-// "acquisition"/"engagement" suffix instead (2026-07-09 direction).
+// "acquisition"/"engagement" suffix instead.
 export function buildReadoutFields(dbEntry) {
   if (!dbEntry) return []
   const fields = [
@@ -160,7 +160,7 @@ export function buildReadoutFields(dbEntry) {
 
 // Friendly air-unit readout — built for a unit the caller has already
 // determined is "friendly" for datablock/readout purposes (declaration or
-// correlation-driven since 2026-09-14, see drawAbmContacts.js/AbmScope.jsx's
+// correlation-driven, see drawAbmContacts.js/AbmScope.jsx's
 // getAbmEffectiveDeclaration + correlationEngine.js — no gating logic lives
 // in this function itself, it just formats the field list).
 // One line per ammo entry, no cap — a loaded-out jet just gets a long list.

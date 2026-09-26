@@ -1,11 +1,11 @@
 /**
- * ABM air-contact rendering — a distinct symbology from both AIC and ATC,
- * per 2026-07-05 direction: same declaration colors as AIC, but every
+ * ABM air-contact rendering — a distinct symbology from both AIC and ATC:
+ * same declaration colors as AIC, but every
  * contact is a plain square (no HAFU dome/staple/triangle shapes), with
  * STARS/ASDE-X-style persistent datablocks + leader lines + history trails,
  * all colored to match the contact's declaration (not white/gray like
  * STARS/ASDE-X use). Declarations are ABM's own (store/abm.js) — kept
- * independent from AIC's, not shared (deferred, see abm-spec.md §1.2).
+ * independent from AIC's, not shared.
  */
 
 import { latLngToCanvas } from '../../../utils/projection.js'
@@ -31,7 +31,7 @@ export function typeAbbrev(unit) {
   return (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
 }
 
-// ── Formation datablock suppression (§3, 2026-07-08) ────────────────────────
+// ── Formation datablock suppression ─────────────────────────────────────────
 // "FORD 1-1" / "FORD1-1" / "FORD-1-1" / "ford_1_1" all name the same
 // callsign+flight — strip every separator and read the trailing digit run
 // as flightNumber+elementNumber (last digit = element, e.g. "FORD" + "21"
@@ -60,8 +60,7 @@ export function parseFlightElement(unit) {
 // Mode 1 is a real 2-digit octal code, unlike Mode 2/3's 4-digit "M3 3333" —
 // "M4 ON"), 2 seconds per mode, skipping unset modes. Empty when there's nothing to show
 // (not srsCapable, or srsCapable with no live code/mode4 at all) — that case
-// stays the plain 1-line non-friendly datablock, unchanged. See
-// resources/specs/transponder-correlation-spec.md.
+// stays the plain 1-line non-friendly datablock, unchanged.
 function buildIffFrames(unit) {
   const t = unit?.transponder
   if (!unit?.srsCapable || !t) return []
@@ -97,7 +96,7 @@ function withinFormationBox(lead, other) {
 // and claims (suppresses) any still-unclaimed higher-numbered member within
 // its box. A flight that splits into two clusters (1-1/1-2 together,
 // 1-3/1-4 elsewhere) ends up with two leads (1-1 and 1-3), not one
-// (2026-07-08 direction — explicitly non-transitive, box is always
+// (explicitly non-transitive, box is always
 // evaluated against the current cluster's lead, never chained).
 // Exported so AbmScope's click handler can resolve the same
 // follower -> lead mapping used here, letting a click on the lead (the only
@@ -253,10 +252,10 @@ export function drawAbmContacts(
     // uncorrelated, transponder-equipped contact cycles its live Mode 1/2/3/4
     // through line 1 instead of a callsign (buildIffFrames, above) — reduced
     // info rather than full anonymity, same STARS-LDB-style philosophy used
-    // elsewhere in resources/specs/transponder-correlation-spec.md.
+    // elsewhere in transponder correlation.
     //
-    // Identity reveal vs. declaration, deliberately decoupled (2026-09-14,
-    // corrected after a live report): declaration/color always stays exactly
+    // Identity reveal vs. declaration, deliberately decoupled:
+    // declaration/color always stays exactly
     // what's in `decl` — that part is sticky by design and untouched here.
     // But for an `srsCapable` contact, callsign/type reveal is driven by
     // CURRENT correlation alone, not by `decl`. A sticky FRIENDLY declaration

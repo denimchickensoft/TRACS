@@ -27,8 +27,7 @@ function unitState(liveUnit, isCarrierBase, carrierUnit) {
 }
 
 // Mode 1/2/3 IFF assignment fields — one per roster row (imported or
-// manual), see resources/specs/transponder-correlation-spec.md's FRAG
-// section. `onSetIff` commits directly to the store on each field's blur;
+// manual). `onSetIff` commits directly to the store on each field's blur;
 // for a manual flight it also has to ensure the roster row exists first
 // (Ctrl+Shift+Click's ensureManualRosterEntry already does this for
 // click-created rows, but a row typed straight into FRAG hasn't necessarily
@@ -172,10 +171,9 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
 
   // Mission-file unit -> live track. See utils/callsign.js's
   // buildLiveUnitLookup for the two-tier strategy (numeric unitId for
-  // Olympus, normalized-callsign text for Tacview — confirmed 2026-09-06
-  // that Tacview's unitID has no relationship to the mission file's unitId
-  // for AI-placed units, so the numeric-only version of this lookup this
-  // used to be silently failed for every Tacview session). Lets the roster
+  // Olympus, normalized-callsign text for Tacview — Tacview's unitID has no
+  // relationship to the mission file's unitId for AI-placed units, so a
+  // numeric-only lookup silently fails for every Tacview session). Lets the roster
   // show how TRACS is actually resolving each aircraft's callsign right
   // next to what the mission designer named it.
   const findLiveUnit = useMemo(() => buildLiveUnitLookup(liveUnits), [liveUnits])

@@ -25,7 +25,7 @@
 // for Tacview-sourced units — no new SRS-correlation code needed anywhere.
 const UNIT_ID_OFFSET = 0xFFFFFF
 
-// Confirmed absolute-ish coalition value (§2/§3 correction: map from Color,
+// Confirmed absolute-ish coalition value (map from Color,
 // not the viewer-relative Coalition property). Anything not Blue/Red is
 // treated as neutral (0) — the official Color enum doesn't even list `Grey`,
 // which DCS uses for neutral in practice, so unknown values must not error.
@@ -78,7 +78,7 @@ function classify(typeTag) {
   const tags = typeTag.split('+')
   if (tags.includes('Bullseye')) return 'bullseye'
   // Static scenery (Building/Aerodrome/etc.) — confirmed present but not
-  // consumed by any current TRACS feature from either source (§6.2).
+  // consumed by any current TRACS feature from either source.
   if (tags.includes('Static')) return null
   if (tags.includes('Air')) return tags.includes('Rotorcraft') ? 'Helicopter' : 'Aircraft'
   if (tags.includes('Ground')) return 'GroundUnit'
@@ -441,7 +441,7 @@ function hashPassword(password) {
   return crc32(Buffer.from(password || '0', 'utf16le')).toString(16).padStart(8, '0')
 }
 
-// Client handshake per §1 — three lines + password-hash line + null
+// Client handshake — three lines + password-hash line + null
 // terminator.
 function buildClientHandshake(clientName, password = '') {
   return `XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n${clientName}\n${hashPassword(password)}\0`

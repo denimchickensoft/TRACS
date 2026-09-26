@@ -45,7 +45,7 @@ export function computeAssociations({ units, flightPlans, ownership = {}, previo
   const plans = Object.values(flightPlans ?? {})
 
   // Retain existing associations — but stickiness (teardown only on flight-
-  // plan removal or the unit dying, §3.4) only applies while the track is
+  // plan removal or the unit dying) only applies while the track is
   // owned. Sticky exists to protect an actively-controlled track from
   // flickering on a live code drift (that's what the Line 3 mismatch
   // indicator is for instead — see DatablockOverlay); an unowned track has

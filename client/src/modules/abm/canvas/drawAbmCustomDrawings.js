@@ -6,7 +6,7 @@
  * MultiLineString/Polygon/MultiPolygon) with per-feature simplestyle-ish
  * styling (`stroke-opacity`/`stroke-width`/`fill`/`fill-opacity`/
  * `marker-color`/`dash` properties, see utils/parseGeojson.js). Stroke COLOR
- * is layer-level, not per-feature (2026-08-03 revision — an imported file's
+ * is layer-level, not per-feature (an imported file's
  * own per-feature `stroke` is only ever read once, at import time, to seed
  * the layer's color/override — see store/abmDrawings.js's addLayer): when
  * the layer's `colorOverride` is true, every feature paints with the
@@ -20,8 +20,7 @@
  * `fillPct` (0-100, from the same `.fill` command that drives
  * drawAbmAirspace.js's polygon fill) gates every polygon fill pass here too
  * — explicit GeoJSON `fill` included, so importing a styled file no longer
- * shows fill until `.fill` is turned on (revises the original "fill is never
- * defaulted" 2026-08-03 call below the .fill command existed). Fill color
+ * shows fill until `.fill` is turned on. Fill color
  * priority mirrors stroke's: a feature's own `fill` wins, then — only when
  * `colorOverride` is true — the layer's color is reused verbatim as the
  * fill. That override tier deliberately does NOT fall back

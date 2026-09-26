@@ -83,7 +83,7 @@ const READOUT_RADIUS_PX = 10    // cursor-proximity radius for the unit readout 
 const READOUT_CYCLE_MS  = 3000  // per-object fade in/out phase when >1 unit is under the cursor
 // Must match SEA_COLOR in server/scripts/buildAbmBasemap.js — the .base
 // (basemap) raster's own opaque background fill; .terrain's own raster is
-// transparent beyond its relief data (2026-08-11) and has no fill of its
+// transparent beyond its relief data and has no fill of its
 // own, so the letterbox backdrop is keyed off basemap OR terrain being on,
 // whichever is visible, so the scope's own background reads as a
 // continuation of whichever raster is showing instead of a mismatched or
@@ -97,25 +97,17 @@ const F_KEY_DECL = {
   F4: DECLARATION.FRIENDLY,
 }
 
-// .acq/.eng declaration letters, ALL_DECLARATIONS, and the per-category
-// airspace tables used to live here — moved to actions/index.js 2026-08-22
-// (resources/specs/refactor-spec.md §10 phase 4), execCommand was their only
-// call site in this file.
-
-// Phase 2 — real canvas + rAF PPI: pan (right-click drag), zoom (scroll),
-// range rings (toggle + anchor via .rr command), bullseye marker, command
-// preview area. Phase 3 adds the §4 navdata layers (geo/relief/holdings/
-// mora/airways/airspace reused directly from STARS's stores+draw functions;
-// fixes/navaids/runways/airports_polygons reused/ported; airports still
-// blocked). Phase 4 adds air contacts with ABM's own symbology (§3, revised
-// 2026-07-05): declaration colors match AIC, but plain-square symbols,
-// persistent leader-lined datablocks, and history trails — a distinct system
-// from both AIC's HAFU shapes and ATC's STARS symbology. Declarations are
-// ABM's own (store/abm.js), independent from AIC's (deferred cross-module
-// sharing decision — see abm-spec.md §1.2). No STARS/CATCC-style track
-// ownership/initiation — declare-and-display only. Magnetic-north-up
-// projection (real WMM declination) and a compass rose (CATCC's smaller
-// fontScale, not STARS's) added 2026-07-05.
+// ABM scope: canvas PPI with pan (right-click drag), zoom (scroll), range
+// rings (toggle + anchor via .rr), bullseye marker and command preview area.
+// Navdata layers (geo/relief/holdings/mora/airways/airspace) reuse STARS's
+// stores+draw functions; fixes/navaids/runways/airports_polygons are
+// reused/ported. Air contacts use ABM's own symbology: declaration colors
+// match AIC, but plain-square symbols, persistent leader-lined datablocks,
+// and history trails — distinct from both AIC's HAFU shapes and ATC's STARS
+// symbology. Declarations are ABM's own (store/abm.js), independent from
+// AIC's. No STARS/CATCC-style track ownership/initiation — declare-and-
+// display only. Magnetic-north-up projection (real WMM declination) and a
+// compass rose (CATCC's smaller fontScale, not STARS's).
 // FRAG route leg labels use the flight's group callsign (e.g. "COLT1" for
 // "COLT11"), the same flight/element split Ato.jsx's CALLSIGN column and
 // formation-datablock suppression already use — see parseFlightElement's
@@ -167,7 +159,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const windowSettings = useDisplayStore(s => s.windows[windowId])
   const clockVisible    = windowSettings?.timeVisible ?? true
 
-  // ── Air picture (§3 / Phase 4) — ABM's own declarations, own symbology ──────
+  // ── Air picture — ABM's own declarations, own symbology ────────────────────
   const units        = useUnitsStore(s => s.units)
   const roe = useRoeStore(s => s.roe)
   const roeVisible = windowSettings?.roeVisible ?? true
@@ -220,8 +212,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const blinkIds     = useAbmMissionStore(s => s.blinkIds)
   const blinkIdSet   = useMemo(() => new Set(blinkIds ?? []), [blinkIds])
 
-  // BRAA line / bogey dope — ported from AIC, same keypresses/commands
-  // (§11-adjacent — not in the original spec draft, added 2026-07-07).
+  // BRAA line / bogey dope — ported from AIC, same keypresses/commands.
   const braaList          = useAbmStore(s => s.braaList)
   const pendingBraaFighter = useAbmStore(s => s.pendingBraaFighter)
   const {
@@ -233,8 +224,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // equivalents (threatRings/bullseyeOverride/findMarker/defineEntry are
   // literally the same shared per-window fields, reused under ABM's own
   // window key — see store/display.js's "ABM-only session state" comment) —
-  // reachable from actions/index.js-style standalone command handlers, see
-  // resources/specs/refactor-spec.md §10.
+  // reachable from actions/index.js-style standalone command handlers.
   const threatRings = windowSettings?.threatRings ?? EMPTY_ARRAY
   const threatRingSet = useMemo(() => new Set(threatRings), [threatRings])
   const toggleThreatRing = useCallback((unitId) => {
@@ -244,7 +234,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   }, [windowId])
   const threatRadius = windowSettings?.threatRadius ?? 35
 
-  // .db + click (2026-07-29) — per-contact datablock override, same
+  // .db + click — per-contact datablock override, same
   // session-local Set-toggle pattern as threatRings above (not persisted —
   // bare `.db` in execCommand toggles the global dbVisible window setting
   // instead, that one *is* persisted via abmPrefs). Checked in addition to
@@ -264,7 +254,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const toggleHighlight = (unitId) =>
     setHighlightedIds(s => { const n = new Set(s); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
 
-  // .autothreat (2026-07-10) — local UI toggle (not shared with other
+  // .autothreat — local UI toggle (not shared with other
   // controllers), persisted via abmPrefs like the rest of ABM's local display
   // settings. While on, rings light automatically on every friendly aircraft
   // within threatRadius of a HOSTILE/BOGEY aircraft; auto-lit rings are
@@ -274,10 +264,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const autoThreat    = windowSettings?.autoThreat ?? false
   const [autoThreatRingIds, setAutoThreatRingIds] = useState(new Set())
 
-  // Ground/naval acq/eng range-ring visibility (§7) — per-declaration
+  // Ground/naval acq/eng range-ring visibility — per-declaration
   // hide sets (.acq/.eng commands). Empty set = everything shown; bare
   // `.acq`/`.eng` toggles all four declarations at once, `.acq h` etc. toggles
-  // just that declaration (2026-07-07).
+  // just that declaration.
   const acqHidden    = windowSettings?.acqHidden ?? EMPTY_SET
   const engHidden    = windowSettings?.engHidden ?? EMPTY_SET
 
@@ -335,8 +325,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const activeAlertMissilesRef = useRef(activeAlertMissiles)
   useEffect(() => { activeAlertMissilesRef.current = activeAlertMissiles }, [activeAlertMissiles])
 
-  // Transponder correlation (§D of resources/specs/transponder-correlation-spec.md)
-  // — continuous, unconditional reveal gate: binds an srsCapable unit to a
+  // Transponder correlation — continuous, unconditional reveal gate: binds an srsCapable unit to a
   // FRAG-assigned aircraft via correlationEngine.js's double gate. Not
   // toggle-gated (same as CATCC's BCN match / AIC's VALID REPLY) — only
   // *declaring* a correlated contact FRIENDLY needs .autodec/.autodec iff or
@@ -365,19 +354,19 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     setAutoThreatRingIds(breached)
   }, [visibleUnits, autoThreat, getDecl, threatRadius])
 
-  // ── Ground/naval picture (§7 / Phase 5) — same declaration store/symbology
+  // ── Ground/naval picture — same declaration store/symbology
   // rules as air (declaration works the same way), distinct rendering
   // (drawAbmGroundContacts.js): solid circles, half the air symbol's size,
   // no datablock/leader/PTL. Range rings sourced from the static unit
   // databases (client/public/units/{ground,navy}unitdatabase.json), keyed by
   // the Olympus unit.name type identifier. No moving/stationary distinction
-  // in v1 (2026-07-07 direction) — every ground/naval unit renders the same.
+  // — every ground/naval unit renders the same way.
   const visibleGroundUnits = useMemo(
     () => getAbmVisibleGroundUnits(units, myCoalitionNum),
     [units, myCoalitionNum]
   )
 
-  // Middle-click "pin" (2026-07-29) — a highlighted ground/naval unit stays
+  // Middle-click "pin" — a highlighted ground/naval unit stays
   // drawn at its last known position even after it drops out of the
   // fog-of-war visible set (e.g. the contact that was detecting it goes
   // stale) — ground/naval otherwise has no fade/coast mechanism (unlike
@@ -424,8 +413,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const allVisibleUnitsRef = useRef(allVisibleUnits)
   useEffect(() => { allVisibleUnitsRef.current = allVisibleUnits }, [allVisibleUnits])
 
-  // .autodec / .autodec iff (2026-07-08, reworked for SRS/correlation gating)
-  // — same pattern as AIC's (AicScope.jsx): while a mode is active, any
+  // .autodec / .autodec iff — same pattern as AIC's (AicScope.jsx): while a mode is active, any
   // air/ground/naval unit that becomes visible with no explicit declaration
   // yet gets auto-declared. 'coalition' mode declares to TRUE declaration
   // unconditionally; 'iff' mode only ever declares FRIENDLY, and only when an
@@ -580,10 +568,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // on-off period StarsScope.jsx uses for handoff/point-out blink.
   const { blinkTick, blinkOn } = useBlink()
 
-  // ── Navdata layers (§4) — reused directly from STARS's stores/draw functions ─
+  // ── Navdata layers — reused directly from STARS's stores/draw functions ─────
   const geoBoundaries   = useGeoStore(s => s.boundaries)
   const geoCoastlines   = useGeoStore(s => s.coastlines)
-  // Per-window (2026-09-14) — see actions/index.js's GEO_TOGGLE comment for
+  // Per-window — see actions/index.js's GEO_TOGGLE comment for
   // why the store's own `visible` field is left untouched (shared with
   // STARS/CATCC/AIC) while ABM's copy of the flag lives here instead.
   const geoVisible      = windowSettings?.geoVisible ?? true
@@ -615,7 +603,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // fixesVisible (see .fix handler below and drawAbmFixSymbols call).
   const pinnedFixes    = windowSettings?.pinnedFixes ?? EMPTY_OBJECT
   // Same useRunwaysStore.loadForTheatre(theatre) call as below (no facility
-  // args) already yields theatre-wide unfiltered centerlines — see §4.3.
+  // args) already yields theatre-wide unfiltered centerlines.
   const runwayCenterlines = useRunwaysStore(s => s.centerlines)
   const runwaysVisible    = windowSettings?.runwaysVisible ?? false
   // Local fetch mirroring ASDE-X's pattern — no shared store exists for this,
@@ -634,14 +622,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // Baked raster layers (.map/.terrain/.water/.roads/.base) — see server's
   // buildAbmBasemap.js + drawAbmRaster.js. Draw order (furthest-back first):
   // basemap (land/sea silhouette, wide/coarse), terrain (relief wash only,
-  // tight/detailed — no longer bakes coastline/boundary strokes as of
-  // 2026-08-11, see .geo below), water, roads, then the live vector
-  // relief/geo/etc layers. Each carries the loaded <img> alongside
-  // the placement metadata (origin/scale) fetched alongside it. basemap and
-  // terrain were named "landfill"/"basemap" respectively until 2026-08-11 —
-  // renamed once basemap (the former landfill) graduated from a theatre-by-
-  // theatre preview to the layer actually responsible for land/sea color
-  // everywhere, and terrain (the former basemap) stopped being that source.
+  // tight/detailed — no baked coastline/boundary strokes, see .geo below),
+  // water, roads, then the live vector relief/geo/etc layers. Each carries
+  // the loaded <img> alongside the placement metadata (origin/scale) fetched
+  // alongside it. basemap is the layer responsible for land/sea color
+  // everywhere.
   const [basemap, setBasemap] = useState(null)
   const basemapVisible    = windowSettings?.basemapVisible ?? false
   const [terrain, setTerrain] = useState(null)
@@ -736,13 +721,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // referenced against groundUnitDb. Reuses visibleGroundUnitsRef — the same
   // fog-of-war set drawAbmGroundContacts renders — so a unit only shows up
   // here if it's actually visible on the scope. On by default (.unitro
-  // toggles it, 2026-08-02) — gates only the ground/air unit hit-gathering
+  // toggles it) — gates only the ground/air unit hit-gathering
   // below, not the airport readout, which is a separate concern that
   // happens to share the same box/interval. Gated on the same 150ms
   // interval so it doesn't re-render on every raw mousemove.
   const unitReadoutVisible    = windowSettings?.unitReadoutVisible ?? true
   //
-  // Airports/runways (2026-07-09) piggyback on the same interval and radius:
+  // Airports/runways piggyback on the same interval and radius:
   // useRunwaysStore.centerlines emits two direction-entries per physical
   // strip (same rwyEnd1/rwyEnd2, opposite rwyName/reciprocal) — collapsed
   // below (airportStrips) back into one strip per physical runway, then
@@ -830,7 +815,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // already one-per-airbase (deduped in the hit test above) — distinct
   // airports are never "duplicates" of each other, so no count/xN applies.
   //
-  // Air hits (2026-08-02) split by true coalition: friendly aircraft each
+  // Air hits split by true coalition: friendly aircraft each
   // carry their own callsign/fuel/ammo, so they're never collapsed together
   // (one entry per unitId, count always 1). Non-friendly aircraft only ever
   // show a type-or-"UNKNOWN" line, so they collapse the same way ground
@@ -975,7 +960,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // Range rings default OFF; when enabled default to 20nm spacing anchored
   // on the bullseye (ringAnchor* null == bullseye). Datablocks default ON,
   // PTL defaults 1 minute, leader defaults length 2 / NE (dir 9, matching
-  // ASDE-X's default -45° angle) — mirrors §"contacts" decisions 2026-07-05.
+  // ASDE-X's default -45° angle).
   useEffect(() => {
     if (windowSettings) return
     let initCenterLat = bullseyeLat
@@ -1004,10 +989,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       briteCmp: abmPrefs.compassVisible ? null : 0,
       bedbVisible: abmPrefs.bedbVisible,
       missileAlertEnabled: abmPrefs.missileAlertEnabled, alertVol: abmPrefs.alertVol,
-      // Per-window UI toggles (2026-09-14) — seeded from abmPrefs same as
-      // everything above; see store/abmPrefs.js header and actions/index.js's
-      // GEO_TOGGLE comment for why these moved out of the old windowId-less
-      // useAbmUiPrefsStore/navdata-layer-store `visible` fields.
+      // Per-window UI toggles — seeded from abmPrefs same as everything
+      // above; see store/abmPrefs.js header and actions/index.js's
+      // GEO_TOGGLE comment for why these are per-window rather than shared.
       timeVisible: abmPrefs.timeVisible, unitReadoutVisible: abmPrefs.unitReadoutVisible,
       asVisible: abmPrefs.asVisible, labelsVisible: abmPrefs.labelsVisible,
       fillVisible: abmPrefs.fillVisible, fillPct: abmPrefs.fillPct,
@@ -1055,13 +1039,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   useEffect(() => { centerLngRef.current = centerLng }, [centerLng])
 
   // Magnetic-north-up projection — same computation AIC/STARS/CATCC use.
-  // Was a hardcoded 0 through Phase 4; that was an accepted gap, not a
-  // permanent design choice — see 2026-07-05.
   // Anchored to the bullseye rather than centerLat/centerLng: the latter
   // shifts on every pan, which recomputed declination per-frame and made the
   // whole picture visibly re-rotate while dragging — a fixed chart shouldn't
   // change orientation just because you scrolled it. The bullseye is a
-  // stable, mission-defined point independent of pan/zoom (2026-07-07).
+  // stable, mission-defined point independent of pan/zoom.
   // declinationDeg (IGRF) is the only correction applied — see utils/magvar.js:
   // DCS's own heading readouts don't apply grid convergence, so this app
   // doesn't add it either.
@@ -1082,14 +1064,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   const dragRef = useRef(null)
 
-  // ── RBL (range/bearing line) — ported from AIC, left-click-drag (2026-07-07).
+  // ── RBL (range/bearing line) — ported from AIC, left-click-drag.
   // ABM's right-click is already taken by pan (unlike AIC, which has no pan
   // and uses right-click for nothing), so RBL uses AIC's actual mechanism —
   // left-button drag past a 5px threshold — same as AIC, not a new binding.
   // Lives in displayStore's windows[windowId], same as AIC's own `rbl` —
   // needed so .tclear's action (actions/index.js) can clear it without a
-  // closure, added 2026-08-22 alongside the actions module (see
-  // resources/specs/refactor-spec.md §10, phase 3 findings).
+  // closure.
   const rbl = windowSettings?.rbl ?? null
   const leftDragStartRef  = useRef(null)
   const rblDragActiveRef  = useRef(false)
@@ -1255,8 +1236,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // modules/abm/draw/drawCommands.js for the per-shape state shape/arity.
   // Lives in displayStore's windows[windowId] (not local useState), same as
   // threatRings/bullseyeOverride/etc above — see store/display.js's
-  // "click-completion state" comment and resources/specs/refactor-spec.md
-  // §10.0/§10.2. drawCursor tracks the live mouse position (map lat/lng)
+  // "click-completion state" comment. drawCursor tracks the live mouse position (map lat/lng)
   // only while a draw command is pending, driving the preview redraw the
   // same way RBL's `rbl.end` already does — stays local useState (high-
   // frequency mousemove updates, not itself command state). Declared here
@@ -1558,14 +1538,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   function clearCmd() { setCmdBuffer(''); setCmdFeedback('') }
 
-  // Parses + dispatches via input/commandParser.js + actions/index.js (ported
-  // 2026-08-22, see resources/specs/refactor-spec.md §10 phase 4) — each
+  // Parses + dispatches via input/commandParser.js + actions/index.js — each
   // action reads/writes state via .getState(), no closures, and returns its
   // feedback string; this wrapper supplies the render-derived context values
   // actions have no independent store to read from, plus the `.dclear all`
   // y/n confirmation intercept, which — like the three click-completion
   // mechanisms handled in handleMouseUp/handleKeyDown — stays bespoke here
-  // rather than being generalized into the parser (§10.0/§10.3).
+  // rather than being generalized into the parser.
   async function execCommand(raw) {
     if (pendingClearAllConfirm) {
       const str = raw.trim().toLowerCase()
@@ -1732,7 +1711,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible, routeGroupIds])
 
   // ── Click dispatch — ported from AIC's handleMouseUp, same modifier/command
-  // precedence (2026-07-07): Shift+click removes BRAA pairs for the target;
+  // precedence: Shift+click removes BRAA pairs for the target;
   // Ctrl+Alt+click toggles its threat ring; Ctrl+click (twice) pairs two
   // contacts into a BRAA line (target can be air or ground/naval); Alt+click
   // (or `.dope` + click) auto-pairs the target with its nearest BOGEY/
@@ -1839,8 +1818,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       return
     }
 
-    // Create-or-reconcile a FRAG flight from a live contact (§D.3 of
-    // transponder-correlation-spec.md). Friendly-only (true coalition, not
+    // Create-or-reconcile a FRAG flight from a live contact. Friendly-only (true coalition, not
     // the fog-of-war declaration — this is about tracking your own side's
     // aircraft in FRAG, independent of anything declared). Group discovery
     // is callsign-prefix based (parseFlightElement, same helper

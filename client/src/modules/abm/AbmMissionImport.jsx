@@ -50,8 +50,7 @@ export function AbmMissionImport({ onClose }) {
   // them. Filter right at import, before anything is shown. GM/admin
   // aren't aligned to a side, so they see everything (same rule as ATO/FRAG).
   //
-  // A .csv here is a bulk IFF-code assignment sheet (resources/specs/
-  // transponder-correlation-spec.md), not a mission file — it goes through
+  // A .csv here is a bulk IFF-code assignment sheet, not a mission file — it goes through
   // this same Load Mission modal rather than a separate FRAG-panel importer
   // because ATO/FRAG already share one dataset (useAbmMissionStore().flights);
   // there's no second place for a CSV import to "trickle down" into.

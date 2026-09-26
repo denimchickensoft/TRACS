@@ -3,9 +3,7 @@
  *
  * Every command action is implemented here as a standalone function reading/
  * writing state via .getState() (never a closure) — same shape as AIC's
- * action library (modules/aic/actions/index.js) and STARS' before it. Ported
- * from AbmScope.jsx's original inline execCommand 2026-08-22 — see
- * resources/specs/refactor-spec.md §10.
+ * action library (modules/aic/actions/index.js) and STARS'.
  *
  * Each action receives:
  *   captures — named captures from commandParser.js
@@ -29,8 +27,8 @@
  *                myCoalitionNum
  *                allVisibleUnits — air+ground/naval union (.dec/.autodec only)
  *
- * Returns the command-feedback string to show the controller (never null —
- * every one of these branches produced feedback in the original). AbmScope
+ * Returns the command-feedback string to show the controller (never null).
+ * AbmScope
  * still owns cmdFeedback as local state (not moved to a store — same
  * reasoning as AIC's: many non-command call sites, e.g. BRAA/rename/RBL
  * drag, that get no benefit from moving); the caller is expected to await
@@ -47,16 +45,15 @@
  * bare-digit + click), and the three click-completion
  * mechanisms (pendingDraw/pendingClearClick/pendingClearAllConfirm) plus the
  * `.dclear all` y/n confirmation intercept, which stays bespoke at the top of
- * AbmScope.jsx's execCommand wrapper per §10.0/§10.3 of the refactor spec.
+ * AbmScope.jsx's execCommand wrapper.
  *
  * Every command with a persisted display setting pairs its updateWin(...)
  * call with an explicit saveAbmPrefs(...) call — updateWin sets the live
  * per-window value, saveAbmPrefs saves the seed default the next NEW window
  * inherits at open time (store/abmPrefs.js). This is the getWin/updateWin +
- * saveAbmPrefs pattern every per-window toggle in this file follows (2026-09-14
- * — see store/abmPrefs.js header for why: a prior windowId-less shared store,
- * store/abmUiPrefs.js, meant toggling e.g. `.coords` in one ABM window leaked
- * into every other open one).
+ * saveAbmPrefs pattern every per-window toggle in this file follows (see
+ * store/abmPrefs.js header for why: a windowId-less shared store would make
+ * toggling e.g. `.coords` in one ABM window leak into every other open one).
  */
 
 import { useDisplayStore } from '../../../store/display.js'
@@ -90,9 +87,7 @@ const DECLARATION_LETTER = {
 }
 const ALL_DECLARATIONS = [DECLARATION.HOSTILE, DECLARATION.BOGEY, DECLARATION.NEUTRAL, DECLARATION.FRIENDLY]
 
-// Per-category airspace toggles (2026-07-08) — same table AbmScope.jsx used
-// inline; moved here wholesale (not duplicated) since execCommand was its
-// only call site.
+// Per-category airspace toggles table.
 const AIRSPACE_CATEGORIES = [
   'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
   'CLASS A', 'CLASS B', 'CLASS C', 'CLASS D', 'CLASS E', 'CLASS F', 'CLASS G',
@@ -201,14 +196,13 @@ export function BE_FIX({ captures, context }) {
   return `BULLSEYE SET @ ${result.id}`
 }
 
-// ── Navdata layer toggles (§4.2) ─────────────────────────────────────────────
+// ── Navdata layer toggles ────────────────────────────────────────────────────
 
-// Per-window (2026-09-14): TIME/UNITRO/GEO/RELIEF/HOLDS/MORA/AIRWAYS/ASP all
-// used to read/write a windowId-less shared store (useAbmUiPrefsStore, or
-// one of the five navdata-layer stores' single `visible` flag), so toggling
-// any of them in a `.focus` window leaked into every other open ABM window —
-// same bug class as COORDS_TOGGLE/BEC_TOGGLE below. Now getWin/updateWin,
-// same as ROSE_TOGGLE. useGeoStore/useReliefStore/useHoldingsStore/
+// Per-window: TIME/UNITRO/GEO/RELIEF/HOLDS/MORA/AIRWAYS/ASP read/write via
+// getWin/updateWin (same as ROSE_TOGGLE), not a windowId-less shared store
+// or the navdata-layer stores' single `visible` flag — otherwise toggling
+// any of them in a `.focus` window would leak into every other open ABM
+// window. useGeoStore/useReliefStore/useHoldingsStore/
 // useMoraStore/useAirwaysStore themselves are untouched here — they're
 // shared with STARS/CATCC/AIC (data fetch + cache, via loadForTheatre in
 // AbmScope.jsx), which have no window multiplicity and keep reading those
@@ -282,7 +276,7 @@ export function AIRWAYS_TYPE({ captures, context }) {
   return `AIRWAYS ${type} ${next[type] ? 'ON' : 'OFF'}`
 }
 
-// .asp — bulk toggle (was .airspace, 2026-07-08): on if any category is
+// .asp — bulk toggle: on if any category is
 // currently visible, off otherwise, same anyOn pattern as .airways.
 export function ASP_TOGGLE({ context }) {
   const asVisible = getWin(context.windowId)?.asVisible ?? {}
@@ -293,7 +287,7 @@ export function ASP_TOGGLE({ context }) {
   return anyOn ? 'AIRSPACE OFF' : 'AIRSPACE ON'
 }
 
-// Per-category airspace toggles (2026-07-08) — .tma/.ctr/.cta/.fir/.uir/.sua/
+// Per-category airspace toggles — .tma/.ctr/.cta/.fir/.uir/.sua/
 // .mil/.trsa/.classa-.classg. No procedure commands (SID/STAR/APPCH stay
 // display-only, per direction).
 export function ASP_CATEGORY({ captures, context }) {
@@ -441,10 +435,9 @@ export function SECT({ context }) { return handleDrawCommand('sect', { context }
 export function RACE({ context }) { return handleDrawCommand('race', { context }) }
 export function TEXT({ context }) { return handleDrawCommand('text', { context }) }
 
-// ── Clear (drawings only — post-§10.3 fix; RBL/BRAA/threat-ring bulk-clear
-// is TCLEAR below) ───────────────────────────────────────────────────────────
-// Renamed .clear → .dclear (2026-08-22) to read distinctly from TCLEAR's own
-// tactical-clear command — `d`/`t` prefix now segments "clear a drawing" from
+// ── Clear (drawings only; RBL/BRAA/threat-ring bulk-clear is TCLEAR below) ──
+// .dclear reads distinctly from TCLEAR's own tactical-clear command — the
+// `d`/`t` prefix segments "clear a drawing" from
 // "clear RBL/BRAA/threat rings" at a glance. Bare/click form arms
 // pendingClearClick (handled in AbmScope.jsx's handleMouseUp, bespoke);
 // `.dclear all` arms pendingClearAllConfirm instead, intercepted by
@@ -837,7 +830,7 @@ export function FEET({ context }) {
   return 'ELEV FEET'
 }
 
-// ── Contact display commands (§3, 2026-07-05) ───────────────────────────────
+// ── Contact display commands ─────────────────────────────────────────────────
 
 export function PTL({ captures, context }) {
   const mins = parseFloat(captures.mins)
@@ -913,7 +906,7 @@ export function DBCA_TOGGLE({ context }) {
   return next ? 'DBCA ON' : 'DBCA OFF'
 }
 
-// Formation datablock suppression (§3, 2026-07-08): when two or more
+// Formation datablock suppression: when two or more
 // same-flight aircraft are within a 3NM box of the flight's lead, only the
 // lead's datablock shows. On by default.
 export function DBS_TOGGLE({ context }) {
@@ -931,8 +924,8 @@ export function LDR({ captures, context }) {
   return `LDR ${length} ${dir}`
 }
 
-// ── BRAA line / bogey dope / threat rings — ported from AIC, same commands
-// (2026-07-07). Ctrl+click/Alt+click/Ctrl+Alt+click/Shift+click and .dope +
+// ── BRAA line / bogey dope / threat rings — ported from AIC, same commands.
+// Ctrl+click/Alt+click/Ctrl+Alt+click/Shift+click and .dope +
 // click are handled in handleMouseUp (bespoke); these are the Enter-only (no
 // click) forms.
 
@@ -948,11 +941,8 @@ export function THREAT_RADIUS({ captures, context }) {
   return `THREAT RING ${nm}NM`
 }
 
-// Clears RBL, BRAA/bogey-dope pairs, and threat rings (2026-07-07, renamed
-// from .clear 2026-08-21 — see resources/specs/refactor-spec.md §10.3: the
-// drawings `.clear` handler added a month later already matched bare
-// `.clear` first, making the original binding unreachable — a real bug, not
-// a deliberate redesign).
+// Clears RBL, BRAA/bogey-dope pairs, and threat rings (.tclear — distinct
+// from the drawings-only .dclear above).
 export function TCLEAR({ context }) {
   updateWin(context.windowId, { rbl: null, threatRings: [] })
   const abm = useAbmStore.getState()
@@ -960,7 +950,7 @@ export function TCLEAR({ context }) {
   return 'ALL CLEARED'
 }
 
-// ── Bulk redeclaration (2026-07-07) ─────────────────────────────────────────
+// ── Bulk redeclaration ───────────────────────────────────────────────────────
 // `.dec` alone returns every explicit declaration to its fog-of-war
 // default; `.dec <old> <new>` (letters f/n/b/h) redeclares every
 // currently-visible contact whose *effective* declaration is <old> to <new>
@@ -1007,8 +997,7 @@ export function AUTO_DECLARE({ context }) {
 // contact declares unconditionally, same as always; an srsCapable
 // same-coalition contact declares only when correlationEngine.js's
 // computeCorrelations has bound it to a FRAG-assigned aircraft (any of Mode
-// 1/2/3/4 matching, plus the callsign safety net — see
-// resources/specs/transponder-correlation-spec.md). Never declares
+// 1/2/3/4 matching, plus the callsign safety net). Never declares
 // HOSTILE/NEUTRAL/BOGEY. Mutually exclusive with plain .autodec.
 export function AUTO_DECLARE_IFF({ context }) {
   const abm = useAbmStore.getState()
@@ -1024,7 +1013,7 @@ export function AUTO_DECLARE_IFF({ context }) {
   return 'AUTODEC IFF ON'
 }
 
-// Toggles automatic threat rings (2026-07-10): while on, every friendly
+// Toggles automatic threat rings: while on, every friendly
 // aircraft within threatRadius of a HOSTILE/BOGEY aircraft gets its ring lit
 // until the breach clears — see AbmScope's own useEffect.
 export function AUTOTHREAT({ context }) {
@@ -1049,7 +1038,7 @@ export function ROE_TOGGLE({ context }) {
   return next ? 'ROE ON' : 'ROE OFF'
 }
 
-// ── Ground/naval acq/eng range-ring visibility (§7, 2026-07-07) ─────────────
+// ── Ground/naval acq/eng range-ring visibility ───────────────────────────────
 // `.acq`/`.eng` toggle all four declarations' rings at once; `.acq h`/
 // `.eng b` etc. toggle just that declaration (f/n/b/h — matches the F-key
 // declaration letters, b for BOGEY).

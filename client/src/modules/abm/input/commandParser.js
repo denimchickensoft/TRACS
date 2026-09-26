@@ -13,22 +13,16 @@
  * that one, deliberately has no STARS-style ENTER/SLEW `trigger` field — the
  * three click-completion mechanisms (pendingDraw, pendingClearClick,
  * pendingClearAllConfirm) and the y/n confirmation intercept stay bespoke
- * logic in AbmScope.jsx, not generalized here. See
- * resources/specs/refactor-spec.md §10.0/§10.3 for why.
+ * logic in AbmScope.jsx, not generalized here: they carry multi-step
+ * interaction state (a pending click or y/n answer) the parser doesn't model.
  *
  * The 7 draw commands (LINE/RECT/CIRC/POLY/SECT/RACE/TEXT) only detect
  * *which* shape was typed here — they deliberately don't capture their
  * argument text via a regex group, because .text's label content needs to
  * keep the controller's original casing, and this parser only ever sees the
  * lowercased buffer. Those actions re-derive their tokens from the raw
- * buffer themselves (see actions/index.js's handleDrawCommand), the same way
- * AbmScope.jsx's original execCommand used drawCmdTokens(str, raw).
- *
- * Source: the original inline execCommand in AbmScope.jsx (ported 2026-08-22,
- * see refactor-spec.md §10.4/§10.6 phase 2). One documented, accepted
- * deviation, same category as AIC's own: FILL_SET's pattern uses `\s+`
- * instead of the original single literal space before its percentage
- * argument — a strict superset, not a behavior change for any real input.
+ * buffer themselves (see actions/index.js's handleDrawCommand) via
+ * drawCmdTokens(str, raw).
  */
 
 const COMMANDS = [

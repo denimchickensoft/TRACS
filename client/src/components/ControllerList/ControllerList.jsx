@@ -142,7 +142,7 @@ function buildGroups(registry, peers, airbases, myFacilityId, myPositionName, ac
   }
 
   // Move the viewer's own position to the front of an entries array (own
-  // facility group, or own flat AIC/ABM bucket) — "self always top" (§ decision).
+  // facility group, or own flat AIC/ABM bucket) — self always on top.
   function pinSelfFirst(entries) {
     if (!myPositionName) return entries
     const idx = entries.findIndex((e) => e.positionName === myPositionName)

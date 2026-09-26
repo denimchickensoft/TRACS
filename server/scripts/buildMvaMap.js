@@ -15,7 +15,7 @@
 //   2. Grid the coverage into G-NM merge cells; per cell compute a conservative
 //      MVA = roundUp100(maxTerrain(cell+buffer) + clearance).
 //   3. Quantize each cell's MVA to tolerance T (mergeKey), then 4-connected
-//      components on equal mergeKey → sectors (deterministic; §7.3).
+//      components on equal mergeKey → sectors (deterministic).
 //   4. Trace sectors from shared cell edges, smooth the welded boundary graph,
 //      place a label per sector via polylabel.
 //
@@ -210,7 +210,7 @@ function buildCellGrid(mosaic, center) {
   return { cellMva, mergeKey, inMask, gw, gh, lonMin, latMax, gDegLat, gDegLon, nIn }
 }
 
-// ── Tolerance merge → sectors (quantize-then-connected-components, §7.3) ──────
+// ── Tolerance merge → sectors (quantize-then-connected-components) ────────────
 const NB4 = [[-1, 0], [1, 0], [0, -1], [0, 1]]
 
 function labelComponents(mergeKey, inMask, gw, gh) {
@@ -241,7 +241,7 @@ function labelComponents(mergeKey, inMask, gw, gh) {
 }
 
 // Absorb sub-threshold sectors into their highest-MVA neighbour (never lower a
-// sector — that would under-warn; §7.3). Mutates mergeKey, then re-labels.
+// sector — that would under-warn). Mutates mergeKey, then re-labels.
 function absorbSmall(grid) {
   const { mergeKey, inMask, gw, gh } = grid
   for (let pass = 0; pass < 4; pass++) {

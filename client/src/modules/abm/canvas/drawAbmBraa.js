@@ -1,7 +1,7 @@
 /**
  * ABM BRAA line / threat rings — ported from AIC (drawAicContacts.js's
  * drawBraaOverlays/drawThreatRings), same keypresses/commands, same
- * geometry. One deliberate difference (2026-07-07 direction): the BRAA
+ * geometry. One deliberate difference: the BRAA
  * line prints its bearing/range along the line, the way drawRbl's RBL
  * label already does — AIC's BRAA line has no on-scope label (it relies on
  * the separate BraaList side panel, which ABM does not port).
@@ -58,7 +58,7 @@ export function drawBraaOverlays(ctx, view, braaList, units, declinationDeg, csM
 // Ring color signals whether a BOGEY/HOSTILE contact is inside — green
 // (clear) or purple (violated) — deliberately distinct from the acq/eng
 // rings' declaration colors (drawAbmGroundContacts.js) so the two ring
-// systems can't be confused at a glance (2026-07-07).
+// systems can't be confused at a glance.
 export function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl) {
   if (!threatRings.size) return
   ctx.lineWidth = 0.75

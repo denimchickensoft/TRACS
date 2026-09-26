@@ -3,14 +3,14 @@
 // source schemas, converts DCS coordinates, and maps the result into ABM's
 // drawing layer.
 //
-// Two independent sources are read, per §A.1/§A.2:
+// Two independent sources are read:
 //   - mission.triggers.zones   — quad (type 2) and circular (type 0) zones,
 //     the common community "drawing via trigger zone" pattern. Other `type`
 //     values (seen only in Foothold) are unconfirmed runtime bookkeeping,
-//     not ME-authored shapes — skipped (§A.1 open questions).
+//     not ME-authored shapes — skipped.
 //   - mission.drawings.layers[].objects[] — the native ME Drawing tool
 //     (Line/Polygon/TextBox/Icon), added ~DCS 2.9.
-// §A.4's dynamic territory/frontier/connection overlays are deliberately
+// Dynamic territory/frontier/connection overlays are deliberately
 // out of scope — they exist only at runtime, built by a mission's own
 // scripts from live capture state, and have no representation in the file.
 //
@@ -35,7 +35,7 @@ const OVAL_STEPS = 36
 // ── color decoding ──────────────────────────────────────────────────────
 
 // Zone / runtime-markup-API colors: {1:r,2:g,3:b,4:a} (Lua-positional, so
-// really just [r,g,b,a] after sortedValues), floats 0..1 (§C.4).
+// really just [r,g,b,a] after sortedValues), floats 0..1.
 function zoneColorToRgba(colorObj) {
   const [r, g, b, a] = sortedValues(colorObj)
   if (r == null) return null
@@ -43,7 +43,7 @@ function zoneColorToRgba(colorObj) {
 }
 
 // Native Drawing colorString/fillColorString: "0xRRGGBBAA", bytes 0..255
-// (§A.2, confirmed against pydcs's own Rgba.to/from_color_string).
+// (confirmed against pydcs's own Rgba.to/from_color_string).
 function hexToRgba(hex) {
   if (typeof hex !== 'string') return null
   const h = hex.replace(/^0x/i, '').replace(/^#/, '')
@@ -82,7 +82,7 @@ function makeFeature(geometry, properties, label) {
   return { geometry, properties, bbox: computeBbox(geometry), label: label ?? null }
 }
 
-// ── §A.1 — trigger-zone shapes ──────────────────────────────────────────
+// ── Trigger-zone shapes ─────────────────────────────────────────────────
 
 function buildZoneFeature(zone, project) {
   const name = typeof zone.name === 'string' ? zone.name : null
@@ -105,11 +105,11 @@ function buildZoneFeature(zone, project) {
   }
 
   // type 1/4 etc — unconfirmed, likely script-injected bookkeeping, not
-  // ME-authored geometry (§A.1 open questions). Skip.
+  // ME-authored geometry. Skip.
   return null
 }
 
-// ── §A.2 — native Drawing objects ───────────────────────────────────────
+// ── Native Drawing objects ────────────────────────────────────────────
 
 function buildPolygonRing(obj, mapX, mapY, project) {
   switch (obj.polygonMode) {
@@ -134,7 +134,7 @@ function buildPolygonRing(obj, mapX, mapY, project) {
       const halfW = (obj.width ?? 0) / 2
       const halfH = (obj.height ?? 0) / 2
       // width = east-west extent, height = north-south extent — not
-      // confirmed against real content (§A.2 open questions #2), but the
+      // confirmed against real content, but the
       // natural reading of a north-up ME dialog's "Width"/"Height" labels.
       const localCorners = [[-halfW, -halfH], [halfW, -halfH], [halfW, halfH], [-halfW, halfH]]
       const ring = localCorners.map(([east, north]) => {
@@ -148,7 +148,7 @@ function buildPolygonRing(obj, mapX, mapY, project) {
     case 'arrow': {
       // Both store their full outline as absolute-offset points — an
       // arrow's `angle`/`length` are reconstruction metadata only, the
-      // points already encode the final shape (§C.3).
+      // points already encode the final shape.
       const pts = sortedValues(obj.points)
       if (pts.length < 3) return null
       const ring = pts.map(p => project(mapX + (p.x ?? 0), mapY + (p.y ?? 0)))

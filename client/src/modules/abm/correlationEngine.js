@@ -3,8 +3,7 @@
 // effect. Binds a live SRS-fielded unit to a specific FRAG-assigned aircraft
 // (a `flight.units[]` roster row carrying an `iff: {mode1,mode2,mode3}`
 // sub-object), revealing its real callsign in place of the cycling
-// Mode 1/2/3/4 readout on the datablock. See
-// resources/specs/transponder-correlation-spec.md.
+// Mode 1/2/3/4 readout on the datablock.
 //
 // Correlation is a continuous reveal gate, not a discovery mechanism — same
 // principle as STARS' association/CATCC's correlation. Recomputed fresh

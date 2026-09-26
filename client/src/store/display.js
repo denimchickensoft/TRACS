@@ -87,7 +87,7 @@ const SCOPE_DEFAULTS = {
   dbHiddenIds: [],          // unitId[] — .db + click per-contact datablock hide override
   roeVisible: true,         // ABM-only — .roe bare-toggle, independent per window/focus panel
   // Click-completion state, deliberately kept bespoke (not generalized into a
-  // parser-level "trigger" mechanism, see §10.0/§10.3 of the refactor spec) —
+  // parser-level "trigger" mechanism) —
   // migrated here only so actions/index.js-style handlers can read/write it.
   pendingDraw: null,          // in-progress .line/.rect/.circ/.poly/.sect/.race/.text — see draw/drawCommands.js
   pendingClearClick: false,   // bare `.clear`/click armed — next click hit-tests a drawing to remove
