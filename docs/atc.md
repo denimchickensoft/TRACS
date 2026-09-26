@@ -13,6 +13,8 @@ Commands are typed into the preview buffer, then resolved one of two ways:
 
 Each command below reads as `COMMAND + ENTER` or `COMMAND + SLEW`.
 
+When a command starts with a function key, the preview area shows the key's label on its own line and the rest of the entry below it. For `MF`, the label includes the next key: F7 then `S` shows `FS`, with the rest of the entry on the next line.
+
 A bare click with an empty buffer depends on the track's state:
 1. If the track has an unacknowledged conflict alert, the click acknowledges it (see Conflict Alert below).
 2. Otherwise, if a handoff or point-out involving that track is pending, the click accepts or recalls it.
