@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "GPL-3.0-or-later",
+  "author": "denimchickensoft",
   "main": "electron/main.js",
   "workspaces": [
     "client",
@@ -66,6 +67,8 @@
       "server/**/*",
       "packages/geo-math/**/*",
       "docs/**/*",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
       "client/public/**/*",
       "!server/navdata/cache/**",
       "!server/data/elevation.db",

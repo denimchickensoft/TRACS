@@ -222,4 +222,10 @@ No code-signing certificate is used for any platform.
 
 ## License
 
-TRACS is licensed under the GNU General Public License v3.0 or later — see [LICENSE](LICENSE).
+Copyright (C) 2026 denimchickensoft.
+
+TRACS is licensed under the GNU General Public License v3.0 or later — see [LICENSE](LICENSE). It comes with ABSOLUTELY NO WARRANTY.
+
+TRACS includes third-party data, including OpenStreetMap data (© OpenStreetMap contributors, ODbL), terrain data from the USGS and others, data derived from DCS World, and unit databases from DCS Olympus. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for sources, licenses and required attributions.
+
+TRACS is an independent community project. It is not affiliated with or endorsed by Eagle Dynamics SA, the DCS Olympus team, Tacview, the DCS-SRS or LotATC developers, LittleNavMap, Navigraph, or any other organization or product it mentions. All trademarks belong to their respective owners.

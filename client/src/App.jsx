@@ -786,6 +786,40 @@ export function App() {
             >
               Help / Docs ↗
             </a>
+
+            {/* About / legal notices (GPLv3 §5(d): interactive programs show
+                appropriate legal notices). */}
+            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.6rem', color: '#555', lineHeight: 1.5, maxWidth: '320px' }}>
+              <div>Copyright (C) 2026 denimchickensoft</div>
+              <div>
+                Free software under the GNU GPL v3.0 or later, with ABSOLUTELY NO WARRANTY.
+                Source: github.com/denimchickensoft/TRACS
+              </div>
+              <div style={{ marginTop: '4px' }}>
+                Map data © OpenStreetMap contributors (ODbL). Terrain data courtesy of the
+                U.S. Geological Survey and others. Includes data from DCS World (© Eagle
+                Dynamics SA) and DCS Olympus.
+              </div>
+              <div style={{ marginTop: '4px' }}>
+                Not affiliated with or endorsed by Eagle Dynamics or any other product
+                named in TRACS. All trademarks belong to their owners.
+              </div>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '12px' }}>
+                {[['/docs/license', 'License ↗'], ['/docs/third-party-notices', 'Third-party notices ↗']].map(([href, label]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#888', textDecoration: 'none', cursor: 'pointer' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#ccc' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#888' }}
+                  >
+                    {label}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

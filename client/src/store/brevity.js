@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 // Multi-Service tactical brevity glossary (ATP 1-02.1, April 2025), transcribed
-// from resources/MTTP-BREVITY.pdf into client/public/brevity.json. Keys are the
+// from the published MTTP Brevity manual into client/public/brevity.json. Keys are the
 // clean base word(s) with bracket fill-ins ([location], [direction], etc.)
 // stripped out — e.g. "ANCHOR [location]" is stored under "ANCHOR". Values keep
 // the original bracketed/parenthetical term as a "TERM — " prefix wherever that
