@@ -153,7 +153,9 @@ let _syncing = false
 const { register: registerStatusBoardBroadcast, broadcast: _webrtcBroadcast } = createBroadcastHook()
 export { registerStatusBoardBroadcast }
 
-function buildPayload(s) {
+// The wire shape for STATUS_BOARD_UPDATE, also used for the status board part
+// of a CATCC state dump, so live updates and late-join dumps carry the same fields.
+export function buildStatusBoardPayload(s) {
   return {
     eventHeader: {
       event: s.event, launch: s.launch, recovery: s.recovery,
@@ -173,7 +175,7 @@ const _sbCh = new BroadcastChannel('tracs-statusboard')
 useStatusBoardStore.subscribe((state) => {
   if (_syncing) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
-  _webrtcBroadcast?.(buildPayload(state))
+  _webrtcBroadcast?.(buildStatusBoardPayload(state))
   _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
 })
 

@@ -4,7 +4,7 @@ import * as syncClient       from './syncClient.js'
 import { useSessionStore }    from '../store/session.js'
 import { useAtcStore, filterAtcDumpPayload } from '../store/atc.js'
 import { useFlightPlansStore } from '../store/flightPlans.js'
-import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadcast } from '../store/statusBoard.js'
+import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadcast, buildStatusBoardPayload } from '../store/statusBoard.js'
 import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/aic.js'
 import { useAbmStore, registerAbmBroadcast, applyAbmStateDump } from '../store/abm.js'
 import { registerAbmMissionBroadcast } from '../store/abmMission.js'
@@ -392,11 +392,7 @@ function buildDump(mod) {
     const atc = useAtcStore.getState()
     return {
       ...base,
-      statusBoard: {
-        eventHeader:    { event: s.event, launch: s.launch, recovery: s.recovery },
-        recoveryStatus: { caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn, rad: s.rad },
-        entries:        s.entries,
-      },
+      statusBoard:    buildStatusBoardPayload(s),
       trackOwnership: atc.ownership,
       handoffs:       atc.handoffs,
       pointOuts:      atc.pointOuts,
