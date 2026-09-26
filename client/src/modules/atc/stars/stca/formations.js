@@ -69,8 +69,8 @@ export function computeWingmanIds(units, ownership, manualWingmenIds = []) {
 }
 
 /**
- * Blends the groupID-based guess above with real transponder data, per
- * resources/specs/transponder-correlation-spec.md §4.3: once a unit has
+ * Blends the groupID-based guess above with real transponder data: once a
+ * unit has
  * ever reported real SRS transponder data (unit.srsCapable), its real
  * status supersedes the guess — the guess remains the only signal for any
  * unit that isn't srsCapable (AI, non-SRS humans), unchanged. Unlike the

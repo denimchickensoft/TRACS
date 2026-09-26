@@ -5,8 +5,7 @@ const ASDEX_COMMANDS = [
   { id: 'TOGGLE_COORDS',      pattern: /^\.COORDS$/,         trigger: 'ENTER' },
   { id: 'SET_COLORS',         pattern: /^\.COLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
   { id: 'SET_LEADER_SHORT',   pattern: /^([1-9])$/,          trigger: 'SLEW',  captures: ['dir'] },
-  // Manual tag: type the aircraft ID, then click the unknown target — see
-  // resources/specs/transponder-correlation-spec.md §5.
+  // Manual tag: type the aircraft ID, then click the unknown target.
   { id: 'TAG_TARGET',         pattern: /^\.TAG (.+)$/,       trigger: 'SLEW',  captures: ['aid'] },
 ]
 

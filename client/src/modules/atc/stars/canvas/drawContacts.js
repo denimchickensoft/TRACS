@@ -115,7 +115,7 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
     }
 
     // --- Contact symbol --- (highlight does NOT touch the symbol shape/color —
-    // only the interior text, below, per 2026-07-29 direction)
+    // only the interior text, below)
     const isBlinkUnit    = blinkingUids?.has(String(id)) ?? false
     const isPoUnit       = poReceivingUids?.has(String(id)) ?? false
     const isHighlighted  = highlightedUids?.has(String(id)) ?? false

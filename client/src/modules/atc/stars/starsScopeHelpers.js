@@ -9,7 +9,7 @@ const METERS_TO_FEET = 3.28084
 //
 // "Unassociated" here always meant "unowned" — this also reflects a real
 // transponder-based association check (only for srsCapable units; unchanged
-// for everything else). See resources/specs/transponder-correlation-spec.md §4.1.
+// for everything else).
 export function computeStarsSymbolMap(visibleUnits, ownership, displayFdb, myControllerId, associated) {
   const map = {}
   for (const [id, unit] of Object.entries(visibleUnits)) {

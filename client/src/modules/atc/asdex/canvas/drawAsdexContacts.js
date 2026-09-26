@@ -10,7 +10,7 @@ const LINE_H               = 13
 const TIMESHARE_MS         = 2000 // line 2: F/H/I <-> J/K scratchpad alternation per phase
 const SYMBOL_R             = 7
 const RIGHT_ALIGN_ANGLES   = new Set([90, 135, 180, 225])
-const UNKNOWN_TARGET_COLOR = '#00e0d0' // teal — real transponder standby (status 0), see transponder-correlation-spec.md §5
+const UNKNOWN_TARGET_COLOR = '#00e0d0' // teal — real transponder standby (status 0)
 
 // extras: { scratchpads: { unitId: { sp1, sp2 } }, dupBeacon: Set<unitId>, pairedFixFor: (plan) => string }
 export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors, associated = {}, manualTags = {}, extras = {}) {
@@ -58,8 +58,8 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
   for (const p of Object.values(plans ?? {})) {
     if (p.unitId != null) plansByUnit[String(p.unitId)] = p
   }
-  // Backfill from the association engine's callsign+code match (see
-  // transponder-correlation-spec.md §3.3) — plan.unitId is only ever set
+  // Backfill from the association engine's callsign+code match —
+  // plan.unitId is only ever set
   // via the FPE's ctrl-click flow, so a StripBay-created plan would
   // otherwise never show its type/destination line despite being
   // correctly associated.
@@ -119,8 +119,7 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     // information is known about a Target." Symbol still shows (ASDE-X is
     // surface radar, sees the physical return regardless of transponder
     // state) but in teal, with no datablock at all. Only for srsCapable
-    // units — AI/non-SRS units keep the old full-identity fallback. See
-    // resources/specs/transponder-correlation-spec.md §5.
+    // units — AI/non-SRS units keep the full-identity fallback.
     // A manual .TAG turns an Unknown Target into a normal, identified one.
     const isUnknownTarget = !!unit.srsCapable && !hasLiveSquawk(unit) && !manualTags[String(id)]
 
@@ -163,8 +162,7 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
     // Datablock (CRC ASDE-X fields). Field B (aircraft ID) once associated
     // (real match, or manually tagged), field C (beacon code) otherwise.
     // Non-srsCapable units keep the old always-full-ID behavior. Real
-    // safety-logic alerts aren't implemented — see
-    // resources/specs/transponder-correlation-spec.md §5.
+    // safety-logic alerts aren't implemented.
     //   Line 0: A  (DUP BCN)
     //   Line 1: B|C  D (altitude, FULL only)
     //   Line 2: F H I, timeshared with J K (FULL only)

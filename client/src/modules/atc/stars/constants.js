@@ -21,7 +21,7 @@ export const RIGHT_ALIGN_ANGLES = new Set([90, 135, 180, 225]) // S, SW, W, NW
 // would otherwise use while the contact is highlighted.
 export const HIGHLIGHT_TEAL = '#00FFFF'
 
-// ABM-only (2026-07-29) — a highlighted contact whose *effective* declaration
+// ABM-only — a highlighted contact whose *effective* declaration
 // is HOSTILE/BOGEY uses purple instead of teal (FRIENDLY/NEUTRAL stay teal).
 // STARS has no declaration concept, so it always uses HIGHLIGHT_TEAL.
 export const HIGHLIGHT_PURPLE = '#C000FF'

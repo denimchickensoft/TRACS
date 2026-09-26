@@ -401,7 +401,6 @@ export default function AsdexScope() {
     }
     if (parsed.command.id === 'SET_COLORS') {
       const name = parsed.captures.name.trim()
-      // profiles are from React state so read them from a ref
       const idx = profiles.findIndex(p => p.name.toUpperCase() === name.toUpperCase())
       if (idx >= 0) {
         displayStore.updateWindow(ASDEX_WINDOW_ID, { colorIdx: idx })
@@ -569,8 +568,7 @@ export default function AsdexScope() {
     if (parsed.command.id === 'TAG_TARGET') {
       // TRACS already knows the truth (Olympus ground-truth callsign) —
       // unlike CRC/VATSIM this isn't a guess needing a guardrail, it's a
-      // correctness check: a mismatch just fails. See
-      // resources/specs/transponder-correlation-spec.md §5.
+      // correctness check: a mismatch just fails.
       const typedAid = parsed.captures.aid?.trim().toUpperCase()
       const trueAid  = resolveCallsign(nearest.unit).toUpperCase()
       if (typedAid === trueAid) {

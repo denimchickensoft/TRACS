@@ -7,7 +7,7 @@ const MVA_LABEL_FALLBACK  = '#AABBDD'
  * Synthetic MVA layer: discrete labeled sectors, each a conservative minimum
  * vectoring altitude floor. Thin boundary strokes + one altitude label per
  * sector (Grid-MORA style: big main digits + superscript hundreds), placed at
- * the sector's pole-of-inaccessibility. No fill. See mva-spec.md.
+ * the sector's pole-of-inaccessibility. No fill.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object}   view    { centerLat, centerLng, pixelsPerNm, width, height }

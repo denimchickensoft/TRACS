@@ -4,9 +4,9 @@
  * documents as CATCC's own ("shared with the ATC/STARS scope" was the old
  * framing; these are now independent copies). CATCC no longer touches
  * commandParser.js/actions/index.js at all — those hardcode/default to
- * STARS' own 'atc-main' window and useMapsStore, which caused two real bugs
- * (.aspcolors/.refresh/.dbca silently hitting STARS' state instead of
- * CATCC's — see conversation history). Everything here targets CATCC's own
+ * STARS' own 'atc-main' window and useMapsStore, so reusing them makes
+ * .aspcolors/.refresh/.dbca silently hit STARS' state instead of CATCC's.
+ * Everything here targets CATCC's own
  * 'catcc-main' window and the genuinely-shared useAtcStore/useControllersStore
  * directly, with no windowId ambiguity possible.
  *

@@ -174,7 +174,7 @@ export function resolveRoute({ fpl, lookupFix, airways, depProcs, destProcs }) {
     // Not a named fix -- check for an ICAO-compact coordinate token
     // (DDMM(N/S)DDDMM(E/W), e.g. "2607N05531E"), the fallback format used
     // for unmatched .miz/DTC/CSV waypoints (see utils/coords.js
-    // formatIcaoRoutePoint / resources/specs/pilot-flightplan-ingestion-spec.md).
+    // formatIcaoRoutePoint).
     // Without this, those points would draw as an unresolvable '?' gap
     // despite carrying a real, known position.
     const icaoPt = parseIcaoRoutePoint(tok)

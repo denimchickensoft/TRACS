@@ -1,6 +1,5 @@
 // Transponder-based association — pure logic, no React/store imports, same
-// style as stars/stca/formations.js. See
-// resources/specs/transponder-correlation-spec.md §3 for the full rule set.
+// style as stars/stca/formations.js.
 //
 // Association is a reveal gate, not a discovery mechanism: TRACS already
 // knows the true unit-to-flight-plan link (Olympus ground-truth callsign).

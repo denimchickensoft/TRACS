@@ -13,8 +13,7 @@ import { hasLiveSquawk, normalizeCode } from '../../utils/transponder.js'
  * transponder data) → old model, unchanged: side number shown as soon as
  * it's typed/matched, no gating.
  *
- * srsCapable → gated like STARS' LDB/FDB (see
- * resources/specs/transponder-correlation-spec.md): no live squawk yet →
+ * srsCapable → gated like STARS' LDB/FDB: no live squawk yet →
  * nothing shown (CatccScope falls back to 'XXX'); live squawk but no BCN
  * match → the live code itself shows instead (pendingCodes, reduced info
  * rather than full anonymity); BCN AND callsign both match (double-gate,

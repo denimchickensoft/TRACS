@@ -159,12 +159,11 @@ export default function CatccScope() {
 
   const visibleUnits = useMemo(() => getVisibleUnits(units, coalition, tdmMode), [units, coalition, tdmMode])
 
-  // correlations/pendingCodes are already the single source of truth,
-  // computed by StatusBoard.jsx's own sync effect (srsCapable-gated double
-  // match, see resources/specs/transponder-correlation-spec.md) — this used
-  // to also do its own, ungated callsign-only auto-match here, which bypassed
-  // that gate entirely for srsCapable units. Removed; read the store values
-  // directly instead of re-deriving a second, looser version of the same map.
+  // correlations/pendingCodes are the single source of truth, computed by
+  // StatusBoard.jsx's own sync effect (srsCapable-gated double match). Read
+  // the store values directly — don't re-derive a second, looser
+  // callsign-only match here, which would bypass that gate for srsCapable
+  // units.
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 

@@ -4,12 +4,13 @@
  * Every controller action is implemented here, invoked identically
  * regardless of which interaction model triggered it.
  *
- * Each action receives:
+ * Each action receives one object: { captures, slewTarget, ...context }
  *   captures   — named captures from the command parser
  *   slewTarget — { unitId, unit } | null  (null for ENTER-triggered commands)
- *   context    — { positionName, ownership, handoffs, pointOuts }
+ *   context    — { positionName, canvasPos, canvasSize }, spread in by dispatch()
  *
- * Returns a string to display as the system response, or null on success.
+ * Return values are ignored; actions report their result by writing the
+ * preview area directly (usePreviewStore's setResponse/clearAfterCommand).
  */
 
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../../store/atc.js'
@@ -122,8 +123,7 @@ export function INIT_CNTL({ slewTarget }) {
   }
   // Unassociated tracks can't be put under control either — real STARS:
   // "All unassociated tracks are unowned tracks." Only meaningful for
-  // srsCapable units; unchanged for everything else. See
-  // resources/specs/transponder-correlation-spec.md §4.2.
+  // srsCapable units; unchanged for everything else.
   const targetUnit = useUnitsStore.getState().units[slewTarget.unitId]
   if (targetUnit?.srsCapable && !useAssociationStore.getState().associated[String(slewTarget.unitId)]) {
     return err('ILL TRK')
@@ -260,8 +260,8 @@ export function HND_OFF_BARE({ slewTarget }) {
   if (ho.state === HANDOFF_STATE.RECEIVING && ho.to === controllerId) {
     // claimTrack already unconditionally overwrites the ownership map entry —
     // a preceding dropTrack for the same unit is redundant and is the same
-    // shape of two-step "reassign" anti-pattern fixed elsewhere in this
-    // subsystem (see feedback_webrtc_relay_sync_invariants memory).
+    // shape of two-step "reassign" anti-pattern that causes intermediate
+    // states to reach live subscribers elsewhere in this subsystem.
     claimTrack(slewTarget.unitId, controllerId)
     clearHandoff(slewTarget.unitId)
     sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: slewTarget.unitId, fromControllerId: ho.from, toControllerId: controllerId })

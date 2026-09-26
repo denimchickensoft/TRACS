@@ -59,9 +59,9 @@ function getClockPhase(sequence, intervals) {
 
 // ── Datablock type ───────────────────────────────────────────────────────────
 
-// assoc — true unless the unit is srsCapable and genuinely unassociated (see
-// resources/specs/transponder-correlation-spec.md §3–§4.1). Always true for
-// non-srsCapable units, which preserves today's !owner-only LDB behavior
+// assoc — true unless the unit is srsCapable and genuinely unassociated.
+// Always true for non-srsCapable units, which preserves the !owner-only LDB
+// behavior
 // exactly — this only adds a new way to land on LDB, it never removes the
 // old one.
 function resolveDbType(uid, ownership, handoffs, pointOuts, quickLook, displayFdb, myId, assoc = true) {
@@ -210,8 +210,7 @@ const Datablock = memo(function Datablock({
   // A genuinely-unassociated LDB already shows the code by default (no
   // override needed), but an associated-but-untracked LDB (no owner, real
   // flight-plan match) normally shows alt/gs instead — that one DOES need
-  // an override, ldbReadoutActive below, or F1 does nothing for it. See
-  // resources/specs/transponder-correlation-spec.md §4.
+  // an override, ldbReadoutActive below, or F1 does nothing for it.
   const isBeaconTrack = !!unit.srsCapable && hasLiveSquawk(unit)
   const readoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'PDB'
   const ldbReadoutActive = !!beaconReadout && isBeaconTrack && rawDbType === 'LDB'
@@ -219,7 +218,7 @@ const Datablock = memo(function Datablock({
   // IDENT is unacknowledged (not just the "on" half of the blink cycle) —
   // takes priority over Beaconator's PDB->FDB promotion if both apply.
   // Only the datablock type/content changes; the contact symbol/position
-  // letter is untouched. See resources/specs/transponder-correlation-spec.md §4.
+  // letter is untouched.
   const identForcesLdb = isIdent && rawDbType === 'PDB'
   const dbType    = identForcesLdb ? 'LDB' : readoutActive ? 'FDB' : rawDbType
   const beaconLine1 = (readoutActive && unit.transponder?.mode3 != null)
@@ -227,7 +226,7 @@ const Datablock = memo(function Datablock({
   // IDENT — only the "ID" suffix itself blinks (its own tspan opacity),
   // never the whole line/color scheme. Appended to line 2 (groundspeed) for
   // FDB/PDB (both share that layout), or to the squawk code for LDB — see
-  // the LDB block below and resources/specs/transponder-correlation-spec.md §4.
+  // the LDB block below.
   const identTspan = isIdent ? <tspan opacity={blinkOn ? 1 : 0.25}>ID</tspan> : null
   const alt       = fmtAlt(pos.alt)
   const gs        = fmtSpd(unit.speed)
@@ -428,9 +427,8 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
 
   const plans = useFlightPlansStore((s) => s.plans)
 
-  // Reveal gate on top of ownership — see resolveDbType's comment and
-  // transponder-correlation-spec.md §3–§4.1. True (old behavior, unchanged)
-  // for any unit that isn't srsCapable.
+  // Reveal gate on top of ownership — see resolveDbType's comment. Always
+  // true for any unit that isn't srsCapable.
   const associatedMap = useAssociationStore((s) => s.associated)
   const isAssociated = useCallback(
     (uid, unit) => !unit?.srsCapable || !!associatedMap[uid],
@@ -442,8 +440,8 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
     for (const p of Object.values(plans)) {
       if (p.unitId != null) map[String(p.unitId)] = p
     }
-    // Backfill from the association engine's callsign+code match (see
-    // transponder-correlation-spec.md §3.3) — plan.unitId is only ever set
+    // Backfill from the association engine's callsign+code match —
+    // plan.unitId is only ever set
     // via the FPE's ctrl-click flow, so a StripBay-created plan would
     // otherwise never show Line 3 mismatch / actype despite being
     // correctly associated.

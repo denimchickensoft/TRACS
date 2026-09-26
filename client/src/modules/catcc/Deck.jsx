@@ -24,8 +24,7 @@ const ZOOM_STEP = 0.2
 
 // Cache of rotated (bow-up) deck backgrounds keyed by image src, so each
 // carrier class's PNG is only decoded + rotated once no matter how often
-// Deck mounts/remounts. Source PNGs are bow-right (see project memory on the
-// carrier deck asset flip) — rotating -90deg (CCW) here puts the bow up and
+// Deck mounts/remounts. Source PNGs are bow-right — rotating -90deg (CCW) here puts the bow up and
 // swaps the footprint to tall/narrow, a better fit for a docked side panel.
 // projectOntoDeck()'s forward/right axes are mapped to match: forward -> up
 // (-y), right -> +x, so aircraft plotted directly in this canvas's pixel
