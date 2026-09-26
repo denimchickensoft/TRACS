@@ -3,13 +3,22 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { generateBcn } from '../utils/bcn.js'
 import { syncStore } from '../utils/storeSync.js'
 
+// Next CID = one past the highest CID currently in the store, and never
+// below this window's own counter. Deriving it from the plans themselves
+// (rather than a counter alone) keeps it collision-free after a page reload
+// (plans persist in sessionStorage, the counter doesn't), in pop-out windows
+// (their stores hold the synced plans), and after plans arrive from other
+// controllers.
 let _cidCounter = 1
 
-function generateCid() {
-  return String(_cidCounter++).padStart(3, '0')
+function maxCid(plans) {
+  return Math.max(0, ...Object.values(plans).map((p) => parseInt(p.cid, 10) || 0))
 }
 
-export function resetCidCounter() { _cidCounter = 1 }
+function generateCid(plans) {
+  _cidCounter = Math.max(_cidCounter, maxCid(plans) + 1)
+  return String(_cidCounter++).padStart(3, '0')
+}
 
 export const useFlightPlansStore = create(
   persist(
@@ -30,7 +39,7 @@ export const useFlightPlansStore = create(
           ...state.plans,
           [aid]: {
             aid,
-            cid:         generateCid(),
+            cid:         generateCid(state.plans),
             bcn:         generateBcn(Object.values(state.plans).map((p) => p.bcn)),
             typ:         '',
             eq:          '',
@@ -150,12 +159,8 @@ export const useFlightPlansStore = create(
   // not freshly generated), so this bypasses add()'s per-plan defaulting
   // entirely rather than needing a separate filter step.
   applyPlansDump: (plans) => {
-    // Advance (never rewind) the CID counter past anything in the dump so a
-    // subsequent genuinely-new add() can't collide with a dumped plan's CID —
-    // add()'s generateCid() call used to do this implicitly, once per dumped
-    // plan, as a side effect of the old per-item reset()+add() replay.
-    const maxCid = Math.max(0, ...Object.values(plans).map((p) => parseInt(p.cid, 10) || 0))
-    if (maxCid + 1 > _cidCounter) _cidCounter = maxCid + 1
+    // Advance (never rewind) the CID counter past anything in the dump.
+    _cidCounter = Math.max(_cidCounter, maxCid(plans) + 1)
     set({ plans })
   },
     }),
