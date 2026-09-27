@@ -890,6 +890,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
             placeholder="Optional — leave blank for open session"
             disabled={signingIn}
           />
+          <p className="login-hint">Remembered on this computer, unencrypted.</p>
         </section>
       )}
 

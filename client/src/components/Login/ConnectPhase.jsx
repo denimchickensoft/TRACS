@@ -470,6 +470,7 @@ export function ConnectPhase({ onConnected }) {
           placeholder={sourceMode === 'tacview-direct' ? "Tacview's own RTT export password (flat, not per-coalition)" : 'Coalition password'}
           disabled={connecting}
         />
+        <p className="login-hint">Passwords are remembered on this computer, unencrypted.</p>
       </section>
 
       {error && <p className="login-error">{error}</p>}

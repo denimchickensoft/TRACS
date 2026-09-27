@@ -28,6 +28,7 @@ Which fields are shown and required depends on the mode:
   - **Olympus**: "Coalition Password" — the Olympus password for your role, set on the DCS server.
   - **Tacview**: "Tacview RTT Password" — Tacview's own export password. It's set once in DCS's options and is the same for every coalition. If you also fill in a Relay Port, a second "Coalition Password" field appears for the relay itself.
   - **Relay**: "Coalition Password" — your coalition's password for the relay, set by whoever runs it. The relay uses it to authenticate the coalition you're connecting as.
+  - TRACS remembers the passwords you enter (with saved profiles and your last connection, plus the Session Password) so it can fill them in next time. They're stored **unencrypted** on this computer, in the app's local storage, so don't use TRACS to hold a password you reuse elsewhere.
 
 Click **Connect to Network**. TRACS authenticates against your chosen source and starts polling. If you see "Cannot reach TRACS server — is it running?", TRACS's local server isn't responding. In the desktop app, check **File → Open Logs Folder**. When running from source, start it with `npm run dev` or `npm start`.
 
