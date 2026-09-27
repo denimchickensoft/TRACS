@@ -41,7 +41,7 @@
     "knip": "^6.32.0",
     "polylabel": "^2.0.1",
     "shapefile": "^0.6.6",
-    "stream-json": "^1.9.1",
+    "stream-json": "^3.7.0",
     "tracs-geo-math": "*",
     "vitest": "^3.2.7",
     "yauzl": "^3.4.0"

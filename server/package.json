@@ -29,7 +29,7 @@
     "polylabel": "^2.0.1",
     "postject": "^1.0.0-alpha.6",
     "shapefile": "^0.6.6",
-    "stream-json": "^1.9.1",
+    "stream-json": "^3.7.0",
     "tracs-geo-math": "*",
     "yauzl": "^3.4.0"
   }
