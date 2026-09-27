@@ -41,6 +41,7 @@ import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
 import { navdataNotFound } from '../../../store/lnm.js'
+import { getMyControllerId } from '../../../utils/myControllerId.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -52,11 +53,6 @@ function clearBuffer() { usePreviewStore.getState().clear() }
 
 function getAtc()     { return useAtcStore.getState() }
 function getDisplay() { return useDisplayStore.getState() }
-
-function getMyControllerId() {
-  const positionName = useSessionStore.getState().positionName
-  return useControllersStore.getState().registry[positionName]?.controllerId ?? null
-}
 
 // Resolve a typed FLID (AID, beacon code, or live callsign) to its flight
 // plan and/or track. Any part may be null — a plan with no track yet, or a

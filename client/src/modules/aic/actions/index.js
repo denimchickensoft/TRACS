@@ -41,24 +41,16 @@ import { getIffStatus } from '../../../utils/transponder.js'
 import { toTrueFromMagnetic } from '../../../utils/bearing.js'
 import { sectorAxisBearing } from '../canvas/computePicture.js'
 import { navdataNotFound } from '../../../store/lnm.js'
+import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
 
 const WINDOW_ID = 'aic-main'
 
-// .dec declaration letters — duplicated from AicScope.jsx rather than
-// imported, matching this codebase's existing convention of keeping small
-// stable per-scope helpers independent (see e.g. ABM's own trueDeclaration
-// copy, kept separate from AIC's for the same reason).
+// .dec declaration letters (f/n/b/h).
 const DECLARATION_LETTER = {
   f: DECLARATION.FRIENDLY,
   n: DECLARATION.NEUTRAL,
   b: DECLARATION.BOGEY,
   h: DECLARATION.HOSTILE,
-}
-
-function trueDeclaration(unit, myCoalitionNum) {
-  if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
-  if (unit.coalition === 0) return DECLARATION.NEUTRAL
-  return DECLARATION.HOSTILE
 }
 
 function getWin() {

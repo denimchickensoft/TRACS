@@ -22,6 +22,7 @@ import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { applyCallsignChange } from '../../utils/callsignRename.js'
 import { navdataNotFound } from '../../store/lnm.js'
+import { getMyControllerId } from '../../utils/myControllerId.js'
 
 const WINDOW_ID = 'catcc-main'
 
@@ -32,11 +33,6 @@ function register(verb, fn) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getMyControllerId() {
-  const pos = useSessionStore.getState().positionName
-  return useControllersStore.getState().registry[pos]?.controllerId ?? null
-}
 
 function findUnit(id, { visibleUnits, correlations }) {
   // Side number first

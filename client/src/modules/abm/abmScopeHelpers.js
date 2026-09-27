@@ -1,16 +1,6 @@
-import { DECLARATION } from '../../store/abm.js'
 import { latLngToCanvas } from '../../utils/projection.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
-
-// .autodec — same TRUE-declaration rule as AIC's
-// (client/src/modules/aic/AicScope.jsx trueDeclaration): own coalition is
-// FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL, anything else is HOSTILE.
-export function trueDeclaration(unit, myCoalitionNum) {
-  if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
-  if (unit.coalition === 0) return DECLARATION.NEUTRAL
-  return DECLARATION.HOSTILE
-}
 
 // Draw-command arg tokens (.line/.rect/.circ/.poly/.sect/.race/.text) must
 // come from the ORIGINAL-case command text, not the lowercased `str`
@@ -78,32 +68,6 @@ export function getAbmVisibleGroundUnits(units, myCoalitionNum) {
     if (unit.category !== 'GroundUnit' && unit.category !== 'NavyUnit') continue
     const c = unit.coalition
     if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
-  }
-
-  return result
-}
-
-// Missile tracking — same fog-of-war shape as getAbmVisibleUnits above, but
-// reads unit.missileContacts (not unit.contacts): server/src/missileDetection.js
-// deliberately writes to a separate field to avoid colliding with Olympus's
-// own independent 1s-cadence refresh of a unit's real contacts (see that
-// module's header comment for the full race it avoids). No AGL floor (a
-// missile spends its early flight near ground level by definition) and no
-// category filter (weapons are already missiles-only by the time they reach
-// the client — see olympus.js's pollWeapons()/tacviewCore.js's classify()).
-export function getAbmVisibleMissiles(weapons, units, myCoalitionNum) {
-  const result      = {}
-  const detectedIds = new Set()
-
-  for (const unit of Object.values(units)) {
-    if (!unit.missileContacts) continue
-    for (const c of unit.missileContacts) detectedIds.add(String(c.ID))
-  }
-
-  for (const [id, weapon] of Object.entries(weapons)) {
-    if (!weapon.position) continue
-    const c = weapon.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = weapon
   }
 
   return result

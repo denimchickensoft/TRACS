@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { startAlertTone, stopAlertTone } from '../../../audio/alertTone.js'
-import { trueDeclaration } from '../abmScopeHelpers.js'
+import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
 import { DECLARATION } from '../../../utils/createDeclarationStore.js'
 import { useAbmMissileAlertStore } from '../../../store/abmMissileAlert.js'
 
@@ -20,7 +20,7 @@ const FREQUENCY = 700 // Hz — distinct from STARS' 950Hz CA tone
  * hooks) but no-ops internally when !isOwner.
  *
  * "Launch" = a hostile missile id newly appearing in visibleMissiles — ABM's
- * fog-of-war pipeline (abmScopeHelpers.js's getAbmVisibleMissiles) already
+ * fog-of-war pipeline (utils/tacticalHelpers.js's getVisibleMissiles) already
  * gates enemy-weapon visibility on independent AWACS/EWR detection, so a
  * weapon appearing here already IS the detection event.
  *

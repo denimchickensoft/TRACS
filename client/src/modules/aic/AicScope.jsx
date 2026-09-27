@@ -33,6 +33,7 @@ import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
 import { dispatch }            from './actions/index.js'
 import './AicScope.css'
+import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
 
 const WINDOW_ID = 'aic-main'
 const AIC_SETTINGS_KEY = 'aic-settings'
@@ -42,7 +43,6 @@ const AIC_WIN_FIELDS = [
   'centerOverridden', 'aspColorIdx',
 ]
 
-const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
 const EMPTY_ARRAY = []
 
 const F_KEY_DECL = {
@@ -57,16 +57,6 @@ const DECL_LABEL = {
   [DECLARATION.BOGEY]:    'BO',
   [DECLARATION.NEUTRAL]:  'NE',
   [DECLARATION.FRIENDLY]: 'FR',
-}
-
-// .autodec — a unit's TRUE declaration, straight off
-// coalition: own side is FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL,
-// anything else is an enemy, i.e. HOSTILE (not BOGEY — autodec means no
-// more fog-of-war ambiguity for that contact).
-function trueDeclaration(unit, myCoalitionNum) {
-  if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
-  if (unit.coalition === 0) return DECLARATION.NEUTRAL
-  return DECLARATION.HOSTILE
 }
 
 const DECL_PICTURE = {
@@ -87,16 +77,6 @@ const CARDINAL_ABBR = {
 const NAME_ABBR = { ...CARDINAL_ABBR, LEAD: 'L', TRAIL: 'T' }
 function abbrGroupName(name) {
   return name.replace(' GROUP', '').split(' ').map(w => NAME_ABBR[w] ?? w).join(' ')
-}
-
-function speedFlags(unit) {
-  const kts = (unit.speed ?? 0) * 1.94384
-  const alt  = (unit.position?.alt ?? 0) * 3.28084
-  const parts = []
-  if (alt >= 40000)  parts.push('HIGH')
-  if (kts >= 900)    parts.push('VERY FAST')
-  else if (kts >= 600) parts.push('FAST')
-  return parts.join('  ')
 }
 
 
@@ -131,30 +111,6 @@ function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
     if (unit.agl !== undefined && unit.agl < AGL_FLOOR_M) continue
     const c = unit.coalition
     if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
-  }
-
-  return result
-}
-
-// Missile tracking — same fog-of-war shape as getAicVisibleUnits above, but
-// reads unit.missileContacts (not unit.contacts): server/src/missileDetection.js
-// deliberately writes to a separate field — see that module's header for why
-// (avoids colliding with Olympus's own independent 1s-cadence refresh of a
-// unit's real contacts). Local copy, not shared, per this file's existing
-// getAicVisibleUnits convention.
-function getAicVisibleMissiles(weapons, units, myCoalitionNum) {
-  const result      = {}
-  const detectedIds = new Set()
-
-  for (const unit of Object.values(units)) {
-    if (!unit.missileContacts) continue
-    for (const c of unit.missileContacts) detectedIds.add(String(c.ID))
-  }
-
-  for (const [id, weapon] of Object.entries(weapons)) {
-    if (!weapon.position) continue
-    const c = weapon.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = weapon
   }
 
   return result
@@ -217,13 +173,7 @@ export default function AicScope() {
   const [showLocalTime, setShowLocalTime] = useState(false)
   const clockTime = showLocalTime ? localTimeStr : timeStr
 
-  const bullseyeEntry = useMemo(() => {
-    if (!bullseyes?.bullseyes) return null
-    const coalStr = coalition === 'red' ? 'red' : 'blue'
-    return Object.values(bullseyes.bullseyes).find(b => b.coalition === coalStr)
-        ?? Object.values(bullseyes.bullseyes)[0]
-        ?? null
-  }, [bullseyes, coalition])
+  const bullseyeEntry = useMemo(() => findCoalitionBullseye(bullseyes, coalition), [bullseyes, coalition])
 
   // .be override — lets the operator relocate bullseye off the mission's
   // real one (fix, explicit lat/lon, or a map click). Not persisted: it's a
@@ -278,7 +228,7 @@ export default function AicScope() {
   // server/src/missileDetection.js's AWACS/EWR-only detection.
   const weapons = useWeaponsStore(s => s.weapons)
   const visibleMissiles = useMemo(
-    () => getAicVisibleMissiles(weapons, units, myCoalitionNum),
+    () => getVisibleMissiles(weapons, units, myCoalitionNum),
     [weapons, units, myCoalitionNum]
   )
 

@@ -9,17 +9,7 @@ import { gridBearingRangeNm, trueBearingRangeNm, toMagneticFromTrue } from '../.
 import { DECL_COLOR } from '../../utils/declarationSymbols.js'
 import { computeAicIntercept } from './aicGeometry.js'
 import './BraaList.css'
-
-function speedFlags(unit) {
-  if (!unit) return ''
-  const kts  = (unit.speed ?? 0) * 1.94384
-  const altFt = (unit.position?.alt ?? 0) * 3.28084
-  const parts = []
-  if (altFt >= 40000) parts.push('HIGH')
-  if (kts >= 900) parts.push('VERY FAST')
-  else if (kts >= 600) parts.push('FAST')
-  return parts.join('  ')
-}
+import { speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
 
 const safeNum = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d
 
@@ -114,13 +104,7 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
   const missionDate = mission?.mission?.dateAndTime?.date ?? null
   const bullseyes   = useSessionStore(s => s.bullseyes)
 
-  const bullseyeEntry = useMemo(() => {
-    if (!bullseyes?.bullseyes) return null
-    const coalStr = coalition === 'red' ? 'red' : 'blue'
-    return Object.values(bullseyes.bullseyes).find(b => b.coalition === coalStr)
-        ?? Object.values(bullseyes.bullseyes)[0]
-        ?? null
-  }, [bullseyes, coalition])
+  const bullseyeEntry = useMemo(() => findCoalitionBullseye(bullseyes, coalition), [bullseyes, coalition])
 
   const bsLat = bullseyeEntry?.latitude  ?? 0
   const bsLng = bullseyeEntry?.longitude ?? 0

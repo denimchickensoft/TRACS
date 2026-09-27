@@ -24,20 +24,15 @@
 
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
 import { useDisplayStore }     from '../../store/display.js'
-import { useSessionStore }     from '../../store/session.js'
 import { useControllersStore } from '../../store/controllers.js'
 import { usePreviewStore }     from '../../store/preview.js'
 import { sendWebrtcEvent }     from '../../webrtc/client.js'
+import { getMyControllerId } from '../../utils/myControllerId.js'
 
 const WINDOW_ID = 'catcc-main'
 
 function ok()     { usePreviewStore.getState().clearAfterCommand() }
 function err(msg) { usePreviewStore.getState().setResponse(msg) }
-
-function getMyControllerId() {
-  const pos = useSessionStore.getState().positionName
-  return useControllersStore.getState().registry[pos]?.controllerId ?? null
-}
 
 function knownControllerIds() {
   return new Set(

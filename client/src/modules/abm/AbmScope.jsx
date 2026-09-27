@@ -62,7 +62,7 @@ import {
   advancePendingDraw, rotatePendingDraw, supportsRotation, POLY_CLOSE_RADIUS_PX,
 } from './draw/drawCommands.js'
 import {
-  trueDeclaration, getAbmVisibleUnits, getAbmVisibleGroundUnits, getAbmVisibleMissiles,
+  getAbmVisibleUnits, getAbmVisibleGroundUnits,
   resolveDeclareTargets, buildReadoutFields, buildFriendlyAirFields,
   distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
 } from './abmScopeHelpers.js'
@@ -70,6 +70,7 @@ import { parseCommand } from './input/commandParser.js'
 import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
+import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
 
 const DEFAULT_windowId = 'abm-main'
 const EMPTY_ARRAY = []
@@ -78,7 +79,6 @@ const EMPTY_OBJECT = {}
 const EMPTY_AIRWAYS_VISIBLE = { V: false, J: false, B: false }
 const RANGE_MIN  = 1
 const RANGE_MAX  = 600
-const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
 const MAX_HISTORY   = 10  // absolute cap on captured points; display capped by historyLength setting
 const ALT_TOGGLE_MS   = 2000  // datablock line-2 speed/type alternation rate
 const READOUT_RADIUS_PX = 10    // cursor-proximity radius for the unit readout box
@@ -289,10 +289,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   // Missile tracking — own-coalition/neutral always visible, enemy gated by
   // server/src/missileDetection.js's AWACS/EWR-only detection (see
-  // abmScopeHelpers.js's getAbmVisibleMissiles).
+  // utils/tacticalHelpers.js's getVisibleMissiles).
   const weapons = useWeaponsStore(s => s.weapons)
   const visibleMissiles = useMemo(
-    () => getAbmVisibleMissiles(weapons, units, myCoalitionNum),
+    () => getVisibleMissiles(weapons, units, myCoalitionNum),
     [weapons, units, myCoalitionNum]
   )
   const visibleMissilesRef = useRef(visibleMissiles)
@@ -883,13 +883,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     useAbmAirspaceStore.getState().loadForTheatre(theatre)
   }, [theatre])
 
-  const bullseyeEntry = useMemo(() => {
-    if (!bullseyes?.bullseyes) return null
-    const coalStr = coalition === 'red' ? 'red' : 'blue'
-    return Object.values(bullseyes.bullseyes).find(b => b.coalition === coalStr)
-        ?? Object.values(bullseyes.bullseyes)[0]
-        ?? null
-  }, [bullseyes, coalition])
+  const bullseyeEntry = useMemo(() => findCoalitionBullseye(bullseyes, coalition), [bullseyes, coalition])
 
   // .be override — lets the operator relocate bullseye off the mission's
   // real one (fix, explicit lat/lon, or a map click). Not persisted: like
