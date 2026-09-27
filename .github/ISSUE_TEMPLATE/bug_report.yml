@@ -54,4 +54,4 @@ body:
     id: logs
     attributes:
       label: Log file
-      description: In the desktop app, use File → Open Logs Folder and attach main.log (drag it into this box). For the relay, paste the console output around the problem.
+      description: In the desktop app, use File → Open Logs Folder and attach main.log (drag it into this box). For the relay, paste the log around the problem (relay.log under NSSM, `journalctl -u tracs-relay` on Linux, or the console output).
