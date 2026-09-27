@@ -101,7 +101,7 @@ The relay is a standalone executable, usually run on the DCS server machine next
 - hosts **centralized sync** between controllers at `/sync`;
 - optionally connects to **Tacview Real-Time Telemetry** once and fans it out to controllers at `/tacview` (Relay mode on the connect screen).
 
-All three are served on one WebSocket port.
+All three are served on one WebSocket port. The same port answers `GET /health` with the relay's version, protocol version, uptime and which capabilities are active, for monitoring.
 
 ### Setup
 

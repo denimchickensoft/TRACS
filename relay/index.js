@@ -100,7 +100,30 @@ const config = {
 const AUTH_ONLY_MAX_PAYLOAD = 64 * 1024
 const SYNC_MAX_PAYLOAD      = 16 * 1024 * 1024
 
-const server = http.createServer()
+// GET /health, for supervisors and operators checking a relay is up and
+// which version it runs. Everything else over plain HTTP is a 404; the
+// capabilities themselves are WebSocket upgrades (below).
+const { version: RELAY_VERSION } = require('./package.json')
+const { PROTOCOL_VERSION } = require('./protocolVersion')
+const server = http.createServer((req, res) => {
+  const { pathname } = new URL(req.url, 'http://localhost')
+  if (req.method === 'GET' && pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({
+      status:          'ok',
+      version:         RELAY_VERSION,
+      protocolVersion: PROTOCOL_VERSION,
+      uptimeS:         Math.round(process.uptime()),
+      capabilities: {
+        transponders: true,
+        sync:         true,
+        tacview:      !!(config.tacviewHost && config.tacviewPort),
+      },
+    }))
+    return
+  }
+  res.writeHead(404).end()
+})
 const transpondersWss = new WebSocketServer({ noServer: true, maxPayload: AUTH_ONLY_MAX_PAYLOAD })
 const syncWss          = new WebSocketServer({ noServer: true, maxPayload: SYNC_MAX_PAYLOAD })
 const tacviewWss       = new WebSocketServer({ noServer: true, maxPayload: AUTH_ONLY_MAX_PAYLOAD })
