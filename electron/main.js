@@ -337,6 +337,12 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(port)
   })
+}).catch((err) => {
+  // e.g. no free port in the range. Without this the app would keep running
+  // with no window. If the window did open, a later step failed; keep it.
+  console.error('[electron] startup failed:', err)
+  dialog.showErrorBox('TRACS could not start', err?.message ?? String(err))
+  if (BrowserWindow.getAllWindows().length === 0) app.quit()
 })
 
 app.on('window-all-closed', () => {
