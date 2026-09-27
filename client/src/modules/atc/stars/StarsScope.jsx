@@ -12,7 +12,7 @@ import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './
 import { computeStarsSymbolMap, computeStarsFilteredUnits } from './starsScopeHelpers.js'
 import { useStarsNavdataLoading } from './starsNavdataLoading.js'
 import { useStcaTracker } from './stca/useStcaCompute.js'
-import { useHistoryCapture } from './useHistoryCapture.js'
+import { useHistoryCapture } from '../../../utils/useHistoryCapture.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
 import { drawCompassRose }      from './canvas/drawCompassRose.js'

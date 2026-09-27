@@ -67,6 +67,7 @@ import {
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
 import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'
+import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
 
 const DEFAULT_windowId = 'abm-main'
@@ -494,67 +495,15 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     return () => clearInterval(id)
   }, [windowId])
 
-  // History trail capture — same rate-gated-setInterval pattern STARS uses
-  // (client/src/modules/atc/stars/StarsScope.jsx), not AIC (which has none).
-  // Rate driven by windowSettings.historyRate (seconds), via a ref so the
-  // interval doesn't need to be torn down/rebuilt when the rate changes.
-  const historyRef = useRef({})
-  const historyRateRef = useRef(4.5)
-  useEffect(() => {
-    historyRateRef.current = windowSettings?.historyRate ?? 4.5
-  }, [windowSettings?.historyRate])
-  useEffect(() => {
-    let lastCaptureWall = 0
-    let lastCaptureUpdateTime = 0
-    const id = setInterval(() => {
-      const { lastUpdateTime } = useUnitsStore.getState()
-      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
-      const now = Date.now()
-      if (now - lastCaptureWall < historyRateRef.current * 1000) return
-      lastCaptureWall = now
-      lastCaptureUpdateTime = lastUpdateTime
+  // History trail capture (utils/useHistoryCapture.js), rate from
+  // windowSettings.historyRate. ABM's `.history <len> 0` means "capture on
+  // every fresh update", so a zero rate doesn't pause capture here.
+  const historyRef = useHistoryCapture(visibleUnitsRef, windowSettings?.historyRate, { pauseAtZeroRate: false })
 
-      const current = visibleUnitsRef.current
-      historyRef.current = Object.fromEntries(
-        Object.entries(current).map(([uid, u]) => {
-          const prev = historyRef.current[uid] || []
-          const pos  = u.position
-          if (!pos) return [uid, prev]
-          return [uid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
-        })
-      )
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
-
-  // Missile history trail capture — same pattern as the aircraft capture
-  // above, sharing its rate/length settings (one .history command governs
-  // both), but keyed off the weapons store and ABM-only (AIC's drawAbmMissiles
-  // call never passes a history map, so it never draws a trail there).
-  const missileHistoryRef = useRef({})
-  useEffect(() => {
-    let lastCaptureWall = 0
-    let lastCaptureUpdateTime = 0
-    const id = setInterval(() => {
-      const { lastUpdateTime } = useWeaponsStore.getState()
-      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
-      const now = Date.now()
-      if (now - lastCaptureWall < historyRateRef.current * 1000) return
-      lastCaptureWall = now
-      lastCaptureUpdateTime = lastUpdateTime
-
-      const current = visibleMissilesRef.current
-      missileHistoryRef.current = Object.fromEntries(
-        Object.entries(current).map(([wid, w]) => {
-          const prev = missileHistoryRef.current[wid] || []
-          const pos  = w.position
-          if (!pos) return [wid, prev]
-          return [wid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
-        })
-      )
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
+  // Missile history trails — same rate/length settings (one .history command
+  // governs both), keyed off the weapons store. ABM-only: AIC's
+  // drawAbmMissiles call never passes a history map, so it never draws one.
+  const missileHistoryRef = useHistoryCapture(visibleMissilesRef, windowSettings?.historyRate, { sourceStore: useWeaponsStore, pauseAtZeroRate: false })
 
   // Datablock line-2 speed/type alternation (friendlies only) — same idea as
   // STARS' blink timers, just a plain toggle rather than a visibility blink.
@@ -1342,6 +1291,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     // In-progress .line/.rect/.circ/.poly/.sect/.race/.text preview — on top
     // of everything, same as RBL.
     drawPendingDraw(ctx, view, pendingDraw, drawCursor, windowSettings?.csMap ?? 2)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef/missileHistoryRef are stable refs returned by useHistoryCapture
   }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getDecl, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,

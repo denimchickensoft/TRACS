@@ -32,10 +32,10 @@ import { usePreviewStore }       from '../../store/preview.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
 import { getCatccBookmark, saveCatccBookmark } from '../../store/catccBookmarks.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
+import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './CatccScope.css'
 
 const WINDOW_ID    = 'catcc-main'
-const MAX_HISTORY  = 10
 const ODS_MAX_LINES = 5
 
 // Reserved for history trails and PTL re-enable — do not delete.
@@ -183,7 +183,8 @@ export default function CatccScope() {
     return map
   }, [visibleUnits, ownership])
 
-  const historyRef = useRef({})
+  // History capture — see utils/useHistoryCapture.js
+  const historyRef = useHistoryCapture(visibleUnitsRef, windowSettings?.historyRate)
 
   // ── Initialize display window ──────────────────────────────────────
   useEffect(() => {
@@ -321,37 +322,6 @@ export default function CatccScope() {
     )
   }, [view, windowSettings?.briteCmp, windowSettings?.csTools])
 
-  // ── History capture ────────────────────────────────────────────────
-  const historyRateRef = useRef(4.5)
-  useEffect(() => {
-    historyRateRef.current = windowSettings?.historyRate ?? 4.5
-  }, [windowSettings?.historyRate])
-
-  useEffect(() => {
-    let lastCaptureWall = 0
-    let lastCaptureUpdateTime = 0
-    const id = setInterval(() => {
-      const rateSecs = historyRateRef.current
-      if (rateSecs <= 0) return
-      const { lastUpdateTime } = useUnitsStore.getState()
-      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
-      const now = Date.now()
-      if ((now - lastCaptureWall) < rateSecs * 1000) return
-      lastCaptureWall = now
-      lastCaptureUpdateTime = lastUpdateTime
-      const current = visibleUnitsRef.current
-      historyRef.current = Object.fromEntries(
-        Object.entries(current).map(([uid, u]) => {
-          const prev = historyRef.current[uid] || []
-          const pos  = u.position
-          if (!pos) return [uid, prev]
-          return [uid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
-        })
-      )
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
-
   // ── Render contacts + data blocks ─────────────────────────────────
   useEffect(() => {
     if (!view || !contactsCanvasRef.current) return
@@ -393,6 +363,7 @@ export default function CatccScope() {
       windowSettings?.dbca ?? true,
       windowSettings?.dbSize ?? 2,
     )
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef is a stable ref returned by useHistoryCapture
   }, [visibleUnits, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos, windowSettings?.dbSize,
       windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca,
