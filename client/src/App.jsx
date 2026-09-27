@@ -490,7 +490,7 @@ export function App() {
         gap:            '12px',
         padding:        '2px 8px',
         background:     '#111',
-        color:          '#555',
+        color:          '#888',
         fontSize:       '0.65rem',
         fontFamily:     'Roboto Mono, monospace',
         letterSpacing:  '0.08em',
@@ -522,7 +522,7 @@ export function App() {
             display:      'inline-block',
             flexShrink:   0,
           }} />
-          <span style={{ color: '#444' }}>
+          <span style={{ color: '#777' }}>
             {peers.length} {peers.length === 1 ? 'PEER' : 'PEERS'}
           </span>
         </span>
@@ -575,7 +575,7 @@ export function App() {
                   background:    'transparent',
                   border:        '1px solid #333',
                   borderRadius:  '2px',
-                  color:         '#555',
+                  color:         '#888',
                   fontFamily:    'inherit',
                   fontSize:      'inherit',
                   letterSpacing: 'inherit',
@@ -583,8 +583,8 @@ export function App() {
                   cursor:        'pointer',
                   textTransform: 'uppercase',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#888' }}
               >
                 Cancel
               </button>
@@ -596,7 +596,7 @@ export function App() {
                 background:    'transparent',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
-                color:         '#555',
+                color:         '#888',
                 fontFamily:    'inherit',
                 fontSize:      'inherit',
                 letterSpacing: 'inherit',
@@ -604,8 +604,8 @@ export function App() {
                 cursor:        'pointer',
                 textTransform: 'uppercase',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#888' }}
             >
               Change Position
             </button>
@@ -617,7 +617,7 @@ export function App() {
               onClick={() => { loadProfile(p.id); setActiveOds('atc') }}
               style={{
                 background:    activeOds === 'atc' && activeProfileId === p.id ? '#2A4A7A' : '#1A1A1A',
-                color:         activeOds === 'atc' && activeProfileId === p.id ? '#88BBFF' : '#555',
+                color:         activeOds === 'atc' && activeProfileId === p.id ? '#88BBFF' : '#888',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
                 padding:       '1px 6px',
@@ -647,7 +647,7 @@ export function App() {
               title="ASDE-X — shift-click to open ODS in new window"
               style={{
                 background:    activeOds === 'asdex' ? '#2A4A7A' : '#1A1A1A',
-                color:         activeOds === 'asdex' ? '#88BBFF' : '#555',
+                color:         activeOds === 'asdex' ? '#88BBFF' : '#888',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
                 padding:       '1px 6px',
@@ -668,15 +668,15 @@ export function App() {
               background:    settingsOpen ? '#222' : 'transparent',
               border:        `1px solid ${settingsOpen ? '#444' : '#333'}`,
               borderRadius:  '2px',
-              color:         settingsOpen ? '#aaa' : '#555',
+              color:         settingsOpen ? '#aaa' : '#888',
               fontFamily:    'inherit',
               fontSize:      '0.75rem',
               padding:       '1px 6px',
               cursor:        'pointer',
               lineHeight:    1,
             }}
-            onMouseEnter={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.color = '#888' } }}
-            onMouseLeave={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' } }}
+            onMouseEnter={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.color = '#ccc' } }}
+            onMouseLeave={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#888' } }}
           >
             ⚙
           </button>
@@ -732,7 +732,7 @@ export function App() {
               )}
             </div>
 
-            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.65rem', color: '#555' }}>
+            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.65rem', color: '#888' }}>
               {isElectron ? `TRACS v${tracsVersion ?? '…'}` : 'TRACS (dev)'}
               {relaySnapshot.version && ` — Relay v${relaySnapshot.version} (protocol ${relaySnapshot.protocolVersion})`}
             </div>
@@ -750,7 +750,7 @@ export function App() {
 
             {/* About / legal notices (GPLv3 §5(d): interactive programs show
                 appropriate legal notices). */}
-            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.6rem', color: '#555', lineHeight: 1.5, maxWidth: '320px' }}>
+            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.6rem', color: '#888', lineHeight: 1.5, maxWidth: '320px' }}>
               <div>Copyright (C) 2026 denimchickensoft</div>
               <div>
                 Free software under the GNU GPL v3.0 or later, with ABSOLUTELY NO WARRANTY.
