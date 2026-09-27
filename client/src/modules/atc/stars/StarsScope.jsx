@@ -341,10 +341,10 @@ export default function StarsScope() {
     return () => ro.disconnect()
   }, [buildView])
 
-  // blinkTick fires every 200ms and doesn't itself affect buildView's output.
-  // Bail out when the rebuilt view is field-identical to the
+  // buildView changes on any windowSettings change, including fields the view
+  // doesn't use. Bail out when the rebuilt view is field-identical to the
   // current one so its reference stays stable and doesn't force every
-  // view-dependent layer (map/relief/geo/etc.) to redraw 5x/sec for nothing.
+  // view-dependent layer (map/relief/geo/etc.) to redraw for nothing.
   useEffect(() => {
     const next = buildView()
     setView((prev) => (prev && next &&
@@ -358,7 +358,7 @@ export default function StarsScope() {
       prev.theatre === next.theatre)
       ? prev
       : next)
-  }, [buildView, blinkTick])
+  }, [buildView])
 
   // ── Auto-center on facility airbase ──────────────────────────────
   // Tracks the facilityDcsName last auto-centered in windowSettings.autoCenteredFacility
