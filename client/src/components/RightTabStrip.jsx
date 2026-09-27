@@ -19,7 +19,7 @@ export function RightTabStrip({ tabs, active, setActive, background = '#0a0a0a' 
             onClick={onClick}
             style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: active === key ? '#141414' : 'transparent' }}
           >
-            <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: active === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
+            <span style={{ writingMode: 'vertical-rl', fontSize: '10px', letterSpacing: '0.1em', color: active === key ? '#ccc' : '#777', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
           </div>
         )
       })}
