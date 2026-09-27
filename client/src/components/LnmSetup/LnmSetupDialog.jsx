@@ -36,13 +36,12 @@ export function LnmSetupDialog({ firstRun, onClose }) {
         background: '#1a1a1a', border: '1px solid #333', borderRadius: '4px',
         padding: '18px 22px', maxWidth: '520px', color: '#aaa', fontSize: '0.8rem', lineHeight: 1.5,
       }}>
-        <div style={{ color: '#ddd', fontSize: '0.9rem', marginBottom: '10px' }}>Navigation data</div>
+        <div style={{ color: '#ddd', fontSize: '0.9rem', marginBottom: '10px' }}>Navigation Data</div>
 
         <p style={{ margin: '0 0 8px' }}>
           Fixes, navaids, airways and procedures come from your own LittleNavMap
-          Navigraph database (a <code>.sqlite</code> file). TRACS reads it locally and
-          never uploads or redistributes it. Without it, those layers are unavailable
-          and everything else still works.
+          Navigraph database (a <code>.sqlite</code> file). Without it, those layers
+          are unavailable and everything else still works.
         </p>
         <p style={{ margin: '0 0 12px' }}>
           LittleNavMap usually keeps it at<br />

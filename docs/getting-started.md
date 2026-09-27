@@ -112,7 +112,7 @@ Fixes, navaids, airways and procedures come from your own **LittleNavMap Navigra
 %APPDATA%\ABarthel\little_navmap_db\little_navmap_navigraph.sqlite
 ```
 
-TRACS reads it on your machine and never uploads or redistributes it. Everything else (theatre geography, terrain, airports and runways) is bundled with TRACS.
+Everything else (theatre geography, terrain, airports and runways) is bundled with TRACS.
 
 - **First launch (desktop app):** if no database is set, TRACS explains this and offers **Choose file…**, **Not now**, or **Don't ask again**. After you choose a file, TRACS extracts the data; this can take a minute, and any error is shown in the dialog.
 - **Changing it later:** open **⚙ → Navigation data → Change…**. The new data takes effect the next time you sign in to a position.

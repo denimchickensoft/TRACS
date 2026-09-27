@@ -720,7 +720,7 @@ export function App() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lnmDbPath ?? ''}>
-                Navigation data: {typeof lnmDbPath === 'string' ? lnmDbPath.split(/[\\/]/).pop() : 'not configured'}
+                Navigation Data: {typeof lnmDbPath === 'string' ? lnmDbPath.split(/[\\/]/).pop() : 'not configured'}
               </span>
               {isElectron && (
                 <button
