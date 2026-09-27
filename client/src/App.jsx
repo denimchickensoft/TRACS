@@ -29,6 +29,7 @@ import { setProjectionParams } from './utils/magvar'
 import { resumeAudioContext } from './audio/audioEngine'
 import { useLnmStore, lnmPromptDismissed } from './store/lnm.js'
 import { LnmSetupDialog } from './components/LnmSetup/LnmSetupDialog'
+import { RightTabStrip } from './components/RightTabStrip'
 import { AssociationOwner } from './components/AssociationOwner'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
@@ -56,6 +57,13 @@ const WEBRTC_COLOR = {
   webrtc:       '#ccaa00',
   relay:        '#00cc66',
   disconnected: '#555555',
+}
+
+// A panel's saved zoom scale from localStorage, clamped to [min, max];
+// 1.0 when unset or unreadable.
+function readScale(key, min = 0.5, max = 2.0) {
+  const s = parseFloat(localStorage.getItem(key))
+  return isNaN(s) ? 1.0 : Math.max(min, Math.min(max, s))
 }
 
 export function App() {
@@ -257,10 +265,7 @@ export function App() {
   const [sbDocked,  setSbDocked]  = useState(true)
   const initCatccWidth = (() => { const v = parseInt(localStorage.getItem(SB_WIDTH_KEY), 10); return isNaN(v) ? SB_NATURAL_WIDTH : v })()
   const [catccWidth, setCatccWidth] = useState(initCatccWidth)
-  const [sbScale,    setSbScale]    = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.sb.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
+  const [sbScale,    setSbScale]    = useState(() => readScale('tracs.sb.scale'))
   const catccWidthRef = useRef(initCatccWidth)
   const sbPopupRef    = useRef(null)
   const handleCatccResize = useCallback(makeResizeHandler(catccWidthRef, setCatccWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
@@ -290,10 +295,7 @@ export function App() {
   const [stripsDocked,  setStripsDocked]  = useState(true)
   const initAtcWidth = (() => { const v = parseInt(localStorage.getItem('tracs.atc.width'), 10); return isNaN(v) ? 520 : v })()
   const [atcWidth,   setAtcWidth]   = useState(initAtcWidth)
-  const [stripsScale, setStripsScale] = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.strip-bay.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
+  const [stripsScale, setStripsScale] = useState(() => readScale('tracs.strip-bay.scale'))
   const atcWidthRef    = useRef(initAtcWidth)
   const stripsPopupRef = useRef(null)
   const handleAtcResize    = useCallback(makeResizeHandler(atcWidthRef, setAtcWidth, 280, 900, 'tracs.atc.width'), []) // eslint-disable-line
@@ -306,10 +308,7 @@ export function App() {
   // ── AIC right partition ────────────────────────────────────────────
   const initAicWidth = (() => { const v = parseInt(localStorage.getItem('tracs.braa.width'), 10); return isNaN(v) ? BRAA_NATURAL_WIDTH : v })()
   const [aicWidth,   setAicWidth]   = useState(initAicWidth)
-  const [braaScale,  setBraaScale]  = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.braa.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.7, Math.min(1.4, s))
-  })
+  const [braaScale,  setBraaScale]  = useState(() => readScale('tracs.braa.scale', 0.7, 1.4))
   const aicWidthRef  = useRef(initAicWidth)
   const braaPopupRef = useRef(null)
   const [aicDocked, setAicDocked] = useState(true)
@@ -326,18 +325,9 @@ export function App() {
   const [atoDocked, setAtoDocked] = useState(true)
   const [fragDocked, setFragDocked] = useState(true)
   const [drawingsDocked, setDrawingsDocked] = useState(true)
-  const [atoScale, setAtoScale]   = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.ato.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
-  const [fragScale, setFragScale] = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.frag.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
-  const [drawingsScale, setDrawingsScale] = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.abm.drawings.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
+  const [atoScale, setAtoScale]   = useState(() => readScale('tracs.ato.scale'))
+  const [fragScale, setFragScale] = useState(() => readScale('tracs.frag.scale'))
+  const [drawingsScale, setDrawingsScale] = useState(() => readScale('tracs.abm.drawings.scale'))
   const handleAbmResize = useCallback(makeResizeHandler(abmWidthRef, setAbmWidth, 280, 700, 'tracs.abm.width'), []) // eslint-disable-line
   const handleAtoUndock  = useCallback(makeUndockHandler('/?window=abm-ato',  'tracs-abm-ato',  abmWidthRef, setAtoDocked, atoPopupRef), []) // eslint-disable-line
   const handleFragUndock = useCallback(makeUndockHandler('/?window=abm-frag', 'tracs-abm-frag', abmWidthRef, setFragDocked, fragPopupRef), []) // eslint-disable-line
@@ -813,7 +803,6 @@ export function App() {
                 onScaleChange={setStripsScale}
               />
             )}
-            {atcPanel === 'main' && !stripsDocked && null}
             {atcPanel === 'par' && parDocked && (
               <Par
                 docked
@@ -823,24 +812,17 @@ export function App() {
                 onHide={() => setAtcPanel(null)}
               />
             )}
-            {atcPanel === 'par' && !parDocked && null}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0d0d0d', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'main', label: stripsDocked ? 'STRIPS' : 'STRIPS ↗', onClick: () => { if (!stripsDocked && stripsPopupRef.current) stripsPopupRef.current.focus(); else setAtcPanel((p) => p === 'main' ? null : 'main') } },
-                { key: 'par',  label: parDocked    ? 'PAR'    : 'PAR ↗',    onClick: () => { if (!parDocked    && parPopupRef.current)    parPopupRef.current.focus();    else setAtcPanel((p) => p === 'par'  ? null : 'par')  } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: atcPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: atcPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              background="#0d0d0d"
+              active={atcPanel}
+              setActive={setAtcPanel}
+              tabs={[
+                { key: 'main', name: 'STRIPS', docked: stripsDocked, popupRef: stripsPopupRef },
+                { key: 'par',  name: 'PAR',    docked: parDocked,    popupRef: parPopupRef },
+              ]}
+            />
           </div>
         )}
 
@@ -861,7 +843,6 @@ export function App() {
                 onScaleChange={setSbScale}
               />
             )}
-            {catccPanel === 'main' && !sbDocked && null}
             {catccPanel === 'par' && parDocked && (
               <Par
                 docked
@@ -871,7 +852,6 @@ export function App() {
                 onHide={() => setCatccPanel(null)}
               />
             )}
-            {catccPanel === 'par' && !parDocked && null}
             {catccPanel === 'deck' && deckDocked && (
               <Deck
                 docked
@@ -881,25 +861,17 @@ export function App() {
                 onHide={() => setCatccPanel(null)}
               />
             )}
-            {catccPanel === 'deck' && !deckDocked && null}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'main', label: sbDocked   ? 'STATUS'  : 'STATUS ↗',  onClick: () => { if (!sbDocked   && sbPopupRef.current)   sbPopupRef.current.focus();   else setCatccPanel((p) => p === 'main' ? null : 'main') } },
-                { key: 'par',  label: parDocked  ? 'PAR'     : 'PAR ↗',     onClick: () => { if (!parDocked  && parPopupRef.current)  parPopupRef.current.focus();  else setCatccPanel((p) => p === 'par'  ? null : 'par')  } },
-                { key: 'deck', label: deckDocked ? 'DECK'    : 'DECK ↗',    onClick: () => { if (!deckDocked && deckPopupRef.current) deckPopupRef.current.focus(); else setCatccPanel((p) => p === 'deck' ? null : 'deck') } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: catccPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: catccPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              active={catccPanel}
+              setActive={setCatccPanel}
+              tabs={[
+                { key: 'main', name: 'STATUS', docked: sbDocked,   popupRef: sbPopupRef },
+                { key: 'par',  name: 'PAR',    docked: parDocked,  popupRef: parPopupRef },
+                { key: 'deck', name: 'DECK',   docked: deckDocked, popupRef: deckPopupRef },
+              ]}
+            />
           </div>
         )}
 
@@ -921,20 +893,13 @@ export function App() {
             )}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'main', label: aicDocked ? 'BRAA' : 'BRAA ↗', onClick: () => { if (!aicDocked && braaPopupRef.current) braaPopupRef.current.focus(); else setAicPanel(p => p === 'main' ? null : 'main') } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: aicPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: aicPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              active={aicPanel}
+              setActive={setAicPanel}
+              tabs={[
+                { key: 'main', name: 'BRAA', docked: aicDocked, popupRef: braaPopupRef },
+              ]}
+            />
           </div>
         )}
 
@@ -976,22 +941,15 @@ export function App() {
             )}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'ato',      label: atoDocked      ? 'ATO'  : 'ATO ↗',  onClick: () => { if (!atoDocked      && atoPopupRef.current)      atoPopupRef.current.focus();      else setAbmPanel(p => p === 'ato'      ? null : 'ato')      } },
-                { key: 'frag',     label: fragDocked     ? 'FRAG' : 'FRAG ↗', onClick: () => { if (!fragDocked     && fragPopupRef.current)     fragPopupRef.current.focus();     else setAbmPanel(p => p === 'frag'     ? null : 'frag')     } },
-                { key: 'drawings', label: drawingsDocked ? 'DRAW' : 'DRAW ↗', onClick: () => { if (!drawingsDocked && drawingsPopupRef.current) drawingsPopupRef.current.focus(); else setAbmPanel(p => p === 'drawings' ? null : 'drawings') } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: abmPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: abmPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              active={abmPanel}
+              setActive={setAbmPanel}
+              tabs={[
+                { key: 'ato',      name: 'ATO',  docked: atoDocked,      popupRef: atoPopupRef },
+                { key: 'frag',     name: 'FRAG', docked: fragDocked,     popupRef: fragPopupRef },
+                { key: 'drawings', name: 'DRAW', docked: drawingsDocked, popupRef: drawingsPopupRef },
+              ]}
+            />
           </div>
         )}
 
