@@ -99,10 +99,18 @@ const config = {
   },
 }
 
+// Per-message size caps (ws defaults to 100 MiB, accepted before auth).
+// /transponders and /tacview clients only ever send their auth message; /sync
+// carries every relay-hosted sync message, the largest being a STATE_DUMP
+// (flight plans, declarations, status board), normally well under 1 MiB.
+// Missions and drawings are never synced through the relay.
+const AUTH_ONLY_MAX_PAYLOAD = 64 * 1024
+const SYNC_MAX_PAYLOAD      = 16 * 1024 * 1024
+
 const server = http.createServer()
-const transpondersWss = new WebSocketServer({ noServer: true })
-const syncWss          = new WebSocketServer({ noServer: true })
-const tacviewWss       = new WebSocketServer({ noServer: true })
+const transpondersWss = new WebSocketServer({ noServer: true, maxPayload: AUTH_ONLY_MAX_PAYLOAD })
+const syncWss          = new WebSocketServer({ noServer: true, maxPayload: SYNC_MAX_PAYLOAD })
+const tacviewWss       = new WebSocketServer({ noServer: true, maxPayload: AUTH_ONLY_MAX_PAYLOAD })
 
 server.on('upgrade', (req, socket, head) => {
   const { pathname } = new URL(req.url, 'http://localhost')

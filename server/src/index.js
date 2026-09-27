@@ -105,9 +105,12 @@ app.use(express.static(CLIENT_DIST))
 
 // ─── HTTP + WS server ────────────────────────────────────────────────────────
 
+// Per-message size caps (ws defaults to 100 MiB). The browser never sends
+// on /ws (it only receives), and /signal carries WebRTC signaling (SDP
+// offers/answers, a few KB each).
 const server = http.createServer(app)
-const wss       = new WebSocketServer({ noServer: true })
-const signalWss = new WebSocketServer({ noServer: true })
+const wss       = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 })
+const signalWss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 })
 
 // Route WebSocket upgrade requests by path so both servers share one HTTP port.
 server.on('upgrade', (req, socket, head) => {
