@@ -80,6 +80,7 @@
       "THIRD_PARTY_NOTICES.md",
       "client/dist/**/*",
       "client/public/units/**/*",
+      "client/public/icaoMapping.json",
       "node_modules/**/*",
       "!node_modules/electron/**",
       "!node_modules/electron-builder/**",
