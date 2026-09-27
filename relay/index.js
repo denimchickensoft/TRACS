@@ -142,8 +142,32 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 createTransponderRelay(transpondersWss, config)
-createSyncRelay(syncWss, config)
-createTacviewRelay(tacviewWss, config)
+const syncRelay    = createSyncRelay(syncWss, config)
+const tacviewRelay = createTacviewRelay(tacviewWss, config)
+
+// Graceful shutdown (Ctrl+C, a service manager's SIGTERM, or an auto-update
+// restart): flush the debounced sessions.json write so a restart doesn't lose
+// the latest sessions, close the Tacview connection and every client socket
+// cleanly (clients reconnect on their own backoff), then exit. A 3 s timer
+// forces the exit if something hangs.
+let shuttingDown = false
+function shutdown(reason, exitCode = 0) {
+  if (shuttingDown) return
+  shuttingDown = true
+  console.log(`[relay] shutting down (${reason})`)
+  setTimeout(() => process.exit(exitCode), 3000).unref()
+  syncRelay.flush()
+  tacviewRelay.stop()
+  for (const wss of [transpondersWss, syncWss, tacviewWss]) {
+    for (const ws of wss.clients) ws.close(1001, 'relay shutting down')
+  }
+  server.close(() => process.exit(exitCode))
+  // server.close waits for open HTTP keep-alive connections; don't let one
+  // hold the exit up to the 3 s timer.
+  server.closeAllConnections?.()
+}
+process.on('SIGINT',  () => shutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('SIGTERM'))
 
 server.on('error', (err) => {
   const reason = err.code === 'EADDRINUSE' ? `port ${config.wsPort} is already in use` : err.message
@@ -159,6 +183,6 @@ server.listen(config.wsPort, () => {
 // `node index.js` has no standalone executable to swap out from under
 // itself, and would just be repeatedly re-downloading its own source.
 if (isSeaBinary) {
-  checkAndApplyUpdate(config.autoUpdate, { exePath: process.execPath, exeDir: RELAY_DIR })
+  checkAndApplyUpdate(config.autoUpdate, { exePath: process.execPath, exeDir: RELAY_DIR, shutdown })
     .catch((err) => console.error('[relay:update] check failed:', err.message))
 }

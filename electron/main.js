@@ -345,6 +345,18 @@ app.whenReady().then(async () => {
   if (BrowserWindow.getAllWindows().length === 0) app.quit()
 })
 
+// Let the in-process server stop its sources and close sockets cleanly
+// before the app exits. The quit is paused once, then resumed.
+let serverShutDown = false
+app.on('before-quit', (event) => {
+  if (serverShutDown || currentPort === null) return
+  event.preventDefault()
+  serverShutDown = true
+  require('../server/src/index.js').shutdown()
+    .catch((err) => console.error('[electron] server shutdown failed:', err))
+    .finally(() => app.quit())
+})
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })

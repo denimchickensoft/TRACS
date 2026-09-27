@@ -194,4 +194,34 @@ server.listen(PORT, HOST, () => {
   }
 })
 
-module.exports = { ready }
+// Graceful shutdown (Electron quit, or Ctrl+C / SIGTERM when run
+// standalone): stop the data sources and relay clients so their sockets
+// close cleanly (Tacview's RTT server is sensitive to abrupt disconnects),
+// close browser sockets, then the HTTP server. Resolves when done, or after
+// 2 s if something hangs.
+let shutdownPromise = null
+function shutdown() {
+  if (shutdownPromise) return shutdownPromise
+  console.log('[server] shutting down')
+  shutdownPromise = new Promise((resolve) => {
+    const timer = setTimeout(resolve, 2000)
+    for (const type of sourceRegistry.SOURCE_TYPES) {
+      const source = sourceRegistry.get(type)
+      if (source.isPolling()) source.stop()
+    }
+    tacviewRelayClient.stop()
+    srs.stop()
+    for (const ws of wss.clients) ws.close(1001, 'server shutting down')
+    for (const ws of signalWss.clients) ws.close(1001, 'server shutting down')
+    server.close(() => { clearTimeout(timer); resolve() })
+    server.closeAllConnections?.()
+  })
+  return shutdownPromise
+}
+
+if (require.main === module) {
+  process.on('SIGINT',  () => shutdown().then(() => process.exit(0)))
+  process.on('SIGTERM', () => shutdown().then(() => process.exit(0)))
+}
+
+module.exports = { ready, shutdown }

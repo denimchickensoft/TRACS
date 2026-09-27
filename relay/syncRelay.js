@@ -44,22 +44,40 @@ function createSyncRelay(wss, config) {
   const sessions = new Map()
   let persistTimer = null
 
+  function serializeSessions() {
+    const plain = {}
+    for (const [topic, session] of sessions) {
+      plain[topic] = {
+        clientList:       session.clientList,
+        registry:         session.registry,
+        groupAssignments: session.groupAssignments,
+        nextGroupNumber:  session.nextGroupNumber,
+      }
+    }
+    return JSON.stringify(plain)
+  }
+
   function persistSessionsDebounced() {
     clearTimeout(persistTimer)
     persistTimer = setTimeout(() => {
-      const plain = {}
-      for (const [topic, session] of sessions) {
-        plain[topic] = {
-          clientList:       session.clientList,
-          registry:         session.registry,
-          groupAssignments: session.groupAssignments,
-          nextGroupNumber:  session.nextGroupNumber,
-        }
-      }
-      fs.writeFile(SESSIONS_FILE, JSON.stringify(plain), (err) => {
+      persistTimer = null
+      fs.writeFile(SESSIONS_FILE, serializeSessions(), (err) => {
         if (err) console.error('[relay:sync] failed to persist sessions:', err.message)
       })
     }, PERSIST_DEBOUNCE_MS)
+  }
+
+  // Writes a pending debounced save immediately (relay shutdown), so a
+  // restart within the debounce window doesn't lose the latest sessions.
+  function flush() {
+    if (!persistTimer) return
+    clearTimeout(persistTimer)
+    persistTimer = null
+    try {
+      fs.writeFileSync(SESSIONS_FILE, serializeSessions())
+    } catch (err) {
+      console.error('[relay:sync] failed to persist sessions:', err.message)
+    }
   }
 
   // Every entry loaded from disk starts inside its eviction window (same as
@@ -455,6 +473,8 @@ function createSyncRelay(wss, config) {
     }
   }, HEARTBEAT_INTERVAL_MS)
   wss.on('close', () => clearInterval(heartbeatInterval))
+
+  return { flush }
 }
 
 module.exports = { createSyncRelay }

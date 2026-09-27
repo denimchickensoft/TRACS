@@ -145,7 +145,7 @@ function inWindow(windowCfg) {
     : nowMinutes >= startMinutes || nowMinutes < endMinutes // window spans midnight
 }
 
-async function applyUpdate(latest, { exePath, exeDir }) {
+async function applyUpdate(latest, { exePath, exeDir, shutdown }) {
   const assetName = assetNameForPlatform()
   const asset = latest.release.assets?.find((a) => a.name === assetName)
   if (!asset) throw new Error(`no ${assetName} asset on release ${latest.release.tag_name}`)
@@ -189,7 +189,10 @@ async function applyUpdate(latest, { exePath, exeDir }) {
   if (process.platform !== 'win32') fs.chmodSync(exePath, 0o755)
 
   console.log(`[relay:update] restarting to apply update v${latest.version}`)
-  process.exit(0)
+  // Relies on a supervisor/service restarting the process, as before;
+  // shutdown() flushes sessions and closes sockets before exiting.
+  if (shutdown) shutdown('applying update')
+  else process.exit(0)
 }
 
 async function checkOnce(autoUpdateCfg, ctx) {
