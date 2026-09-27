@@ -20,6 +20,7 @@
     "stage-better-sqlite3": "node electron/scripts/stage-better-sqlite3.js",
     "dist:electron": "npm run build && npm run stage-navdata && npm run stage-better-sqlite3 && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "lint": "eslint . && npm run check:tacview-core",
+    "test": "vitest run",
     "knip": "knip",
     "sync:tacview-core": "node scripts/sync-tacview-core.js",
     "check:tacview-core": "node scripts/sync-tacview-core.js --check",
@@ -42,6 +43,7 @@
     "shapefile": "^0.6.6",
     "stream-json": "^1.9.1",
     "tracs-geo-math": "*",
+    "vitest": "^3.2.7",
     "yauzl": "^3.4.0"
   },
   "dependencies": {

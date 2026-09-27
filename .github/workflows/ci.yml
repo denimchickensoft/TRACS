@@ -1,0 +1,45 @@
+name: CI
+
+# Lint (including the generated-copy sync check), client build and unit
+# tests on every push to master and every pull request. The tag-triggered
+# release workflows are separate.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or PR supersedes an in-progress run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Install scripts are skipped: nothing below needs the Electron binary
+      # or native modules (better-sqlite3), and skipping them keeps the job
+      # fast and free of native-build failures.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build client
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test

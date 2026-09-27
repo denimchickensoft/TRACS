@@ -267,7 +267,9 @@ export function computeMagvar(latDeg, lngDeg, dateOrYear = new Date()) {
   }
 
   // ct = sin(lat) = cos(colatitude), st = cos(lat) = sin(colatitude)
-  // (geodetic ≈ geocentric at surface — < 0.05° error in declination)
+  // Geodetic latitude is used as geocentric, at the IGRF reference radius: a
+  // simplification worth ~0.1-0.15° of declination at mid/high latitudes,
+  // below the 1° display resolution.
   const latRad = latDeg * _D2R
   const lngRad = lngDeg * _D2R
   const ct = Math.sin(latRad)

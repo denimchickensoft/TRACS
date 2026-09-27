@@ -219,7 +219,8 @@ Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). 
 | `npm run build` then `npm start` | Build the client and serve it from the local server on `http://localhost:8722` |
 | `npm run electron:dev` | Build the client and run it inside Electron, as the desktop app does |
 | `npm run dist:electron` | Build an installer for the current platform into `dist-electron/` (stages bundled navdata first) |
-| `npm run lint` | ESLint, plus a check that `relay/tacviewCore.js` matches its generated source |
+| `npm run lint` | ESLint, plus a check that the generated copies of shared server files are in sync |
+| `npm test` | Unit tests (Vitest; tests live in `test/`) |
 | `npm run knip` | Unused files/exports/dependencies report |
 | `npm run sync:tacview-core` | Regenerate the relay's and client's copies of shared server files (Tacview parser, protocol version, detection-config example) |
 

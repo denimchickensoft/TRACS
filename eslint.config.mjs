@@ -66,6 +66,20 @@ export default [
     },
   },
 
+  // Unit tests (root test/ tree, run by Vitest from vitest.config.mjs) — ESM,
+  // Node.
+  {
+    files: ['test/**/*.js', 'vitest.config.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'no-unused-vars': unusedVarsRule,
+    },
+  },
+
   // Shared workspace packages — plain ESM, consumed by both client (browser)
   // and server (Node dynamic import), so no environment-specific globals.
   {
