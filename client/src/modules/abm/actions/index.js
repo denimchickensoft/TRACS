@@ -100,6 +100,19 @@ const AIRSPACE_CMD_CATEGORY = {
   classe: 'CLASS E', classf: 'CLASS F', classg: 'CLASS G',
 }
 
+// Most display toggles share one shape: flip a boolean window setting
+// (falling back to `defaultOn` when unset), persist it as the seed default
+// for new windows, and reply with the ON/OFF text. Commands that do more
+// than that are written out by hand below.
+function makeWinToggle(field, defaultOn, onText, offText) {
+  return ({ context }) => {
+    const next = !(getWin(context.windowId)?.[field] ?? defaultOn)
+    updateWin(context.windowId, { [field]: next })
+    saveAbmPrefs({ [field]: next })
+    return next ? onText : offText
+  }
+}
+
 function getWin(windowId) {
   return useDisplayStore.getState().windows[windowId ?? WINDOW_ID]
 }
@@ -211,19 +224,9 @@ export function BE_FIX({ captures, context }) {
 // stores' own `visible` field directly; only ABM's copy of "is this layer
 // on in THIS window" moved to windowSettings.
 
-export function TIME_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.timeVisible ?? true)
-  updateWin(context.windowId, { timeVisible: next })
-  saveAbmPrefs({ timeVisible: next })
-  return next ? 'TIME ON' : 'TIME OFF'
-}
+export const TIME_TOGGLE = makeWinToggle('timeVisible', true, 'TIME ON', 'TIME OFF')
 
-export function UNITRO_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.unitReadoutVisible ?? true)
-  updateWin(context.windowId, { unitReadoutVisible: next })
-  saveAbmPrefs({ unitReadoutVisible: next })
-  return next ? 'UNIT READOUT ON' : 'UNIT READOUT OFF'
-}
+export const UNITRO_TOGGLE = makeWinToggle('unitReadoutVisible', true, 'UNIT READOUT ON', 'UNIT READOUT OFF')
 
 export function ROSE_TOGGLE({ context }) {
   const wasVisible = (getWin(context.windowId)?.briteCmp ?? 70) > 0
@@ -232,33 +235,13 @@ export function ROSE_TOGGLE({ context }) {
   return wasVisible ? 'ROSE OFF' : 'ROSE ON'
 }
 
-export function GEO_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.geoVisible ?? true)
-  updateWin(context.windowId, { geoVisible: next })
-  saveAbmPrefs({ geoVisible: next })
-  return next ? 'GEO ON' : 'GEO OFF'
-}
+export const GEO_TOGGLE = makeWinToggle('geoVisible', true, 'GEO ON', 'GEO OFF')
 
-export function RELIEF_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.reliefVisible ?? false)
-  updateWin(context.windowId, { reliefVisible: next })
-  saveAbmPrefs({ reliefVisible: next })
-  return next ? 'RELIEF ON' : 'RELIEF OFF'
-}
+export const RELIEF_TOGGLE = makeWinToggle('reliefVisible', false, 'RELIEF ON', 'RELIEF OFF')
 
-export function HOLDS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.holdingsVisible ?? false)
-  updateWin(context.windowId, { holdingsVisible: next })
-  saveAbmPrefs({ holdingsVisible: next })
-  return next ? 'HOLDS ON' : 'HOLDS OFF'
-}
+export const HOLDS_TOGGLE = makeWinToggle('holdingsVisible', false, 'HOLDS ON', 'HOLDS OFF')
 
-export function MORA_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.moraVisible ?? false)
-  updateWin(context.windowId, { moraVisible: next })
-  saveAbmPrefs({ moraVisible: next })
-  return next ? 'MORA ON' : 'MORA OFF'
-}
+export const MORA_TOGGLE = makeWinToggle('moraVisible', false, 'MORA ON', 'MORA OFF')
 
 export function AIRWAYS_TOGGLE({ context }) {
   const v = getWin(context.windowId)?.airwaysVisible ?? { V: false, J: false, B: false }
@@ -329,20 +312,10 @@ export async function REFRESH() {
 
 // .labels/.lbl/.label — name-label toggle for both airspace and
 // custom-drawing layers.
-export function LABELS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.labelsVisible ?? false)
-  updateWin(context.windowId, { labelsVisible: next })
-  saveAbmPrefs({ labelsVisible: next })
-  return next ? 'LABELS ON' : 'LABELS OFF'
-}
+export const LABELS_TOGGLE = makeWinToggle('labelsVisible', false, 'LABELS ON', 'LABELS OFF')
 
 // .fill — toggle airspace polygon fill, remembering the last percentage used.
-export function FILL_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.fillVisible ?? false)
-  updateWin(context.windowId, { fillVisible: next })
-  saveAbmPrefs({ fillVisible: next })
-  return next ? 'FILL ON' : 'FILL OFF'
-}
+export const FILL_TOGGLE = makeWinToggle('fillVisible', false, 'FILL ON', 'FILL OFF')
 
 export function FILL_SET({ captures, context }) {
   const pct = parseInt(captures.pct, 10)
@@ -477,19 +450,9 @@ export function DCLEAR_NAME({ captures, context }) {
 
 // ── Fixes / navaids ──────────────────────────────────────────────────────────
 
-export function FIXES_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.fixesVisible ?? false)
-  updateWin(context.windowId, { fixesVisible: next })
-  saveAbmPrefs({ fixesVisible: next })
-  return next ? 'FIXES ON' : 'FIXES OFF'
-}
+export const FIXES_TOGGLE = makeWinToggle('fixesVisible', false, 'FIXES ON', 'FIXES OFF')
 
-export function NAVAIDS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.navaidsVisible ?? false)
-  updateWin(context.windowId, { navaidsVisible: next })
-  saveAbmPrefs({ navaidsVisible: next })
-  return next ? 'NAVAIDS ON' : 'NAVAIDS OFF'
-}
+export const NAVAIDS_TOGGLE = makeWinToggle('navaidsVisible', false, 'NAVAIDS ON', 'NAVAIDS OFF')
 
 // .fix — with no argument, clears all pinned fixes for this theatre.
 export function FIX_CLEAR({ context }) {
@@ -691,47 +654,17 @@ export function FOCUS_OPEN({ captures, context }) {
 
 // ── Runways / polygons / grid / towns / raster layers ───────────────────────
 
-export function RUNWAYS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.runwaysVisible ?? false)
-  updateWin(context.windowId, { runwaysVisible: next })
-  saveAbmPrefs({ runwaysVisible: next })
-  return next ? 'RUNWAYS ON' : 'RUNWAYS OFF'
-}
+export const RUNWAYS_TOGGLE = makeWinToggle('runwaysVisible', false, 'RUNWAYS ON', 'RUNWAYS OFF')
 
-export function POLYGONS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.polygonsVisible ?? false)
-  updateWin(context.windowId, { polygonsVisible: next })
-  saveAbmPrefs({ polygonsVisible: next })
-  return next ? 'POLYGONS ON' : 'POLYGONS OFF'
-}
+export const POLYGONS_TOGGLE = makeWinToggle('polygonsVisible', false, 'POLYGONS ON', 'POLYGONS OFF')
 
-export function MGRS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.mgrsVisible ?? false)
-  updateWin(context.windowId, { mgrsVisible: next })
-  saveAbmPrefs({ mgrsVisible: next })
-  return next ? 'MGRS GRID ON' : 'MGRS GRID OFF'
-}
+export const MGRS_TOGGLE = makeWinToggle('mgrsVisible', false, 'MGRS GRID ON', 'MGRS GRID OFF')
 
-export function TOWNS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.townsVisible ?? false)
-  updateWin(context.windowId, { townsVisible: next })
-  saveAbmPrefs({ townsVisible: next })
-  return next ? 'TOWNS ON' : 'TOWNS OFF'
-}
+export const TOWNS_TOGGLE = makeWinToggle('townsVisible', false, 'TOWNS ON', 'TOWNS OFF')
 
-export function BASE_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.basemapVisible ?? false)
-  updateWin(context.windowId, { basemapVisible: next })
-  saveAbmPrefs({ basemapVisible: next })
-  return next ? 'BASE ON' : 'BASE OFF'
-}
+export const BASE_TOGGLE = makeWinToggle('basemapVisible', false, 'BASE ON', 'BASE OFF')
 
-export function TERRAIN_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.terrainVisible ?? false)
-  updateWin(context.windowId, { terrainVisible: next })
-  saveAbmPrefs({ terrainVisible: next })
-  return next ? 'TERRAIN ON' : 'TERRAIN OFF'
-}
+export const TERRAIN_TOGGLE = makeWinToggle('terrainVisible', false, 'TERRAIN ON', 'TERRAIN OFF')
 
 // .map — bulk toggle for all four raster layers (base/terrain/water/roads)
 // plus .geo's live coastline/boundary layer, same any-on pattern as .asp.
@@ -746,55 +679,25 @@ export function MAP_TOGGLE({ context }) {
   return next ? 'MAP ON' : 'MAP OFF'
 }
 
-export function WATER_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.waterVisible ?? false)
-  updateWin(context.windowId, { waterVisible: next })
-  saveAbmPrefs({ waterVisible: next })
-  return next ? 'WATER ON' : 'WATER OFF'
-}
+export const WATER_TOGGLE = makeWinToggle('waterVisible', false, 'WATER ON', 'WATER OFF')
 
-export function ROADS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.roadsVisible ?? false)
-  updateWin(context.windowId, { roadsVisible: next })
-  saveAbmPrefs({ roadsVisible: next })
-  return next ? 'ROADS ON' : 'ROADS OFF'
-}
+export const ROADS_TOGGLE = makeWinToggle('roadsVisible', false, 'ROADS ON', 'ROADS OFF')
 
 // ── Cursor position readout / bullseye-on-cursor / bullseye-on-datablock ───
 
-export function COORDS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.coordsVisible ?? false)
-  updateWin(context.windowId, { coordsVisible: next })
-  saveAbmPrefs({ coordsVisible: next })
-  return next ? 'COORDS ON' : 'COORDS OFF'
-}
+export const COORDS_TOGGLE = makeWinToggle('coordsVisible', false, 'COORDS ON', 'COORDS OFF')
 
-export function BEC_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.becVisible ?? false)
-  updateWin(context.windowId, { becVisible: next })
-  saveAbmPrefs({ becVisible: next })
-  return next ? 'BULLSEYE-ON-CURSOR ON' : 'BULLSEYE-ON-CURSOR OFF'
-}
+export const BEC_TOGGLE = makeWinToggle('becVisible', false, 'BULLSEYE-ON-CURSOR ON', 'BULLSEYE-ON-CURSOR OFF')
 
 // .bedb — adds a 3rd datablock line per contact: bearing/range from
 // bullseye (e.g. "090/20"), same magnetic-bearing convention as .bec/.coords'
 // bullseye readout (drawAbmContacts.js). Off by default.
-export function BEDB_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.bedbVisible ?? false)
-  updateWin(context.windowId, { bedbVisible: next })
-  saveAbmPrefs({ bedbVisible: next })
-  return next ? 'BULLSEYE DATABLOCK ON' : 'BULLSEYE DATABLOCK OFF'
-}
+export const BEDB_TOGGLE = makeWinToggle('bedbVisible', false, 'BULLSEYE DATABLOCK ON', 'BULLSEYE DATABLOCK OFF')
 
 // .malert — feature toggle for enemy missile-launch alerting (sound + blink,
 // see missileAlert/useMissileAlertTracker.js). Independent of .vol: this
 // gates whether the alert is computed at all, .vol only scales its tone.
-export function MALERT_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.missileAlertEnabled ?? true)
-  updateWin(context.windowId, { missileAlertEnabled: next })
-  saveAbmPrefs({ missileAlertEnabled: next })
-  return next ? 'MISSILE ALERT ON' : 'MISSILE ALERT OFF'
-}
+export const MALERT_TOGGLE = makeWinToggle('missileAlertEnabled', true, 'MISSILE ALERT ON', 'MISSILE ALERT OFF')
 
 // .vol [0-10] — master volume for ABM alert tones (0 = mute). Shared knob
 // for any alert channel, not just missile-launch (currently its only
@@ -888,12 +791,7 @@ export function HISTORY_LEN({ captures, context }) {
   return `HISTORY ${len}/${getWin(context.windowId)?.historyRate ?? 4.5}`
 }
 
-export function DB_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.dbVisible ?? true)
-  updateWin(context.windowId, { dbVisible: next })
-  saveAbmPrefs({ dbVisible: next })
-  return next ? 'DATABLOCKS ON' : 'DATABLOCKS OFF'
-}
+export const DB_TOGGLE = makeWinToggle('dbVisible', true, 'DATABLOCKS ON', 'DATABLOCKS OFF')
 
 // Clears every .db + click per-contact override (dbHiddenIds), returning all
 // contacts to the global dbVisible/formation-suppression behavior.
@@ -904,22 +802,12 @@ export function DBRESET({ context }) {
 
 // Datablock collision avoidance (shared algorithm w/ CATCC, see
 // utils/datablockPlacement.js). Off by default for ABM.
-export function DBCA_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.dbca ?? false)
-  updateWin(context.windowId, { dbca: next })
-  saveAbmPrefs({ dbca: next })
-  return next ? 'DBCA ON' : 'DBCA OFF'
-}
+export const DBCA_TOGGLE = makeWinToggle('dbca', false, 'DBCA ON', 'DBCA OFF')
 
 // Formation datablock suppression: when two or more
 // same-flight aircraft are within a 3NM box of the flight's lead, only the
 // lead's datablock shows. On by default.
-export function DBS_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.dbSuppress ?? true)
-  updateWin(context.windowId, { dbSuppress: next })
-  saveAbmPrefs({ dbSuppress: next })
-  return next ? 'DB SUPPRESSION ON' : 'DB SUPPRESSION OFF'
-}
+export const DBS_TOGGLE = makeWinToggle('dbSuppress', true, 'DB SUPPRESSION ON', 'DB SUPPRESSION OFF')
 
 export function LDR({ captures, context }) {
   const length = parseInt(captures.length, 10)
@@ -1021,12 +909,7 @@ export function AUTO_DECLARE_IFF({ context }) {
 // Toggles automatic threat rings: while on, every friendly
 // aircraft within threatRadius of a HOSTILE/BOGEY aircraft gets its ring lit
 // until the breach clears — see AbmScope's own useEffect.
-export function AUTOTHREAT({ context }) {
-  const next = !(getWin(context.windowId)?.autoThreat ?? false)
-  updateWin(context.windowId, { autoThreat: next })
-  saveAbmPrefs({ autoThreat: next })
-  return next ? 'AUTOTHREAT ON' : 'AUTOTHREAT OFF'
-}
+export const AUTOTHREAT = makeWinToggle('autoThreat', false, 'AUTOTHREAT ON', 'AUTOTHREAT OFF')
 
 // ROE is shared cross-module state (store/roe.js) — either an AIC or ABM
 // controller can set it, and it syncs live to every other connected client.
@@ -1036,12 +919,7 @@ export function ROE({ captures }) {
   return `WEAPONS ${state}`
 }
 
-export function ROE_TOGGLE({ context }) {
-  const next = !(getWin(context.windowId)?.roeVisible ?? true)
-  updateWin(context.windowId, { roeVisible: next })
-  saveAbmPrefs({ roeVisible: next })
-  return next ? 'ROE ON' : 'ROE OFF'
-}
+export const ROE_TOGGLE = makeWinToggle('roeVisible', true, 'ROE ON', 'ROE OFF')
 
 // ── Ground/naval acq/eng range-ring visibility ───────────────────────────────
 // `.acq`/`.eng` toggle all four declarations' rings at once; `.acq h`/
