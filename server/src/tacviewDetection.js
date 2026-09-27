@@ -107,16 +107,57 @@ const DEFAULTS = {
 // Extracted so the same merge logic can be applied against either the local
 // file (direct mode, resetToLocalConfig()) or a relay-pushed blob (relay-
 // hosted mode, applyRelayConfig()) — see those functions below.
-function mergeConfig(rawConfig) {
-  const raw = rawConfig ?? {}
-  return {
-    ...DEFAULTS,
-    ...raw,
-    sensorRangeNm: { ...DEFAULTS.sensorRangeNm, ...(raw.sensorRangeNm ?? {}) },
-    unitTypeRangeOverridesNm: { ...DEFAULTS.unitTypeRangeOverridesNm, ...(raw.unitTypeRangeOverridesNm ?? {}) },
-    rwr: { ...DEFAULTS.rwr, ...(raw.rwr ?? {}) },
-    aircraftSensorScaling: { ...DEFAULTS.aircraftSensorScaling, ...(raw.aircraftSensorScaling ?? {}) },
+// Each value must match its default's type (numbers finite and >= 0);
+// anything else keeps the default with a warning, since these feed straight
+// into detection math. unitTypeRangeOverridesNm is an open map of unit type
+// to a range in nm. Unknown keys are ignored.
+function validValue(value, fallback) {
+  if (typeof fallback === 'number') return typeof value === 'number' && Number.isFinite(value) && value >= 0
+  return typeof value === typeof fallback
+}
+
+function mergeSection(label, defaults, raw) {
+  const merged = { ...defaults }
+  if (raw === undefined) return merged
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    console.warn(`[tacviewDetection] ${label} must be an object - using defaults`)
+    return merged
   }
+  for (const key of Object.keys(defaults)) {
+    if (raw[key] === undefined) continue
+    if (validValue(raw[key], defaults[key])) merged[key] = raw[key]
+    else console.warn(`[tacviewDetection] ${label}.${key}=${JSON.stringify(raw[key])} is invalid - using ${JSON.stringify(defaults[key])}`)
+  }
+  return merged
+}
+
+function mergeConfig(rawConfig) {
+  const raw = rawConfig && typeof rawConfig === 'object' && !Array.isArray(rawConfig) ? rawConfig : {}
+  const merged = {}
+  for (const [key, fallback] of Object.entries(DEFAULTS)) {
+    if (key === 'unitTypeRangeOverridesNm') continue
+    if (fallback && typeof fallback === 'object') {
+      merged[key] = mergeSection(key, fallback, raw[key])
+    } else if (raw[key] === undefined) {
+      merged[key] = fallback
+    } else if (validValue(raw[key], fallback)) {
+      merged[key] = raw[key]
+    } else {
+      console.warn(`[tacviewDetection] ${key}=${JSON.stringify(raw[key])} is invalid - using ${JSON.stringify(fallback)}`)
+      merged[key] = fallback
+    }
+  }
+  const overrides = raw.unitTypeRangeOverridesNm
+  merged.unitTypeRangeOverridesNm = { ...DEFAULTS.unitTypeRangeOverridesNm }
+  if (overrides && typeof overrides === 'object' && !Array.isArray(overrides)) {
+    for (const [type, nm] of Object.entries(overrides)) {
+      if (validValue(nm, 0)) merged.unitTypeRangeOverridesNm[type] = nm
+      else console.warn(`[tacviewDetection] unitTypeRangeOverridesNm.${type}=${JSON.stringify(nm)} is invalid - ignoring it`)
+    }
+  } else if (overrides !== undefined) {
+    console.warn('[tacviewDetection] unitTypeRangeOverridesNm must be an object - ignoring it')
+  }
+  return merged
 }
 
 // Reassignable rather than frozen at require time — relay-hosted Tacview
