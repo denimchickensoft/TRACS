@@ -56,6 +56,10 @@ Airdrome IDs in `client/public/airdromes/*.json` were generated with [pydcs](htt
 
 `client/public/brevity.json` is transcribed from *Multi-Service Tactics, Techniques, and Procedures for Multi-Service Brevity Codes* (ATP 1-02.1, April 2025), a U.S. Government publication approved for public release with unlimited distribution.
 
+## Fonts
+
+TRACS bundles the **Roboto Mono** typeface, Copyright 2015 The Roboto Mono Project Authors (https://github.com/googlefonts/robotomono), via the `@fontsource/roboto-mono` package. It is licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org).
+
 ## Software dependencies
 
 The TRACS desktop app bundles open-source npm packages and the Electron runtime. Each package's license file is included in its folder under `node_modules`, and Electron ships its own Chromium license notices (`LICENSES.chromium.html`). The TRACS Relay bundles the Node.js runtime (MIT license) and the `ws` package (MIT license).

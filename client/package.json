@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/roboto-mono": "^5.3.0",
     "@trystero-p2p/nostr": "^0.24.0",
     "@trystero-p2p/ws-relay": "^0.24.0",
     "fflate": "^0.8.2",
