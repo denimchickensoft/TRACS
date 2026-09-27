@@ -39,11 +39,18 @@ jobs:
 
       - name: Install dependencies
         working-directory: relay
-        run: npm install
+        run: npm ci
 
       - name: Build
         working-directory: relay
         run: npm run build
+
+      # Both jobs build an identical config.example.json; only the Linux job
+      # uploads it, so the two don't race to publish the same asset name.
+      - name: Keep config.example.json to one job
+        if: runner.os == 'Windows'
+        shell: bash
+        run: rm -f relay/dist/config.example.json
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
