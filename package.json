@@ -27,6 +27,7 @@
     "postinstall": "git config core.hooksPath .githooks || exit 0"
   },
   "devDependencies": {
+    "@electron/fuses": "^1.8.0",
     "@electron/rebuild": "^3.6.1",
     "@eslint/js": "^10.0.1",
     "concurrently": "^8.2.2",
@@ -60,6 +61,7 @@
     "productName": "TRACS",
     "asar": false,
     "npmRebuild": false,
+    "afterPack": "electron/scripts/flip-fuses.js",
     "directories": {
       "output": "dist-electron"
     },
