@@ -191,7 +191,7 @@ function assignButtons(features, categories, suffix) {
 const serverCache = {}
 
 function lsKey(theatre, positionKey) {
-  return `tracs-maps-${theatre}:${positionKey}`
+  return `tracs.maps.${theatre}.${positionKey}`
 }
 
 function saveVisible(theatre, positionKey, visible) {

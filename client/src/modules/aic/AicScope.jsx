@@ -10,6 +10,7 @@ import { AUTO_DECLARE_MODE } from '../../utils/createDeclarationStore.js'
 import { getIffStatus } from '../../utils/transponder.js'
 import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { useAicPrefsStore }    from '../../store/aicPrefs.js'
+import { loadAicDisplayPrefs, saveAicDisplayPrefs } from '../../store/aicDisplayPrefs.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
@@ -38,7 +39,6 @@ import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoa
 import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
 
 const WINDOW_ID = 'aic-main'
-const AIC_SETTINGS_KEY = 'aic-settings'
 const AIC_WIN_FIELDS = [
   'rangeNm', 'ringSpacingNm', 'ptlSeconds', 'symSize',
   'fadedSeconds', 'threatRadius', 'centerLat', 'centerLng',
@@ -254,23 +254,15 @@ export default function AicScope() {
   useEffect(() => { setView(buildView()) }, [centerLat, centerLng, declinationDeg, windowSettings?.rangeNm]) // eslint-disable-line
 
   useEffect(() => {
-    let saved = null
-    try { saved = JSON.parse(localStorage.getItem(AIC_SETTINGS_KEY) ?? 'null') } catch {}
+    const saved = loadAicDisplayPrefs()
 
     if (!windowSettings) {
-      const defaults = {
-        rangeNm: 120, ringSpacingNm: 20, ptlSeconds: 60, symSize: 3,
-        centerLat: 0, centerLng: 0, centerOverridden: false,
-        fadedSeconds: 30, threatRadius: 35,
-      }
-      const savedWin = saved
-        ? Object.fromEntries(AIC_WIN_FIELDS.filter(k => saved[k] !== undefined).map(k => [k, saved[k]]))
-        : {}
-      displayStore.initWindow(WINDOW_ID, { ...defaults, ...savedWin })
+      displayStore.initWindow(WINDOW_ID,
+        Object.fromEntries(AIC_WIN_FIELDS.filter(k => saved[k] !== undefined).map(k => [k, saved[k]])))
     }
-    if (saved?.geoVisible    != null) useGeoStore.getState().setVisible(saved.geoVisible)
-    if (saved?.reliefVisible != null) useReliefStore.getState().setVisible(saved.reliefVisible)
-    if (saved?.aspColorIdx && !useMapsStore.getState().palettes.length) {
+    if (saved.geoVisible    != null) useGeoStore.getState().setVisible(saved.geoVisible)
+    if (saved.reliefVisible != null) useReliefStore.getState().setVisible(saved.reliefVisible)
+    if (saved.aspColorIdx && !useMapsStore.getState().palettes.length) {
       fetch('/api/navdata/palettes')
         .then(r => r.json())
         .then(palettes => useMapsStore.getState().setPalettes(palettes))
@@ -289,7 +281,7 @@ export default function AicScope() {
         for (const k of AIC_WIN_FIELDS) entry[k] = ws[k]
         entry.geoVisible    = useGeoStore.getState().visible
         entry.reliefVisible = useReliefStore.getState().visible
-        try { localStorage.setItem(AIC_SETTINGS_KEY, JSON.stringify(entry)) } catch {}
+        saveAicDisplayPrefs(entry)
       }, 500)
     }
     const unsubDisplay = useDisplayStore.subscribe(save)

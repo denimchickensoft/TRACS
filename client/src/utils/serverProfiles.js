@@ -3,8 +3,7 @@ const LAST_CONN_KEY     = 'tracs.lastConnection'
 const MAX_RECENTS  = 5
 
 // Splits a stored "http://host:port"-shaped string (or a bare host) back into
-// its host, port and protocol, for editing as separate fields. Moved here
-// from Login.jsx since inferLegacySourceType() below needs it too. Malformed
+// its host, port and protocol, for editing as separate fields. Malformed
 // input returns blanks rather than throwing. protocol defaults to 'http' —
 // the only other value ever produced is 'https', when the raw string had
 // that scheme explicitly.
@@ -16,22 +15,6 @@ export function parseHostPort(raw) {
   } catch {
     return { host: '', port: '', protocol: 'http' }
   }
-}
-
-// Pre-source-selector profiles (and last-connection records) have no
-// sourceType at all. A blank Source Port + a configured relay was always,
-// deterministically, "relay is the primary source" (the old auto-detect
-// rule) — recoverable with certainty. A port being set was historically
-// ambiguous (could've meant Olympus or direct Tacview, indistinguishable —
-// that was the whole point of auto-detect), so it defaults to Olympus, the
-// pre-existing majority case; a wrong guess surfaces immediately as a failed
-// connect and the user flips the selector once.
-export function inferLegacySourceType(record) {
-  if (!record) return 'olympus'
-  if (record.sourceType) return record.sourceType
-  const hasPort = !!parseHostPort(record.url).port
-  if (!hasPort && record.relayUrl) return 'relay'
-  return 'olympus'
 }
 
 export function loadServerProfiles() {

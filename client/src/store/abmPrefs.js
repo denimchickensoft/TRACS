@@ -22,7 +22,7 @@
 
 import { makePrefsStore } from '../utils/prefsStore.js'
 
-const KEY = 'tracs-abm-prefs'
+const KEY = 'tracs.abm.prefs'
 
 const DEFAULTS = {
   dbVisible:      true,

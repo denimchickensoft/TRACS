@@ -4,7 +4,7 @@
 // abmBookmarks.js: a bookmark is an explicit user-triggered snapshot, not an
 // auto-restored last-used setting. Unlike ABM's lat/lng bookmarks, a saved
 // range isn't theatre-dependent, so this uses one global key.
-const KEY = 'tracs-catcc-bookmarks'
+const KEY = 'tracs.catcc.bookmarks'
 const SLOT_COUNT = 10
 
 function loadSlots() {

@@ -6,7 +6,7 @@
 
 import { makePrefsStore } from '../utils/prefsStore.js'
 
-const KEY = 'tracs-catcc-prefs'
+const KEY = 'tracs.catcc.prefs'
 
 const DEFAULTS = {
   dbca: true, // datablock collision avoidance — on by default for CATCC, unlike ATC/ABM

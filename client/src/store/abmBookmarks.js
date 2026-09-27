@@ -11,11 +11,11 @@
 // captured in — loading a bookmark after switching theatres would otherwise
 // jump to an unrelated lat/lng in the new theatre's coordinate space.
 
-const KEY_PREFIX = 'tracs-abm-bookmarks'
+const KEY_PREFIX = 'tracs.abm.bookmarks'
 const SLOT_COUNT = 10
 
 function keyFor(theatre) {
-  return `${KEY_PREFIX}:${theatre ?? 'default'}`
+  return `${KEY_PREFIX}.${theatre ?? 'default'}`
 }
 
 function loadSlots(theatre) {

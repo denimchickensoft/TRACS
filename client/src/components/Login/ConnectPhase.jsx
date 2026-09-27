@@ -5,7 +5,7 @@ import { checkSyncCapable } from '../../webrtc/syncClient'
 import {
   loadServerProfiles, upsertServerProfile, toggleFavoriteProfile,
   removeServerProfile, findProfileByName, filterServerProfiles, getMostRecentProfile,
-  loadLastConnection, saveLastConnection, parseHostPort, inferLegacySourceType,
+  loadLastConnection, saveLastConnection, parseHostPort,
 } from '../../utils/serverProfiles'
 
 // Round-trips parseHostPort()'s output back into what the Server URL field
@@ -49,7 +49,7 @@ export function ConnectPhase({ onConnected }) {
   const [profiles,   setProfiles]   = useState(() => loadServerProfiles())
   const lastConnection = useMemo(() => loadLastConnection(), [])
   const lastProfile = useMemo(() => getMostRecentProfile(profiles), [profiles])
-  const [sourceMode, setSourceMode] = useState(() => lastConnection?.sourceType ?? inferLegacySourceType(lastProfile))
+  const [sourceMode, setSourceMode] = useState(() => lastConnection?.sourceType ?? lastProfile?.sourceType ?? 'olympus')
   const [name,       setName]       = useState(() => lastConnection?.name ?? lastProfile?.name ?? '')
   const [serverHost, setServerHost] = useState(() => displayHost(parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '')))
   const [sourcePort, setSourcePort] = useState(() => parseHostPort(lastConnection?.url ?? lastProfile?.url ?? '').port)
@@ -146,7 +146,7 @@ export function ConnectPhase({ onConnected }) {
 
   function handleSelectProfile(profile) {
     const profileCoalition = profile.lastCoalition ?? coalition
-    const profileMode = inferLegacySourceType(profile)
+    const profileMode = profile.sourceType ?? 'olympus'
     const source = parseHostPort(profile.url)
     const relay  = parseHostPort(profile.relayUrl)
     setName(profile.name)

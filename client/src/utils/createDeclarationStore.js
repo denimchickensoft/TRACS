@@ -26,7 +26,7 @@ export const DECLARATION = {
 // mutual-exclusivity/sync mechanics, not the matching logic itself.
 export const AUTO_DECLARE_MODE = { OFF: 'off', COALITION: 'coalition', IFF: 'iff' }
 
-export function createDeclarationStore({ storageKey, legacyStorageKey, channelName }) {
+export function createDeclarationStore({ storageKey, channelName }) {
   const { register, broadcast } = createBroadcastHook()
 
   function loadStoredAutoDeclareMode() {
@@ -35,10 +35,6 @@ export function createDeclarationStore({ storageKey, legacyStorageKey, channelNa
       if (stored === AUTO_DECLARE_MODE.OFF || stored === AUTO_DECLARE_MODE.COALITION || stored === AUTO_DECLARE_MODE.IFF) {
         return stored
       }
-      // One-time migration from the old boolean autoClassify key — 'true'
-      // meant unconditional ground-truth auto-declare, i.e. today's
-      // 'coalition' mode.
-      if (legacyStorageKey && localStorage.getItem(legacyStorageKey) === 'true') return AUTO_DECLARE_MODE.COALITION
       return AUTO_DECLARE_MODE.OFF
     } catch {
       return AUTO_DECLARE_MODE.OFF
