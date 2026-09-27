@@ -116,7 +116,11 @@
       "icon": "client/public/favicon.ico"
     },
     "mac": {
-      "target": "dmg"
+      "target": [
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
+      ],
+      "x64ArchFiles": "**/better_sqlite3.node"
     },
     "linux": {
       "target": "AppImage"

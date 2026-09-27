@@ -32,6 +32,7 @@
 
 const fs   = require('fs')
 const path = require('path')
+const { execFileSync } = require('child_process')
 const { rebuild } = require('@electron/rebuild')
 
 const REPO_ROOT    = path.resolve(__dirname, '../..')
@@ -53,14 +54,36 @@ async function main() {
   )
 
   const electronVersion = require(path.join(REPO_ROOT, 'node_modules/electron/package.json')).version
-  console.log(`[stage-better-sqlite3] rebuilding for electron ${electronVersion}...`)
-  await rebuild({
+  const rebuildFor = (arch) => rebuild({
     buildPath:       STAGING_ROOT,
     electronVersion,
     onlyModules:     ['better-sqlite3'],
     force:           true,
     buildFromSource: true,
+    ...(arch ? { arch } : {}),
   })
+
+  if (process.platform === 'darwin') {
+    // The macOS app is one universal build (package.json's mac targets), so
+    // the addon must hold both architectures: build it for x64 and arm64,
+    // then merge them into a single fat binary with lipo. electron-builder's
+    // mac.x64ArchFiles marks this file as already universal.
+    const addon = path.join(DST_MODULE, 'build', 'Release', 'better_sqlite3.node')
+    const slices = []
+    for (const arch of ['x64', 'arm64']) {
+      console.log(`[stage-better-sqlite3] rebuilding for electron ${electronVersion} (${arch})...`)
+      await rebuildFor(arch)
+      const slice = path.join(STAGING_ROOT, `better_sqlite3-${arch}.node`)
+      fs.copyFileSync(addon, slice)
+      slices.push(slice)
+    }
+    execFileSync('lipo', ['-create', ...slices, '-output', addon])
+    for (const slice of slices) fs.rmSync(slice)
+    console.log(`[stage-better-sqlite3] ${execFileSync('lipo', ['-archs', addon], { encoding: 'utf8' }).trim()} merged`)
+  } else {
+    console.log(`[stage-better-sqlite3] rebuilding for electron ${electronVersion}...`)
+    await rebuildFor()
+  }
   pruneBuildOutputs()
   console.log('[stage-better-sqlite3] done')
 }

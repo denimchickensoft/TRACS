@@ -34,10 +34,16 @@ Download the installer for your platform from the latest `v*` release on the [Re
 | Platform | Package |
 |---|---|
 | Windows | NSIS installer (`.exe`) |
-| macOS | `.dmg` |
+| macOS | `.dmg` (universal: Apple Silicon and Intel) |
 | Linux | `.AppImage` |
 
 The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will warn on first launch.
+
+**macOS:** because the app isn't signed, macOS may say "TRACS is damaged and can't be opened" instead of offering to open it. After dragging TRACS into Applications, clear the download quarantine flag once from Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/TRACS.app
+```
 
 **Updates:** TRACS checks GitHub Releases at launch.
 - On Windows and Linux it asks before downloading an update, then offers to restart and install it.
@@ -268,7 +274,7 @@ Releases are built by GitHub Actions when a version tag is pushed. The tag is th
 
 | Tag | Workflow | Produces |
 |---|---|---|
-| `vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS dmg, and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-22.04 and published directly (not as a draft) to one GitHub Release by electron-builder. This release is what installed apps update from |
+| `vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS universal dmg (plus the zip that macOS update checks read), and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-22.04 and published directly (not as a draft) to one GitHub Release by electron-builder. This release is what installed apps update from |
 | `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TRACS-Relay.exe` (Windows), `TRACS-Relay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from. Relay releases are never marked as the repo's "latest" release, because installed TRACS apps find their updates through that pointer |
 
 ```bash

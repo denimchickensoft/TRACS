@@ -295,6 +295,10 @@ handleFromApp('lnm:pickDatabase', async (event) => {
 function setupAutoUpdate() {
   if (process.platform === 'darwin') {
     const { autoUpdater } = require('electron-updater')
+    // Notify-only: never download an update the unsigned app can't install.
+    // The zip target is what makes electron-builder publish latest-mac.yml,
+    // which this check reads.
+    autoUpdater.autoDownload = false
     autoUpdater.on('update-available', (info) => {
       mainWindow?.webContents.send('update:notify-only', info.version)
     })
