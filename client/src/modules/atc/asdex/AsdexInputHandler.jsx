@@ -4,10 +4,11 @@ import { isTypedInput }        from '../stars/input/starsKeys.js'
 import { toggleAllDatablocks } from './asdexDatablockToggle.js'
 
 export function AsdexInputHandler({ onEnter, onEsc }) {
-  const preview = useAsdexPreviewStore()
-
+  // Store actions are read via getState() inside the handler, not a
+  // subscription: subscribing made the listener re-attach on every keystroke.
   useEffect(() => {
     function handleKeyDown(e) {
+      const preview = useAsdexPreviewStore.getState()
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
@@ -47,7 +48,7 @@ export function AsdexInputHandler({ onEnter, onEsc }) {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [preview, onEnter, onEsc])
+  }, [onEnter, onEsc])
 
   return null
 }
