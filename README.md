@@ -190,7 +190,7 @@ The service user needs write access to the folder, since self-updates replace th
 
 - **Always set `passwords`.** An empty `passwords` object lets anyone who can reach the relay connect as any coalition. The relay logs a warning at startup when no passwords are set.
 - **Keep `config.json` private.** It holds the passwords in plain text, so make it readable only by the account that runs the relay.
-- **Password guessing is rate-limited.** Five wrong passwords from one address within a minute block that address for 30 seconds, doubling with each repeat up to 10 minutes.
+- **Password guessing is rate-limited.** Ten wrong passwords from one address within a minute block that address for 30 seconds, doubling with each repeat up to 10 minutes.
 - **Coalition passwords control who can connect, not what they receive.** The relay forwards every unit (Tacview telemetry and transponders) to every authenticated client, and each controller's own TRACS applies fog of war. A player with a valid password and a modified client could see the other side's full picture, so only give passwords to players you trust.
 - **Traffic isn't encrypted by default.** Controllers connect over plain `ws://`, so passwords and data can be read by anyone who can watch the network between them and the relay. For an internet-facing relay, put it behind TLS (below), or use a trusted network or a VPN.
 

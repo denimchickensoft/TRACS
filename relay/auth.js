@@ -25,8 +25,10 @@ function passwordMatches(validPasswords, coalition, supplied) {
 // Brute-force limit, per client IP: MAX_FAILURES wrong passwords within
 // FAILURE_WINDOW_MS blocks that IP for BLOCK_MIN_MS, doubling for each
 // repeat block up to BLOCK_MAX_MS. A successful login, or an hour without
-// failures, clears the IP's record.
-const MAX_FAILURES      = 5
+// failures, clears the IP's record. The limit is generous on purpose: one
+// login with a wrong password makes several connections (sync check, SRS,
+// relay-hosted Tacview), and controllers behind one NAT share a counter.
+const MAX_FAILURES      = 10
 const FAILURE_WINDOW_MS = 60_000
 const BLOCK_MIN_MS      = 30_000
 const BLOCK_MAX_MS      = 10 * 60_000

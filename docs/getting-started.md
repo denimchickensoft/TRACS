@@ -34,7 +34,7 @@ Click **Connect to Network**. TRACS authenticates against your chosen source and
 
 If a Relay Port is set, TRACS checks in parallel whether relay sync is available. This never blocks connecting. If the relay can't be used, you'll see one of these warnings with a **Continue** button, and TRACS falls back to peer-to-peer sync (see Session Password below):
 - "Relay password rejected — using peer-to-peer."
-- "Relay is refusing this computer after too many wrong passwords — try again in a few minutes. Using peer-to-peer." — five wrong passwords within a minute block your address for a while.
+- "Relay is refusing this computer after too many wrong passwords — try again in a few minutes. Using peer-to-peer." — ten wrong passwords within a minute block your address for a while.
 - "Relay unreachable — using peer-to-peer."
 - "Relay protocol mismatch: relay=N client=M — update whichever side is behind — using peer-to-peer." — the relay and TRACS versions are incompatible.
 
