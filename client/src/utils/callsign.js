@@ -127,15 +127,6 @@ export function findFlightPlanAid(unit, plans) {
 }
 
 /**
- * Resolve the pilot's real name from the pipe convention ("VIPER1 | John Smith").
- * Returns null if useDcsNames is off, no pipe is present, or no unitName exists.
- */
-export function resolvePilotName(unit) {
-  if (!useSessionStore.getState().useDcsNames) return null
-  return parseUnitName(unit.unitName).pilotName
-}
-
-/**
  * Manually-added ATO flights (AddAtoFlight.jsx) have no DCS unitId, and no
  * reliable way to predict the *exact* per-element callsign DCS will assign —
  * flight number + element digit are concatenated with no separator (flight

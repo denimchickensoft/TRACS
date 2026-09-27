@@ -136,14 +136,6 @@ export const useAtcStore = create(
       return { callsignOverrides: next }
     }),
 
-  toggleQuickLook: (unitId) =>
-    set((state) => {
-      const next = new Set(state.quickLook)
-      if (next.has(unitId)) next.delete(unitId)
-      else next.add(unitId)
-      return { quickLook: next }
-    }),
-
   setDisplayFdb: (unitId) =>
     set((state) => ({ displayFdb: { ...state.displayFdb, [unitId]: true } })),
 

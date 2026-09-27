@@ -61,7 +61,6 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const wheelDir = useWheelDirection()
   const barRef   = useRef(null)
   const [menuKey, setMenuKey] = useState('main')
-  const [toggles, setToggles] = useState(() => new Set())
 
   const updateWindow = useDisplayStore((s) => s.updateWindow)
   const windowSettings   = useDisplayStore((s) => s.windows[WINDOW_ID])
@@ -247,13 +246,6 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           const next = !(windowSettings?.simWingmenStandby ?? false)
           updateWindow(WINDOW_ID, { simWingmenStandby: next })
           saveStarsPrefs({ simWingmenStandby: next })
-        } else {
-          setToggles(prev => {
-            const next = new Set(prev)
-            if (next.has(btn.id)) next.delete(btn.id)
-            else next.add(btn.id)
-            return next
-          })
         }
         return
       }
@@ -435,7 +427,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
                     ? (windowSettings?.stcaEnabled ?? false)
                     : btn.id === 'WNG'
                       ? (windowSettings?.simWingmenStandby ?? false)
-                      : toggles.has(btn.id)
+                      : false
 
     if (btn.id === 'OFF_CNTR') {
       isToggled = windowSettings?.offCntr ?? false

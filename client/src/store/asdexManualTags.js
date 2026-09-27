@@ -17,13 +17,6 @@ export const useAsdexManualTagsStore = create((set) => ({
   tag: (unitId) =>
     set((s) => ({ tagged: { ...s.tagged, [String(unitId)]: true } })),
 
-  untag: (unitId) =>
-    set((s) => {
-      const next = { ...s.tagged }
-      delete next[String(unitId)]
-      return { tagged: next }
-    }),
-
   reset: () => set({ tagged: {} }),
 }))
 

@@ -22,7 +22,7 @@ function generateCid(plans) {
 
 export const useFlightPlansStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
   // Keyed by AID (callsign, uppercase)
   plans: {},
 
@@ -81,19 +81,6 @@ export const useFlightPlansStore = create(
       }
     }),
 
-  // Clear the amended flag once strips have acknowledged it
-  clearAmended: (aid) =>
-    set((state) => {
-      const key = aid?.toUpperCase()
-      if (!key || !state.plans[key]) return {}
-      return {
-        plans: {
-          ...state.plans,
-          [key]: { ...state.plans[key], amended: false },
-        },
-      }
-    }),
-
   // Recycle the BCN for a plan
   recycleBcn: (aid) =>
     set((state) => {
@@ -143,9 +130,6 @@ export const useFlightPlansStore = create(
       next[normalized] = { ...plan, aid: normalized }
       return { plans: next }
     }),
-
-  getByUnit: (unitId) =>
-    Object.values(get().plans).find((p) => p.unitId === unitId) ?? null,
 
   reset: () => { _cidCounter = 1; set({ plans: {} }) },
 

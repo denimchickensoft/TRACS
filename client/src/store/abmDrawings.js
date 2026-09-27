@@ -59,10 +59,8 @@ function loadSaved() {
 
 const saved = loadSaved() ?? {}
 
-export const useAbmDrawingsStore = create((set, get) => ({
+export const useAbmDrawingsStore = create((set) => ({
   byTheatre: saved.byTheatre ?? {},   // { [theatre]: [{id, name, color, visible, addedAt, features}] }
-
-  layersFor: (theatre) => get().byTheatre[theatre] ?? [],
 
   // features: normalized array from utils/parseGeojson.js. If any feature
   // carries its own simplestyle `stroke` (the file's own authored color),

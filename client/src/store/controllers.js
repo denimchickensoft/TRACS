@@ -289,7 +289,6 @@ export const useControllersStore = create((set, get) => ({
 
   // ── Convenience selectors ─────────────────────────────────────────
   getEntry:          (positionName) => get().registry[positionName] ?? null,
-  getPositionSymbol: (positionName) => get().registry[positionName]?.positionSymbol ?? null,
   canAssumeTrack:    (positionName) => get().registry[positionName]?.canAssumeTrack  ?? false,
 
   // Returns all registered controllers as an array, sorted by group then suffix

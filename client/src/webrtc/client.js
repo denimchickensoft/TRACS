@@ -187,8 +187,6 @@ function positionTypeHints(suffix) {
   }
 }
 
-export function isApplying() { return _applying }
-
 // ── Room ID derivation (P2P/Trystero fallback only — relay-hosted sync uses
 // relayTopicFor() below instead) ───────────────────────────────────────────────
 // `coalition` is an optional trailing param (added after `password`, not

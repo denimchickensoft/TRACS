@@ -75,8 +75,6 @@ export const useSessionStore = create((set) => ({
 
   // WebRTC / session
   webrtcStatus: 'disconnected',  // 'webrtc' | 'relay' | 'disconnected' | 'rejected'
-  sessionCode: null,
-  isHost: false,
   peers: [],
   controllerMessages: [],  // { id, from, fromPosition, text, timestamp, broadcast, toPosition? }[]
   unreadGeneral: 0,
@@ -146,10 +144,6 @@ export const useSessionStore = create((set) => ({
   setWebrtcRejection: (msg) => set({ webrtcRejection: msg }),
   clearWebrtcRejection: () => set({ webrtcRejection: null }),
 
-  setSessionCode: (code) => set({ sessionCode: code }),
-
-  setIsHost: (isHost) => set({ isHost }),
-
   setPeers: (peers) => set({ peers }),
 
   addControllerMessage: (msg) =>
@@ -165,8 +159,6 @@ export const useSessionStore = create((set) => ({
       }
       return { controllerMessages: [...s.controllerMessages, entry], unreadGeneral: s.unreadGeneral + 1 }
     }),
-
-  clearControllerMessages: () => set({ controllerMessages: [] }),
 
   markMessagesRead: (tab) =>
     set((s) => tab === 'main'
@@ -212,8 +204,6 @@ export const useSessionStore = create((set) => ({
       aicUnitId:           null,
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
-      sessionCode:         null,
-      isHost:              false,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,
@@ -250,8 +240,6 @@ export const useSessionStore = create((set) => ({
       aicUnitId:           null,
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
-      sessionCode:         null,
-      isHost:              false,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,

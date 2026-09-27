@@ -92,7 +92,6 @@ export default function AicScope() {
   const removeBraaPairsForUnit = useAicStore(s => s.removeBraaPairsForUnit)
   const setPendingBraaFighter  = useAicStore(s => s.setPendingBraaFighter)
   const clearPendingBraa       = useAicStore(s => s.clearPendingBraa)
-  const getEffectiveDeclaration = getAicEffectiveDeclaration
 
   const geoBoundaries  = useGeoStore(s => s.boundaries)
   const geoCoastlines  = useGeoStore(s => s.coastlines)
@@ -333,7 +332,7 @@ export default function AicScope() {
     const hostiles   = []
     for (const [id, unit] of Object.entries(visibleUnits)) {
       if (!unit.position) continue
-      const decl = getEffectiveDeclaration(id, unit, myCoalitionNum)
+      const decl = getAicEffectiveDeclaration(id, unit, myCoalitionNum)
       if (decl === DECLARATION.FRIENDLY) friendlies.push([id, unit])
       else if (decl === DECLARATION.HOSTILE || decl === DECLARATION.BOGEY) hostiles.push(unit)
     }
@@ -342,7 +341,7 @@ export default function AicScope() {
       if (hostiles.some(h => nmBetween(unit.position, h.position) <= threatRadius)) breached.add(id)
     }
     setAutoThreatRingIds(breached)
-  }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius]) // eslint-disable-line
+  }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius])
 
   // .centroid / .axis — debug toggles for the hostile-picture centroid and
   // the dynamic threat axis line derived from it (see computePicture.js).
@@ -503,7 +502,7 @@ export default function AicScope() {
     if (!bullseyeEntry) return null
     return computePicture(
       visibleUnits,
-      (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
+      (id, unit) => getAicEffectiveDeclaration(id, unit, myCoalitionNum),
       myCoalitionNum,
       sector,
       bullseyeLat, bullseyeLng,
@@ -516,7 +515,7 @@ export default function AicScope() {
   useEffect(() => {
     if (!view || !contactsRef.current) return
     const ctx = contactsRef.current.getContext('2d')
-    const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
+    const getDecl = (id, unit) => getAicEffectiveDeclaration(id, unit, myCoalitionNum)
     const mergedThreatRings = autoThreatRingIds.size
       ? new Set([...threatRingSet, ...autoThreatRingIds])
       : threatRingSet
@@ -528,7 +527,7 @@ export default function AicScope() {
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }
-  }, [view, visibleUnits, visibleMissiles, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRingSet, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
+  }, [view, visibleUnits, visibleMissiles, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRingSet, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture])
 
   // RBL drag (left-click) — only arms once the drag clears a threshold, so
   // plain left-clicks used for declare/BRAA/sector/etc. don't touch the RBL
@@ -840,7 +839,7 @@ export default function AicScope() {
     const { brg, range } = bearingRangeFromBullseye(
       unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
     )
-    const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
+    const decl      = getAicEffectiveDeclaration(unitId, unit, myCoalitionNum)
     // Callsign/type reveal is no longer gated purely on the Declaration — a
     // VALID Mode 4 IFF reply reveals identity too, independent of whether
     // the contact has actually been declared FRIENDLY yet. The Declaration

@@ -14,14 +14,6 @@ let reconnectTimer = null
 let intentionalClose = false
 let lastSessionHash = null
 
-// Handlers registered by other modules (e.g. WebRTC layer) for server state hydration.
-// Key is the state file key ('atc' | 'catcc' | 'session').
-const stateHandlers = {}
-
-export function registerStateHandler(key, handler) {
-  stateHandlers[key] = handler
-}
-
 function dispatch(message) {
   switch (message.type) {
     case 'units_delta': {
@@ -106,10 +98,6 @@ function dispatch(message) {
       }
       break
     }
-
-    case 'state':
-      stateHandlers[message.key]?.(message.data)
-      break
 
     default:
       console.warn('[ws] unknown message type:', message.type)

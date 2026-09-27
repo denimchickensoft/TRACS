@@ -2,8 +2,7 @@
 
 // App-WS layer: tracks connected browser clients and broadcasts server-side
 // events (unit deltas, mission/airbases/bullseyes updates, status) to all of
-// them. Also hydrates a newly-connected client with the current snapshot +
-// persisted state files.
+// them. Also hydrates a newly-connected client with the current snapshot.
 function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRelayClient, serverInstanceId }) {
   const clients = new Set()
 
@@ -37,21 +36,6 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRela
     const sourceType = state.getSourceType()
     const polling = (sourceRegistry.get(sourceType)?.isPolling() ?? false) || tacviewRelayClient.isConnected()
     ws.send(JSON.stringify({ type: 'status', data: { polling, sourceType, instanceId: serverInstanceId } }))
-
-    // Send persisted state files so the browser can hydrate after refresh.
-    // If intentionalReset is true (deliberate position change), send defaults
-    // and clear the flag so the next connection gets a clean slate.
-    const sessionState = stateFiles.read('session')
-    if (sessionState.intentionalReset) {
-      stateFiles.setIntentionalReset(false)
-      ws.send(JSON.stringify({ type: 'state', key: 'atc',     data: stateFiles.DEFAULTS.atc }))
-      ws.send(JSON.stringify({ type: 'state', key: 'catcc',   data: stateFiles.DEFAULTS.catcc }))
-      ws.send(JSON.stringify({ type: 'state', key: 'session', data: { ...stateFiles.DEFAULTS.session, olympusAddress: sessionState.olympusAddress } }))
-    } else {
-      ws.send(JSON.stringify({ type: 'state', key: 'atc',     data: stateFiles.read('atc') }))
-      ws.send(JSON.stringify({ type: 'state', key: 'catcc',   data: stateFiles.read('catcc') }))
-      ws.send(JSON.stringify({ type: 'state', key: 'session', data: sessionState }))
-    }
 
     ws.on('close', () => {
       clients.delete(ws)

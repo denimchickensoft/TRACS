@@ -190,8 +190,6 @@ export const useAbmMissionStore = create((set, get) => ({
 
   selectGroup: (groupId) => set((s) => ({ selectedGroupId: groupId, selectNonce: s.selectNonce + 1, routeVisible: false })),
 
-  clearSelection: () => set({ selectedGroupId: null, routeVisible: false }),
-
   toggleRouteVisible: () => set((s) => ({ routeVisible: !s.routeVisible })),
 
   clearRouteVisible: () => set({ routeVisible: false }),
@@ -205,8 +203,6 @@ export const useAbmMissionStore = create((set, get) => ({
     next.has(unitKey) ? next.delete(unitKey) : next.add(unitKey)
     return { blinkIds: [...next] }
   }),
-
-  clearBlink: () => set({ blinkIds: [] }),
 
   toggleRouteGroup: (groupId) => set((s) => {
     const next = new Set(s.routeGroupIds)

@@ -158,12 +158,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const roeVisible = windowSettings?.roeVisible ?? true
   const declarations = useAbmStore(s => s.declarations)
   const autoDeclareMode = useAbmStore(s => s.autoDeclareMode)
-  const getEffectiveDeclaration = getAbmEffectiveDeclaration
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
   const getDecl = useCallback(
-    (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
-    [getEffectiveDeclaration, myCoalitionNum]
+    (id, unit) => getAbmEffectiveDeclaration(id, unit, myCoalitionNum),
+    [myCoalitionNum]
   )
 
   // ── ATO/FRAG flight selection (Ctrl+Shift+Click) ─────────────────────────────
