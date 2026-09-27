@@ -9,3 +9,13 @@ export function getMyControllerId() {
   const positionName = useSessionStore.getState().positionName
   return useControllersStore.getState().registry[positionName]?.controllerId ?? null
 }
+
+// Every controller ID currently in the registry, for validating a typed or
+// slewed handoff/point-out target position.
+export function getKnownControllerIds() {
+  return new Set(
+    Object.values(useControllersStore.getState().registry)
+      .map((e) => e.controllerId)
+      .filter(Boolean)
+  )
+}

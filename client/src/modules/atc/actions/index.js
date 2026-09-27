@@ -20,7 +20,6 @@ import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../../store/strips.js'
 import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
-import { useControllersStore } from '../../../store/controllers.js'
 import { useNavdataStore }    from '../../../store/navdata.js'
 import { useMapsStore }        from '../../../store/maps.js'
 import { useFixesStore }       from '../../../store/fixes.js'
@@ -41,7 +40,7 @@ import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
 import { navdataNotFound } from '../../../store/lnm.js'
-import { getMyControllerId } from '../../../utils/myControllerId.js'
+import { getMyControllerId, getKnownControllerIds } from '../../../utils/myControllerId.js'
 import { log } from '../../../utils/log.js'
 
 const WINDOW_ID = 'atc-main'
@@ -233,7 +232,7 @@ export function HND_OFF({ captures, slewTarget }) {
   const tcp = captures?.tcp
   if (!tcp) return err('ILL POS')
   if (tcp === controllerId) return err('ILL POS')
-  const knownIds = new Set(Object.values(useControllersStore.getState().registry).map((e) => e.controllerId).filter(Boolean))
+  const knownIds = getKnownControllerIds()
   if (!knownIds.has(tcp)) return err('ILL POS')
   if (ownership[slewTarget.unitId] !== controllerId) return err('ILL TRK')
   setHandoff(slewTarget.unitId, { state: HANDOFF_STATE.INITIATED, from: controllerId, to: tcp })
@@ -292,7 +291,7 @@ export function POINT_OUT({ captures, slewTarget }) {
   if (!tcp) return err('ILL POS')
   const controllerId = getMyControllerId()
   if (tcp === controllerId) return err('ILL POS')
-  const knownIds = new Set(Object.values(useControllersStore.getState().registry).map((e) => e.controllerId).filter(Boolean))
+  const knownIds = getKnownControllerIds()
   if (!knownIds.has(tcp)) return err('ILL POS')
   getAtc().setPointOut(slewTarget.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
   sendWebrtcEvent('POINT_OUT_SENT', { unitId: slewTarget.unitId, fromControllerId: controllerId, toControllerId: tcp })
