@@ -58,6 +58,7 @@ export function checkSyncCapable({ relayUrl, coalition, password }) {
       finish({
         capable: false,
         reason: ev.reason === 'invalid password' ? 'password'
+              : ev.reason?.startsWith('too many failed attempts') ? 'blocked'
               : ev.reason?.startsWith('protocol mismatch') ? 'protocol'
               : 'unreachable',
         detail: ev.reason,

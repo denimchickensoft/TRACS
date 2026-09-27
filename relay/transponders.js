@@ -83,8 +83,9 @@ function createTransponderRelay(wss, config) {
   }, STALE_AFTER_MS)
 
   // ─── Client-facing WebSocket ─────────────────────────────────────────────
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
     gateConnection(ws, config.passwords, {
+      req,
       label: 'transponders',
       onAuthenticated: (authMsg) => {
         authenticatedClients.add(ws)

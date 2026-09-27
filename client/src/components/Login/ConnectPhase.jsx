@@ -264,6 +264,7 @@ export function ConnectPhase({ onConnected }) {
       if (relayUrl && !syncResult.capable) {
         setRelayWarning(
           syncResult.reason === 'password' ? 'Relay password rejected — using peer-to-peer.'
+          : syncResult.reason === 'blocked' ? 'Relay is refusing this computer after too many wrong passwords — try again in a few minutes. Using peer-to-peer.'
           : syncResult.reason === 'protocol' ? `Relay ${syncResult.detail ?? 'protocol mismatch'} — using peer-to-peer.`
           : 'Relay unreachable — using peer-to-peer.'
         )

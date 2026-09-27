@@ -161,8 +161,9 @@ function createTacviewRelay(wss, config) {
     console.log('[relay:tacview] no tacviewHost/tacviewPort configured - capability idle')
   }
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
     gateConnection(ws, config.passwords, {
+      req,
       label: 'tacview',
       onAuthenticated: (authMsg) => {
         authenticatedClients.add(ws)

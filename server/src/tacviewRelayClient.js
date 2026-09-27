@@ -475,6 +475,8 @@ async function probe(cfg) {
     probeSocket.on('close', (code, reason) => {
       settle(reject, reason?.toString() === 'invalid password'
         ? identifiedError('Relay rejected the connection — check the coalition password')
+        : reason?.toString().startsWith('too many failed attempts')
+          ? identifiedError('Relay is refusing this computer after too many wrong passwords — try again in a few minutes')
         : reason?.toString().startsWith('protocol mismatch')
           ? identifiedError(`Relay ${reason}`)
           : new Error('Relay closed the connection before authenticating'))

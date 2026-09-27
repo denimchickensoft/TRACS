@@ -406,12 +406,13 @@ function createSyncRelay(wss, config) {
     }
   }
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
     let peerId = null
     ws.isAlive = true
     ws.on('pong', () => { ws.isAlive = true })
 
     gateConnection(ws, config.passwords, {
+      req,
       label: 'sync',
       onAuthenticated: (authMsg) => {
         peerId = typeof authMsg.peerId === 'string' && authMsg.peerId ? authMsg.peerId : null
