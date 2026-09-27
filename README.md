@@ -221,7 +221,7 @@ Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). 
 | `npm run dist:electron` | Build an installer for the current platform into `dist-electron/` (stages bundled navdata first) |
 | `npm run lint` | ESLint, plus a check that `relay/tacviewCore.js` matches its generated source |
 | `npm run knip` | Unused files/exports/dependencies report |
-| `npm run sync:tacview-core` | Regenerate `relay/tacviewCore.js` from the server's Tacview parser |
+| `npm run sync:tacview-core` | Regenerate the relay's and client's copies of shared server files (Tacview parser, protocol version, detection-config example) |
 
 **LittleNavMap database in dev:** set the `LNM_DB_PATH` environment variable to your `.sqlite` file before starting the server. The Electron file picker doesn't exist in a browser.
 
@@ -262,7 +262,7 @@ git tag relay-v0.2.0 && git push origin relay-v0.2.0
 
 TRACS and the relay are versioned independently.
 
-**Protocol changes:** when the TRACS ↔ relay wire protocol changes, bump the integer in all three copies of `protocolVersion.js`: `server/src/`, `client/src/webrtc/`, and `relay/`. Then release both TRACS and the relay.
+**Protocol changes:** when the TRACS ↔ relay wire protocol changes, bump the integer in `server/src/protocolVersion.js` and run `npm run sync:tacview-core` to regenerate the `client/src/webrtc/` and `relay/` copies. Then release both TRACS and the relay.
 
 No code-signing certificate is used for any platform.
 

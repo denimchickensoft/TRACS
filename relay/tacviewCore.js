@@ -1,8 +1,7 @@
 // AUTO-GENERATED -- DO NOT EDIT DIRECTLY.
-// Verbatim copy of server/src/tacviewCore.js, produced by
-// scripts/sync-tacview-core.js (see that file's own header for why this
-// duplicate exists instead of a shared workspace package). To change this
-// file's behavior, edit server/src/tacviewCore.js and run:
+// Generated from server/src/tacviewCore.js by scripts/sync-tacview-core.js
+// (see that file's header for why this copy exists). To change it, edit
+// server/src/tacviewCore.js and run:
 //   npm run sync:tacview-core
 
 'use strict'
