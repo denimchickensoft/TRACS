@@ -12,7 +12,11 @@ const WebSocket = require('ws')
 const state = require('./state')
 const { PROTOCOL_VERSION } = require('./protocolVersion')
 
-const RECONNECT_MS = 3000
+// Reconnect backoff: starts at RECONNECT_MIN_MS, doubles per failed attempt
+// up to RECONNECT_MAX_MS, and resets once the relay sends data after auth.
+const RECONNECT_MIN_MS = 3000
+const RECONNECT_MAX_MS = 60000
+let reconnectDelayMs = RECONNECT_MIN_MS
 
 let ws = null
 let onUnitsDelta = null
@@ -107,6 +111,7 @@ function connect() {
 
   socket.on('message', (raw) => {
     if (socket !== ws) return
+    reconnectDelayMs = RECONNECT_MIN_MS
     let msg
     try {
       msg = JSON.parse(raw.toString('utf8'))
@@ -123,7 +128,7 @@ function connect() {
 
     // An explicit password rejection will never resolve itself by retrying —
     // it needs a config change (see the relay's auth.js). Retrying every
-    // RECONNECT_MS forever in that case just floods the relay's logs
+    // reconnect interval forever in that case just floods the relay's logs
     // indefinitely for no benefit. Log once and stop, unlike every other
     // close reason (network blip, relay restart), which genuinely is worth
     // retrying.
@@ -140,8 +145,10 @@ function connect() {
       return
     }
 
-    console.log(`[srs] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${RECONNECT_MS}ms`)
-    reconnectTimer = setTimeout(connect, RECONNECT_MS)
+    const delay = reconnectDelayMs
+    reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
+    console.log(`[srs] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${Math.round(delay / 1000)}s`)
+    reconnectTimer = setTimeout(connect, delay)
   })
 
   socket.on('error', (err) => {
@@ -152,6 +159,7 @@ function connect() {
 
 function start(cfg, callbacks = {}) {
   if (ws) stop()
+  reconnectDelayMs = RECONNECT_MIN_MS
 
   relayUrl = cfg.relayUrl
   password = cfg.password ?? null
