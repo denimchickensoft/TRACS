@@ -36,6 +36,7 @@ const AGL_CEIL_M   = 61  // ≈ 200 ft — hide airborne contacts; show surface/
 // and trigger STARS map reloads.
 const _URL_FACILITY = new URLSearchParams(window.location.search).get('facilityDcsName')
 const SLEW_RADIUS  = 15
+const CONTACTS_MIN_FRAME_MS = 100 // contacts canvas redraw cap (~10 fps); see the rAF loop
 const DEFAULT_PROFILES = [
   {
     name: 'Day',
@@ -338,10 +339,19 @@ export default function AsdexScope() {
   // ── Contacts rAF loop ────────────────────────────────────────────────────────
   // Start unconditionally — contactsRef may be null on mount if windowSettings is
   // not yet created (component returns null). The draw callback guards on both refs.
+  // Throttled to CONTACTS_MIN_FRAME_MS: unit data arrives about once a second
+  // and the datablock timeshare flips every 2 s, so 60 fps redraws were pure
+  // cost. A changed view (pan/zoom) still draws on the very next frame so
+  // contacts stay locked to the surface map while dragging.
   useEffect(() => {
-    const draw = () => {
+    let lastDrawAt = 0
+    let lastView   = null
+    const draw = (now) => {
       const v = viewRef.current
-      if (v && contactsRef.current) {
+      const due = now - lastDrawAt >= CONTACTS_MIN_FRAME_MS || v !== lastView
+      if (due && v && contactsRef.current) {
+        lastDrawAt = now
+        lastView   = v
         const ctx = contactsRef.current.getContext('2d')
         const ws  = useDisplayStore.getState().windows[ASDEX_WINDOW_ID] ?? {}
         drawAsdexContacts(
