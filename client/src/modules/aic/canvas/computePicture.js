@@ -16,6 +16,7 @@
  */
 
 import { gridBearingRangeNm } from '../../../utils/bearing.js'
+import { MS_TO_KT, M_TO_FT } from '../../../utils/units.js'
 
 const NM_DEG_LAT = 60   // nm per degree latitude
 
@@ -102,16 +103,16 @@ function _groupProps(contacts, bsLat, bsLng, declinationDeg, sector, theatre) {
   const lng  = contacts.reduce((s, c) => s + c.lng, 0) / n
 
   const altsM    = contacts.map(c => c.alt ?? 0)
-  const avgAltFt = (altsM.reduce((s, a) => s + a, 0) / n) * 3.28084
-  const maxAltFt = Math.max(...altsM) * 3.28084
-  const minAltFt = Math.min(...altsM) * 3.28084
+  const avgAltFt = (altsM.reduce((s, a) => s + a, 0) / n) * M_TO_FT
+  const maxAltFt = Math.max(...altsM) * M_TO_FT
+  const minAltFt = Math.min(...altsM) * M_TO_FT
 
   // Velocity components (m/s; track is real-geographic-true, not grid — see
   // utils/bearing.js — so this stays declination-only, same as every other
   // track-derived display in the app).
   const avgVx    = contacts.reduce((s, c) => s + (c.speed ?? 0) * Math.sin(c.track ?? 0), 0) / n
   const avgVy    = contacts.reduce((s, c) => s + (c.speed ?? 0) * Math.cos(c.track ?? 0), 0) / n
-  const avgSpdKts = contacts.reduce((s, c) => s + (c.speed ?? 0) * 1.94384, 0) / n
+  const avgSpdKts = contacts.reduce((s, c) => s + (c.speed ?? 0) * MS_TO_KT, 0) / n
 
   const trueTrkDeg = (Math.atan2(avgVx, avgVy) * 180 / Math.PI + 360) % 360
   const magTrkDeg  = (trueTrkDeg - declinationDeg + 360) % 360
@@ -126,7 +127,7 @@ function _groupProps(contacts, bsLat, bsLng, declinationDeg, sector, theatre) {
   let velocityAlongAxis = 0
   if (sector) {
     const rad = sector.axisBearing * Math.PI / 180
-    velocityAlongAxis = (avgVy * Math.cos(rad) + avgVx * Math.sin(rad)) * 1.94384
+    velocityAlongAxis = (avgVy * Math.cos(rad) + avgVx * Math.sin(rad)) * MS_TO_KT
   }
 
   // Bullseye (magnetic) — grid-frame bearing, matches the other bullseye

@@ -10,6 +10,7 @@ import { DECL_COLOR } from '../../utils/declarationSymbols.js'
 import { computeAicIntercept } from './aicGeometry.js'
 import './BraaList.css'
 import { speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
+import { M_TO_FT } from '../../utils/units.js'
 
 const safeNum = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d
 
@@ -28,7 +29,7 @@ function computeBraa(fighter, bogey, declinationDeg, theatre) {
   const { gridBearingDeg, rangeNm } = gridBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng, theatre)
   const magBrgDeg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
 
-  const altFt      = Math.round((bp.alt ?? 0) * 3.28084)
+  const altFt      = Math.round((bp.alt ?? 0) * M_TO_FT)
   const altRounded = Math.round(altFt / 100) * 100
 
   // Aspect: angle between bogey track and bearing back to fighter

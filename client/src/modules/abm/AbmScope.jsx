@@ -71,6 +71,7 @@ import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
+import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 const DEFAULT_windowId = 'abm-main'
 const EMPTY_ARRAY = []
@@ -455,7 +456,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // centerline .label strings, and drop line 1 when there's no real mapping.
   const [icaoMap, setIcaoMap] = useState({})
   useEffect(() => {
-    fetch('/icaoMapping.json').then(r => r.ok ? r.json() : {}).catch(() => ({})).then(setIcaoMap)
+    getIcaoMapping().then(setIcaoMap)
   }, [])
 
   useEffect(() => { useBrevityStore.getState().load() }, [])

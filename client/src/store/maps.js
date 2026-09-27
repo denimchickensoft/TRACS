@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { EARTH_RADIUS_NM } from '../utils/units.js'
 
 // ── Position preset order ─────────────────────────────────────────────────────
 // Each entry is exactly 5 slots. 'MVA' is a sentinel — not a displayCategory —
@@ -17,7 +18,7 @@ const ICAO_PRESETS = {
 // ── Distance filtering ────────────────────────────────────────────────────────
 
 function nmBetween(lat1, lng1, lat2, lng2) {
-  const R  = 3440.065
+  const R  = EARTH_RADIUS_NM
   const φ1 = lat1 * Math.PI / 180
   const φ2 = lat2 * Math.PI / 180
   const Δφ = (lat2 - lat1) * Math.PI / 180

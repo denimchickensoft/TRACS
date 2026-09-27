@@ -19,6 +19,7 @@ import { useStabilityAlert } from './useStabilityAlert.js'
 import { HeaderField } from './HeaderField.jsx'
 import { CaseField } from './CaseField.jsx'
 import './StatusBoard.css'
+import { MS_TO_KT } from '../../utils/units.js'
 
 const SB_SCALE_KEY  = 'tracs.sb.scale'
 const SCALE_MIN     = 0.5
@@ -89,7 +90,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const brc        = brcRaw === 0 ? 360 : brcRaw
   const fbRaw      = Math.round(fbF)
   const fb         = fbRaw === 0 ? 360 : fbRaw
-  const spd        = Math.round((carrier?.speed ?? 0) * 1.94384)
+  const spd        = Math.round((carrier?.speed ?? 0) * MS_TO_KT)
 
   const carrierPos   = carrier?.position
   const tzOffset      = theatre ? getTheatreUtcOffset(theatre) : null

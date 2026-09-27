@@ -3,9 +3,8 @@ import { resolveCallsign } from '../../../../utils/callsign.js'
 import { destinationPoint } from '../../../../utils/bearing.js'
 import { DIR_TO_ANGLE }    from '../../stars/constants.js'
 import { hasLiveSquawk }   from '../../../../utils/transponder.js'
+import { MS_TO_KT as M_PER_S_TO_KT, M_TO_FT } from '../../../../utils/units.js'
 
-const M_PER_S_TO_KT       = 1.94384
-const M_TO_FT              = 3.28084
 const LINE_H               = 13
 const TIMESHARE_MS         = 2000 // line 2: F/H/I <-> J/K scratchpad alternation per phase
 const SYMBOL_R             = 7

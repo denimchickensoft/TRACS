@@ -26,10 +26,9 @@
 //   - `latched` is the set of currently-active conflict pairs (see above).
 
 import { destinationPoint } from '../../../../utils/bearing.js'
+import { MS_TO_KT as M_PER_S_TO_KT, M_TO_FT, EARTH_RADIUS_NM } from '../../../../utils/units.js'
 
 const AIRBORNE       = new Set(['Aircraft', 'Helicopter'])
-const M_PER_S_TO_KT  = 1.94384
-const M_TO_FT        = 3.28084
 const MIN_SAMPLE_MS  = 100  // guard against near-zero dt when called back-to-back
 
 const LOOKAHEAD_S        = 5
@@ -44,7 +43,7 @@ const CLEAR_LAT_THRESHOLD_NM  = 3.5
 const CLEAR_VERT_THRESHOLD_FT = 1100
 
 function nmBetween(lat1, lng1, lat2, lng2) {
-  const R  = 3440.065
+  const R  = EARTH_RADIUS_NM
   const φ1 = lat1 * Math.PI / 180
   const φ2 = lat2 * Math.PI / 180
   const Δφ = (lat2 - lat1) * Math.PI / 180

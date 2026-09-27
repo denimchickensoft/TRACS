@@ -6,8 +6,8 @@ import { dcsPointToLatLng } from './dcsCoords.js'
 import { matchFixName } from './fixMatch.js'
 import { formatIcaoRoutePoint } from './coords.js'
 import { AID_MAX_LEN } from './callsign.js'
+import { M_TO_FT } from './units.js'
 
-const M_TO_FT = 3.28084
 const ROUTE_SLOTS = ['R1', 'R2', 'R3']
 
 // ALT is stored as hundreds of feet MSL (e.g. 35,000 ft -> "350"), the

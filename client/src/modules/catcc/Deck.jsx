@@ -7,8 +7,8 @@ import { resolveCallsign }     from '../../utils/callsign.js'
 import { CARRIER_TYPES, projectOntoDeck, NM_TO_FEET } from '../../utils/carriers.js'
 import { gridDestinationPoint } from '../../utils/bearing.js'
 import './Deck.css'
+import { M_TO_FT as METERS_TO_FEET } from '../../utils/units.js'
 
-const METERS_TO_FEET     = 3.28084
 const ALT_ABOVE_DECK_FT  = 40  // how far above deck level still counts as "on deck" (vs. overflying)
 const ALT_BELOW_DECK_FT  = 20  // how far below deck level still counts — beyond this, treat as on
                                 // the elevator/in the hangar bay and hide it

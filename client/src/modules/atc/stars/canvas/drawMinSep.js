@@ -1,6 +1,6 @@
 import { latLngToCanvas } from '../../../../utils/projection.js'
+import { MS_TO_KT as M_PER_S_TO_KT } from '../../../../utils/units.js'
 
-const M_PER_S_TO_KT   = 1.94384
 const NM_PER_DEG_LAT  = 60
 
 // ── Math helpers ─────────────────────────────────────────────────────────────

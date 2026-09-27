@@ -1,3 +1,4 @@
+import { M_TO_FT as METERS_TO_FEET, EARTH_RADIUS_NM } from '../../../../utils/units.js'
 // Conflict-alert suppression corridors near final approach courses.
 //
 // Real STARS suppresses CA/MCI near the final approach course of any runway
@@ -18,7 +19,6 @@
 
 const D2R            = Math.PI / 180
 const NM_TO_FEET     = 6076.115
-const METERS_TO_FEET = 3.28084
 
 const GS_ANGLE_DEG          = 3.0   // fixed assumption — no per-runway data exists
 const TCH_FT                = 50    // standard threshold crossing height
@@ -27,7 +27,7 @@ const MAX_RANGE_NM          = 30    // extends 30 NM from threshold
 const CEILING_ABOVE_GS_FT   = 1500  // vertical ceiling above the glideslope
 
 function distNm(lat1, lng1, lat2, lng2) {
-  const R  = 3440.065
+  const R  = EARTH_RADIUS_NM
   const φ1 = lat1 * D2R, φ2 = lat2 * D2R
   const Δφ = (lat2 - lat1) * D2R, Δλ = (lng2 - lng1) * D2R
   const a  = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2

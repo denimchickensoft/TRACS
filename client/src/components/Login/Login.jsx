@@ -13,6 +13,7 @@ import {
   loadLastConnection, saveLastConnection, parseHostPort, inferLegacySourceType,
 } from '../../utils/serverProfiles'
 import './Login.css'
+import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 const SUFFIX_TO_NAVDATA_ROLE = {
   TWR: 'twr',
@@ -625,10 +626,7 @@ function PositionPhase({ onSignedIn }) {
   // Load position types + ICAO mapping
   useEffect(() => {
     loadPositionTypes()
-    fetch('/icaoMapping.json')
-      .then((r) => r.json())
-      .then((data) => setIcaoMap(data))
-      .catch(() => {})
+    getIcaoMapping().then(setIcaoMap)
   }, [loadPositionTypes])
 
   // Fetch runway JSON for the current theatre to filter out helicopter pads / FOBs

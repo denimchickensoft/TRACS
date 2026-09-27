@@ -1,9 +1,8 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { DIR_TO_ANGLE }   from '../../atc/stars/constants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
+import { M_TO_FT, MS_TO_KT } from '../../../utils/units.js'
 
-const M_TO_FT  = 3.28084
-const MS_TO_KT = 1.94384
 
 const SYMBOL_RADIUS  = 5     // px — matches circle radius in drawCatccContacts
 const LEADER_LEN     = 16    // px default — long enough that bbox near-edge clears symbol for all angles

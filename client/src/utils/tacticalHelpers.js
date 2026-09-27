@@ -1,4 +1,5 @@
 import { DECLARATION } from './createDeclarationStore.js'
+import { MS_TO_KT, M_TO_FT } from './units.js'
 
 // Small picture helpers shared by the AIC and ABM scopes (and their action
 // modules, pop-outs and BRAA list).
@@ -43,8 +44,8 @@ export function getVisibleMissiles(weapons, units, myCoalitionNum) {
 // HIGH / FAST / VERY FAST picture-call flags from a unit's altitude and speed.
 export function speedFlags(unit) {
   if (!unit) return ''
-  const kts   = (unit.speed ?? 0) * 1.94384
-  const altFt = (unit.position?.alt ?? 0) * 3.28084
+  const kts   = (unit.speed ?? 0) * MS_TO_KT
+  const altFt = (unit.position?.alt ?? 0) * M_TO_FT
   const parts = []
   if (altFt >= 40000) parts.push('HIGH')
   if (kts >= 900) parts.push('VERY FAST')

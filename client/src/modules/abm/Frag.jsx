@@ -11,6 +11,8 @@ import { computeAirbaseLabels } from '../../store/runways.js'
 import { groundState } from '../../utils/carriers.js'
 import { ZERO_INDEXED_WAYPOINT_TYPES } from '../../utils/parseMission.js'
 import './Frag.css'
+import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
+import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 const FRAG_SCALE_KEY = 'tracs.frag.scale'
 const SCALE_MIN      = 0.5
@@ -123,12 +125,12 @@ function resolveBase(flight) {
 
 function fmtAlt(m) {
   if (m == null) return '—'
-  return `${Math.round(m * 3.28084).toLocaleString()} FT`
+  return `${Math.round(m * M_TO_FT).toLocaleString()} FT`
 }
 
 function fmtSpeed(mps) {
   if (mps == null) return '—'
-  return `${Math.round(mps * 1.94384)} KT`
+  return `${Math.round(mps * MS_TO_KT)} KT`
 }
 
 function radioPresets(radio) {
@@ -197,7 +199,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   // and Ato.jsx do — needed for the Base line's "(ICAO/abbrev)" suffix.
   const [icaoMap, setIcaoMap] = useState({})
   useEffect(() => {
-    fetch('/icaoMapping.json').then(r => r.ok ? r.json() : {}).catch(() => ({})).then(setIcaoMap)
+    getIcaoMapping().then(setIcaoMap)
   }, [])
 
   const [expandedRadios, setExpandedRadios] = useState(new Set())

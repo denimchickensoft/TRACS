@@ -15,6 +15,7 @@ import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } fr
 import { DECLARATION } from '../../../store/abm.js'
 import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
+import { MS_TO_KT, M_TO_FT } from '../../../utils/units.js'
 
 const SYM_HALF     = 3   // square half-width, px (hollow outline, not filled)
 const CULL_MARGIN  = 60
@@ -274,9 +275,9 @@ export function drawAbmContacts(
     // (rwrKnownIds — same sticky reveal as the air-unit readout in
     // AbmScope.jsx); until then it can't cycle to a type it doesn't have.
     const knowsType = isFriendly || rwrKnownIds.has(id)
-    const altFt   = Math.round((unit.position.alt ?? 0) * 3.28084)
+    const altFt   = Math.round((unit.position.alt ?? 0) * M_TO_FT)
     const alt100  = String(Math.round(altFt / 100)).padStart(3, '0')
-    const spdKts  = (unit.speed ?? 0) * 1.94384
+    const spdKts  = (unit.speed ?? 0) * MS_TO_KT
     const spd10   = String(Math.round(spdKts / 10)).padStart(2, '0')
 
     const unitDir   = leaderDirs?.[String(id)]

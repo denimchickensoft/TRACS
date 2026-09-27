@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import { computeMagvar, missionDecimalYear } from '../utils/magvar.js'
+import { EARTH_RADIUS_NM } from '../utils/units.js'
+import { getIcaoMapping } from '../utils/icaoMapping.js'
 
 const FT_PER_NM = 6076.115
 
 function nmBetween(lat1, lng1, lat2, lng2) {
-  const R  = 3440.065
+  const R  = EARTH_RADIUS_NM
   const φ1 = lat1 * Math.PI / 180
   const φ2 = lat2 * Math.PI / 180
   const Δφ = (lat2 - lat1) * Math.PI / 180
@@ -252,12 +254,7 @@ export const useRunwaysStore = create((set, get) => ({
 
       // Load ICAO mapping once
       if (!icaoMapping) {
-        try {
-          const r = await fetch('/icaoMapping.json')
-          icaoMapping = r.ok ? await r.json() : {}
-        } catch {
-          icaoMapping = {}
-        }
+        icaoMapping = await getIcaoMapping()
       }
 
       // Resolve labels: ICAO code if available, abbreviated name as fallback

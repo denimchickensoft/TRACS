@@ -1,7 +1,7 @@
 import { latLngToCanvas, canvasToLatLng } from '../../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../../utils/bearing.js'
+import { MS_TO_KT as M_PER_S_TO_KT } from '../../../../utils/units.js'
 
-const M_PER_S_TO_KT = 1.94384
 
 function resolveEndpoint(ep, units) {
   if (ep.unitId != null) {

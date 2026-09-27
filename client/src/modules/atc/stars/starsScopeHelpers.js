@@ -1,6 +1,6 @@
 import { hasLiveSquawk } from '../../../utils/transponder.js'
+import { M_TO_FT as METERS_TO_FEET } from '../../../utils/units.js'
 
-const METERS_TO_FEET = 3.28084
 
 // Each entry: { sym: string, mine: boolean }
 // sym  — '*' unassociated (beacon code received), 'V' unassociated

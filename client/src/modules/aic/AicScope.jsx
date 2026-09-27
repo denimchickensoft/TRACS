@@ -34,6 +34,7 @@ import { parseCommand }        from './input/commandParser.js'
 import { dispatch }            from './actions/index.js'
 import './AicScope.css'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
+import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
 
 const WINDOW_ID = 'aic-main'
 const AIC_SETTINGS_KEY = 'aic-settings'
@@ -892,7 +893,7 @@ export default function AicScope() {
     const { unitId, unit } = hoveredUnit
     if (!unit.position) return null
 
-    const altFt      = Math.round((unit.position.alt ?? 0) * 3.28084)
+    const altFt      = Math.round((unit.position.alt ?? 0) * M_TO_FT)
     const altK       = Math.round(altFt / 1000)
     const trueTrkDeg = ((unit.track ?? 0) * 180 / Math.PI + 360) % 360
     const magTrkDeg  = Math.round(toMagneticFromTrue(trueTrkDeg, declinationDeg)) || 360
@@ -926,7 +927,7 @@ export default function AicScope() {
     // for an srsCapable contact); only the non-revealing statuses need a
     // word on the line.
     const iffText   = iffStatus === 'INVALID' ? 'INVALID REPLY' : iffStatus === 'NO_REPLY' ? 'NO REPLY' : null
-    const spdKts    = Math.round((unit.speed ?? 0) * 1.94384)
+    const spdKts    = Math.round((unit.speed ?? 0) * MS_TO_KT)
 
     return {
       pos:      `${String(brg).padStart(3, '0')} / ${range}`,

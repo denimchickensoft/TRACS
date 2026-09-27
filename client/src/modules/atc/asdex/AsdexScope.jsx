@@ -26,6 +26,7 @@ import { drawAsdexSurface }    from './canvas/drawAsdexSurface.js'
 import { drawAsdexContacts }   from './canvas/drawAsdexContacts.js'
 import { FPE }                 from '../../../components/FPE/FPE.jsx'
 import './AsdexScope.css'
+import { getIcaoMapping } from '../../../utils/icaoMapping.js'
 
 const RANGE_MIN    = 0.1
 const RANGE_MAX    = 2.0
@@ -225,10 +226,8 @@ export default function AsdexScope() {
 
   useEffect(() => {
     if (!theatre || !facilityDcsName) return
-    fetch('/icaoMapping.json')
-      .then(r => r.ok ? r.json() : {})
+    getIcaoMapping()
       .then(map => setFacilityIcao(map?.[theatre.toLowerCase()]?.[facilityDcsName] ?? null))
-      .catch(() => setFacilityIcao(null))
   }, [theatre, facilityDcsName])
 
   // ── Fetch polygon data, name map, and colors ─────────────────────────────────

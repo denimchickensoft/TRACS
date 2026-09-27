@@ -11,6 +11,7 @@ import { groundState } from '../../utils/carriers.js'
 import { AbmMissionImport } from './AbmMissionImport.jsx'
 import { AddAtoFlight } from './AddAtoFlight.jsx'
 import './Ato.css'
+import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 export const ATO_NATURAL_WIDTH = 460
 
@@ -133,7 +134,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
   // than the generic first-4-letters fallback.
   const [icaoMap, setIcaoMap] = useState({})
   useEffect(() => {
-    fetch('/icaoMapping.json').then(r => r.ok ? r.json() : {}).catch(() => ({})).then(setIcaoMap)
+    getIcaoMapping().then(setIcaoMap)
   }, [])
 
   const [scale, setScale] = useState(() => {
