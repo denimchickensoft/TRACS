@@ -1,11 +1,14 @@
 #!/bin/sh
-# Auto-regenerates the generated copies of shared files (relay/tacviewCore.js,
-# the protocolVersion.js copies, relay's detection-config example) before
-# every commit and stages the result -- makes it impossible to commit them
-# out of sync, rather than relying on anyone remembering to run the check.
+# Keeps the generated copies of shared files (relay/tacviewCore.js, the
+# protocolVersion.js copies, relay's detection-config example) in sync:
+#  - the index copies are regenerated from the *staged* sources and written
+#    straight into the index, so a commit can never contain a mismatched
+#    pair, even with a partial stage (git add -p);
+#  - the working-tree copies are regenerated from the working-tree sources
+#    and left unstaged.
 # See scripts/sync-tacview-core.js. Activated repo-wide via `core.hooksPath`
 # (root package.json's postinstall) rather than the default .git/hooks/,
 # which isn't tracked by git and wouldn't survive a fresh clone.
 
 node scripts/sync-tacview-core.js || exit 1
-git add relay/tacviewCore.js relay/protocolVersion.js client/src/webrtc/protocolVersion.js relay/tacviewDetectionConfig.example.json
+node scripts/sync-tacview-core.js --staged || exit 1

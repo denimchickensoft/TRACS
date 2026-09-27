@@ -13,10 +13,15 @@
 // Edit the canonical file, then run:
 //   npm run sync:tacview-core
 // `npm run check:tacview-core` (no write) fails if any copy has diverged;
-// `npm run lint` and the pre-commit hook both run it.
+// `npm run lint` and CI run it. `--staged` (used by the pre-commit hook)
+// works on the git index instead of the working tree: it generates each copy
+// from the *staged* source and writes it straight into the index, so a
+// partial stage (`git add -p`) commits a matching pair and unstaged work is
+// left alone.
 
 const fs   = require('fs')
 const path = require('path')
+const { execFileSync } = require('child_process')
 
 const ROOT = path.join(__dirname, '..')
 
@@ -62,7 +67,27 @@ const TARGETS = [
   },
 ]
 
+const git = (args, input) => execFileSync('git', args, { cwd: ROOT, input, encoding: 'utf8' })
+
+// Staged content of a path, or null if it isn't in the index.
+function readStaged(file) {
+  try { return git(['show', `:${file}`]) } catch { return null }
+}
+
+function syncStaged() {
+  for (const { source, target, build } of TARGETS) {
+    const staged = readStaged(source)
+    if (staged === null) continue
+    const expected = build(staged)
+    if (readStaged(target) === expected) continue
+    const blob = git(['hash-object', '-w', '--stdin'], expected).trim()
+    git(['update-index', '--add', '--cacheinfo', `100644,${blob},${target}`])
+    console.log(`[sync-tacview-core] staged ${target} regenerated from staged ${source}.`)
+  }
+}
+
 function main() {
+  if (process.argv.includes('--staged')) return syncStaged()
   const checkOnly = process.argv.includes('--check')
   let stale = 0
 
