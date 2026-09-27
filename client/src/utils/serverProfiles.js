@@ -26,8 +26,10 @@ export function loadServerProfiles() {
   }
 }
 
+// A failed save (e.g. storage quota) must not abort the connect flow that
+// calls these, so both writes swallow errors.
 function saveServerProfiles(profiles) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles))
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles)) } catch {}
 }
 
 // Favorites are never evicted; non-favorites beyond MAX_RECENTS (by lastUsed) are dropped.
@@ -131,10 +133,12 @@ export function loadLastConnection() {
 }
 
 export function saveLastConnection({ name, url, coalition, password, relayUrl, sourceType, relayPassword }) {
-  localStorage.setItem(LAST_CONN_KEY, JSON.stringify({
-    name, url, coalition, password, relayUrl: relayUrl ?? '',
-    sourceType, relayPassword: relayPassword ?? '',
-  }))
+  try {
+    localStorage.setItem(LAST_CONN_KEY, JSON.stringify({
+      name, url, coalition, password, relayUrl: relayUrl ?? '',
+      sourceType, relayPassword: relayPassword ?? '',
+    }))
+  } catch {}
 }
 
 // Favorites first, then up to MAX_RECENTS non-favorites (most-recently-used ones kept),
