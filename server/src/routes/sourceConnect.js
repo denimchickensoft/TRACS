@@ -114,6 +114,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
       const alreadyLiveOnSameConfig = current
         && (!requestedSourceType || requestedSourceType === currentType)
         && current.isPolling()
+        && !current.isUnreachable?.()
         && current.getConfig()?.olympusUrl === sourceCfg.olympusUrl
       if (alreadyLiveOnSameConfig) {
         broadcast({ type: 'status', data: { polling: true, sourceType: currentType } })
@@ -196,6 +197,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     // a duplicate of the same session.
     const alreadyOnSameSource = state.getSourceType() === sourceType
       && source.isPolling()
+      && !source.isUnreachable?.()
       && source.getConfig()?.olympusUrl === sourceCfg.olympusUrl
       && source.getConfig()?.coalition === sourceCfg.coalition
       && source.getConfig()?.password === sourceCfg.password
@@ -235,6 +237,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
           onAirbases:     (data)  => broadcast({ type: 'airbases',  data }),
           onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
           onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: `${sourceType}_unreachable` } }),
+          onReconnect:    ()      => broadcast({ type: 'status', data: { polling: true, sourceType } }),
         }
       )
       broadcast({ type: 'units_clear' })

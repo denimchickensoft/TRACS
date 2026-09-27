@@ -12,13 +12,22 @@ const rateConfig = require('./rateConfig')
 const MISSION_INTERVAL_MS = 10000
 const AIRBASES_INTERVAL_MS = 30000
 const FULL_REFRESH_EVERY = 10
+// After this many consecutive failed unit polls Olympus is treated as
+// unreachable: clients are told (onDisconnect), the other pollers pause, and
+// unit polls drop to one attempt every SLOW_RETRY_MS until one succeeds
+// (onReconnect). Polling only stops for good on an explicit stop().
 const MAX_CONSECUTIVE_ERRORS = 10
+const SLOW_RETRY_MS = 30000
+// Per-request timeout, so a hung Olympus fails the poll instead of stalling it.
+const POLL_TIMEOUT_MS = 10000
 
 let config = null
 let polling = false
 let pollCount = 0
 let consecutiveErrors = 0
+let unreachable = false
 let onDisconnect = null
+let onReconnect  = null
 
 let unitsTimer = null
 let missionTimer = null
@@ -69,6 +78,7 @@ async function fetchOlympusJson(path) {
   const url = `${config.olympusUrl}${path}`
   const res = await fetch(url, {
     headers: { Authorization: makeAuthHeader(config.password, config.coalition) },
+    signal:  AbortSignal.timeout(POLL_TIMEOUT_MS),
   })
   const text = await res.text()
   if (!res.ok) {
@@ -85,6 +95,7 @@ async function fetchOlympusBinary(path) {
   const url = `${config.olympusUrl}${path}`
   const res = await fetch(url, {
     headers: { Authorization: makeAuthHeader(config.password, config.coalition) },
+    signal:  AbortSignal.timeout(POLL_TIMEOUT_MS),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -140,17 +151,25 @@ async function pollUnits() {
     state.setSourceCursorTime(updateTime)
     if (onUnitsDelta) onUnitsDelta(delta)
     consecutiveErrors = 0
+    if (unreachable) {
+      unreachable = false
+      console.log('[olympus] reachable again - resuming normal polling')
+      if (onReconnect) onReconnect()
+    }
   } catch (err) {
     consecutiveErrors++
-    console.error(`[olympus] units poll error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, err.message)
-    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-      console.error('[olympus] too many consecutive errors - stopping polling')
-      stop()
-      if (onDisconnect) onDisconnect()
-      return
+    if (unreachable) {
+      console.error(`[olympus] still unreachable, retrying in ${SLOW_RETRY_MS / 1000}s:`, err.message)
+    } else {
+      console.error(`[olympus] units poll error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, err.message)
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        unreachable = true
+        console.error(`[olympus] too many consecutive errors - retrying every ${SLOW_RETRY_MS / 1000}s`)
+        if (onDisconnect) onDisconnect()
+      }
     }
   } finally {
-    if (polling) unitsTimer = setTimeout(pollUnits, rateConfig.unitUpdateMs)
+    if (polling) unitsTimer = setTimeout(pollUnits, unreachable ? SLOW_RETRY_MS : rateConfig.unitUpdateMs)
   }
 }
 
@@ -166,6 +185,7 @@ async function pollUnits() {
 // permanent tombstone tracking is needed.
 async function pollWeapons() {
   if (!polling) return
+  if (unreachable) { weaponsTimer = setTimeout(pollWeapons, rateConfig.unitUpdateMs); return }
   try {
     // Always a full fetch (time=0) — per this function's header comment,
     // Olympus's weapons endpoint never streams real position on an
@@ -262,7 +282,7 @@ function pollMissileDetection() {
 }
 
 async function pollBullseyes() {
-  if (!polling) return
+  if (!polling || unreachable) return
   try {
     const data = await fetchOlympusJson('/olympus/bullseyes')
     state.setBullseyes(data)
@@ -274,6 +294,7 @@ async function pollBullseyes() {
 
 async function pollMission() {
   if (!polling) return
+  if (unreachable) { missionTimer = setTimeout(pollMission, MISSION_INTERVAL_MS); return }
   try {
     const data = await fetchOlympusJson('/olympus/mission')
     state.setMission(data)
@@ -304,6 +325,7 @@ async function pollMission() {
 
 async function pollAirbases() {
   if (!polling) return
+  if (unreachable) { airbasesTimer = setTimeout(pollAirbases, AIRBASES_INTERVAL_MS); return }
   try {
     const data = await fetchOlympusJson('/olympus/airbases')
     state.setAirbases(data)
@@ -325,10 +347,12 @@ function start(cfg, callbacks = {}) {
   onAirbases      = callbacks.onAirbases      ?? null
   onBullseyes     = callbacks.onBullseyes     ?? null
   onDisconnect    = callbacks.onDisconnect    ?? null
+  onReconnect     = callbacks.onReconnect     ?? null
 
   polling = true
   pollCount = 0
   consecutiveErrors = 0
+  unreachable = false
   lastTheatre = null
   lastSessionHash = null
   state.resetForNewSource()
@@ -349,6 +373,7 @@ function start(cfg, callbacks = {}) {
 
 function stop() {
   polling = false
+  unreachable = false
   clearTimeout(unitsTimer)
   clearTimeout(weaponsTimer)
   clearTimeout(missileDetectionTimer)
@@ -366,6 +391,11 @@ function isPolling() {
   return polling
 }
 
+// True while polling is in slow-retry mode after repeated failures.
+function isUnreachable() {
+  return unreachable
+}
+
 function getConfig() {
   return config
 }
@@ -380,4 +410,4 @@ async function probe(cfg) {
   if (!res.ok) throw new Error(`Olympus responded ${res.status}`)
 }
 
-module.exports = { start, stop, isPolling, getConfig, probe }
+module.exports = { start, stop, isPolling, isUnreachable, getConfig, probe }

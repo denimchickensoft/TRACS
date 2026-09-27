@@ -34,7 +34,8 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRela
 
     // Status — includes instanceId so clients can detect server restarts
     const sourceType = state.getSourceType()
-    const polling = (sourceRegistry.get(sourceType)?.isPolling() ?? false) || tacviewRelayClient.isConnected()
+    const source  = sourceRegistry.get(sourceType)
+    const polling = ((source?.isPolling() ?? false) && !source?.isUnreachable?.()) || tacviewRelayClient.isConnected()
     ws.send(JSON.stringify({ type: 'status', data: { polling, sourceType, instanceId: serverInstanceId } }))
 
     ws.on('close', () => {
