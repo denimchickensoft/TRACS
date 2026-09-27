@@ -2,8 +2,15 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreExportsUsedInFile": true,
   "workspaces": {
+    ".": {
+      "entry": [
+        "electron/preload.js"
+      ]
+    },
     "client": {
-      "project": ["src/**/*.{js,jsx}"]
+      "project": [
+        "src/**/*.{js,jsx}"
+      ]
     },
     "server": {
       "entry": [
@@ -11,13 +18,34 @@
         "scripts/terrainDataExe/*.js",
         "navdata/tools/*.js"
       ],
-      "project": ["src/**/*.js", "scripts/**/*.js", "navdata/**/*.js"]
+      "project": [
+        "src/**/*.js",
+        "scripts/**/*.js",
+        "navdata/**/*.js"
+      ],
+      "ignoreDependencies": [
+        "esbuild",
+        "postject"
+      ]
     },
     "mock-olympus": {
-      "project": ["**/*.js"]
+      "project": [
+        "**/*.js"
+      ]
     },
     "packages/geo-math": {
-      "project": ["**/*.js"]
+      "project": [
+        "**/*.js"
+      ]
+    },
+    "relay": {
+      "project": [
+        "**/*.js"
+      ],
+      "ignoreDependencies": [
+        "esbuild",
+        "postject"
+      ]
     }
   }
 }
