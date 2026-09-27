@@ -43,6 +43,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.FILL` | Toggle airspace polygon fill; `.FILL <1-100>` sets transparency % and turns it on |
 | `.FIXES` | Toggle theatre fix points |
 | `.FIX <name...>` | Force-show one or more fixes regardless of `.FIXES`; each name toggles independently |
+| `.FIX` (no argument) | Clear every pinned fix for the current theatre |
 | `.GEO` | Toggle coastlines/boundaries |
 | `.ASPCOLORS <name>` | Select an airspace color palette (e.g. `CATCC` — the default, all-yellow) |
 | `.REFRESH` | Re-fetch airspace color palettes without reloading |

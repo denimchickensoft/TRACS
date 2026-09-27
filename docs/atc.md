@@ -167,7 +167,7 @@ These lists appear only if your ODS profile enables coordination lists. `+ ENTER
 | SSA | always shown | `MF S` + SLEW | — |
 | Sign-on list | `MF TS` + ENTER | `MF TS` + SLEW | — |
 | Flight-Plan (TAB) list | `MF T` + ENTER | `MF T` + SLEW | `MF T<n>` + ENTER |
-| Tower lists 1–3 | `MF P1`/`P2`/`P3` + ENTER | `MF P<n>` + SLEW | `MF P<n> <lines>` + ENTER |
+| Tower lists 1–3 (all three currently show your facility's airport) | `MF P1`/`P2`/`P3` + ENTER | `MF P<n>` + SLEW | `MF P<n> <lines>` + ENTER |
 | Coast/Suspend list | `MF TC` + ENTER | `MF TC` + SLEW | `MF TC<n>` + ENTER |
 | Alert list | `MF TM` + ENTER | `MF TM` + SLEW | — |
 | VFR list | `MF TV` + ENTER | `MF TV` + SLEW | `MF TV<n>` + ENTER |
