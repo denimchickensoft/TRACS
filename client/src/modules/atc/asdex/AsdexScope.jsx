@@ -13,15 +13,17 @@ import { useAsdexScratchpadsStore } from '../../../store/asdexScratchpads.js'
 import { useNavdataStore }     from '../../../store/navdata.js'
 import { hasLiveSquawk }       from '../../../utils/transponder.js'
 import { pairedFix }           from './pairedFix.js'
-import { loadAsdexPrefs, saveAsdexPrefs } from '../../../store/asdexPrefs.js'
-import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../../../utils/projection.js'
+import { loadAsdexPrefs } from '../../../store/asdexPrefs.js'
+import { rangeToPixelsPerNm, canvasToLatLng } from '../../../utils/projection.js'
 import { useWheelDirection } from '../../../utils/wheel.js'
-import { resolveCallsign, findFlightPlanAid } from '../../../utils/callsign.js'
+import { findFlightPlanAid } from '../../../utils/callsign.js'
 import { computeMagvar }       from '../../../utils/magvar.js'
 import { AsdexDcb, ASDEX_WINDOW_ID } from './AsdexDcb.jsx'
 import { AsdexInputHandler }   from './AsdexInputHandler.jsx'
 import { AsdexPreviewArea }    from './AsdexPreviewArea.jsx'
 import { parseAsdexCommand }   from './asdexCommandParser.js'
+import { dispatch }            from './actions/index.js'
+import { resolveSlew }         from '../../../utils/slewResolver.js'
 import { drawAsdexSurface }    from './canvas/drawAsdexSurface.js'
 import { drawAsdexContacts }   from './canvas/drawAsdexContacts.js'
 import { FPE }                 from '../../../components/FPE/FPE.jsx'
@@ -37,7 +39,6 @@ const AGL_CEIL_M   = 61  // ≈ 200 ft — hide airborne contacts; show surface/
 // popup context, which would broadcast null airbases/mission to the main window
 // and trigger STARS map reloads.
 const _URL_FACILITY = new URLSearchParams(window.location.search).get('facilityDcsName')
-const SLEW_RADIUS  = 15
 const CONTACTS_MIN_FRAME_MS = 100 // contacts canvas redraw cap (~10 fps); see the rAF loop
 const DEFAULT_PROFILES = [
   {
@@ -399,31 +400,8 @@ export default function AsdexScope() {
       useAsdexPreviewStore.getState().setResponse('INVALID INPUT')
       return
     }
-    if (parsed.command.id === 'OPEN_FPE') {
-      useFpeStore.getState().openFpe({ aid: parsed.captures.aid ?? null, scope: 'asdex' })
-      useAsdexPreviewStore.getState().clearAfterCommand()
-    }
-    if (parsed.command.id === 'TOGGLE_CENTERLINE') {
-      setCenterlineVisible(v => { saveAsdexPrefs({ centerlineVisible: !v }); return !v })
-      useAsdexPreviewStore.getState().clearAfterCommand()
-    }
-    if (parsed.command.id === 'TOGGLE_COORDS') {
-      setCoordsVisible(v => { saveAsdexPrefs({ coordsVisible: !v }); return !v })
-      useAsdexPreviewStore.getState().clearAfterCommand()
-    }
-    if (parsed.command.id === 'SET_COLORS') {
-      const name = parsed.captures.name.trim()
-      const idx = profiles.findIndex(p => p.name.toUpperCase() === name.toUpperCase())
-      if (idx >= 0) {
-        displayStore.updateWindow(ASDEX_WINDOW_ID, { colorIdx: idx })
-        saveAsdexPrefs({ colorProfile: profiles[idx].name })
-        useAsdexPreviewStore.getState().setResponse(`COLORS ${profiles[idx].name.toUpperCase()}`)
-      } else {
-        useAsdexPreviewStore.getState().setResponse('INVALID PROFILE')
-      }
-      useAsdexPreviewStore.getState().clearAfterCommand()
-    }
-  }, [profiles, displayStore])
+    dispatch(parsed, null, { profiles, setCenterlineVisible, setCoordsVisible })
+  }, [profiles])
 
   // ── Pan (right-click drag) ───────────────────────────────────────────────────
   const handleMouseDown = useCallback((e) => {
@@ -521,15 +499,8 @@ export default function AsdexScope() {
     const cy = e.clientY - rect.top
 
     const findNearest = () => {
-      let nearest = null, nearestDist = SLEW_RADIUS
-      for (const [id, unit] of Object.entries(unitsRef.current)) {
-        const pos = unit.position
-        if (!pos) continue
-        const { x, y } = latLngToCanvas(pos.lat, pos.lng, viewRef.current)
-        const dist = Math.hypot(x - cx, y - cy)
-        if (dist < nearestDist) { nearestDist = dist; nearest = { id, unit } }
-      }
-      return nearest
+      const hit = resolveSlew({ x: cx, y: cy }, unitsRef.current, viewRef.current)
+      return hit && { id: hit.unitId, unit: hit.unit }
     }
 
     if (e.ctrlKey) {
@@ -571,28 +542,7 @@ export default function AsdexScope() {
     if (!parsed) return
     const nearest = findNearest()
     if (!nearest) return
-    if (parsed.command.id === 'SET_LEADER_SHORT') {
-      const dir     = parsed.captures.dir
-      const current = useDisplayStore.getState().windows[ASDEX_WINDOW_ID]?.leaderDirs ?? {}
-      const next    = { ...current }
-      if (dir === '5') delete next[String(nearest.id)]
-      else next[String(nearest.id)] = dir
-      useDisplayStore.getState().updateWindow(ASDEX_WINDOW_ID, { leaderDirs: next })
-      useAsdexPreviewStore.getState().clearAfterCommand()
-    }
-    if (parsed.command.id === 'TAG_TARGET') {
-      // TRACS already knows the truth (Olympus ground-truth callsign) —
-      // unlike CRC/VATSIM this isn't a guess needing a guardrail, it's a
-      // correctness check: a mismatch just fails.
-      const typedAid = parsed.captures.aid?.trim().toUpperCase()
-      const trueAid  = resolveCallsign(nearest.unit).toUpperCase()
-      if (typedAid === trueAid) {
-        useAsdexManualTagsStore.getState().tag(String(nearest.id))
-        useAsdexPreviewStore.getState().clearAfterCommand()
-      } else {
-        useAsdexPreviewStore.getState().setResponse('ILL TRK')
-      }
-    }
+    dispatch(parsed, { unitId: String(nearest.id), unit: nearest.unit }, {})
   }, [])
 
   // ── Filter units to surface traffic (≤200 ft AGL) ───────────────────────────
