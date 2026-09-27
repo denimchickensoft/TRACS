@@ -59,6 +59,7 @@ let theatreTimer = null
 let missionClockTimer = null
 let theatreDecided = false
 let theatreName = null
+let theatreOverridden = false
 const theatreVotes = new Map()
 // From the relay's own parser (this module never sees the raw ACMI wire
 // itself) — see relay/tacview.js's broadcast()/onAuthenticated for where
@@ -103,7 +104,7 @@ function voteTheatre(positions) {
 function sendMissionClock() {
   if (!theatreDecided) return
   const dateAndTime = latestMissionUtcMs == null ? undefined : computeDateAndTime(latestMissionUtcMs, navdata.theatreTacviewRealUtcOffset(theatreName))
-  const mission = { mission: { theatre: theatreName, dateAndTime } }
+  const mission = { mission: { theatre: theatreName, theatreOverridden, dateAndTime } }
   state.setMission(mission)
   if (onMission) onMission(mission)
 }
@@ -310,11 +311,13 @@ function connect() {
     if (reason?.toString() === 'invalid password') {
       console.error('[tacviewRelayClient] relay rejected our password - not retrying until reconnected with a corrected one')
       ws = null
+      clearTimers()
       return
     }
     if (reason?.toString().startsWith('protocol mismatch')) {
       console.error(`[tacviewRelayClient] ${reason} - not retrying until one side is updated`)
       ws = null
+      clearTimers()
       return
     }
 
@@ -344,6 +347,7 @@ function start(cfg, callbacks = {}) {
   intentionalClose = false
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   latestMissionUtcMs = null
   state.resetForNewSource()
@@ -382,8 +386,7 @@ function start(cfg, callbacks = {}) {
   missionClockTimer = setInterval(sendMissionClock, MISSION_CLOCK_INTERVAL_MS)
 }
 
-function stop() {
-  intentionalClose = true
+function clearTimers() {
   clearTimeout(reconnectTimer)
   clearTimeout(theatreTimer)
   clearInterval(detectionTimer)
@@ -391,6 +394,11 @@ function stop() {
   clearInterval(broadcastTimer)
   clearInterval(missionClockTimer)
   reconnectTimer = null
+}
+
+function stop() {
+  intentionalClose = true
+  clearTimers()
   if (ws) {
     ws.close()
     ws = null
@@ -416,6 +424,7 @@ function overrideTheatre(name) {
   clearTimeout(theatreTimer)
   theatreDecided = true
   theatreName = name
+  theatreOverridden = true
   theatreVotes.clear()
   sendMissionClock()
 }
@@ -424,6 +433,7 @@ function resetTheatreDetection() {
   clearTimeout(theatreTimer)
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
 }

@@ -39,12 +39,16 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     }
   }
 
+  // Stops every source unconditionally, not just the ones reporting
+  // connected: a Tacview source between reconnect attempts reports
+  // not-connected but still has live timers and a pending reconnect, and
+  // skipping it left it broadcasting its own theatre (and later units)
+  // alongside the new source. Each stop() is safe on an idle source.
   function stopAllSources(sourceRegistry) {
     for (const type of sourceRegistry.SOURCE_TYPES) {
-      const source = sourceRegistry.get(type)
-      if (source.isPolling()) source.stop()
+      sourceRegistry.get(type).stop()
     }
-    if (tacviewRelayClient.isConnected()) tacviewRelayClient.stop()
+    tacviewRelayClient.stop()
   }
 
   // Rapid repeated /api/connect calls each tear down and rebuild the live
