@@ -29,6 +29,8 @@ npm-debug.log*
 
 # Build output
 dist/
+relay/scripts/index.bundle.js
+relay/scripts/index.blob
 build/
 dist-electron/
 electron/build-staging/
@@ -38,9 +40,28 @@ electron/build-staging-node/
 server/state/
 server/data/presets.json
 
-# Navdata — source files (large Navigraph data) and built cache (generated at runtime)
+# Navdata — source files (large Navigraph data) and the cache. In dev, LNM
+# extraction writes Navigraph-derived files (fixes/navaids/airspace/ctrs/
+# holdings/airways/msa/mora, manifest.json, sectors.json) into the same
+# cache folder as the bundled theatre data, and those must never be
+# committed. So everything in the cache is ignored except the bundled
+# theatre files, listed by name below.
 server/navdata/source/
-server/navdata/cache/
+server/navdata/cache/*
+!server/navdata/cache/*/
+server/navdata/cache/*/*
+!server/navdata/cache/*/airports_polygons.json
+!server/navdata/cache/*/basemap.json
+!server/navdata/cache/*/basemap.png
+!server/navdata/cache/*/geo.json
+!server/navdata/cache/*/relief.json
+!server/navdata/cache/*/roads.json
+!server/navdata/cache/*/roads.png
+!server/navdata/cache/*/terrain.json
+!server/navdata/cache/*/terrain.png
+!server/navdata/cache/*/water.json
+!server/navdata/cache/*/water.png
+!server/navdata/cache/*/mva/
 
 # Tile cache — downloaded at runtime, not committed
 server/data/tiles/
