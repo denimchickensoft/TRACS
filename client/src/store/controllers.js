@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { fetchJson } from '../utils/fetchJson.js'
 
 /**
  * Controller registry.
@@ -90,8 +91,7 @@ export const useControllersStore = create((set, get) => ({
   // ── Load position type definitions ───────────────────────────────
   loadPositionTypes: async () => {
     try {
-      const res  = await fetch('/positionTypes.json')
-      const data = await res.json()
+      const data = await fetchJson('/positionTypes.json')
       set({ positionTypes: data.positionTypes ?? [] })
       const cached = get()._cachedClientList
       if (cached.length > 0) get().rebuildFromClientList(cached)

@@ -37,6 +37,7 @@ import './AicScope.css'
 import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye } from './aicScopeHelpers.js'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
 import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
+import { fetchJson } from '../../utils/fetchJson.js'
 
 const WINDOW_ID = 'aic-main'
 const AIC_WIN_FIELDS = [
@@ -263,8 +264,7 @@ export default function AicScope() {
     if (saved.geoVisible    != null) useGeoStore.getState().setVisible(saved.geoVisible)
     if (saved.reliefVisible != null) useReliefStore.getState().setVisible(saved.reliefVisible)
     if (saved.aspColorIdx && !useMapsStore.getState().palettes.length) {
-      fetch('/api/navdata/palettes')
-        .then(r => r.json())
+      fetchJson('/api/navdata/palettes')
         .then(palettes => useMapsStore.getState().setPalettes(palettes))
         .catch(() => {})
     }

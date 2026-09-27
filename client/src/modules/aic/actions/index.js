@@ -42,6 +42,7 @@ import { toTrueFromMagnetic } from '../../../utils/bearing.js'
 import { sectorAxisBearing } from '../canvas/computePicture.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
+import { fetchJson } from '../../../utils/fetchJson.js'
 
 const WINDOW_ID = 'aic-main'
 
@@ -235,8 +236,7 @@ export async function ASPCOLORS({ captures }) {
   let palettes = useMapsStore.getState().palettes
   if (!palettes.length) {
     try {
-      const res = await fetch('/api/navdata/palettes')
-      palettes = await res.json()
+      palettes = await fetchJson('/api/navdata/palettes')
       useMapsStore.getState().setPalettes(palettes)
     } catch {
       return 'PALETTE LOAD FAILED'
