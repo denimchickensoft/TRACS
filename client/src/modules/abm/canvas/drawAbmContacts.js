@@ -11,7 +11,7 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { destinationPoint, gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 import { drawPtl, DECL_COLOR, drawHistoryTrail } from '../../../utils/declarationSymbols.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../../utils/scopeConstants.js'
 import { DECLARATION } from '../../../store/abm.js'
 import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
 import { resolveCallsign } from '../../../utils/callsign.js'

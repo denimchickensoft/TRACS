@@ -1,7 +1,7 @@
 import { latLngToCanvas }  from '../../../../utils/projection.js'
 import { resolveCallsign } from '../../../../utils/callsign.js'
 import { destinationPoint } from '../../../../utils/bearing.js'
-import { DIR_TO_ANGLE }    from '../../stars/constants.js'
+import { DIR_TO_ANGLE }    from '../../../../utils/scopeConstants.js'
 import { hasLiveSquawk }   from '../../../../utils/transponder.js'
 import { MS_TO_KT as M_PER_S_TO_KT, M_TO_FT } from '../../../../utils/units.js'
 

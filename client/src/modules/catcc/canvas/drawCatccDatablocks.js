@@ -1,5 +1,5 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
-import { DIR_TO_ANGLE }   from '../../atc/stars/constants.js'
+import { DIR_TO_ANGLE }   from '../../../utils/scopeConstants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { M_TO_FT, MS_TO_KT } from '../../../utils/units.js'
 

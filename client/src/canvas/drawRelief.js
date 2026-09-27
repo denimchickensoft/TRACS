@@ -1,4 +1,4 @@
-import { projectRingCached, screenBoundsOfBbox } from '../../../../utils/projection.js'
+import { projectRingCached, screenBoundsOfBbox } from '../utils/projection.js'
 
 const RELIEF_COLOR_FALLBACK = '#88AA88'
 

@@ -8,9 +8,9 @@ import { useAtcStore, HANDOFF_STATE } from '../../store/atc.js'
 import { useControllersStore }   from '../../store/controllers.js'
 
 import { useCorrelationStore }   from '../../store/correlation.js'
-import { getVisibleUnits }       from '../atc/stars/visibleUnits.js'
+import { getVisibleUnits }       from '../../utils/visibleUnits.js'
 import { rangeToPixelsPerNm }    from '../../utils/projection.js'
-import { resolveSlew }           from '../atc/stars/input/slewResolver.js'
+import { resolveSlew }           from '../../utils/slewResolver.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
 import { useGeoStore }           from '../../store/geo.js'
@@ -19,13 +19,13 @@ import { useAbmAirspaceStore }   from '../../store/abmAirspace.js'
 import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
 import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
-import { drawCompassRose }       from '../atc/stars/canvas/drawCompassRose.js'
-import { drawGeo }               from '../atc/stars/canvas/drawGeo.js'
+import { drawCompassRose }       from '../../canvas/drawCompassRose.js'
+import { drawGeo }               from '../../canvas/drawGeo.js'
 import { drawAbmAirspace }       from '../abm/canvas/drawAbmAirspace.js'
-import { drawAbmFixSymbols }     from '../abm/canvas/drawAbmFixSymbols.js'
+import { drawAbmFixSymbols }     from '../../canvas/drawAbmFixSymbols.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
-import { matchStarsKey, isTypedInput } from '../atc/stars/input/starsKeys.js'
+import { matchStarsKey, isTypedInput } from '../../utils/starsKeys.js'
 import { processOdsCommand } from './odsCommands.js'
 import { initCntl, termCntl, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
@@ -89,7 +89,7 @@ export default function CatccScope() {
   // ── Navdata layers (.asp/.sua/.classc/etc, .fixes, .geo) — reused directly
   // from ABM's stores/draw functions (store/abmAirspace.js, store/geo.js,
   // store/navdata.js, modules/abm/canvas/drawAbmAirspace.js,
-  // modules/abm/canvas/drawAbmFixSymbols.js): flat theatre-wide data with no
+  // canvas/drawAbmFixSymbols.js): flat theatre-wide data with no
   // facility/DCB concept, same reason ABM bypasses STARS' bucketed useMapsStore.
   // Visibility is driven by this window's own settings (odsCommands.js), not
   // useGeoStore's shared `visible` flag — CATCC never calls setVisible on it,

@@ -15,7 +15,7 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { DECL_COLOR } from '../../../utils/declarationSymbols.js'
 import { DECLARATION } from '../../../store/abm.js'
-import { HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
+import { HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../../utils/scopeConstants.js'
 
 const GROUND_RADIUS = 1.5
 const CULL_MARGIN   = 60

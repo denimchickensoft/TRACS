@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { usePreviewStore }  from '../../../../store/preview.js'
 import { useFpeStore }      from '../../../../store/fpe.js'
-import { matchStarsKey, isTypedInput } from './starsKeys.js'
+import { matchStarsKey, isTypedInput } from '../../../../utils/starsKeys.js'
 
 /**
  * Keyboard input handler for the STARS ODS.

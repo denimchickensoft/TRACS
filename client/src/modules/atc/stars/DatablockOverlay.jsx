@@ -10,7 +10,7 @@ import { useOdsStore }         from '../../../store/ods.js'
 import { latLngToCanvas }      from '../../../utils/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
 import { hasLiveSquawk }       from '../../../utils/transponder.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from './constants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from '../../../utils/scopeConstants.js'
 import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
 import { MS_TO_KT as M_PER_S_TO_KNOTS, M_TO_FT as METERS_TO_FEET } from '../../../utils/units.js'
 

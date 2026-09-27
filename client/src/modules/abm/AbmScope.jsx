@@ -25,19 +25,19 @@ import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { useWheelDirection } from '../../utils/wheel.js'
-import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
+import { resolveSlew }      from '../../utils/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
-import { drawCompassRose }  from '../atc/stars/canvas/drawCompassRose.js'
-import { drawGeo }          from '../atc/stars/canvas/drawGeo.js'
-import { drawRelief }       from '../atc/stars/canvas/drawRelief.js'
-import { drawHoldings }     from '../atc/stars/canvas/drawHoldings.js'
-import { drawMora }         from '../atc/stars/canvas/drawMora.js'
-import { drawAirways }      from '../atc/stars/canvas/drawAirways.js'
-import { drawRunways }      from '../atc/stars/canvas/drawRunways.js'
+import { drawCompassRose }  from '../../canvas/drawCompassRose.js'
+import { drawGeo }          from '../../canvas/drawGeo.js'
+import { drawRelief }       from '../../canvas/drawRelief.js'
+import { drawHoldings }     from '../../canvas/drawHoldings.js'
+import { drawMora }         from '../../canvas/drawMora.js'
+import { drawAirways }      from '../../canvas/drawAirways.js'
+import { drawRunways }      from '../../canvas/drawRunways.js'
 import { drawAbmLayers }    from './canvas/drawAbmLayers.js'
-import { drawAbmFixSymbols } from './canvas/drawAbmFixSymbols.js'
+import { drawAbmFixSymbols } from '../../canvas/drawAbmFixSymbols.js'
 import { drawAbmAirportPolygons } from './canvas/drawAbmAirportPolygons.js'
 import { drawAbmContacts, computeSuppressedIds, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { drawAbmMissiles } from '../../utils/declarationSymbols.js'
@@ -241,7 +241,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   // Middle-click highlight (STARS/AbmScope shared behaviour) — session-local,
   // not persisted; toggles a contact's symbol/datablock to HIGHLIGHT_TEAL
-  // (atc/stars/constants.js). Works across air + ground/naval (allVisibleUnits).
+  // (utils/scopeConstants.js). Works across air + ground/naval (allVisibleUnits).
   const [highlightedIds, setHighlightedIds] = useState(new Set())
   const toggleHighlight = (unitId) =>
     setHighlightedIds(s => { const n = new Set(s); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
@@ -1094,7 +1094,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // ── Compass rose — CATCC's fontScale (0.625), not STARS's default (1) ──────
   // ABM's view is the densest of any scope (contacts+sectors+flights all at
   // once), so the smaller CATCC variant reads better than STARS's larger one.
-  // Shared draw function (client/src/modules/atc/stars/canvas/drawCompassRose.js)
+  // Shared draw function (client/src/canvas/drawCompassRose.js)
   // — no ABM-specific copy needed, just CATCC's parameter choice.
   useEffect(() => {
     if (!view || !compassRef.current) return

@@ -1,4 +1,4 @@
-import { latLngToCanvas } from '../../../../utils/projection.js'
+import { latLngToCanvas } from '../utils/projection.js'
 
 export function drawRunways(ctx, view, runwayMaps, rwyVisible, brite = 80) {
   if (!runwayMaps.length || brite <= 0) return

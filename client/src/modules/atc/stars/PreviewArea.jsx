@@ -1,7 +1,7 @@
 import { usePreviewStore } from '../../../store/preview.js'
 import { useDisplayStore } from '../../../store/display.js'
 import { useOdsStore }     from '../../../store/ods.js'
-import { STARS_KEY_MAP }   from './input/starsKeys.js'
+import { STARS_KEY_MAP }   from '../../../utils/starsKeys.js'
 
 const WINDOW_ID = 'atc-main'
 

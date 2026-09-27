@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
-import { isTypedInput }        from '../stars/input/starsKeys.js'
+import { isTypedInput }        from '../../../utils/starsKeys.js'
 import { toggleAllDatablocks } from './asdexDatablockToggle.js'
 
 export function AsdexInputHandler({ onEnter, onEsc }) {
