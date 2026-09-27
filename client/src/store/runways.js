@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { computeMagvar, missionDecimalYear } from '../utils/magvar.js'
 import { EARTH_RADIUS_NM } from '../utils/units.js'
 import { getIcaoMapping } from '../utils/icaoMapping.js'
+import { log } from '../utils/log.js'
 
 const FT_PER_NM = 6076.115
 
@@ -334,7 +335,7 @@ export const useRunwaysStore = create((set, get) => ({
       }
 
       set({ centerlines, cltrVisible, satBuckets, theatre, facilityAirbase: facilityAirbase || null, airportPositions, _lastLoadKey: loadKey })
-      console.log(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
+      log.info(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
     } catch (err) {
       console.error('[runways] load error:', err.message)
     }

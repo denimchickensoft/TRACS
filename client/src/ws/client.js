@@ -5,6 +5,7 @@ import { useAtcStore } from '../store/atc'
 import { useSessionStore } from '../store/session'
 import { useStripsStore } from '../store/strips'
 import { findFlightPlanAid } from '../utils/callsign'
+import { log } from '../utils/log.js'
 
 const WS_URL = '/ws'
 const RECONNECT_INTERVAL_MS = 3000
@@ -114,7 +115,7 @@ function connect() {
   socket = new WebSocket(url)
 
   socket.onopen = () => {
-    console.log('[ws] connected')
+    log.info('[ws] connected')
     clearTimeout(reconnectTimer)
   }
 
@@ -131,7 +132,7 @@ function connect() {
 
   socket.onclose = () => {
     if (intentionalClose) return
-    console.log(`[ws] disconnected - reconnecting in ${RECONNECT_INTERVAL_MS}ms`)
+    log.info(`[ws] disconnected - reconnecting in ${RECONNECT_INTERVAL_MS}ms`)
     useSessionStore.getState().setConnected(false)
     reconnectTimer = setTimeout(connect, RECONNECT_INTERVAL_MS)
   }

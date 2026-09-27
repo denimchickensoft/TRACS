@@ -12,6 +12,7 @@ import { useRoeStore, registerRoeBroadcast, applyRoe } from '../store/roe.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
 import { applyCallsignRenameRemote } from '../utils/callsignRename.js'
+import { log } from '../utils/log.js'
 
 // ── Signal relay URL (same server the browser loaded from) ────────────────────
 function getSignalUrl() {
@@ -220,7 +221,7 @@ export async function deriveRoomId(olympusAddress, password = '', coalition = ''
   const hash  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
   const hex   = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
   const roomId = 'tracs-' + hex.substring(0, 16)
-  console.info(`[webrtc] derived room id ${roomId} from "${normalized}"`)
+  log.debug(`[webrtc] derived room id ${roomId} from "${normalized}"`)
   return roomId
 }
 
@@ -246,7 +247,7 @@ function logMsg(direction, msg, targetPeerId) {
   // relay-hosted sync session never opens a real RTCPeerConnection, and the
   // '[webrtc]' label was confusingly claiming otherwise.
   const tag = usingSyncRelay ? '[sync]' : '[webrtc]'
-  console.debug(`${tag} ${direction}${target} [${msg.type}] seq=${msg.sequence} from=${from}`, msg.payload)
+  log.debug(`${tag} ${direction}${target} [${msg.type}] seq=${msg.sequence} from=${from}`, msg.payload)
 }
 
 // ── Message envelope ──────────────────────────────────────────────────────────
@@ -979,7 +980,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   // Same [sync]/[webrtc] convention logMsg() already uses below, for the
   // same reason -- this always said [webrtc] regardless of which transport
   // actually carried it.
-  console.info(`${usingSyncRelay ? '[sync]' : '[webrtc]'} joining module room ${moduleRoomId}`)
+  log.info(`${usingSyncRelay ? '[sync]' : '[webrtc]'} joining module room ${moduleRoomId}`)
   const iceServers = await fetchIceServers()
   const baseCfg = {
     appId: 'tracs',

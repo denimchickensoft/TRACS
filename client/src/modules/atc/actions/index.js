@@ -42,6 +42,7 @@ import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { getMyControllerId } from '../../../utils/myControllerId.js'
+import { log } from '../../../utils/log.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -1237,7 +1238,7 @@ export function dispatch(parsed, slewTarget, context) {
   if (!handler) {
     // Recognized STARS syntax TRACS doesn't implement yet (see docs/atc.md's
     // Known limitations). The command id is internal, so it's only logged.
-    console.info(`[atc] unimplemented command: ${parsed.command.id}`)
+    log.info(`[atc] unimplemented command: ${parsed.command.id}`)
     usePreviewStore.getState().setResponse('NOT SUPPORTED')
     return
   }

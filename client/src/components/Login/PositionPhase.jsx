@@ -7,6 +7,7 @@ import { wsClient } from '../../ws/client'
 import { initWebrtc } from '../../webrtc/client'
 import { CARRIER_TYPES } from '../../utils/carriers'
 import { getIcaoMapping } from '../../utils/icaoMapping.js'
+import { log } from '../../utils/log.js'
 
 const SUFFIX_TO_NAVDATA_ROLE = {
   TWR: 'twr',
@@ -316,9 +317,9 @@ export function PositionPhase({ onSignedIn }) {
 
     const ac = new AbortController()
     fetch(`/api/navdata/frequencies?icao=${encodeURIComponent(facilityId)}&role=${role}`, { signal: ac.signal })
-      .then((r) => { console.log(`[navdata] freq ${facilityId}/${role} → ${r.status}`); return r.ok ? r.json() : Promise.reject(r.status) })
+      .then((r) => { log.debug(`[navdata] freq ${facilityId}/${role} → ${r.status}`); return r.ok ? r.json() : Promise.reject(r.status) })
       .then((data) => {
-        console.log('[navdata] freq data', data)
+        log.debug('[navdata] freq data', data)
         const raw = data?.freqs?.[0]
         if (!raw) { setSuggestedFreq(null); return }
         const formatted = parseFloat(raw).toFixed(3)

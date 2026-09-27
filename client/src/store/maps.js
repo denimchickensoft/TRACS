@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { EARTH_RADIUS_NM } from '../utils/units.js'
+import { log } from '../utils/log.js'
 
 // ── Position preset order ─────────────────────────────────────────────────────
 // Each entry is exactly 5 slots. 'MVA' is a sentinel — not a displayCategory —
@@ -248,7 +249,7 @@ export const useMapsStore = create((set, get) => ({
 
       set({ maps, mvaSlot, palettes: palettes ?? [], visible, theatre, loading: false, _lastLoadKey: loadKey })
       const mainCount = maps.slice(0, 5).filter(Boolean).length
-      console.log(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${mainCount} main airspace (+${mvaSlot != null ? 'MVA' : 'none'}), ${Math.max(0, maps.length - 5)} submenu, ${(palettes ?? []).length} palettes`)
+      log.info(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${mainCount} main airspace (+${mvaSlot != null ? 'MVA' : 'none'}), ${Math.max(0, maps.length - 5)} submenu, ${(palettes ?? []).length} palettes`)
     } catch (err) {
       console.error('[maps] load error:', err.message)
       set({ loading: false })
