@@ -1,6 +1,7 @@
 import { latLngToCanvas } from '../../utils/projection.js'
 import { resolveCallsign } from '../../utils/callsign.js'
-import { typeAbbrev } from './canvas/drawAbmContacts.js'
+import { typeAbbrev, parseFlightElement } from './canvas/drawAbmContacts.js'
+import { DECLARATION, getAbmEffectiveDeclaration } from '../../store/abm.js'
 
 // Draw-command arg tokens (.line/.rect/.circ/.poly/.sect/.race/.text) must
 // come from the ORIGINAL-case command text, not the lowercased `str`
@@ -185,4 +186,95 @@ export function padRunwayName(name) {
 export function buildAirportFields(airport) {
   const fields = [airport.airbase, airport.icao, airport.designators.join(', ')]
   return fields.filter(v => v !== undefined && v !== null && v !== '')
+}
+
+// FRAG route leg labels use the flight's group callsign (e.g. "COLT1" for
+// "COLT11"), the same flight/element split Ato.jsx's CALLSIGN column and
+// formation-datablock suppression already use — see parseFlightElement's
+// header comment in drawAbmContacts.js. Falls back to the mission-editor
+// group name when the lead unit's callsign doesn't parse.
+export function flightRouteGroupLabel(flight) {
+  if (!flight) return null
+  return parseFlightElement(flight.units?.[0])?.flightKey ?? flight.name ?? null
+}
+
+// Collapses runway centerlines (two direction-entries per physical strip)
+// into one strip per runway, grouped by airbase with its ICAO code and
+// runway designators. Pure — AbmScope memoizes it.
+export function buildAirportStrips(runwayCenterlines, icaoMap, theatre) {
+  const theatreIcao = (theatre && icaoMap[theatre.toLowerCase()]) || {}
+  const stripMap = new Map()
+  for (const c of runwayCenterlines) {
+    if (!c.rwyEnd1 || !c.rwyEnd2) continue
+    // centerlines' public shape (store/runways.js) doesn't carry rwyName
+    // directly — only rawCenterlines (an internal intermediate) does — but
+    // id is `${airbase}__${rwyName}`, so pull it back out from there.
+    const rwyName = c.id.slice(c.airbase.length + 2)
+    const key = `${c.airbase}|${c.rwyEnd1.lat.toFixed(6)},${c.rwyEnd1.lng.toFixed(6)}|${c.rwyEnd2.lat.toFixed(6)},${c.rwyEnd2.lng.toFixed(6)}`
+    const existing = stripMap.get(key)
+    if (existing) existing.names.push(rwyName)
+    else stripMap.set(key, { airbase: c.airbase, rwyEnd1: c.rwyEnd1, rwyEnd2: c.rwyEnd2, names: [rwyName] })
+  }
+  const byAirbase = new Map()
+  for (const strip of stripMap.values()) {
+    const designator = strip.names.map(padRunwayName).sort((a, b) => parseInt(a, 10) - parseInt(b, 10)).join('/')
+    if (!byAirbase.has(strip.airbase)) {
+      byAirbase.set(strip.airbase, {
+        airbase: strip.airbase, icao: theatreIcao[strip.airbase] ?? null, strips: [], designators: [],
+      })
+    }
+    const entry = byAirbase.get(strip.airbase)
+    entry.strips.push({ rwyEnd1: strip.rwyEnd1, rwyEnd2: strip.rwyEnd2 })
+    entry.designators.push(designator)
+  }
+  return [...byAirbase.values()]
+}
+
+// Collapses cursor readout hits into display groups (see AbmScope's
+// readout comment for the grouping rules). `correlatedUnitIds` and
+// `rwrEverDetected` are the scope's current sets. Pure — AbmScope memoizes it.
+export function groupReadoutHits(readoutHits, myCoalitionNum, correlatedUnitIds, rwrEverDetected) {
+  const groups = new Map()
+  for (const hit of readoutHits) {
+    if (hit.kind === 'airport') {
+      groups.set(hit.unitId, { kind: 'airport', unitId: hit.unitId, airport: hit.airport, count: 1 })
+      continue
+    }
+    if (hit.kind === 'air') {
+      // Declaration-driven for a non-srsCapable contact; for an
+      // srsCapable one, identity reveal is driven by CURRENT correlation
+      // alone, independent of (possibly sticky) declaration — same
+      // decoupling as drawAbmContacts.js's datablock, see its comment for
+      // the full reasoning. getAbmEffectiveDeclaration still gates
+      // whether an srsCapable contact gets an automatic FRIENDLY default
+      // in the first place (no free pass for being same-coalition), but
+      // decl itself no longer factors into reveal here.
+      const decl = getAbmEffectiveDeclaration(hit.unitId, hit.unit, myCoalitionNum)
+      const isFriendly = hit.unit.srsCapable
+        ? correlatedUnitIds.has(String(hit.unitId))
+        : decl === DECLARATION.FRIENDLY
+      if (isFriendly) {
+        groups.set(`air:${hit.unitId}`, {
+          kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: true, count: 1,
+        })
+        continue
+      }
+      const revealed  = rwrEverDetected.has(String(hit.unitId))
+      const typeLabel = revealed ? typeAbbrev(hit.unit) : null
+      const key       = `air-unknown:${typeLabel ?? 'UNKNOWN'}`
+      const existing  = groups.get(key)
+      if (existing) existing.count++
+      else groups.set(key, {
+        kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: false, revealed, typeLabel, count: 1,
+      })
+      continue
+    }
+    const key = `ground:${hit.unit.name}`
+    const existing = groups.get(key)
+    if (existing) existing.count++
+    else groups.set(key, { kind: 'ground', unitId: hit.unitId, unit: hit.unit, count: 1 })
+  }
+  // Airfields always lead the list — Array#sort is stable, so this only
+  // reorders across kinds and leaves same-kind relative order untouched.
+  return [...groups.values()].sort((a, b) => (a.kind === 'airport' ? 0 : 1) - (b.kind === 'airport' ? 0 : 1))
 }

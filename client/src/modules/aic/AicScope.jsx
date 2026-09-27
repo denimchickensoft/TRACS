@@ -18,7 +18,7 @@ import { useRunwaysStore }       from '../../store/runways.js'
 import { rangeToPixelsPerNm, canvasToLatLng } from '../../utils/projection.js'
 import { resolveSlew }         from '../atc/stars/input/slewResolver.js'
 import { computeMagvar } from '../../utils/magvar.js'
-import { gridBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
+import { toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
 import { drawAicContacts }     from './canvas/drawAicContacts.js'
 import { drawAbmMissiles }     from '../../utils/declarationSymbols.js'
@@ -33,6 +33,7 @@ import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
 import { dispatch }            from './actions/index.js'
 import './AicScope.css'
+import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye } from './aicScopeHelpers.js'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
 import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
 
@@ -65,67 +66,6 @@ const DECL_PICTURE = {
   [DECLARATION.BOGEY]:    'B',
   [DECLARATION.NEUTRAL]:  'NE',
   [DECLARATION.FRIENDLY]: 'FR',
-}
-
-const CARDINAL_ABBR = {
-  NORTH: 'N', NORTHEAST: 'NE', EAST: 'E', SOUTHEAST: 'SE',
-  SOUTH: 'S', SOUTHWEST: 'SW', WEST: 'W', NORTHWEST: 'NW',
-}
-
-// Abbreviates cardinal directions and LEAD/TRAIL in a group's display name.
-// The formation amplifier line (e.g. "ECHELON WEST") is rendered separately
-// from picture.amplifiers and is NOT run through this — it stays full-word.
-const NAME_ABBR = { ...CARDINAL_ABBR, LEAD: 'L', TRAIL: 'T' }
-function abbrGroupName(name) {
-  return name.replace(' GROUP', '').split(' ').map(w => NAME_ABBR[w] ?? w).join(' ')
-}
-
-
-function picFillIns(g) {
-  const parts = []
-  if (g.isStack) parts.push(`STACK ${g.stackHighFt / 1000}K/${g.stackLowFt / 1000}K`)
-  if (g.isHigh) parts.push('HIGH')
-  if (g.isVeryFast) parts.push('VERY FAST')
-  else if (g.isFast) parts.push('FAST')
-  if (g.openingClosing) parts.push(g.openingClosing)
-  return parts.join('  ')
-}
-
-const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
-
-function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
-  const result      = {}
-  const detectedIds = new Set()
-
-  for (const unit of Object.values(units)) {
-    if (!unit.contacts) continue
-    for (const c of unit.contacts) {
-      if ((c.detectionMethod & 4) || (c.detectionMethod & 32)) detectedIds.add(String(c.ID))
-      if (c.detectionMethod & 16) rwrEverDetected?.add(String(c.ID))
-    }
-  }
-
-  for (const [id, unit] of Object.entries(units)) {
-    if (!unit.position) continue
-    if (unit.alive === false) continue
-    if (unit.category !== 'Aircraft' && unit.category !== 'Helicopter') continue
-    if (unit.agl !== undefined && unit.agl < AGL_FLOOR_M) continue
-    const c = unit.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
-  }
-
-  return result
-}
-
-function subcardinal(deg) {
-  const dirs = ['N','NE','E','SE','S','SW','W','NW']
-  return dirs[Math.round(((deg % 360) + 360) % 360 / 45) % 8]
-}
-
-function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, declinationDeg, theatre) {
-  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatre)
-  const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
-  return { brg: Math.round(magBrg) || 360, range: Math.round(rangeNm) }
 }
 
 export default function AicScope() {
@@ -1103,7 +1043,6 @@ export default function AicScope() {
         {!bullseyeEntry && !bullseyeOverride && (
           <div className="aic-warn">NO BULLSEYE</div>
         )}
-
 
         {/* Mission clock — above cmd feedback/entry. Click to toggle Zulu/Local. */}
         <div
