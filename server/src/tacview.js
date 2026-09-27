@@ -63,6 +63,7 @@ let theatreTimer = null
 let missionClockTimer = null
 let theatreDecided = false
 let theatreName = null
+let theatreOverridden = false
 const theatreVotes = new Map()
 
 // Omniscient truth (all coalitions) — deliberately never exposed via `state`
@@ -133,7 +134,7 @@ function sendMissionClock() {
   if (!theatreDecided) return
   const missionUtcMs = parser?.getCurrentMissionUtcMs()
   const dateAndTime = missionUtcMs == null ? undefined : computeDateAndTime(missionUtcMs, navdata.theatreTacviewRealUtcOffset(theatreName))
-  const mission = { mission: { theatre: theatreName, dateAndTime } }
+  const mission = { mission: { theatre: theatreName, theatreOverridden, dateAndTime } }
   state.setMission(mission)
   if (onMission) onMission(mission)
 }
@@ -333,6 +334,7 @@ function start(cfg, callbacks = {}) {
   intentionalClose = false
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   state.resetForNewSource()
   internalUnits = {}
@@ -400,6 +402,7 @@ function overrideTheatre(name) {
   clearTimeout(theatreTimer)
   theatreDecided = true
   theatreName = name
+  theatreOverridden = true
   theatreVotes.clear()
   sendMissionClock()
 }
@@ -416,6 +419,7 @@ function resetTheatreDetection() {
   clearTimeout(theatreTimer)
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
 }

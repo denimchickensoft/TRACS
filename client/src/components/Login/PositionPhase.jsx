@@ -66,12 +66,10 @@ export function PositionPhase({ onSignedIn }) {
   const [theatreList, setTheatreList] = useState([])
   // Collapsed by default — a rare-use escape hatch, not a permanent control.
   const [theatreOverrideOpen, setTheatreOverrideOpen] = useState(false)
-  // Tracks only "did I click Override this page-load" — not whether the
-  // server's current theatre came from an override versus a plain auto-vote
-  // (that distinction isn't tracked server-side, and doesn't need to be: a
-  // fresh page load always starts back at the plain "Override" control, and
-  // "Reset to auto-detect" only needs to undo what *this* session just did).
-  const [theatreOverridden, setTheatreOverridden] = useState(false)
+  // Reported by the server with the theatre: an override latches for the
+  // whole Tacview connection, which a reload or relogin reuses, so this must
+  // survive a page load rather than track only this page's clicks.
+  const theatreOverridden = !!mission?.mission?.theatreOverridden
   useEffect(() => {
     const ac = new AbortController()
     fetch('/api/navdata/theatres', { signal: ac.signal })
@@ -602,7 +600,6 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
                 type="button"
                 className="theatre-override-toggle"
                 onClick={() => {
-                  setTheatreOverridden(false)
                   overrideTheatre(null)
                   fetch('/api/tacview/theatre-reset', { method: 'POST' }).catch(() => {})
                 }}
@@ -637,7 +634,6 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
                   // actually latches the override server-side and stops that.
                   overrideTheatre(theatre)
                   setTheatreOverrideOpen(false)
-                  setTheatreOverridden(true)
                   fetch('/api/tacview/theatre-override', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },

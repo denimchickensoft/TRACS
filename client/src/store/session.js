@@ -136,9 +136,11 @@ export const useSessionStore = create((set) => ({
   // majority-vote mitigation can never disambiguate MarianaIslands vs.
   // MarianaIslandsWWII (identical bboxes). Patches mission.mission.theatre
   // in place so every consumer that already reads mission?.mission?.theatre
-  // sees the override with no other code changes.
+  // sees the override with no other code changes. theatreOverridden mirrors
+  // the flag the server sends with the theatre; null means back to
+  // auto-detect.
   overrideTheatre: (theatre) => set((s) => ({
-    mission: { ...s.mission, mission: { ...s.mission?.mission, theatre } },
+    mission: { ...s.mission, mission: { ...s.mission?.mission, theatre, theatreOverridden: theatre != null } },
   })),
   setAirbases:   (airbases)   => set({ airbases }),
   setBullseyes:  (bullseyes)  => set({ bullseyes }),
