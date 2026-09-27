@@ -218,7 +218,8 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
         try {
           await source.probe(sourceCfg)
         } catch (err) {
-          return res.status(502).json({ error: `Cannot reach ${sourceType} source: ${err.message}` })
+          const label = sourceType === 'olympus' ? 'Olympus' : 'Tacview'
+          return res.status(502).json({ error: err.identified || err.describesItself ? err.message : `Cannot reach ${label}: ${err.message}` })
         }
       }
 

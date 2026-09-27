@@ -8,6 +8,7 @@ const weaponDatabase = require('./weaponDatabase')
 const missileDetection = require('./missileDetection')
 const { coalitionId } = require('./tacviewDetection')
 const rateConfig = require('./rateConfig')
+const { identifiedError } = require('./tacviewShared')
 
 const MISSION_INTERVAL_MS = 10000
 const AIRBASES_INTERVAL_MS = 30000
@@ -400,14 +401,36 @@ function getConfig() {
   return config
 }
 
+// A fetch failure's underlying cause, in words a controller can act on.
+function describeFetchError(err) {
+  if (err?.name === 'TimeoutError') return 'no response within 5 s'
+  const code = err?.cause?.code
+  if (code === 'ECONNREFUSED') return 'connection refused'
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return 'host not found'
+  if (code === 'EHOSTUNREACH' || code === 'ENETUNREACH' || code === 'ETIMEDOUT') return 'host unreachable'
+  return code ?? err?.message ?? 'unknown error'
+}
+
+// Errors carry their own complete message (`describesItself`), so the
+// connect route shows them as-is. Only a password rejection is `identified`:
+// that's the one answer proving an Olympus is there, which auto-detect uses
+// to surface it over the other source types' failures.
 async function probe(cfg) {
   const url = `${cfg.olympusUrl}/olympus/mission`
   const authHeader = makeAuthHeader(cfg.password ?? '', cfg.coalition ?? '')
-  const res = await fetch(url, {
-    headers: { Authorization: authHeader },
-    signal: AbortSignal.timeout(5000),
-  })
-  if (!res.ok) throw new Error(`Olympus responded ${res.status}`)
+  let res
+  try {
+    res = await fetch(url, {
+      headers: { Authorization: authHeader },
+      signal: AbortSignal.timeout(5000),
+    })
+  } catch (err) {
+    throw Object.assign(new Error(`Olympus not reachable at ${cfg.olympusUrl} (${describeFetchError(err)})`), { describesItself: true })
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw Object.assign(identifiedError('Olympus rejected the password - check the coalition/role password'), { describesItself: true })
+  }
+  if (!res.ok) throw Object.assign(new Error(`Olympus at ${cfg.olympusUrl} responded HTTP ${res.status}`), { describesItself: true })
 }
 
 module.exports = { start, stop, isPolling, isUnreachable, getConfig, probe }

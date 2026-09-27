@@ -8,6 +8,13 @@ import { findFlightPlanAid } from '../utils/callsign'
 import { log } from '../utils/log.js'
 
 const WS_URL = '/ws'
+
+// Server status reasons (routes/sourceConnect.js's onDisconnect) shown in the
+// top bar next to DISCONNECTED.
+const CONNECTION_ISSUES = {
+  olympus_unreachable: 'Olympus not responding - retrying every 30 s',
+  tacview_unreachable: 'Tacview rejected the RTT password - reconnect with the right one',
+}
 const RECONNECT_INTERVAL_MS = 3000
 
 let socket = null
@@ -88,6 +95,9 @@ function dispatch(message) {
 
     case 'status': {
       useSessionStore.getState().setConnected(message.data.polling === true)
+      useSessionStore.getState().setConnectionIssue(
+        message.data.polling === true ? null : (CONNECTION_ISSUES[message.data.reason] ?? null)
+      )
       useSessionStore.getState().setSourceType(message.data.sourceType ?? null)
       const instanceId = message.data.instanceId
       if (instanceId) {

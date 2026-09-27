@@ -34,6 +34,9 @@ export const useSessionStore = create((set) => ({
   relayUrl: '',   // SRS relay — optional, empty means none configured/reachable
   syncCapable: false,   // relay's /sync reachable + authenticated (checked in Login's ConnectPhase)
   connected: false,
+  // Why the data source is disconnected, from the server's status reason
+  // (e.g. Olympus unreachable and retrying), or null. Shown in the top bar.
+  connectionIssue: null,
   // 'olympus' | 'tacview' — set optimistically by ConnectPhase's setConnection
   // (matching the source-selector's mode, collapsing 'tacview-direct'/'relay'
   // both to 'tacview' here since that's the dispatch-level distinction this
@@ -96,6 +99,7 @@ export const useSessionStore = create((set) => ({
     }),
 
   setConnected: (connected) => set({ connected }),
+  setConnectionIssue: (connectionIssue) => set({ connectionIssue }),
 
   setSourceType: (sourceType) => set({ sourceType }),
 
@@ -223,6 +227,7 @@ export const useSessionStore = create((set) => ({
       relayUrl:            '',
       syncCapable:         false,
       connected:           false,
+      connectionIssue:     null,
       positionMode:        POSITION_MODE.FREEFORM,
       positionName:        '',
       positionConfig:      null,

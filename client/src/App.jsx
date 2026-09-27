@@ -68,6 +68,7 @@ function readScale(key, min = 0.5, max = 2.0) {
 
 export function App() {
   const connected        = useSessionStore((s) => s.connected)
+  const connectionIssue  = useSessionStore((s) => s.connectionIssue)
   const positionSet      = useSessionStore((s) => s.positionSet)
   const activeModule     = useSessionStore((s) => s.activeModule)
   const positionName     = useSessionStore((s) => s.positionName)
@@ -501,7 +502,7 @@ export function App() {
         <span>
           TRACS &mdash;
           <span style={{ color: connected ? '#00cc66' : '#cc3333', marginLeft: '6px', marginRight: '6px' }}>
-            {connected ? `CONNECTED: ${olympusUrl.replace(/^https?:\/\//, '')}` : 'DISCONNECTED'}
+            {connected ? `CONNECTED: ${olympusUrl.replace(/^https?:\/\//, '')}` : `DISCONNECTED${connectionIssue ? ` (${connectionIssue})` : ''}`}
           </span>
           &mdash;
           {facilityName && positionTypeName && <> {facilityName} {positionTypeName} &mdash;</>}
