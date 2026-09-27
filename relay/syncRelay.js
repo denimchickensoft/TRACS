@@ -11,6 +11,7 @@ const fs   = require('fs')
 const path = require('path')
 const { gateConnection } = require('./auth')
 const { resolvePosition, mintEntry } = require('./registryAuthority')
+const { RELAY_DIR } = require('./paths')
 
 // How often to ping every connected socket, and how a missed pong is
 // detected: any socket still marked not-alive at the START of a tick (i.e.
@@ -29,7 +30,7 @@ const HEARTBEAT_INTERVAL_MS = 15_000
 // DISCONNECT_TIMEOUT_MS so a brief drop/refresh gets the same reconnect
 // grace on both sides before a position/letter is actually freed.
 const SESSION_DISCONNECT_TIMEOUT_MS = 5_000
-const SESSIONS_FILE          = path.join(__dirname, 'sessions.json')
+const SESSIONS_FILE          = path.join(RELAY_DIR, 'sessions.json')
 const PERSIST_DEBOUNCE_MS    = 500
 
 function createSyncRelay(wss, config) {

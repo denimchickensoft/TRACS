@@ -14,6 +14,7 @@ const path = require('path')
 const net = require('net')
 const { gateConnection } = require('./auth')
 const tacviewCore = require('./tacviewCore')
+const { RELAY_DIR } = require('./paths')
 
 // Same reconnect policy as the backend's direct Tacview connection
 // (server/src/tacview.js): rapid connect/disconnect churn against Tacview's
@@ -33,7 +34,7 @@ const MAX_HANDSHAKE_FAILURES = 3
 // merge/shape validation here — server/src/tacviewDetection.js's
 // applyRelayConfig()/mergeConfig() is the one place that happens, exactly
 // mirroring how the local-file case already works for direct mode).
-const DETECTION_CONFIG_PATH = path.join(__dirname, 'tacviewDetectionConfig.json')
+const DETECTION_CONFIG_PATH = path.join(RELAY_DIR, 'tacviewDetectionConfig.json')
 function loadDetectionConfig() {
   try {
     return JSON.parse(fs.readFileSync(DETECTION_CONFIG_PATH, 'utf8'))

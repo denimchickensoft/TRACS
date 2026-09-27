@@ -16,14 +16,7 @@ const { createTransponderRelay } = require('./transponders')
 const { createSyncRelay }        = require('./syncRelay')
 const { createTacviewRelay }     = require('./tacview')
 const { checkAndApplyUpdate }    = require('./update')
-
-// __dirname inside a Node SEA binary (see scripts/build.js) doesn't
-// correspond to a real directory on disk — config/state must instead be
-// read relative to the running executable itself, mirroring the identical
-// isSeaBinary/exeDir pattern in server/scripts/terrainDataExe/main.js.
-let isSeaBinary = false
-try { isSeaBinary = require('node:sea').isSea() } catch { /* Node < 21, or not built as SEA */ }
-const RELAY_DIR = isSeaBinary ? path.dirname(process.execPath) : __dirname
+const { isSeaBinary, RELAY_DIR } = require('./paths')
 
 // config.json (gitignored — holds passwords) overrides env vars, which
 // override the built-in defaults. See config.example.json for the shape.
