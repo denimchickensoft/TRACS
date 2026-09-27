@@ -224,8 +224,8 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !bg || !renderW || !renderH || !carrierType) return
-    canvas.width  = renderW
-    canvas.height = renderH
+    if (canvas.width  !== renderW) canvas.width  = renderW
+    if (canvas.height !== renderH) canvas.height = renderH
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, renderW, renderH)
     ctx.drawImage(bg.canvas, 0, 0, renderW, renderH)
