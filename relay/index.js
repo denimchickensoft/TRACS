@@ -160,6 +160,14 @@ const config = {
   autoUpdate: autoUpdateConfig(fileConfig.autoUpdate),
 }
 
+// No passwords means anyone who can reach wsPort can join any coalition's
+// sync and receive its full Tacview/transponder picture. Allowed (it's the
+// simplest setup on a trusted LAN), but never silently.
+if (Object.keys(config.passwords).length === 0) {
+  console.warn('[relay] WARNING: no passwords configured - anyone who can reach this relay can connect as any coalition.')
+  console.warn('[relay]          Set "passwords" in config.json (see config.example.json) before exposing it beyond a trusted network.')
+}
+
 // Per-message size caps (ws defaults to 100 MiB, accepted before auth).
 // /transponders and /tacview clients only ever send their auth message; /sync
 // carries every relay-hosted sync message, the largest being a STATE_DUMP
