@@ -188,10 +188,25 @@ The service user needs write access to the folder, since self-updates replace th
 
 ### Security
 
-- **Always set `passwords`.** An empty `passwords` object lets anyone who can reach the relay connect as any coalition.
+- **Always set `passwords`.** An empty `passwords` object lets anyone who can reach the relay connect as any coalition. The relay logs a warning at startup when no passwords are set.
 - **Keep `config.json` private.** It holds the passwords in plain text, so make it readable only by the account that runs the relay.
+- **Password guessing is rate-limited.** Five wrong passwords from one address within a minute block that address for 30 seconds, doubling with each repeat up to 10 minutes.
 - **Coalition passwords control who can connect, not what they receive.** The relay forwards every unit (Tacview telemetry and transponders) to every authenticated client, and each controller's own TRACS applies fog of war. A player with a valid password and a modified client could see the other side's full picture, so only give passwords to players you trust.
-- **Traffic isn't encrypted.** Controllers connect over plain `ws://`, so passwords and data can be read by anyone who can watch the network between them and the relay. Prefer a trusted network or a VPN for internet-facing relays.
+- **Traffic isn't encrypted by default.** Controllers connect over plain `ws://`, so passwords and data can be read by anyone who can watch the network between them and the relay. For an internet-facing relay, put it behind TLS (below), or use a trusted network or a VPN.
+
+### TLS (`wss://`)
+
+The relay itself speaks plain WebSocket. To encrypt it, put a TLS reverse proxy in front of it on the same machine. [Caddy](https://caddyserver.com/) is the simplest, because it gets and renews certificates automatically. With a DNS name pointing at the relay machine, this `Caddyfile` serves the relay as `wss://relay.example.com:8766`:
+
+```
+relay.example.com:8766 {
+    reverse_proxy 127.0.0.1:8765
+}
+```
+
+- **Firewall:** open TCP 8766 to controllers, and 80/443 for Caddy's certificate checks. **Close `wsPort` (8765) to everything outside the machine**, so no one can bypass TLS.
+- **Controllers** enter the **Server URL** with `https://` (e.g. `https://relay.example.com`) and **8766** as the Relay Port; TRACS then connects to the relay over `wss://`. The `https://` applies to everything at that host, so in Olympus mode Olympus must be served over HTTPS too (for example behind the same Caddy). Relay mode and direct Tacview mode are unaffected.
+- **Password limits keep working per controller:** Caddy passes each controller's address in `X-Forwarded-For`, which the relay uses for connections arriving from the proxy on the same machine.
 
 ### Logs
 

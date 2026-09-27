@@ -138,10 +138,12 @@ export function ConnectPhase({ onConnected }) {
 
   // Same host, XPNDR port instead — empty port means "no relay configured",
   // never a guess, since the relay always lives alongside Olympus/Tacview.
+  // An https:// server host means TLS in front of the DCS server (see the
+  // README's relay TLS setup), so the relay is reached over wss:// too.
   function composedRelayUrl(host = serverHost, port = xpndrPort) {
     if (!port) return ''
-    const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-    return `ws://${cleanHost}:${port}`
+    const { scheme, rest } = splitScheme(host)
+    return `${scheme === 'https' ? 'wss' : 'ws'}://${rest}:${port}`
   }
 
   function handleSelectProfile(profile) {

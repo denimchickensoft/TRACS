@@ -20,7 +20,7 @@ Which fields are shown and required depends on the mode:
   - Saved profiles appear in a dropdown and remember which mode they were saved under. Click a profile's **★** to mark it as a favorite.
 - **Server URL** — the DCS server's address, e.g. `1.2.3.4`. `http://` is added automatically if omitted.
 - **Source Port** — the Olympus or Tacview port. Optional in **Olympus**/**Tacview** modes; leave it blank to use the URL's own scheme default (e.g. a reverse-proxied `https://host` with no port exposed). Hidden in **Relay** mode.
-- **Relay Port** — the TRACS Relay's port. The relay is always reached at the Server URL's host on this port (`ws://<host>:<Relay Port>`).
+- **Relay Port** — the TRACS Relay's port. The relay is always reached at the Server URL's host on this port: `ws://<host>:<Relay Port>`, or `wss://` when the Server URL starts with `https://` (a relay behind TLS; see the README's relay TLS section).
   - In **Olympus**/**Tacview** modes this is optional. Fill it in to get SRS transponder/IFF data merged onto tracks, and to sync with other controllers through the relay rather than peer-to-peer.
   - In **Relay** mode it's required.
 - **Coalition Role** — Blue Commander, Red Commander, Game Master, or Admin. Determines which units you can see and control.
@@ -33,6 +33,7 @@ Click **Connect to Network**. TRACS authenticates against your chosen source and
 
 If a Relay Port is set, TRACS checks in parallel whether relay sync is available. This never blocks connecting. If the relay can't be used, you'll see one of these warnings with a **Continue** button, and TRACS falls back to peer-to-peer sync (see Session Password below):
 - "Relay password rejected — using peer-to-peer."
+- "Relay is refusing this computer after too many wrong passwords — try again in a few minutes. Using peer-to-peer." — five wrong passwords within a minute block your address for a while.
 - "Relay unreachable — using peer-to-peer."
 - "Relay protocol mismatch: relay=N client=M — update whichever side is behind — using peer-to-peer." — the relay and TRACS versions are incompatible.
 
