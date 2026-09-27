@@ -1,4 +1,4 @@
-import { useDisplayStore } from '../../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }     from '../../../../store/ods.js'
 import { useUnitsStore }   from '../../../../store/units.js'
 import { useStcaStore }    from '../../../../store/stca.js'
@@ -21,7 +21,7 @@ export function AlertList() {
   if (!windowSettings || !activeProfile) return null
 
   const { lists, briteLst, csLists } = windowSettings
-  const cfg = lists?.alert ?? { visible: true, xPct: 78, yPct: 25, lines: 5 }
+  const cfg = lists?.alert ?? DEFAULT_LISTS.alert
   if (!cfg.visible) return null
 
   const brite = (briteLst ?? 80) / 100

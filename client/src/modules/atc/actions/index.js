@@ -703,10 +703,8 @@ export function SET_RNG_RING({ captures }) {
   ok()
 }
 
-export function RELOCATE_PREVIEW({ canvasPos }) {
-  if (!canvasPos) return err('NO POSITION')
-  usePreviewStore.getState().setPosition(canvasPos)
-  ok()
+export function RELOCATE_PREVIEW({ canvasPos, canvasSize }) {
+  relocateList('preview', canvasPos, canvasSize)
 }
 
 // Quicklook isn't implemented yet (real STARS quicklook is per position, but

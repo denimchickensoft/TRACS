@@ -1,5 +1,5 @@
 import { useSessionStore }    from '../../../../store/session.js'
-import { useDisplayStore }    from '../../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }        from '../../../../store/ods.js'
 import { useControllersStore } from '../../../../store/controllers.js'
 import { ListPanel }           from './ListPanel.jsx'
@@ -24,7 +24,7 @@ export function SignOnList() {
   if (!windowSettings || !activeProfile) return null
 
   const { lists, briteLst, csLists } = windowSettings
-  const cfg   = lists?.signOn ?? { visible: true, xPct: 88, yPct: 88 }
+  const cfg   = lists?.signOn ?? DEFAULT_LISTS.signOn
   if (!cfg.visible) return null
 
   const brite = (briteLst ?? 80) / 100

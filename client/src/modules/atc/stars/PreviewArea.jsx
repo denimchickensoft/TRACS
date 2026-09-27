@@ -1,5 +1,5 @@
 import { usePreviewStore } from '../../../store/preview.js'
-import { useDisplayStore } from '../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../store/display.js'
 import { useOdsStore }     from '../../../store/ods.js'
 import { STARS_KEY_MAP }   from '../../../utils/starsKeys.js'
 
@@ -31,8 +31,9 @@ function splitCommand(buffer) {
 /**
  * Preview area — the STARS command entry and system response display.
  *
- * Positioned absolutely within atc-canvas-area.
- * Defaults to bottom-left; repositioned via MF P + SLEW.
+ * Positioned absolutely within atc-canvas-area at its lists.preview entry
+ * (top-left corner, % of the canvas), like the lists; repositioned via
+ * MF P + SLEW.
  * Styling matches list text (pdbText color, same font size scale).
  *
  * Layout:
@@ -41,8 +42,8 @@ function splitCommand(buffer) {
  *                    (a command key shows its label on its own line, with the
  *                    rest of the entry below; MF includes its selector: "FS")
  */
-export function PreviewArea({ defaultX = 12 }) {
-  const { buffer, response, position, hasToken } = usePreviewStore()
+export function PreviewArea() {
+  const { buffer, response, hasToken } = usePreviewStore()
   const windowSettings = useDisplayStore((s) => s.windows[WINDOW_ID])
   const activeProfile  = useOdsStore((s) => s.activeProfile)
 
@@ -50,7 +51,7 @@ export function PreviewArea({ defaultX = 12 }) {
   const fontPx  = 10 + (csLists ?? 3) * 2
   const color   = activeProfile?.visual?.colors?.pdbText ?? '#00cc00'
 
-  const x = position?.x ?? defaultX
+  const pos     = windowSettings?.lists?.preview ?? DEFAULT_LISTS.preview
 
   // Only split when a function key actually started the entry, not when
   // the same letters were typed by hand.
@@ -59,9 +60,8 @@ export function PreviewArea({ defaultX = 12 }) {
   return (
     <div style={{
       position:      'absolute',
-      left:          x,
-      bottom:        position ? undefined : 40,
-      top:           position ? position.y : undefined,
+      left:          `${pos.xPct}%`,
+      top:           `${pos.yPct}%`,
       fontFamily:    '"Roboto Mono", monospace',
       fontWeight:    500,
       fontSize:      `${fontPx}px`,

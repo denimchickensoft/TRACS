@@ -239,8 +239,6 @@ export default function StarsScope() {
           dcbActiveSpinner: null,
         })
         applyLayerVisibility(settings)
-        if (settings.previewPosition !== undefined)
-          usePreviewStore.getState().setPosition(settings.previewPosition)
         usePresetsStore.getState().setActiveSlot(defaultSlot)
       }
       usePresetsStore.getState().markDefaultApplied()
@@ -689,7 +687,6 @@ export default function StarsScope() {
       const enriched = {
         ...win,
         ...snapshotLayerVisibility(),
-        previewPosition: usePreviewStore.getState().position,
       }
       usePresetsStore.getState().saveToSlot(pending.slotIndex, name, enriched)
       usePreviewStore.getState().clear()

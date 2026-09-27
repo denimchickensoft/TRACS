@@ -1,5 +1,5 @@
 import { useFlightPlansStore } from '../../../../store/flightPlans.js'
-import { useDisplayStore }     from '../../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }         from '../../../../store/ods.js'
 import { ListPanel }           from './ListPanel.jsx'
 
@@ -13,7 +13,7 @@ export function FlightPlanList() {
   if (!windowSettings || !activeProfile) return null
 
   const { lists, briteLst, csLists } = windowSettings
-  const cfg = lists?.tab ?? { visible: true, xPct: 2, yPct: 65, lines: 5 }
+  const cfg = lists?.tab ?? DEFAULT_LISTS.tab
   if (!cfg.visible) return null
 
   const brite = (briteLst ?? 80) / 100

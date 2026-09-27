@@ -17,7 +17,6 @@ const PRESET_FIELDS = [
   'reliefVisible', 'geoVisible', 'mvaVisible', 'msaVisible', 'moraVisible', 'holdsVisible',
   'airwaysVisible',
   'procVisible',
-  'previewPosition',
 ]
 
 function extractSettings(win) {

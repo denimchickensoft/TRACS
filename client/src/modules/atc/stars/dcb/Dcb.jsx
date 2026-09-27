@@ -275,8 +275,6 @@ export function Dcb({ profile, briteDcb, csDcb }) {
             })
             const s = slot.settings
             applyLayerVisibility(s)
-            if (s.previewPosition !== undefined)
-              usePreviewStore.getState().setPosition(s.previewPosition)
             usePresetsStore.getState().setActiveSlot(idx)
           }
         }
@@ -311,7 +309,6 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           const enriched = {
             ...win,
             ...snapshotLayerVisibility(),
-            previewPosition: usePreviewStore.getState().position,
           }
           const saved = usePresetsStore.getState().saveActive(enriched)
           usePreviewStore.getState().setResponse(saved ? 'PREF SAVED' : 'NO PRESET LOADED')
