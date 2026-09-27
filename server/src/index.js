@@ -165,7 +165,21 @@ app.get('*', (req, res) => {
 // Endpoints return 503 until the cache is ready.
 navdata.init().catch((err) => console.error('[navdata] unexpected init error:', err.message))
 
+// Settles once the server is listening, or rejects if it can't bind (e.g.
+// EADDRINUSE). electron/main.js awaits it so a failure reaches its startup
+// error dialog; run standalone, a bind failure logs and exits instead.
+let resolveReady, rejectReady
+const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
+
+server.on('error', (err) => {
+  const reason = err.code === 'EADDRINUSE' ? `port ${PORT} is already in use` : err.message
+  console.error(`[server] could not listen on ${HOST}:${PORT} - ${reason}`)
+  if (require.main === module) process.exit(1)
+  rejectReady(new Error(`TRACS server could not listen on ${HOST}:${PORT}: ${reason}`))
+})
+
 server.listen(PORT, HOST, () => {
+  resolveReady()
   // The signal relay is fresh on every start — any WebRTC peers from the previous
   // run are gone. Clear the persisted clientList so pre-flight frequency checks
   // don't reject new sign-ons based on stale entries.
@@ -179,3 +193,5 @@ server.listen(PORT, HOST, () => {
     console.warn(`[server] WARNING: listening on ${HOST} (TRACS_HOST) - this server has no authentication; anyone who can reach port ${PORT} can read and control it`)
   }
 })
+
+module.exports = { ready }

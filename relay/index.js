@@ -129,6 +129,12 @@ createTransponderRelay(transpondersWss, config)
 createSyncRelay(syncWss, config)
 createTacviewRelay(tacviewWss, config)
 
+server.on('error', (err) => {
+  const reason = err.code === 'EADDRINUSE' ? `port ${config.wsPort} is already in use` : err.message
+  console.error(`[relay] could not listen on :${config.wsPort} - ${reason}`)
+  process.exit(1)
+})
+
 server.listen(config.wsPort, () => {
   console.log(`[relay] listening on :${config.wsPort} (/transponders, /sync, /tacview)`)
 })

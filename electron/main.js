@@ -169,7 +169,7 @@ function startServer(port) {
   // asdex_colors.json) must live outside the install directory to survive an
   // app update. See server/src/seedConfigFiles.js.
   process.env.TRACS_CONFIG_DIR        = path.join(app.getPath('userData'), 'config')
-  require('../server/src/index.js')
+  return require('../server/src/index.js').ready
 }
 
 // ── Window ────────────────────────────────────────────────────────────────
@@ -329,7 +329,7 @@ handleFromApp('update:openReleasePage', () => shell.openExternal('https://github
 app.whenReady().then(async () => {
   const port = await resolvePort()
   currentPort = port
-  startServer(port)
+  await startServer(port)
   createWindow(port)
   buildMenu(port)
   setupAutoUpdate()
