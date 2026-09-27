@@ -7,6 +7,25 @@ let db          = null
 let tileCache   = new Map()   // "lat0,lon0" → Buffer | null
 let pointCache  = new Map()   // "lat100,lon100" → number | null
 
+// LRU caps (Map iteration order is insertion order, so a hit is re-inserted
+// at the end and the first key is the least recently used). A tile is
+// ~20 KB; a long session over a large theatre would otherwise keep every
+// tile and millions of points it ever touched.
+const MAX_TILES  = 1024
+const MAX_POINTS = 200_000
+
+function cacheGet(cache, key) {
+  const value = cache.get(key)
+  cache.delete(key)
+  cache.set(key, value)
+  return value
+}
+
+function cacheSet(cache, key, value, max) {
+  cache.set(key, value)
+  if (cache.size > max) cache.delete(cache.keys().next().value)
+}
+
 function init() {
   try {
     const Database = require('better-sqlite3')
@@ -19,12 +38,12 @@ function init() {
 
 function getTile(lat0, lon0) {
   const key = `${lat0},${lon0}`
-  if (tileCache.has(key)) return tileCache.get(key)
-  if (!db) { tileCache.set(key, null); return null }
+  if (tileCache.has(key)) return cacheGet(tileCache, key)
+  if (!db) { cacheSet(tileCache, key, null, MAX_TILES); return null }
 
   const row  = db.prepare('SELECT data FROM elevation_tiles WHERE lat0 = ? AND lon0 = ?').get(lat0, lon0)
   const tile = row ? Buffer.from(row.data) : null
-  tileCache.set(key, tile)
+  cacheSet(tileCache, key, tile, MAX_TILES)
   return tile
 }
 
@@ -33,13 +52,13 @@ function getElevation(lat, lon) {
   const lat100 = Math.round(lat * 100)
   const lon100 = Math.round(lon * 100)
   const ck     = `${lat100},${lon100}`
-  if (pointCache.has(ck)) return pointCache.get(ck)
+  if (pointCache.has(ck)) return cacheGet(pointCache, ck)
 
   const lat0 = Math.floor(lat)
   const lon0 = Math.floor(lon)
   const tile = getTile(lat0, lon0)
 
-  if (!tile) { pointCache.set(ck, null); return null }
+  if (!tile) { cacheSet(pointCache, ck, null, MAX_POINTS); return null }
 
   const row  = Math.min(100, Math.max(0, Math.round((lat0 + 1 - lat) * 100)))
   const col  = Math.min(100, Math.max(0, Math.round((lon - lon0)     * 100)))
@@ -47,7 +66,7 @@ function getElevation(lat, lon) {
   const raw  = tile.readInt16BE(idx * 2)
   const elev = raw <= 0 ? 0 : raw   // ocean/bathymetry/void → sea level
 
-  pointCache.set(ck, elev)
+  cacheSet(pointCache, ck, elev, MAX_POINTS)
   return elev
 }
 

@@ -179,11 +179,20 @@ function runMissileDetectionPass() {
   if (Object.keys(revealed).length > 0 || hidden.length > 0) weaponsBuffer.queue(revealed, hidden)
 }
 
+// Real ACMI lines are short; an unterminated one past this size means a
+// broken or hostile peer, so drop the connection rather than buffer forever.
+const MAX_PARTIAL_LINE = 1024 * 1024
 let lineBuffer = ''
 function processIncoming(text) {
   lineBuffer += text
   const lines = lineBuffer.split('\n')
   lineBuffer = lines.pop() ?? ''
+  if (lineBuffer.length > MAX_PARTIAL_LINE) {
+    console.error(`[tacview] over ${MAX_PARTIAL_LINE} bytes without a line break - dropping the connection`)
+    lineBuffer = ''
+    socket?.destroy()
+    return
+  }
   if (lines.length === 0) return
 
   const { updated, removed, bullseyes, positions } = parser.parseLines(lines)

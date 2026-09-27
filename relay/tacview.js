@@ -26,6 +26,9 @@ const { RELAY_DIR } = require('./paths')
 const RECONNECT_MIN_MS = 3000
 const RECONNECT_MAX_MS = 60000
 const MAX_HANDSHAKE_FAILURES = 3
+// Real ACMI lines are short; an unterminated one past this size means a
+// broken or hostile peer, so drop the connection rather than buffer forever.
+const MAX_PARTIAL_LINE = 1024 * 1024
 
 // Relay-operator-owned detection/fog-of-war tuning — gitignored, optional,
 // same key shape as server/tacviewDetectionConfig.json. Loaded once at relay startup,
@@ -76,6 +79,12 @@ function createTacviewRelay(wss, config) {
     lineBuffer += text
     const lines = lineBuffer.split('\n')
     lineBuffer = lines.pop() ?? ''
+    if (lineBuffer.length > MAX_PARTIAL_LINE) {
+      console.error(`[relay:tacview] over ${MAX_PARTIAL_LINE} bytes without a line break - dropping the connection`)
+      lineBuffer = ''
+      socket?.destroy()
+      return
+    }
     if (!lines.length) return
 
     const result = parser.parseLines(lines)
