@@ -60,7 +60,8 @@
   gap: 6px;
 }
 
-.login-form label {
+.login-form label,
+.login-form .login-label {
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;

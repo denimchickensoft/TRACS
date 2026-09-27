@@ -291,9 +291,10 @@ export function ConnectPhase({ onConnected }) {
   return (
     <form className="login-form" onSubmit={handleConnect}>
       <section className="server-name-section">
-        <label>Server Name</label>
+        <label htmlFor="login-server-name">Server Name</label>
         <div className="server-name-row">
           <input
+            id="login-server-name"
             type="text"
             className="server-name-input"
             value={name}
@@ -398,8 +399,9 @@ export function ConnectPhase({ onConnected }) {
       </section>
 
       <section>
-        <label>Server URL</label>
+        <label htmlFor="login-server-url">Server URL</label>
         <input
+          id="login-server-url"
           type="text"
           value={serverHost}
           onChange={(e) => setServerHost(e.target.value)}
@@ -431,8 +433,9 @@ export function ConnectPhase({ onConnected }) {
       </section>
 
       <section>
-        <label>Coalition Role</label>
+        <label htmlFor="login-coalition">Coalition Role</label>
         <select
+          id="login-coalition"
           value={coalition}
           onChange={(e) => setCoalition(e.target.value)}
           disabled={connecting}
@@ -450,8 +453,9 @@ export function ConnectPhase({ onConnected }) {
         // primary source in this one mode (the primary source, Tacview,
         // needs a separate flat RTT password instead -- see the next field).
         <section>
-          <label>Coalition Password</label>
+          <label htmlFor="login-relay-password">Coalition Password</label>
           <input
+            id="login-relay-password"
             type="password"
             value={relayPassword}
             onChange={(e) => setRelayPassword(e.target.value)}
@@ -462,8 +466,9 @@ export function ConnectPhase({ onConnected }) {
       )}
 
       <section>
-        <label>{sourceMode === 'tacview-direct' ? 'Tacview RTT Password' : 'Coalition Password'}</label>
+        <label htmlFor="login-password">{sourceMode === 'tacview-direct' ? 'Tacview RTT Password' : 'Coalition Password'}</label>
         <input
+          id="login-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

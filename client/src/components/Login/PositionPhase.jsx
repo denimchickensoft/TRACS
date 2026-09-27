@@ -593,7 +593,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
            directly, no ambiguity to override) ────────────────────────── */}
       {sourceType === 'tacview' && theatreList.length > 0 && (
         <section>
-          <label>
+          <div className="login-label">
             Theatre {mission?.mission?.theatre
               ? `(${theatreOverridden ? 'overridden' : 'detected'}: ${mission.mission.theatre})`
               : '(detecting…)'}
@@ -620,7 +620,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
                 {theatreOverrideOpen ? '▾' : '▸'} Override
               </button>
             )}
-          </label>
+          </div>
           {theatreOverrideOpen && !theatreOverridden && (
             <select
               className="facility-input"
@@ -740,8 +740,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
           </section>
 
           <section>
-            <label>Frequency (MHz)</label>
+            <label htmlFor="login-atc-frequency">Frequency (MHz)</label>
             <input
+              id="login-atc-frequency"
               type="text"
               value={frequency}
               onChange={(e) => { setFrequency(e.target.value) }}
@@ -761,11 +762,12 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
       {selectedModule === MODULE.CATCC && (
         <>
           <section>
-            <label>Carrier</label>
+            <label htmlFor="login-catcc-carrier">Carrier</label>
             {catccCarriers.length === 0 ? (
               <div className="login-loading">No carriers detected in Olympus data</div>
             ) : (
               <select
+                id="login-catcc-carrier"
                 value={selectedCarrierId}
                 onChange={(e) => setSelectedCarrierId(e.target.value)}
                 disabled={signingIn}
@@ -806,8 +808,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
           </section>
 
           <section>
-            <label>Frequency (MHz)</label>
+            <label htmlFor="login-catcc-frequency">Frequency (MHz)</label>
             <input
+              id="login-catcc-frequency"
               type="text"
               value={catccFrequency}
               onChange={(e) => setCatccFrequency(e.target.value)}
@@ -824,8 +827,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
       {selectedModule === MODULE.AIC && (
         <>
           <section>
-            <label>Callsign</label>
+            <label htmlFor="login-aic-callsign">Callsign</label>
             <input
+              id="login-aic-callsign"
               type="text"
               value={aicCallsign}
               onChange={(e) => setAicCallsign(e.target.value.toUpperCase())}
@@ -835,8 +839,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
           </section>
 
           <section>
-            <label>Frequency (MHz)</label>
+            <label htmlFor="login-aic-frequency">Frequency (MHz)</label>
             <input
+              id="login-aic-frequency"
               type="text"
               value={aicFrequency}
               onChange={(e) => setAicFrequency(e.target.value)}
@@ -853,8 +858,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
       {selectedModule === MODULE.ABM && (
         <>
           <section>
-            <label>Callsign</label>
+            <label htmlFor="login-abm-callsign">Callsign</label>
             <input
+              id="login-abm-callsign"
               type="text"
               value={abmCallsign}
               onChange={(e) => setAbmCallsign(e.target.value.toUpperCase())}
@@ -864,8 +870,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
           </section>
 
           <section>
-            <label>Frequency (MHz)</label>
+            <label htmlFor="login-abm-frequency">Frequency (MHz)</label>
             <input
+              id="login-abm-frequency"
               type="text"
               value={abmFrequency}
               onChange={(e) => setAbmFrequency(e.target.value)}
@@ -882,8 +889,9 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
           sync) ────────────────────────────────────────────────────────── */}
       {!syncCapable && (
         <section>
-          <label>Session Password</label>
+          <label htmlFor="login-session-password">Session Password</label>
           <input
+            id="login-session-password"
             type="password"
             value={sessionPassword}
             onChange={(e) => setSessionPassword(e.target.value)}
