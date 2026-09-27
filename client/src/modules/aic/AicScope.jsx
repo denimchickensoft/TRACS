@@ -343,7 +343,7 @@ export default function AicScope() {
     setAutoThreatRingIds(breached)
   }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius])
 
-  // .centroid / .axis — debug toggles for the hostile-picture centroid and
+  // .centroid / .axis — display toggles for the hostile-picture centroid and
   // the dynamic threat axis line derived from it (see computePicture.js).
   const showCentroid = windowSettings?.showCentroid ?? false
   const showAxis = windowSettings?.showAxis ?? false

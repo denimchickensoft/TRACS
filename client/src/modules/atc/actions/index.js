@@ -866,7 +866,7 @@ export async function REFRESH_ASP_COLORS() {
   else err('REFRESH FAILED')
 }
 
-// ── Debug ─────────────────────────────────────────────────────────────────────
+// ── Display toggles ───────────────────────────────────────────────────────────
 
 export function TOGGLE_COORDS() {
   const win = getDisplay().windows[WINDOW_ID]

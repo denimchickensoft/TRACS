@@ -102,8 +102,7 @@ export const useRunwaysStore = create((set, get) => ({
   loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null, facilityAirbase = null, missionDate = null) => {
     if (!theatre) return
     const yearKey     = missionDate ? missionDecimalYear(missionDate).toFixed(2) : 'now'
-    const overrideKey = (typeof window !== 'undefined' && typeof window.__magvarOverride === 'number') ? window.__magvarOverride : 'auto'
-    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}|${facilityAirbase}|${yearKey}|${overrideKey}`
+    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}|${facilityAirbase}|${yearKey}`
     if (get()._lastLoadKey === loadKey) return
     try {
       if (!theatreCache[theatre]) {

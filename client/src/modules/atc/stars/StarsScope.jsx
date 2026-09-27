@@ -303,7 +303,6 @@ export default function StarsScope() {
     const w = canvas.width
     const h = canvas.height
     if (!w || !h) return null
-    const effectiveDeclination = typeof window.__magvarOverride === 'number' ? window.__magvarOverride : declinationDeg
     return {
       centerLat: centerLat ?? 0,
       centerLng: centerLng ?? 0,
@@ -311,7 +310,7 @@ export default function StarsScope() {
       pixelsPerNm: rangeToPixelsPerNm(rangeNm, w, h),
       width: w,
       height: h,
-      declinationDeg: effectiveDeclination,
+      declinationDeg,
       theatre,
     }
   }, [windowSettings, declinationDeg, theatre])
@@ -342,9 +341,8 @@ export default function StarsScope() {
     return () => ro.disconnect()
   }, [buildView])
 
-  // blinkTick fires every 200ms and doesn't itself affect buildView's output
-  // (it's only here to catch window.__magvarOverride changes, which aren't
-  // reactive). Bail out when the rebuilt view is field-identical to the
+  // blinkTick fires every 200ms and doesn't itself affect buildView's output.
+  // Bail out when the rebuilt view is field-identical to the
   // current one so its reference stays stable and doesn't force every
   // view-dependent layer (map/relief/geo/etc.) to redraw 5x/sec for nothing.
   useEffect(() => {

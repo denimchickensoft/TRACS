@@ -128,7 +128,7 @@ const COMMANDS = [
   { id: 'TOGGLE_MVA',           pattern: /^\.MVA$/,               trigger: 'ENTER' },
   { id: 'TOGGLE_SAT',           pattern: /^\.SAT (\w+)$/,         trigger: 'ENTER', captures: ['label'] },
 
-  // ── Debug ────────────────────────────────────────────────────────
+  // ── Cursor readout ───────────────────────────────────────────────
   { id: 'TOGGLE_COORDS',        pattern: /^\.COORDS$/,            trigger: 'ENTER' },
 
   // ── Find fix/navaid/airport ──────────────────────────────────────

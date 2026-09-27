@@ -253,12 +253,7 @@ export function missionDecimalYear(missionDate) {
 // Compute IGRF-14 magnetic declination (degrees East) at a geodetic position
 // and decimal year (or JS Date, or DCS mission date object).
 // Positive values = East declination → TH = MH + magvar.
-//
-// Dev override: set window.__magvarOverride = <degrees> in the browser console
-// to force a fixed value for all callers. Clear with delete window.__magvarOverride.
 export function computeMagvar(latDeg, lngDeg, dateOrYear = new Date()) {
-  if (typeof window !== 'undefined' && typeof window.__magvarOverride === 'number')
-    return window.__magvarOverride
   let year
   if (typeof dateOrYear === 'number') {
     year = dateOrYear

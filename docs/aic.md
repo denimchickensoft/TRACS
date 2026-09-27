@@ -44,8 +44,8 @@ Click the scope to focus it, type, then press **Enter** to run most commands. A 
 | `.geo` | Toggle coastline/boundary overlay |
 | `.relief` | Toggle terrain relief shading |
 | `.aspcolors <name>` | Set the map color palette by name |
-| `.centroid` | Debug aid — marks the hostile-picture centroid |
-| `.axis` | Debug aid — draws the computed threat axis |
+| `.centroid` | Toggle a marker at the hostile-picture centroid |
+| `.axis` | Toggle a line along the computed threat axis |
 | `.bec` | Toggle bullseye-on-cursor — bearing/range readout that follows the mouse (off by default) |
 | `.clear` | Clears threat rings, RBL, sector, PICTURE-ack state, and **all** BRAA pairs |
 

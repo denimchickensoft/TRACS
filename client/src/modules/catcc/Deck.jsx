@@ -4,8 +4,7 @@ import { useSessionStore }     from '../../store/session.js'
 import { useCorrelationStore } from '../../store/correlation.js'
 import { getVisibleUnits }     from '../atc/stars/visibleUnits.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
-import { CARRIER_TYPES, projectOntoDeck, NM_TO_FEET } from '../../utils/carriers.js'
-import { gridDestinationPoint } from '../../utils/bearing.js'
+import { CARRIER_TYPES, projectOntoDeck } from '../../utils/carriers.js'
 import './Deck.css'
 import { M_TO_FT as METERS_TO_FEET } from '../../utils/units.js'
 
@@ -220,58 +219,6 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   // full 0..(scrollSize - clientSize) range, i.e. edge-to-edge and no further.
   const marginLeft = Math.max(0, (containerSize.cw - renderW) / 2)
   const marginTop  = Math.max(0, (containerSize.ch - renderH) / 2)
-
-  // TEMPORARY — deck debug aid. Ctrl+Alt+Click copies the clicked point's
-  // implied lat/lon (inverse of the forwardFt/rightFt math above), its pixel
-  // location in the *original* (un-rotated, bow-right) deck PNG, and the
-  // carrier's current lat/lon. calibRef sidesteps re-registering the listener
-  // on every high-frequency units update.
-  const calibRef = useRef(null)
-  calibRef.current = { carrierUnit, carrierType, bg, renderW, renderH, theatre }
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const onClick = (e) => {
-      if (!e.ctrlKey || !e.altKey) return
-      const { carrierUnit, carrierType, bg, renderW, renderH, theatre } = calibRef.current
-      if (!carrierUnit?.position || !carrierType || !bg || !renderW || !renderH) return
-
-      const offsetX = e.offsetX
-      const offsetY = e.offsetY
-
-      // Render-space pixel -> deck-relative feet -> lat/lng (inverse of the
-      // forward math in the draw effect + projectOntoDeck).
-      const pxPerFtForward = renderH / carrierType.deckLoaFt
-      const pxPerFtRight   = renderW / carrierType.deckBeamFt
-      const cx = renderW / 2
-      const cy = renderH / 2
-      const rightFt   = (offsetX - cx) / pxPerFtRight
-      const forwardFt = (cy - offsetY) / pxPerFtForward
-
-      const carrierHeadingDeg = (carrierUnit.heading ?? 0) * 180 / Math.PI
-      const rangeNm = Math.hypot(forwardFt, rightFt) / NM_TO_FEET
-      const relBearingDeg = Math.atan2(rightFt, forwardFt) * 180 / Math.PI
-      // carrierHeadingDeg is raw grid heading, so this sum is grid frame too
-      // (despite the "true" naming convention elsewhere) — gridDestinationPoint,
-      // not destinationPoint, is the matching projector. See utils/bearing.js.
-      const gridBearingDeg = (carrierHeadingDeg + relBearingDeg + 360) % 360
-      const { lat, lng } = gridDestinationPoint(carrierUnit.position.lat, carrierUnit.position.lng, gridBearingDeg, rangeNm, theatre)
-
-      // Render-space pixel -> rotated bg-canvas pixel -> original PNG pixel.
-      // loadRotatedBackground() maps original (u,v) -> rotated (v, W0 - u)
-      // where W0 = bg.h (original naturalWidth); this is that inverted.
-      const cxRot = offsetX * bg.w / renderW
-      const cyRot = offsetY * bg.h / renderH
-      const pngX  = Math.round(bg.h - cyRot)
-      const pngY  = Math.round(cxRot)
-
-      const text = `cursor ${lat.toFixed(6)}, ${lng.toFixed(6)}  |  png px ${pngX}, ${pngY}  |  carrier ${carrierUnit.position.lat.toFixed(6)}, ${carrierUnit.position.lng.toFixed(6)}`
-      navigator.clipboard?.writeText(text).catch(() => {})
-      console.log('[DECK calib]', text)
-    }
-    canvas.addEventListener('click', onClick)
-    return () => canvas.removeEventListener('click', onClick)
-  }, [bg])
 
   // ── Draw background + contacts ─────────────────────────────────────
   useEffect(() => {

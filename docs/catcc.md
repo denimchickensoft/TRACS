@@ -126,8 +126,6 @@ A top-down carrier deck view for visual traffic near the boat.
 - Aircraft near deck altitude and within the hull footprint are plotted as small triangles, labeled with side number or callsign, oriented to heading relative to the carrier
 - Zoom resets when you switch carrier class
 
-**Lat/lon calibration (debug aid):** **Ctrl+Alt+Click** on the deck copies a text string to the clipboard. The string holds the clicked point's lat/lon, its pixel position in the source deck image, and the carrier's own lat/lon. There's no on-screen confirmation.
-
 ## Mission Import
 
 Opened from the Status Board's **⬆ Load Mission** button.

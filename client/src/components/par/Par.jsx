@@ -15,7 +15,6 @@ import './Par.css'
 const METERS_TO_FEET = 3.28084
 const AIRBORNE       = new Set(['Aircraft', 'Helicopter'])
 const TCH_FT         = 50   // standard threshold crossing height (airfield)
-const TDZ_OFFSET_FT  = 250  // TEST: carrier TDZ offset aft (toward the approaching aircraft) from reported carrier position
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -32,20 +31,6 @@ function bearingDeg(lat1, lng1, lat2, lng2) {
   const y  = Math.sin(Δλ) * Math.cos(φ2)
   const x  = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ)
   return ((Math.atan2(y, x) / D2R) + 360) % 360
-}
-
-// Projects a point distFt feet along bearingDegVal from (lat, lng).
-function destPoint(lat, lng, bearingDegVal, distFt) {
-  const R    = 3440.065 // NM — matches distNm()
-  const δ    = (distFt / NM_TO_FEET) / R
-  const brg  = bearingDegVal * D2R
-  const φ1   = lat * D2R, λ1 = lng * D2R
-  const φ2   = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(brg))
-  const λ2   = λ1 + Math.atan2(
-    Math.sin(brg) * Math.sin(δ) * Math.cos(φ1),
-    Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2)
-  )
-  return { lat: φ2 / D2R, lng: λ2 / D2R }
 }
 
 // Projects a unit position onto the approach geometry.
@@ -219,15 +204,10 @@ export function Par({
       const trueHdgDeg = gridHdgDeg + conv
       const { fb: finalBearingMag } = computeCarrierBrcFb(gridHdgDeg, magvar, deckOff)
       const trueHdg    = ((trueHdgDeg - deckOff) % 360 + 360) % 360
-      // TEST HARDWIRE: TDZ is TDZ_OFFSET_FT feet aft of the carrier's
-      // reported position (along the outbound bearing, toward the
-      // approaching aircraft) — the reported point doesn't line up with
-      // the actual wires/ramp.
-      const tdz        = destPoint(carrierUnit.position.lat, carrierUnit.position.lng, (trueHdg + 180) % 360, TDZ_OFFSET_FT)
       return {
         ...base,
-        threshLat:  tdz.lat,
-        threshLng:  tdz.lng,
+        threshLat:  carrierUnit.position.lat,
+        threshLng:  carrierUnit.position.lng,
         trueHdg,
         threshElev: deckHt,
         tch:        TCH_FT,
