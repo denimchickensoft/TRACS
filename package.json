@@ -62,6 +62,7 @@
     "asar": false,
     "npmRebuild": false,
     "afterPack": "electron/scripts/flip-fuses.js",
+    "electronLanguages": ["en-US"],
     "directories": {
       "output": "dist-electron"
     },
