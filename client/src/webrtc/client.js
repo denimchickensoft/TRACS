@@ -989,7 +989,8 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     // peers can't resolve these (they're synthetic, not real mDNS records), so the
     // host candidates are dead. Rewriting to 127.0.0.1 makes same-machine connections
     // work. For cross-machine LAN, these host candidates simply fail first; STUN
-    // reflexive candidates (real LAN IPs) still succeed.
+    // reflexive candidates (real LAN IPs) still succeed. The `_test_only_`
+    // prefix is Trystero's own name for the option; using it here is deliberate.
     _test_only_mdnsHostFallbackToLoopback: true,
     // AES-GCM encrypts SDP payloads so public relay operators can't read session
     // descriptors in plaintext. Every peer already knows this password out-of-band
