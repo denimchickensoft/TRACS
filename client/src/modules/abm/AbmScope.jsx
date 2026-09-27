@@ -758,20 +758,26 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     return () => clearInterval(id)
   }, [groupedReadout.length])
 
+  // `cancelled` drops a response that lands after a theatre switch, so a
+  // slow fetch for the previous theatre can't overwrite the current one.
   useEffect(() => {
     if (!theatre) return
+    let cancelled = false
     fetch(`/api/airports/polygons/${encodeURIComponent(theatre)}`)
       .then(r => r.ok ? r.json() : null)
-      .then(geojson => setPolygonFeatures(geojson?.features ?? []))
-      .catch(() => setPolygonFeatures([]))
+      .then(geojson => { if (!cancelled) setPolygonFeatures(geojson?.features ?? []) })
+      .catch(() => { if (!cancelled) setPolygonFeatures([]) })
+    return () => { cancelled = true }
   }, [theatre])
 
   useEffect(() => {
     if (!theatre) return
+    let cancelled = false
     fetch(`/towns/${encodeURIComponent(theatre)}.json`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => setTowns(data?.towns ?? []))
-      .catch(() => setTowns([]))
+      .then(data => { if (!cancelled) setTowns(data?.towns ?? []) })
+      .catch(() => { if (!cancelled) setTowns([]) })
+    return () => { cancelled = true }
   }, [theatre])
 
   useEffect(() => {

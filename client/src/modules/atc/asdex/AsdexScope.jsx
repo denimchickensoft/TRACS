@@ -197,12 +197,15 @@ export default function AsdexScope() {
   }, [windowSettings?.centerLat, windowSettings?.centerLng]) // eslint-disable-line
 
   // ── Load runway centerlines (own fetch — does not touch the shared runway store) ──
+  // Each theatre/facility-keyed fetch below uses a `cancelled` flag so a
+  // response that lands after a switch can't overwrite the current data.
   useEffect(() => {
     if (!theatre || !facilityDcsName) return
+    let cancelled = false
     fetch(`/runways/${encodeURIComponent(theatre)}.json`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (!data) return
+        if (!data || cancelled) return
         const cls = []
         for (const ab of data.airbases ?? []) {
           if (ab.airbase !== facilityDcsName) continue
@@ -218,6 +221,7 @@ export default function AsdexScope() {
         setCenterlines(cls)
       })
       .catch(() => {})
+    return () => { cancelled = true }
   }, [theatre, facilityDcsName])
 
   // ── Navdata (field H route-fix lookup) and facility ICAO ─────────────────────
@@ -227,21 +231,25 @@ export default function AsdexScope() {
 
   useEffect(() => {
     if (!theatre || !facilityDcsName) return
+    let cancelled = false
     getIcaoMapping()
-      .then(map => setFacilityIcao(map?.[theatre.toLowerCase()]?.[facilityDcsName] ?? null))
+      .then(map => { if (!cancelled) setFacilityIcao(map?.[theatre.toLowerCase()]?.[facilityDcsName] ?? null) })
+    return () => { cancelled = true }
   }, [theatre, facilityDcsName])
 
   // ── Fetch polygon data, name map, and colors ─────────────────────────────────
   useEffect(() => {
     if (!theatre) return
-    fetch(`/api/airports/polygons/${theatre}`)
+    let cancelled = false
+    fetch(`/api/airports/polygons/${encodeURIComponent(theatre)}`)
       .then(r => r.ok ? r.json() : null)
-      .then(geojson => setPolygonData(geojson?.features ?? null))
-      .catch(() => setPolygonData(null))
-    fetch(`/api/airports/names/${theatre}`)
+      .then(geojson => { if (!cancelled) setPolygonData(geojson?.features ?? null) })
+      .catch(() => { if (!cancelled) setPolygonData(null) })
+    fetch(`/api/airports/names/${encodeURIComponent(theatre)}`)
       .then(r => r.ok ? r.json() : null)
-      .then(map => setNameMap(map))
-      .catch(() => setNameMap(null))
+      .then(map => { if (!cancelled) setNameMap(map) })
+      .catch(() => { if (!cancelled) setNameMap(null) })
+    return () => { cancelled = true }
   }, [theatre])
 
   useEffect(() => {
