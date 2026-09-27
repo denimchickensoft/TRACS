@@ -6,11 +6,12 @@ const { Marked } = require('marked')
 
 // GitHub's heading-slug algorithm (marked no longer generates heading ids by
 // default as of v5+): lowercase, drop anything but letters/digits/space/-,
-// spaces -> hyphens, dedupe repeats with a -1, -2, ... suffix.
+// each space -> one hyphen (runs are not collapsed, so "A & B" gives "a--b"),
+// dedupe repeats with a -1, -2, ... suffix.
 function makeSlugger() {
   const seen = new Map()
   return (raw) => {
-    const base = raw.toLowerCase().replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-')
+    const base = raw.toLowerCase().replace(/[^\w\- ]/g, '').trim().replace(/ /g, '-')
     const count = seen.get(base) ?? 0
     seen.set(base, count + 1)
     return count === 0 ? base : `${base}-${count}`
@@ -107,4 +108,4 @@ function registerDocsRoutes(app) {
   })
 }
 
-module.exports = { registerDocsRoutes }
+module.exports = { registerDocsRoutes, makeSlugger }
