@@ -194,7 +194,6 @@ export function Messages({ visible, onClose, rightInset = 0 }) {
   }, [])
 
   const handleOpacityWheel = useCallback((e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setOpacity((prev) => {

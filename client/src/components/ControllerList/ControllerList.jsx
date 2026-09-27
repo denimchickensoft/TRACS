@@ -350,7 +350,6 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
 
   // ── Opacity (scroll wheel on title bar) ───────────────────────────────────────
   const handleOpacityWheel = useCallback((e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setOpacity((prev) => {

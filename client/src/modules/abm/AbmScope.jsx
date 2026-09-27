@@ -24,6 +24,7 @@ import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
+import { useWheelDirection } from '../../utils/wheel.js'
 import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
 import { computeMagvar } from '../../utils/magvar.js'
@@ -126,6 +127,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const compassRef     = useRef(null)
   const contactsRef    = useRef(null)
   const interactiveRef = useRef(null)
+  // Mouse wheels step immediately; trackpad deltas accumulate (utils/wheel.js).
+  const wheelDir = useWheelDirection()
 
   // Loaded once on first mount — feeds initial state below (window-init
   // defaults + local useState initializers). Not re-read after that; all
@@ -1437,6 +1440,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     if (!el) return
     const onWheel = (e) => {
       e.preventDefault()
+      // wheelDir: +1 = scroll down; these handlers use +1 = scroll up.
+      const wd = wheelDir(e)
+      if (wd === null) return
       // While a .rect/.poly/.race/.text draw command is pending, the scroll
       // wheel rotates the shape (whole-degree steps, locked to the MAGNETIC
       // heading lattice — see ROTATION_STEP_DEG) instead of zooming.
@@ -1444,13 +1450,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
         const declinationDeg = viewRef.current?.declinationDeg ?? 0
         const pd = useDisplayStore.getState().windows[windowId]?.pendingDraw
         if (pd) {
-          displayStore.updateWindow(windowId, { pendingDraw: rotatePendingDraw(pd, e.deltaY < 0 ? 1 : -1, declinationDeg) })
+          displayStore.updateWindow(windowId, { pendingDraw: rotatePendingDraw(pd, -wd, declinationDeg) })
         }
         return
       }
       const ws = useDisplayStore.getState().windows[windowId]
       if (!ws) return
-      const dir     = e.deltaY < 0 ? 1 : -1
+      const dir     = -wd
       const current = ws.rangeNm ?? 150
       // Fine 1NM steps once inside 10NM — the normal 10/25NM steps are too
       // coarse to be useful down at the RANGE_MIN=1 end of the range.

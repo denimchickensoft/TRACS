@@ -141,7 +141,6 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
   useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
 
   const handleTitleWheel = useCallback((e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setScale(s => {

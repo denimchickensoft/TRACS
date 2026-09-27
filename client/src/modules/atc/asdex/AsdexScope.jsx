@@ -15,6 +15,7 @@ import { hasLiveSquawk }       from '../../../utils/transponder.js'
 import { pairedFix }           from './pairedFix.js'
 import { loadAsdexPrefs, saveAsdexPrefs } from '../../../store/asdexPrefs.js'
 import { latLngToCanvas, rangeToPixelsPerNm, canvasToLatLng } from '../../../utils/projection.js'
+import { useWheelDirection } from '../../../utils/wheel.js'
 import { resolveCallsign, findFlightPlanAid } from '../../../utils/callsign.js'
 import { computeMagvar }       from '../../../utils/magvar.js'
 import { AsdexDcb, ASDEX_WINDOW_ID } from './AsdexDcb.jsx'
@@ -52,6 +53,8 @@ export default function AsdexScope() {
   const surfaceRef     = useRef(null)
   const contactsRef    = useRef(null)
   const interactiveRef = useRef(null)
+  // Mouse wheels step immediately; trackpad deltas accumulate (utils/wheel.js).
+  const wheelDir = useWheelDirection()
   const canvasAreaRef  = useRef(null)
   const rafRef         = useRef(null)
 
@@ -497,9 +500,12 @@ export default function AsdexScope() {
     if (!el) return
     const onWheel = (e) => {
       e.preventDefault()
+      // wheelDir: +1 = scroll down; this handler uses +1 = scroll up.
+      const wd = wheelDir(e)
+      if (wd === null) return
       const ws = useDisplayStore.getState().windows[ASDEX_WINDOW_ID]
       if (!ws) return
-      const dir  = e.deltaY < 0 ? 1 : -1
+      const dir  = -wd
       const cur  = ws.rangeNm ?? 1
       const next = Math.round(Math.max(RANGE_MIN, Math.min(RANGE_MAX, cur - dir * 0.1)) * 10) / 10
       displayStore.updateWindow(ASDEX_WINDOW_ID, { rangeNm: next })

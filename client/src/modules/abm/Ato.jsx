@@ -146,7 +146,6 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
   useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
 
   const handleTitleWheel = (e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setScale((prev) => {
