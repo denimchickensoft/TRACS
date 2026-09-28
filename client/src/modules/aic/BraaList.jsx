@@ -8,6 +8,7 @@ import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, trueBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
 import { DECL_COLOR } from '../../utils/declarationSymbols.js'
 import { computeAicIntercept } from './aicGeometry.js'
+import { BRAA_SORT_KEYS, DEFAULT_BRAA_SORT, sortBraaRows } from './braaSort.js'
 import './BraaList.css'
 import { speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
 import { M_TO_FT } from '../../utils/units.js'
@@ -85,6 +86,15 @@ function resolveDisplay(unit, isFriendly) {
 // ── BraaList component ────────────────────────────────────────────────────────
 
 const BRAA_SCALE_KEY = 'tracs.braa.scale'
+const BRAA_SORT_KEY  = 'tracs.braa.sort'
+
+function loadSort() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BRAA_SORT_KEY) ?? 'null')
+    if (BRAA_SORT_KEYS.some((k) => k.value === saved?.key) && (saved.dir === 'asc' || saved.dir === 'desc')) return saved
+  } catch { /* fall through to the default */ }
+  return DEFAULT_BRAA_SORT
+}
 const BRAA_SCALE_MIN = 0.7
 const BRAA_SCALE_MAX = 1.4
 const BRAA_SCALE_STEP = 0.05
@@ -147,11 +157,20 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
     const intercept = (fighter && bogey) ? computeIntercept(fighter, bogey, declinationDeg) : null
     const fighterDecl = fighter ? getEffectiveDecl(pair.fighterId, fighter, myCoalitionNum) : null
     const bogeyDecl   = bogey   ? getEffectiveDecl(pair.bogeyId,   bogey,   myCoalitionNum) : null
-    const fighterLabel = resolveDisplay(fighter, fighterDecl === 'FRIENDLY' && isOwnSide(fighter, coalition))
+    const fighterRevealed = fighterDecl === 'FRIENDLY' && isOwnSide(fighter, coalition)
+    const fighterLabel = resolveDisplay(fighter, fighterRevealed)
     const bogeyLabel   = resolveDisplay(bogey,   bogeyDecl   === 'FRIENDLY' && isOwnSide(bogey, coalition))
+    const fighterCallsign = fighterRevealed ? fighterLabel : null
     const bogeyFlags = speedFlags(bogey)
-    return { ...pair, fighter, bogey, braa, intercept, fighterLabel, bogeyLabel, fighterDecl, bogeyDecl, bogeyFlags }
+    return { ...pair, fighter, bogey, braa, intercept, fighterLabel, fighterCallsign, bogeyLabel, fighterDecl, bogeyDecl, bogeyFlags }
   }), [braaList, units, declinationDeg, declarations, myCoalitionNum, coalition]) // eslint-disable-line
+
+  const [sort, setSort] = useState(loadSort)
+  const changeSort = (next) => {
+    setSort(next)
+    try { localStorage.setItem(BRAA_SORT_KEY, JSON.stringify(next)) } catch { /* not saved */ }
+  }
+  const sortedRows = useMemo(() => sortBraaRows(rows, sort), [rows, sort])
 
   return (
     <div className="braa" style={style}>
@@ -161,6 +180,19 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
       <div className="braa-title" onWheel={handleTitleWheel}>
         <span className="braa-title-text">BRAA LIST</span>
         {scaleHint && <span className="braa-scale-hint">{Math.round(scale * 100)}%</span>}
+        <select
+          className="braa-sort-select"
+          value={sort.key}
+          onChange={(e) => changeSort({ ...sort, key: e.target.value })}
+          title="Sort by"
+        >
+          {BRAA_SORT_KEYS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <button
+          className="braa-btn braa-sort-dir"
+          onClick={() => changeSort({ ...sort, dir: sort.dir === 'asc' ? 'desc' : 'asc' })}
+          title={sort.dir === 'asc' ? 'Ascending' : 'Descending'}
+        >{sort.dir === 'asc' ? '▲' : '▼'}</button>
         <span className="braa-title-right">
           {docked  && onUndock && <button className="braa-btn" onClick={onUndock} title="Undock">⬡</button>}
           {!docked && onDock   && <button className="braa-btn" onClick={onDock}   title="Dock">⬡</button>}
@@ -174,7 +206,7 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
           <div className="braa-empty">No BRAA pairs.<br />Ctrl+click two contacts to add.</div>
         )}
 
-        {rows.map(row => (
+        {sortedRows.map(row => (
           <div
             key={row.id}
             className="braa-row"
