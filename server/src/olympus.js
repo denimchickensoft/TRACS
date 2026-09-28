@@ -13,12 +13,14 @@ const { identifiedError } = require('./tacviewShared')
 const MISSION_INTERVAL_MS = 10000
 const AIRBASES_INTERVAL_MS = 30000
 const FULL_REFRESH_EVERY = 10
-// After this many consecutive failed unit polls Olympus is treated as
-// unreachable: clients are told (onDisconnect), the other pollers pause, and
-// unit polls drop to one attempt every SLOW_RETRY_MS until one succeeds
-// (onReconnect). Polling only stops for good on an explicit stop().
+// After NO_RESPONSE_AFTER consecutive failed unit polls clients are told
+// Olympus isn't responding and is being retried. After MAX_CONSECUTIVE_ERRORS
+// it's treated as unreachable: clients are told it's disconnected, the other
+// pollers pause, and unit polls drop to one attempt every SLOW_RETRY_MS until
+// one succeeds. Polling only stops for good on an explicit stop().
+const NO_RESPONSE_AFTER = 2
 const MAX_CONSECUTIVE_ERRORS = 10
-const SLOW_RETRY_MS = 30000
+const SLOW_RETRY_MS = 10000
 // Per-request timeout, so a hung Olympus fails the poll instead of stalling it.
 const POLL_TIMEOUT_MS = 10000
 
@@ -27,8 +29,14 @@ let polling = false
 let pollCount = 0
 let consecutiveErrors = 0
 let unreachable = false
-let onDisconnect = null
-let onReconnect  = null
+let linkIssue = null
+let onLinkIssue = null
+
+// See server/src/linkStatus.js for the shape.
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
 
 let unitsTimer = null
 let missionTimer = null
@@ -155,8 +163,8 @@ async function pollUnits() {
     if (unreachable) {
       unreachable = false
       console.log('[olympus] reachable again - resuming normal polling')
-      if (onReconnect) onReconnect()
     }
+    if (linkIssue) setLinkIssue(null)
   } catch (err) {
     consecutiveErrors++
     if (unreachable) {
@@ -166,7 +174,9 @@ async function pollUnits() {
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         unreachable = true
         console.error(`[olympus] too many consecutive errors - retrying every ${SLOW_RETRY_MS / 1000}s`)
-        if (onDisconnect) onDisconnect()
+        setLinkIssue({ retrying: false, reason: 'olympus_unreachable' })
+      } else if (consecutiveErrors >= NO_RESPONSE_AFTER && !linkIssue) {
+        setLinkIssue({ retrying: true, reason: 'olympus_no_response' })
       }
     }
   } finally {
@@ -347,13 +357,13 @@ function start(cfg, callbacks = {}) {
   onMission       = callbacks.onMission       ?? null
   onAirbases      = callbacks.onAirbases      ?? null
   onBullseyes     = callbacks.onBullseyes     ?? null
-  onDisconnect    = callbacks.onDisconnect    ?? null
-  onReconnect     = callbacks.onReconnect     ?? null
+  onLinkIssue     = callbacks.onLinkIssue     ?? null
 
   polling = true
   pollCount = 0
   consecutiveErrors = 0
   unreachable = false
+  linkIssue = null
   lastTheatre = null
   lastSessionHash = null
   state.resetForNewSource()
@@ -375,6 +385,8 @@ function start(cfg, callbacks = {}) {
 function stop() {
   polling = false
   unreachable = false
+  linkIssue = null
+  onLinkIssue = null
   clearTimeout(unitsTimer)
   clearTimeout(weaponsTimer)
   clearTimeout(missileDetectionTimer)
@@ -395,6 +407,10 @@ function isPolling() {
 // True while polling is in slow-retry mode after repeated failures.
 function isUnreachable() {
   return unreachable
+}
+
+function getLinkIssue() {
+  return linkIssue
 }
 
 function getConfig() {
@@ -433,4 +449,4 @@ async function probe(cfg) {
   if (!res.ok) throw Object.assign(new Error(`Olympus at ${cfg.olympusUrl} responded HTTP ${res.status}`), { describesItself: true })
 }
 
-module.exports = { start, stop, isPolling, isUnreachable, getConfig, probe }
+module.exports = { start, stop, isPolling, isUnreachable, getLinkIssue, getConfig, probe }

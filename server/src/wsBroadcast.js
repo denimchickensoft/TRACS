@@ -1,5 +1,7 @@
 'use strict'
 
+const { statusPayload } = require('./linkStatus')
+
 // App-WS layer: tracks connected browser clients and broadcasts server-side
 // events (unit deltas, mission/airbases/bullseyes updates, status) to all of
 // them. Also hydrates a newly-connected client with the current snapshot.
@@ -35,8 +37,15 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRela
     // Status — includes instanceId so clients can detect server restarts
     const sourceType = state.getSourceType()
     const source  = sourceRegistry.get(sourceType)
-    const polling = ((source?.isPolling() ?? false) && !source?.isUnreachable?.()) || tacviewRelayClient.isConnected()
-    ws.send(JSON.stringify({ type: 'status', data: { polling, sourceType, instanceId: serverInstanceId } }))
+    let status
+    if (tacviewRelayClient.isActive()) {
+      status = statusPayload(sourceType, tacviewRelayClient.getLinkIssue())
+    } else if (source?.getLinkIssue?.()) {
+      status = statusPayload(sourceType, source.getLinkIssue())
+    } else {
+      status = { polling: (source?.isPolling() ?? false) && !source?.isUnreachable?.(), sourceType }
+    }
+    ws.send(JSON.stringify({ type: 'status', data: { ...status, instanceId: serverInstanceId } }))
 
     ws.on('close', () => {
       clients.delete(ws)

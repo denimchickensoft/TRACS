@@ -44,6 +44,9 @@ const MISSION_CLOCK_INTERVAL_MS = 10000
 // server/rateConfig.json.
 
 let ws = null
+let active = false
+let linkIssue = null
+let onLinkIssue = null
 let onUnitsDelta = null
 let onWeaponsDelta = null
 let onMission = null
@@ -228,6 +231,12 @@ function armRateTimers() {
   broadcastTimer = setInterval(() => { unitsBuffer.flush(onUnitsDelta); weaponsBuffer.flush(onWeaponsDelta) }, rateConfig.unitUpdateMs)
 }
 
+// See server/src/linkStatus.js for the shape.
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
+
 function connect() {
   // Re-arms the wait-for-relay-config gate on every (re)connect, including
   // reconnects — the relay resends tacviewDetectionConfig fresh to every
@@ -259,6 +268,7 @@ function connect() {
   socket.on('message', (raw) => {
     if (socket !== ws) return
     reconnectDelayMs = RECONNECT_MIN_MS
+    if (linkIssue) setLinkIssue(null)
     let msg
     try {
       msg = JSON.parse(raw.toString('utf8'))
@@ -312,15 +322,18 @@ function connect() {
       console.error('[tacviewRelayClient] relay rejected our password - not retrying until reconnected with a corrected one')
       ws = null
       clearTimers()
+      setLinkIssue({ retrying: false, reason: 'relay_invalid_password' })
       return
     }
     if (reason?.toString().startsWith('protocol mismatch')) {
       console.error(`[tacviewRelayClient] ${reason} - not retrying until one side is updated`)
       ws = null
       clearTimers()
+      setLinkIssue({ retrying: false, reason: 'relay_protocol_mismatch' })
       return
     }
 
+    if (!linkIssue) setLinkIssue({ retrying: true, reason: 'relay_no_response' })
     const delay = reconnectDelayMs
     reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
     console.log(`[tacviewRelayClient] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${Math.round(delay / 1000)}s`)
@@ -344,6 +357,9 @@ function start(cfg, callbacks = {}) {
   onWeaponsDelta = callbacks.onWeaponsDelta ?? null
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
+  onLinkIssue = callbacks.onLinkIssue ?? null
+  linkIssue = null
+  active = true
   intentionalClose = false
   theatreDecided = false
   theatreName = null
@@ -398,6 +414,9 @@ function clearTimers() {
 
 function stop() {
   intentionalClose = true
+  active = false
+  linkIssue = null
+  onLinkIssue = null
   clearTimers()
   if (ws) {
     ws.close()
@@ -440,6 +459,15 @@ function resetTheatreDetection() {
 
 function isConnected() {
   return ws !== null && ws.readyState === WebSocket.OPEN
+}
+
+// Started and not stopped, whether or not the relay is reachable right now.
+function isActive() {
+  return active
+}
+
+function getLinkIssue() {
+  return linkIssue
 }
 
 function getConfig() {
@@ -498,4 +526,4 @@ async function probe(cfg) {
   })
 }
 
-module.exports = { start, stop, isConnected, getConfig, probe, overrideTheatre, resetTheatreDetection }
+module.exports = { start, stop, isConnected, isActive, getLinkIssue, getConfig, probe, overrideTheatre, resetTheatreDetection }

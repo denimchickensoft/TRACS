@@ -1,5 +1,7 @@
 'use strict'
 
+const { statusPayload } = require('../linkStatus')
+
 // Registers /api/connect and its two theatre-override/reset companions —
 // the source-type auto-detection, crash-avoidance cooldowns, and
 // mutual-exclusivity teardown that carry essentially all of routes/api.js's
@@ -121,7 +123,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
         && !current.isUnreachable?.()
         && current.getConfig()?.olympusUrl === sourceCfg.olympusUrl
       if (alreadyLiveOnSameConfig) {
-        broadcast({ type: 'status', data: { polling: true, sourceType: currentType } })
+        broadcast({ type: 'status', data: statusPayload(currentType, current.getLinkIssue?.() ?? null) })
         return res.json({ ok: true })
       }
     }
@@ -162,11 +164,12 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
             onWeaponsDelta: (delta) => broadcast({ type: 'weapons_delta', data: delta }),
             onMission:      (data)  => broadcast({ type: 'mission',    data }),
             onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
+            onLinkIssue:    (issue) => broadcast({ type: 'status', data: statusPayload('tacview', issue) }),
           }
         )
         broadcast({ type: 'units_clear' })
       }
-      broadcast({ type: 'status', data: { polling: true, sourceType: 'tacview' } })
+      broadcast({ type: 'status', data: statusPayload('tacview', tacviewRelayClient.getLinkIssue()) })
       return res.json({ ok: true })
     }
 
@@ -241,8 +244,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
           onMission:      (data)  => broadcast({ type: 'mission',    data }),
           onAirbases:     (data)  => broadcast({ type: 'airbases',  data }),
           onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
-          onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: `${sourceType}_unreachable` } }),
-          onReconnect:    ()      => broadcast({ type: 'status', data: { polling: true, sourceType } }),
+          onLinkIssue:    (issue) => broadcast({ type: 'status', data: statusPayload(sourceType, issue) }),
         }
       )
       broadcast({ type: 'units_clear' })
@@ -250,7 +252,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
 
     // Notify all currently-connected WS clients that polling has started (or is
     // already running). This covers new browser windows joining an active session.
-    broadcast({ type: 'status', data: { polling: true, sourceType } })
+    broadcast({ type: 'status', data: statusPayload(sourceType, source.getLinkIssue?.() ?? null) })
 
     res.json({ ok: true })
   })

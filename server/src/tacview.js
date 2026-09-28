@@ -88,8 +88,15 @@ let onUnitsDelta = null
 let onWeaponsDelta = null
 let onMission = null
 let onBullseyes = null
-let onDisconnect = null
+let linkIssue = null
+let onLinkIssue = null
 let handshakeFailures = 0
+
+// See server/src/linkStatus.js for the shape.
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
 let reconnectDelayMs = RECONNECT_MIN_MS
 
 // Accumulates at full stream rate; flushed to state/broadcast once per
@@ -286,6 +293,7 @@ function connect() {
       return
     }
     receivedTelemetry = true
+    if (linkIssue) setLinkIssue(null)
     processIncoming(chunk.toString('utf8'))
   })
 
@@ -303,10 +311,11 @@ function connect() {
       // DCS/Tacview not running yet - e.g. a mission restart - and just
       // keeps retrying below.
       console.error(`[tacview] rejected ${handshakeFailures}x in a row right after the handshake - likely a wrong RTT password. Giving up.`)
-      if (onDisconnect) onDisconnect()
+      setLinkIssue({ retrying: false, reason: 'tacview_unreachable' })
       return
     }
 
+    if (!linkIssue) setLinkIssue({ retrying: true, reason: 'tacview_no_response' })
     const delay = reconnectDelayMs
     reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
     console.log(`[tacview] disconnected - reconnecting in ${Math.round(delay / 1000)}s`)
@@ -327,7 +336,8 @@ function start(cfg, callbacks = {}) {
   onWeaponsDelta = callbacks.onWeaponsDelta ?? null
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
-  onDisconnect = callbacks.onDisconnect ?? null
+  onLinkIssue = callbacks.onLinkIssue ?? null
+  linkIssue = null
 
   parser = tacviewCore.createParser()
   lineBuffer = ''
@@ -369,6 +379,8 @@ function start(cfg, callbacks = {}) {
 function stop() {
   intentionalClose = true
   connected = false
+  linkIssue = null
+  onLinkIssue = null
   clearTimeout(reconnectTimer)
   clearTimeout(theatreTimer)
   clearInterval(missionClockTimer)
@@ -426,6 +438,10 @@ function resetTheatreDetection() {
 
 function isPolling() {
   return connected
+}
+
+function getLinkIssue() {
+  return linkIssue
 }
 
 function getConfig() {
@@ -498,4 +514,4 @@ async function probe(cfg) {
   })
 }
 
-module.exports = { start, stop, isPolling, getConfig, probe, overrideTheatre, resetTheatreDetection }
+module.exports = { start, stop, isPolling, getLinkIssue, getConfig, probe, overrideTheatre, resetTheatreDetection }

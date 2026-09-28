@@ -35,9 +35,13 @@ export const useSessionStore = create((set) => ({
   relayUrl: '',   // SRS relay — optional, empty means none configured/reachable
   syncCapable: false,   // relay's /sync reachable + authenticated (checked in Login's ConnectPhase)
   connected: false,
-  // Why the data source is disconnected, from the server's status reason
-  // (e.g. Olympus unreachable and retrying), or null. Shown in the top bar.
+  // Why the data source is disconnected or being retried, from the server's
+  // status reason (e.g. Olympus unreachable and retrying), or null. Shown in
+  // the top bar.
   connectionIssue: null,
+  // The source is still selected but has stopped responding and is being
+  // retried: the top bar shows NO RESPONSE: RECONNECTING.
+  connectionRetrying: false,
   // 'olympus' | 'tacview' — set optimistically by ConnectPhase's setConnection
   // (matching the source-selector's mode, collapsing 'tacview-direct'/'relay'
   // both to 'tacview' here since that's the dispatch-level distinction this
@@ -79,6 +83,9 @@ export const useSessionStore = create((set) => ({
 
   // WebRTC / session
   webrtcStatus: 'disconnected',  // 'webrtc' | 'relay' | 'disconnected' | 'rejected'
+  // Relay sync connection trouble, shown in the top bar: null (fine or not
+  // in use) | 'retrying' | 'password' | 'protocol'.
+  syncIssue: null,
   peers: [],
   controllerMessages: [],  // { id, from, fromPosition, text, timestamp, broadcast, toPosition? }[]
   unreadGeneral: 0,
@@ -101,6 +108,8 @@ export const useSessionStore = create((set) => ({
 
   setConnected: (connected) => set({ connected }),
   setConnectionIssue: (connectionIssue) => set({ connectionIssue }),
+  setConnectionRetrying: (connectionRetrying) => set({ connectionRetrying }),
+  setSyncIssue: (syncIssue) => set({ syncIssue }),
 
   setSourceType: (sourceType) => set({ sourceType }),
 
@@ -211,6 +220,7 @@ export const useSessionStore = create((set) => ({
       aicUnitId:           null,
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
+      syncIssue:           null,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,
@@ -231,6 +241,7 @@ export const useSessionStore = create((set) => ({
       syncCapable:         false,
       connected:           false,
       connectionIssue:     null,
+      connectionRetrying:  false,
       positionMode:        POSITION_MODE.FREEFORM,
       positionName:        '',
       positionConfig:      null,
@@ -248,6 +259,7 @@ export const useSessionStore = create((set) => ({
       aicUnitId:           null,
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
+      syncIssue:           null,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,

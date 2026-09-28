@@ -59,6 +59,13 @@ const WEBRTC_COLOR = {
   disconnected: '#555555',
 }
 
+// Relay sync trouble, next to the peer count (session store's syncIssue).
+const SYNC_ISSUE_TEXT = {
+  retrying: 'SYNC: NO RESPONSE: RECONNECTING',
+  password: 'SYNC: DISCONNECTED (relay rejected the password)',
+  protocol: 'SYNC: DISCONNECTED (relay and TRACS versions don’t match)',
+}
+
 // A panel's saved zoom scale from localStorage, clamped to [min, max];
 // 1.0 when unset or unreadable.
 function readScale(key, min = 0.5, max = 2.0) {
@@ -69,6 +76,8 @@ function readScale(key, min = 0.5, max = 2.0) {
 export function App() {
   const connected        = useSessionStore((s) => s.connected)
   const connectionIssue  = useSessionStore((s) => s.connectionIssue)
+  const connectionRetrying = useSessionStore((s) => s.connectionRetrying)
+  const syncIssue        = useSessionStore((s) => s.syncIssue)
   const positionSet      = useSessionStore((s) => s.positionSet)
   const activeModule     = useSessionStore((s) => s.activeModule)
   const positionName     = useSessionStore((s) => s.positionName)
@@ -501,8 +510,12 @@ export function App() {
         {/* Identity + connection status */}
         <span>
           TRACS &mdash;
-          <span style={{ color: connected ? '#00cc66' : '#cc3333', marginLeft: '6px', marginRight: '6px' }}>
-            {connected ? `CONNECTED: ${olympusUrl.replace(/^https?:\/\//, '')}` : `DISCONNECTED${connectionIssue ? ` (${connectionIssue})` : ''}`}
+          <span style={{ color: !connected ? '#cc3333' : connectionRetrying ? '#ccaa00' : '#00cc66', marginLeft: '6px', marginRight: '6px' }}>
+            {!connected
+              ? `DISCONNECTED${connectionIssue ? ` (${connectionIssue})` : ''}`
+              : connectionRetrying
+                ? `NO RESPONSE: RECONNECTING${connectionIssue ? ` (${connectionIssue})` : ''}`
+                : `CONNECTED: ${olympusUrl.replace(/^https?:\/\//, '')}`}
           </span>
           &mdash;
           {facilityName && positionTypeName && <> {facilityName} {positionTypeName} &mdash;</>}
@@ -525,6 +538,11 @@ export function App() {
           <span style={{ color: '#777' }}>
             {peers.length} {peers.length === 1 ? 'PEER' : 'PEERS'}
           </span>
+          {syncIssue && (
+            <span style={{ color: syncIssue === 'retrying' ? '#ccaa00' : '#cc3333', marginLeft: '4px' }}>
+              {SYNC_ISSUE_TEXT[syncIssue]}
+            </span>
+          )}
         </span>
 
         {/* Unread message indicator */}
