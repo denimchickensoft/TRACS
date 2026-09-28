@@ -45,7 +45,8 @@ const CLIENT_DIST  = path.join(__dirname, '../../client/dist')
 //     access, since LAN clients legitimately use other host names.
 //   - A browser request carrying Origin must be same-origin (Origin host ==
 //     Host header). Every legitimate page — the UI, popups, docs, and the Vite
-//     dev server's proxied requests — is same-origin; cross-site pages aren't.
+//     dev server's proxied requests (its proxy keeps the browser's Host, see
+//     client/vite.config.js) — is same-origin; cross-site pages aren't.
 //   - Requests with no Origin (curl, Node clients) aren't browser-driven and
 //     are allowed.
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
