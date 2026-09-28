@@ -16,10 +16,10 @@ export const DEFAULT_LISTS = {
   tower1:  { visible: false,  xPct:  5, yPct: 40, lines: 5 },
   tower2:  { visible: false,  xPct:  5, yPct: 60, lines: 5 },
   tower3:  { visible: false,  xPct:  5, yPct: 80, lines: 5 },
-  signOn:  { visible: true,   xPct: 85, yPct:  5 },
-  tab:     { visible: true,   xPct: 85, yPct: 40, lines: 5 },
-  vfr:     { visible: true,   xPct: 85, yPct: 80, lines: 5 },
-  coast:   { visible: false,  xPct: 85, yPct: 90, lines: 5 },
+  signOn:  { visible: true,   xPct: 90, yPct:  5 },
+  tab:     { visible: true,   xPct: 90, yPct: 40, lines: 5 },
+  vfr:     { visible: true,   xPct: 90, yPct: 80, lines: 5 },
+  coast:   { visible: false,  xPct: 90, yPct: 90, lines: 5 },
   alert:   { visible: true,   xPct: 65, yPct: 90, lines: 5 },
 }
 
