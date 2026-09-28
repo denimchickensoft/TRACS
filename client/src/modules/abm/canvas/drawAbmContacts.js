@@ -187,6 +187,7 @@ export function drawAbmContacts(
   theatre = null,
   declinationDeg = 0,
   dbSize = 2,
+  isOwnSide = () => true,
 ) {
   const { width, height } = view
   const fontPx     = 8 + dbSize * 2
@@ -268,7 +269,9 @@ export function drawAbmContacts(
     // those, ground truth via declaration is the only signal that ever
     // existed, there's no live correlation concept to defer to.
     const correlated = correlatedUnitIds.has(String(id))
-    const isFriendly = unit.srsCapable ? correlated : decl === DECLARATION.FRIENDLY
+    // Another side's aircraft never gets the friendly block (its callsign),
+    // whatever it's declared.
+    const isFriendly = (unit.srsCapable ? correlated : decl === DECLARATION.FRIENDLY) && isOwnSide(unit)
     const iffFrames  = (!isFriendly) ? buildIffFrames(unit) : EMPTY_ARRAY
     const showsBlock = isFriendly || iffFrames.length > 0
     // Non-friendly type is only known once RWR has ever painted it

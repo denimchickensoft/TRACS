@@ -233,7 +233,7 @@ export function buildAirportStrips(runwayCenterlines, icaoMap, theatre) {
 // Collapses cursor readout hits into display groups (see AbmScope's
 // readout comment for the grouping rules). `correlatedUnitIds` and
 // `rwrEverDetected` are the scope's current sets. Pure — AbmScope memoizes it.
-export function groupReadoutHits(readoutHits, myCoalitionNum, correlatedUnitIds, rwrEverDetected) {
+export function groupReadoutHits(readoutHits, myCoalitionNum, correlatedUnitIds, rwrEverDetected, isOwnSide) {
   const groups = new Map()
   for (const hit of readoutHits) {
     if (hit.kind === 'airport') {
@@ -250,9 +250,10 @@ export function groupReadoutHits(readoutHits, myCoalitionNum, correlatedUnitIds,
       // in the first place (no free pass for being same-coalition), but
       // decl itself no longer factors into reveal here.
       const decl = getAbmEffectiveDeclaration(hit.unitId, hit.unit, myCoalitionNum)
-      const isFriendly = hit.unit.srsCapable
+      // Never another side's aircraft, whatever it's declared.
+      const isFriendly = (hit.unit.srsCapable
         ? correlatedUnitIds.has(String(hit.unitId))
-        : decl === DECLARATION.FRIENDLY
+        : decl === DECLARATION.FRIENDLY) && isOwnSide(hit.unit)
       if (isFriendly) {
         groups.set(`air:${hit.unitId}`, {
           kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: true, count: 1,

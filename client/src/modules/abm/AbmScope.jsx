@@ -68,7 +68,7 @@ import { parseCommand } from './input/commandParser.js'
 import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
-import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
+import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
 import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 const DEFAULT_windowId = 'abm-main'
@@ -741,8 +741,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // rather than leaking their (undisplayed) distinctness via separate lines.
   // The two refs are read at compute time, exactly as before extraction.
   const groupedReadout = useMemo(
-    () => groupReadoutHits(readoutHits, myCoalitionNum, correlatedUnitIdsRef.current, rwrEverDetectedRef.current),
-    [readoutHits, myCoalitionNum],
+    () => groupReadoutHits(readoutHits, myCoalitionNum, correlatedUnitIdsRef.current, rwrEverDetectedRef.current, (unit) => isOwnSide(unit, coalition)),
+    [readoutHits, myCoalitionNum, coalition],
   )
 
   // Readout is one object at a time: with only one (post-collapse) hit it's
@@ -1189,6 +1189,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       theatre,
       view.declinationDeg,
       windowSettings?.dbSize ?? 2,
+      (unit) => isOwnSide(unit, coalition),
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
     drawAbmMissiles(
@@ -1219,7 +1220,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     // of everything, same as RBL.
     drawPendingDraw(ctx, view, pendingDraw, drawCursor, windowSettings?.csMap ?? 2)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef/missileHistoryRef are stable refs returned by useHistoryCapture
-  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getDecl, altToggle,
+  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, coalition, getDecl, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
@@ -1916,9 +1917,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
-    if (!target) return
+    // A focus panel is titled with the callsign, so only your own side's
+    // aircraft open one.
+    if (!target || !isOwnSide(target.unit, coalition)) return
     openAbmFocusPanel(resolveCallsign(target.unit), loadAbmPrefs().focusDefaultRangeNm ?? 20)
-  }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer])
+  }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer, coalition])
 
   if (!windowSettings) return null
 
@@ -1928,7 +1931,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     cmdPreview = `${pendingDeclaration} +`
   } else if (pendingBraaFighter) {
     const fu = allVisibleUnits[pendingBraaFighter]
-    cmdPreview = `BRAA: ${fu ? resolveCallsign(fu) : pendingBraaFighter} → ?`
+    cmdPreview = `BRAA: ${fu && isOwnSide(fu, coalition) ? resolveCallsign(fu) : 'CONTACT'} → ?`
   } else {
     cmdPreview = cmdBuffer
   }

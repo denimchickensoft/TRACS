@@ -9,7 +9,7 @@ import { gridBearingRangeNm, trueBearingRangeNm, toMagneticFromTrue } from '../.
 import { DECL_COLOR } from '../../utils/declarationSymbols.js'
 import { computeAicIntercept } from './aicGeometry.js'
 import './BraaList.css'
-import { speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
+import { speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
 import { M_TO_FT } from '../../utils/units.js'
 
 const safeNum = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d
@@ -147,11 +147,11 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
     const intercept = (fighter && bogey) ? computeIntercept(fighter, bogey, declinationDeg) : null
     const fighterDecl = fighter ? getEffectiveDecl(pair.fighterId, fighter, myCoalitionNum) : null
     const bogeyDecl   = bogey   ? getEffectiveDecl(pair.bogeyId,   bogey,   myCoalitionNum) : null
-    const fighterLabel = resolveDisplay(fighter, fighterDecl === 'FRIENDLY')
-    const bogeyLabel   = resolveDisplay(bogey,   bogeyDecl   === 'FRIENDLY')
+    const fighterLabel = resolveDisplay(fighter, fighterDecl === 'FRIENDLY' && isOwnSide(fighter, coalition))
+    const bogeyLabel   = resolveDisplay(bogey,   bogeyDecl   === 'FRIENDLY' && isOwnSide(bogey, coalition))
     const bogeyFlags = speedFlags(bogey)
     return { ...pair, fighter, bogey, braa, intercept, fighterLabel, bogeyLabel, fighterDecl, bogeyDecl, bogeyFlags }
-  }), [braaList, units, declinationDeg, declarations, myCoalitionNum]) // eslint-disable-line
+  }), [braaList, units, declinationDeg, declarations, myCoalitionNum, coalition]) // eslint-disable-line
 
   return (
     <div className="braa" style={style}>

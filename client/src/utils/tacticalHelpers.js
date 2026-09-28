@@ -7,6 +7,14 @@ import { MS_TO_KT, M_TO_FT } from './units.js'
 // Coalition name → DCS coalition number. GM/Admin see the picture as Blue.
 export const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
 
+// Whether a unit is on the viewer's own side, which a callsign reveal needs
+// on top of its usual rule: declaring a hostile FRIENDLY must never expose
+// its callsign. GM/Admin aren't tied to a side and see both.
+export function isOwnSide(unit, coalition) {
+  if (coalition === 'gm' || coalition === 'admin') return true
+  return unit?.coalition === (COALITION_NUM[coalition] ?? 2)
+}
+
 // A unit's TRUE declaration, straight off its coalition (used by .autodec):
 // own coalition is FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL,
 // anything else is HOSTILE (not BOGEY — autodec means no ambiguity).

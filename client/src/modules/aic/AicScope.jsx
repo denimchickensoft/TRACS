@@ -35,7 +35,7 @@ import { parseCommand }        from './input/commandParser.js'
 import { dispatch }            from './actions/index.js'
 import './AicScope.css'
 import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye } from './aicScopeHelpers.js'
-import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
+import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
 import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
 import { fetchJson } from '../../utils/fetchJson.js'
 
@@ -847,7 +847,8 @@ export default function AicScope() {
     // unaffected — declaration alone still reveals unconditionally, same
     // as always (no live IFF concept exists for those).
     const iffStatus  = getIffStatus(unit, myCoalitionNum) // 'VALID' | 'INVALID' | 'NO_REPLY' | null (not srsCapable)
-    const revealed   = unit.srsCapable ? iffStatus === 'VALID' : decl === DECLARATION.FRIENDLY
+    // Never for another side's aircraft, whatever it's declared.
+    const revealed   = (unit.srsCapable ? iffStatus === 'VALID' : decl === DECLARATION.FRIENDLY) && isOwnSide(unit, coalition)
     const typeRevealed = revealed || rwrEverDetectedRef.current.has(String(unitId))
     const typeName  = typeRevealed
       ? (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
@@ -871,7 +872,7 @@ export default function AicScope() {
       callsign,
       iff:      iffText,
     }
-  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum]) // eslint-disable-line
+  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum, coalition]) // eslint-disable-line
 
   const cursorBullseye = useMemo(() => {
     if (!cursorLatLng || !bullseyeEntry) return null
@@ -921,7 +922,7 @@ export default function AicScope() {
     cmdPreview = `${DECL_LABEL[pendingDeclaration]} +`
   } else if (pendingBraaFighter) {
     const fu = visibleUnits[pendingBraaFighter]
-    cmdPreview = `BRAA: ${fu ? resolveCallsign(fu) : pendingBraaFighter} → ?`
+    cmdPreview = `BRAA: ${fu && isOwnSide(fu, coalition) ? resolveCallsign(fu) : 'CONTACT'} → ?`
   } else if (cmdBuffer) {
     cmdPreview = cmdBuffer
   }
