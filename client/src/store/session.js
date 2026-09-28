@@ -86,6 +86,8 @@ export const useSessionStore = create((set) => ({
   // Relay sync connection trouble, shown in the top bar: null (fine or not
   // in use) | 'retrying' | 'password' | 'protocol'.
   syncIssue: null,
+  // Same values for the SRS transponder feed from the relay (server srs.js).
+  srsIssue: null,
   peers: [],
   controllerMessages: [],  // { id, from, fromPosition, text, timestamp, broadcast, toPosition? }[]
   unreadGeneral: 0,
@@ -110,6 +112,7 @@ export const useSessionStore = create((set) => ({
   setConnectionIssue: (connectionIssue) => set({ connectionIssue }),
   setConnectionRetrying: (connectionRetrying) => set({ connectionRetrying }),
   setSyncIssue: (syncIssue) => set({ syncIssue }),
+  setSrsIssue: (srsIssue) => set({ srsIssue }),
 
   setSourceType: (sourceType) => set({ sourceType }),
 
@@ -221,6 +224,7 @@ export const useSessionStore = create((set) => ({
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
       syncIssue:           null,
+      srsIssue:            null,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,
@@ -260,6 +264,7 @@ export const useSessionStore = create((set) => ({
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
       syncIssue:           null,
+      srsIssue:            null,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,

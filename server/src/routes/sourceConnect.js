@@ -1,6 +1,6 @@
 'use strict'
 
-const { statusPayload } = require('../linkStatus')
+const { statusPayload, srsStatusPayload } = require('../linkStatus')
 
 // Registers /api/connect and its two theatre-override/reset companions —
 // the source-type auto-detection, crash-avoidance cooldowns, and
@@ -101,7 +101,10 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     if (relayUrl && !alreadyOnSameRelay) {
       srs.start(
         { relayUrl, password: relayAuthPassword, coalition: sourceCfg.coalition },
-        { onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }) },
+        {
+          onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }),
+          onLinkIssue:  (issue) => broadcast({ type: 'srs_status', data: srsStatusPayload(issue) }),
+        },
       )
     }
 

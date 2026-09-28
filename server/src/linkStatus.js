@@ -14,4 +14,11 @@ function statusPayload(sourceType, issue) {
   return { polling: false, reason: issue.reason, sourceType }
 }
 
-module.exports = { statusPayload }
+// The 'srs_status' message for the SRS transponder feed (srs.js), shown next
+// to the peer count: { issue: null | 'retrying' | 'password' | 'protocol' }.
+function srsStatusPayload(issue) {
+  if (!issue) return { issue: null }
+  return { issue: issue.retrying ? 'retrying' : issue.reason }
+}
+
+module.exports = { statusPayload, srsStatusPayload }

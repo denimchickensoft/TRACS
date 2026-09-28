@@ -25,6 +25,16 @@ let password = null
 let coalition = null
 let intentionalClose = false
 let reconnectTimer = null
+// Same shape as the data sources' link issue (server/src/linkStatus.js):
+// null while connected, { retrying: true, reason } while reconnecting,
+// { retrying: false, reason } after a rejection that retrying can't fix.
+let linkIssue = null
+let onLinkIssue = null
+
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
 let knownTransponderIds = new Set()
 
 function applyTransponders(transponders) {
@@ -112,6 +122,7 @@ function connect() {
   socket.on('message', (raw) => {
     if (socket !== ws) return
     reconnectDelayMs = RECONNECT_MIN_MS
+    if (linkIssue) setLinkIssue(null)
     let msg
     try {
       msg = JSON.parse(raw.toString('utf8'))
@@ -135,6 +146,7 @@ function connect() {
     if (reason?.toString() === 'invalid password') {
       console.error('[srs] relay rejected our password - not retrying until reconnected with a corrected one')
       ws = null
+      setLinkIssue({ retrying: false, reason: 'password' })
       return
     }
     // Same reasoning as the password case above — a protocol mismatch needs
@@ -142,9 +154,11 @@ function connect() {
     if (reason?.toString().startsWith('protocol mismatch')) {
       console.error(`[srs] ${reason} - not retrying until one side is updated`)
       ws = null
+      setLinkIssue({ retrying: false, reason: 'protocol' })
       return
     }
 
+    if (!linkIssue) setLinkIssue({ retrying: true, reason: 'no_response' })
     const delay = reconnectDelayMs
     reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
     console.log(`[srs] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${Math.round(delay / 1000)}s`)
@@ -165,6 +179,9 @@ function start(cfg, callbacks = {}) {
   password = cfg.password ?? null
   coalition = cfg.coalition ?? null
   onUnitsDelta = callbacks.onUnitsDelta ?? null
+  onLinkIssue = callbacks.onLinkIssue ?? null
+  // A fresh start clears whatever the last connection ended with.
+  setLinkIssue(null)
   intentionalClose = false
   connect()
 }
@@ -177,6 +194,8 @@ function stop() {
     ws.close()
     ws = null
   }
+  if (linkIssue) setLinkIssue(null)
+  onLinkIssue = null
   onUnitsDelta = null
   knownTransponderIds = new Set()
   console.log('[srs] stopped')
@@ -186,8 +205,12 @@ function isConnected() {
   return ws !== null && ws.readyState === WebSocket.OPEN
 }
 
+function getLinkIssue() {
+  return linkIssue
+}
+
 function getConfig() {
   return relayUrl ? { relayUrl, password, coalition } : null
 }
 
-module.exports = { start, stop, isConnected, getConfig }
+module.exports = { start, stop, isConnected, getLinkIssue, getConfig }

@@ -101,6 +101,10 @@ function dispatch(message) {
       useSessionStore.getState().setBullseyes(message.data)
       break
 
+    case 'srs_status':
+      useSessionStore.getState().setSrsIssue(message.data?.issue ?? null)
+      break
+
     case 'status': {
       const polling  = message.data.polling === true
       const retrying = polling && message.data.retrying === true

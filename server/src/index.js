@@ -18,6 +18,7 @@ const { registerSourceConnectRoutes } = require('./routes/sourceConnect')
 const { registerDocsRoutes } = require('./routes/docs')
 const { createWsBroadcast }  = require('./wsBroadcast')
 const { createSignalRelay }  = require('./signalRelay')
+const { srsStatusPayload }   = require('./linkStatus')
 
 // Standalone server (npm start / dev) only: log unexpected errors and keep
 // running. Under Electron, electron/main.js's log.errorHandler owns this.
@@ -130,7 +131,7 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 const { broadcast, getWsClientCount } = createWsBroadcast(wss, {
-  state, stateFiles, sourceRegistry, tacviewRelayClient, serverInstanceId: SERVER_INSTANCE_ID,
+  state, stateFiles, sourceRegistry, tacviewRelayClient, srs, serverInstanceId: SERVER_INSTANCE_ID,
 })
 
 createSignalRelay(signalWss)
@@ -151,7 +152,10 @@ registerApiRoutes(app, {
 if (process.env.TRACS_RELAY_URL) {
   srs.start(
     { relayUrl: process.env.TRACS_RELAY_URL },
-    { onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }) },
+    {
+      onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }),
+      onLinkIssue:  (issue) => broadcast({ type: 'srs_status', data: srsStatusPayload(issue) }),
+    },
   )
 }
 

@@ -59,11 +59,12 @@ const WEBRTC_COLOR = {
   disconnected: '#555555',
 }
 
-// Relay sync trouble, next to the peer count (session store's syncIssue).
-const SYNC_ISSUE_TEXT = {
-  retrying: 'SYNC: NO RESPONSE: RECONNECTING',
-  password: 'SYNC: DISCONNECTED (relay rejected the password)',
-  protocol: 'SYNC: DISCONNECTED (relay and TRACS versions don’t match)',
+// Relay trouble shown next to the peer count: the sync link (syncIssue) and
+// the SRS transponder feed (srsIssue), prefixed SYNC or SRS.
+const RELAY_ISSUE_TEXT = {
+  retrying: 'NO RESPONSE: RECONNECTING',
+  password: 'DISCONNECTED (relay rejected the password)',
+  protocol: 'DISCONNECTED (relay and TRACS versions don’t match)',
 }
 
 // A panel's saved zoom scale from localStorage, clamped to [min, max];
@@ -78,6 +79,7 @@ export function App() {
   const connectionIssue  = useSessionStore((s) => s.connectionIssue)
   const connectionRetrying = useSessionStore((s) => s.connectionRetrying)
   const syncIssue        = useSessionStore((s) => s.syncIssue)
+  const srsIssue         = useSessionStore((s) => s.srsIssue)
   const positionSet      = useSessionStore((s) => s.positionSet)
   const activeModule     = useSessionStore((s) => s.activeModule)
   const positionName     = useSessionStore((s) => s.positionName)
@@ -538,11 +540,11 @@ export function App() {
           <span style={{ color: '#777' }}>
             {peers.length} {peers.length === 1 ? 'PEER' : 'PEERS'}
           </span>
-          {syncIssue && (
-            <span style={{ color: syncIssue === 'retrying' ? '#ccaa00' : '#cc3333', marginLeft: '4px' }}>
-              {SYNC_ISSUE_TEXT[syncIssue]}
+          {[['SYNC', syncIssue], ['SRS', srsIssue]].map(([label, issue]) => issue && (
+            <span key={label} style={{ color: issue === 'retrying' ? '#ccaa00' : '#cc3333', marginLeft: '4px' }}>
+              {label}: {RELAY_ISSUE_TEXT[issue]}
             </span>
-          )}
+          ))}
         </span>
 
         {/* Unread message indicator */}
