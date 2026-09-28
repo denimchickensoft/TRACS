@@ -1,4 +1,3 @@
-import { latLngToCanvas } from '../../utils/projection.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { typeAbbrev, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { DECLARATION, getAbmEffectiveDeclaration } from '../../store/abm.js'
@@ -72,31 +71,6 @@ export function getAbmVisibleGroundUnits(units, myCoalitionNum) {
   }
 
   return result
-}
-
-// Bogey dope helper — ported from AIC's AicScope.jsx findNearestBogey as-is.
-// Air contacts only, BOGEY/HOSTILE only (excludes FRIENDLY/NEUTRAL and
-// ground/naval contacts — "bogey" means air).
-// Declaration-only multi-select — local to ABM, not shared
-// with resolveSlew (used everywhere else: BRAA, threat rings, bogey dope,
-// leader-dir override) which always picks the single nearest hit. Dense
-// ground/naval clusters can bury a unit behind closer neighbors so that
-// "nearest wins" makes it unreachable no matter where in the cluster you
-// click; F1-F4 + click instead declares every contact within the same
-// click radius at once.
-const DECLARE_CLICK_RADIUS_PX = 10
-
-export function resolveDeclareTargets(canvasPos, units, view) {
-  const hits = []
-  for (const [id, unit] of Object.entries(units)) {
-    const pos = unit.position
-    if (!pos) continue
-    const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
-    if (Math.hypot(canvasPos.x - x, canvasPos.y - y) < DECLARE_CLICK_RADIUS_PX) {
-      hits.push({ unitId: id, unit })
-    }
-  }
-  return hits
 }
 
 const METERS_PER_NM = 1852

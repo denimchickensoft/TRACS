@@ -25,7 +25,7 @@ import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { useWheelDirection } from '../../utils/wheel.js'
-import { resolveSlew }      from '../../utils/slewResolver.js'
+import { resolveSlew, resolveDeclareTargets } from '../../utils/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
@@ -62,7 +62,7 @@ import {
   advancePendingDraw, rotatePendingDraw, supportsRotation, POLY_CLOSE_RADIUS_PX,
 } from './draw/drawCommands.js'
 import {
-  getAbmVisibleUnits, getAbmVisibleGroundUnits, resolveDeclareTargets, buildReadoutFields, buildFriendlyAirFields, distToSegment, airbaseCenterFromStrips, buildAirportFields, flightRouteGroupLabel, buildAirportStrips, groupReadoutHits,
+  getAbmVisibleUnits, getAbmVisibleGroundUnits, buildReadoutFields, buildFriendlyAirFields, distToSegment, airbaseCenterFromStrips, buildAirportFields, flightRouteGroupLabel, buildAirportStrips, groupReadoutHits,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
 import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'

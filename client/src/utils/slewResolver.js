@@ -31,3 +31,24 @@ export function resolveSlew(canvasPos, units, view) {
 
   return best
 }
+
+// Declaration-only multi-select, used by ABM and AIC. Everything else (BRAA,
+// threat rings, bogey dope, leader-dir override) uses resolveSlew above,
+// which picks the single nearest hit. In a tight formation or a dense
+// ground/naval cluster "nearest wins" can leave a contact unreachable
+// wherever you click, so F1-F4 + click declares every contact within this
+// radius at once.
+const DECLARE_CLICK_RADIUS_PX = 10
+
+export function resolveDeclareTargets(canvasPos, units, view) {
+  const hits = []
+  for (const [id, unit] of Object.entries(units)) {
+    const pos = unit.position
+    if (!pos) continue
+    const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
+    if (Math.hypot(canvasPos.x - x, canvasPos.y - y) < DECLARE_CLICK_RADIUS_PX) {
+      hits.push({ unitId: id, unit })
+    }
+  }
+  return hits
+}

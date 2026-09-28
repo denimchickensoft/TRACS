@@ -17,7 +17,7 @@ import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useRunwaysStore }       from '../../store/runways.js'
 import { rangeToPixelsPerNm, canvasToLatLng } from '../../utils/projection.js'
-import { resolveSlew }         from '../../utils/slewResolver.js'
+import { resolveSlew, resolveDeclareTargets } from '../../utils/slewResolver.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
@@ -791,9 +791,15 @@ export default function AicScope() {
     if (pending && target && target.unitId !== pending) { addBraaPair(pending, target.unitId); return }
     if (pending && !target) { clearPendingBraa(); return }
 
-    if (pendingDeclaration && target) {
-      setDeclaration(target.unitId, pendingDeclaration)
-      setPendingDeclaration(null)
+    // Every contact under the click, as in ABM. A click near only one
+    // contact still reaches it at the usual slew distance.
+    if (pendingDeclaration) {
+      const hits    = resolveDeclareTargets(pos, visibleUnitsRef.current, viewRef.current)
+      const targets = hits.length > 0 ? hits : target ? [target] : []
+      if (targets.length > 0) {
+        for (const t of targets) setDeclaration(t.unitId, pendingDeclaration)
+        setPendingDeclaration(null)
+      }
     }
   }, [pendingDeclaration, cmdBuffer, myCoalitionNum, setDeclaration, addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa, toggleThreatRing, displayStore])
 
