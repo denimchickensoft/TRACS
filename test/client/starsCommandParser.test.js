@@ -83,6 +83,8 @@ describe('STARS parseCommand', () => {
     expect(idOf('.DROPALL', 'ENTER')).toBe('TERM_CNTL_ALL')
     expect(idOf('TC AAL1', 'ENTER')).toBe('TERM_CNTL_BY_ID')
     expect(idOf('TC', 'SLEW')).toBe('TERM_CNTL')
+    expect(idOf('.FORCEDROP', 'SLEW')).toBe('FORCE_DROP')
+    expect(idOf('.FORCEDROP ALL', 'ENTER')).toBe('FORCE_DROP_ALL')
   })
 
   test('scratchpad and altitude shorthand', () => {

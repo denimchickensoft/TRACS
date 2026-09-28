@@ -29,6 +29,10 @@ A bare click with an empty buffer depends on the track's state:
 | `IC` + SLEW | `F3` | Initiate Control — claim the clicked track |
 | `TC` + SLEW | `F4` | Terminate Control — drop the clicked track (must be yours) |
 | `TC ALL` / `.DROPALL` + ENTER | — | Drop every track you own |
+| `.FORCEDROP` + SLEW | — | Drop the clicked track, whoever owns it. For a track stuck under a controller who has gone |
+| `.FORCEDROP ALL` + ENTER | — | Drop every orphaned track (its owner's ID isn't held by any signed-on controller) and reply `FORCEDROP` with the count |
+
+Nothing drops orphaned tracks automatically. Right after you join, or while the network is split, the controller list can be incomplete and live tracks would look orphaned, so check the controller list before using `.FORCEDROP ALL`.
 
 **Ctrl+Shift+Click** a contact is a direct shortcut for `IC`.
 

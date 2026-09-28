@@ -32,6 +32,7 @@ import { useProceduresStore }  from '../../../store/procedures.js'
 import { useUnitsStore }       from '../../../store/units.js'
 import { useAssociationStore } from '../../../store/association.js'
 import { computeWingmanIds }   from '../stars/stca/formations.js'
+import { findOrphanedTracks }  from '../shared/orphanedTracks.js'
 import { findFlightPlanAid, resolveCallsign, AID_MAX_LEN } from '../../../utils/callsign.js'
 import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
 import { parseAbbreviatedFields, parseVfrFields } from '../stars/input/flightPlanFields.js'
@@ -198,23 +199,46 @@ export function TERM_CNTL({ slewTarget }) {
   ok()
 }
 
-export function TERM_CNTL_ALL() {
-  const { ownership, dropTrack, clearHandoff } = getAtc()
-  const controllerId = getMyControllerId()
+// Drops each track and tells every peer, as a normal drop does.
+function dropTracks(unitIds) {
+  const { dropTrack, clearHandoff } = getAtc()
   const { deleteOnDropTrack, deleteByAid } = useStripsStore.getState()
   const plans = useFlightPlansStore.getState().plans
-  for (const [id, owner] of Object.entries(ownership)) {
-    if (owner === controllerId) {
-      clearHandoff(id)
-      dropTrack(id)
-      sendWebrtcEvent('TRACK_DROPPED', { unitId: id })
-      if (deleteOnDropTrack) {
-        const plan = Object.values(plans).find((p) => p.unitId === Number(id))
-        if (plan) deleteByAid(plan.aid)
-      }
+  for (const id of unitIds) {
+    clearHandoff(id)
+    dropTrack(id)
+    sendWebrtcEvent('TRACK_DROPPED', { unitId: id })
+    if (deleteOnDropTrack) {
+      const plan = Object.values(plans).find((p) => p.unitId === Number(id))
+      if (plan) deleteByAid(plan.aid)
     }
   }
+}
+
+export function TERM_CNTL_ALL() {
+  const controllerId = getMyControllerId()
+  const { ownership } = getAtc()
+  dropTracks(Object.keys(ownership).filter((id) => ownership[id] === controllerId))
   ok()
+}
+
+// .FORCEDROP + SLEW: drop the clicked track whoever owns it, for a track left
+// stuck under an owner who's gone.
+export function FORCE_DROP({ slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  if (!getAtc().ownership[slewTarget.unitId]) return err('ILL TRK')
+  dropTracks([slewTarget.unitId])
+  ok()
+}
+
+// .FORCEDROP ALL: drop only orphaned tracks, meaning their owner's ID isn't
+// in the controller registry.
+export function FORCE_DROP_ALL() {
+  const knownIds = getKnownControllerIds()
+  if (knownIds.size === 0) return err('NO CONTROLLERS')
+  const orphaned = findOrphanedTracks(getAtc().ownership, knownIds)
+  dropTracks(orphaned)
+  usePreviewStore.getState().showInfo(`FORCEDROP ${orphaned.length}`)
 }
 
 export function HND_OFF({ captures, slewTarget }) {
@@ -1158,6 +1182,8 @@ const ACTION_MAP = {
   INIT_CNTL_BY_ID,
   TERM_CNTL,
   TERM_CNTL_ALL,
+  FORCE_DROP,
+  FORCE_DROP_ALL,
   HND_OFF,
   HND_OFF_SHORT: HND_OFF,
   HND_OFF_BARE,
