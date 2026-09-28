@@ -3,7 +3,7 @@ import { useUnitsStore }        from '../../store/units.js'
 import { useRunwaysStore }      from '../../store/runways.js'
 import { useCorrelationStore }  from '../../store/correlation.js'
 import { useSessionStore, MODULE } from '../../store/session.js'
-import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
+import { CARRIER_TYPES, computeCarrierBrcFb, carrierDeckAltFt, deckPosition } from '../../utils/carriers.js'
 import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import { ElevationPanel, AzimuthPanel } from './ParPanels.jsx'
@@ -192,7 +192,9 @@ export function Par({
     if (mode === 'carrier' && carrierUnit?.position) {
       const ct         = CARRIER_TYPES[carrierUnit.name]
       const deckOff    = ct?.deckOffset    ?? 9
-      const deckHt     = ct?.deckHeightFt  ?? 72
+      // The carrier's own altitude plus its deck height, same reference the
+      // DECK tab uses.
+      const deckHt     = carrierDeckAltFt(carrierUnit, { deckHeightFt: ct?.deckHeightFt ?? 72 })
       const gridHdgDeg = (carrierUnit.heading ?? 0) / D2R  // DCS grid heading
       const magvar     = computeMagvar(carrierUnit.position.lat, carrierUnit.position.lng, missionDate)
       // Real geographic true (grid + convergence) for the approach-corridor
@@ -252,8 +254,13 @@ export function Par({
     const results = []
     const azConeSlope = Math.tan(PAR_AZ_HALF * D2R)
     const svCeilSlope = Math.tan(PAR_MAX_ELEV * D2R) * NM_TO_FEET
+    const carrierType = mode === 'carrier' ? CARRIER_TYPES[carrierUnit?.name] : null
     for (const [id, unit] of Object.entries(units)) {
       if (!AIRBORNE.has(unit.category) || !unit.position) continue
+      // An aircraft parked or trapped on the deck reads a few feet above it,
+      // so the altitude check below can't tell it from one on short final.
+      // The DECK tab's own test decides: on deck there, never on PAR.
+      if (carrierType && deckPosition(unit, carrierUnit, carrierType, initTheatre)) continue
       const proj = projectOnApproach(unit.position, approachCfg)
       // Reject if behind the threshold, beyond display range, or at/below deck/field height (landed)
       if (proj.rangeFinal < 0 || proj.rangeFinal > approachCfg.rangeNm) continue
@@ -269,7 +276,7 @@ export function Par({
       results.push({ id, label, ...proj })
     }
     return results
-  }, [units, approachCfg, mode, correlations])
+  }, [units, approachCfg, mode, correlations, carrierUnit, initTheatre])
 
   // ── Centerlines sorted by distance to facility ────────────────────
   const sortedCenterlines = useMemo(() => {

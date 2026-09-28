@@ -4,13 +4,9 @@ import { useSessionStore }     from '../../store/session.js'
 import { useCorrelationStore } from '../../store/correlation.js'
 import { getVisibleUnits }     from '../../utils/visibleUnits.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
-import { CARRIER_TYPES, projectOntoDeck } from '../../utils/carriers.js'
+import { CARRIER_TYPES, deckPosition } from '../../utils/carriers.js'
 import './Deck.css'
-import { M_TO_FT as METERS_TO_FEET } from '../../utils/units.js'
 
-const ALT_ABOVE_DECK_FT  = 40  // how far above deck level still counts as "on deck" (vs. overflying)
-const ALT_BELOW_DECK_FT  = 20  // how far below deck level still counts — beyond this, treat as on
-                                // the elevator/in the hangar bay and hide it
 const SYMBOL_R         = 7   // same triangle size as AsdexScope's drawAsdexContacts.js
 const CONTACT_COLOR    = 'rgb(0,200,80)'  // CATCC range-ring green (drawCatccLayers.js)
 
@@ -171,29 +167,15 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   // would otherwise be suppressed.
   const visibleUnits = useMemo(() => getVisibleUnits(units, coalition, true), [units, coalition])
 
-  // Aircraft currently on this carrier's deck — near deck-level altitude and
-  // within the hull footprint (see projectOntoDeck).
+  // Aircraft currently on this carrier's deck (see deckPosition).
   const deckAircraft = useMemo(() => {
     if (!carrierUnit?.position || !carrierType) return []
     const carrierHeadingRad = carrierUnit.heading ?? 0
-    const carrierHeadingDeg = carrierHeadingRad * 180 / Math.PI
-    // Deck reference altitude — the carrier's own live altitude, not an
-    // assumed sea-level 0, plus the class's deck height above the hull.
-    const deckAltFt = (carrierUnit.position.alt ?? 0) * METERS_TO_FEET + carrierType.deckHeightFt
     const out = []
     for (const [uid, unit] of Object.entries(visibleUnits)) {
-      if (!unit.position) continue
-      const altFt   = (unit.position.alt ?? 0) * METERS_TO_FEET
-      const relAltFt = altFt - deckAltFt
-      // Asymmetric: a jet riding the elevator down into the hangar bay drops
-      // below deck level while still inside the hull footprint, so cut off
-      // sharply below deck rather than reusing the same tolerance as above.
-      if (relAltFt > ALT_ABOVE_DECK_FT || relAltFt < -ALT_BELOW_DECK_FT) continue
-      const { forwardFt, rightFt, onDeck } = projectOntoDeck(
-        unit.position, carrierUnit.position.lat, carrierUnit.position.lng,
-        carrierHeadingDeg, carrierType.deckLoaFt, carrierType.deckBeamFt, theatre,
-      )
+      const onDeck = deckPosition(unit, carrierUnit, carrierType, theatre)
       if (!onDeck) continue
+      const { forwardFt, rightFt } = onDeck
       // Canvas "up" is the ship's bow, not true north — rotate the symbol by
       // the aircraft's heading relative to the carrier's. Uses raw heading,
       // not track: track is derived from position deltas and is only

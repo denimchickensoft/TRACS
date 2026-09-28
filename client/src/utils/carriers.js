@@ -1,4 +1,5 @@
 import { toMagneticFromTrue, gridBearingRangeNm } from './bearing.js'
+import { M_TO_FT } from './units.js'
 
 export const NM_TO_FEET = 6076.115
 
@@ -87,6 +88,35 @@ export function computeCarrierBrcFb(gridHeadingDeg, declinationDeg, deckOffsetDe
 // catapult/sponson overhang beyond deckLoaFt/deckBeamFt) — callers should
 // still gate on altitude (near carrierType.deckHeightFt) to exclude aircraft
 // merely transiting overhead, e.g. in the bolter/groove.
+// How far from the carrier's deck level an aircraft inside the hull
+// footprint still counts as on deck. Asymmetric: an aircraft riding an
+// elevator down to the hangar bay drops below deck level, and beyond
+// ALT_BELOW_DECK_FT it's hidden rather than shown on deck.
+const ALT_ABOVE_DECK_FT = 40
+const ALT_BELOW_DECK_FT = 20
+
+// The carrier's deck altitude in feet: its own live altitude plus the
+// class's deck height above the hull.
+export function carrierDeckAltFt(carrierUnit, carrierType) {
+  return (carrierUnit.position.alt ?? 0) * M_TO_FT + carrierType.deckHeightFt
+}
+
+// Where an aircraft sits on the carrier's deck ({ forwardFt, rightFt }), or
+// null when it isn't on deck: near deck-level altitude and inside the hull
+// footprint. The DECK tab shows exactly these aircraft, and PAR leaves them
+// out, so an aircraft is on one or the other, never both.
+export function deckPosition(unit, carrierUnit, carrierType, theatre) {
+  if (!unit.position || !carrierUnit?.position || !carrierType) return null
+  const relAltFt = (unit.position.alt ?? 0) * M_TO_FT - carrierDeckAltFt(carrierUnit, carrierType)
+  if (relAltFt > ALT_ABOVE_DECK_FT || relAltFt < -ALT_BELOW_DECK_FT) return null
+  const carrierHeadingDeg = (carrierUnit.heading ?? 0) * 180 / Math.PI
+  const { forwardFt, rightFt, onDeck } = projectOntoDeck(
+    unit.position, carrierUnit.position.lat, carrierUnit.position.lng,
+    carrierHeadingDeg, carrierType.deckLoaFt, carrierType.deckBeamFt, theatre,
+  )
+  return onDeck ? { forwardFt, rightFt } : null
+}
+
 export function projectOntoDeck(pos, carrierLat, carrierLng, carrierHeadingDeg, loaFt, beamFt, theatre) {
   // carrierHeadingDeg is raw grid heading (unit.heading, uncorrected) — the
   // bearing to the aircraft needs to be in that same grid frame, not real
