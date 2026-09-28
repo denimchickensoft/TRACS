@@ -224,6 +224,9 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
         return res.status(429).json({ error: 'Reconnected to Tacview too recently — wait a few seconds before trying again (rapid reconnects can crash Tacview’s DCS export)' })
       }
 
+      // A successful Tacview probe (here or in auto-detect) leaves its
+      // connection open, and source.start() below adopts it, so the probe
+      // and the live feed are one RTT connection (see tacview.js probe()).
       if (!alreadyProbed) {
         try {
           await source.probe(sourceCfg)
