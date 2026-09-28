@@ -153,14 +153,16 @@ register('RN', (parts, ctx) => {
   return []
 })
 
-// .HISTORY — toggle history trails on/off
-register('.HISTORY', () => {
+// .HISTORY (or .HIST) — toggle history trails on/off
+function toggleHistory() {
   const ws = useDisplayStore.getState().windows[WINDOW_ID]
   const current = ws?.showHistory ?? true
   useDisplayStore.getState().updateWindow(WINDOW_ID, { showHistory: !current })
   saveCatccPrefs({ showHistory: !current })
   return []
-})
+}
+register('.HISTORY', toggleHistory)
+register('.HIST', toggleHistory)
 
 // .LL [0-99] — set leader line length in pixels (omit to query current)
 register('.LL', (parts) => {

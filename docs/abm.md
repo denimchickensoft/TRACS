@@ -119,7 +119,7 @@ ABM does not display SID/STAR/approach procedures.
 |---|---|
 | `.ptl <0-5>` | Predicted track line minutes |
 | `.faded <seconds>` | Coast/fade duration |
-| `.history` | Toggle trails; `.history <len>` sets length (0=off, max 10); `.history <len> <rate>` sets length + capture rate |
+| `.history` / `.hist` | Toggle trails; `.history <len>` sets length (0=off, max 10); `.history <len> <rate>` sets length + capture rate |
 | `.db` | Toggle global datablock visibility; typed (no Enter) + click a contact toggles just that one |
 | `.dbreset` | Clear all per-contact `.db` overrides |
 | `.dbca` | Datablock collision-avoidance placement (off by default) |

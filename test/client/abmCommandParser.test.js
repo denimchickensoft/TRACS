@@ -32,6 +32,10 @@ describe('ABM parseCommand', () => {
 
   test('history length and rate', () => {
     expect(idOf('.history')).toBe('HISTORY_TOGGLE')
+    expect(idOf('.hist')).toBe('HISTORY_TOGGLE')
+    expect(parseCommand('.hist 6 3')).toMatchObject({ command: { id: 'HISTORY_LEN_RATE' }, captures: { len: '6', rate: '3' } })
+    expect(parseCommand('.hist 6')).toMatchObject({ command: { id: 'HISTORY_LEN' }, captures: { len: '6' } })
+    expect(idOf('.histo')).toBe(null)
     expect(parseCommand('.history 10 2.5')).toMatchObject({ command: { id: 'HISTORY_LEN_RATE' }, captures: { len: '10', rate: '2.5' } })
     expect(parseCommand('.history 10')).toMatchObject({ command: { id: 'HISTORY_LEN' }, captures: { len: '10' } })
   })

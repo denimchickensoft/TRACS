@@ -31,7 +31,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `HO <callsign\|side> <tcp>` | Hand off to another controller position (`tcp` = their position id, e.g. `1D`) |
 | `PO <callsign\|side> <tcp>` | Point out a track to another controller |
 | `RN <callsign\|side> [newCallsign]` | Rename a track's callsign, or omit the second argument to reset to default |
-| `.HISTORY` | Toggle history-trail display |
+| `.HISTORY` / `.HIST` | Toggle history-trail display |
 | `.LL [0-99]` | Set leader-line length (pixels); bare `.LL` queries the current value |
 | `.LD [N\|NE\|E\|SE\|S\|SW\|W\|NW\|1-9\|OFF]` | Set the default leader-line direction |
 | `.LABELSIZE [0-5]` | Set airspace/fix label size; bare `.LABELSIZE` queries the current value |
