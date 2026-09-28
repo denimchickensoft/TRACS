@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
-import { isTypedInput }        from '../../../utils/starsKeys.js'
+import { isTypedInput, shouldAppendToken } from '../../../utils/starsKeys.js'
 import { toggleAllDatablocks } from './asdexDatablockToggle.js'
 
 export function AsdexInputHandler({ onEnter, onEsc }) {
@@ -20,7 +20,7 @@ export function AsdexInputHandler({ onEnter, onEsc }) {
       }
       if (e.code === 'F7' && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        preview.appendToken('MF ')
+        if (shouldAppendToken('F7', 'MF ', preview.buffer, e.repeat)) preview.appendToken('MF ')
         return
       }
 

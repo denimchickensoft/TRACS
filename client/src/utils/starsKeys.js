@@ -60,6 +60,14 @@ export function matchStarsKey(e) {
   return null
 }
 
+// A function key (F1-F13) enters its command token once: pressing it again,
+// or holding it down, doesn't repeat the token. Other token keys (Δ, MIN)
+// can appear more than once in an entry.
+export function shouldAppendToken(code, token, buffer, isRepeat) {
+  if (!/^F\d+$/.test(code)) return true
+  return !isRepeat && !buffer.startsWith(token)
+}
+
 /**
  * Returns true if a KeyboardEvent should be treated as typed input
  * (appended to the preview buffer as-is).

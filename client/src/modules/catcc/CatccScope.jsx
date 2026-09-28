@@ -25,7 +25,7 @@ import { drawAbmAirspace }       from '../abm/canvas/drawAbmAirspace.js'
 import { drawAbmFixSymbols }     from '../../canvas/drawAbmFixSymbols.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
-import { matchStarsKey, isTypedInput } from '../../utils/starsKeys.js'
+import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../utils/starsKeys.js'
 import { processOdsCommand } from './odsCommands.js'
 import { initCntl, termCntl, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
@@ -430,7 +430,8 @@ export default function CatccScope() {
         }
         return
       }
-      if (starsKey.token) usePreviewStore.getState().appendToken(starsKey.token)
+      const preview = usePreviewStore.getState()
+      if (starsKey.token && shouldAppendToken(starsKey.code, starsKey.token, preview.buffer, e.repeat)) preview.appendToken(starsKey.token)
       return
     }
     if (e.key === 'Escape')    { e.preventDefault(); usePreviewStore.getState().clear(); setOdsLines([]); return }

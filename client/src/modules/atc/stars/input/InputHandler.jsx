@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { usePreviewStore }  from '../../../../store/preview.js'
 import { useFpeStore }      from '../../../../store/fpe.js'
-import { matchStarsKey, isTypedInput } from '../../../../utils/starsKeys.js'
+import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../../../utils/starsKeys.js'
 
 /**
  * Keyboard input handler for the STARS ODS.
@@ -62,7 +62,7 @@ export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
         e.preventDefault()
         if (starsKey.action) {
           onImmediateAction?.(starsKey.action)
-        } else if (starsKey.token) {
+        } else if (starsKey.token && shouldAppendToken(starsKey.code, starsKey.token, preview.buffer, e.repeat)) {
           preview.appendToken(starsKey.token)
         }
         return
