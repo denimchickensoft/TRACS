@@ -101,7 +101,7 @@ The **⚙** icon (top right, once signed in) opens the settings panel:
 - **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking it silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
 - **Navigation data** — the LittleNavMap database TRACS is using, and (desktop app) a **Change…** button. See [Navigation data](#navigation-data-littlenavmap).
 - **Version line** — the TRACS version (`TRACS (dev)` when running from source), plus the relay's version and protocol number when connected to one.
-- **Help / Docs** — opens the documentation page for the module you're signed into, in a new tab.
+- **Help / Docs** — opens the documentation page for the module you're signed into, in a new tab. In the desktop app, Ctrl+F there opens a find box: Enter / Shift+Enter step through matches, Esc closes it.
 - **About** — copyright, license (GPL v3.0 or later, no warranty), data attributions, and links to the full **License** and **Third-party notices**.
 
 ## Navigation data (LittleNavMap)

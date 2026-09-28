@@ -66,6 +66,7 @@ function renderPage(title, body) {
 <meta charset="utf-8">
 <title>${title}</title>
 <style>${PAGE_STYLE}</style>
+<script src="/docs/assets/find.js" defer></script>
 </head>
 <body>${body}</body>
 </html>`
@@ -81,6 +82,13 @@ const PAGE_STYLE = `
   table { border-collapse: collapse; }
   th, td { border: 1px solid #333; padding: 4px 10px; }
   blockquote { border-left: 3px solid #444; margin-left: 0; padding-left: 14px; color: #999; }
+  #docs-find { position: fixed; top: 8px; right: 12px; display: flex; align-items: center; gap: 4px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; padding: 4px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+  #docs-find[hidden] { display: none; }
+  #docs-find input { background: #111; color: #eee; border: 1px solid #333; border-radius: 3px; padding: 3px 6px; width: 200px; font: inherit; font-size: 0.9em; outline: none; }
+  #docs-find input:focus { border-color: #6cf; }
+  #docs-find .docs-find-count { color: #999; font-size: 0.8em; min-width: 64px; text-align: center; }
+  #docs-find button { background: transparent; color: #aaa; border: none; cursor: pointer; font-size: 0.9em; padding: 2px 5px; }
+  #docs-find button:hover { color: #fff; }
 `
 
 // Registers TRACS's own local operator docs — GET /docs/:page — so the
@@ -88,6 +96,12 @@ const PAGE_STYLE = `
 // LAN/offline DCS setup. Renders docs/<page>.md as styled HTML rather than
 // dumping raw markdown.
 function registerDocsRoutes(app) {
+  // The desktop app's Ctrl+F box (see docsFind.js). A separate file, not an
+  // inline script, so the Content-Security-Policy allows it.
+  app.get('/docs/assets/find.js', (req, res) => {
+    res.type('application/javascript').sendFile(path.join(__dirname, '../docsFind.js'))
+  })
+
   app.get('/docs/:page', (req, res) => {
     const page = req.params.page.replace(/\.md$/, '')
 

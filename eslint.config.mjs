@@ -108,10 +108,10 @@ export default [
       'no-unused-vars': unusedVarsRule,
     },
   },
-  // The port-conflict dialog's page script runs in a browser window, not in
-  // the main process.
+  // Scripts that run in a browser page, not in Node: the port-conflict
+  // dialog's and the docs pages' Ctrl+F box.
   {
-    files: ['electron/portConflict.js'],
+    files: ['electron/portConflict.js', 'server/src/docsFind.js'],
     languageOptions: {
       sourceType: 'script',
       globals: globals.browser,

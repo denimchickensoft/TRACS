@@ -387,6 +387,27 @@ handleFromApp('lnm:pickDatabase', async (event) => {
   return result.filePaths[0]
 })
 
+// ── Find in page (docs windows' Ctrl+F) ─────────────────────────────────
+// Electron has Chromium's page search but not Chrome's find bar. The docs
+// page draws the box (server/src/docsFind.js); the searching, highlighting
+// and match count are Electron's own findInPage.
+const findResultsForwarded = new WeakSet()
+
+handleFromApp('find:start', (event, text, options) => {
+  const contents = event.sender
+  if (!findResultsForwarded.has(contents)) {
+    findResultsForwarded.add(contents)
+    contents.on('found-in-page', (_e, result) => {
+      if (!contents.isDestroyed()) contents.send('find:result', { activeMatchOrdinal: result.activeMatchOrdinal, matches: result.matches })
+    })
+  }
+  if (typeof text !== 'string' || text === '') return
+  // findNext: true starts a new search, false moves to the next match.
+  contents.findInPage(text, { forward: options?.forward !== false, findNext: options?.newSearch === true })
+})
+
+handleFromApp('find:stop', (event) => event.sender.stopFindInPage('clearSelection'))
+
 // ── Auto-update ("check on launch, ask before downloading") ─────────────
 // autoDownload:false — respects variable end-user bandwidth rather than
 // silently consuming data. Mac builds aren't code-signed, so electron-updater's Squirrel.Mac backend can't verify unsigned
