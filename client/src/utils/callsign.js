@@ -134,6 +134,27 @@ export function sanitizeFocusToken(callsign) {
   return (callsign ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_')
 }
 
+// ABM focus panels are keyed by the callsign they follow, except another
+// side's aircraft, which is followed by unit ID so its panel never shows the
+// callsign. '#' can't appear in a callsign key (stripAcid), so the two never
+// collide.
+const UNIT_FOCUS_PREFIX = '#'
+
+export function unitFocusKey(unitId) {
+  return `${UNIT_FOCUS_PREFIX}${unitId}`
+}
+
+// The name shown in a focus panel's title bar.
+export function focusTitle(key) {
+  return key.startsWith(UNIT_FOCUS_PREFIX) ? 'CONTACT' : key
+}
+
+// The live unit a focus panel follows, or null.
+export function findFocusedUnit(key, liveUnits) {
+  if (key.startsWith(UNIT_FOCUS_PREFIX)) return liveUnits?.[key.slice(UNIT_FOCUS_PREFIX.length)] ?? null
+  return matchLiveByPrefix(key, liveUnits).find((m) => m.callsign === key)?.unit ?? null
+}
+
 export function matchLiveByPrefix(prefix, liveUnits) {
   const norm = stripAcid(prefix ?? '')
   if (!norm) return []

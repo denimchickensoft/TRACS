@@ -10,7 +10,7 @@ import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
-import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
+import { resolveCallsign, unitFocusKey, findFocusedUnit } from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }  from '../../store/navdata.js'
 import { useRunwaysStore }  from '../../store/runways.js'
@@ -842,11 +842,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     let initCenterLat = bullseyeLat
     let initCenterLng = bullseyeLng
     if (followCallsign) {
-      const match = matchLiveByPrefix(followCallsign, useUnitsStore.getState().units)
-        .find(m => m.callsign === followCallsign)
-      if (match?.unit?.position) {
-        initCenterLat = match.unit.position.lat
-        initCenterLng = match.unit.position.lng
+      const followed = findFocusedUnit(followCallsign, useUnitsStore.getState().units)
+      if (followed?.position) {
+        initCenterLat = followed.position.lat
+        initCenterLng = followed.position.lng
       }
     }
     displayStore.initWindow(windowId, {
@@ -897,10 +896,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const unitsLastUpdate = useUnitsStore(s => s.lastUpdateTime)
   useEffect(() => {
     if (!followCallsign) return
-    const match = matchLiveByPrefix(followCallsign, useUnitsStore.getState().units)
-      .find(m => m.callsign === followCallsign)
-    if (!match?.unit?.position) return
-    displayStore.updateWindow(windowId, { centerLat: match.unit.position.lat, centerLng: match.unit.position.lng })
+    const followed = findFocusedUnit(followCallsign, useUnitsStore.getState().units)
+    if (!followed?.position) return
+    displayStore.updateWindow(windowId, { centerLat: followed.position.lat, centerLng: followed.position.lng })
   }, [followCallsign, unitsLastUpdate]) // eslint-disable-line
 
   const centerOverridden = windowSettings?.centerOverridden ?? false
@@ -1917,10 +1915,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
-    // A focus panel is titled with the callsign, so only your own side's
-    // aircraft open one.
-    if (!target || !isOwnSide(target.unit, coalition)) return
-    openAbmFocusPanel(resolveCallsign(target.unit), loadAbmPrefs().focusDefaultRangeNm ?? 20)
+    if (!target) return
+    // Another side's aircraft is followed by unit ID, so its panel never
+    // shows the callsign.
+    const focusKey = isOwnSide(target.unit, coalition) ? resolveCallsign(target.unit) : unitFocusKey(target.unitId)
+    openAbmFocusPanel(focusKey, loadAbmPrefs().focusDefaultRangeNm ?? 20)
   }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer, coalition])
 
   if (!windowSettings) return null
