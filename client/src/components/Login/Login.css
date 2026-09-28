@@ -27,6 +27,13 @@
   padding: 32px;
 }
 
+.login-attribution {
+  margin: 20px 0 0;
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 .login-header {
   margin-bottom: 28px;
   border-bottom: 1px solid var(--border);

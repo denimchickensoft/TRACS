@@ -769,8 +769,8 @@ export function App() {
             </a>
 
             {/* Legal notices (GPLv3 §5(d)): the copyright, no-warranty and
-                attribution text lives on these two pages. The OSM line stays
-                visible here, as the OSMF attribution guidelines ask. */}
+                attribution text lives on these two pages. The OSM credit is
+                shown on the login screen instead. */}
             <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.6rem', color: '#888', lineHeight: 1.5, maxWidth: '320px' }}>
               <div style={{ display: 'flex', gap: '12px' }}>
                 {[['/docs/license', 'License ↗'], ['/docs/third-party-notices', 'Third-party notices ↗']].map(([href, label]) => (
@@ -787,7 +787,6 @@ export function App() {
                   </a>
                 ))}
               </div>
-              <div style={{ marginTop: '2px', fontSize: '0.55rem', color: '#666' }}>© OpenStreetMap contributors</div>
             </div>
           </div>
         )}

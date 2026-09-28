@@ -29,6 +29,10 @@ export function Login() {
           ? <ConnectPhase  onConnected={() => setPhase('position')} />
           : <PositionPhase onSignedIn={() => {}} />
         }
+
+        {/* OSM credit shown at startup, per the OSMF attribution guidelines;
+            the full ODbL notice is on the Third-party notices page. */}
+        <p className="login-attribution">Map data © OpenStreetMap contributors</p>
       </div>
     </div>
   )
