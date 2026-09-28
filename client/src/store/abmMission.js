@@ -15,6 +15,7 @@
 import { create } from 'zustand'
 import { resolveCallsign, stripAcid } from '../utils/callsign.js'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 const SB_KEY = 'tracs.abm.mission'
 
@@ -413,8 +414,8 @@ let _syncing = false
 
 const _ch = new BroadcastChannel('tracs-abm-mission')
 
-useAbmMissionStore.subscribe((state) => {
-  if (_syncing) return
+useAbmMissionStore.subscribe((state, prev) => {
+  if (_syncing || shallowEqual(serialize(state), serialize(prev))) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
   _ch.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
 })

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 import { generateBcn } from '../utils/bcn.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 const SB_KEY = 'tracs.catcc.sb'
 
@@ -169,8 +170,8 @@ export function buildStatusBoardPayload(s) {
 
 const _sbCh = new BroadcastChannel('tracs-statusboard')
 
-useStatusBoardStore.subscribe((state) => {
-  if (_syncing) return
+useStatusBoardStore.subscribe((state, prev) => {
+  if (_syncing || shallowEqual(serialize(state), serialize(prev))) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
   _webrtcBroadcast?.(buildStatusBoardPayload(state))
   _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })

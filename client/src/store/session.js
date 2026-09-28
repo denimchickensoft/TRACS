@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { shallowEqual } from '../utils/storeSync.js'
 
 export const MODULE = {
   ATC:   'ATC',
@@ -308,8 +309,10 @@ if (typeof window !== 'undefined') {
     _ch.postMessage({ type: 'REQUEST_STATE' })
   }
 
-  useSessionStore.subscribe((state) => {
-    if (!_isSyncing && _ch) _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(state) })
+  useSessionStore.subscribe((state, prev) => {
+    if (_isSyncing || !_ch) return
+    const slice = _pick(state)
+    if (!shallowEqual(slice, _pick(prev))) _ch.postMessage({ type: 'STATE_UPDATE', state: slice })
   })
 
   if (_isPopup) {

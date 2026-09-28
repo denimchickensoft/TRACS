@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useSessionStore } from './session.js'
 import { useFlightPlansStore } from './flightPlans.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 // What caused the auto-add — drives the highlight color
 export const STRIP_HIGHLIGHT = {
@@ -291,8 +292,10 @@ if (typeof window !== 'undefined') {
   // Broadcast every local change (from either a main window or its popup),
   // guarded so applying an incoming update doesn't immediately re-broadcast
   // an echo of itself.
-  useStripsStore.subscribe((state) => {
-    if (!_isSyncing && _ch) _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(state) })
+  useStripsStore.subscribe((state, prev) => {
+    if (_isSyncing || !_ch) return
+    const slice = _pick(state)
+    if (!shallowEqual(slice, _pick(prev))) _ch.postMessage({ type: 'STATE_UPDATE', state: slice })
   })
 
   // DEP/DEST auto-add: a plan that's new, or whose DEP/DEST just changed,

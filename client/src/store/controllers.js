@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { fetchJson } from '../utils/fetchJson.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 /**
  * Controller registry.
@@ -309,7 +310,10 @@ const _ctrlCh  = new BroadcastChannel('tracs-controllers')
 const _pick    = (s) => ({ registry: s.registry, groupAssignments: s.groupAssignments, nextGroupNumber: s.nextGroupNumber })
 
 if (!_isPopup) {
-  useControllersStore.subscribe((state) => _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pick(state) }))
+  useControllersStore.subscribe((state, prev) => {
+    const slice = _pick(state)
+    if (!shallowEqual(slice, _pick(prev))) _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: slice })
+  })
   _ctrlCh.onmessage = (e) => {
     if (e.data?.type === 'REQUEST_STATE') _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pick(useControllersStore.getState()) })
   }

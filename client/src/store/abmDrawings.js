@@ -11,6 +11,7 @@ import {
   buildLineFeature, buildRectFeature, buildCircFeature,
   buildPolyFeature, buildSectFeature, buildRaceFeature, buildTextFeature,
 } from '../utils/drawShapes.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 const SB_KEY = 'tracs.abm.drawings'
 
@@ -254,8 +255,8 @@ let _syncing = false
 
 const _ch = new BroadcastChannel('tracs-abm-drawings')
 
-useAbmDrawingsStore.subscribe((state) => {
-  if (_syncing) return
+useAbmDrawingsStore.subscribe((state, prev) => {
+  if (_syncing || shallowEqual(serialize(state), serialize(prev))) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
   _ch.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
 })
