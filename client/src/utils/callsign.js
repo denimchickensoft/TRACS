@@ -1,30 +1,19 @@
 import { useAtcStore }     from '../store/atc'
 import { useSessionStore } from '../store/session'
+import { callsignFromDcsName, parseUnitName, stripAcid } from './callsignShape.js'
 
-// Exported for manually-added ATO flights (Ato.jsx/Frag.jsx), which have no
-// DCS unitId to match against a live Olympus unit — they instead search for
-// a live unit whose resolveCallsign() output matches the entered callsign
-// after the same normalization.
-export function stripAcid(s) {
-  return s.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-}
+// stripAcid is exported for manually-added ATO flights (Ato.jsx/Frag.jsx),
+// which have no DCS unitId to match against a live Olympus unit — they
+// instead search for a live unit whose resolveCallsign() output matches the
+// entered callsign after the same normalization.
+export { stripAcid }
 
 // Longest aircraft ID (AID) any entry point accepts, and the length every
 // AID key is truncated to. 13 fits the longest stock DCS callsign word plus
 // flight and element digits (Springfield 1-1 -> SPRINGFIELD11).
 export const AID_MAX_LEN = 13
 
-// Split "VIPER1 | John Smith" → { acid: 'VIPER1', pilotName: 'John Smith' }
-// No pipe → { acid: stripped unitName, pilotName: null }
-export function parseUnitName(unitName) {
-  if (!unitName) return { acid: '', pilotName: null }
-  const pipeIdx = unitName.indexOf('|')
-  if (pipeIdx === -1) return { acid: stripAcid(unitName), pilotName: null }
-  return {
-    acid:      stripAcid(unitName.slice(0, pipeIdx).trim()),
-    pilotName: unitName.slice(pipeIdx + 1).trim() || null,
-  }
-}
+export { parseUnitName }
 
 /**
  * Resolve the base AID from Olympus data, ignoring any controller override.
@@ -32,11 +21,7 @@ export function parseUnitName(unitName) {
  */
 export function resolveOriginalCallsign(unit) {
   if (unit.customString) return stripAcid(unit.customString)
-
-  if (useSessionStore.getState().useDcsNames) {
-    const { acid } = parseUnitName(unit.unitName)
-    return acid || stripAcid(unit.callsign || String(unit.id))
-  }
+  if (useSessionStore.getState().useDcsNames) return callsignFromDcsName(unit)
   return stripAcid(unit.callsign || unit.unitName || String(unit.id))
 }
 
@@ -50,7 +35,8 @@ export function resolveOriginalCallsign(unit) {
  *      project's architecture.md §A.3b). Not DCS mission data, so it takes
  *      priority over useDcsNames' own source fields below rather than being
  *      gated by that toggle.
- *   3. If useDcsNames ON: unit.unitName (pipe-split left side if '|' present)
+ *   3. If useDcsNames ON: the callsign found in unit.unitName by its shape
+ *      (see utils/callsignShape.js), with the fallbacks in callsignFromDcsName
  *   4. If useDcsNames OFF: unit.callsign (mission editor name)
  *   5. Unit ID as last resort
  */
@@ -60,10 +46,7 @@ export function resolveCallsign(unit) {
 
   if (unit.customString) return stripAcid(unit.customString)
 
-  if (useSessionStore.getState().useDcsNames) {
-    const { acid } = parseUnitName(unit.unitName)
-    return acid || stripAcid(unit.callsign || String(unit.id))
-  }
+  if (useSessionStore.getState().useDcsNames) return callsignFromDcsName(unit)
 
   return stripAcid(unit.callsign || unit.unitName || String(unit.id))
 }

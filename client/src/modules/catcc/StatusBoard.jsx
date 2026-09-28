@@ -150,12 +150,12 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
       let uid = entry.unitId ?? null
       if (!uid) {
         for (const [id, unit] of Object.entries(units)) {
-          const { acid } = parseUnitName(unit.unitName)
+          const { acid } = parseUnitName(unit.unitName, unit.callsign)
           if (acid === entry.callsign) { uid = id; break }
         }
       }
       if (!uid) continue
-      const { pilotName } = parseUnitName(units[uid]?.unitName)
+      const { pilotName } = parseUnitName(units[uid]?.unitName, units[uid]?.callsign)
       if (pilotName) useStatusBoardStore.getState().updateEntry(entry.id, 'pilot', pilotName)
     }
   }, [entries, units])
