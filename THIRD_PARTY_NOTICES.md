@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-TRACS is Copyright (C) 2026 denimchickensoft and is licensed under the GNU General Public License v3.0 or later (see [LICENSE](LICENSE)). It includes, or was built from, the third-party data and software listed below. Each item keeps its own license.
+TRACS is Copyright (C) 2026 denimchickensoft and is free software licensed under the GNU General Public License v3.0 or later (see [LICENSE](LICENSE)), with ABSOLUTELY NO WARRANTY. Source: <https://github.com/denimchickensoft/TRACS>. It includes, or was built from, the third-party data and software listed below. Each item keeps its own license.
 
 TRACS is an independent community project. It is not affiliated with or endorsed by Eagle Dynamics SA, the DCS Olympus team, Tacview (Raia Software), the DCS-SRS or LotATC developers, LittleNavMap, Navigraph, the FAA, or any other organization or product it mentions. DCS World and all other trademarks belong to their respective owners, and TRACS uses them only to describe compatibility.
 
