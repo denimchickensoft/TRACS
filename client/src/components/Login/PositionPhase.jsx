@@ -760,7 +760,7 @@ setPosition({ mode: POSITION_MODE.CONFIGURED, name: callsign })
           <section>
             <label htmlFor="login-catcc-carrier">Carrier</label>
             {catccCarriers.length === 0 ? (
-              <div className="login-loading">No carriers detected in Olympus data</div>
+              <div className="login-loading">No carriers detected yet</div>
             ) : (
               <select
                 id="login-catcc-carrier"
