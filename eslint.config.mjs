@@ -108,4 +108,13 @@ export default [
       'no-unused-vars': unusedVarsRule,
     },
   },
+  // The port-conflict dialog's page script runs in a browser window, not in
+  // the main process.
+  {
+    files: ['electron/portConflict.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: globals.browser,
+    },
+  },
 ]

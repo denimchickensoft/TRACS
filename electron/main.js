@@ -13,6 +13,8 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 const net  = require('net')
+const { execFile }      = require('child_process')
+const { pathToFileURL } = require('url')
 const log  = require('electron-log/main')
 
 // log.initialize() alone only wires up renderer-console forwarding - it does
@@ -109,10 +111,11 @@ function handleFromApp(channel, handler) {
 // ── Port resolution ───────────────────────────────────────────────────────
 // Origin stability matters here: client-side localStorage (serverProfiles,
 // *Prefs/*Bookmarks stores) is tied to http://localhost:<port> as an origin.
-// A port that drifted between launches would silently orphan that data. So:
-// first-ever launch picks (and persists) whichever port actually binds;
-// every later launch reuses that exact port, only re-searching (and
-// re-persisting, with a warning) if it's no longer available.
+// A port that drifted between launches would silently orphan that data. So
+// the first-ever launch picks (and persists) whichever port binds, and every
+// later launch reuses that exact port. When it's taken, the user decides:
+// retry once they've closed whatever holds it, use a nearby port for this
+// session only (never persisted), or quit.
 
 function probePort(port) {
   return new Promise((resolve) => {
@@ -130,6 +133,108 @@ async function findFreePort(startPort) {
   throw new Error(`no free port found in range ${startPort}-${startPort + PORT_RANGE - 1}`)
 }
 
+// A free port just past `port` for a one-session fallback, or null.
+function findFallbackPort(port) {
+  return findFreePort(port + 1).catch(() => null)
+}
+
+function runQuiet(cmd, args) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { windowsHide: true, timeout: 5000 }, (err, stdout) => resolve(err ? '' : stdout))
+  })
+}
+
+// Names the program listening on `port`, e.g. "node.exe (PID 12345)". Windows
+// only, and needs no admin rights (netstat -ano, not -b). Null when nothing
+// is listening, e.g. a port range Windows reserves for Hyper-V/WSL, or when
+// the lookup fails.
+async function findPortOwner(port) {
+  if (process.platform !== 'win32') return null
+  let pid = null
+  for (const line of (await runQuiet('netstat', ['-ano'])).split('\n')) {
+    // TCP <local> <foreign> <state> <pid>. The state text is localized, so a
+    // listening socket is told apart by its unset foreign address instead.
+    const cols = line.trim().split(/\s+/)
+    if (cols[0] === 'TCP' && cols[1]?.endsWith(`:${port}`) && /:0$/.test(cols[2] ?? '') && /^\d+$/.test(cols[4] ?? '')) {
+      pid = cols[4]
+      break
+    }
+  }
+  if (!pid || pid === '0') return null
+  if (pid === '4') return 'System (a Windows service)'
+  const csv  = await runQuiet('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'])
+  const name = csv.match(/^"([^"]+)"/)?.[1]
+  return name ? `${name} (PID ${pid})` : `process ${pid}`
+}
+
+// TRACS's own bundled Roboto Mono, so the dialog matches the app. Vite
+// hashes the file name, so look it up.
+function findBundledFontUrl() {
+  try {
+    const dir  = path.join(__dirname, '..', 'client', 'dist', 'assets')
+    const file = fs.readdirSync(dir).find((f) => /^roboto-mono-latin-400-normal-.*\.woff2$/.test(f))
+    return file ? pathToFileURL(path.join(dir, file)).href : null
+  } catch {
+    return null
+  }
+}
+
+// Shows electron/portConflict.html, styled like the in-app Navigation Data
+// dialog, and resolves to the port to use, or null to quit.
+async function askPortConflict(port) {
+  const state = { port, fallback: await findFallbackPort(port), owner: await findPortOwner(port) }
+  const win = new BrowserWindow({
+    width: 540, height: 240, useContentSize: true, show: false,
+    resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    title: 'TRACS', backgroundColor: '#1a1a1a', autoHideMenuBar: true,
+    webPreferences: {
+      preload:          path.join(__dirname, 'portConflictPreload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+      sandbox:          true,
+    },
+  })
+  win.removeMenu()
+
+  const channels = ['info', 'resize', 'retry', 'fallback', 'quit'].map((c) => `port-conflict:${c}`)
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (result) => {
+      if (settled) return
+      settled = true
+      for (const c of channels) ipcMain.removeHandler(c)
+      if (!win.isDestroyed()) win.destroy()
+      resolve(result)
+    }
+    const handle = (name, fn) => ipcMain.handle(`port-conflict:${name}`, (event, ...args) => {
+      if (event.sender !== win.webContents) throw new Error('IPC not allowed from this page')
+      return fn(...args)
+    })
+
+    handle('info', () => ({ ...state, fontUrl: findBundledFontUrl() }))
+    handle('resize', (height) => {
+      const h = Math.min(Math.max(Number(height) || 0, 120), 600)
+      win.setContentSize(540, h)
+      if (!win.isVisible()) win.show()
+    })
+    handle('retry', async () => {
+      if (await probePort(port)) {
+        finish(port)
+        return { free: true }
+      }
+      state.fallback = await findFallbackPort(port)
+      state.owner    = await findPortOwner(port)
+      return { free: false, ...state }
+    })
+    handle('fallback', () => finish(state.fallback))
+    handle('quit', () => finish(null))
+    win.on('closed', () => finish(null))
+
+    win.loadFile(path.join(__dirname, 'portConflict.html'))
+  })
+}
+
+// Resolves to the port to run on, or null when the user chose to quit.
 async function resolvePort() {
   let saved = null
   try {
@@ -138,20 +243,15 @@ async function resolvePort() {
     // no saved port yet — first launch
   }
 
-  if (saved && await probePort(saved)) return saved
-
-  const port = await findFreePort(saved ?? DEFAULT_PORT)
-  fs.mkdirSync(app.getPath('userData'), { recursive: true })
-  fs.writeFileSync(PORT_FILE(), JSON.stringify({ port }))
-
-  if (saved && saved !== port) {
-    dialog.showMessageBoxSync({
-      type:    'warning',
-      title:   'TRACS',
-      message: `Port ${saved} was unavailable — TRACS is now using port ${port} instead. Previously-saved app preferences won't carry over to this session.`,
-    })
+  if (!saved) {
+    const port = await findFreePort(DEFAULT_PORT)
+    fs.mkdirSync(app.getPath('userData'), { recursive: true })
+    fs.writeFileSync(PORT_FILE(), JSON.stringify({ port }))
+    return port
   }
-  return port
+
+  if (await probePort(saved)) return saved
+  return askPortConflict(saved)
 }
 
 // ── Server bootstrap ──────────────────────────────────────────────────────
@@ -330,11 +430,20 @@ handleFromApp('update:openReleasePage', () => shell.openExternal('https://github
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
 
+// True until the main window exists, so closing the port-conflict dialog
+// doesn't count as the last window closing.
+let startingUp = true
+
 app.whenReady().then(async () => {
   const port = await resolvePort()
+  if (port === null) {
+    app.quit()
+    return
+  }
   currentPort = port
   await startServer(port)
   createWindow(port)
+  startingUp = false
   buildMenu(port)
   setupAutoUpdate()
 
@@ -362,5 +471,6 @@ app.on('before-quit', (event) => {
 })
 
 app.on('window-all-closed', () => {
+  if (startingUp) return
   if (process.platform !== 'darwin') app.quit()
 })

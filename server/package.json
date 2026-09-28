@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node --watch src/index.js",
+    "dev": "cross-env PORT=8721 node --watch src/index.js",
     "start": "node src/index.js",
     "extract": "node navdata/tools/extract-navdata.js",
     "build:relief": "node scripts/buildReliefMap.js",

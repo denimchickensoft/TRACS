@@ -69,6 +69,9 @@
     "files": [
       "electron/main.js",
       "electron/preload.js",
+      "electron/portConflict.html",
+      "electron/portConflict.js",
+      "electron/portConflictPreload.js",
       "server/package.json",
       "server/src/**/*",
       "server/navdata/*.js",

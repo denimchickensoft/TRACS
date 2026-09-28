@@ -49,7 +49,7 @@ xattr -dr com.apple.quarantine /Applications/TRACS.app
 - On Windows and Linux it asks before downloading an update, then offers to restart and install it.
 - On macOS it shows a notice with a link to the release page, and you install the new `.dmg` yourself.
 
-**Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If that port becomes unavailable, TRACS picks another and tells you that saved preferences won't carry over for that session.
+**Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If another program is using that port at launch, TRACS names the program and lets you retry after closing it, use a nearby port for that session only (without your saved preferences), or quit.
 
 **Menu:**
 - **File → New Window** opens another TRACS window.
@@ -230,7 +230,7 @@ Requirements: Node.js 22+ and Git.
 
 ```bash
 npm install          # once, and after pulling dependency changes
-npm run dev          # local server on :8722 + Vite dev server on :5173 (proxies /api and /ws)
+npm run dev          # local server on :8721 + Vite dev server on :5173 (proxies /api and /ws)
 ```
 
 Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). Firefox and Safari are not supported.
