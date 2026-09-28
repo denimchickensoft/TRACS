@@ -33,10 +33,19 @@ describe('findShapedCallsign', () => {
     expect(acidOf(undefined)).toBe(null)
   })
 
-  test('two matches: the one agreeing with the DCS callsign field wins, else the first', () => {
-    expect(acidOf('VIPER21 | COLT 1-1')).toBe('VIPER21')
-    expect(acidOf('VIPER21 | COLT 1-1', 'Colt11')).toBe('COLT11')
-    expect(acidOf('VIPER21 | COLT 1-1', 'Enfield11')).toBe('VIPER21')
+  test('two matches: the DCS callsign field wins, then a separated one, then the first', () => {
+    expect(acidOf('VIPER21 | COLT11', 'Colt11')).toBe('COLT11')
+    expect(acidOf('VIPER 2-1 | COLT 1-1', 'Colt11')).toBe('COLT11')
+    expect(acidOf('VIPER21 | COLT 1-1')).toBe('COLT11')
+    expect(acidOf('VIPER21 | COLT 1-1', 'Enfield11')).toBe('COLT11')
+    expect(acidOf('VIPER 2-1 | COLT 1-1')).toBe('VIPER21')
+    expect(acidOf('VIPER21 | COLT11')).toBe('VIPER21')
+  })
+
+  test('a pilot name shaped like a callsign loses to a separated callsign', () => {
+    expect(acidOf('COLT 1-1 | DENIM12')).toBe('COLT11')
+    expect(acidOf('DENIM12 | COLT 1-1')).toBe('COLT11')
+    expect(parseUnitName('DENIM12 | COLT 1-1')).toEqual({ acid: 'COLT11', pilotName: 'DENIM12' })
   })
 
   test('a three-digit number is not a flight and element', () => {
