@@ -74,11 +74,9 @@ app.use((req, res, next) => {
   res.status(403).send('Forbidden')
 })
 
-// Content-Security-Policy, currently REPORT-ONLY: violations are logged to
-// the page's DevTools console but nothing is blocked. Once every module has
-// run with a clean console, switch the header name to
-// Content-Security-Policy to enforce it. connect-src allows any ws/wss host
-// because TRACS Relay and Nostr relay addresses are user-configured.
+// Content-Security-Policy, enforced: a blocked load shows as a "Refused to
+// ..." error in the page's DevTools console. connect-src allows any ws/wss
+// host because TRACS Relay and Nostr relay addresses are user-configured.
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
@@ -93,7 +91,7 @@ const CSP = [
   "frame-ancestors 'none'",
 ].join('; ')
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy-Report-Only', CSP)
+  res.setHeader('Content-Security-Policy', CSP)
   next()
 })
 
