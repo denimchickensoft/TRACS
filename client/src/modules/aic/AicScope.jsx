@@ -791,11 +791,9 @@ export default function AicScope() {
     if (pending && target && target.unitId !== pending) { addBraaPair(pending, target.unitId); return }
     if (pending && !target) { clearPendingBraa(); return }
 
-    // Every contact under the click, as in ABM. A click near only one
-    // contact still reaches it at the usual slew distance.
+    // Every contact under the click, as in ABM.
     if (pendingDeclaration) {
-      const hits    = resolveDeclareTargets(pos, visibleUnitsRef.current, viewRef.current)
-      const targets = hits.length > 0 ? hits : target ? [target] : []
+      const targets = resolveDeclareTargets(pos, visibleUnitsRef.current, viewRef.current)
       if (targets.length > 0) {
         for (const t of targets) setDeclaration(t.unitId, pendingDeclaration)
         setPendingDeclaration(null)
