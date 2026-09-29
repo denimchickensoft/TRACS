@@ -22,10 +22,12 @@ function makeSlugger() {
 // between different pages served by this same shared instance.
 let slugify = makeSlugger()
 
+// Renderer overrides receive the token (marked 13+): `text` is the heading's
+// raw source for the slug, `tokens` its inline content to render.
 const marked = new Marked({
   renderer: {
-    heading(text, level, raw) {
-      return `<h${level} id="${slugify(raw)}">${text}</h${level}>`
+    heading({ tokens, depth, text }) {
+      return `<h${depth} id="${slugify(text)}">${this.parser.parseInline(tokens)}</h${depth}>`
     },
   },
 })
