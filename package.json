@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@electron/fuses": "^1.8.0",
-    "@electron/rebuild": "^3.6.1",
+    "@electron/rebuild": "^4.2.0",
     "@eslint/js": "^10.0.1",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
