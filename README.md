@@ -7,23 +7,23 @@
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
-A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC, AIC, and ABM positions.
+A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC, AIC, and ABM scopes.
 
-Each controller runs TRACS on their own machine. TRACS reads unit data from one of three sources:
+Each controller runs TRACS on their own machine. TRACS reads unit data from three possible sources:
 - the [DCS Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API
 - a direct connection to Tacview's Real-Time Telemetry export
-- a **TRACS Relay** running on or near the DCS server, which connects to Tacview for you
+- a **TRACS Relay** running on or near the DCS server, which can also connect to Tacview.
 
-Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data. Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer mode needs no port forwarding and no shared server.
+Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data. Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer method requires no shared server.
 
 **Operator guides** live in [`docs/`](docs/index.md): connecting, signing in, and every module's commands.
 
 | Module | What it is |
 |---|---|
-| [ATC](docs/atc.md) | STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
-| [CATCC](docs/catcc.md) | Carrier air traffic control scope, synchronized Status Board, and Deck view |
-| [AIC](docs/aic.md) | AWACS/GCI intercept scope: declarations, BRAA list, ROE, PICTURE |
-| [ABM](docs/abm.md) | Mission-wide battle management: ATO/FRAG from `.miz` imports, IFF correlation, scope drawing, MGRS grid |
+| [ATC](docs/atc.md) | Air Traffic Control - STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
+| [CATCC](docs/catcc.md) | Carrier Air Traffic Control Center - carrier locked scope, synchronized Status Board, PAR, and Deck view |
+| [AIC](docs/aic.md) | Air Intercept Controller - AWACS/GCI focused scope, declarations, BRAA list, ROE, PICTURE |
+| [ABM](docs/abm.md) | Air Battle Manager - Mission wide : ATO/FRAG from `.miz` imports, IFF correlation, custom drawings, MGRS |
 
 ---
 
