@@ -2,6 +2,9 @@
 
 const { statusPayload, srsStatusPayload } = require('../linkStatus')
 
+// Login-screen names for the coalition values, for error messages.
+const COALITION_NAMES = { blue: 'BLUE', red: 'RED', gm: 'GAME MASTER', admin: 'ADMIN' }
+
 // Registers /api/connect and its two theatre-override/reset companions —
 // the source-type auto-detection, crash-avoidance cooldowns, and
 // mutual-exclusivity teardown that carry essentially all of routes/api.js's
@@ -126,6 +129,19 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
         && !current.isUnreachable?.()
         && current.getConfig()?.olympusUrl === sourceCfg.olympusUrl
       if (alreadyLiveOnSameConfig) {
+        // One live feed serves every window, so a login can't change its
+        // coalition (whose view and fog of war it carries) or its password.
+        // Refuse a mismatch rather than join silently. The feed only stops
+        // when TRACS quits, so that's the way to change either.
+        const live = current.getConfig()
+        const coalition = sourceCfg.coalition ?? 'blue'
+        if ((live.coalition ?? 'blue') !== coalition) {
+          const name = COALITION_NAMES[live.coalition] ?? String(live.coalition).toUpperCase()
+          return res.status(409).json({ error: `TRACS is already connected as ${name}. Close and reopen TRACS to change coalitions.` })
+        }
+        if ((live.password ?? '') !== (sourceCfg.password ?? '')) {
+          return res.status(409).json({ error: 'That password doesn’t match the one TRACS is already connected with. Close and reopen TRACS to use a different one.' })
+        }
         broadcast({ type: 'status', data: statusPayload(currentType, current.getLinkIssue?.() ?? null) })
         return res.json({ ok: true })
       }
