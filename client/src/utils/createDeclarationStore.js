@@ -5,11 +5,9 @@ import { syncStore } from './storeSync.js'
 // Shared declaration/BRAA store shape for ABM and AIC — abm.js's own comment
 // says its declarations/braaList were "ported from AIC's store/aic.js as-is."
 //
-// Each caller (abm.js/aic.js) still owns its own declarations/braaList DATA —
-// this only shares the store SHAPE and action logic; the two stores remain
-// two independent zustand instances, never reading each other's state.
-// (ROE used to be gated here via `withRoe`, but it's genuinely shared
-// cross-module state now — see store/roe.js.)
+// The two stores are separate zustand instances, but their `declarations`
+// are kept identical (see the shared declarations section below). braaList and
+// autoDeclareMode stay per module.
 export const DECLARATION = {
   HOSTILE:  'HOSTILE',
   BOGEY:    'BOGEY',
@@ -25,6 +23,40 @@ export const DECLARATION = {
 // correlation) — this store only holds the bare mode string and its
 // mutual-exclusivity/sync mechanics, not the matching logic itself.
 export const AUTO_DECLARE_MODE = { OFF: 'off', COALITION: 'coalition', IFF: 'iff' }
+
+// Declarations are one shared picture across AIC and ABM, like ROE: a
+// declaration made in either module is written to every declaration store and
+// broadcast on the session room, so every controller sees it whatever module
+// they're in. autoDeclareMode stays per module, because .autodec iff means
+// different things in each (see above), and it keeps using the module room.
+const declarationStores = []
+const { register: registerDeclarationBroadcast, broadcast: broadcastDeclaration } = createBroadcastHook()
+export { registerDeclarationBroadcast }
+
+function writeToAllStores(patchFn) {
+  for (const store of declarationStores) store.setState(patchFn)
+}
+
+// Remote DECLARATION_SET / DECLARATIONS_RESET / dump application - no re-broadcast.
+export function applySharedDeclaration(unitId, declaration) {
+  writeToAllStores(s => ({ declarations: { ...s.declarations, [unitId]: declaration } }))
+}
+
+// A reset clears every declaration everywhere, but turns off auto-declare only
+// in the module it was typed in (the sender's own store does that locally).
+export function applySharedDeclarationsReset() {
+  writeToAllStores({ declarations: {} })
+}
+
+// Additive: a dump can be a stale snapshot, so it never removes a declaration
+// this controller already has.
+export function applySharedDeclarationsDump(declarations) {
+  writeToAllStores(s => ({ declarations: { ...s.declarations, ...declarations } }))
+}
+
+export function getSharedDeclarations() {
+  return declarationStores[0]?.getState().declarations ?? {}
+}
 
 export function createDeclarationStore({ storageKey, channelName }) {
   const { register, broadcast } = createBroadcastHook()
@@ -50,16 +82,18 @@ export function createDeclarationStore({ storageKey, channelName }) {
     pendingBraaFighter: null,  // unitId awaiting second Ctrl+click
 
     setDeclaration: (unitId, declaration) => {
-      set(s => ({ declarations: { ...s.declarations, [unitId]: declaration } }))
-      broadcast('DECLARATION_SET', { unitId, declaration })
+      applySharedDeclaration(unitId, declaration)
+      broadcastDeclaration('DECLARATION_SET', { unitId, declaration })
     },
 
     // .dec (no args) — return every explicit declaration to its fog-of-war
     // default, and turn off auto-declare. Broadcast as one bulk event rather
     // than N individual DECLARATION_SET messages.
     resetDeclarations: () => {
-      set({ declarations: {}, autoDeclareMode: AUTO_DECLARE_MODE.OFF })
-      broadcast('DECLARATIONS_RESET', {})
+      applySharedDeclarationsReset()
+      set({ autoDeclareMode: AUTO_DECLARE_MODE.OFF })
+      broadcastDeclaration('DECLARATIONS_RESET', {})
+      broadcast('AUTO_DECLARE_MODE_SET', { mode: AUTO_DECLARE_MODE.OFF })
     },
 
     // .autodec / .autodec iff — mutually exclusive three-state toggle.
@@ -94,10 +128,6 @@ export function createDeclarationStore({ storageKey, channelName }) {
 
     setPendingBraaFighter: (unitId) => set({ pendingBraaFighter: unitId }),
     clearPendingBraa:      ()       => set({ pendingBraaFighter: null }),
-
-    _applyDeclaration: (unitId, declaration) => {
-      set(s => ({ declarations: { ...s.declarations, [unitId]: declaration } }))
-    },
 
     _applyAutoDeclareMode: (mode) => set({ autoDeclareMode: mode }),
 
@@ -138,27 +168,33 @@ export function createDeclarationStore({ storageKey, channelName }) {
     }))
   }
 
-  function applyDeclaration(unitId, declaration) {
-    useStore.getState()._applyDeclaration(unitId, declaration)
-  }
+  declarationStores.push(useStore)
 
   function applyAutoDeclareMode(mode) {
     useStore.getState()._applyAutoDeclareMode(mode)
   }
 
+  // The module part of a STATE_DUMP. Declarations themselves arrive in every
+  // module's dump and are applied through applySharedDeclarationsDump().
   function applyStateDump(payload) {
-    const patch = {}
-    if (payload.declarations) patch.declarations = payload.declarations
-    if (payload.autoDeclareMode !== undefined) patch.autoDeclareMode = payload.autoDeclareMode
-    useStore.setState(patch)
+    if (payload.autoDeclareMode !== undefined) useStore.setState({ autoDeclareMode: payload.autoDeclareMode })
   }
 
-  function applyDeclarationsReset() {
-    useStore.setState({ declarations: {}, autoDeclareMode: AUTO_DECLARE_MODE.OFF })
+  // Module-room DECLARATION_SET / DECLARATIONS_RESET, as sent by clients from
+  // before declarations moved to the session room. Their reset also turned
+  // auto-declare off in the sender's module.
+  function applyModuleDeclaration(unitId, declaration) {
+    applySharedDeclaration(unitId, declaration)
+  }
+
+  function applyModuleDeclarationsReset() {
+    applySharedDeclarationsReset()
+    useStore.setState({ autoDeclareMode: AUTO_DECLARE_MODE.OFF })
   }
 
   return {
     useStore, register,
-    applyDeclaration, applyAutoDeclareMode, applyStateDump, applyDeclarationsReset,
+    applyDeclaration: applyModuleDeclaration, applyAutoDeclareMode, applyStateDump,
+    applyDeclarationsReset: applyModuleDeclarationsReset,
   }
 }

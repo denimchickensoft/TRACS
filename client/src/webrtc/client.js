@@ -9,6 +9,10 @@ import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/a
 import { useAbmStore, registerAbmBroadcast, applyAbmStateDump } from '../store/abm.js'
 import { registerAbmMissionBroadcast } from '../store/abmMission.js'
 import { useRoeStore, registerRoeBroadcast, applyRoe } from '../store/roe.js'
+import {
+  registerDeclarationBroadcast, applySharedDeclaration, applySharedDeclarationsReset,
+  applySharedDeclarationsDump, getSharedDeclarations,
+} from '../utils/createDeclarationStore.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
 import { applyCallsignRenameRemote } from '../utils/callsignRename.js'
@@ -322,10 +326,6 @@ function amHost() {
   return sorted[0]?.peerId === selfId
 }
 
-function oldestPeerOfModule(mod) {
-  return effectiveClientList().filter(c => c.module === mod)[0]?.peerId ?? null
-}
-
 function syncPeers() {
   useSessionStore.getState().setPeers([...clientList])
   useControllersStore.getState().rebuildFromClientList(clientList)
@@ -366,14 +366,14 @@ function buildDump(mod) {
     // ROE is shared cross-module state (AIC and ABM), not module-scoped —
     // included in every dump so a peer joining ANY module sees it.
     roe: useRoeStore.getState().roe,
+    // Declarations are shared by AIC and ABM, the same as ROE.
+    declarations: { ...getSharedDeclarations() },
   }
   if (mod === 'AIC') {
-    const aic = useAicStore.getState()
-    return { ...base, declarations: { ...aic.declarations }, autoDeclareMode: aic.autoDeclareMode }
+    return { ...base, autoDeclareMode: useAicStore.getState().autoDeclareMode }
   }
   if (mod === 'ABM') {
-    const abm = useAbmStore.getState()
-    return { ...base, declarations: { ...abm.declarations }, autoDeclareMode: abm.autoDeclareMode }
+    return { ...base, autoDeclareMode: useAbmStore.getState().autoDeclareMode }
   }
   if (mod === 'ATC') {
     const fps = useFlightPlansStore.getState()
@@ -401,15 +401,40 @@ function buildDump(mod) {
 }
 
 // Sends a module's STATE_DUMP to a specific newly-appeared peer, iff we're the
-// oldest currently-connected member of that module — module data authority is
-// independent of session-host/registry authority (see the HANDSHAKE case and
-// the relay onRegistryUpdate handler in initWebrtc, both of which call this).
-// oldestPeerOfModule() is deterministic and gives the same single peerId to
-// everyone computing it, so this can't double-send.
-async function maybeSendModuleDump(mod, toPeerId) {
-  if (oldestPeerOfModule(mod) !== selfId) return
-  const dump = await buildDump(mod)
-  const dumpMsg = envelope('STATE_DUMP', dump)
+// oldest currently-connected member of that module other than the joiner —
+// module data authority is independent of session-host/registry authority (see
+// the HANDSHAKE case and the relay onRegistryUpdate handler in initWebrtc, both
+// of which call this). The choice is made from the shared, connectedAt-sorted
+// client list, so every peer picks the same single sender and it can't
+// double-send.
+//
+// When nobody else is in the joiner's module, there's no module state to hand
+// over, but the cross-module state (declarations, ROE, callsign overrides,
+// registry) still has to reach them. The oldest other peer then sends just
+// that, as SHARED_STATE_DUMP: a separate message type so that no receiver runs
+// the module-apply functions on it (applyAtcDump/applyCatccDump replace flight
+// plans and ownership outright, so an empty module dump would wipe them).
+//
+// A dump only ever flows from an older peer to a newer one (targetJoinedAt is
+// the target's roomJoinedAt). A newcomer evaluates this for every peer it meets
+// while its own client list is still incomplete, and could otherwise pick
+// itself as the sender and overwrite an established peer's state with its own
+// empty stores.
+async function maybeSendModuleDump(mod, toPeerId, targetJoinedAt) {
+  const me = clientList.find(c => c.peerId === selfId)
+  const myJoinedAt = me?.roomJoinedAt ?? me?.connectedAt
+  if (targetJoinedAt == null || myJoinedAt == null || targetJoinedAt <= myJoinedAt) return
+  const others = effectiveClientList().filter(c => c.peerId !== toPeerId)
+  const moduleHolder = others.find(c => c.module === mod)
+  if (moduleHolder) {
+    if (moduleHolder.peerId !== selfId) return
+    const dumpMsg = envelope('STATE_DUMP', await buildDump(mod))
+    logMsg('→ session', dumpMsg, toPeerId)
+    sendSession?.(dumpMsg, toPeerId)
+    return
+  }
+  if (others[0]?.peerId !== selfId) return
+  const dumpMsg = envelope('SHARED_STATE_DUMP', await buildDump(null))
   logMsg('→ session', dumpMsg, toPeerId)
   sendSession?.(dumpMsg, toPeerId)
 }
@@ -496,6 +521,7 @@ function applyDump(mod, payload) {
       useAtcStore.setState({ callsignOverrides: payload.callsignOverrides })
     }
     if (payload.roe !== undefined) applyRoe(payload.roe)
+    if (payload.declarations) applySharedDeclarationsDump(payload.declarations)
   } finally {
     _applying = false
   }
@@ -646,12 +672,12 @@ async function onSessionMessage(msg, fromPeerId) {
       // along in every module's dump via buildDump()'s `base`, so the peer
       // who actually holds a module's data must answer, not necessarily the
       // global host, who may belong to an entirely different module and
-      // never have touched it. (oldestPeerOfModule() is deterministic and
-      // gives the same single peerId to everyone computing it, so this can't
-      // double-send.) Every peer evaluates this off the broadcast HANDSHAKE,
+      // never have touched it. If nobody else is in the joiner's module, the
+      // oldest other peer sends the cross-module state alone (see
+      // maybeSendModuleDump). Every peer evaluates this off the broadcast HANDSHAKE,
       // not just the host, and it must run before the host-only section
       // below so a non-host oldest-module-peer still gets to send it.
-      await maybeSendModuleDump(msg.payload.module, fromPeerId)
+      await maybeSendModuleDump(msg.payload.module, fromPeerId, senderRoomJoinedAt)
 
       // Non-hosts must not upsert the raw requested position — if it collides with
       // an existing peer's position string, rebuildFromClientList would overwrite that
@@ -662,7 +688,7 @@ async function onSessionMessage(msg, fromPeerId) {
       // We're about to broadcast ourselves as the authoritative host — make
       // sure our own entry is finalized first (covers the legitimate
       // first/only-controller case; see ensureSelfRegistered above).
-      // Deliberately not called from maybeSendModuleDump/oldestPeerOfModule
+      // Deliberately not called from maybeSendModuleDump
       // above — that authority is module-scoped and independent of
       // session-host/registry authority, and finalizing there would reopen
       // the exact self-mint race this is closing.
@@ -756,6 +782,14 @@ async function onSessionMessage(msg, fromPeerId) {
       break
     }
 
+    // Cross-module state only (see maybeSendModuleDump): a null module skips
+    // every module-apply step in applyDump.
+    case 'SHARED_STATE_DUMP': {
+      applyDump(null, msg.payload)
+      useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
+      break
+    }
+
     case 'CLIENT_LIST_UPDATE': {
       // Defensive: no client ever sends this on the relay transport anymore
       // (see startDisconnectTimer's matching guard) — the relay's own
@@ -807,6 +841,16 @@ async function onSessionMessage(msg, fromPeerId) {
 
     case 'ROE_SET': {
       applyRoe(msg.payload.roe)
+      break
+    }
+
+    case 'DECLARATION_SET': {
+      applySharedDeclaration(msg.payload.unitId, msg.payload.declaration)
+      break
+    }
+
+    case 'DECLARATIONS_RESET': {
+      applySharedDeclarationsReset()
       break
     }
 
@@ -872,6 +916,7 @@ if (IS_POPUP) {
   registerAbmBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   registerAbmMissionBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   registerRoeBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
+  registerDeclarationBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
 } else {
   outboundChannel.onmessage = ({ data }) => {
     if (!data) return
@@ -1055,9 +1100,10 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     registerAbmBroadcast((type, payload) => sendWebrtcEvent(type, payload))
     registerAbmMissionBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   }
-  // ROE is cross-module (session-room) state, registered regardless of
-  // active module — see store/roe.js.
+  // ROE and declarations are cross-module (session-room) state, registered
+  // regardless of active module — see store/roe.js and createDeclarationStore.js.
   registerRoeBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
+  registerDeclarationBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
 
   if (usingSyncRelay) {
     // The relay is the sole registry authority on this transport — no local
@@ -1086,7 +1132,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
       }
 
       for (const c of relayClientList) {
-        if (!previousPeerIds.has(c.peerId)) maybeSendModuleDump(c.module, c.peerId)
+        if (!previousPeerIds.has(c.peerId)) maybeSendModuleDump(c.module, c.peerId, c.roomJoinedAt ?? c.connectedAt)
       }
     })
 

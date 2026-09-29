@@ -2,9 +2,9 @@ import { DECLARATION, createDeclarationStore } from '../utils/createDeclarationS
 
 export { DECLARATION }
 
-// ABM's declarations/BRAA state was ported from AIC's store/aic.js as-is —
-// own room, NOT shared with AIC's declarations. ROE, however, IS shared between AIC and ABM — it lives in its own
-// cross-module store/roe.js, not here.
+// ABM's declaration/BRAA store, built from the same factory as AIC's.
+// Declarations are shared with AIC (see createDeclarationStore.js); BRAA and
+// auto-declare mode are ABM's own. ROE is shared too, in store/roe.js.
 const {
   useStore: useAbmStore,
   register: registerAbmBroadcast,

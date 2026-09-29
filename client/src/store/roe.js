@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 
 // ROE is genuine cross-module state: AIC and ABM controllers share one
-// FREE/TIGHT/HOLD value. Unlike declarations/autoDeclareMode (module-room,
-// see createDeclarationStore.js), ROE broadcasts on the session room via
+// FREE/TIGHT/HOLD value. Like declarations (but unlike autoDeclareMode, which
+// stays module-room; see createDeclarationStore.js), ROE broadcasts on the session room via
 // webrtc/client.js's registerRoeBroadcast wiring — reaching every connected
 // controller regardless of active module, same as CALLSIGN_RENAME.
 export const ROE_STATE = {

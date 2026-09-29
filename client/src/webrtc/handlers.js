@@ -169,7 +169,9 @@ function handleAic(type, payload) {
   }
 }
 
-// ABM keeps its own independent declaration state — NOT synced with AIC's.
+// DECLARATION_SET / DECLARATIONS_RESET now travel on the session room (see
+// createDeclarationStore.js); the module-room cases here and in handleAic
+// handle clients from before that change, and apply to both modules' stores.
 function handleAbm(type, payload) {
   switch (type) {
     case 'DECLARATION_SET':
