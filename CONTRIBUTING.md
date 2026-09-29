@@ -1,6 +1,6 @@
 # Contributing to TRACS
 
-Thanks for your interest in improving TRACS. Bug reports, fixes and features are all welcome.
+Thanks for your interest in improving TRACS. Bug reports are welcome. Fixes and features are considered case by case, so for anything big, open an issue first and we can talk it over before you put the work in.
 
 ## Getting set up
 

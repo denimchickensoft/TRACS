@@ -4,6 +4,8 @@
 
 Carrier air traffic control: a radar scope with a text command line, a synchronized Status Board, a PAR, and a Deck view for visual traffic on and around the carrier.
 
+![CATCC scope with the Status Board](images/catcc.png)
+
 ## Side numbers and correlation
 
 A track's side number comes from the Status Board. TRACS matches each Status Board row to a live unit, either by the unit the row was created from (rows added with Ctrl+Click) or by callsign. What the datablock's first line shows depends on whether the unit is SRS-fielded (has reported SRS transponder data through a relay):
@@ -121,6 +123,8 @@ An event/recovery board shared by every CATCC position over the session's sync t
 ## Deck
 
 A top-down carrier deck view for visual traffic near the boat.
+
+![Deck view with aircraft on the carrier](images/catcc-deck.png)
 
 - **Mouse wheel** — zoom (1x–4x; 1x is fit-to-panel)
 - **Right-click + drag** — pan

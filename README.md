@@ -7,9 +7,12 @@
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
+![TRACS ATC, CATCC, AIC and ABM scopes](.github/images/hero.png)
+
 A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC, AIC, and ABM scopes.
 
 Each controller runs TRACS on their own machine. TRACS reads unit data from three possible sources:
+
 - the [DCS Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API
 - a direct connection to Tacview's Real-Time Telemetry export
 - a **TRACS Relay** running on or near the DCS server, which can also relay Tacview data
@@ -18,12 +21,12 @@ Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data
 
 **Operator guides** live in [`docs/`](docs/index.md): connecting, signing in, and every module's commands.
 
-| Module | What it is |
-|---|---|
-| [ATC](docs/atc.md) | Air Traffic Control — STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
+| Module                 | What it is                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| [ATC](docs/atc.md)     | Air Traffic Control — STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
 | [CATCC](docs/catcc.md) | Carrier Air Traffic Control Center — Carrier locked scope, synchronized Status Board, PAR, and Deck view |
-| [AIC](docs/aic.md) | Air Intercept Controller — AWACS/GCI focused scope, declarations, BRAA list, ROE, PICTURE |
-| [ABM](docs/abm.md) | Air Battle Manager — Mission-wide: ATO/FRAG from `.miz` imports, IFF correlation, custom drawings, MGRS |
+| [AIC](docs/aic.md)     | Air Intercept Controller — AWACS/GCI focused scope, declarations, BRAA list, ROE, PICTURE                |
+| [ABM](docs/abm.md)     | Air Battle Manager — Mission-wide: ATO/FRAG from `.miz` imports, IFF correlation, custom drawings, MGRS  |
 
 ---
 
@@ -31,11 +34,11 @@ Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data
 
 Download the installer for your platform from the latest `v*` release on the [Releases page](https://github.com/denimchickensoft/TRACS/releases):
 
-| Platform | Package |
-|---|---|
-| Windows | NSIS installer (`.exe`) |
-| macOS | `.dmg` (universal: Apple Silicon and Intel) |
-| Linux | `.AppImage` |
+| Platform | Package                                     |
+| -------- | ------------------------------------------- |
+| Windows  | NSIS installer (`.exe`)                     |
+| macOS    | `.dmg` (universal: Apple Silicon and Intel) |
+| Linux    | `.AppImage`                                 |
 
 The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will warn on first launch.
 
@@ -46,37 +49,41 @@ xattr -dr com.apple.quarantine /Applications/TRACS.app
 ```
 
 **Updates:** TRACS checks GitHub Releases at launch.
+
 - On Windows and Linux it asks before downloading an update, then offers to restart and install it.
 - On macOS it shows a notice with a link to the release page, and you install the new `.dmg` yourself.
 
 **Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If another program is using that port at launch, TRACS names the program and lets you retry after closing it, use a nearby port for that session only (without your saved preferences), or quit. The remembered port is stored in `port.json` in the app data folder (see below).
 
 **Menu:**
+
 - **File → New Window** opens another TRACS window.
 - **File → Open Logs Folder** shows the log file.
 - **File → Open Config Folder** shows the config files described below.
 
 **App data folder:** TRACS keeps its per-user files here: `port.json`, the `config` folder, the navigation data cache, and saved scope state.
 
-| Platform | App data | Log file |
-|---|---|---|
-| Windows | `%APPDATA%\tracs\` | `%APPDATA%\tracs\logs\main.log` |
-| macOS | `~/Library/Application Support/tracs/` | `~/Library/Logs/tracs/main.log` |
-| Linux | `~/.config/tracs/` | `~/.config/tracs/logs/main.log` |
+| Platform | App data                               | Log file                        |
+| -------- | -------------------------------------- | ------------------------------- |
+| Windows  | `%APPDATA%\tracs\`                     | `%APPDATA%\tracs\logs\main.log` |
+| macOS    | `~/Library/Application Support/tracs/` | `~/Library/Logs/tracs/main.log` |
+| Linux    | `~/.config/tracs/`                     | `~/.config/tracs/logs/main.log` |
 
 **Navigation data (LittleNavMap):**
+
 - The installer bundles theatre geography, terrain, elevation, and airport data.
-- Fixes, navaids, airways, and procedures come from your own LittleNavMap Navigraph database (a `.sqlite` file).
+- Fixes, navaids, airways, and procedures come from your own [LittleNavMap](https://albar965.github.io/littlenavmap.html) Navigraph database (a `.sqlite` file).
 - On launch, if no database is configured, TRACS explains what it needs and lets you pick the file, skip for now, or stop being asked. It extracts the data, and at each later launch re-extracts automatically if the file has changed.
 - Without a database, those layers are unavailable (fix and procedure commands reply `NO NAVDATA`) and everything else works.
 - To set or change the database later, open **Settings → Navigation data → Change…**. The new data takes effect the next time you sign in to a position.
 
 **Config files:**
+
 - TRACS stores a few hand-editable config files in the `config` folder inside the app data folder. They're seeded from bundled defaults on first launch, and never overwritten once present, so your edits survive every update.
-- `rateConfig.json` — radar scan-rate cadence (unit position/detection refresh intervals) for direct-mode Olympus/Tacview connections.
+- `rateConfig.json` — radar scan-rate cadence (unit position/detection refresh intervals) for direct-mode Olympus/Tacview connections. Each value is 1000-60,000 ms; anything below 1000 is raised to 1000.
 - `tacviewDetectionConfig.json` — synthetic radar-detection model tuning for Tacview-sourced connections (sensor ranges, RWR behavior, scan cone).
 - `airspace_colors.json` / `asdex_colors.json` — STARS/ASDE-X display color palettes.
-- Edits take effect immediately, no restart needed.
+- `rateConfig.json` and `tacviewDetectionConfig.json` are read when TRACS connects to its data source, so edits take effect the next time you sign in (or restart TRACS). The color files apply the next time a scope loads.
 - There is no in-app editor for these — edit the JSON files directly. Use **File → Open Config Folder** to find them.
 
 Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
@@ -133,29 +140,29 @@ Controllers enter the relay's port as **Relay Port**. The relay must be reachabl
 
 Each key falls back to the environment variable listed, then to the default.
 
-| Key | Env var | Default | Meaning |
-|---|---|---|---|
-| `srsLotatcPort` | `SRS_LOTATC_PORT` | `10712` | UDP port the relay listens on for SRS's LotATC export |
-| `wsPort` | `RELAY_WS_PORT` | `8765` | WebSocket port controllers connect to |
-| `tacviewHost` | `TACVIEW_HOST` | `''` | Tacview RTT host. Leave empty to disable the Tacview capability |
-| `tacviewPort` | `TACVIEW_PORT` | `42674` | Tacview RTT port |
-| `tacviewPassword` | `TACVIEW_PASSWORD` | `''` | Tacview's own RTT password |
-| `passwords` | — | `{}` | Per-coalition passwords, e.g. `{ "blue": "…", "red": "…" }`. A client must supply the password for the coalition it connects as. Empty means no password is required |
-| `unitUpdateMs` | `UNIT_UPDATE_MS` | `1000` | Radar update interval pushed to controllers in Relay mode (`config.example.json` uses `4000`) |
-| `detectionMs` | `DETECTION_MS` | `1000` | Detection update interval (example: `4000`) |
-| `missileDetectionMs` | `MISSILE_DETECTION_MS` | `1000` | Missile detection update interval (example: `4000`) |
-| `autoUpdate.mode` | — | `window` | `notify`, `immediate`, or `window` (see below) |
-| `autoUpdate.window` | — | `04:00`–`05:00` America/New_York | `{ start, end, timezone }` daily maintenance window for `window` mode |
+| Key                  | Env var                | Default                          | Meaning                                                                                                                                                              |
+| -------------------- | ---------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `srsLotatcPort`      | `SRS_LOTATC_PORT`      | `10712`                          | UDP port the relay listens on for SRS's LotATC export                                                                                                                |
+| `wsPort`             | `RELAY_WS_PORT`        | `8765`                           | WebSocket port controllers connect to                                                                                                                                |
+| `tacviewHost`        | `TACVIEW_HOST`         | `''`                             | Tacview RTT host. Leave empty to disable the Tacview capability                                                                                                      |
+| `tacviewPort`        | `TACVIEW_PORT`         | `42674`                          | Tacview RTT port                                                                                                                                                     |
+| `tacviewPassword`    | `TACVIEW_PASSWORD`     | `''`                             | Tacview's own RTT password                                                                                                                                           |
+| `passwords`          | —                      | `{}`                             | Per-coalition passwords, e.g. `{ "blue": "…", "red": "…" }`. A client must supply the password for the coalition it connects as. Empty means no password is required |
+| `unitUpdateMs`       | `UNIT_UPDATE_MS`       | `1000`                           | Radar update interval pushed to controllers in Relay mode, 1000-60,000 ms (`config.example.json` uses `4000`)                                                        |
+| `detectionMs`        | `DETECTION_MS`         | `1000`                           | Detection update interval, 1000-60,000 ms (example: `4000`)                                                                                                          |
+| `missileDetectionMs` | `MISSILE_DETECTION_MS` | `1000`                           | Missile detection update interval, 1000-60,000 ms (example: `4000`)                                                                                                  |
+| `autoUpdate.mode`    | —                      | `window`                         | `notify`, `immediate`, or `window` (see below)                                                                                                                       |
+| `autoUpdate.window`  | —                      | `04:00`–`05:00` America/New_York | `{ start, end, timezone }` daily maintenance window for `window` mode                                                                                                |
 
 ### Relay updates
 
 The executable checks GitHub Releases for newer `relay-v*` versions at startup and every 15 minutes:
 
-| `autoUpdate.mode` | When a new version is found |
-|---|---|
-| `notify` | Logs that an update is available and does nothing else |
-| `immediate` | Downloads it, swaps the executable in place, and exits |
-| `window` | Does the same as `immediate`, but only inside the daily maintenance window |
+| `autoUpdate.mode` | When a new version is found                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `notify`          | Logs that an update is available and does nothing else                     |
+| `immediate`       | Downloads it, swaps the executable in place, and exits                     |
+| `window`          | Does the same as `immediate`, but only inside the daily maintenance window |
 
 The relay exits after swapping, so run it under a supervisor that restarts it (see [Running as a service](#running-as-a-service)).
 
@@ -237,64 +244,96 @@ TRACS and the relay exchange a protocol version when they connect. If they don't
 ## FAQ
 
 ### Applications like LotATC & Combined Ops already exist. Why use TRACS?
-*(answer)*
+
+_First of all, those apps are great and you should support them. I own a LotATC license and have used it for years. TRACS was created in an attempt to remove barriers to entry for DCS participation. Some servers try to keep the amount of DCS-adjacent software running limited for performance reasons. I looked at common existing software that was already running on these servers and how I could interface with those to add new, easily accessible gameplay dimensions. That's how I decided on Olympus and Tacview. TRACS requires no additional software to be installed server-side and is decentralized. As long as the server allows connection to either of those two data sources, a user can connect and participate. No sign-ups, no action required by the server owner, and completely free and open source._
+
+### How is TRACS different from other similar programs?
+
+_Besides the aforementioned decentralization, I feel like other clients provide a one-size-fits-all approach to what are essentially very different control paradigms (ATC, CATCC, AIC, and ABM). TRACS was an attempt to rectify that. Each module is based (at least visually) on real-world systems._
 
 ### Is TRACS free? Will it stay free?
-*(answer)*
+
+_TRACS will always remain free and open source. Donations are not accepted at this time._
 
 ### Do I need to own DCS, or any modules, to use TRACS?
-*(answer)*
+
+_No. All that is required is the ability to access a DCS server running Olympus or Tacview RTT._
 
 ### Can I use TRACS in single-player?
-*(answer)*
+
+_Yes._
 
 ### I control on VATSIM with CRC. Will TRACS feel familiar?
-*(answer)*
+
+_Yes. The ATC module was designed with that premise in mind._
 
 ### Is TRACS affiliated with Eagle Dynamics, Tacview, DCS Olympus, SRS, or vNAS?
-*(answer)*
+
+_TRACS is not affiliated with any other software or organization._
 
 ### Which data source should I use: Olympus, Tacview, or a Relay?
-*(answer)*
+
+_This depends on your use case. Olympus vs Tacview is mainly server owner preference. TRACS Relay allows the dissemination of transponder data, which adds an additional realism/gameplay dimension, and can be used concurrently with Olympus or a direct Tacview connection. It also allows the server owner to limit direct connections to Tacview while still relaying that data._
+
+_TRACS was originally designed with Olympus in mind._
+
+_Tacview RTT is also only available with Tacview Advanced or Enterprise, and thus not free._
 
 ### Does the server admin have to install anything?
-*(answer)*
+
+_No. Server owners can optionally install TRACS Relay to allow access to SRS transponder data and centralize the controller-to-controller communication._
 
 ### Do I need a LittleNavMap / Navigraph subscription?
-*(answer)*
+
+_No. It is not required for the software to function, but it is where TRACS derives a lot of navigation data. LittleNavMap (LNM) is free and open-source software that contains a Navigraph-sourced, but expired, navigation database. A user with a Navigraph subscription can update their LNM database, and thus TRACS can utilize the updated data. It is also great software._
 
 ### Do controllers need to be in SRS to use TRACS?
-*(answer)*
+
+_No. SRS is only utilized server-side for player transponder data when TRACS Relay is running. DCS does not expose the transponder data, so SRS must be used for that. The communication paradigm can be anything the players want to utilize._
 
 ### How many controllers can connect at once?
-*(answer)*
+
+_In theory, as many as necessary for the mission._
 
 ### Does TRACS work on the server's own machine, or does it have to be a separate PC?
-*(answer)*
+
+_TRACS can run on the server as well._
 
 ### Can I control both coalitions, or be a Game Master?
-*(answer)*
+
+_Game Master and Admin sessions are available and see both sides. On a relay, though, TRACS currently joins only one coalition's controller sync at a time; joining both is on the roadmap._
 
 ### How realistic are the scopes? Are they meant to match real-world systems?
-*(answer)*
+
+_The STARS system is heavily documented and simulated by various games and software, so the ATC module is steeped in realism. The other systems are all visually modeled on real-world systems to some extent; however, those systems are not publicly documented and in some cases, I'm sure, classified._
 
 ### Why don't I see some aircraft on my scope?
-*(answer)*
+
+_Depending on how you're connected, there are various detection schemes. Olympus exposes DCS's actual detection paradigm, so that is what should be reflected on your scope. A mock-detection scheme was devised for the Tacview data source, since it does not implement one. It uses DCS-derived data, line of sight, and various physics models to approximate the DCS detection model, with some limitations._
 
 ### Can pilots see what controllers are doing, or file flight plans?
-*(answer)*
+
+_Since it is decentralized, TRACS currently only receives data from DCS. A future Relay data source is planned that may change that._
+
+_Flight plans can currently be imported from a `.miz`, `.csv`, or `.dtc` file._
 
 ### Does TRACS affect server performance or the pilots' frame rates?
-*(answer)*
+
+_TRACS should have only a negligible effect on a DCS server's performance. It can't poll faster than 1Hz and it doesn't touch DCS directly._
 
 ### How do I report a bug or request a feature?
-*(answer)*
+
+_Open an issue on GitHub and pick the **Bug report** or **Feature request** template. For bugs, attach your log file (**File → Open Logs Folder**, then `main.log`); it makes most problems much faster to track down. Please report security problems privately instead; see [SECURITY.md](SECURITY.md)._
 
 ### Can I contribute?
-*(answer)*
+
+_Maybe. Bug fixes and features are considered. Read [CONTRIBUTING.md](CONTRIBUTING.md) first for setup and the checks a pull request needs to pass. For anything big, open an issue first so we can talk it over before you put the work in._
 
 ### Is this "AI slop"?
-*(answer)*
+
+_You decide. This project did begin as an AI experiment. 100% of the code was created by AI. I'm gonna say yes._
+
+![AI slop](.github/images/aislop.jpg)
 
 ---
 
@@ -309,15 +348,15 @@ npm run dev          # local server on :8721 + Vite dev server on :5173 (proxies
 
 Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). Firefox and Safari are not supported.
 
-| Command | What it does |
-|---|---|
-| `npm run build` then `npm start` | Build the client and serve it from the local server on `http://localhost:8722` |
-| `npm run electron:dev` | Build the client and run it inside Electron, as the desktop app does |
-| `npm run dist:electron` | Build an installer for the current platform into `dist-electron/` (stages bundled navdata first) |
-| `npm run lint` | ESLint, plus a check that the generated copies of shared server files are in sync |
-| `npm test` | Unit tests (Vitest; tests live in `test/`) |
-| `npm run knip` | Unused files/exports/dependencies report |
-| `npm run sync:tacview-core` | Regenerate the relay's and client's copies of shared server files (Tacview parser, protocol version, detection-config example) |
+| Command                          | What it does                                                                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run build` then `npm start` | Build the client and serve it from the local server on `http://localhost:8722`                                                 |
+| `npm run electron:dev`           | Build the client and run it inside Electron, as the desktop app does                                                           |
+| `npm run dist:electron`          | Build an installer for the current platform into `dist-electron/` (stages bundled navdata first)                               |
+| `npm run lint`                   | ESLint, plus a check that the generated copies of shared server files are in sync                                              |
+| `npm test`                       | Unit tests (Vitest; tests live in `test/`)                                                                                     |
+| `npm run knip`                   | Unused files/exports/dependencies report                                                                                       |
+| `npm run sync:tacview-core`      | Regenerate the relay's and client's copies of shared server files (Tacview parser, protocol version, detection-config example) |
 
 **LittleNavMap database in dev:** set the `LNM_DB_PATH` environment variable to your `.sqlite` file before starting the server. The Electron file picker doesn't exist in a browser.
 
@@ -346,10 +385,10 @@ Connect TRACS to `http://localhost:4001` in Olympus mode, with any password.
 
 Releases are built by GitHub Actions when a version tag is pushed. The tag is the only source of the version number; the workflows write it into `package.json` at build time, so never edit `version` by hand.
 
-| Tag | Workflow | Produces |
-|---|---|---|
-| `vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS universal dmg (plus the zip that macOS update checks read), and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-22.04 and published directly (not as a draft) to one GitHub Release by electron-builder. This release is what installed apps update from |
-| `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TRACS-Relay.exe` (Windows), `TRACS-Relay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from. Relay releases are never marked as the repo's "latest" release, because installed TRACS apps find their updates through that pointer |
+| Tag            | Workflow                              | Produces                                                                                                                                                                                                                                                                                                |
+| -------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vX.Y.Z`       | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS universal dmg (plus the zip that macOS update checks read), and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-22.04 and published directly (not as a draft) to one GitHub Release by electron-builder. This release is what installed apps update from |
+| `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TRACS-Relay.exe` (Windows), `TRACS-Relay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from. Relay releases are never marked as the repo's "latest" release, because installed TRACS apps find their updates through that pointer    |
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0
@@ -381,6 +420,12 @@ No code-signing certificate is used for any platform.
   - Peer discovery uses the public Nostr relay network.
   - If no Nostr relay connects within ~8 s, it falls back to the controller's own local server, which only connects windows on the same machine (see [Known limitations](#known-limitations)).
 - Sync rooms are coalition-scoped. A relay-hosted room is keyed on coalition, since each relay serves one mission. A peer-to-peer room is derived from the server address, the coalition, and the optional session password.
+
+---
+
+## Special thanks
+
+Leroy, Alablm, Maple, IndyNavy, & the [Olympus](https://github.com/Pax1601/DCSOlympus) crew.
 
 ---
 

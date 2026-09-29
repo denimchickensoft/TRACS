@@ -4,6 +4,8 @@
 
 Approach/departure radar display with a STARS-style command line, plus three sub-tools: **ASDE-X** (ground radar), **PAR** (precision approach radar), and **Strip Bay**.
 
+![ATC STARS scope at Al Minhad approach, with the Strip Bay](images/atc-stars.png)
+
 ## Command line basics
 
 Commands are typed into the preview buffer, then resolved one of two ways:
@@ -336,6 +338,8 @@ These act immediately, without the buffer:
 
 A ground-movement sub-scope showing surface traffic (aircraft/helicopters below ~200 ft AGL) on taxiways and ramps.
 
+![ASDE-X at Al Minhad with three datablocks](images/atc-asdex.png)
+
 **Commands:**
 
 | Command | Effect |
@@ -374,6 +378,8 @@ The fix field shows the first three letters of the first known fix in the flight
 ## PAR (precision approach radar)
 
 A form-driven panel with no command line.
+
+![PAR in airfield mode with an aircraft on final](images/atc-par.png)
 
 - **AIRFIELD / CARRIER** buttons switch mode. CARRIER is enabled only when a carrier is known (docked under CATCC, or via URL parameter).
 - Pick a **runway** (airfield mode) to auto-fill lat/lng/heading/elevation, or enter them manually.

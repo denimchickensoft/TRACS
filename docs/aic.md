@@ -4,6 +4,8 @@
 
 Tactical display for airborne intercept control — AWACS/GCI style: bullseye-centered scope, hostile/friendly declaration, BRAA pairing, ROE tracking, and a doctrinal PICTURE readout (formation/group detection modeled on AWACS brevity doctrine).
 
+![AIC scope with a declared hostile group, PICTURE and BRAA list](images/aic.png)
+
 Sign-in requires a Callsign and Frequency — see [Getting Started](getting-started.md).
 
 ## SRS transponder data (Mode 4 IFF)

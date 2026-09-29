@@ -4,6 +4,8 @@
 
 Mission-wide package tracking: a radar scope with map and reference layers, an ATO summary of every tasked flight, a FRAG drawer for per-package detail, and custom drawing overlays.
 
+![ABM scope with declarations and the ATO drawer](images/abm.png)
+
 Sign-in requires a Callsign and Frequency, same as AIC — see [Getting Started](getting-started.md).
 
 ## SRS transponder data (IFF correlation)
