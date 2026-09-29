@@ -272,7 +272,7 @@ export function Par({
       // Carrier mode: show correlated side number or XXX. Airfield: resolve callsign per toggle.
       const label = mode === 'carrier'
         ? (correlations[String(id)] ?? 'XXX')
-        : resolveCallsign(unit).slice(0, 8)
+        : resolveCallsign(unit)
       results.push({ id, label, ...proj })
     }
     return results
