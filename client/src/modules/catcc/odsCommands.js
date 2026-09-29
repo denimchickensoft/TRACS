@@ -13,7 +13,6 @@
 
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
-import { useControllersStore } from '../../store/controllers.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { saveCatccPrefs }      from '../../store/catccPrefs.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
@@ -22,6 +21,7 @@ import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
 import { applyCallsignChange } from '../../utils/callsignRename.js'
 import { navdataNotFound } from '../../store/lnm.js'
+import { getMyControllerId, getKnownControllerIds } from '../../utils/myControllerId.js'
 
 const WINDOW_ID = 'catcc-main'
 
@@ -32,11 +32,6 @@ function register(verb, fn) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getMyControllerId() {
-  const pos = useSessionStore.getState().positionName
-  return useControllersStore.getState().registry[pos]?.controllerId ?? null
-}
 
 function findUnit(id, { visibleUnits, correlations }) {
   // Side number first
@@ -125,12 +120,7 @@ register('HO', (parts, ctx) => {
   const controllerId = getMyControllerId()
   if (ownership[target.unitId] !== controllerId) return ['ILL TRK']
   if (tcp === controllerId) return ['ILL POS']
-  const knownIds = new Set(
-    Object.values(useControllersStore.getState().registry)
-      .map((e) => e.controllerId)
-      .filter(Boolean)
-  )
-  if (!knownIds.has(tcp)) return [`ILL POS: ${tcp}`]
+  if (!getKnownControllerIds().has(tcp)) return [`ILL POS: ${tcp}`]
   setHandoff(target.unitId, { state: HANDOFF_STATE.INITIATED, from: controllerId, to: tcp })
   sendWebrtcEvent('HANDOFF_INITIATED', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
   return []
@@ -145,6 +135,7 @@ register('PO', (parts, ctx) => {
   if (!target) return [`NO TRACK: ${id}`]
   const controllerId = getMyControllerId()
   if (tcp === controllerId) return ['ILL POS']
+  if (!getKnownControllerIds().has(tcp)) return [`ILL POS: ${tcp}`]
   useAtcStore.getState().setPointOut(target.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
   sendWebrtcEvent('POINT_OUT_SENT', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
   return []
@@ -162,14 +153,16 @@ register('RN', (parts, ctx) => {
   return []
 })
 
-// .HISTORY — toggle history trails on/off
-register('.HISTORY', () => {
+// .HISTORY (or .HIST) — toggle history trails on/off
+function toggleHistory() {
   const ws = useDisplayStore.getState().windows[WINDOW_ID]
   const current = ws?.showHistory ?? true
   useDisplayStore.getState().updateWindow(WINDOW_ID, { showHistory: !current })
   saveCatccPrefs({ showHistory: !current })
   return []
-})
+}
+register('.HISTORY', toggleHistory)
+register('.HIST', toggleHistory)
 
 // .LL [0-99] — set leader line length in pixels (omit to query current)
 register('.LL', (parts) => {

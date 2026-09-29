@@ -26,12 +26,17 @@ export const useBrevityStore = create((set, get) => ({
 
   // Case-insensitive lookup. Falls back to stripping one trailing "S" so
   // plural/verb-form input (BIRDS, CROWS) still matches the singular key.
-  // Returns { term, text } or null.
+  // A single letter A-Z jumps to the first term (in the same sort order
+  // neighbor() browses) starting with it. Returns { term, text } or null.
   lookup: (query) => {
     const q = (query ?? '').trim().toUpperCase()
     if (!q) return null
     const { terms } = get()
     if (terms[q]) return { term: q, text: terms[q] }
+    if (/^[A-Z]$/.test(q)) {
+      const term = Object.keys(terms).sort().find(k => k.startsWith(q))
+      return term ? { term, text: terms[term] } : null
+    }
     if (q.endsWith('S') && terms[q.slice(0, -1)]) {
       const term = q.slice(0, -1)
       return { term, text: terms[term] }

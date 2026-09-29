@@ -1,0 +1,22 @@
+# Normalize text files to LF in the repository; each checkout uses the
+# platform's native line endings.
+* text=auto
+
+# Shell scripts must keep LF even on Windows checkouts, or sh can't run them.
+.githooks/* text eol=lf
+*.sh        text eol=lf
+
+# Binary files: never convert line endings or attempt text diffs.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.icns   binary
+*.db     binary
+*.sqlite binary
+*.wasm   binary
+*.zip    binary
+*.miz    binary
+*.blob   binary
+*.exe    binary

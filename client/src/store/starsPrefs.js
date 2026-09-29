@@ -7,7 +7,7 @@
 
 import { makePrefsStore } from '../utils/prefsStore.js'
 
-const KEY = 'tracs-stars-prefs'
+const KEY = 'tracs.stars.prefs'
 
 const DEFAULTS = {
   dbca: false, // datablock collision avoidance — off by default (on for CATCC only)

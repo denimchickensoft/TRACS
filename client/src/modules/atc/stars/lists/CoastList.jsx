@@ -1,5 +1,5 @@
 import { useFlightPlansStore } from '../../../../store/flightPlans.js'
-import { useDisplayStore }     from '../../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }         from '../../../../store/ods.js'
 import { ListPanel }           from './ListPanel.jsx'
 
@@ -13,7 +13,7 @@ export function CoastList() {
   if (!windowSettings || !activeProfile) return null
 
   const { lists, briteLst, csLists } = windowSettings
-  const cfg = lists?.coast ?? { visible: false, xPct: 78, yPct: 65, lines: 5 }
+  const cfg = lists?.coast ?? DEFAULT_LISTS.coast
   if (!cfg.visible) return null
 
   const brite = (briteLst ?? 80) / 100

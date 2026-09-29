@@ -1,4 +1,4 @@
-import { projectRingCached, screenBoundsOfBbox } from '../../../../utils/projection.js'
+import { projectRingCached, screenBoundsOfBbox } from '../utils/projection.js'
 
 const COAST_FALLBACK    = '#6699AA'
 const BOUNDARY_FALLBACK = '#557788'

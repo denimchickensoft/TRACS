@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useSessionStore } from '../../store/session.js'
 import { useDisplayStore } from '../../store/display.js'
 import { computeMagvar } from '../../utils/magvar.js'
+import { findCoalitionBullseye } from '../../utils/tacticalHelpers.js'
 
 // Same bullseye-anchored declination AbmScope.jsx's map rotation uses
 // (computeMagvar(bullseyeLat, bullseyeLng, missionDate), where the bullseye
@@ -19,13 +20,7 @@ export function useAbmDeclination(windowId = 'abm-main') {
   const missionDate = mission?.mission?.dateAndTime?.date ?? null
   const bullseyeOverride = useDisplayStore(s => s.windows[windowId]?.bullseyeOverride ?? null)
 
-  const bullseyeEntry = useMemo(() => {
-    if (!bullseyes?.bullseyes) return null
-    const coalStr = coalition === 'red' ? 'red' : 'blue'
-    return Object.values(bullseyes.bullseyes).find(b => b.coalition === coalStr)
-        ?? Object.values(bullseyes.bullseyes)[0]
-        ?? null
-  }, [bullseyes, coalition])
+  const bullseyeEntry = useMemo(() => findCoalitionBullseye(bullseyes, coalition), [bullseyes, coalition])
 
   return computeMagvar(
     bullseyeOverride?.lat ?? bullseyeEntry?.latitude  ?? 0,

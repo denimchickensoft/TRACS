@@ -1,5 +1,5 @@
 import { latLngToCanvas } from '../../../../utils/projection.js'
-import { fixSymbolType, drawFixSymbol } from './fixSymbol.js'
+import { fixSymbolType, drawFixSymbol } from '../../../../canvas/fixSymbol.js'
 
 const PROC_FALLBACKS = {
   SID:   { stroke: '#00FF88' },

@@ -1,5 +1,5 @@
 import { useSessionStore }  from '../../../../store/session.js'
-import { useDisplayStore }  from '../../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }      from '../../../../store/ods.js'
 import { useMissionClock }  from '../../../../utils/useMissionClock.js'
 import { ListPanel }        from './ListPanel.jsx'
@@ -29,7 +29,7 @@ export function SSA() {
     rangeNm, ptlLength, qnh, atis, giText, giAux, lists, briteLst, csLists, tdmMode,
     altFilterLowU, altFilterHighU, altFilterLowA, altFilterHighA,
   } = windowSettings
-  const pos    = lists?.ssa ?? { xPct: 2, yPct: 2 }
+  const pos    = lists?.ssa ?? DEFAULT_LISTS.ssa
   const brite  = (briteLst ?? 80) / 100
   const color  = activeProfile.visual?.colors?.pdbText ?? '#00cc00'
 

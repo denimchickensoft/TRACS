@@ -21,7 +21,7 @@
  *   <n> d <alt>       — descend only (ignored if already at or below target)
  *   <n> h <hdg>       — turn shortest direction to heading
  *   <n> s <spd>       — set speed in KTAS (e.g. "2 s 280")
- *   create <cs> [<type>] [<coal>] [H<hdg>] [S<spd>] [A<alt>]  — spawn unit (type defaults to FA-18C, coal defaults to BLU)
+ *   create <cs> [<type>] [<coal>] [H<hdg>] [S<spd>] [A<alt>]  — spawn unit (type defaults to FA-18C, coal defaults to BLU; <cs> may be "quoted" to keep spaces, | and case)
  *   fire <n> <hdg> [<weapon>]  — launch a missile from aircraft <n> on heading <hdg>, straight-line flight until
  *                                impact/timeout (weapon defaults to AGM_84A; must be a trackable entry — RCS >= 0.1 m^2 —
  *                                in client/public/units/weaponSensorDatabase.json to be visible to AIC/ABM)
@@ -1086,7 +1086,7 @@ function cmdRename(parts) {
   if (!parts[2]) { console.log('  Usage: rename <n> <callsign>'); return }
   const unit    = units.get(ids[idx])
   const oldName = unit.unitName
-  unit.unitName = parts.slice(2).join(' ').toUpperCase()
+  unit.unitName = parts.quoted.has(2) ? parts[2] : parts.slice(2).join(' ').toUpperCase()
   console.log(`  Renamed: ${oldName} → ${unit.unitName}`)
   printList()
 }
@@ -1608,8 +1608,24 @@ function cmdMagvar(parts) {
 
 // ── Command dispatcher ────────────────────────────────────────────────────────
 
+// Splits on whitespace, but a "double" or 'single' quoted run is one token,
+// kept verbatim (spaces, pipes, case), so pilot-style names like
+// "203 | COLT 1-1 | DENIM" can be given to create/rename. The quoted tokens'
+// indices are returned in `parts.quoted`.
+function tokenize(line) {
+  const parts = []
+  parts.quoted = new Set()
+  const re = /"([^"]*)"|'([^']*)'|(\S+)/g
+  let m
+  while ((m = re.exec(line)) !== null) {
+    if (m[3] === undefined) parts.quoted.add(parts.length)
+    parts.push(m[1] ?? m[2] ?? m[3])
+  }
+  return parts
+}
+
 function parseCommand(line) {
-  const parts = line.trim().split(/\s+/)
+  const parts = tokenize(line.trim())
   if (!parts[0]) return
 
   const first  = parts[0].toLowerCase()
@@ -1648,8 +1664,9 @@ function startConsole() {
   console.log('  <n> d <alt>                 descend only - ignored if already at or below')
   console.log('  <n> s <spd>                 set speed (KTAS)')
   console.log('  create <cs> [<type>] [<coal>] [H S A]  e.g. create HORNET41 FA-18C BLU H210 S310 A250')
+  console.log('                              <cs> may be quoted: create "203 | COLT 1-1 | DENIM" FA-18C BLU')
   console.log('  delete <n>                  remove a unit')
-  console.log('  rename <n> <callsign>       rename a unit')
+  console.log('  rename <n> <callsign>       rename a unit ("quoted names" keep spaces, | and case)')
   console.log('  fire <n> <hdg> [<weapon>]   launch a missile from <n> on heading <hdg> (default AGM_84A)')
   console.log('  ident <n>                   squawk IDENT (blinks a few seconds, then reverts to NORMAL)')
   console.log('  stby <n>                    transponder to STANDBY/OFF (blanks squawk)')

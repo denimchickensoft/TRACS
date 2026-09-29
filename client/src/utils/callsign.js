@@ -1,30 +1,19 @@
 import { useAtcStore }     from '../store/atc'
 import { useSessionStore } from '../store/session'
+import { callsignFromDcsName, parseUnitName, stripAcid } from './callsignShape.js'
 
-// Exported for manually-added ATO flights (Ato.jsx/Frag.jsx), which have no
-// DCS unitId to match against a live Olympus unit — they instead search for
-// a live unit whose resolveCallsign() output matches the entered callsign
-// after the same normalization.
-export function stripAcid(s) {
-  return s.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-}
+// stripAcid is exported for manually-added ATO flights (Ato.jsx/Frag.jsx),
+// which have no DCS unitId to match against a live Olympus unit — they
+// instead search for a live unit whose resolveCallsign() output matches the
+// entered callsign after the same normalization.
+export { stripAcid }
 
 // Longest aircraft ID (AID) any entry point accepts, and the length every
 // AID key is truncated to. 13 fits the longest stock DCS callsign word plus
 // flight and element digits (Springfield 1-1 -> SPRINGFIELD11).
 export const AID_MAX_LEN = 13
 
-// Split "VIPER1 | John Smith" → { acid: 'VIPER1', pilotName: 'John Smith' }
-// No pipe → { acid: stripped unitName, pilotName: null }
-export function parseUnitName(unitName) {
-  if (!unitName) return { acid: '', pilotName: null }
-  const pipeIdx = unitName.indexOf('|')
-  if (pipeIdx === -1) return { acid: stripAcid(unitName), pilotName: null }
-  return {
-    acid:      stripAcid(unitName.slice(0, pipeIdx).trim()),
-    pilotName: unitName.slice(pipeIdx + 1).trim() || null,
-  }
-}
+export { parseUnitName }
 
 /**
  * Resolve the base AID from Olympus data, ignoring any controller override.
@@ -32,11 +21,7 @@ export function parseUnitName(unitName) {
  */
 export function resolveOriginalCallsign(unit) {
   if (unit.customString) return stripAcid(unit.customString)
-
-  if (useSessionStore.getState().useDcsNames) {
-    const { acid } = parseUnitName(unit.unitName)
-    return acid || stripAcid(unit.callsign || String(unit.id))
-  }
+  if (useSessionStore.getState().useDcsNames) return callsignFromDcsName(unit)
   return stripAcid(unit.callsign || unit.unitName || String(unit.id))
 }
 
@@ -50,7 +35,8 @@ export function resolveOriginalCallsign(unit) {
  *      project's architecture.md §A.3b). Not DCS mission data, so it takes
  *      priority over useDcsNames' own source fields below rather than being
  *      gated by that toggle.
- *   3. If useDcsNames ON: unit.unitName (pipe-split left side if '|' present)
+ *   3. If useDcsNames ON: the callsign found in unit.unitName by its shape
+ *      (see utils/callsignShape.js), with the fallbacks in callsignFromDcsName
  *   4. If useDcsNames OFF: unit.callsign (mission editor name)
  *   5. Unit ID as last resort
  */
@@ -60,10 +46,7 @@ export function resolveCallsign(unit) {
 
   if (unit.customString) return stripAcid(unit.customString)
 
-  if (useSessionStore.getState().useDcsNames) {
-    const { acid } = parseUnitName(unit.unitName)
-    return acid || stripAcid(unit.callsign || String(unit.id))
-  }
+  if (useSessionStore.getState().useDcsNames) return callsignFromDcsName(unit)
 
   return stripAcid(unit.callsign || unit.unitName || String(unit.id))
 }
@@ -127,15 +110,6 @@ export function findFlightPlanAid(unit, plans) {
 }
 
 /**
- * Resolve the pilot's real name from the pipe convention ("VIPER1 | John Smith").
- * Returns null if useDcsNames is off, no pipe is present, or no unitName exists.
- */
-export function resolvePilotName(unit) {
-  if (!useSessionStore.getState().useDcsNames) return null
-  return parseUnitName(unit.unitName).pilotName
-}
-
-/**
  * Manually-added ATO flights (AddAtoFlight.jsx) have no DCS unitId, and no
  * reliable way to predict the *exact* per-element callsign DCS will assign —
  * flight number + element digit are concatenated with no separator (flight
@@ -158,6 +132,27 @@ export function resolvePilotName(unit) {
  */
 export function sanitizeFocusToken(callsign) {
   return (callsign ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_')
+}
+
+// ABM focus panels are keyed by the callsign they follow, except another
+// side's aircraft, which is followed by unit ID so its panel never shows the
+// callsign. '#' can't appear in a callsign key (stripAcid), so the two never
+// collide.
+const UNIT_FOCUS_PREFIX = '#'
+
+export function unitFocusKey(unitId) {
+  return `${UNIT_FOCUS_PREFIX}${unitId}`
+}
+
+// The name shown in a focus panel's title bar.
+export function focusTitle(key) {
+  return key.startsWith(UNIT_FOCUS_PREFIX) ? 'CONTACT' : key
+}
+
+// The live unit a focus panel follows, or null.
+export function findFocusedUnit(key, liveUnits) {
+  if (key.startsWith(UNIT_FOCUS_PREFIX)) return liveUnits?.[key.slice(UNIT_FOCUS_PREFIX.length)] ?? null
+  return matchLiveByPrefix(key, liveUnits).find((m) => m.callsign === key)?.unit ?? null
 }
 
 export function matchLiveByPrefix(prefix, liveUnits) {

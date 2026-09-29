@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 import { generateBcn } from '../utils/bcn.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 const SB_KEY = 'tracs.catcc.sb'
 
 function serialize(s) {
   return {
     event: s.event, launch: s.launch, recovery: s.recovery,
-    sunrise: s.sunrise, sunset: s.sunset,
     clg: s.clg, vis: s.vis, qnh: s.qnh,
     caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery,
     marBtn: s.marBtn, app: s.app, twrBtn: s.twrBtn, depBtn: s.depBtn,
@@ -26,8 +26,6 @@ export const useStatusBoardStore = create((set) => ({
   event:        saved.event        ?? '',
   launch:       saved.launch       ?? '',
   recovery:     saved.recovery     ?? '',
-  sunrise:      saved.sunrise      ?? '',  // TODO: auto-calculate from carrier position + date
-  sunset:       saved.sunset       ?? '',  // TODO: auto-calculate from carrier position + date
   clg:          saved.clg          ?? '',
   vis:          saved.vis          ?? '',
   qnh:          saved.qnh          ?? '',
@@ -123,7 +121,7 @@ export const useStatusBoardStore = create((set) => ({
     }),
 
   reset: () => set({
-    event: '', launch: '', recovery: '', sunrise: '', sunset: '',
+    event: '', launch: '', recovery: '',
     clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad: '',
@@ -131,7 +129,7 @@ export const useStatusBoardStore = create((set) => ({
   }),
 
   clearAll: (rad = '') => set({
-    event: '', launch: '', recovery: '', sunrise: '', sunset: '',
+    event: '', launch: '', recovery: '',
     clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad,
@@ -172,8 +170,8 @@ export function buildStatusBoardPayload(s) {
 
 const _sbCh = new BroadcastChannel('tracs-statusboard')
 
-useStatusBoardStore.subscribe((state) => {
-  if (_syncing) return
+useStatusBoardStore.subscribe((state, prev) => {
+  if (_syncing || shallowEqual(serialize(state), serialize(prev))) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
   _webrtcBroadcast?.(buildStatusBoardPayload(state))
   _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })

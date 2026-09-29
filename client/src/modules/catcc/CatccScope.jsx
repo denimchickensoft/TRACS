@@ -8,9 +8,9 @@ import { useAtcStore, HANDOFF_STATE } from '../../store/atc.js'
 import { useControllersStore }   from '../../store/controllers.js'
 
 import { useCorrelationStore }   from '../../store/correlation.js'
-import { getVisibleUnits }       from '../atc/stars/visibleUnits.js'
+import { getVisibleUnits }       from '../../utils/visibleUnits.js'
 import { rangeToPixelsPerNm }    from '../../utils/projection.js'
-import { resolveSlew }           from '../atc/stars/input/slewResolver.js'
+import { resolveSlew }           from '../../utils/slewResolver.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
 import { useGeoStore }           from '../../store/geo.js'
@@ -19,23 +19,23 @@ import { useAbmAirspaceStore }   from '../../store/abmAirspace.js'
 import { drawCatccLayers }       from './canvas/drawCatccLayers.js'
 import { drawCatccContacts }     from './canvas/drawCatccContacts.js'
 import { drawCatccDatablocks }   from './canvas/drawCatccDatablocks.js'
-import { drawCompassRose }       from '../atc/stars/canvas/drawCompassRose.js'
-import { drawGeo }               from '../atc/stars/canvas/drawGeo.js'
+import { drawCompassRose }       from '../../canvas/drawCompassRose.js'
+import { drawGeo }               from '../../canvas/drawGeo.js'
 import { drawAbmAirspace }       from '../abm/canvas/drawAbmAirspace.js'
-import { drawAbmFixSymbols }     from '../abm/canvas/drawAbmFixSymbols.js'
+import { drawAbmFixSymbols }     from '../../canvas/drawAbmFixSymbols.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
-import { matchStarsKey, isTypedInput } from '../atc/stars/input/starsKeys.js'
+import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../utils/starsKeys.js'
 import { processOdsCommand } from './odsCommands.js'
 import { initCntl, termCntl, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
 import { getCatccBookmark, saveCatccBookmark } from '../../store/catccBookmarks.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
+import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './CatccScope.css'
 
 const WINDOW_ID    = 'catcc-main'
-const MAX_HISTORY  = 10
 const ODS_MAX_LINES = 5
 
 // Reserved for history trails and PTL re-enable — do not delete.
@@ -89,7 +89,7 @@ export default function CatccScope() {
   // ── Navdata layers (.asp/.sua/.classc/etc, .fixes, .geo) — reused directly
   // from ABM's stores/draw functions (store/abmAirspace.js, store/geo.js,
   // store/navdata.js, modules/abm/canvas/drawAbmAirspace.js,
-  // modules/abm/canvas/drawAbmFixSymbols.js): flat theatre-wide data with no
+  // canvas/drawAbmFixSymbols.js): flat theatre-wide data with no
   // facility/DCB concept, same reason ABM bypasses STARS' bucketed useMapsStore.
   // Visibility is driven by this window's own settings (odsCommands.js), not
   // useGeoStore's shared `visible` flag — CATCC never calls setVisible on it,
@@ -183,7 +183,8 @@ export default function CatccScope() {
     return map
   }, [visibleUnits, ownership])
 
-  const historyRef = useRef({})
+  // History capture — see utils/useHistoryCapture.js
+  const historyRef = useHistoryCapture(visibleUnitsRef, windowSettings?.historyRate)
 
   // ── Initialize display window ──────────────────────────────────────
   useEffect(() => {
@@ -321,37 +322,6 @@ export default function CatccScope() {
     )
   }, [view, windowSettings?.briteCmp, windowSettings?.csTools])
 
-  // ── History capture ────────────────────────────────────────────────
-  const historyRateRef = useRef(4.5)
-  useEffect(() => {
-    historyRateRef.current = windowSettings?.historyRate ?? 4.5
-  }, [windowSettings?.historyRate])
-
-  useEffect(() => {
-    let lastCaptureWall = 0
-    let lastCaptureUpdateTime = 0
-    const id = setInterval(() => {
-      const rateSecs = historyRateRef.current
-      if (rateSecs <= 0) return
-      const { lastUpdateTime } = useUnitsStore.getState()
-      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
-      const now = Date.now()
-      if ((now - lastCaptureWall) < rateSecs * 1000) return
-      lastCaptureWall = now
-      lastCaptureUpdateTime = lastUpdateTime
-      const current = visibleUnitsRef.current
-      historyRef.current = Object.fromEntries(
-        Object.entries(current).map(([uid, u]) => {
-          const prev = historyRef.current[uid] || []
-          const pos  = u.position
-          if (!pos) return [uid, prev]
-          return [uid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
-        })
-      )
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
-
   // ── Render contacts + data blocks ─────────────────────────────────
   useEffect(() => {
     if (!view || !contactsCanvasRef.current) return
@@ -393,6 +363,7 @@ export default function CatccScope() {
       windowSettings?.dbca ?? true,
       windowSettings?.dbSize ?? 2,
     )
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef is a stable ref returned by useHistoryCapture
   }, [visibleUnits, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos, windowSettings?.dbSize,
       windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca,
@@ -459,7 +430,8 @@ export default function CatccScope() {
         }
         return
       }
-      if (starsKey.token) usePreviewStore.getState().appendToken(starsKey.token)
+      const preview = usePreviewStore.getState()
+      if (starsKey.token && shouldAppendToken(starsKey.code, starsKey.token, preview.buffer, e.repeat)) preview.appendToken(starsKey.token)
       return
     }
     if (e.key === 'Escape')    { e.preventDefault(); usePreviewStore.getState().clear(); setOdsLines([]); return }

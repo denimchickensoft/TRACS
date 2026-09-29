@@ -2,7 +2,7 @@
 
 [![Discord](https://img.shields.io/discord/1521314576409559100?style=flat-square&label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/5W6cuezyPD)
 [![Release](https://img.shields.io/github/v/release/denimchickensoft/TRACS?filter=v*&style=flat-square&label=release)](https://github.com/denimchickensoft/TRACS/releases/latest)
-[![Build](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml/badge.svg)](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml)
+[![Build](https://github.com/denimchickensoft/TRACS/actions/workflows/ci.yml/badge.svg)](https://github.com/denimchickensoft/TRACS/actions/workflows/ci.yml)
 [![Downloads](https://img.shields.io/github/downloads/denimchickensoft/TRACS/total?style=flat-square)](https://github.com/denimchickensoft/TRACS/releases)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
@@ -12,9 +12,9 @@ A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC,
 Each controller runs TRACS on their own machine. TRACS reads unit data from one of three sources:
 - the [DCS Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API
 - a direct connection to Tacview's Real-Time Telemetry export
-- a **TRACS Relay** running on or near the DCS server, which also supplies SRS transponder/IFF data
+- a **TRACS Relay** running on or near the DCS server, which connects to Tacview for you
 
-Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer mode needs no port forwarding and no shared server.
+Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data. Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer mode needs no port forwarding and no shared server.
 
 **Operator guides** live in [`docs/`](docs/index.md): connecting, signing in, and every module's commands.
 
@@ -34,16 +34,22 @@ Download the installer for your platform from the latest `v*` release on the [Re
 | Platform | Package |
 |---|---|
 | Windows | NSIS installer (`.exe`) |
-| macOS | `.dmg` |
+| macOS | `.dmg` (universal: Apple Silicon and Intel) |
 | Linux | `.AppImage` |
 
 The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will warn on first launch.
+
+**macOS:** because the app isn't signed, macOS may say "TRACS is damaged and can't be opened" instead of offering to open it. After dragging TRACS into Applications, clear the download quarantine flag once from Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/TRACS.app
+```
 
 **Updates:** TRACS checks GitHub Releases at launch.
 - On Windows and Linux it asks before downloading an update, then offers to restart and install it.
 - On macOS it shows a notice with a link to the release page, and you install the new `.dmg` yourself.
 
-**Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If that port becomes unavailable, TRACS picks another and tells you that saved preferences won't carry over for that session.
+**Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If another program is using that port at launch, TRACS names the program and lets you retry after closing it, use a nearby port for that session only (without your saved preferences), or quit.
 
 **Menu:**
 - **File → New Window** opens another TRACS window.
@@ -82,6 +88,8 @@ Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
 - **Navigation data needs your own LittleNavMap Navigraph database.** Without it, fixes, navaids, airways and procedures aren't available.
 - **Not every STARS command is implemented.** See [ATC known limitations](docs/atc.md#known-limitations) for the list.
 - **Tacview detection is simulated.** In Tacview mode, radar and RWR fog-of-war is TRACS's own approximation, not DCS's detection data.
+- **One coalition per running TRACS.** All windows share one data feed, so every window uses the coalition and password of the first login. To switch coalitions, close and reopen TRACS.
+- **Game Master / Admin on a relay see only their own controller sync.** A relay keeps each coalition's controller sync separate. The relay would allow a Game Master or Admin into every coalition's, but TRACS doesn't join more than one yet.
 
 ## Data sources
 
@@ -101,7 +109,7 @@ The relay is a standalone executable, usually run on the DCS server machine next
 - hosts **centralized sync** between controllers at `/sync`;
 - optionally connects to **Tacview Real-Time Telemetry** once and fans it out to controllers at `/tacview` (Relay mode on the connect screen).
 
-All three are served on one WebSocket port.
+All three are served on one WebSocket port. The same port answers `GET /health` with the relay's version, protocol version, uptime and which capabilities are active, for monitoring.
 
 ### Setup
 
@@ -141,7 +149,76 @@ The executable checks GitHub Releases for newer `relay-v*` versions at startup a
 | `immediate` | Downloads it, swaps the executable in place, and exits |
 | `window` | Does the same as `immediate`, but only inside the daily maintenance window |
 
-The relay exits after swapping, so run it under a supervisor that restarts it: a Windows service wrapper, systemd, or similar.
+The relay exits after swapping, so run it under a supervisor that restarts it (see [Running as a service](#running-as-a-service)).
+
+### Running as a service
+
+Run the relay under a service manager, so it starts with the machine and restarts after it exits. It exits after each self-update, so without a supervisor it stays down until someone restarts it. Always set the working directory to the executable's folder; `config.json` and the relay's state files live there.
+
+**Windows (NSSM).** With [NSSM](https://nssm.cc/), from an administrator prompt (adjust the paths):
+
+```bat
+nssm install TRACS-Relay "C:\TRACS-Relay\TRACS-Relay.exe"
+nssm set TRACS-Relay AppDirectory "C:\TRACS-Relay"
+nssm set TRACS-Relay AppStdout "C:\TRACS-Relay\relay.log"
+nssm set TRACS-Relay AppStderr "C:\TRACS-Relay\relay.log"
+nssm set TRACS-Relay AppRotateFiles 1
+nssm set TRACS-Relay AppRotateBytes 10485760
+nssm start TRACS-Relay
+```
+
+**Linux (systemd).** Save as `/etc/systemd/system/tracs-relay.service`, then run `sudo systemctl enable --now tracs-relay`:
+
+```ini
+[Unit]
+Description=TRACS Relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=tracs
+WorkingDirectory=/opt/tracs-relay
+ExecStart=/opt/tracs-relay/TRACS-Relay
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+The service user needs write access to the folder, since self-updates replace the executable in place.
+
+### Firewall
+
+- **Inbound TCP `wsPort`** (8765 by default) from controllers.
+- **Inbound UDP `srsLotatcPort`** (10712 by default) **only from the SRS server's address.** The relay trusts whatever arrives on this port.
+- **Outbound** to Tacview's RTT port (if `tacviewHost` is set), and to `github.com` over HTTPS for self-updates.
+
+### Security
+
+- **Always set `passwords`.** An empty `passwords` object lets anyone who can reach the relay connect as any coalition. The relay logs a warning at startup when no passwords are set.
+- **Keep `config.json` private.** It holds the passwords in plain text, so make it readable only by the account that runs the relay.
+- **Password guessing is rate-limited.** Ten wrong passwords from one address within a minute block that address for 30 seconds, doubling with each repeat up to 10 minutes.
+- **Coalition passwords control who can connect, not what they receive.** The relay forwards every unit (Tacview telemetry and transponders) to every authenticated client, and each controller's own TRACS applies fog of war. A player with a valid password and a modified client could see the other side's full picture, so only give passwords to players you trust.
+- **Traffic isn't encrypted by default.** Controllers connect over plain `ws://`, so passwords and data can be read by anyone who can watch the network between them and the relay. For an internet-facing relay, put it behind TLS (below), or use a trusted network or a VPN.
+
+### TLS (`wss://`)
+
+The relay itself speaks plain WebSocket. To encrypt it, put a TLS reverse proxy in front of it on the same machine. [Caddy](https://caddyserver.com/) is the simplest, because it gets and renews certificates automatically. With a DNS name pointing at the relay machine, this `Caddyfile` serves the relay as `wss://relay.example.com:8766`:
+
+```
+relay.example.com:8766 {
+    reverse_proxy 127.0.0.1:8765
+}
+```
+
+- **Firewall:** open TCP 8766 to controllers, and 80/443 for Caddy's certificate checks. **Close `wsPort` (8765) to everything outside the machine**, so no one can bypass TLS.
+- **Controllers** enter the **Server URL** with `https://` (e.g. `https://relay.example.com`) and **8766** as the Relay Port; TRACS then connects to the relay over `wss://`. The `https://` applies to everything at that host, so in Olympus mode Olympus must be served over HTTPS too (for example behind the same Caddy). Relay mode and direct Tacview mode are unaffected.
+- **Password limits keep working per controller:** Caddy passes each controller's address in `X-Forwarded-For`, which the relay uses for connections arriving from the proxy on the same machine.
+
+### Logs
+
+The relay writes its log to the console only. Keep it with your service manager: NSSM's `AppStdout`/`AppStderr` settings above, or `journalctl -u tracs-relay` on Linux.
 
 ### Version compatibility
 
@@ -155,7 +232,7 @@ Requirements: Node.js 22+ and Git.
 
 ```bash
 npm install          # once, and after pulling dependency changes
-npm run dev          # local server on :8722 + Vite dev server on :5173 (proxies /api and /ws)
+npm run dev          # local server on :8721 + Vite dev server on :5173 (proxies /api and /ws)
 ```
 
 Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). Firefox and Safari are not supported.
@@ -165,9 +242,10 @@ Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). 
 | `npm run build` then `npm start` | Build the client and serve it from the local server on `http://localhost:8722` |
 | `npm run electron:dev` | Build the client and run it inside Electron, as the desktop app does |
 | `npm run dist:electron` | Build an installer for the current platform into `dist-electron/` (stages bundled navdata first) |
-| `npm run lint` | ESLint, plus a check that `relay/tacviewCore.js` matches its generated source |
+| `npm run lint` | ESLint, plus a check that the generated copies of shared server files are in sync |
+| `npm test` | Unit tests (Vitest; tests live in `test/`) |
 | `npm run knip` | Unused files/exports/dependencies report |
-| `npm run sync:tacview-core` | Regenerate `relay/tacviewCore.js` from the server's Tacview parser |
+| `npm run sync:tacview-core` | Regenerate the relay's and client's copies of shared server files (Tacview parser, protocol version, detection-config example) |
 
 **LittleNavMap database in dev:** set the `LNM_DB_PATH` environment variable to your `.sqlite` file before starting the server. The Electron file picker doesn't exist in a browser.
 
@@ -198,7 +276,7 @@ Releases are built by GitHub Actions when a version tag is pushed. The tag is th
 
 | Tag | Workflow | Produces |
 |---|---|---|
-| `vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS dmg, and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-22.04 and published directly (not as a draft) to one GitHub Release by electron-builder. This release is what installed apps update from |
+| `vX.Y.Z` | `.github/workflows/release-tracs.yml` | Windows NSIS, macOS universal dmg (plus the zip that macOS update checks read), and Linux AppImage installers, built on windows-latest / macos-latest / ubuntu-22.04 and published directly (not as a draft) to one GitHub Release by electron-builder. This release is what installed apps update from |
 | `relay-vX.Y.Z` | `.github/workflows/release-relay.yml` | `TRACS-Relay.exe` (Windows), `TRACS-Relay` (Linux), and `config.example.json`, attached to one GitHub Release. This release is what running relays update from. Relay releases are never marked as the repo's "latest" release, because installed TRACS apps find their updates through that pointer |
 
 ```bash
@@ -208,7 +286,7 @@ git tag relay-v0.2.0 && git push origin relay-v0.2.0
 
 TRACS and the relay are versioned independently.
 
-**Protocol changes:** when the TRACS ↔ relay wire protocol changes, bump the integer in all three copies of `protocolVersion.js`: `server/src/`, `client/src/webrtc/`, and `relay/`. Then release both TRACS and the relay.
+**Protocol changes:** when the TRACS ↔ relay wire protocol changes, bump the integer in `server/src/protocolVersion.js` and run `npm run sync:tacview-core` to regenerate the `client/src/webrtc/` and `relay/` copies. Then release both TRACS and the relay.
 
 No code-signing certificate is used for any platform.
 

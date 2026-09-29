@@ -17,13 +17,6 @@ export const useCorrelationStore = create((set) => ({
   correlate: (unitId, sideNumber) =>
     set((s) => ({ correlations: { ...s.correlations, [String(unitId)]: sideNumber } })),
 
-  uncorrelate: (unitId) =>
-    set((s) => {
-      const next = { ...s.correlations }
-      delete next[String(unitId)]
-      return { correlations: next }
-    }),
-
   setAll: (correlations) => set({ correlations }),
   setPendingCodes: (pendingCodes) => set({ pendingCodes }),
 

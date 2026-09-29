@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { EARTH_RADIUS_NM } from '../utils/units.js'
+import { log } from '../utils/log.js'
 
 // ── Position preset order ─────────────────────────────────────────────────────
 // Each entry is exactly 5 slots. 'MVA' is a sentinel — not a displayCategory —
@@ -17,7 +19,7 @@ const ICAO_PRESETS = {
 // ── Distance filtering ────────────────────────────────────────────────────────
 
 function nmBetween(lat1, lng1, lat2, lng2) {
-  const R  = 3440.065
+  const R  = EARTH_RADIUS_NM
   const φ1 = lat1 * Math.PI / 180
   const φ2 = lat2 * Math.PI / 180
   const Δφ = (lat2 - lat1) * Math.PI / 180
@@ -190,7 +192,7 @@ function assignButtons(features, categories, suffix) {
 const serverCache = {}
 
 function lsKey(theatre, positionKey) {
-  return `tracs-maps-${theatre}:${positionKey}`
+  return `tracs.maps.${theatre}.${positionKey}`
 }
 
 function saveVisible(theatre, positionKey, visible) {
@@ -247,7 +249,7 @@ export const useMapsStore = create((set, get) => ({
 
       set({ maps, mvaSlot, palettes: palettes ?? [], visible, theatre, loading: false, _lastLoadKey: loadKey })
       const mainCount = maps.slice(0, 5).filter(Boolean).length
-      console.log(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${mainCount} main airspace (+${mvaSlot != null ? 'MVA' : 'none'}), ${Math.max(0, maps.length - 5)} submenu, ${(palettes ?? []).length} palettes`)
+      log.info(`[maps] ${theatre}: suffix=${suffix || 'none'}, ${mainCount} main airspace (+${mvaSlot != null ? 'MVA' : 'none'}), ${Math.max(0, maps.length - 5)} submenu, ${(palettes ?? []).length} palettes`)
     } catch (err) {
       console.error('[maps] load error:', err.message)
       set({ loading: false })

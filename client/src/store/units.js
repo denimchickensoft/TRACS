@@ -69,5 +69,5 @@ export const useUnitsStore = create((set) => ({
 }))
 
 if (typeof window !== 'undefined') {
-  syncStore(useUnitsStore, 'tracs-units', (s) => ({ units: s.units, lastUpdateTime: s.lastUpdateTime }))
+  syncStore(useUnitsStore, 'tracs-units', (s) => ({ units: s.units, lastUpdateTime: s.lastUpdateTime }), { onlyWithPeers: true })
 }

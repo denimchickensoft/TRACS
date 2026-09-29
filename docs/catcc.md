@@ -31,7 +31,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `HO <callsign\|side> <tcp>` | Hand off to another controller position (`tcp` = their position id, e.g. `1D`) |
 | `PO <callsign\|side> <tcp>` | Point out a track to another controller |
 | `RN <callsign\|side> [newCallsign]` | Rename a track's callsign, or omit the second argument to reset to default |
-| `.HISTORY` | Toggle history-trail display |
+| `.HISTORY` / `.HIST` | Toggle history-trail display |
 | `.LL [0-99]` | Set leader-line length (pixels); bare `.LL` queries the current value |
 | `.LD [N\|NE\|E\|SE\|S\|SW\|W\|NW\|1-9\|OFF]` | Set the default leader-line direction |
 | `.LABELSIZE [0-5]` | Set airspace/fix label size; bare `.LABELSIZE` queries the current value |
@@ -43,6 +43,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.FILL` | Toggle airspace polygon fill; `.FILL <1-100>` sets transparency % and turns it on |
 | `.FIXES` | Toggle theatre fix points |
 | `.FIX <name...>` | Force-show one or more fixes regardless of `.FIXES`; each name toggles independently |
+| `.FIX` (no argument) | Clear every pinned fix for the current theatre |
 | `.GEO` | Toggle coastlines/boundaries |
 | `.ASPCOLORS <name>` | Select an airspace color palette (e.g. `CATCC` — the default, all-yellow) |
 | `.REFRESH` | Re-fetch airspace color palettes without reloading |
@@ -125,8 +126,6 @@ A top-down carrier deck view for visual traffic near the boat.
 - **Right-click + drag** — pan
 - Aircraft near deck altitude and within the hull footprint are plotted as small triangles, labeled with side number or callsign, oriented to heading relative to the carrier
 - Zoom resets when you switch carrier class
-
-**Lat/lon calibration (debug aid):** **Ctrl+Alt+Click** on the deck copies a text string to the clipboard. The string holds the clicked point's lat/lon, its pixel position in the source deck image, and the carrier's own lat/lon. There's no on-screen confirmation.
 
 ## Mission Import
 

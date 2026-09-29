@@ -2,16 +2,11 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { useUnitsStore }       from '../../store/units.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useCorrelationStore } from '../../store/correlation.js'
-import { getVisibleUnits }     from '../atc/stars/visibleUnits.js'
+import { getVisibleUnits }     from '../../utils/visibleUnits.js'
 import { resolveCallsign }     from '../../utils/callsign.js'
-import { CARRIER_TYPES, projectOntoDeck, NM_TO_FEET } from '../../utils/carriers.js'
-import { gridDestinationPoint } from '../../utils/bearing.js'
+import { CARRIER_TYPES, deckPosition } from '../../utils/carriers.js'
 import './Deck.css'
 
-const METERS_TO_FEET     = 3.28084
-const ALT_ABOVE_DECK_FT  = 40  // how far above deck level still counts as "on deck" (vs. overflying)
-const ALT_BELOW_DECK_FT  = 20  // how far below deck level still counts — beyond this, treat as on
-                                // the elevator/in the hangar bay and hide it
 const SYMBOL_R         = 7   // same triangle size as AsdexScope's drawAsdexContacts.js
 const CONTACT_COLOR    = 'rgb(0,200,80)'  // CATCC range-ring green (drawCatccLayers.js)
 
@@ -172,29 +167,15 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   // would otherwise be suppressed.
   const visibleUnits = useMemo(() => getVisibleUnits(units, coalition, true), [units, coalition])
 
-  // Aircraft currently on this carrier's deck — near deck-level altitude and
-  // within the hull footprint (see projectOntoDeck).
+  // Aircraft currently on this carrier's deck (see deckPosition).
   const deckAircraft = useMemo(() => {
     if (!carrierUnit?.position || !carrierType) return []
     const carrierHeadingRad = carrierUnit.heading ?? 0
-    const carrierHeadingDeg = carrierHeadingRad * 180 / Math.PI
-    // Deck reference altitude — the carrier's own live altitude, not an
-    // assumed sea-level 0, plus the class's deck height above the hull.
-    const deckAltFt = (carrierUnit.position.alt ?? 0) * METERS_TO_FEET + carrierType.deckHeightFt
     const out = []
     for (const [uid, unit] of Object.entries(visibleUnits)) {
-      if (!unit.position) continue
-      const altFt   = (unit.position.alt ?? 0) * METERS_TO_FEET
-      const relAltFt = altFt - deckAltFt
-      // Asymmetric: a jet riding the elevator down into the hangar bay drops
-      // below deck level while still inside the hull footprint, so cut off
-      // sharply below deck rather than reusing the same tolerance as above.
-      if (relAltFt > ALT_ABOVE_DECK_FT || relAltFt < -ALT_BELOW_DECK_FT) continue
-      const { forwardFt, rightFt, onDeck } = projectOntoDeck(
-        unit.position, carrierUnit.position.lat, carrierUnit.position.lng,
-        carrierHeadingDeg, carrierType.deckLoaFt, carrierType.deckBeamFt, theatre,
-      )
+      const onDeck = deckPosition(unit, carrierUnit, carrierType, theatre)
       if (!onDeck) continue
+      const { forwardFt, rightFt } = onDeck
       // Canvas "up" is the ship's bow, not true north — rotate the symbol by
       // the aircraft's heading relative to the carrier's. Uses raw heading,
       // not track: track is derived from position deltas and is only
@@ -221,64 +202,12 @@ export function Deck({ docked = true, width, onResize, onUndock, onHide }) {
   const marginLeft = Math.max(0, (containerSize.cw - renderW) / 2)
   const marginTop  = Math.max(0, (containerSize.ch - renderH) / 2)
 
-  // TEMPORARY — deck debug aid. Ctrl+Alt+Click copies the clicked point's
-  // implied lat/lon (inverse of the forwardFt/rightFt math above), its pixel
-  // location in the *original* (un-rotated, bow-right) deck PNG, and the
-  // carrier's current lat/lon. calibRef sidesteps re-registering the listener
-  // on every high-frequency units update.
-  const calibRef = useRef(null)
-  calibRef.current = { carrierUnit, carrierType, bg, renderW, renderH, theatre }
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const onClick = (e) => {
-      if (!e.ctrlKey || !e.altKey) return
-      const { carrierUnit, carrierType, bg, renderW, renderH, theatre } = calibRef.current
-      if (!carrierUnit?.position || !carrierType || !bg || !renderW || !renderH) return
-
-      const offsetX = e.offsetX
-      const offsetY = e.offsetY
-
-      // Render-space pixel -> deck-relative feet -> lat/lng (inverse of the
-      // forward math in the draw effect + projectOntoDeck).
-      const pxPerFtForward = renderH / carrierType.deckLoaFt
-      const pxPerFtRight   = renderW / carrierType.deckBeamFt
-      const cx = renderW / 2
-      const cy = renderH / 2
-      const rightFt   = (offsetX - cx) / pxPerFtRight
-      const forwardFt = (cy - offsetY) / pxPerFtForward
-
-      const carrierHeadingDeg = (carrierUnit.heading ?? 0) * 180 / Math.PI
-      const rangeNm = Math.hypot(forwardFt, rightFt) / NM_TO_FEET
-      const relBearingDeg = Math.atan2(rightFt, forwardFt) * 180 / Math.PI
-      // carrierHeadingDeg is raw grid heading, so this sum is grid frame too
-      // (despite the "true" naming convention elsewhere) — gridDestinationPoint,
-      // not destinationPoint, is the matching projector. See utils/bearing.js.
-      const gridBearingDeg = (carrierHeadingDeg + relBearingDeg + 360) % 360
-      const { lat, lng } = gridDestinationPoint(carrierUnit.position.lat, carrierUnit.position.lng, gridBearingDeg, rangeNm, theatre)
-
-      // Render-space pixel -> rotated bg-canvas pixel -> original PNG pixel.
-      // loadRotatedBackground() maps original (u,v) -> rotated (v, W0 - u)
-      // where W0 = bg.h (original naturalWidth); this is that inverted.
-      const cxRot = offsetX * bg.w / renderW
-      const cyRot = offsetY * bg.h / renderH
-      const pngX  = Math.round(bg.h - cyRot)
-      const pngY  = Math.round(cxRot)
-
-      const text = `cursor ${lat.toFixed(6)}, ${lng.toFixed(6)}  |  png px ${pngX}, ${pngY}  |  carrier ${carrierUnit.position.lat.toFixed(6)}, ${carrierUnit.position.lng.toFixed(6)}`
-      navigator.clipboard?.writeText(text).catch(() => {})
-      console.log('[DECK calib]', text)
-    }
-    canvas.addEventListener('click', onClick)
-    return () => canvas.removeEventListener('click', onClick)
-  }, [bg])
-
   // ── Draw background + contacts ─────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !bg || !renderW || !renderH || !carrierType) return
-    canvas.width  = renderW
-    canvas.height = renderH
+    if (canvas.width  !== renderW) canvas.width  = renderW
+    if (canvas.height !== renderH) canvas.height = renderH
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, renderW, renderH)
     ctx.drawImage(bg.canvas, 0, 0, renderW, renderH)

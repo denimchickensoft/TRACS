@@ -3,7 +3,6 @@ import { create } from 'zustand'
 export const usePreviewStore = create((set) => ({
   buffer:   '',       // command string accumulating in preview area
   response: '',       // system response / error line
-  position: null,     // { x, y } screen coords | null = default position
   hasToken: false,    // true once a function-key token has entered the buffer
 
   // Append a STARS key token (e.g. "IC", "HO", "MF ")
@@ -34,6 +33,4 @@ export const usePreviewStore = create((set) => ({
 
   // Called after a command executes successfully
   clearAfterCommand: () => set({ buffer: '', response: '', hasToken: false }),
-
-  setPosition: (pos) => set({ position: pos }),
 }))

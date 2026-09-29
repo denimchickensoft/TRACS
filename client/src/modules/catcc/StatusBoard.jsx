@@ -5,7 +5,7 @@ import { MissionImport } from './MissionImport.jsx'
 import { useCorrelationStore }  from '../../store/correlation.js'
 import { useUnitsStore }        from '../../store/units.js'
 import { useSessionStore }      from '../../store/session.js'
-import { getVisibleUnits }      from '../atc/stars/visibleUnits.js'
+import { getVisibleUnits }      from '../../utils/visibleUnits.js'
 import { parseUnitName } from '../../utils/callsign.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
@@ -19,6 +19,7 @@ import { useStabilityAlert } from './useStabilityAlert.js'
 import { HeaderField } from './HeaderField.jsx'
 import { CaseField } from './CaseField.jsx'
 import './StatusBoard.css'
+import { MS_TO_KT } from '../../utils/units.js'
 
 const SB_SCALE_KEY  = 'tracs.sb.scale'
 const SCALE_MIN     = 0.5
@@ -52,7 +53,6 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
 
   const handleTitleWheel = (e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setScale((prev) => {
@@ -90,7 +90,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const brc        = brcRaw === 0 ? 360 : brcRaw
   const fbRaw      = Math.round(fbF)
   const fb         = fbRaw === 0 ? 360 : fbRaw
-  const spd        = Math.round((carrier?.speed ?? 0) * 1.94384)
+  const spd        = Math.round((carrier?.speed ?? 0) * MS_TO_KT)
 
   const carrierPos   = carrier?.position
   const tzOffset      = theatre ? getTheatreUtcOffset(theatre) : null
@@ -150,12 +150,12 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
       let uid = entry.unitId ?? null
       if (!uid) {
         for (const [id, unit] of Object.entries(units)) {
-          const { acid } = parseUnitName(unit.unitName)
+          const { acid } = parseUnitName(unit.unitName, unit.callsign)
           if (acid === entry.callsign) { uid = id; break }
         }
       }
       if (!uid) continue
-      const { pilotName } = parseUnitName(units[uid]?.unitName)
+      const { pilotName } = parseUnitName(units[uid]?.unitName, units[uid]?.callsign)
       if (pilotName) useStatusBoardStore.getState().updateEntry(entry.id, 'pilot', pilotName)
     }
   }, [entries, units])

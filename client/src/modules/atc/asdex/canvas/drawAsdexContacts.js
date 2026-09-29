@@ -1,16 +1,38 @@
 import { latLngToCanvas }  from '../../../../utils/projection.js'
 import { resolveCallsign } from '../../../../utils/callsign.js'
 import { destinationPoint } from '../../../../utils/bearing.js'
-import { DIR_TO_ANGLE }    from '../../stars/constants.js'
+import { DIR_TO_ANGLE }    from '../../../../utils/scopeConstants.js'
 import { hasLiveSquawk }   from '../../../../utils/transponder.js'
+import { MS_TO_KT as M_PER_S_TO_KT, M_TO_FT } from '../../../../utils/units.js'
 
-const M_PER_S_TO_KT       = 1.94384
-const M_TO_FT              = 3.28084
 const LINE_H               = 13
 const TIMESHARE_MS         = 2000 // line 2: F/H/I <-> J/K scratchpad alternation per phase
 const SYMBOL_R             = 7
 const RIGHT_ALIGN_ANGLES   = new Set([90, 135, 180, 225])
 const UNKNOWN_TARGET_COLOR = '#00e0d0' // teal — real transponder standby (status 0)
+
+// unitId -> flight plan, rebuilt only when the plans or associations
+// objects change (the stores replace them on every update), not on every
+// frame.
+let _plansByUnitCache = { plans: null, associated: null, value: {} }
+function getPlansByUnit(plans, associated) {
+  if (_plansByUnitCache.plans === plans && _plansByUnitCache.associated === associated) {
+    return _plansByUnitCache.value
+  }
+  const plansByUnit = {}
+  for (const p of Object.values(plans ?? {})) {
+    if (p.unitId != null) plansByUnit[String(p.unitId)] = p
+  }
+  // Backfill from the association engine's callsign+code match — plan.unitId
+  // is only ever set via the FPE's ctrl-click flow, so a StripBay-created plan
+  // would otherwise never show its type/destination line despite being
+  // correctly associated.
+  for (const [uid, aid] of Object.entries(associated ?? {})) {
+    if (!plansByUnit[uid] && plans?.[aid]) plansByUnit[uid] = plans[aid]
+  }
+  _plansByUnitCache = { plans, associated, value: plansByUnit }
+  return plansByUnit
+}
 
 // extras: { scratchpads: { unitId: { sp1, sp2 } }, dupBeacon: Set<unitId>, pairedFixFor: (plan) => string }
 export function drawAsdexContacts(ctx, view, units, win, plans, history, centerlines, centerlineVisible, colors, associated = {}, manualTags = {}, extras = {}) {
@@ -54,18 +76,7 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
   const pairedFixFor = extras.pairedFixFor ?? (() => '')
   const sharePhase   = Math.floor(Date.now() / TIMESHARE_MS) % 2
 
-  const plansByUnit = {}
-  for (const p of Object.values(plans ?? {})) {
-    if (p.unitId != null) plansByUnit[String(p.unitId)] = p
-  }
-  // Backfill from the association engine's callsign+code match —
-  // plan.unitId is only ever set
-  // via the FPE's ctrl-click flow, so a StripBay-created plan would
-  // otherwise never show its type/destination line despite being
-  // correctly associated.
-  for (const [uid, aid] of Object.entries(associated)) {
-    if (!plansByUnit[uid] && plans?.[aid]) plansByUnit[uid] = plans[aid]
-  }
+  const plansByUnit = getPlansByUnit(plans, associated)
 
   ctx.font = '11px "Roboto Mono", monospace'
 

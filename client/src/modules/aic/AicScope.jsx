@@ -10,20 +10,21 @@ import { AUTO_DECLARE_MODE } from '../../utils/createDeclarationStore.js'
 import { getIffStatus } from '../../utils/transponder.js'
 import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { useAicPrefsStore }    from '../../store/aicPrefs.js'
+import { loadAicDisplayPrefs, saveAicDisplayPrefs } from '../../store/aicDisplayPrefs.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useRunwaysStore }       from '../../store/runways.js'
 import { rangeToPixelsPerNm, canvasToLatLng } from '../../utils/projection.js'
-import { resolveSlew }         from '../atc/stars/input/slewResolver.js'
+import { resolveSlew, resolveDeclareTargets } from '../../utils/slewResolver.js'
 import { computeMagvar } from '../../utils/magvar.js'
-import { gridBearingRangeNm, toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
+import { toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
 import { drawAicContacts }     from './canvas/drawAicContacts.js'
 import { drawAbmMissiles }     from '../../utils/declarationSymbols.js'
-import { drawGeo }             from '../atc/stars/canvas/drawGeo.js'
-import { drawRelief }          from '../atc/stars/canvas/drawRelief.js'
+import { drawGeo }             from '../../canvas/drawGeo.js'
+import { drawRelief }          from '../../canvas/drawRelief.js'
 import { computePicture, sectorAxisBearing } from './canvas/computePicture.js'
 import { useGeoStore }         from '../../store/geo.js'
 import { useReliefStore }      from '../../store/relief.js'
@@ -33,16 +34,18 @@ import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
 import { dispatch }            from './actions/index.js'
 import './AicScope.css'
+import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye } from './aicScopeHelpers.js'
+import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
+import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
+import { fetchJson } from '../../utils/fetchJson.js'
 
 const WINDOW_ID = 'aic-main'
-const AIC_SETTINGS_KEY = 'aic-settings'
 const AIC_WIN_FIELDS = [
   'rangeNm', 'ringSpacingNm', 'ptlSeconds', 'symSize',
   'fadedSeconds', 'threatRadius', 'centerLat', 'centerLng',
   'centerOverridden', 'aspColorIdx',
 ]
 
-const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
 const EMPTY_ARRAY = []
 
 const F_KEY_DECL = {
@@ -59,116 +62,11 @@ const DECL_LABEL = {
   [DECLARATION.FRIENDLY]: 'FR',
 }
 
-// .autodec — a unit's TRUE declaration, straight off
-// coalition: own side is FRIENDLY, coalition 0 (DCS's neutral) is NEUTRAL,
-// anything else is an enemy, i.e. HOSTILE (not BOGEY — autodec means no
-// more fog-of-war ambiguity for that contact).
-function trueDeclaration(unit, myCoalitionNum) {
-  if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
-  if (unit.coalition === 0) return DECLARATION.NEUTRAL
-  return DECLARATION.HOSTILE
-}
-
 const DECL_PICTURE = {
   [DECLARATION.HOSTILE]:  'H',
   [DECLARATION.BOGEY]:    'B',
   [DECLARATION.NEUTRAL]:  'NE',
   [DECLARATION.FRIENDLY]: 'FR',
-}
-
-const CARDINAL_ABBR = {
-  NORTH: 'N', NORTHEAST: 'NE', EAST: 'E', SOUTHEAST: 'SE',
-  SOUTH: 'S', SOUTHWEST: 'SW', WEST: 'W', NORTHWEST: 'NW',
-}
-
-// Abbreviates cardinal directions and LEAD/TRAIL in a group's display name.
-// The formation amplifier line (e.g. "ECHELON WEST") is rendered separately
-// from picture.amplifiers and is NOT run through this — it stays full-word.
-const NAME_ABBR = { ...CARDINAL_ABBR, LEAD: 'L', TRAIL: 'T' }
-function abbrGroupName(name) {
-  return name.replace(' GROUP', '').split(' ').map(w => NAME_ABBR[w] ?? w).join(' ')
-}
-
-function speedFlags(unit) {
-  const kts = (unit.speed ?? 0) * 1.94384
-  const alt  = (unit.position?.alt ?? 0) * 3.28084
-  const parts = []
-  if (alt >= 40000)  parts.push('HIGH')
-  if (kts >= 900)    parts.push('VERY FAST')
-  else if (kts >= 600) parts.push('FAST')
-  return parts.join('  ')
-}
-
-
-function picFillIns(g) {
-  const parts = []
-  if (g.isStack) parts.push(`STACK ${g.stackHighFt / 1000}K/${g.stackLowFt / 1000}K`)
-  if (g.isHigh) parts.push('HIGH')
-  if (g.isVeryFast) parts.push('VERY FAST')
-  else if (g.isFast) parts.push('FAST')
-  if (g.openingClosing) parts.push(g.openingClosing)
-  return parts.join('  ')
-}
-
-const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
-
-function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
-  const result      = {}
-  const detectedIds = new Set()
-
-  for (const unit of Object.values(units)) {
-    if (!unit.contacts) continue
-    for (const c of unit.contacts) {
-      if ((c.detectionMethod & 4) || (c.detectionMethod & 32)) detectedIds.add(String(c.ID))
-      if (c.detectionMethod & 16) rwrEverDetected?.add(String(c.ID))
-    }
-  }
-
-  for (const [id, unit] of Object.entries(units)) {
-    if (!unit.position) continue
-    if (unit.alive === false) continue
-    if (unit.category !== 'Aircraft' && unit.category !== 'Helicopter') continue
-    if (unit.agl !== undefined && unit.agl < AGL_FLOOR_M) continue
-    const c = unit.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
-  }
-
-  return result
-}
-
-// Missile tracking — same fog-of-war shape as getAicVisibleUnits above, but
-// reads unit.missileContacts (not unit.contacts): server/src/missileDetection.js
-// deliberately writes to a separate field — see that module's header for why
-// (avoids colliding with Olympus's own independent 1s-cadence refresh of a
-// unit's real contacts). Local copy, not shared, per this file's existing
-// getAicVisibleUnits convention.
-function getAicVisibleMissiles(weapons, units, myCoalitionNum) {
-  const result      = {}
-  const detectedIds = new Set()
-
-  for (const unit of Object.values(units)) {
-    if (!unit.missileContacts) continue
-    for (const c of unit.missileContacts) detectedIds.add(String(c.ID))
-  }
-
-  for (const [id, weapon] of Object.entries(weapons)) {
-    if (!weapon.position) continue
-    const c = weapon.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = weapon
-  }
-
-  return result
-}
-
-function subcardinal(deg) {
-  const dirs = ['N','NE','E','SE','S','SW','W','NW']
-  return dirs[Math.round(((deg % 360) + 360) % 360 / 45) % 8]
-}
-
-function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, declinationDeg, theatre) {
-  const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatre)
-  const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
-  return { brg: Math.round(magBrg) || 360, range: Math.round(rangeNm) }
 }
 
 export default function AicScope() {
@@ -190,11 +88,11 @@ export default function AicScope() {
   const autoDeclareMode   = useAicStore(s => s.autoDeclareMode)
   const braaList          = useAicStore(s => s.braaList)
   const pendingBraaFighter = useAicStore(s => s.pendingBraaFighter)
-  const {
-    setDeclaration, addBraaPair, removeBraaPairsForUnit,
-    setPendingBraaFighter, clearPendingBraa,
-  } = useAicStore()
-  const getEffectiveDeclaration = getAicEffectiveDeclaration
+  const setDeclaration         = useAicStore(s => s.setDeclaration)
+  const addBraaPair            = useAicStore(s => s.addBraaPair)
+  const removeBraaPairsForUnit = useAicStore(s => s.removeBraaPairsForUnit)
+  const setPendingBraaFighter  = useAicStore(s => s.setPendingBraaFighter)
+  const clearPendingBraa       = useAicStore(s => s.clearPendingBraa)
 
   const geoBoundaries  = useGeoStore(s => s.boundaries)
   const geoCoastlines  = useGeoStore(s => s.coastlines)
@@ -216,13 +114,7 @@ export default function AicScope() {
   const [showLocalTime, setShowLocalTime] = useState(false)
   const clockTime = showLocalTime ? localTimeStr : timeStr
 
-  const bullseyeEntry = useMemo(() => {
-    if (!bullseyes?.bullseyes) return null
-    const coalStr = coalition === 'red' ? 'red' : 'blue'
-    return Object.values(bullseyes.bullseyes).find(b => b.coalition === coalStr)
-        ?? Object.values(bullseyes.bullseyes)[0]
-        ?? null
-  }, [bullseyes, coalition])
+  const bullseyeEntry = useMemo(() => findCoalitionBullseye(bullseyes, coalition), [bullseyes, coalition])
 
   // .be override — lets the operator relocate bullseye off the mission's
   // real one (fix, explicit lat/lon, or a map click). Not persisted: it's a
@@ -277,7 +169,7 @@ export default function AicScope() {
   // server/src/missileDetection.js's AWACS/EWR-only detection.
   const weapons = useWeaponsStore(s => s.weapons)
   const visibleMissiles = useMemo(
-    () => getAicVisibleMissiles(weapons, units, myCoalitionNum),
+    () => getVisibleMissiles(weapons, units, myCoalitionNum),
     [weapons, units, myCoalitionNum]
   )
 
@@ -363,25 +255,16 @@ export default function AicScope() {
   useEffect(() => { setView(buildView()) }, [centerLat, centerLng, declinationDeg, windowSettings?.rangeNm]) // eslint-disable-line
 
   useEffect(() => {
-    let saved = null
-    try { saved = JSON.parse(localStorage.getItem(AIC_SETTINGS_KEY) ?? 'null') } catch {}
+    const saved = loadAicDisplayPrefs()
 
     if (!windowSettings) {
-      const defaults = {
-        rangeNm: 120, ringSpacingNm: 20, ptlSeconds: 60, symSize: 3,
-        centerLat: 0, centerLng: 0, centerOverridden: false,
-        fadedSeconds: 30, threatRadius: 35,
-      }
-      const savedWin = saved
-        ? Object.fromEntries(AIC_WIN_FIELDS.filter(k => saved[k] !== undefined).map(k => [k, saved[k]]))
-        : {}
-      displayStore.initWindow(WINDOW_ID, { ...defaults, ...savedWin })
+      displayStore.initWindow(WINDOW_ID,
+        Object.fromEntries(AIC_WIN_FIELDS.filter(k => saved[k] !== undefined).map(k => [k, saved[k]])))
     }
-    if (saved?.geoVisible    != null) useGeoStore.getState().setVisible(saved.geoVisible)
-    if (saved?.reliefVisible != null) useReliefStore.getState().setVisible(saved.reliefVisible)
-    if (saved?.aspColorIdx && !useMapsStore.getState().palettes.length) {
-      fetch('/api/navdata/palettes')
-        .then(r => r.json())
+    if (saved.geoVisible    != null) useGeoStore.getState().setVisible(saved.geoVisible)
+    if (saved.reliefVisible != null) useReliefStore.getState().setVisible(saved.reliefVisible)
+    if (saved.aspColorIdx && !useMapsStore.getState().palettes.length) {
+      fetchJson('/api/navdata/palettes')
         .then(palettes => useMapsStore.getState().setPalettes(palettes))
         .catch(() => {})
     }
@@ -398,7 +281,7 @@ export default function AicScope() {
         for (const k of AIC_WIN_FIELDS) entry[k] = ws[k]
         entry.geoVisible    = useGeoStore.getState().visible
         entry.reliefVisible = useReliefStore.getState().visible
-        try { localStorage.setItem(AIC_SETTINGS_KEY, JSON.stringify(entry)) } catch {}
+        saveAicDisplayPrefs(entry)
       }, 500)
     }
     const unsubDisplay = useDisplayStore.subscribe(save)
@@ -441,7 +324,7 @@ export default function AicScope() {
     const hostiles   = []
     for (const [id, unit] of Object.entries(visibleUnits)) {
       if (!unit.position) continue
-      const decl = getEffectiveDeclaration(id, unit, myCoalitionNum)
+      const decl = getAicEffectiveDeclaration(id, unit, myCoalitionNum)
       if (decl === DECLARATION.FRIENDLY) friendlies.push([id, unit])
       else if (decl === DECLARATION.HOSTILE || decl === DECLARATION.BOGEY) hostiles.push(unit)
     }
@@ -450,9 +333,9 @@ export default function AicScope() {
       if (hostiles.some(h => nmBetween(unit.position, h.position) <= threatRadius)) breached.add(id)
     }
     setAutoThreatRingIds(breached)
-  }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius]) // eslint-disable-line
+  }, [visibleUnits, autoThreat, myCoalitionNum, threatRadius])
 
-  // .centroid / .axis — debug toggles for the hostile-picture centroid and
+  // .centroid / .axis — display toggles for the hostile-picture centroid and
   // the dynamic threat axis line derived from it (see computePicture.js).
   const showCentroid = windowSettings?.showCentroid ?? false
   const showAxis = windowSettings?.showAxis ?? false
@@ -611,7 +494,7 @@ export default function AicScope() {
     if (!bullseyeEntry) return null
     return computePicture(
       visibleUnits,
-      (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
+      (id, unit) => getAicEffectiveDeclaration(id, unit, myCoalitionNum),
       myCoalitionNum,
       sector,
       bullseyeLat, bullseyeLng,
@@ -624,7 +507,7 @@ export default function AicScope() {
   useEffect(() => {
     if (!view || !contactsRef.current) return
     const ctx = contactsRef.current.getContext('2d')
-    const getDecl = (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum)
+    const getDecl = (id, unit) => getAicEffectiveDeclaration(id, unit, myCoalitionNum)
     const mergedThreatRings = autoThreatRingIds.size
       ? new Set([...threatRingSet, ...autoThreatRingIds])
       : threatRingSet
@@ -636,7 +519,7 @@ export default function AicScope() {
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }
-  }, [view, visibleUnits, visibleMissiles, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRingSet, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture]) // eslint-disable-line
+  }, [view, visibleUnits, visibleMissiles, declarations, ptlSeconds, symSize, braaList, rangeNm, myCoalitionNum, rbl, declinationDeg, threatRingSet, autoThreatRingIds, threatRadius, fadedTick, findMarker, pendingSector, sectorPreviewOrigin, showCentroid, showAxis, picture])
 
   // RBL drag (left-click) — only arms once the drag clears a threshold, so
   // plain left-clicks used for declare/BRAA/sector/etc. don't touch the RBL
@@ -751,6 +634,9 @@ export default function AicScope() {
       cmdDraftRef.current = ''
       return
     }
+
+    // Ctrl+Up/Down belong to the side panels (RightTabStrip), not history.
+    if (e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return
 
     // While a .define readout is up, ArrowUp/ArrowDown browse the glossary
     // alphabetically instead of the command history, until Escape.
@@ -908,9 +794,13 @@ export default function AicScope() {
     if (pending && target && target.unitId !== pending) { addBraaPair(pending, target.unitId); return }
     if (pending && !target) { clearPendingBraa(); return }
 
-    if (pendingDeclaration && target) {
-      setDeclaration(target.unitId, pendingDeclaration)
-      setPendingDeclaration(null)
+    // Every contact under the click, as in ABM.
+    if (pendingDeclaration) {
+      const targets = resolveDeclareTargets(pos, visibleUnitsRef.current, viewRef.current)
+      if (targets.length > 0) {
+        for (const t of targets) setDeclaration(t.unitId, pendingDeclaration)
+        setPendingDeclaration(null)
+      }
     }
   }, [pendingDeclaration, cmdBuffer, myCoalitionNum, setDeclaration, addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa, toggleThreatRing, displayStore])
 
@@ -941,14 +831,14 @@ export default function AicScope() {
     const { unitId, unit } = hoveredUnit
     if (!unit.position) return null
 
-    const altFt      = Math.round((unit.position.alt ?? 0) * 3.28084)
+    const altFt      = Math.round((unit.position.alt ?? 0) * M_TO_FT)
     const altK       = Math.round(altFt / 1000)
     const trueTrkDeg = ((unit.track ?? 0) * 180 / Math.PI + 360) % 360
     const magTrkDeg  = Math.round(toMagneticFromTrue(trueTrkDeg, declinationDeg)) || 360
     const { brg, range } = bearingRangeFromBullseye(
       unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
     )
-    const decl      = getEffectiveDeclaration(unitId, unit, myCoalitionNum)
+    const decl      = getAicEffectiveDeclaration(unitId, unit, myCoalitionNum)
     // Callsign/type reveal is no longer gated purely on the Declaration — a
     // VALID Mode 4 IFF reply reveals identity too, independent of whether
     // the contact has actually been declared FRIENDLY yet. The Declaration
@@ -964,7 +854,8 @@ export default function AicScope() {
     // unaffected — declaration alone still reveals unconditionally, same
     // as always (no live IFF concept exists for those).
     const iffStatus  = getIffStatus(unit, myCoalitionNum) // 'VALID' | 'INVALID' | 'NO_REPLY' | null (not srsCapable)
-    const revealed   = unit.srsCapable ? iffStatus === 'VALID' : decl === DECLARATION.FRIENDLY
+    // Never for another side's aircraft, whatever it's declared.
+    const revealed   = (unit.srsCapable ? iffStatus === 'VALID' : decl === DECLARATION.FRIENDLY) && isOwnSide(unit, coalition)
     const typeRevealed = revealed || rwrEverDetectedRef.current.has(String(unitId))
     const typeName  = typeRevealed
       ? (unit.name ?? '').replace(/[_ ].*$/, '').replace(/^([^-]*-[^-]*)-.*$/, '$1')
@@ -975,7 +866,7 @@ export default function AicScope() {
     // for an srsCapable contact); only the non-revealing statuses need a
     // word on the line.
     const iffText   = iffStatus === 'INVALID' ? 'INVALID REPLY' : iffStatus === 'NO_REPLY' ? 'NO REPLY' : null
-    const spdKts    = Math.round((unit.speed ?? 0) * 1.94384)
+    const spdKts    = Math.round((unit.speed ?? 0) * MS_TO_KT)
 
     return {
       pos:      `${String(brg).padStart(3, '0')} / ${range}`,
@@ -988,7 +879,7 @@ export default function AicScope() {
       callsign,
       iff:      iffText,
     }
-  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum]) // eslint-disable-line
+  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum, coalition]) // eslint-disable-line
 
   const cursorBullseye = useMemo(() => {
     if (!cursorLatLng || !bullseyeEntry) return null
@@ -1038,7 +929,7 @@ export default function AicScope() {
     cmdPreview = `${DECL_LABEL[pendingDeclaration]} +`
   } else if (pendingBraaFighter) {
     const fu = visibleUnits[pendingBraaFighter]
-    cmdPreview = `BRAA: ${fu ? resolveCallsign(fu) : pendingBraaFighter} → ?`
+    cmdPreview = `BRAA: ${fu && isOwnSide(fu, coalition) ? resolveCallsign(fu) : 'CONTACT'} → ?`
   } else if (cmdBuffer) {
     cmdPreview = cmdBuffer
   }
@@ -1151,7 +1042,6 @@ export default function AicScope() {
         {!bullseyeEntry && !bullseyeOverride && (
           <div className="aic-warn">NO BULLSEYE</div>
         )}
-
 
         {/* Mission clock — above cmd feedback/entry. Click to toggle Zulu/Local. */}
         <div

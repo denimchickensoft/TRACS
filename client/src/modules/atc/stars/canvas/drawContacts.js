@@ -1,6 +1,7 @@
 import { latLngToCanvas } from '../../../../utils/projection.js'
 import { destinationPoint } from '../../../../utils/bearing.js'
-import { HIGHLIGHT_TEAL } from '../constants.js'
+import { HIGHLIGHT_TEAL } from '../../../../utils/scopeConstants.js'
+import { MS_TO_KT as M_PER_S_TO_KT } from '../../../../utils/units.js'
 
 /**
  * Draw an octagon (8-sided polygon) centred at (cx, cy).
@@ -31,7 +32,6 @@ function drawDiamond(ctx, cx, cy, radius) {
   ctx.closePath()
 }
 
-const M_PER_S_TO_KT = 1.94384
 
 /**
  * Layer 2 — PTLs, contacts, and history trails.

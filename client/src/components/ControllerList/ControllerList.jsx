@@ -5,6 +5,7 @@ import { useSessionStore }     from '../../store/session'
 import { useUnitsStore }       from '../../store/units'
 import { CARRIER_TYPES }       from '../../utils/carriers'
 import './ControllerList.css'
+import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 const DEFAULT_SIZE   = { w: 330, h: 420 }
 const MIN_W          = 240
@@ -289,7 +290,7 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   }, [rightInset, standalone])
 
   useEffect(() => {
-    fetch('/icaoMapping.json').then((r) => r.json()).then(setIcaoMap).catch(() => {})
+    getIcaoMapping().then(setIcaoMap)
   }, [])
 
   useEffect(() => { posRef.current = pos;   localStorage.setItem(lsPos,     JSON.stringify(pos))     }, [pos, lsPos])
@@ -350,7 +351,6 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
 
   // ── Opacity (scroll wheel on title bar) ───────────────────────────────────────
   const handleOpacityWheel = useCallback((e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setOpacity((prev) => {

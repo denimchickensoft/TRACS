@@ -1,6 +1,6 @@
-import { latLngToCanvas } from '../../../../utils/projection.js'
+import { latLngToCanvas } from '../utils/projection.js'
 import { fixSymbolType, drawFixSymbol } from './fixSymbol.js'
-import { gridDestinationPoint } from '../../../../utils/bearing.js'
+import { gridDestinationPoint } from '../utils/bearing.js'
 
 const HOLD_COLOR_FALLBACK = '#00CED1'
 const ARC_SEGS   = 16

@@ -11,10 +11,11 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { destinationPoint, gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 import { drawPtl, DECL_COLOR, drawHistoryTrail } from '../../../utils/declarationSymbols.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../atc/stars/constants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../../utils/scopeConstants.js'
 import { DECLARATION } from '../../../store/abm.js'
 import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
+import { MS_TO_KT, M_TO_FT } from '../../../utils/units.js'
 
 const SYM_HALF     = 3   // square half-width, px (hollow outline, not filled)
 const CULL_MARGIN  = 60
@@ -186,6 +187,7 @@ export function drawAbmContacts(
   theatre = null,
   declinationDeg = 0,
   dbSize = 2,
+  isOwnSide = () => true,
 ) {
   const { width, height } = view
   const fontPx     = 8 + dbSize * 2
@@ -267,16 +269,18 @@ export function drawAbmContacts(
     // those, ground truth via declaration is the only signal that ever
     // existed, there's no live correlation concept to defer to.
     const correlated = correlatedUnitIds.has(String(id))
-    const isFriendly = unit.srsCapable ? correlated : decl === DECLARATION.FRIENDLY
+    // Another side's aircraft never gets the friendly block (its callsign),
+    // whatever it's declared.
+    const isFriendly = (unit.srsCapable ? correlated : decl === DECLARATION.FRIENDLY) && isOwnSide(unit)
     const iffFrames  = (!isFriendly) ? buildIffFrames(unit) : EMPTY_ARRAY
     const showsBlock = isFriendly || iffFrames.length > 0
     // Non-friendly type is only known once RWR has ever painted it
     // (rwrKnownIds — same sticky reveal as the air-unit readout in
     // AbmScope.jsx); until then it can't cycle to a type it doesn't have.
     const knowsType = isFriendly || rwrKnownIds.has(id)
-    const altFt   = Math.round((unit.position.alt ?? 0) * 3.28084)
+    const altFt   = Math.round((unit.position.alt ?? 0) * M_TO_FT)
     const alt100  = String(Math.round(altFt / 100)).padStart(3, '0')
-    const spdKts  = (unit.speed ?? 0) * 1.94384
+    const spdKts  = (unit.speed ?? 0) * MS_TO_KT
     const spd10   = String(Math.round(spdKts / 10)).padStart(2, '0')
 
     const unitDir   = leaderDirs?.[String(id)]

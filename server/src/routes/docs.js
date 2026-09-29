@@ -6,11 +6,12 @@ const { Marked } = require('marked')
 
 // GitHub's heading-slug algorithm (marked no longer generates heading ids by
 // default as of v5+): lowercase, drop anything but letters/digits/space/-,
-// spaces -> hyphens, dedupe repeats with a -1, -2, ... suffix.
+// each space -> one hyphen (runs are not collapsed, so "A & B" gives "a--b"),
+// dedupe repeats with a -1, -2, ... suffix.
 function makeSlugger() {
   const seen = new Map()
   return (raw) => {
-    const base = raw.toLowerCase().replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-')
+    const base = raw.toLowerCase().replace(/[^\w\- ]/g, '').trim().replace(/ /g, '-')
     const count = seen.get(base) ?? 0
     seen.set(base, count + 1)
     return count === 0 ? base : `${base}-${count}`
@@ -65,6 +66,7 @@ function renderPage(title, body) {
 <meta charset="utf-8">
 <title>${title}</title>
 <style>${PAGE_STYLE}</style>
+<script src="/docs/assets/find.js" defer></script>
 </head>
 <body>${body}</body>
 </html>`
@@ -87,6 +89,12 @@ const PAGE_STYLE = `
 // LAN/offline DCS setup. Renders docs/<page>.md as styled HTML rather than
 // dumping raw markdown.
 function registerDocsRoutes(app) {
+  // The desktop app's Ctrl+F box (see docsFind.js). A separate file, not an
+  // inline script, so the Content-Security-Policy allows it.
+  app.get('/docs/assets/find.js', (req, res) => {
+    res.type('application/javascript').sendFile(path.join(__dirname, '../docsFind.js'))
+  })
+
   app.get('/docs/:page', (req, res) => {
     const page = req.params.page.replace(/\.md$/, '')
 
@@ -107,4 +115,4 @@ function registerDocsRoutes(app) {
   })
 }
 
-module.exports = { registerDocsRoutes }
+module.exports = { registerDocsRoutes, makeSlugger }

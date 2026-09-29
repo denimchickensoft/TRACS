@@ -9,10 +9,12 @@
 // running it directly, just with a few env vars set first (see resolvePort()
 // and the userData state-dir line below).
 
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog, shell, Menu } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 const net  = require('net')
+const { execFile }      = require('child_process')
+const { pathToFileURL } = require('url')
 const log  = require('electron-log/main')
 
 // log.initialize() alone only wires up renderer-console forwarding - it does
@@ -59,10 +61,13 @@ if (!app.requestSingleInstanceLock()) {
 let mainWindow = null
 
 // ── Navigation / window-open / IPC guards ─────────────────────────────────
-// Every TRACS window carries the preload's electronAPI (update install, file
-// picker), so only TRACS's own pages may ever load in one. Pop-out windows
-// (window.open to the same origin) are allowed; any other http(s) URL opens
-// in the user's normal browser instead; everything else is refused.
+// Windows TRACS creates itself (main window, File > New Window) and the docs
+// windows carry the preload's electronAPI (update install, file picker, the
+// docs pages' Ctrl+F box), so only TRACS's own pages may ever load in one.
+// Pop-out windows (window.open to the same origin) are allowed but get no
+// preload: they don't use electronAPI and stay tied to their opener. Any
+// other http(s) URL opens in the user's normal browser instead; everything
+// else is refused.
 
 function isAppUrl(url) {
   try {
@@ -84,6 +89,9 @@ function openExternally(url) {
 
 app.on('web-contents-created', (_event, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
+    if (isAppUrl(url) && new URL(url).pathname.startsWith('/docs/')) {
+      return { action: 'allow', overrideBrowserWindowOptions: { webPreferences: WINDOW_OPTS.webPreferences } }
+    }
     if (isAppUrl(url)) return { action: 'allow' }
     openExternally(url)
     return { action: 'deny' }
@@ -109,10 +117,11 @@ function handleFromApp(channel, handler) {
 // ── Port resolution ───────────────────────────────────────────────────────
 // Origin stability matters here: client-side localStorage (serverProfiles,
 // *Prefs/*Bookmarks stores) is tied to http://localhost:<port> as an origin.
-// A port that drifted between launches would silently orphan that data. So:
-// first-ever launch picks (and persists) whichever port actually binds;
-// every later launch reuses that exact port, only re-searching (and
-// re-persisting, with a warning) if it's no longer available.
+// A port that drifted between launches would silently orphan that data. So
+// the first-ever launch picks (and persists) whichever port binds, and every
+// later launch reuses that exact port. When it's taken, the user decides:
+// retry once they've closed whatever holds it, use a nearby port for this
+// session only (never persisted), or quit.
 
 function probePort(port) {
   return new Promise((resolve) => {
@@ -130,6 +139,108 @@ async function findFreePort(startPort) {
   throw new Error(`no free port found in range ${startPort}-${startPort + PORT_RANGE - 1}`)
 }
 
+// A free port just past `port` for a one-session fallback, or null.
+function findFallbackPort(port) {
+  return findFreePort(port + 1).catch(() => null)
+}
+
+function runQuiet(cmd, args) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { windowsHide: true, timeout: 5000 }, (err, stdout) => resolve(err ? '' : stdout))
+  })
+}
+
+// Names the program listening on `port`, e.g. "node.exe (PID 12345)". Windows
+// only, and needs no admin rights (netstat -ano, not -b). Null when nothing
+// is listening, e.g. a port range Windows reserves for Hyper-V/WSL, or when
+// the lookup fails.
+async function findPortOwner(port) {
+  if (process.platform !== 'win32') return null
+  let pid = null
+  for (const line of (await runQuiet('netstat', ['-ano'])).split('\n')) {
+    // TCP <local> <foreign> <state> <pid>. The state text is localized, so a
+    // listening socket is told apart by its unset foreign address instead.
+    const cols = line.trim().split(/\s+/)
+    if (cols[0] === 'TCP' && cols[1]?.endsWith(`:${port}`) && /:0$/.test(cols[2] ?? '') && /^\d+$/.test(cols[4] ?? '')) {
+      pid = cols[4]
+      break
+    }
+  }
+  if (!pid || pid === '0') return null
+  if (pid === '4') return 'System (a Windows service)'
+  const csv  = await runQuiet('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'])
+  const name = csv.match(/^"([^"]+)"/)?.[1]
+  return name ? `${name} (PID ${pid})` : `process ${pid}`
+}
+
+// TRACS's own bundled Roboto Mono, so the dialog matches the app. Vite
+// hashes the file name, so look it up.
+function findBundledFontUrl() {
+  try {
+    const dir  = path.join(__dirname, '..', 'client', 'dist', 'assets')
+    const file = fs.readdirSync(dir).find((f) => /^roboto-mono-latin-400-normal-.*\.woff2$/.test(f))
+    return file ? pathToFileURL(path.join(dir, file)).href : null
+  } catch {
+    return null
+  }
+}
+
+// Shows electron/portConflict.html, styled like the in-app Navigation Data
+// dialog, and resolves to the port to use, or null to quit.
+async function askPortConflict(port) {
+  const state = { port, fallback: await findFallbackPort(port), owner: await findPortOwner(port) }
+  const win = new BrowserWindow({
+    width: 540, height: 240, useContentSize: true, show: false,
+    resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    title: 'TRACS', backgroundColor: '#1a1a1a', autoHideMenuBar: true,
+    webPreferences: {
+      preload:          path.join(__dirname, 'portConflictPreload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+      sandbox:          true,
+    },
+  })
+  win.removeMenu()
+
+  const channels = ['info', 'resize', 'retry', 'fallback', 'quit'].map((c) => `port-conflict:${c}`)
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (result) => {
+      if (settled) return
+      settled = true
+      for (const c of channels) ipcMain.removeHandler(c)
+      if (!win.isDestroyed()) win.destroy()
+      resolve(result)
+    }
+    const handle = (name, fn) => ipcMain.handle(`port-conflict:${name}`, (event, ...args) => {
+      if (event.sender !== win.webContents) throw new Error('IPC not allowed from this page')
+      return fn(...args)
+    })
+
+    handle('info', () => ({ ...state, fontUrl: findBundledFontUrl() }))
+    handle('resize', (height) => {
+      const h = Math.min(Math.max(Number(height) || 0, 120), 600)
+      win.setContentSize(540, h)
+      if (!win.isVisible()) win.show()
+    })
+    handle('retry', async () => {
+      if (await probePort(port)) {
+        finish(port)
+        return { free: true }
+      }
+      state.fallback = await findFallbackPort(port)
+      state.owner    = await findPortOwner(port)
+      return { free: false, ...state }
+    })
+    handle('fallback', () => finish(state.fallback))
+    handle('quit', () => finish(null))
+    win.on('closed', () => finish(null))
+
+    win.loadFile(path.join(__dirname, 'portConflict.html'))
+  })
+}
+
+// Resolves to the port to run on, or null when the user chose to quit.
 async function resolvePort() {
   let saved = null
   try {
@@ -138,20 +249,15 @@ async function resolvePort() {
     // no saved port yet — first launch
   }
 
-  if (saved && await probePort(saved)) return saved
-
-  const port = await findFreePort(saved ?? DEFAULT_PORT)
-  fs.mkdirSync(app.getPath('userData'), { recursive: true })
-  fs.writeFileSync(PORT_FILE(), JSON.stringify({ port }))
-
-  if (saved && saved !== port) {
-    dialog.showMessageBoxSync({
-      type:    'warning',
-      title:   'TRACS',
-      message: `Port ${saved} was unavailable — TRACS is now using port ${port} instead. Previously-saved app preferences won't carry over to this session.`,
-    })
+  if (!saved) {
+    const port = await findFreePort(DEFAULT_PORT)
+    fs.mkdirSync(app.getPath('userData'), { recursive: true })
+    fs.writeFileSync(PORT_FILE(), JSON.stringify({ port }))
+    return port
   }
-  return port
+
+  if (await probePort(saved)) return saved
+  return askPortConflict(saved)
 }
 
 // ── Server bootstrap ──────────────────────────────────────────────────────
@@ -169,7 +275,7 @@ function startServer(port) {
   // asdex_colors.json) must live outside the install directory to survive an
   // app update. See server/src/seedConfigFiles.js.
   process.env.TRACS_CONFIG_DIR        = path.join(app.getPath('userData'), 'config')
-  require('../server/src/index.js')
+  return require('../server/src/index.js').ready
 }
 
 // ── Window ────────────────────────────────────────────────────────────────
@@ -287,6 +393,99 @@ handleFromApp('lnm:pickDatabase', async (event) => {
   return result.filePaths[0]
 })
 
+// ── Find in page (docs windows' Ctrl+F) ─────────────────────────────────
+// Electron has Chromium's page search but not Chrome's find bar. The box
+// (findBar.html) is its own view laid over the top-right of the docs window,
+// like a browser's find bar, rather than part of the page: Chromium's search
+// also matches text typed in the page's own inputs, so an in-page box found,
+// selected and took focus from its own query. The docs page only asks for
+// the box to open or close (server/src/docsFind.js).
+const FIND_BAR = { width: 340, height: 34, margin: 8, scrollbar: 16 }
+const findBars = new Map() // docs window id -> { win, view, visible }
+
+function placeFindBar(bar) {
+  const { width } = bar.win.getContentBounds()
+  bar.view.setBounds({
+    x:      Math.max(0, width - FIND_BAR.width - FIND_BAR.scrollbar - FIND_BAR.margin),
+    y:      FIND_BAR.margin,
+    width:  FIND_BAR.width,
+    height: FIND_BAR.height,
+  })
+}
+
+function createFindBar(win) {
+  const view = new WebContentsView({
+    webPreferences: {
+      preload:          path.join(__dirname, 'findBarPreload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+      sandbox:          true,
+    },
+  })
+  const bar = { win, view, visible: false, loaded: view.webContents.loadFile(path.join(__dirname, 'findBar.html')) }
+  win.webContents.on('found-in-page', (_e, result) => {
+    if (!view.webContents.isDestroyed()) view.webContents.send('findbar:result', { activeMatchOrdinal: result.activeMatchOrdinal, matches: result.matches })
+  })
+  win.on('resize', () => placeFindBar(bar))
+  win.on('closed', () => {
+    findBars.delete(win.id)
+    if (!view.webContents.isDestroyed()) view.webContents.close()
+  })
+  findBars.set(win.id, bar)
+  return bar
+}
+
+async function showFindBar(win) {
+  const bar = findBars.get(win.id) ?? createFindBar(win)
+  if (!bar.visible) {
+    win.contentView.addChildView(bar.view)
+    bar.visible = true
+  }
+  placeFindBar(bar)
+  await bar.loaded
+  bar.view.webContents.focus()
+  bar.view.webContents.send('findbar:opened')
+}
+
+function hideFindBar(bar) {
+  if (!bar?.visible) return
+  bar.win.contentView.removeChildView(bar.view)
+  bar.visible = false
+  bar.win.webContents.stopFindInPage('clearSelection')
+  bar.win.webContents.focus()
+}
+
+handleFromApp('find:open', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (win) return showFindBar(win)
+})
+
+handleFromApp('find:close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (win) hideFindBar(findBars.get(win.id))
+})
+
+// The find box's own calls; only a find box view may make them.
+function findBarOf(sender) {
+  for (const bar of findBars.values()) if (bar.view.webContents === sender) return bar
+  throw new Error('IPC not allowed from this page')
+}
+
+ipcMain.handle('findbar:info', (event) => {
+  findBarOf(event.sender)
+  return { fontUrl: findBundledFontUrl() }
+})
+
+ipcMain.handle('findbar:search', (event, text, forward, newSearch) => {
+  const bar = findBarOf(event.sender)
+  const page = bar.win.webContents
+  if (typeof text !== 'string' || text === '') { page.stopFindInPage('clearSelection'); return }
+  // findNext: true starts a new search, false moves to the next match.
+  page.findInPage(text, { forward: forward !== false, findNext: newSearch === true })
+})
+
+ipcMain.handle('findbar:close', (event) => hideFindBar(findBarOf(event.sender)))
+
 // ── Auto-update ("check on launch, ask before downloading") ─────────────
 // autoDownload:false — respects variable end-user bandwidth rather than
 // silently consuming data. Mac builds aren't code-signed, so electron-updater's Squirrel.Mac backend can't verify unsigned
@@ -295,6 +494,10 @@ handleFromApp('lnm:pickDatabase', async (event) => {
 function setupAutoUpdate() {
   if (process.platform === 'darwin') {
     const { autoUpdater } = require('electron-updater')
+    // Notify-only: never download an update the unsigned app can't install.
+    // The zip target is what makes electron-builder publish latest-mac.yml,
+    // which this check reads.
+    autoUpdater.autoDownload = false
     autoUpdater.on('update-available', (info) => {
       mainWindow?.webContents.send('update:notify-only', info.version)
     })
@@ -326,19 +529,47 @@ handleFromApp('update:openReleasePage', () => shell.openExternal('https://github
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
 
+// True until the main window exists, so closing the port-conflict dialog
+// doesn't count as the last window closing.
+let startingUp = true
+
 app.whenReady().then(async () => {
   const port = await resolvePort()
+  if (port === null) {
+    app.quit()
+    return
+  }
   currentPort = port
-  startServer(port)
+  await startServer(port)
   createWindow(port)
+  startingUp = false
   buildMenu(port)
   setupAutoUpdate()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(port)
   })
+}).catch((err) => {
+  // e.g. no free port in the range. Without this the app would keep running
+  // with no window. If the window did open, a later step failed; keep it.
+  console.error('[electron] startup failed:', err)
+  dialog.showErrorBox('TRACS could not start', err?.message ?? String(err))
+  if (BrowserWindow.getAllWindows().length === 0) app.quit()
+})
+
+// Let the in-process server stop its sources and close sockets cleanly
+// before the app exits. The quit is paused once, then resumed.
+let serverShutDown = false
+app.on('before-quit', (event) => {
+  if (serverShutDown || currentPort === null) return
+  event.preventDefault()
+  serverShutDown = true
+  require('../server/src/index.js').shutdown()
+    .catch((err) => console.error('[electron] server shutdown failed:', err))
+    .finally(() => app.quit())
 })
 
 app.on('window-all-closed', () => {
+  if (startingUp) return
   if (process.platform !== 'darwin') app.quit()
 })

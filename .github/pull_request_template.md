@@ -10,4 +10,4 @@
 
 - [ ] `npm run lint` passes
 - [ ] No new `npm run knip` findings
-- [ ] User-facing changes are reflected in `docs/` or the README, and in `CHANGELOG.md` under Unreleased
+- [ ] User-facing changes are reflected in `docs/` or the README

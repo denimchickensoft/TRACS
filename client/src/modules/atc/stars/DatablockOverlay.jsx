@@ -10,12 +10,11 @@ import { useOdsStore }         from '../../../store/ods.js'
 import { latLngToCanvas }      from '../../../utils/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
 import { hasLiveSquawk }       from '../../../utils/transponder.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from './constants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from '../../../utils/scopeConstants.js'
 import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
+import { MS_TO_KT as M_PER_S_TO_KNOTS, M_TO_FT as METERS_TO_FEET } from '../../../utils/units.js'
 
 const WINDOW_ID        = 'atc-main'
-const M_PER_S_TO_KNOTS = 1.94384
-const METERS_TO_FEET   = 3.28084
 // SVG text isn't measured against a canvas context here, so estimate width
 // from Roboto Mono's monospace advance instead of ctx.measureText.
 const MONO_CHAR_RATIO  = 0.6

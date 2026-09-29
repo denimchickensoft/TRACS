@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { fetchJson } from '../utils/fetchJson.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 /**
  * Controller registry.
@@ -90,8 +92,7 @@ export const useControllersStore = create((set, get) => ({
   // ── Load position type definitions ───────────────────────────────
   loadPositionTypes: async () => {
     try {
-      const res  = await fetch('/positionTypes.json')
-      const data = await res.json()
+      const data = await fetchJson('/positionTypes.json')
       set({ positionTypes: data.positionTypes ?? [] })
       const cached = get()._cachedClientList
       if (cached.length > 0) get().rebuildFromClientList(cached)
@@ -289,7 +290,6 @@ export const useControllersStore = create((set, get) => ({
 
   // ── Convenience selectors ─────────────────────────────────────────
   getEntry:          (positionName) => get().registry[positionName] ?? null,
-  getPositionSymbol: (positionName) => get().registry[positionName]?.positionSymbol ?? null,
   canAssumeTrack:    (positionName) => get().registry[positionName]?.canAssumeTrack  ?? false,
 
   // Returns all registered controllers as an array, sorted by group then suffix
@@ -310,7 +310,10 @@ const _ctrlCh  = new BroadcastChannel('tracs-controllers')
 const _pick    = (s) => ({ registry: s.registry, groupAssignments: s.groupAssignments, nextGroupNumber: s.nextGroupNumber })
 
 if (!_isPopup) {
-  useControllersStore.subscribe((state) => _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pick(state) }))
+  useControllersStore.subscribe((state, prev) => {
+    const slice = _pick(state)
+    if (!shallowEqual(slice, _pick(prev))) _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: slice })
+  })
   _ctrlCh.onmessage = (e) => {
     if (e.data?.type === 'REQUEST_STATE') _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pick(useControllersStore.getState()) })
   }

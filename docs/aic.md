@@ -31,7 +31,7 @@ Click the scope to focus it, type, then press **Enter** to run most commands. A 
 | `.center <fixname>` | Center on a named nav fix |
 | `.center` + click | Center on the clicked point |
 | `.find <fixname>` | Drop a marker at a named fix (cleared by Escape) |
-| `.define <term>` (or `.def <term>`) | Look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition above the command line, e.g. `.define bogey dope`. Stays up until dismissed (Escape, another `.define`, or clicking it) |
+| `.define <term>` (or `.def <term>`) | Look up a tactical brevity term (ATP 1-02.1, April 2025) and show its full definition above the command line, e.g. `.define bogey dope`. A single letter, e.g. `.def a`, jumps to the first term starting with that letter. Stays up until dismissed (Escape, another `.define`, or clicking it) |
 | `.be` | Reset bullseye to the mission bullseye (clears any override) |
 | `.be` + click | Type `.be`, then click the map to override bullseye at that point |
 | `.be <fixname>` | Override bullseye to a named fix/navaid/runway |
@@ -44,8 +44,8 @@ Click the scope to focus it, type, then press **Enter** to run most commands. A 
 | `.geo` | Toggle coastline/boundary overlay |
 | `.relief` | Toggle terrain relief shading |
 | `.aspcolors <name>` | Set the map color palette by name |
-| `.centroid` | Debug aid — marks the hostile-picture centroid |
-| `.axis` | Debug aid — draws the computed threat axis |
+| `.centroid` | Toggle a marker at the hostile-picture centroid |
+| `.axis` | Toggle a line along the computed threat axis |
 | `.bec` | Toggle bullseye-on-cursor — bearing/range readout that follows the mouse (off by default) |
 | `.clear` | Clears threat rings, RBL, sector, PICTURE-ack state, and **all** BRAA pairs |
 
@@ -141,6 +141,7 @@ Rows are listed in the order they were added. Mouse wheel on the panel's title b
 | `F1` / `F2` / `F3` / `F4` | Arm a pending declaration — Hostile / Bogey / Neutral / Friendly — then click a contact to apply it. Press the same key again to cancel. Also cancels a pending BRAA pairing |
 | `Escape` | Clears one thing per press: a `.find` marker first, then a `.define` readout. Next come any pending declaration, pending BRAA pairing, typed command, or command feedback, all cleared together. Once none of those remain, it clears the RBL and hides the sector |
 | `Enter` | Runs the current command |
+| `Ctrl+Left` / `Ctrl+Right` | Shows / hides the BRAA list (app-wide, see Getting Started) |
 | `Ctrl+M` | Opens Messages — a general chat window shared across all modules (DM another position with `.chat <POSITION>`, broadcast to everyone with `/ <text>`) |
 
 Typing into the command line cancels any pending F-key declaration and BRAA pairing.

@@ -10,7 +10,7 @@ import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
-import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
+import { resolveCallsign, unitFocusKey, findFocusedUnit } from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }  from '../../store/navdata.js'
 import { useRunwaysStore }  from '../../store/runways.js'
@@ -24,21 +24,22 @@ import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
-import { resolveSlew }      from '../atc/stars/input/slewResolver.js'
+import { useWheelDirection } from '../../utils/wheel.js'
+import { resolveSlew, resolveDeclareTargets } from '../../utils/slewResolver.js'
 import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
-import { drawCompassRose }  from '../atc/stars/canvas/drawCompassRose.js'
-import { drawGeo }          from '../atc/stars/canvas/drawGeo.js'
-import { drawRelief }       from '../atc/stars/canvas/drawRelief.js'
-import { drawHoldings }     from '../atc/stars/canvas/drawHoldings.js'
-import { drawMora }         from '../atc/stars/canvas/drawMora.js'
-import { drawAirways }      from '../atc/stars/canvas/drawAirways.js'
-import { drawRunways }      from '../atc/stars/canvas/drawRunways.js'
+import { drawCompassRose }  from '../../canvas/drawCompassRose.js'
+import { drawGeo }          from '../../canvas/drawGeo.js'
+import { drawRelief }       from '../../canvas/drawRelief.js'
+import { drawHoldings }     from '../../canvas/drawHoldings.js'
+import { drawMora }         from '../../canvas/drawMora.js'
+import { drawAirways }      from '../../canvas/drawAirways.js'
+import { drawRunways }      from '../../canvas/drawRunways.js'
 import { drawAbmLayers }    from './canvas/drawAbmLayers.js'
-import { drawAbmFixSymbols } from './canvas/drawAbmFixSymbols.js'
+import { drawAbmFixSymbols } from '../../canvas/drawAbmFixSymbols.js'
 import { drawAbmAirportPolygons } from './canvas/drawAbmAirportPolygons.js'
-import { drawAbmContacts, typeAbbrev, computeSuppressedIds, parseFlightElement } from './canvas/drawAbmContacts.js'
+import { drawAbmContacts, computeSuppressedIds, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { drawAbmMissiles } from '../../utils/declarationSymbols.js'
 import { useMissileAlertTracker } from './missileAlert/useMissileAlertTracker.js'
 import { useAbmMissileAlertStore } from '../../store/abmMissileAlert.js'
@@ -61,13 +62,14 @@ import {
   advancePendingDraw, rotatePendingDraw, supportsRotation, POLY_CLOSE_RADIUS_PX,
 } from './draw/drawCommands.js'
 import {
-  trueDeclaration, getAbmVisibleUnits, getAbmVisibleGroundUnits, getAbmVisibleMissiles,
-  resolveDeclareTargets, buildReadoutFields, buildFriendlyAirFields,
-  distToSegment, airbaseCenterFromStrips, padRunwayName, buildAirportFields,
+  getAbmVisibleUnits, getAbmVisibleGroundUnits, buildReadoutFields, buildFriendlyAirFields, distToSegment, airbaseCenterFromStrips, buildAirportFields, flightRouteGroupLabel, buildAirportStrips, groupReadoutHits,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
 import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'
+import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
+import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
+import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 const DEFAULT_windowId = 'abm-main'
 const EMPTY_ARRAY = []
@@ -76,7 +78,6 @@ const EMPTY_OBJECT = {}
 const EMPTY_AIRWAYS_VISIBLE = { V: false, J: false, B: false }
 const RANGE_MIN  = 1
 const RANGE_MAX  = 600
-const COALITION_NUM = { blue: 2, red: 1, gm: 2, admin: 2 }
 const MAX_HISTORY   = 10  // absolute cap on captured points; display capped by historyLength setting
 const ALT_TOGGLE_MS   = 2000  // datablock line-2 speed/type alternation rate
 const READOUT_RADIUS_PX = 10    // cursor-proximity radius for the unit readout box
@@ -108,16 +109,6 @@ const F_KEY_DECL = {
 // AIC's. No STARS/CATCC-style track ownership/initiation — declare-and-
 // display only. Magnetic-north-up projection (real WMM declination) and a
 // compass rose (CATCC's smaller fontScale, not STARS's).
-// FRAG route leg labels use the flight's group callsign (e.g. "COLT1" for
-// "COLT11"), the same flight/element split Ato.jsx's CALLSIGN column and
-// formation-datablock suppression already use — see parseFlightElement's
-// header comment in drawAbmContacts.js. Falls back to the mission-editor
-// group name when the lead unit's callsign doesn't parse.
-function flightRouteGroupLabel(flight) {
-  if (!flight) return null
-  return parseFlightElement(flight.units?.[0])?.flightKey ?? flight.name ?? null
-}
-
 export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign = null, initialRangeNm = null } = {}) {
   const canvasAreaRef  = useRef(null)
   const mapRef         = useRef(null)
@@ -125,6 +116,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const compassRef     = useRef(null)
   const contactsRef    = useRef(null)
   const interactiveRef = useRef(null)
+  // Mouse wheels step immediately; trackpad deltas accumulate (utils/wheel.js).
+  const wheelDir = useWheelDirection()
 
   // Loaded once on first mount — feeds initial state below (window-init
   // defaults + local useState initializers). Not re-read after that; all
@@ -165,12 +158,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const roeVisible = windowSettings?.roeVisible ?? true
   const declarations = useAbmStore(s => s.declarations)
   const autoDeclareMode = useAbmStore(s => s.autoDeclareMode)
-  const getEffectiveDeclaration = getAbmEffectiveDeclaration
   const declarationsRef = useRef(declarations)
   useEffect(() => { declarationsRef.current = declarations }, [declarations])
   const getDecl = useCallback(
-    (id, unit) => getEffectiveDeclaration(id, unit, myCoalitionNum),
-    [getEffectiveDeclaration, myCoalitionNum]
+    (id, unit) => getAbmEffectiveDeclaration(id, unit, myCoalitionNum),
+    [myCoalitionNum]
   )
 
   // ── ATO/FRAG flight selection (Ctrl+Shift+Click) ─────────────────────────────
@@ -215,10 +207,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // BRAA line / bogey dope — ported from AIC, same keypresses/commands.
   const braaList          = useAbmStore(s => s.braaList)
   const pendingBraaFighter = useAbmStore(s => s.pendingBraaFighter)
-  const {
-    addBraaPair, removeBraaPairsForUnit,
-    setPendingBraaFighter, clearPendingBraa,
-  } = useAbmStore()
+  const addBraaPair            = useAbmStore(s => s.addBraaPair)
+  const removeBraaPairsForUnit = useAbmStore(s => s.removeBraaPairsForUnit)
+  const setPendingBraaFighter  = useAbmStore(s => s.setPendingBraaFighter)
+  const clearPendingBraa       = useAbmStore(s => s.clearPendingBraa)
   // threatRings/dbHiddenIds/bullseyeOverride/findMarker/defineEntry live in
   // displayStore's windows[windowId] (not local useState), same as AIC's
   // equivalents (threatRings/bullseyeOverride/findMarker/defineEntry are
@@ -249,7 +241,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   // Middle-click highlight (STARS/AbmScope shared behaviour) — session-local,
   // not persisted; toggles a contact's symbol/datablock to HIGHLIGHT_TEAL
-  // (atc/stars/constants.js). Works across air + ground/naval (allVisibleUnits).
+  // (utils/scopeConstants.js). Works across air + ground/naval (allVisibleUnits).
   const [highlightedIds, setHighlightedIds] = useState(new Set())
   const toggleHighlight = (unitId) =>
     setHighlightedIds(s => { const n = new Set(s); n.has(unitId) ? n.delete(unitId) : n.add(unitId); return n })
@@ -285,10 +277,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   // Missile tracking — own-coalition/neutral always visible, enemy gated by
   // server/src/missileDetection.js's AWACS/EWR-only detection (see
-  // abmScopeHelpers.js's getAbmVisibleMissiles).
+  // utils/tacticalHelpers.js's getVisibleMissiles).
   const weapons = useWeaponsStore(s => s.weapons)
   const visibleMissiles = useMemo(
-    () => getAbmVisibleMissiles(weapons, units, myCoalitionNum),
+    () => getVisibleMissiles(weapons, units, myCoalitionNum),
     [weapons, units, myCoalitionNum]
   )
   const visibleMissilesRef = useRef(visibleMissiles)
@@ -386,7 +378,12 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     }
   }, [visibleGroundUnits, highlightedIds, units])
 
+  // .gc off empties the ground/naval pool here, before it feeds drawing,
+  // readouts, clicks, focus, BRAA, threat rings and the command context,
+  // so a hidden contact is excluded from all of them, not just undrawn.
+  const groundVisible = windowSettings?.groundVisible ?? true
   const pinnedGroundUnits = useMemo(() => {
+    if (!groundVisible) return EMPTY_OBJECT
     let merged = visibleGroundUnits
     for (const id of highlightedIds) {
       if (!merged[id] && pinnedGroundRef.current[id]) {
@@ -395,7 +392,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       }
     }
     return merged
-  }, [visibleGroundUnits, highlightedIds])
+  }, [visibleGroundUnits, highlightedIds, groundVisible])
 
   const visibleGroundUnitsRef = useRef(pinnedGroundUnits)
   useEffect(() => { visibleGroundUnitsRef.current = pinnedGroundUnits }, [pinnedGroundUnits])
@@ -451,7 +448,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // centerline .label strings, and drop line 1 when there's no real mapping.
   const [icaoMap, setIcaoMap] = useState({})
   useEffect(() => {
-    fetch('/icaoMapping.json').then(r => r.ok ? r.json() : {}).catch(() => ({})).then(setIcaoMap)
+    getIcaoMapping().then(setIcaoMap)
   }, [])
 
   useEffect(() => { useBrevityStore.getState().load() }, [])
@@ -494,67 +491,15 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     return () => clearInterval(id)
   }, [windowId])
 
-  // History trail capture — same rate-gated-setInterval pattern STARS uses
-  // (client/src/modules/atc/stars/StarsScope.jsx), not AIC (which has none).
-  // Rate driven by windowSettings.historyRate (seconds), via a ref so the
-  // interval doesn't need to be torn down/rebuilt when the rate changes.
-  const historyRef = useRef({})
-  const historyRateRef = useRef(4.5)
-  useEffect(() => {
-    historyRateRef.current = windowSettings?.historyRate ?? 4.5
-  }, [windowSettings?.historyRate])
-  useEffect(() => {
-    let lastCaptureWall = 0
-    let lastCaptureUpdateTime = 0
-    const id = setInterval(() => {
-      const { lastUpdateTime } = useUnitsStore.getState()
-      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
-      const now = Date.now()
-      if (now - lastCaptureWall < historyRateRef.current * 1000) return
-      lastCaptureWall = now
-      lastCaptureUpdateTime = lastUpdateTime
+  // History trail capture (utils/useHistoryCapture.js), rate from
+  // windowSettings.historyRate. ABM's `.history <len> 0` means "capture on
+  // every fresh update", so a zero rate doesn't pause capture here.
+  const historyRef = useHistoryCapture(visibleUnitsRef, windowSettings?.historyRate, { pauseAtZeroRate: false })
 
-      const current = visibleUnitsRef.current
-      historyRef.current = Object.fromEntries(
-        Object.entries(current).map(([uid, u]) => {
-          const prev = historyRef.current[uid] || []
-          const pos  = u.position
-          if (!pos) return [uid, prev]
-          return [uid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
-        })
-      )
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
-
-  // Missile history trail capture — same pattern as the aircraft capture
-  // above, sharing its rate/length settings (one .history command governs
-  // both), but keyed off the weapons store and ABM-only (AIC's drawAbmMissiles
-  // call never passes a history map, so it never draws a trail there).
-  const missileHistoryRef = useRef({})
-  useEffect(() => {
-    let lastCaptureWall = 0
-    let lastCaptureUpdateTime = 0
-    const id = setInterval(() => {
-      const { lastUpdateTime } = useWeaponsStore.getState()
-      if (!lastUpdateTime || lastUpdateTime === lastCaptureUpdateTime) return
-      const now = Date.now()
-      if (now - lastCaptureWall < historyRateRef.current * 1000) return
-      lastCaptureWall = now
-      lastCaptureUpdateTime = lastUpdateTime
-
-      const current = visibleMissilesRef.current
-      missileHistoryRef.current = Object.fromEntries(
-        Object.entries(current).map(([wid, w]) => {
-          const prev = missileHistoryRef.current[wid] || []
-          const pos  = w.position
-          if (!pos) return [wid, prev]
-          return [wid, [{ lat: pos.lat, lng: pos.lng }, ...prev].slice(0, MAX_HISTORY)]
-        })
-      )
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
+  // Missile history trails — same rate/length settings (one .history command
+  // governs both), keyed off the weapons store. ABM-only: AIC's
+  // drawAbmMissiles call never passes a history map, so it never draws one.
+  const missileHistoryRef = useHistoryCapture(visibleMissilesRef, windowSettings?.historyRate, { sourceStore: useWeaponsStore, pauseAtZeroRate: false })
 
   // Datablock line-2 speed/type alternation (friendlies only) — same idea as
   // STARS' blink timers, just a plain toggle rather than a visibility blink.
@@ -738,34 +683,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // centerline draw specifically — at ABM's zoom levels a runway's physical
   // width is sub-pixel, so "near the centerline" already means "on the
   // pavement" whichever layer is the one actually visible.
-  const airportStrips = useMemo(() => {
-    const theatreIcao = (theatre && icaoMap[theatre.toLowerCase()]) || {}
-    const stripMap = new Map()
-    for (const c of runwayCenterlines) {
-      if (!c.rwyEnd1 || !c.rwyEnd2) continue
-      // centerlines' public shape (store/runways.js) doesn't carry rwyName
-      // directly — only rawCenterlines (an internal intermediate) does — but
-      // id is `${airbase}__${rwyName}`, so pull it back out from there.
-      const rwyName = c.id.slice(c.airbase.length + 2)
-      const key = `${c.airbase}|${c.rwyEnd1.lat.toFixed(6)},${c.rwyEnd1.lng.toFixed(6)}|${c.rwyEnd2.lat.toFixed(6)},${c.rwyEnd2.lng.toFixed(6)}`
-      const existing = stripMap.get(key)
-      if (existing) existing.names.push(rwyName)
-      else stripMap.set(key, { airbase: c.airbase, rwyEnd1: c.rwyEnd1, rwyEnd2: c.rwyEnd2, names: [rwyName] })
-    }
-    const byAirbase = new Map()
-    for (const strip of stripMap.values()) {
-      const designator = strip.names.map(padRunwayName).sort((a, b) => parseInt(a, 10) - parseInt(b, 10)).join('/')
-      if (!byAirbase.has(strip.airbase)) {
-        byAirbase.set(strip.airbase, {
-          airbase: strip.airbase, icao: theatreIcao[strip.airbase] ?? null, strips: [], designators: [],
-        })
-      }
-      const entry = byAirbase.get(strip.airbase)
-      entry.strips.push({ rwyEnd1: strip.rwyEnd1, rwyEnd2: strip.rwyEnd2 })
-      entry.designators.push(designator)
-    }
-    return [...byAirbase.values()]
-  }, [runwayCenterlines, icaoMap, theatre])
+  const airportStrips = useMemo(
+    () => buildAirportStrips(runwayCenterlines, icaoMap, theatre),
+    [runwayCenterlines, icaoMap, theatre],
+  )
   const airportStripsRef = useRef(airportStrips)
   useEffect(() => { airportStripsRef.current = airportStrips }, [airportStrips])
 
@@ -823,51 +744,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // (revealed type, or the shared "unknown" bucket) so two undetected
   // contacts of different real types still merge into one "UNKNOWN x2"
   // rather than leaking their (undisplayed) distinctness via separate lines.
-  const groupedReadout = useMemo(() => {
-    const groups = new Map()
-    for (const hit of readoutHits) {
-      if (hit.kind === 'airport') {
-        groups.set(hit.unitId, { kind: 'airport', unitId: hit.unitId, airport: hit.airport, count: 1 })
-        continue
-      }
-      if (hit.kind === 'air') {
-        // Declaration-driven for a non-srsCapable contact; for an
-        // srsCapable one, identity reveal is driven by CURRENT correlation
-        // alone, independent of (possibly sticky) declaration — same
-        // decoupling as drawAbmContacts.js's datablock, see its comment for
-        // the full reasoning. getAbmEffectiveDeclaration still gates
-        // whether an srsCapable contact gets an automatic FRIENDLY default
-        // in the first place (no free pass for being same-coalition), but
-        // decl itself no longer factors into reveal here.
-        const decl = getAbmEffectiveDeclaration(hit.unitId, hit.unit, myCoalitionNum)
-        const isFriendly = hit.unit.srsCapable
-          ? correlatedUnitIdsRef.current.has(String(hit.unitId))
-          : decl === DECLARATION.FRIENDLY
-        if (isFriendly) {
-          groups.set(`air:${hit.unitId}`, {
-            kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: true, count: 1,
-          })
-          continue
-        }
-        const revealed  = rwrEverDetectedRef.current.has(String(hit.unitId))
-        const typeLabel = revealed ? typeAbbrev(hit.unit) : null
-        const key       = `air-unknown:${typeLabel ?? 'UNKNOWN'}`
-        const existing  = groups.get(key)
-        if (existing) existing.count++
-        else groups.set(key, {
-          kind: 'air', unitId: hit.unitId, unit: hit.unit, isFriendly: false, revealed, typeLabel, count: 1,
-        })
-        continue
-      }
-      const key = `ground:${hit.unit.name}`
-      const existing = groups.get(key)
-      if (existing) existing.count++
-      else groups.set(key, { kind: 'ground', unitId: hit.unitId, unit: hit.unit, count: 1 })
-    }
-    // Airfields always lead the list — Array#sort is stable, so this only
-    // reorders across kinds and leaves same-kind relative order untouched.
-    return [...groups.values()].sort((a, b) => (a.kind === 'airport' ? 0 : 1) - (b.kind === 'airport' ? 0 : 1))
-  }, [readoutHits, myCoalitionNum])
+  // The two refs are read at compute time, exactly as before extraction.
+  const groupedReadout = useMemo(
+    () => groupReadoutHits(readoutHits, myCoalitionNum, correlatedUnitIdsRef.current, rwrEverDetectedRef.current, (unit) => isOwnSide(unit, coalition)),
+    [readoutHits, myCoalitionNum, coalition],
+  )
 
   // Readout is one object at a time: with only one (post-collapse) hit it's
   // shown steadily, with 2+ it cycles through them, one per READOUT_CYCLE_MS,
@@ -882,20 +763,26 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     return () => clearInterval(id)
   }, [groupedReadout.length])
 
+  // `cancelled` drops a response that lands after a theatre switch, so a
+  // slow fetch for the previous theatre can't overwrite the current one.
   useEffect(() => {
     if (!theatre) return
+    let cancelled = false
     fetch(`/api/airports/polygons/${encodeURIComponent(theatre)}`)
       .then(r => r.ok ? r.json() : null)
-      .then(geojson => setPolygonFeatures(geojson?.features ?? []))
-      .catch(() => setPolygonFeatures([]))
+      .then(geojson => { if (!cancelled) setPolygonFeatures(geojson?.features ?? []) })
+      .catch(() => { if (!cancelled) setPolygonFeatures([]) })
+    return () => { cancelled = true }
   }, [theatre])
 
   useEffect(() => {
     if (!theatre) return
+    let cancelled = false
     fetch(`/towns/${encodeURIComponent(theatre)}.json`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => setTowns(data?.towns ?? []))
-      .catch(() => setTowns([]))
+      .then(data => { if (!cancelled) setTowns(data?.towns ?? []) })
+      .catch(() => { if (!cancelled) setTowns([]) })
+    return () => { cancelled = true }
   }, [theatre])
 
   useEffect(() => {
@@ -931,13 +818,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     useAbmAirspaceStore.getState().loadForTheatre(theatre)
   }, [theatre])
 
-  const bullseyeEntry = useMemo(() => {
-    if (!bullseyes?.bullseyes) return null
-    const coalStr = coalition === 'red' ? 'red' : 'blue'
-    return Object.values(bullseyes.bullseyes).find(b => b.coalition === coalStr)
-        ?? Object.values(bullseyes.bullseyes)[0]
-        ?? null
-  }, [bullseyes, coalition])
+  const bullseyeEntry = useMemo(() => findCoalitionBullseye(bullseyes, coalition), [bullseyes, coalition])
 
   // .be override — lets the operator relocate bullseye off the mission's
   // real one (fix, explicit lat/lon, or a map click). Not persisted: like
@@ -966,11 +847,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     let initCenterLat = bullseyeLat
     let initCenterLng = bullseyeLng
     if (followCallsign) {
-      const match = matchLiveByPrefix(followCallsign, useUnitsStore.getState().units)
-        .find(m => m.callsign === followCallsign)
-      if (match?.unit?.position) {
-        initCenterLat = match.unit.position.lat
-        initCenterLng = match.unit.position.lng
+      const followed = findFocusedUnit(followCallsign, useUnitsStore.getState().units)
+      if (followed?.position) {
+        initCenterLat = followed.position.lat
+        initCenterLng = followed.position.lng
       }
     }
     displayStore.initWindow(windowId, {
@@ -1004,6 +884,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       coordsVisible: abmPrefs.coordsVisible, coordFormat: abmPrefs.coordFormat,
       elevUnit: abmPrefs.elevUnit, becVisible: abmPrefs.becVisible,
       acqHidden: new Set(abmPrefs.acqHidden ?? []), engHidden: new Set(abmPrefs.engHidden ?? []),
+      groundVisible: abmPrefs.groundVisible,
       autoThreat: abmPrefs.autoThreat,
       geoVisible: abmPrefs.geoVisible, reliefVisible: abmPrefs.reliefVisible,
       holdingsVisible: abmPrefs.holdingsVisible, moraVisible: abmPrefs.moraVisible,
@@ -1021,10 +902,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const unitsLastUpdate = useUnitsStore(s => s.lastUpdateTime)
   useEffect(() => {
     if (!followCallsign) return
-    const match = matchLiveByPrefix(followCallsign, useUnitsStore.getState().units)
-      .find(m => m.callsign === followCallsign)
-    if (!match?.unit?.position) return
-    displayStore.updateWindow(windowId, { centerLat: match.unit.position.lat, centerLng: match.unit.position.lng })
+    const followed = findFocusedUnit(followCallsign, useUnitsStore.getState().units)
+    if (!followed?.position) return
+    displayStore.updateWindow(windowId, { centerLat: followed.position.lat, centerLng: followed.position.lng })
   }, [followCallsign, unitsLastUpdate]) // eslint-disable-line
 
   const centerOverridden = windowSettings?.centerOverridden ?? false
@@ -1224,7 +1104,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // ── Compass rose — CATCC's fontScale (0.625), not STARS's default (1) ──────
   // ABM's view is the densest of any scope (contacts+sectors+flights all at
   // once), so the smaller CATCC variant reads better than STARS's larger one.
-  // Shared draw function (client/src/modules/atc/stars/canvas/drawCompassRose.js)
+  // Shared draw function (client/src/canvas/drawCompassRose.js)
   // — no ABM-specific copy needed, just CATCC's parameter choice.
   useEffect(() => {
     if (!view || !compassRef.current) return
@@ -1313,6 +1193,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       theatre,
       view.declinationDeg,
       windowSettings?.dbSize ?? 2,
+      (unit) => isOwnSide(unit, coalition),
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
     drawAbmMissiles(
@@ -1342,7 +1223,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     // In-progress .line/.rect/.circ/.poly/.sect/.race/.text preview — on top
     // of everything, same as RBL.
     drawPendingDraw(ctx, view, pendingDraw, drawCursor, windowSettings?.csMap ?? 2)
-  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, getDecl, altToggle,
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef/missileHistoryRef are stable refs returned by useHistoryCapture
+  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, coalition, getDecl, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
@@ -1487,6 +1369,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     if (!el) return
     const onWheel = (e) => {
       e.preventDefault()
+      // wheelDir: +1 = scroll down; these handlers use +1 = scroll up.
+      const wd = wheelDir(e)
+      if (wd === null) return
       // While a .rect/.poly/.race/.text draw command is pending, the scroll
       // wheel rotates the shape (whole-degree steps, locked to the MAGNETIC
       // heading lattice — see ROTATION_STEP_DEG) instead of zooming.
@@ -1494,13 +1379,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
         const declinationDeg = viewRef.current?.declinationDeg ?? 0
         const pd = useDisplayStore.getState().windows[windowId]?.pendingDraw
         if (pd) {
-          displayStore.updateWindow(windowId, { pendingDraw: rotatePendingDraw(pd, e.deltaY < 0 ? 1 : -1, declinationDeg) })
+          displayStore.updateWindow(windowId, { pendingDraw: rotatePendingDraw(pd, -wd, declinationDeg) })
         }
         return
       }
       const ws = useDisplayStore.getState().windows[windowId]
       if (!ws) return
-      const dir     = e.deltaY < 0 ? 1 : -1
+      const dir     = -wd
       const current = ws.rangeNm ?? 150
       // Fine 1NM steps once inside 10NM — the normal 10/25NM steps are too
       // coarse to be useful down at the RANGE_MIN=1 end of the range.
@@ -1596,10 +1481,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     }
 
     // View bookmarks — Ctrl+Alt+0-9 saves the current view, Ctrl+0-9 recalls
-    // it. e.code (not e.key) so this is layout/shift-independent, matching
-    // STARS' starsKeys.js. Reads live window state rather than the
-    // closed-over windowSettings, same pattern as buildView.
-    if (e.ctrlKey && e.code?.startsWith('Digit')) {
+    // it. e.code (not e.key) so this is layout-independent, matching STARS'
+    // starsKeys.js. Shift is excluded, leaving Ctrl+Shift+Digit free.
+    // Reads live window state rather than the closed-over windowSettings,
+    // same pattern as buildView.
+    if (e.ctrlKey && !e.shiftKey && e.code?.startsWith('Digit')) {
       const n = parseInt(e.code.slice(5), 10)
       if (!Number.isNaN(n)) {
         e.preventDefault()
@@ -1661,6 +1547,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       cmdDraftRef.current = ''
       return
     }
+
+    // Ctrl+Up/Down belong to the side panels (RightTabStrip), not history.
+    if (e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return
 
     // While a .define readout is up, ArrowUp/ArrowDown browse the glossary
     // alphabetically instead of the command history, until Escape.
@@ -2037,8 +1926,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
     if (!target) return
-    openAbmFocusPanel(resolveCallsign(target.unit), loadAbmPrefs().focusDefaultRangeNm ?? 20)
-  }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer])
+    // Another side's aircraft is followed by unit ID, so its panel never
+    // shows the callsign.
+    const focusKey = isOwnSide(target.unit, coalition) ? resolveCallsign(target.unit) : unitFocusKey(target.unitId)
+    openAbmFocusPanel(focusKey, loadAbmPrefs().focusDefaultRangeNm ?? 20)
+  }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer, coalition])
 
   if (!windowSettings) return null
 
@@ -2048,7 +1940,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     cmdPreview = `${pendingDeclaration} +`
   } else if (pendingBraaFighter) {
     const fu = allVisibleUnits[pendingBraaFighter]
-    cmdPreview = `BRAA: ${fu ? resolveCallsign(fu) : pendingBraaFighter} → ?`
+    cmdPreview = `BRAA: ${fu && isOwnSide(fu, coalition) ? resolveCallsign(fu) : 'CONTACT'} → ?`
   } else {
     cmdPreview = cmdBuffer
   }

@@ -20,7 +20,6 @@ import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../../store/strips.js'
 import { useFpeStore } from '../../../store/fpe.js'
 import { useSessionStore } from '../../../store/session.js'
-import { useControllersStore } from '../../../store/controllers.js'
 import { useNavdataStore }    from '../../../store/navdata.js'
 import { useMapsStore }        from '../../../store/maps.js'
 import { useFixesStore }       from '../../../store/fixes.js'
@@ -33,6 +32,7 @@ import { useProceduresStore }  from '../../../store/procedures.js'
 import { useUnitsStore }       from '../../../store/units.js'
 import { useAssociationStore } from '../../../store/association.js'
 import { computeWingmanIds }   from '../stars/stca/formations.js'
+import { findOrphanedTracks }  from '../shared/orphanedTracks.js'
 import { findFlightPlanAid, resolveCallsign, AID_MAX_LEN } from '../../../utils/callsign.js'
 import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
 import { parseAbbreviatedFields, parseVfrFields } from '../stars/input/flightPlanFields.js'
@@ -41,6 +41,8 @@ import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
 import { navdataNotFound } from '../../../store/lnm.js'
+import { getMyControllerId, getKnownControllerIds } from '../../../utils/myControllerId.js'
+import { log } from '../../../utils/log.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -52,11 +54,6 @@ function clearBuffer() { usePreviewStore.getState().clear() }
 
 function getAtc()     { return useAtcStore.getState() }
 function getDisplay() { return useDisplayStore.getState() }
-
-function getMyControllerId() {
-  const positionName = useSessionStore.getState().positionName
-  return useControllersStore.getState().registry[positionName]?.controllerId ?? null
-}
 
 // Resolve a typed FLID (AID, beacon code, or live callsign) to its flight
 // plan and/or track. Any part may be null — a plan with no track yet, or a
@@ -180,9 +177,9 @@ export function OPEN_FPE({ captures, slewTarget }) {
   ok()
 }
 
-export function INIT_CNTL_BY_ID({ captures: _captures, positionName: _positionName }) {
-  // TODO: resolve unit by callsign/FLID when flight plan store exists
-  err('NOT YET SUPPORTED')
+// IC <flight id> + ENTER isn't implemented; use IC + click on the track.
+export function INIT_CNTL_BY_ID() {
+  err('NOT SUPPORTED')
 }
 
 export function TERM_CNTL({ slewTarget }) {
@@ -202,23 +199,46 @@ export function TERM_CNTL({ slewTarget }) {
   ok()
 }
 
-export function TERM_CNTL_ALL() {
-  const { ownership, dropTrack, clearHandoff } = getAtc()
-  const controllerId = getMyControllerId()
+// Drops each track and tells every peer, as a normal drop does.
+function dropTracks(unitIds) {
+  const { dropTrack, clearHandoff } = getAtc()
   const { deleteOnDropTrack, deleteByAid } = useStripsStore.getState()
   const plans = useFlightPlansStore.getState().plans
-  for (const [id, owner] of Object.entries(ownership)) {
-    if (owner === controllerId) {
-      clearHandoff(id)
-      dropTrack(id)
-      sendWebrtcEvent('TRACK_DROPPED', { unitId: id })
-      if (deleteOnDropTrack) {
-        const plan = Object.values(plans).find((p) => p.unitId === Number(id))
-        if (plan) deleteByAid(plan.aid)
-      }
+  for (const id of unitIds) {
+    clearHandoff(id)
+    dropTrack(id)
+    sendWebrtcEvent('TRACK_DROPPED', { unitId: id })
+    if (deleteOnDropTrack) {
+      const plan = Object.values(plans).find((p) => p.unitId === Number(id))
+      if (plan) deleteByAid(plan.aid)
     }
   }
+}
+
+export function TERM_CNTL_ALL() {
+  const controllerId = getMyControllerId()
+  const { ownership } = getAtc()
+  dropTracks(Object.keys(ownership).filter((id) => ownership[id] === controllerId))
   ok()
+}
+
+// .FORCEDROP + SLEW: drop the clicked track whoever owns it, for a track left
+// stuck under an owner who's gone.
+export function FORCE_DROP({ slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  if (!getAtc().ownership[slewTarget.unitId]) return err('ILL TRK')
+  dropTracks([slewTarget.unitId])
+  ok()
+}
+
+// .FORCEDROP ALL: drop only orphaned tracks, meaning their owner's ID isn't
+// in the controller registry.
+export function FORCE_DROP_ALL() {
+  const knownIds = getKnownControllerIds()
+  if (knownIds.size === 0) return err('NO CONTROLLERS')
+  const orphaned = findOrphanedTracks(getAtc().ownership, knownIds)
+  dropTracks(orphaned)
+  usePreviewStore.getState().showInfo(`FORCEDROP ${orphaned.length}`)
 }
 
 export function HND_OFF({ captures, slewTarget }) {
@@ -236,7 +256,7 @@ export function HND_OFF({ captures, slewTarget }) {
   const tcp = captures?.tcp
   if (!tcp) return err('ILL POS')
   if (tcp === controllerId) return err('ILL POS')
-  const knownIds = new Set(Object.values(useControllersStore.getState().registry).map((e) => e.controllerId).filter(Boolean))
+  const knownIds = getKnownControllerIds()
   if (!knownIds.has(tcp)) return err('ILL POS')
   if (ownership[slewTarget.unitId] !== controllerId) return err('ILL TRK')
   setHandoff(slewTarget.unitId, { state: HANDOFF_STATE.INITIATED, from: controllerId, to: tcp })
@@ -295,7 +315,7 @@ export function POINT_OUT({ captures, slewTarget }) {
   if (!tcp) return err('ILL POS')
   const controllerId = getMyControllerId()
   if (tcp === controllerId) return err('ILL POS')
-  const knownIds = new Set(Object.values(useControllersStore.getState().registry).map((e) => e.controllerId).filter(Boolean))
+  const knownIds = getKnownControllerIds()
   if (!knownIds.has(tcp)) return err('ILL POS')
   getAtc().setPointOut(slewTarget.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
   sendWebrtcEvent('POINT_OUT_SENT', { unitId: slewTarget.unitId, fromControllerId: controllerId, toControllerId: tcp })
@@ -707,21 +727,19 @@ export function SET_RNG_RING({ captures }) {
   ok()
 }
 
-export function RELOCATE_PREVIEW({ canvasPos }) {
-  if (!canvasPos) return err('NO POSITION')
-  usePreviewStore.getState().setPosition(canvasPos)
-  ok()
+export function RELOCATE_PREVIEW({ canvasPos, canvasSize }) {
+  relocateList('preview', canvasPos, canvasSize)
 }
 
-export function QUICK_LOOK_TCP({ captures: _captures, slewTarget }) {
-  if (!slewTarget) return err('NO TARGET')
-  // TODO: implement quicklook
-  ok()
+// Quicklook isn't implemented yet (real STARS quicklook is per position, but
+// the atc store's quickLook set is per track). Say so rather than clearing
+// the buffer as if it had worked.
+export function QUICK_LOOK_TCP() {
+  err('NOT SUPPORTED')
 }
 
 export function QUICK_LOOK_ALL() {
-  // TODO
-  ok()
+  err('NOT SUPPORTED')
 }
 
 export function BARE_SLEW({ slewTarget }) {
@@ -870,7 +888,7 @@ export async function REFRESH_ASP_COLORS() {
   else err('REFRESH FAILED')
 }
 
-// ── Debug ─────────────────────────────────────────────────────────────────────
+// ── Display toggles ───────────────────────────────────────────────────────────
 
 export function TOGGLE_COORDS() {
   const win = getDisplay().windows[WINDOW_ID]
@@ -1164,6 +1182,8 @@ const ACTION_MAP = {
   INIT_CNTL_BY_ID,
   TERM_CNTL,
   TERM_CNTL_ALL,
+  FORCE_DROP,
+  FORCE_DROP_ALL,
   HND_OFF,
   HND_OFF_SHORT: HND_OFF,
   HND_OFF_BARE,
@@ -1239,7 +1259,10 @@ const ACTION_MAP = {
 export function dispatch(parsed, slewTarget, context) {
   const handler = ACTION_MAP[parsed.command.id]
   if (!handler) {
-    usePreviewStore.getState().setResponse(`UNIMPLEMENTED: ${parsed.command.id}`)
+    // Recognized STARS syntax TRACS doesn't implement yet (see docs/atc.md's
+    // Known limitations). The command id is internal, so it's only logged.
+    log.info(`[atc] unimplemented command: ${parsed.command.id}`)
+    usePreviewStore.getState().setResponse('NOT SUPPORTED')
     return
   }
   handler({ captures: parsed.captures, slewTarget, ...context })

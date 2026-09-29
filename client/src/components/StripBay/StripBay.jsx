@@ -448,7 +448,6 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
 
   const handleHeaderWheel = (e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setScale((prev) => {

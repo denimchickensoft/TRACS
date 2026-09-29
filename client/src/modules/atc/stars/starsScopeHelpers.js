@@ -1,6 +1,7 @@
 import { hasLiveSquawk } from '../../../utils/transponder.js'
+import { M_TO_FT as METERS_TO_FEET } from '../../../utils/units.js'
+import { findFlightPlanAid } from '../../../utils/callsign.js'
 
-const METERS_TO_FEET = 3.28084
 
 // Each entry: { sym: string, mine: boolean }
 // sym  — '*' unassociated (beacon code received), 'V' unassociated
@@ -45,4 +46,41 @@ export function computeStarsFilteredUnits(visibleUnits, symbolMap, beaconReadout
     if (beaconReadout && hasLiveSquawk(unit)) out[id] = unit
   }
   return out
+}
+
+// The flight plan for a displayed track (by unit id string): the plan the
+// track's callsign resolves to, else a plan explicitly bound to that unit.
+export function findPlanForUid(uid, allUnits, plans) {
+  const unit = Object.values(allUnits).find(u => String(u.id) === uid)
+  const aid  = unit ? findFlightPlanAid(unit, plans) : null
+  return (aid ? plans[aid] : null)
+      ?? Object.values(plans).find(p => String(p.unitId) === uid)
+}
+
+// Render-time display values derived from the STARS window settings, with
+// profile defaults where a setting is unset.
+export function deriveDisplaySettings(windowSettings, activeProfile) {
+  // Background brightness: 0 = black, 100 = medium gray (~#A0A0A0)
+  const bkgGray = Math.round((windowSettings.briteBkg ?? 0) / 100 * 160)
+  const bgColor = `rgb(${bkgGray},${bkgGray},${bkgGray})`
+
+  // ldrLength stored as 0–7; convert to pixels (10px per unit). null → profile default.
+  const ldrLength = windowSettings.ldrLength != null
+    ? windowSettings.ldrLength * 10
+    : activeProfile.visual.dataBlock?.leaderLength ?? 40
+  // ldrAngleDeg stored as canvas degrees (0=right, CW). null → profile default.
+  const ldrAngleDeg = windowSettings.ldrAngleDeg ?? activeProfile.visual.dataBlock?.leaderAngleDeg ?? -45
+
+  return {
+    bgColor, ldrLength, ldrAngleDeg,
+    // Datablock and DCB brightness (0–1 opacity)
+    briteFdb: (windowSettings.briteFdb ?? 80) / 100,
+    briteLdb: (windowSettings.briteLdb ?? 70) / 100,
+    briteDcb: (windowSettings.briteDcb ?? 80) / 100,
+    // Character size (0–5 scale; 3 = default)
+    csDatablocks:  windowSettings.csDatablocks ?? 3,
+    csDcb:         windowSettings.csDcb        ?? 3,
+    dcbPos:        windowSettings.dcbPosition ?? 'top',
+    coordsVisible: windowSettings.coordsVisible ?? false,
+  }
 }

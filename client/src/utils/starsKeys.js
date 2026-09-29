@@ -40,9 +40,10 @@ export const STARS_KEY_MAP = [
   { code: 'KeyT',              alt: true,   action: 'TOGGLE_TOPDOWN' }, // Alt+T = top-down
 
   // ── Bookmarks ─────────────────────────────────────────────────────
-  // Ctrl+Alt+Digit0–9 = set bookmark; Ctrl+Digit0–9 = load bookmark
-  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: true,  action: `SET_BOOKMARK_${i}`  })),
-  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: false, action: `LOAD_BOOKMARK_${i}` })),
+  // Ctrl+Alt+Digit0–9 = set bookmark; Ctrl+Digit0–9 = load bookmark.
+  // Shift excluded, leaving Ctrl+Shift+Digit free for other shortcuts.
+  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: true,  shift: false, action: `SET_BOOKMARK_${i}`  })),
+  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: false, shift: false, action: `LOAD_BOOKMARK_${i}` })),
 ]
 
 /**
@@ -58,6 +59,14 @@ export function matchStarsKey(e) {
     return entry
   }
   return null
+}
+
+// A function key (F1-F13) enters its command token once: pressing it again,
+// or holding it down, doesn't repeat the token. Other token keys (Δ, MIN)
+// can appear more than once in an entry.
+export function shouldAppendToken(code, token, buffer, isRepeat) {
+  if (!/^F\d+$/.test(code)) return true
+  return !isRepeat && !buffer.startsWith(token)
 }
 
 /**

@@ -1,5 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+// Roboto Mono is bundled (not loaded from Google Fonts) so offline/LAN
+// setups get it and the CSP needs no third-party font hosts.
+import '@fontsource/roboto-mono/400.css'
+import '@fontsource/roboto-mono/500.css'
 import './index.css'
 import { App } from './App'
 import { StripBayWindow }      from './components/StripBay/StripBayWindow'

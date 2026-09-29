@@ -5,8 +5,9 @@ import { preloadAirdromes, getAirdromeName } from './airdromes.js'
 import { matchFixName } from './fixMatch.js'
 import { formatIcaoRoutePoint } from './coords.js'
 import { AID_MAX_LEN } from './callsign.js'
+import { M_TO_FT } from './units.js'
+import { getIcaoMapping } from './icaoMapping.js'
 
-const M_TO_FT = 3.28084
 
 // ALT is stored as hundreds of feet MSL (e.g. 35,000 ft -> "350"), the
 // flight-plan store's field convention.
@@ -14,17 +15,7 @@ function metersToAltField(m) {
   return String(Math.round(m * M_TO_FT / 100))
 }
 
-let _icaoMapping = null
-async function loadIcaoMapping() {
-  if (_icaoMapping) return _icaoMapping
-  try {
-    const r = await fetch('/icaoMapping.json')
-    _icaoMapping = r.ok ? await r.json() : {}
-  } catch {
-    _icaoMapping = {}
-  }
-  return _icaoMapping
-}
+const loadIcaoMapping = getIcaoMapping
 
 function routeToken(point) {
   const matched = matchFixName(point.name, point.lat, point.lng)

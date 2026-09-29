@@ -25,7 +25,11 @@ const missileDetection = require('./missileDetection')
 const rateConfig = require('./rateConfig')
 const { splitByCategory, computeDateAndTime, identifiedError, createDeltaBuffer } = require('./tacviewShared')
 
-const RECONNECT_MS = 3000
+// Reconnect backoff: starts at RECONNECT_MIN_MS, doubles per failed attempt
+// up to RECONNECT_MAX_MS, and resets once the relay sends data after auth.
+const RECONNECT_MIN_MS = 3000
+const RECONNECT_MAX_MS = 60000
+let reconnectDelayMs = RECONNECT_MIN_MS
 // See tacview.js's identical constant for why this was shortened from 5000.
 const THEATRE_VOTE_WINDOW_MS = 2000
 // See tacview.js's identical constant — re-syncs useMissionClock() against
@@ -40,6 +44,9 @@ const MISSION_CLOCK_INTERVAL_MS = 10000
 // server/rateConfig.json.
 
 let ws = null
+let active = false
+let linkIssue = null
+let onLinkIssue = null
 let onUnitsDelta = null
 let onWeaponsDelta = null
 let onMission = null
@@ -55,6 +62,7 @@ let theatreTimer = null
 let missionClockTimer = null
 let theatreDecided = false
 let theatreName = null
+let theatreOverridden = false
 const theatreVotes = new Map()
 // From the relay's own parser (this module never sees the raw ACMI wire
 // itself) — see relay/tacview.js's broadcast()/onAuthenticated for where
@@ -99,7 +107,7 @@ function voteTheatre(positions) {
 function sendMissionClock() {
   if (!theatreDecided) return
   const dateAndTime = latestMissionUtcMs == null ? undefined : computeDateAndTime(latestMissionUtcMs, navdata.theatreTacviewRealUtcOffset(theatreName))
-  const mission = { mission: { theatre: theatreName, dateAndTime } }
+  const mission = { mission: { theatre: theatreName, theatreOverridden, dateAndTime } }
   state.setMission(mission)
   if (onMission) onMission(mission)
 }
@@ -223,6 +231,12 @@ function armRateTimers() {
   broadcastTimer = setInterval(() => { unitsBuffer.flush(onUnitsDelta); weaponsBuffer.flush(onWeaponsDelta) }, rateConfig.unitUpdateMs)
 }
 
+// See server/src/linkStatus.js for the shape.
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
+
 function connect() {
   // Re-arms the wait-for-relay-config gate on every (re)connect, including
   // reconnects — the relay resends tacviewDetectionConfig fresh to every
@@ -253,6 +267,8 @@ function connect() {
 
   socket.on('message', (raw) => {
     if (socket !== ws) return
+    reconnectDelayMs = RECONNECT_MIN_MS
+    if (linkIssue) setLinkIssue(null)
     let msg
     try {
       msg = JSON.parse(raw.toString('utf8'))
@@ -305,16 +321,23 @@ function connect() {
     if (reason?.toString() === 'invalid password') {
       console.error('[tacviewRelayClient] relay rejected our password - not retrying until reconnected with a corrected one')
       ws = null
+      clearTimers()
+      setLinkIssue({ retrying: false, reason: 'relay_invalid_password' })
       return
     }
     if (reason?.toString().startsWith('protocol mismatch')) {
       console.error(`[tacviewRelayClient] ${reason} - not retrying until one side is updated`)
       ws = null
+      clearTimers()
+      setLinkIssue({ retrying: false, reason: 'relay_protocol_mismatch' })
       return
     }
 
-    console.log(`[tacviewRelayClient] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${RECONNECT_MS}ms`)
-    reconnectTimer = setTimeout(connect, RECONNECT_MS)
+    if (!linkIssue) setLinkIssue({ retrying: true, reason: 'relay_no_response' })
+    const delay = reconnectDelayMs
+    reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
+    console.log(`[tacviewRelayClient] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${Math.round(delay / 1000)}s`)
+    reconnectTimer = setTimeout(connect, delay)
   })
 
   socket.on('error', (err) => {
@@ -325,6 +348,7 @@ function connect() {
 
 function start(cfg, callbacks = {}) {
   if (ws) stop()
+  reconnectDelayMs = RECONNECT_MIN_MS
 
   relayUrl = cfg.relayUrl
   password = cfg.password ?? null
@@ -333,9 +357,13 @@ function start(cfg, callbacks = {}) {
   onWeaponsDelta = callbacks.onWeaponsDelta ?? null
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
+  onLinkIssue = callbacks.onLinkIssue ?? null
+  linkIssue = null
+  active = true
   intentionalClose = false
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   latestMissionUtcMs = null
   state.resetForNewSource()
@@ -374,8 +402,7 @@ function start(cfg, callbacks = {}) {
   missionClockTimer = setInterval(sendMissionClock, MISSION_CLOCK_INTERVAL_MS)
 }
 
-function stop() {
-  intentionalClose = true
+function clearTimers() {
   clearTimeout(reconnectTimer)
   clearTimeout(theatreTimer)
   clearInterval(detectionTimer)
@@ -383,6 +410,14 @@ function stop() {
   clearInterval(broadcastTimer)
   clearInterval(missionClockTimer)
   reconnectTimer = null
+}
+
+function stop() {
+  intentionalClose = true
+  active = false
+  linkIssue = null
+  onLinkIssue = null
+  clearTimers()
   if (ws) {
     ws.close()
     ws = null
@@ -408,6 +443,7 @@ function overrideTheatre(name) {
   clearTimeout(theatreTimer)
   theatreDecided = true
   theatreName = name
+  theatreOverridden = true
   theatreVotes.clear()
   sendMissionClock()
 }
@@ -416,12 +452,22 @@ function resetTheatreDetection() {
   clearTimeout(theatreTimer)
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
 }
 
 function isConnected() {
   return ws !== null && ws.readyState === WebSocket.OPEN
+}
+
+// Started and not stopped, whether or not the relay is reachable right now.
+function isActive() {
+  return active
+}
+
+function getLinkIssue() {
+  return linkIssue
 }
 
 function getConfig() {
@@ -467,6 +513,8 @@ async function probe(cfg) {
     probeSocket.on('close', (code, reason) => {
       settle(reject, reason?.toString() === 'invalid password'
         ? identifiedError('Relay rejected the connection — check the coalition password')
+        : reason?.toString().startsWith('too many failed attempts')
+          ? identifiedError('Relay is refusing this computer after too many wrong passwords — try again in a few minutes')
         : reason?.toString().startsWith('protocol mismatch')
           ? identifiedError(`Relay ${reason}`)
           : new Error('Relay closed the connection before authenticating'))
@@ -478,4 +526,4 @@ async function probe(cfg) {
   })
 }
 
-module.exports = { start, stop, isConnected, getConfig, probe, overrideTheatre, resetTheatreDetection }
+module.exports = { start, stop, isConnected, isActive, getLinkIssue, getConfig, probe, overrideTheatre, resetTheatreDetection }

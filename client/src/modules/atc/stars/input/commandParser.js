@@ -128,7 +128,7 @@ const COMMANDS = [
   { id: 'TOGGLE_MVA',           pattern: /^\.MVA$/,               trigger: 'ENTER' },
   { id: 'TOGGLE_SAT',           pattern: /^\.SAT (\w+)$/,         trigger: 'ENTER', captures: ['label'] },
 
-  // ── Debug ────────────────────────────────────────────────────────
+  // ── Cursor readout ───────────────────────────────────────────────
   { id: 'TOGGLE_COORDS',        pattern: /^\.COORDS$/,            trigger: 'ENTER' },
 
   // ── Find fix/navaid/airport ──────────────────────────────────────
@@ -163,6 +163,8 @@ const COMMANDS = [
   { id: 'TERM_CNTL_ALL',        pattern: /^\.DROPALL$/,           trigger: 'ENTER' },
   { id: 'TERM_CNTL_BY_ID',      pattern: /^TC (.+)$/,             trigger: 'ENTER', captures: ['flid'] },
   { id: 'TERM_CNTL',            pattern: /^TC$/,                  trigger: 'SLEW'  },
+  { id: 'FORCE_DROP_ALL',       pattern: /^\.FORCEDROP ALL$/,     trigger: 'ENTER' },
+  { id: 'FORCE_DROP',           pattern: /^\.FORCEDROP$/,         trigger: 'SLEW'  },
 
   // ── Handoffs ────────────────────────────────────────────────────
   // Accept nearest incoming handoff: HO + ENTER
@@ -255,7 +257,7 @@ const DOT_VERBS = [
   'CA', 'WNG', 'ASP', 'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
   'CLASSA', 'CLASSB', 'CLASSC', 'CLASSD', 'CLASSE', 'CLASSF', 'CLASSG',
   'MSA', 'HOLDS', 'RELIEF', 'MVA', 'SAT', 'COORDS', 'FIND', 'FIX', 'PROC',
-  'FP', 'RENAME', 'LABELSIZE', 'DROPALL', 'CENTER',
+  'FP', 'RENAME', 'LABELSIZE', 'DROPALL', 'FORCEDROP', 'CENTER',
 ]
 
 /**

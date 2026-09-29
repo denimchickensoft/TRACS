@@ -136,14 +136,6 @@ export const useAtcStore = create(
       return { callsignOverrides: next }
     }),
 
-  toggleQuickLook: (unitId) =>
-    set((state) => {
-      const next = new Set(state.quickLook)
-      if (next.has(unitId)) next.delete(unitId)
-      else next.add(unitId)
-      return { quickLook: next }
-    }),
-
   setDisplayFdb: (unitId) =>
     set((state) => ({ displayFdb: { ...state.displayFdb, [unitId]: true } })),
 
@@ -250,7 +242,12 @@ const _isPopup    = !!new URLSearchParams(window.location.search).get('window')
 const _atcOwnerCh = new BroadcastChannel('tracs-atc-ownership')
 
 if (!_isPopup) {
-  useAtcStore.subscribe((state) => _atcOwnerCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: state.ownership } }))
+  // Post only when ownership itself changed: this store also carries the
+  // callsigns channel below, and posting on any change would echo that
+  // channel's applies back to the popups indefinitely.
+  useAtcStore.subscribe((state, prev) => {
+    if (state.ownership !== prev.ownership) _atcOwnerCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: state.ownership } })
+  })
   _atcOwnerCh.onmessage = (e) => {
     if (e.data?.type === 'REQUEST_STATE') _atcOwnerCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: useAtcStore.getState().ownership } })
   }

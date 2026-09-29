@@ -5,16 +5,11 @@ import { useFlightPlansStore }  from '../store/flightPlans.js'
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../store/atc.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../store/strips.js'
 import { useSessionStore } from '../store/session.js'
-import { useControllersStore } from '../store/controllers.js'
 import { applyStatusBoardUpdate } from '../store/statusBoard.js'
 import { applyAicDeclaration, applyAicDeclarationsReset, applyAicAutoDeclareMode } from '../store/aic.js'
 import { applyAbmDeclaration, applyAbmDeclarationsReset, applyAbmAutoDeclareMode } from '../store/abm.js'
 import { applyAbmMissionIffSet, applyAbmMissionManualFlightSet } from '../store/abmMission.js'
-
-function getMyControllerId() {
-  const positionName = useSessionStore.getState().positionName
-  return useControllersStore.getState().registry[positionName]?.controllerId ?? null
-}
+import { getMyControllerId } from '../utils/myControllerId.js'
 
 export function handleModuleMessage(msg) {
   const { type, payload, module, fromPosition, timestamp } = msg

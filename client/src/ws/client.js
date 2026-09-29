@@ -5,22 +5,30 @@ import { useAtcStore } from '../store/atc'
 import { useSessionStore } from '../store/session'
 import { useStripsStore } from '../store/strips'
 import { findFlightPlanAid } from '../utils/callsign'
+import { log } from '../utils/log.js'
 
 const WS_URL = '/ws'
+
+// Server status reasons (routes/sourceConnect.js's onDisconnect) shown in the
+// top bar next to DISCONNECTED.
+// Server status reasons (server/src/linkStatus.js). The *_no_response ones
+// name the source behind a NO RESPONSE: RECONNECTING; the rest explain a
+// DISCONNECTED.
+const CONNECTION_ISSUES = {
+  olympus_no_response:     'Olympus',
+  tacview_no_response:     'Tacview',
+  relay_no_response:       'Relay',
+  olympus_unreachable:     'Olympus not responding - retrying every 10 s',
+  tacview_unreachable:     'Tacview rejected the RTT password - reconnect with the right one',
+  relay_invalid_password:  'Relay rejected the password - reconnect with the right one',
+  relay_protocol_mismatch: 'Relay and TRACS versions don’t match - update one of them',
+}
 const RECONNECT_INTERVAL_MS = 3000
 
 let socket = null
 let reconnectTimer = null
 let intentionalClose = false
 let lastSessionHash = null
-
-// Handlers registered by other modules (e.g. WebRTC layer) for server state hydration.
-// Key is the state file key ('atc' | 'catcc' | 'session').
-const stateHandlers = {}
-
-export function registerStateHandler(key, handler) {
-  stateHandlers[key] = handler
-}
 
 function dispatch(message) {
   switch (message.type) {
@@ -93,8 +101,18 @@ function dispatch(message) {
       useSessionStore.getState().setBullseyes(message.data)
       break
 
+    case 'srs_status':
+      useSessionStore.getState().setSrsIssue(message.data?.issue ?? null)
+      break
+
     case 'status': {
-      useSessionStore.getState().setConnected(message.data.polling === true)
+      const polling  = message.data.polling === true
+      const retrying = polling && message.data.retrying === true
+      useSessionStore.getState().setConnected(polling)
+      useSessionStore.getState().setConnectionRetrying(retrying)
+      useSessionStore.getState().setConnectionIssue(
+        polling && !retrying ? null : (CONNECTION_ISSUES[message.data.reason] ?? null)
+      )
       useSessionStore.getState().setSourceType(message.data.sourceType ?? null)
       const instanceId = message.data.instanceId
       if (instanceId) {
@@ -106,10 +124,6 @@ function dispatch(message) {
       }
       break
     }
-
-    case 'state':
-      stateHandlers[message.key]?.(message.data)
-      break
 
     default:
       console.warn('[ws] unknown message type:', message.type)
@@ -126,7 +140,7 @@ function connect() {
   socket = new WebSocket(url)
 
   socket.onopen = () => {
-    console.log('[ws] connected')
+    log.info('[ws] connected')
     clearTimeout(reconnectTimer)
   }
 
@@ -143,7 +157,7 @@ function connect() {
 
   socket.onclose = () => {
     if (intentionalClose) return
-    console.log(`[ws] disconnected - reconnecting in ${RECONNECT_INTERVAL_MS}ms`)
+    log.info(`[ws] disconnected - reconnecting in ${RECONNECT_INTERVAL_MS}ms`)
     useSessionStore.getState().setConnected(false)
     reconnectTimer = setTimeout(connect, RECONNECT_INTERVAL_MS)
   }

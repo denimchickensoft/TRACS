@@ -2,12 +2,6 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSessionStore, MODULE } from './store/session'
 import { useOdsStore }        from './store/ods'
 import { useControllersStore } from './store/controllers'
-import { useUnitsStore }       from './store/units'
-import { useFlightPlansStore } from './store/flightPlans'
-import { useAssociationStore } from './store/association'
-import { computeAssociations } from './modules/atc/shared/associationEngine.js'
-import { dcsUnitIdReliable } from './utils/callsign.js'
-import { useAtcStore }         from './store/atc.js'
 import { useFpeStore }         from './store/fpe.js'
 import { Login }         from './components/Login/Login'
 import StarsScope        from './modules/atc/stars/StarsScope'
@@ -35,6 +29,8 @@ import { setProjectionParams } from './utils/magvar'
 import { resumeAudioContext } from './audio/audioEngine'
 import { useLnmStore, lnmPromptDismissed } from './store/lnm.js'
 import { LnmSetupDialog } from './components/LnmSetup/LnmSetupDialog'
+import { RightTabStrip } from './components/RightTabStrip'
+import { AssociationOwner } from './components/AssociationOwner'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
 const MSG_VISIBLE_KEY = 'tracs.msg.visible'
@@ -63,14 +59,34 @@ const WEBRTC_COLOR = {
   disconnected: '#555555',
 }
 
+// Relay trouble shown next to the peer count: the sync link (syncIssue) and
+// the SRS transponder feed (srsIssue), prefixed SYNC or SRS.
+const RELAY_ISSUE_TEXT = {
+  retrying: 'NO RESPONSE: RECONNECTING',
+  password: 'DISCONNECTED (relay rejected the password)',
+  protocol: 'DISCONNECTED (relay and TRACS versions don’t match)',
+}
+
+// A panel's saved zoom scale from localStorage, clamped to [min, max];
+// 1.0 when unset or unreadable.
+function readScale(key, min = 0.5, max = 2.0) {
+  const s = parseFloat(localStorage.getItem(key))
+  return isNaN(s) ? 1.0 : Math.max(min, Math.min(max, s))
+}
+
 export function App() {
   const connected        = useSessionStore((s) => s.connected)
+  const connectionIssue  = useSessionStore((s) => s.connectionIssue)
+  const connectionRetrying = useSessionStore((s) => s.connectionRetrying)
+  const syncIssue        = useSessionStore((s) => s.syncIssue)
+  const srsIssue         = useSessionStore((s) => s.srsIssue)
   const positionSet      = useSessionStore((s) => s.positionSet)
   const activeModule     = useSessionStore((s) => s.activeModule)
   const positionName     = useSessionStore((s) => s.positionName)
   const facilityName     = useSessionStore((s) => s.facilityName)
   const positionTypeName = useSessionStore((s) => s.positionTypeName)
   const olympusUrl       = useSessionStore((s) => s.olympusUrl)
+  const relayUrl         = useSessionStore((s) => s.relayUrl)
   const webrtcStatus     = useSessionStore((s) => s.webrtcStatus)
   const peers            = useSessionStore((s) => s.peers)
   const resetPosition    = useSessionStore((s) => s.resetPosition)
@@ -141,7 +157,11 @@ export function App() {
   const [asdexDocked, setAsdexDocked] = useState(true)
   const asdexPopupRef = useRef(null)
 
-  const { loadManifest, loadProfile, availableProfiles, activeProfileId, activeProfile } = useOdsStore()
+  const loadManifest      = useOdsStore((s) => s.loadManifest)
+  const loadProfile       = useOdsStore((s) => s.loadProfile)
+  const availableProfiles = useOdsStore((s) => s.availableProfiles)
+  const activeProfileId   = useOdsStore((s) => s.activeProfileId)
+  const activeProfile     = useOdsStore((s) => s.activeProfile)
   const myEntry = useControllersStore((s) => s.registry[positionName])
 
   useEffect(() => {
@@ -153,41 +173,6 @@ export function App() {
   useEffect(() => {
     if (activeProfileId) localStorage.setItem(PROFILE_STORAGE_KEY, activeProfileId)
   }, [activeProfileId])
-
-  // ── Transponder-based association — single compute owner ─────────────
-  // Mounted here, not inside StarsScope/AsdexScope, because App is the one
-  // component always mounted regardless of which ODS is active. Neither
-  // units.js nor flightPlans.js needs to know association exists — this is
-  // the only place they're read together.
-  const unitsForAssoc     = useUnitsStore((s) => s.units)
-  const plansForAssoc     = useFlightPlansStore((s) => s.plans)
-  const ownershipForAssoc = useAtcStore((s) => s.ownership)
-  const sourceTypeForAssoc = useSessionStore((s) => s.sourceType)
-  useEffect(() => {
-    const previous = useAssociationStore.getState().associated
-    const next = computeAssociations({
-      units: unitsForAssoc, flightPlans: plansForAssoc, ownership: ownershipForAssoc, previousAssociated: previous,
-      dcsUnitIdReliable: dcsUnitIdReliable(),
-    })
-    useAssociationStore.getState().setAssociated(next)
-  }, [unitsForAssoc, plansForAssoc, ownershipForAssoc, sourceTypeForAssoc])
-
-  // ── IDENT onset detection ─────────────────────────────────────────────
-  // Latches identUnacked on the edge (status becomes 2) — same blink
-  // treatment as a handoff, cleared only by slewing the contact (see
-  // StarsScope.jsx's bare-slew handler and dispatch call), not by a timer
-  // and not just because status reverts.
-  const prevIdentStatusRef = useRef({})
-  useEffect(() => {
-    const prev = prevIdentStatusRef.current
-    const nextStatus = {}
-    for (const [uid, unit] of Object.entries(unitsForAssoc)) {
-      const status = unit.transponder?.status
-      if (status === 2 && prev[uid] !== 2) useAtcStore.getState().markIdent(uid)
-      if (status != null) nextStatus[uid] = status
-    }
-    prevIdentStatusRef.current = nextStatus
-  }, [unitsForAssoc])
 
   // Chromium suspends AudioContexts until a user gesture — resume once on
   // the first interaction anywhere in the app so alert tones can play later.
@@ -293,10 +278,7 @@ export function App() {
   const [sbDocked,  setSbDocked]  = useState(true)
   const initCatccWidth = (() => { const v = parseInt(localStorage.getItem(SB_WIDTH_KEY), 10); return isNaN(v) ? SB_NATURAL_WIDTH : v })()
   const [catccWidth, setCatccWidth] = useState(initCatccWidth)
-  const [sbScale,    setSbScale]    = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.sb.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
+  const [sbScale,    setSbScale]    = useState(() => readScale('tracs.sb.scale'))
   const catccWidthRef = useRef(initCatccWidth)
   const sbPopupRef    = useRef(null)
   const handleCatccResize = useCallback(makeResizeHandler(catccWidthRef, setCatccWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
@@ -326,10 +308,7 @@ export function App() {
   const [stripsDocked,  setStripsDocked]  = useState(true)
   const initAtcWidth = (() => { const v = parseInt(localStorage.getItem('tracs.atc.width'), 10); return isNaN(v) ? 520 : v })()
   const [atcWidth,   setAtcWidth]   = useState(initAtcWidth)
-  const [stripsScale, setStripsScale] = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.strip-bay.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
+  const [stripsScale, setStripsScale] = useState(() => readScale('tracs.strip-bay.scale'))
   const atcWidthRef    = useRef(initAtcWidth)
   const stripsPopupRef = useRef(null)
   const handleAtcResize    = useCallback(makeResizeHandler(atcWidthRef, setAtcWidth, 280, 900, 'tracs.atc.width'), []) // eslint-disable-line
@@ -342,10 +321,7 @@ export function App() {
   // ── AIC right partition ────────────────────────────────────────────
   const initAicWidth = (() => { const v = parseInt(localStorage.getItem('tracs.braa.width'), 10); return isNaN(v) ? BRAA_NATURAL_WIDTH : v })()
   const [aicWidth,   setAicWidth]   = useState(initAicWidth)
-  const [braaScale,  setBraaScale]  = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.braa.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.7, Math.min(1.4, s))
-  })
+  const [braaScale,  setBraaScale]  = useState(() => readScale('tracs.braa.scale', 0.7, 1.4))
   const aicWidthRef  = useRef(initAicWidth)
   const braaPopupRef = useRef(null)
   const [aicDocked, setAicDocked] = useState(true)
@@ -362,18 +338,9 @@ export function App() {
   const [atoDocked, setAtoDocked] = useState(true)
   const [fragDocked, setFragDocked] = useState(true)
   const [drawingsDocked, setDrawingsDocked] = useState(true)
-  const [atoScale, setAtoScale]   = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.ato.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
-  const [fragScale, setFragScale] = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.frag.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
-  const [drawingsScale, setDrawingsScale] = useState(() => {
-    const s = parseFloat(localStorage.getItem('tracs.abm.drawings.scale'))
-    return isNaN(s) ? 1.0 : Math.max(0.5, Math.min(2.0, s))
-  })
+  const [atoScale, setAtoScale]   = useState(() => readScale('tracs.ato.scale'))
+  const [fragScale, setFragScale] = useState(() => readScale('tracs.frag.scale'))
+  const [drawingsScale, setDrawingsScale] = useState(() => readScale('tracs.abm.drawings.scale'))
   const handleAbmResize = useCallback(makeResizeHandler(abmWidthRef, setAbmWidth, 280, 700, 'tracs.abm.width'), []) // eslint-disable-line
   const handleAtoUndock  = useCallback(makeUndockHandler('/?window=abm-ato',  'tracs-abm-ato',  abmWidthRef, setAtoDocked, atoPopupRef), []) // eslint-disable-line
   const handleFragUndock = useCallback(makeUndockHandler('/?window=abm-frag', 'tracs-abm-frag', abmWidthRef, setFragDocked, fragPopupRef), []) // eslint-disable-line
@@ -437,7 +404,7 @@ export function App() {
     <LnmSetupDialog firstRun={lnmDialog === 'first-run'} onClose={() => setLnmDialog(null)} />
   )
 
-  if (!positionSet) return <>{lnmDialogEl}<Login /></>
+  if (!positionSet) return <><AssociationOwner />{lnmDialogEl}<Login /></>
 
   const hasAtc   = activeModule === MODULE.ATC
   const hasCatcc = activeModule === MODULE.CATCC
@@ -476,7 +443,12 @@ export function App() {
     return 0
   })()
 
+  // AssociationOwner is the first child of a top-level fragment in both this
+  // return and the sign-in one above, so React keeps the same instance (and
+  // its IDENT edge-detection state) when switching between them.
   return (
+    <>
+    <AssociationOwner />
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: activeProfile?.visual.colors.background ?? '#1A1A1A', overflow: 'hidden' }}>
       {lnmDialogEl}
 
@@ -530,7 +502,7 @@ export function App() {
         gap:            '12px',
         padding:        '2px 8px',
         background:     '#111',
-        color:          '#555',
+        color:          '#888',
         fontSize:       '0.65rem',
         fontFamily:     'Roboto Mono, monospace',
         letterSpacing:  '0.08em',
@@ -541,8 +513,12 @@ export function App() {
         {/* Identity + connection status */}
         <span>
           TRACS &mdash;
-          <span style={{ color: connected ? '#00cc66' : '#cc3333', marginLeft: '6px', marginRight: '6px' }}>
-            {connected ? `CONNECTED: ${olympusUrl.replace(/^https?:\/\//, '')}` : 'DISCONNECTED'}
+          <span style={{ color: !connected ? '#cc3333' : connectionRetrying ? '#ccaa00' : '#00cc66', marginLeft: '6px', marginRight: '6px' }}>
+            {!connected
+              ? `DISCONNECTED${connectionIssue ? ` (${connectionIssue})` : ''}`
+              : connectionRetrying
+                ? `NO RESPONSE: RECONNECTING${connectionIssue ? ` (${connectionIssue})` : ''}`
+                : `CONNECTED: ${(olympusUrl || relayUrl).replace(/^(https?|wss?):\/\//, '')}`}
           </span>
           &mdash;
           {facilityName && positionTypeName && <> {facilityName} {positionTypeName} &mdash;</>}
@@ -562,9 +538,14 @@ export function App() {
             display:      'inline-block',
             flexShrink:   0,
           }} />
-          <span style={{ color: '#444' }}>
+          <span style={{ color: '#777' }}>
             {peers.length} {peers.length === 1 ? 'PEER' : 'PEERS'}
           </span>
+          {[['SYNC', syncIssue], ['SRS', srsIssue]].map(([label, issue]) => issue && (
+            <span key={label} style={{ color: issue === 'retrying' ? '#ccaa00' : '#cc3333', marginLeft: '4px' }}>
+              {label}: {RELAY_ISSUE_TEXT[issue]}
+            </span>
+          ))}
         </span>
 
         {/* Unread message indicator */}
@@ -615,7 +596,7 @@ export function App() {
                   background:    'transparent',
                   border:        '1px solid #333',
                   borderRadius:  '2px',
-                  color:         '#555',
+                  color:         '#888',
                   fontFamily:    'inherit',
                   fontSize:      'inherit',
                   letterSpacing: 'inherit',
@@ -623,8 +604,8 @@ export function App() {
                   cursor:        'pointer',
                   textTransform: 'uppercase',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#888' }}
               >
                 Cancel
               </button>
@@ -636,7 +617,7 @@ export function App() {
                 background:    'transparent',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
-                color:         '#555',
+                color:         '#888',
                 fontFamily:    'inherit',
                 fontSize:      'inherit',
                 letterSpacing: 'inherit',
@@ -644,8 +625,8 @@ export function App() {
                 cursor:        'pointer',
                 textTransform: 'uppercase',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#888' }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#888' }}
             >
               Change Position
             </button>
@@ -657,7 +638,7 @@ export function App() {
               onClick={() => { loadProfile(p.id); setActiveOds('atc') }}
               style={{
                 background:    activeOds === 'atc' && activeProfileId === p.id ? '#2A4A7A' : '#1A1A1A',
-                color:         activeOds === 'atc' && activeProfileId === p.id ? '#88BBFF' : '#555',
+                color:         activeOds === 'atc' && activeProfileId === p.id ? '#88BBFF' : '#888',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
                 padding:       '1px 6px',
@@ -687,7 +668,7 @@ export function App() {
               title="ASDE-X — shift-click to open ODS in new window"
               style={{
                 background:    activeOds === 'asdex' ? '#2A4A7A' : '#1A1A1A',
-                color:         activeOds === 'asdex' ? '#88BBFF' : '#555',
+                color:         activeOds === 'asdex' ? '#88BBFF' : '#888',
                 border:        '1px solid #333',
                 borderRadius:  '2px',
                 padding:       '1px 6px',
@@ -708,15 +689,15 @@ export function App() {
               background:    settingsOpen ? '#222' : 'transparent',
               border:        `1px solid ${settingsOpen ? '#444' : '#333'}`,
               borderRadius:  '2px',
-              color:         settingsOpen ? '#aaa' : '#555',
+              color:         settingsOpen ? '#aaa' : '#888',
               fontFamily:    'inherit',
               fontSize:      '0.75rem',
               padding:       '1px 6px',
               cursor:        'pointer',
               lineHeight:    1,
             }}
-            onMouseEnter={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.color = '#888' } }}
-            onMouseLeave={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555' } }}
+            onMouseEnter={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.color = '#ccc' } }}
+            onMouseLeave={(e) => { if (!settingsOpen) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#888' } }}
           >
             ⚙
           </button>
@@ -760,7 +741,7 @@ export function App() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lnmDbPath ?? ''}>
-                Navigation data: {typeof lnmDbPath === 'string' ? lnmDbPath.split(/[\\/]/).pop() : 'not configured'}
+                Navigation Data: {typeof lnmDbPath === 'string' ? lnmDbPath.split(/[\\/]/).pop() : 'not configured'}
               </span>
               {isElectron && (
                 <button
@@ -772,7 +753,7 @@ export function App() {
               )}
             </div>
 
-            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.65rem', color: '#555' }}>
+            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.65rem', color: '#888' }}>
               {isElectron ? `TRACS v${tracsVersion ?? '…'}` : 'TRACS (dev)'}
               {relaySnapshot.version && ` — Relay v${relaySnapshot.version} (protocol ${relaySnapshot.protocolVersion})`}
             </div>
@@ -788,24 +769,11 @@ export function App() {
               Help / Docs ↗
             </a>
 
-            {/* About / legal notices (GPLv3 §5(d): interactive programs show
-                appropriate legal notices). */}
-            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.6rem', color: '#555', lineHeight: 1.5, maxWidth: '320px' }}>
-              <div>Copyright (C) 2026 denimchickensoft</div>
-              <div>
-                Free software under the GNU GPL v3.0 or later, with ABSOLUTELY NO WARRANTY.
-                Source: github.com/denimchickensoft/TRACS
-              </div>
-              <div style={{ marginTop: '4px' }}>
-                Map data © OpenStreetMap contributors (ODbL). Terrain data courtesy of the
-                U.S. Geological Survey and others. Includes data from DCS World (© Eagle
-                Dynamics SA) and DCS Olympus.
-              </div>
-              <div style={{ marginTop: '4px' }}>
-                Not affiliated with or endorsed by Eagle Dynamics or any other product
-                named in TRACS. All trademarks belong to their owners.
-              </div>
-              <div style={{ marginTop: '4px', display: 'flex', gap: '12px' }}>
+            {/* Legal notices (GPLv3 §5(d)): the copyright, no-warranty and
+                attribution text lives on these two pages. The OSM credit is
+                shown on the login screen instead. */}
+            <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: '8px', fontSize: '0.6rem', color: '#888', lineHeight: 1.5, maxWidth: '320px' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
                 {[['/docs/license', 'License ↗'], ['/docs/third-party-notices', 'Third-party notices ↗']].map(([href, label]) => (
                   <a
                     key={href}
@@ -844,7 +812,6 @@ export function App() {
                 onScaleChange={setStripsScale}
               />
             )}
-            {atcPanel === 'main' && !stripsDocked && null}
             {atcPanel === 'par' && parDocked && (
               <Par
                 docked
@@ -854,24 +821,17 @@ export function App() {
                 onHide={() => setAtcPanel(null)}
               />
             )}
-            {atcPanel === 'par' && !parDocked && null}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0d0d0d', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'main', label: stripsDocked ? 'STRIPS' : 'STRIPS ↗', onClick: () => { if (!stripsDocked && stripsPopupRef.current) stripsPopupRef.current.focus(); else setAtcPanel((p) => p === 'main' ? null : 'main') } },
-                { key: 'par',  label: parDocked    ? 'PAR'    : 'PAR ↗',    onClick: () => { if (!parDocked    && parPopupRef.current)    parPopupRef.current.focus();    else setAtcPanel((p) => p === 'par'  ? null : 'par')  } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: atcPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: atcPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              background="#0d0d0d"
+              active={atcPanel}
+              setActive={setAtcPanel}
+              tabs={[
+                { key: 'main', name: 'STRIPS', docked: stripsDocked, popupRef: stripsPopupRef },
+                { key: 'par',  name: 'PAR',    docked: parDocked,    popupRef: parPopupRef },
+              ]}
+            />
           </div>
         )}
 
@@ -892,7 +852,6 @@ export function App() {
                 onScaleChange={setSbScale}
               />
             )}
-            {catccPanel === 'main' && !sbDocked && null}
             {catccPanel === 'par' && parDocked && (
               <Par
                 docked
@@ -902,7 +861,6 @@ export function App() {
                 onHide={() => setCatccPanel(null)}
               />
             )}
-            {catccPanel === 'par' && !parDocked && null}
             {catccPanel === 'deck' && deckDocked && (
               <Deck
                 docked
@@ -912,25 +870,17 @@ export function App() {
                 onHide={() => setCatccPanel(null)}
               />
             )}
-            {catccPanel === 'deck' && !deckDocked && null}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'main', label: sbDocked   ? 'STATUS'  : 'STATUS ↗',  onClick: () => { if (!sbDocked   && sbPopupRef.current)   sbPopupRef.current.focus();   else setCatccPanel((p) => p === 'main' ? null : 'main') } },
-                { key: 'par',  label: parDocked  ? 'PAR'     : 'PAR ↗',     onClick: () => { if (!parDocked  && parPopupRef.current)  parPopupRef.current.focus();  else setCatccPanel((p) => p === 'par'  ? null : 'par')  } },
-                { key: 'deck', label: deckDocked ? 'DECK'    : 'DECK ↗',    onClick: () => { if (!deckDocked && deckPopupRef.current) deckPopupRef.current.focus(); else setCatccPanel((p) => p === 'deck' ? null : 'deck') } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: catccPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: catccPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              active={catccPanel}
+              setActive={setCatccPanel}
+              tabs={[
+                { key: 'main', name: 'STATUS', docked: sbDocked,   popupRef: sbPopupRef },
+                { key: 'par',  name: 'PAR',    docked: parDocked,  popupRef: parPopupRef },
+                { key: 'deck', name: 'DECK',   docked: deckDocked, popupRef: deckPopupRef },
+              ]}
+            />
           </div>
         )}
 
@@ -952,20 +902,13 @@ export function App() {
             )}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'main', label: aicDocked ? 'BRAA' : 'BRAA ↗', onClick: () => { if (!aicDocked && braaPopupRef.current) braaPopupRef.current.focus(); else setAicPanel(p => p === 'main' ? null : 'main') } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: aicPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: aicPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              active={aicPanel}
+              setActive={setAicPanel}
+              tabs={[
+                { key: 'main', name: 'BRAA', docked: aicDocked, popupRef: braaPopupRef },
+              ]}
+            />
           </div>
         )}
 
@@ -1007,22 +950,15 @@ export function App() {
             )}
 
             {/* Tab strip */}
-            <div style={{ display: 'flex', flexDirection: 'column', width: '18px', background: '#0a0a0a', borderLeft: '1px solid #1a1a1a', flexShrink: 0 }}>
-              {[
-                { key: 'ato',      label: atoDocked      ? 'ATO'  : 'ATO ↗',  onClick: () => { if (!atoDocked      && atoPopupRef.current)      atoPopupRef.current.focus();      else setAbmPanel(p => p === 'ato'      ? null : 'ato')      } },
-                { key: 'frag',     label: fragDocked     ? 'FRAG' : 'FRAG ↗', onClick: () => { if (!fragDocked     && fragPopupRef.current)     fragPopupRef.current.focus();     else setAbmPanel(p => p === 'frag'     ? null : 'frag')     } },
-                { key: 'drawings', label: drawingsDocked ? 'DRAW' : 'DRAW ↗', onClick: () => { if (!drawingsDocked && drawingsPopupRef.current) drawingsPopupRef.current.focus(); else setAbmPanel(p => p === 'drawings' ? null : 'drawings') } },
-              ].map(({ key, label, onClick }) => (
-                <div
-                  key={key}
-                  title={label}
-                  onClick={onClick}
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: abmPanel === key ? '#141414' : 'transparent' }}
-                >
-                  <span style={{ writingMode: 'vertical-rl', fontSize: '8px', letterSpacing: '0.1em', color: abmPanel === key ? '#555' : '#2a2a2a', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <RightTabStrip
+              active={abmPanel}
+              setActive={setAbmPanel}
+              tabs={[
+                { key: 'ato',      name: 'ATO',  docked: atoDocked,      popupRef: atoPopupRef },
+                { key: 'frag',     name: 'FRAG', docked: fragDocked,     popupRef: fragPopupRef },
+                { key: 'drawings', name: 'DRAW', docked: drawingsDocked, popupRef: drawingsPopupRef },
+              ]}
+            />
           </div>
         )}
 
@@ -1069,5 +1005,6 @@ export function App() {
         )}
       </div>
     </div>
+    </>
   )
 }

@@ -22,7 +22,7 @@
 
 import { makePrefsStore } from '../utils/prefsStore.js'
 
-const KEY = 'tracs-abm-prefs'
+const KEY = 'tracs.abm.prefs'
 
 const DEFAULTS = {
   dbVisible:      true,
@@ -79,6 +79,7 @@ const DEFAULTS = {
   becVisible:         false,
   acqHidden:          [],
   engHidden:          [],
+  groundVisible:      true,
   autoThreat:         false,
 
   // ── Per-window navdata-layer visibility — geo/relief/

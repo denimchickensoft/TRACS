@@ -103,9 +103,10 @@ const COMMANDS = [
   { id: 'FEET',             pattern: /^\.feet$/ },
   { id: 'PTL',              pattern: /^\.ptl\s+(\d+(?:\.\d+)?)$/, captures: ['mins'] },
   { id: 'FADED',            pattern: /^\.faded\s+(\d+)$/, captures: ['s'] },
-  { id: 'HISTORY_TOGGLE',   pattern: /^\.history$/ },
-  { id: 'HISTORY_LEN_RATE', pattern: /^\.history\s+(\d+)\s+(\d+(?:\.\d+)?)$/, captures: ['len', 'rate'] },
-  { id: 'HISTORY_LEN',      pattern: /^\.history\s+(\d+)$/, captures: ['len'] },
+  // .hist is short for .history
+  { id: 'HISTORY_TOGGLE',   pattern: /^\.hist(?:ory)?$/ },
+  { id: 'HISTORY_LEN_RATE', pattern: /^\.hist(?:ory)?\s+(\d+)\s+(\d+(?:\.\d+)?)$/, captures: ['len', 'rate'] },
+  { id: 'HISTORY_LEN',      pattern: /^\.hist(?:ory)?\s+(\d+)$/, captures: ['len'] },
   { id: 'DB_TOGGLE',        pattern: /^\.db$/ },
   { id: 'DBRESET',          pattern: /^\.dbreset$/ },
   { id: 'DBCA_TOGGLE',      pattern: /^\.dbca$/ },
@@ -125,6 +126,7 @@ const COMMANDS = [
   { id: 'ACQ_TOGGLE',       pattern: /^\.acq$/ },
   { id: 'ENG_DECL',         pattern: /^\.eng\s+([fnbh])$/, captures: ['letter'] },
   { id: 'ENG_TOGGLE',       pattern: /^\.eng$/ },
+  { id: 'GROUND_TOGGLE',    pattern: /^\.(?:gc|groundcontacts)$/ },
 ]
 
 /**

@@ -9,6 +9,7 @@
 //     client.js can select this as a third `strategy` value.
 
 import { PROTOCOL_VERSION } from './protocolVersion'
+import { useSessionStore } from '../store/session.js'
 
 const CHECK_TIMEOUT_MS     = 6_000
 const RECONNECT_MS         = 3_000
@@ -58,6 +59,7 @@ export function checkSyncCapable({ relayUrl, coalition, password }) {
       finish({
         capable: false,
         reason: ev.reason === 'invalid password' ? 'password'
+              : ev.reason?.startsWith('too many failed attempts') ? 'blocked'
               : ev.reason?.startsWith('protocol mismatch') ? 'protocol'
               : 'unreachable',
         detail: ev.reason,
@@ -112,6 +114,7 @@ function connect(cfg) {
 
     if (msg.type === 'auth_ok') {
       ready = true
+      useSessionStore.getState().setSyncIssue(null)
       relayInfo.version         = msg.relayVersion ?? null
       relayInfo.protocolVersion = msg.protocolVersion ?? null
       // Re-subscribe to every room already joined (first connect, or a
@@ -181,15 +184,18 @@ function connect(cfg) {
       console.error('[sync] relay rejected our password - not retrying')
       cfgInUse = null
       ws = null
+      useSessionStore.getState().setSyncIssue('password')
       return
     }
     if (ev.reason?.startsWith('protocol mismatch')) {
       console.error(`[sync] ${ev.reason} - not retrying until one side is updated`)
       cfgInUse = null
       ws = null
+      useSessionStore.getState().setSyncIssue('protocol')
       return
     }
 
+    useSessionStore.getState().setSyncIssue('retrying')
     console.warn(`[sync] disconnected from relay - reconnecting in ${RECONNECT_MS}ms`)
     setTimeout(() => { if (cfgInUse) connect(cfgInUse) }, RECONNECT_MS)
   }
@@ -242,6 +248,7 @@ export function joinRoom(cfg, roomId) {
         cfgInUse = null // suppress reconnect — this is an intentional teardown
         ws?.close()
         ws = null
+        useSessionStore.getState().setSyncIssue(null)
         // Mint a fresh peerId on the next joinRoom() rather than reusing this
         // one -- reusing it raced the relay's close-triggered eviction timer
         // against the new registration's cancelEvictionTimer (arrival order

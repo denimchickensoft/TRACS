@@ -15,6 +15,7 @@
 import { create } from 'zustand'
 import { resolveCallsign, stripAcid } from '../utils/callsign.js'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
+import { shallowEqual } from '../utils/storeSync.js'
 
 const SB_KEY = 'tracs.abm.mission'
 
@@ -190,8 +191,6 @@ export const useAbmMissionStore = create((set, get) => ({
 
   selectGroup: (groupId) => set((s) => ({ selectedGroupId: groupId, selectNonce: s.selectNonce + 1, routeVisible: false })),
 
-  clearSelection: () => set({ selectedGroupId: null, routeVisible: false }),
-
   toggleRouteVisible: () => set((s) => ({ routeVisible: !s.routeVisible })),
 
   clearRouteVisible: () => set({ routeVisible: false }),
@@ -206,7 +205,11 @@ export const useAbmMissionStore = create((set, get) => ({
     return { blinkIds: [...next] }
   }),
 
-  clearBlink: () => set({ blinkIds: [] }),
+  // Start a blink without toggling — a transponder IDENT onset (see
+  // AssociationOwner.jsx) must never cancel one already running from FRAG.
+  addBlink: (unitKey) => set((s) => (
+    s.blinkIds.includes(unitKey) ? s : { blinkIds: [...s.blinkIds, unitKey] }
+  )),
 
   toggleRouteGroup: (groupId) => set((s) => {
     const next = new Set(s.routeGroupIds)
@@ -417,8 +420,8 @@ let _syncing = false
 
 const _ch = new BroadcastChannel('tracs-abm-mission')
 
-useAbmMissionStore.subscribe((state) => {
-  if (_syncing) return
+useAbmMissionStore.subscribe((state, prev) => {
+  if (_syncing || shallowEqual(serialize(state), serialize(prev))) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
   _ch.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
 })

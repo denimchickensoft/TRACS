@@ -1,7 +1,7 @@
 import { useAbmFocusPanelsStore } from '../../store/abmFocusPanels.js'
 import { useDisplayStore } from '../../store/display.js'
 import { popOutAbmFocusPanel } from './actions/index.js'
-import { sanitizeFocusToken } from '../../utils/callsign.js'
+import { sanitizeFocusToken, focusTitle } from '../../utils/callsign.js'
 import { useDraggableWindow } from '../../utils/useDraggableWindow.js'
 import AbmScope from './AbmScope.jsx'
 import './AbmFocusPanel.css'
@@ -55,7 +55,7 @@ export function AbmFocusPanel({ callsign, zIndex, cascadeIndex }) {
       <div className="abm-focus-resize abm-focus-resize--sw" onMouseDown={resizers.sw} />
 
       <div className="abm-focus-titlebar" onMouseDown={handleDragStart} onWheel={handleOpacityWheel}>
-        <span className="abm-focus-title">FOCUS {callsign}</span>
+        <span className="abm-focus-title">FOCUS {focusTitle(callsign)}</span>
         {opacityHint && <span className="abm-focus-opacity-hint">{Math.round(opacity * 100)}%</span>}
         <button className="abm-focus-btn" title="Pop out to new window" onMouseDown={(e) => e.stopPropagation()} onClick={handlePopOut}>⬡</button>
         <button className="abm-focus-btn" title="Close" onMouseDown={(e) => e.stopPropagation()} onClick={handleClose}>×</button>

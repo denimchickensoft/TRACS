@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-TRACS is Copyright (C) 2026 denimchickensoft and is licensed under the GNU General Public License v3.0 or later (see [LICENSE](LICENSE)). It includes, or was built from, the third-party data and software listed below. Each item keeps its own license.
+TRACS is Copyright (C) 2026 denimchickensoft and is free software licensed under the GNU General Public License v3.0 or later (see [LICENSE](LICENSE)), with ABSOLUTELY NO WARRANTY. Source: <https://github.com/denimchickensoft/TRACS>. It includes, or was built from, the third-party data and software listed below. Each item keeps its own license.
 
 TRACS is an independent community project. It is not affiliated with or endorsed by Eagle Dynamics SA, the DCS Olympus team, Tacview (Raia Software), the DCS-SRS or LotATC developers, LittleNavMap, Navigraph, the FAA, or any other organization or product it mentions. DCS World and all other trademarks belong to their respective owners, and TRACS uses them only to describe compatibility.
 
@@ -55,6 +55,10 @@ Airdrome IDs in `client/public/airdromes/*.json` were generated with [pydcs](htt
 ## Brevity glossary
 
 `client/public/brevity.json` is transcribed from *Multi-Service Tactics, Techniques, and Procedures for Multi-Service Brevity Codes* (ATP 1-02.1, April 2025), a U.S. Government publication approved for public release with unlimited distribution.
+
+## Fonts
+
+TRACS bundles the **Roboto Mono** typeface, Copyright 2015 The Roboto Mono Project Authors (https://github.com/googlefonts/robotomono), via the `@fontsource/roboto-mono` package. It is licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org).
 
 ## Software dependencies
 

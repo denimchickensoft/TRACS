@@ -29,6 +29,10 @@ A bare click with an empty buffer depends on the track's state:
 | `IC` + SLEW | `F3` | Initiate Control — claim the clicked track |
 | `TC` + SLEW | `F4` | Terminate Control — drop the clicked track (must be yours) |
 | `TC ALL` / `.DROPALL` + ENTER | — | Drop every track you own |
+| `.FORCEDROP` + SLEW | — | Drop the clicked track, whoever owns it. For a track stuck under a controller who has gone |
+| `.FORCEDROP ALL` + ENTER | — | Drop every orphaned track (its owner's ID isn't held by any signed-on controller) and reply `FORCEDROP` with the count |
+
+Nothing drops orphaned tracks automatically. Right after you join, or while the network is split, the controller list can be incomplete and live tracks would look orphaned, so check the controller list before using `.FORCEDROP ALL`.
 
 **Ctrl+Shift+Click** a contact is a direct shortcut for `IC`.
 
@@ -53,7 +57,12 @@ A bare click with an empty buffer depends on the track's state:
 | `**` + SLEW | — | Convert an incoming point-out into a claimed handoff |
 | `UN` + SLEW | — | Reject an incoming point-out |
 
-A bare click (empty buffer) also resolves pending point-outs. No function key is mapped to point outs.
+A bare click (empty buffer) on a track with a pending point-out also resolves it:
+- on your own outgoing point-out, it **recalls** it;
+- on a point-out sent to you, it **acknowledges** it;
+- on your point-out that the other position rejected (shown as `UN`), it **dismisses** the `UN` indicator.
+
+No function key is mapped to point outs.
 
 ## Scratchpads and altitudes
 
@@ -162,7 +171,7 @@ These lists appear only if your ODS profile enables coordination lists. `+ ENTER
 | SSA | always shown | `MF S` + SLEW | — |
 | Sign-on list | `MF TS` + ENTER | `MF TS` + SLEW | — |
 | Flight-Plan (TAB) list | `MF T` + ENTER | `MF T` + SLEW | `MF T<n>` + ENTER |
-| Tower lists 1–3 | `MF P1`/`P2`/`P3` + ENTER | `MF P<n>` + SLEW | `MF P<n> <lines>` + ENTER |
+| Tower lists 1–3 (all three currently show your facility's airport) | `MF P1`/`P2`/`P3` + ENTER | `MF P<n>` + SLEW | `MF P<n> <lines>` + ENTER |
 | Coast/Suspend list | `MF TC` + ENTER | `MF TC` + SLEW | `MF TC<n>` + ENTER |
 | Alert list | `MF TM` + ENTER | `MF TM` + SLEW | — |
 | VFR list | `MF TV` + ENTER | `MF TV` + SLEW | `MF TV<n>` + ENTER |
@@ -422,7 +431,7 @@ All of these settings are saved across reloads, and changes made in an undocked 
 
 These ATC commands are recognized but not functional:
 
-- `IC <flightid>` + ENTER returns `NOT YET SUPPORTED`. `TC <flightid>` + ENTER and `HO <tcp> <flightid>` + ENTER return `UNIMPLEMENTED`. Use the SLEW forms.
-- `MF M` (Mode C toggle), `MF B` (beacon toggle), and `MF E` (FDB overflight toggle) return `UNIMPLEMENTED`.
-- Quicklook (`**<tcp>`, `**ALL`) has no effect.
+- `IC <flightid>`, `TC <flightid>` and `HO <tcp> <flightid>` + ENTER reply `NOT SUPPORTED`. Use the SLEW forms (type the command, then click the track).
+- `MF M` (Mode C toggle), `MF B` (beacon toggle), and `MF E` (FDB overflight toggle) reply `NOT SUPPORTED`.
+- Quicklook (`**<tcp>`, `**ALL`) replies `NOT SUPPORTED`.
 - Ctrl+F2–F5, Ctrl+F7, Ctrl+F9, Ctrl+F10, and Insert have no effect.

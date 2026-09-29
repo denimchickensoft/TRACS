@@ -8,17 +8,35 @@ const weaponDatabase = require('./weaponDatabase')
 const missileDetection = require('./missileDetection')
 const { coalitionId } = require('./tacviewDetection')
 const rateConfig = require('./rateConfig')
+const { identifiedError } = require('./tacviewShared')
 
 const MISSION_INTERVAL_MS = 10000
 const AIRBASES_INTERVAL_MS = 30000
 const FULL_REFRESH_EVERY = 10
+// After NO_RESPONSE_AFTER consecutive failed unit polls clients are told
+// Olympus isn't responding and is being retried. After MAX_CONSECUTIVE_ERRORS
+// it's treated as unreachable: clients are told it's disconnected, the other
+// pollers pause, and unit polls drop to one attempt every SLOW_RETRY_MS until
+// one succeeds. Polling only stops for good on an explicit stop().
+const NO_RESPONSE_AFTER = 2
 const MAX_CONSECUTIVE_ERRORS = 10
+const SLOW_RETRY_MS = 10000
+// Per-request timeout, so a hung Olympus fails the poll instead of stalling it.
+const POLL_TIMEOUT_MS = 10000
 
 let config = null
 let polling = false
 let pollCount = 0
 let consecutiveErrors = 0
-let onDisconnect = null
+let unreachable = false
+let linkIssue = null
+let onLinkIssue = null
+
+// See server/src/linkStatus.js for the shape.
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
 
 let unitsTimer = null
 let missionTimer = null
@@ -69,6 +87,7 @@ async function fetchOlympusJson(path) {
   const url = `${config.olympusUrl}${path}`
   const res = await fetch(url, {
     headers: { Authorization: makeAuthHeader(config.password, config.coalition) },
+    signal:  AbortSignal.timeout(POLL_TIMEOUT_MS),
   })
   const text = await res.text()
   if (!res.ok) {
@@ -85,6 +104,7 @@ async function fetchOlympusBinary(path) {
   const url = `${config.olympusUrl}${path}`
   const res = await fetch(url, {
     headers: { Authorization: makeAuthHeader(config.password, config.coalition) },
+    signal:  AbortSignal.timeout(POLL_TIMEOUT_MS),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -140,17 +160,27 @@ async function pollUnits() {
     state.setSourceCursorTime(updateTime)
     if (onUnitsDelta) onUnitsDelta(delta)
     consecutiveErrors = 0
+    if (unreachable) {
+      unreachable = false
+      console.log('[olympus] reachable again - resuming normal polling')
+    }
+    if (linkIssue) setLinkIssue(null)
   } catch (err) {
     consecutiveErrors++
-    console.error(`[olympus] units poll error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, err.message)
-    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-      console.error('[olympus] too many consecutive errors - stopping polling')
-      stop()
-      if (onDisconnect) onDisconnect()
-      return
+    if (unreachable) {
+      console.error(`[olympus] still unreachable, retrying in ${SLOW_RETRY_MS / 1000}s:`, err.message)
+    } else {
+      console.error(`[olympus] units poll error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, err.message)
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        unreachable = true
+        console.error(`[olympus] too many consecutive errors - retrying every ${SLOW_RETRY_MS / 1000}s`)
+        setLinkIssue({ retrying: false, reason: 'olympus_unreachable' })
+      } else if (consecutiveErrors >= NO_RESPONSE_AFTER && !linkIssue) {
+        setLinkIssue({ retrying: true, reason: 'olympus_no_response' })
+      }
     }
   } finally {
-    if (polling) unitsTimer = setTimeout(pollUnits, rateConfig.unitUpdateMs)
+    if (polling) unitsTimer = setTimeout(pollUnits, unreachable ? SLOW_RETRY_MS : rateConfig.unitUpdateMs)
   }
 }
 
@@ -166,6 +196,7 @@ async function pollUnits() {
 // permanent tombstone tracking is needed.
 async function pollWeapons() {
   if (!polling) return
+  if (unreachable) { weaponsTimer = setTimeout(pollWeapons, rateConfig.unitUpdateMs); return }
   try {
     // Always a full fetch (time=0) — per this function's header comment,
     // Olympus's weapons endpoint never streams real position on an
@@ -262,7 +293,7 @@ function pollMissileDetection() {
 }
 
 async function pollBullseyes() {
-  if (!polling) return
+  if (!polling || unreachable) return
   try {
     const data = await fetchOlympusJson('/olympus/bullseyes')
     state.setBullseyes(data)
@@ -274,6 +305,7 @@ async function pollBullseyes() {
 
 async function pollMission() {
   if (!polling) return
+  if (unreachable) { missionTimer = setTimeout(pollMission, MISSION_INTERVAL_MS); return }
   try {
     const data = await fetchOlympusJson('/olympus/mission')
     state.setMission(data)
@@ -304,6 +336,7 @@ async function pollMission() {
 
 async function pollAirbases() {
   if (!polling) return
+  if (unreachable) { airbasesTimer = setTimeout(pollAirbases, AIRBASES_INTERVAL_MS); return }
   try {
     const data = await fetchOlympusJson('/olympus/airbases')
     state.setAirbases(data)
@@ -324,11 +357,13 @@ function start(cfg, callbacks = {}) {
   onMission       = callbacks.onMission       ?? null
   onAirbases      = callbacks.onAirbases      ?? null
   onBullseyes     = callbacks.onBullseyes     ?? null
-  onDisconnect    = callbacks.onDisconnect    ?? null
+  onLinkIssue     = callbacks.onLinkIssue     ?? null
 
   polling = true
   pollCount = 0
   consecutiveErrors = 0
+  unreachable = false
+  linkIssue = null
   lastTheatre = null
   lastSessionHash = null
   state.resetForNewSource()
@@ -349,6 +384,9 @@ function start(cfg, callbacks = {}) {
 
 function stop() {
   polling = false
+  unreachable = false
+  linkIssue = null
+  onLinkIssue = null
   clearTimeout(unitsTimer)
   clearTimeout(weaponsTimer)
   clearTimeout(missileDetectionTimer)
@@ -366,18 +404,49 @@ function isPolling() {
   return polling
 }
 
+// True while polling is in slow-retry mode after repeated failures.
+function isUnreachable() {
+  return unreachable
+}
+
+function getLinkIssue() {
+  return linkIssue
+}
+
 function getConfig() {
   return config
 }
 
+// A fetch failure's underlying cause, in words a controller can act on.
+function describeFetchError(err) {
+  if (err?.name === 'TimeoutError') return 'no response within 5 s'
+  const code = err?.cause?.code
+  if (code === 'ECONNREFUSED') return 'connection refused'
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return 'host not found'
+  if (code === 'EHOSTUNREACH' || code === 'ENETUNREACH' || code === 'ETIMEDOUT') return 'host unreachable'
+  return code ?? err?.message ?? 'unknown error'
+}
+
+// Errors carry their own complete message (`describesItself`), so the
+// connect route shows them as-is. Only a password rejection is `identified`:
+// that's the one answer proving an Olympus is there, which auto-detect uses
+// to surface it over the other source types' failures.
 async function probe(cfg) {
   const url = `${cfg.olympusUrl}/olympus/mission`
   const authHeader = makeAuthHeader(cfg.password ?? '', cfg.coalition ?? '')
-  const res = await fetch(url, {
-    headers: { Authorization: authHeader },
-    signal: AbortSignal.timeout(5000),
-  })
-  if (!res.ok) throw new Error(`Olympus responded ${res.status}`)
+  let res
+  try {
+    res = await fetch(url, {
+      headers: { Authorization: authHeader },
+      signal: AbortSignal.timeout(5000),
+    })
+  } catch (err) {
+    throw Object.assign(new Error(`Olympus not reachable at ${cfg.olympusUrl} (${describeFetchError(err)})`), { describesItself: true })
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw Object.assign(identifiedError('Olympus rejected the password - check the coalition/role password'), { describesItself: true })
+  }
+  if (!res.ok) throw Object.assign(new Error(`Olympus at ${cfg.olympusUrl} responded HTTP ${res.status}`), { describesItself: true })
 }
 
-module.exports = { start, stop, isPolling, getConfig, probe }
+module.exports = { start, stop, isPolling, isUnreachable, getLinkIssue, getConfig, probe }

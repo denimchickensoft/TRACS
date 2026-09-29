@@ -301,7 +301,7 @@ export function drawAicContacts(
     ctx.restore()
   }
 
-  // .centroid debug marker — magenta X at the hostile-picture centroid used
+  // .centroid marker — magenta X at the hostile-picture centroid used
   // to derive the threat axis (see computePicture.js).
   if (centroidMarker) {
     const { x, y } = latLngToCanvas(centroidMarker.lat, centroidMarker.lng, view)
@@ -319,7 +319,7 @@ export function drawAicContacts(
     ctx.restore()
   }
 
-  // .axis debug line — cyan line through the dynamic threat axis (see
+  // .axis line — cyan line through the dynamic threat axis (see
   // _deriveThreatAxis in computePicture.js), origin marked with a dot.
   // axisLine.axisBearing is TRUE; convert to magnetic for canvas (magnetic-
   // north-up display), same as drawSector in drawAicLayers.js.

@@ -66,6 +66,20 @@ export default [
     },
   },
 
+  // Unit tests (root test/ tree, run by Vitest from vitest.config.mjs) — ESM,
+  // Node.
+  {
+    files: ['test/**/*.js', 'vitest.config.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'no-unused-vars': unusedVarsRule,
+    },
+  },
+
   // Shared workspace packages — plain ESM, consumed by both client (browser)
   // and server (Node dynamic import), so no environment-specific globals.
   {
@@ -92,6 +106,15 @@ export default [
     },
     rules: {
       'no-unused-vars': unusedVarsRule,
+    },
+  },
+  // Scripts that run in a browser page, not in Node: the port-conflict
+  // dialog, the docs pages' Ctrl+F trigger and the find box itself.
+  {
+    files: ['electron/portConflict.js', 'server/src/docsFind.js', 'electron/findBar.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: globals.browser,
     },
   },
 ]

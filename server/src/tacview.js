@@ -63,6 +63,7 @@ let theatreTimer = null
 let missionClockTimer = null
 let theatreDecided = false
 let theatreName = null
+let theatreOverridden = false
 const theatreVotes = new Map()
 
 // Omniscient truth (all coalitions) — deliberately never exposed via `state`
@@ -87,8 +88,15 @@ let onUnitsDelta = null
 let onWeaponsDelta = null
 let onMission = null
 let onBullseyes = null
-let onDisconnect = null
+let linkIssue = null
+let onLinkIssue = null
 let handshakeFailures = 0
+
+// See server/src/linkStatus.js for the shape.
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
 let reconnectDelayMs = RECONNECT_MIN_MS
 
 // Accumulates at full stream rate; flushed to state/broadcast once per
@@ -133,7 +141,7 @@ function sendMissionClock() {
   if (!theatreDecided) return
   const missionUtcMs = parser?.getCurrentMissionUtcMs()
   const dateAndTime = missionUtcMs == null ? undefined : computeDateAndTime(missionUtcMs, navdata.theatreTacviewRealUtcOffset(theatreName))
-  const mission = { mission: { theatre: theatreName, dateAndTime } }
+  const mission = { mission: { theatre: theatreName, theatreOverridden, dateAndTime } }
   state.setMission(mission)
   if (onMission) onMission(mission)
 }
@@ -179,11 +187,20 @@ function runMissileDetectionPass() {
   if (Object.keys(revealed).length > 0 || hidden.length > 0) weaponsBuffer.queue(revealed, hidden)
 }
 
+// Real ACMI lines are short; an unterminated one past this size means a
+// broken or hostile peer, so drop the connection rather than buffer forever.
+const MAX_PARTIAL_LINE = 1024 * 1024
 let lineBuffer = ''
 function processIncoming(text) {
   lineBuffer += text
   const lines = lineBuffer.split('\n')
   lineBuffer = lines.pop() ?? ''
+  if (lineBuffer.length > MAX_PARTIAL_LINE) {
+    console.error(`[tacview] over ${MAX_PARTIAL_LINE} bytes without a line break - dropping the connection`)
+    lineBuffer = ''
+    socket?.destroy()
+    return
+  }
   if (lines.length === 0) return
 
   const { updated, removed, bullseyes, positions } = parser.parseLines(lines)
@@ -239,8 +256,11 @@ function processIncoming(text) {
 
 function connect() {
   const { host, port } = parseHostPort(config.olympusUrl)
-  let handshakeSent = false
-  let receivedTelemetry = false
+  // The login's probe connection, already handshaken and streaming (see
+  // probe()); only a first connect after a probe gets one.
+  const adopted = takePendingProbe(host, port, config.password)
+  let handshakeSent = !!adopted
+  let receivedTelemetry = !!adopted
 
   // Every handler below closes over `localSocket` (this specific instance),
   // never the mutable module-level `socket` -- a rapid stop()/connect() (two
@@ -255,8 +275,12 @@ function connect() {
   // `localSocket !== socket` guards additionally drop events from a
   // connection that's since been superseded, rather than letting a stale
   // one's data/reconnect-timer race a newer one.
-  const localSocket = net.createConnection({ host, port })
+  const localSocket = adopted ? adopted.socket : net.createConnection({ host, port })
   socket = localSocket
+  if (adopted) {
+    console.log(`[tacview] connected to ${host}:${port} (kept the login check's connection)`)
+    connected = true
+  }
 
   localSocket.on('connect', () => {
     if (localSocket !== socket) { localSocket.destroy(); return }
@@ -276,6 +300,7 @@ function connect() {
       return
     }
     receivedTelemetry = true
+    if (linkIssue) setLinkIssue(null)
     processIncoming(chunk.toString('utf8'))
   })
 
@@ -293,10 +318,11 @@ function connect() {
       // DCS/Tacview not running yet - e.g. a mission restart - and just
       // keeps retrying below.
       console.error(`[tacview] rejected ${handshakeFailures}x in a row right after the handshake - likely a wrong RTT password. Giving up.`)
-      if (onDisconnect) onDisconnect()
+      setLinkIssue({ retrying: false, reason: 'tacview_unreachable' })
       return
     }
 
+    if (!linkIssue) setLinkIssue({ retrying: true, reason: 'tacview_no_response' })
     const delay = reconnectDelayMs
     reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
     console.log(`[tacview] disconnected - reconnecting in ${Math.round(delay / 1000)}s`)
@@ -307,6 +333,8 @@ function connect() {
     if (localSocket !== socket) return
     console.error(`[tacview] connection error: ${err.code ?? err.name ?? 'unknown'} - ${err.message || '(no message)'}`)
   })
+
+  if (adopted?.buffered) processIncoming(adopted.buffered)
 }
 
 function start(cfg, callbacks = {}) {
@@ -317,13 +345,15 @@ function start(cfg, callbacks = {}) {
   onWeaponsDelta = callbacks.onWeaponsDelta ?? null
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
-  onDisconnect = callbacks.onDisconnect ?? null
+  onLinkIssue = callbacks.onLinkIssue ?? null
+  linkIssue = null
 
   parser = tacviewCore.createParser()
   lineBuffer = ''
   intentionalClose = false
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   state.resetForNewSource()
   internalUnits = {}
@@ -358,6 +388,8 @@ function start(cfg, callbacks = {}) {
 function stop() {
   intentionalClose = true
   connected = false
+  linkIssue = null
+  onLinkIssue = null
   clearTimeout(reconnectTimer)
   clearTimeout(theatreTimer)
   clearInterval(missionClockTimer)
@@ -391,6 +423,7 @@ function overrideTheatre(name) {
   clearTimeout(theatreTimer)
   theatreDecided = true
   theatreName = name
+  theatreOverridden = true
   theatreVotes.clear()
   sendMissionClock()
 }
@@ -407,6 +440,7 @@ function resetTheatreDetection() {
   clearTimeout(theatreTimer)
   theatreDecided = false
   theatreName = null
+  theatreOverridden = false
   theatreVotes.clear()
   theatreTimer = setTimeout(finalizeTheatre, THEATRE_VOTE_WINDOW_MS)
 }
@@ -415,8 +449,54 @@ function isPolling() {
   return connected
 }
 
+function getLinkIssue() {
+  return linkIssue
+}
+
 function getConfig() {
   return config
+}
+
+// A successful probe's still-open connection, waiting for connect() to adopt
+// it (see probe()). Dropped if nothing adopts it in time, e.g. auto-detect
+// went on to pick another source type.
+const PENDING_PROBE_TTL_MS = 10000
+let pendingProbe = null
+
+function park(probeSocket, target, firstText) {
+  probeSocket.removeAllListeners('data')
+  probeSocket.removeAllListeners('close')
+  probeSocket.removeAllListeners('error')
+  const pending = { socket: probeSocket, ...target, buffered: firstText, timer: null }
+  pending.timer = setTimeout(() => { if (pendingProbe === pending) discardPendingProbe() }, PENDING_PROBE_TTL_MS)
+  probeSocket.on('data', (chunk) => { pending.buffered += chunk.toString('utf8') })
+  probeSocket.on('close', () => { if (pendingProbe === pending) { clearTimeout(pending.timer); pendingProbe = null } })
+  probeSocket.on('error', () => {})
+  pendingProbe = pending
+}
+
+function discardPendingProbe() {
+  if (!pendingProbe) return
+  clearTimeout(pendingProbe.timer)
+  pendingProbe.socket.destroy()
+  pendingProbe = null
+}
+
+// Hands over the parked connection if it's to the same server with the same
+// password, else null. Always clears pendingProbe.
+function takePendingProbe(host, port, password) {
+  const pending = pendingProbe
+  if (!pending) return null
+  pendingProbe = null
+  clearTimeout(pending.timer)
+  if (pending.socket.destroyed || pending.host !== host || pending.port !== port || pending.password !== password) {
+    pending.socket.destroy()
+    return null
+  }
+  pending.socket.removeAllListeners('data')
+  pending.socket.removeAllListeners('close')
+  pending.socket.removeAllListeners('error')
+  return pending
 }
 
 // A bare TCP-connect success isn't discriminating enough — Olympus's HTTP
@@ -440,49 +520,63 @@ function getConfig() {
 // autoDetectSourceType surfaces an `identified` error over the generic
 // "cannot reach any known source type" message, since we genuinely know
 // which server answered and why it rejected us.
+//
+// A successful probe does NOT close its connection: it parks it in
+// `pendingProbe` for start()'s connect() to adopt as the live connection.
+// Closing the probe and opening a new connection in the same instant has
+// crashed tacview.dll (ACCESS_VIOLATION) on a live server, so a login makes
+// exactly one RTT connection. Everything Tacview sends while parked is
+// buffered: the stream opens with a one-time header (ReferenceLongitude/
+// ReferenceLatitude etc.) that every later position is relative to.
 async function probe(cfg) {
   const { host, port } = parseHostPort(cfg.olympusUrl)
+  discardPendingProbe()
   await new Promise((resolve, reject) => {
     const probeSocket = net.createConnection({ host, port })
     let handshakeSent = false
     let settled = false
 
-    const settle = (fn, arg) => {
+    const fail = (err) => {
       if (settled) return
       settled = true
       clearTimeout(timeout)
       probeSocket.destroy()
-      fn(arg)
+      reject(err)
     }
 
     const timeout = setTimeout(() => {
-      settle(reject, handshakeSent
+      fail(handshakeSent
         ? identifiedError('Tacview accepted the connection but sent no telemetry after the handshake — check the RTT password')
         : new Error('Tacview probe timed out — no handshake received'))
     }, 5000)
 
     probeSocket.on('data', (chunk) => {
+      if (settled) return
       if (!handshakeSent) {
         if (!chunk.toString('utf8').startsWith('XtraLib.Stream.0')) {
-          settle(reject, new Error('Connected, but response was not a Tacview RTT handshake'))
+          fail(new Error('Connected, but response was not a Tacview RTT handshake'))
           return
         }
         handshakeSent = true
-        probeSocket.write(tacviewCore.buildClientHandshake('TRACS-Probe', cfg.password))
+        // Named as the live connection, since this socket becomes it.
+        probeSocket.write(tacviewCore.buildClientHandshake('TRACS', cfg.password))
         return
       }
       // Any data after our handshake means the server accepted it and started streaming.
-      settle(resolve)
+      settled = true
+      clearTimeout(timeout)
+      park(probeSocket, { host, port, password: cfg.password }, chunk.toString('utf8'))
+      resolve()
     })
 
     probeSocket.once('close', () => {
-      if (handshakeSent) settle(reject, identifiedError('Tacview rejected the connection after the handshake — check the RTT password'))
+      if (handshakeSent) fail(identifiedError('Tacview rejected the connection after the handshake — check the RTT password'))
     })
 
     probeSocket.once('error', (err) => {
-      settle(reject, err)
+      fail(err)
     })
   })
 }
 
-module.exports = { start, stop, isPolling, getConfig, probe, overrideTheatre, resetTheatreDetection }
+module.exports = { start, stop, isPolling, getLinkIssue, getConfig, probe, overrideTheatre, resetTheatreDetection }

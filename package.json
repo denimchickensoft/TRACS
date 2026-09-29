@@ -20,18 +20,20 @@
     "stage-better-sqlite3": "node electron/scripts/stage-better-sqlite3.js",
     "dist:electron": "npm run build && npm run stage-navdata && npm run stage-better-sqlite3 && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "lint": "eslint . && npm run check:tacview-core",
+    "test": "vitest run",
     "knip": "knip",
     "sync:tacview-core": "node scripts/sync-tacview-core.js",
     "check:tacview-core": "node scripts/sync-tacview-core.js --check",
     "postinstall": "git config core.hooksPath .githooks || exit 0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.6.1",
+    "@electron/fuses": "^1.8.0",
+    "@electron/rebuild": "^4.2.0",
     "@eslint/js": "^10.0.1",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "d3-contour": "^4.0.2",
-    "electron": "^33.0.0",
+    "electron": "^44.4.5",
     "electron-builder": "^25.0.0",
     "eslint": "^10.8.1",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -42,6 +44,7 @@
     "shapefile": "^0.6.6",
     "stream-json": "^1.9.1",
     "tracs-geo-math": "*",
+    "vitest": "^3.2.7",
     "yauzl": "^3.4.0"
   },
   "dependencies": {
@@ -58,12 +61,20 @@
     "productName": "TRACS",
     "asar": false,
     "npmRebuild": false,
+    "afterPack": "electron/scripts/flip-fuses.js",
+    "electronLanguages": ["en-US"],
     "directories": {
       "output": "dist-electron"
     },
     "files": [
       "electron/main.js",
       "electron/preload.js",
+      "electron/portConflict.html",
+      "electron/portConflict.js",
+      "electron/portConflictPreload.js",
+      "electron/findBar.html",
+      "electron/findBar.js",
+      "electron/findBarPreload.js",
       "server/package.json",
       "server/src/**/*",
       "server/navdata/*.js",
@@ -76,11 +87,16 @@
       "THIRD_PARTY_NOTICES.md",
       "client/dist/**/*",
       "client/public/units/**/*",
+      "client/public/icaoMapping.json",
       "node_modules/**/*",
       "!node_modules/electron/**",
       "!node_modules/electron-builder/**",
       "!node_modules/@electron/rebuild/**",
       "!node_modules/.bin/**",
+      "!node_modules/tracs-client/**",
+      "!node_modules/tracs-server/**",
+      "!node_modules/tracs-mock-olympus/**",
+      "!node_modules/tracs-geo-math/**",
       "!node_modules/better-sqlite3/**",
       "!node_modules/sql.js/dist/sql-asm*",
       "!node_modules/sql.js/dist/*-debug*",
@@ -110,7 +126,11 @@
       "icon": "client/public/favicon.ico"
     },
     "mac": {
-      "target": "dmg"
+      "target": [
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
+      ],
+      "x64ArchFiles": "**/better_sqlite3.node"
     },
     "linux": {
       "target": "AppImage"

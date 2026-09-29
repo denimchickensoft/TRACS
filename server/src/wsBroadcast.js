@@ -1,10 +1,11 @@
 'use strict'
 
+const { statusPayload, srsStatusPayload } = require('./linkStatus')
+
 // App-WS layer: tracks connected browser clients and broadcasts server-side
 // events (unit deltas, mission/airbases/bullseyes updates, status) to all of
-// them. Also hydrates a newly-connected client with the current snapshot +
-// persisted state files.
-function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRelayClient, serverInstanceId }) {
+// them. Also hydrates a newly-connected client with the current snapshot.
+function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRelayClient, srs, serverInstanceId }) {
   const clients = new Set()
 
   wss.on('connection', (ws) => {
@@ -35,23 +36,17 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, tacviewRela
 
     // Status — includes instanceId so clients can detect server restarts
     const sourceType = state.getSourceType()
-    const polling = (sourceRegistry.get(sourceType)?.isPolling() ?? false) || tacviewRelayClient.isConnected()
-    ws.send(JSON.stringify({ type: 'status', data: { polling, sourceType, instanceId: serverInstanceId } }))
-
-    // Send persisted state files so the browser can hydrate after refresh.
-    // If intentionalReset is true (deliberate position change), send defaults
-    // and clear the flag so the next connection gets a clean slate.
-    const sessionState = stateFiles.read('session')
-    if (sessionState.intentionalReset) {
-      stateFiles.setIntentionalReset(false)
-      ws.send(JSON.stringify({ type: 'state', key: 'atc',     data: stateFiles.DEFAULTS.atc }))
-      ws.send(JSON.stringify({ type: 'state', key: 'catcc',   data: stateFiles.DEFAULTS.catcc }))
-      ws.send(JSON.stringify({ type: 'state', key: 'session', data: { ...stateFiles.DEFAULTS.session, olympusAddress: sessionState.olympusAddress } }))
+    const source  = sourceRegistry.get(sourceType)
+    let status
+    if (tacviewRelayClient.isActive()) {
+      status = statusPayload(sourceType, tacviewRelayClient.getLinkIssue())
+    } else if (source?.getLinkIssue?.()) {
+      status = statusPayload(sourceType, source.getLinkIssue())
     } else {
-      ws.send(JSON.stringify({ type: 'state', key: 'atc',     data: stateFiles.read('atc') }))
-      ws.send(JSON.stringify({ type: 'state', key: 'catcc',   data: stateFiles.read('catcc') }))
-      ws.send(JSON.stringify({ type: 'state', key: 'session', data: sessionState }))
+      status = { polling: (source?.isPolling() ?? false) && !source?.isUnreachable?.(), sourceType }
     }
+    ws.send(JSON.stringify({ type: 'status', data: { ...status, instanceId: serverInstanceId } }))
+    ws.send(JSON.stringify({ type: 'srs_status', data: srsStatusPayload(srs.getLinkIssue()) }))
 
     ws.on('close', () => {
       clients.delete(ws)

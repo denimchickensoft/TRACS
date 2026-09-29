@@ -47,7 +47,6 @@ export function useDraggableWindow({ defaultPos, defaultSize, minWidth = 240, mi
   }, [])
 
   const handleOpacityWheel = useCallback((e) => {
-    e.preventDefault()
     const dir = wheelDir(e)
     if (dir === null) return
     setOpacity((prev) => {

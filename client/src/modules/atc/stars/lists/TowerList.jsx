@@ -2,14 +2,15 @@ import { useMemo }              from 'react'
 import { useFlightPlansStore }  from '../../../../store/flightPlans.js'
 import { useUnitsStore }        from '../../../../store/units.js'
 import { useSessionStore }      from '../../../../store/session.js'
-import { useDisplayStore }      from '../../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }          from '../../../../store/ods.js'
 import { ListPanel }            from './ListPanel.jsx'
+import { EARTH_RADIUS_NM } from '../../../../utils/units.js'
 
 const WINDOW_ID = 'atc-main'
 
 function distanceNm(lat1, lng1, lat2, lng2) {
-  const R    = 3440.065  // nautical miles
+  const R    = EARTH_RADIUS_NM  // nautical miles
   const dLat = (lat2 - lat1) * Math.PI / 180
   const dLng = (lng2 - lng1) * Math.PI / 180
   const a    = Math.sin(dLat / 2) ** 2
@@ -51,7 +52,7 @@ function TowerListPanel({ idx }) {
   if (!windowSettings || !activeProfile) return null
 
   const { lists, briteLst, csLists } = windowSettings
-  const cfg = lists?.[listKey] ?? { visible: false, xPct: 2, yPct: 50, lines: 5 }
+  const cfg = lists?.[listKey] ?? DEFAULT_LISTS[listKey]
   if (!cfg.visible) return null
 
   const brite = (briteLst ?? 80) / 100

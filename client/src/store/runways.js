@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import { computeMagvar, missionDecimalYear } from '../utils/magvar.js'
+import { EARTH_RADIUS_NM } from '../utils/units.js'
+import { getIcaoMapping } from '../utils/icaoMapping.js'
+import { log } from '../utils/log.js'
 
 const FT_PER_NM = 6076.115
 
 function nmBetween(lat1, lng1, lat2, lng2) {
-  const R  = 3440.065
+  const R  = EARTH_RADIUS_NM
   const φ1 = lat1 * Math.PI / 180
   const φ2 = lat2 * Math.PI / 180
   const Δφ = (lat2 - lat1) * Math.PI / 180
@@ -100,8 +103,7 @@ export const useRunwaysStore = create((set, get) => ({
   loadForTheatre: async (theatre, suffix = '', facilityLat = null, facilityLng = null, facilityAirbase = null, missionDate = null) => {
     if (!theatre) return
     const yearKey     = missionDate ? missionDecimalYear(missionDate).toFixed(2) : 'now'
-    const overrideKey = (typeof window !== 'undefined' && typeof window.__magvarOverride === 'number') ? window.__magvarOverride : 'auto'
-    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}|${facilityAirbase}|${yearKey}|${overrideKey}`
+    const loadKey = `${theatre}|${suffix}|${facilityLat}|${facilityLng}|${facilityAirbase}|${yearKey}`
     if (get()._lastLoadKey === loadKey) return
     try {
       if (!theatreCache[theatre]) {
@@ -252,12 +254,7 @@ export const useRunwaysStore = create((set, get) => ({
 
       // Load ICAO mapping once
       if (!icaoMapping) {
-        try {
-          const r = await fetch('/icaoMapping.json')
-          icaoMapping = r.ok ? await r.json() : {}
-        } catch {
-          icaoMapping = {}
-        }
+        icaoMapping = await getIcaoMapping()
       }
 
       // Resolve labels: ICAO code if available, abbreviated name as fallback
@@ -338,7 +335,7 @@ export const useRunwaysStore = create((set, get) => ({
       }
 
       set({ centerlines, cltrVisible, satBuckets, theatre, facilityAirbase: facilityAirbase || null, airportPositions, _lastLoadKey: loadKey })
-      console.log(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
+      log.info(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
     } catch (err) {
       console.error('[runways] load error:', err.message)
     }

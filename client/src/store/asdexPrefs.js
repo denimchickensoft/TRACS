@@ -6,7 +6,7 @@
 
 import { makePrefsStore } from '../utils/prefsStore.js'
 
-const KEY = 'tracs-asdex-prefs'
+const KEY = 'tracs.asdex.prefs'
 
 const DEFAULTS = {
   ptlLength:    0.0,

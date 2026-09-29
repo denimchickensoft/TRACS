@@ -1,3 +1,4 @@
+import { MS_TO_KT } from '../../utils/units.js'
 /**
  * Shared AIC intercept geometry.
  * Single source of truth for merge point, TTI, and intercept heading.
@@ -18,8 +19,8 @@ export function computeAicIntercept(fighter, bogey) {
   const fp = fighter.position, bp = bogey.position
   if (!fp || !bp) return null
 
-  const fSpdKts = safeNum(fighter.speed) * 1.94384
-  const bSpdKts = safeNum(bogey.speed)   * 1.94384
+  const fSpdKts = safeNum(fighter.speed) * MS_TO_KT
+  const bSpdKts = safeNum(bogey.speed)   * MS_TO_KT
   if (fSpdKts < 10) return null
 
   const avgLat      = (fp.lat + bp.lat) / 2

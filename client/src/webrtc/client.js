@@ -12,6 +12,7 @@ import { useRoeStore, registerRoeBroadcast, applyRoe } from '../store/roe.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
 import { applyCallsignRenameRemote } from '../utils/callsignRename.js'
+import { log } from '../utils/log.js'
 
 // ── Signal relay URL (same server the browser loaded from) ────────────────────
 function getSignalUrl() {
@@ -187,8 +188,6 @@ function positionTypeHints(suffix) {
   }
 }
 
-export function isApplying() { return _applying }
-
 // ── Room ID derivation (P2P/Trystero fallback only — relay-hosted sync uses
 // relayTopicFor() below instead) ───────────────────────────────────────────────
 // `coalition` is an optional trailing param (added after `password`, not
@@ -222,7 +221,7 @@ export async function deriveRoomId(olympusAddress, password = '', coalition = ''
   const hash  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
   const hex   = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
   const roomId = 'tracs-' + hex.substring(0, 16)
-  console.info(`[webrtc] derived room id ${roomId} from "${normalized}"`)
+  log.debug(`[webrtc] derived room id ${roomId} from "${normalized}"`)
   return roomId
 }
 
@@ -248,7 +247,7 @@ function logMsg(direction, msg, targetPeerId) {
   // relay-hosted sync session never opens a real RTCPeerConnection, and the
   // '[webrtc]' label was confusingly claiming otherwise.
   const tag = usingSyncRelay ? '[sync]' : '[webrtc]'
-  console.debug(`${tag} ${direction}${target} [${msg.type}] seq=${msg.sequence} from=${from}`, msg.payload)
+  log.debug(`${tag} ${direction}${target} [${msg.type}] seq=${msg.sequence} from=${from}`, msg.payload)
 }
 
 // ── Message envelope ──────────────────────────────────────────────────────────
@@ -981,7 +980,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   // Same [sync]/[webrtc] convention logMsg() already uses below, for the
   // same reason -- this always said [webrtc] regardless of which transport
   // actually carried it.
-  console.info(`${usingSyncRelay ? '[sync]' : '[webrtc]'} joining module room ${moduleRoomId}`)
+  log.info(`${usingSyncRelay ? '[sync]' : '[webrtc]'} joining module room ${moduleRoomId}`)
   const iceServers = await fetchIceServers()
   const baseCfg = {
     appId: 'tracs',
@@ -990,7 +989,8 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     // peers can't resolve these (they're synthetic, not real mDNS records), so the
     // host candidates are dead. Rewriting to 127.0.0.1 makes same-machine connections
     // work. For cross-machine LAN, these host candidates simply fail first; STUN
-    // reflexive candidates (real LAN IPs) still succeed.
+    // reflexive candidates (real LAN IPs) still succeed. The `_test_only_`
+    // prefix is Trystero's own name for the option; using it here is deliberate.
     _test_only_mdnsHostFallbackToLoopback: true,
     // AES-GCM encrypts SDP payloads so public relay operators can't read session
     // descriptors in plaintext. Every peer already knows this password out-of-band

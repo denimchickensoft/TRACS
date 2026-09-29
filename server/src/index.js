@@ -18,6 +18,7 @@ const { registerSourceConnectRoutes } = require('./routes/sourceConnect')
 const { registerDocsRoutes } = require('./routes/docs')
 const { createWsBroadcast }  = require('./wsBroadcast')
 const { createSignalRelay }  = require('./signalRelay')
+const { srsStatusPayload }   = require('./linkStatus')
 
 // Standalone server (npm start / dev) only: log unexpected errors and keep
 // running. Under Electron, electron/main.js's log.errorHandler owns this.
@@ -45,7 +46,8 @@ const CLIENT_DIST  = path.join(__dirname, '../../client/dist')
 //     access, since LAN clients legitimately use other host names.
 //   - A browser request carrying Origin must be same-origin (Origin host ==
 //     Host header). Every legitimate page — the UI, popups, docs, and the Vite
-//     dev server's proxied requests — is same-origin; cross-site pages aren't.
+//     dev server's proxied requests (its proxy keeps the browser's Host, see
+//     client/vite.config.js) — is same-origin; cross-site pages aren't.
 //   - Requests with no Origin (curl, Node clients) aren't browser-driven and
 //     are allowed.
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
@@ -73,16 +75,14 @@ app.use((req, res, next) => {
   res.status(403).send('Forbidden')
 })
 
-// Content-Security-Policy, currently REPORT-ONLY: violations are logged to
-// the page's DevTools console but nothing is blocked. Once every module has
-// run with a clean console, switch the header name to
-// Content-Security-Policy to enforce it. connect-src allows any ws/wss host
-// because TRACS Relay and Nostr relay addresses are user-configured.
+// Content-Security-Policy, enforced: a blocked load shows as a "Refused to
+// ..." error in the page's DevTools console. connect-src allows any ws/wss
+// host because TRACS Relay and Nostr relay addresses are user-configured.
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com data:",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
   "img-src 'self' data: blob:",
   "media-src 'self' data: blob:",
   "connect-src 'self' ws: wss:",
@@ -92,7 +92,7 @@ const CSP = [
   "frame-ancestors 'none'",
 ].join('; ')
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy-Report-Only', CSP)
+  res.setHeader('Content-Security-Policy', CSP)
   next()
 })
 
@@ -105,9 +105,12 @@ app.use(express.static(CLIENT_DIST))
 
 // ─── HTTP + WS server ────────────────────────────────────────────────────────
 
+// Per-message size caps (ws defaults to 100 MiB). The browser never sends
+// on /ws (it only receives), and /signal carries WebRTC signaling (SDP
+// offers/answers, a few KB each).
 const server = http.createServer(app)
-const wss       = new WebSocketServer({ noServer: true })
-const signalWss = new WebSocketServer({ noServer: true })
+const wss       = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 })
+const signalWss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 })
 
 // Route WebSocket upgrade requests by path so both servers share one HTTP port.
 server.on('upgrade', (req, socket, head) => {
@@ -128,7 +131,7 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 const { broadcast, getWsClientCount } = createWsBroadcast(wss, {
-  state, stateFiles, sourceRegistry, tacviewRelayClient, serverInstanceId: SERVER_INSTANCE_ID,
+  state, stateFiles, sourceRegistry, tacviewRelayClient, srs, serverInstanceId: SERVER_INSTANCE_ID,
 })
 
 createSignalRelay(signalWss)
@@ -149,7 +152,10 @@ registerApiRoutes(app, {
 if (process.env.TRACS_RELAY_URL) {
   srs.start(
     { relayUrl: process.env.TRACS_RELAY_URL },
-    { onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }) },
+    {
+      onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }),
+      onLinkIssue:  (issue) => broadcast({ type: 'srs_status', data: srsStatusPayload(issue) }),
+    },
   )
 }
 
@@ -162,7 +168,21 @@ app.get('*', (req, res) => {
 // Endpoints return 503 until the cache is ready.
 navdata.init().catch((err) => console.error('[navdata] unexpected init error:', err.message))
 
+// Settles once the server is listening, or rejects if it can't bind (e.g.
+// EADDRINUSE). electron/main.js awaits it so a failure reaches its startup
+// error dialog; run standalone, a bind failure logs and exits instead.
+let resolveReady, rejectReady
+const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
+
+server.on('error', (err) => {
+  const reason = err.code === 'EADDRINUSE' ? `port ${PORT} is already in use` : err.message
+  console.error(`[server] could not listen on ${HOST}:${PORT} - ${reason}`)
+  if (require.main === module) process.exit(1)
+  rejectReady(new Error(`TRACS server could not listen on ${HOST}:${PORT}: ${reason}`))
+})
+
 server.listen(PORT, HOST, () => {
+  resolveReady()
   // The signal relay is fresh on every start — any WebRTC peers from the previous
   // run are gone. Clear the persisted clientList so pre-flight frequency checks
   // don't reject new sign-ons based on stale entries.
@@ -176,3 +196,35 @@ server.listen(PORT, HOST, () => {
     console.warn(`[server] WARNING: listening on ${HOST} (TRACS_HOST) - this server has no authentication; anyone who can reach port ${PORT} can read and control it`)
   }
 })
+
+// Graceful shutdown (Electron quit, or Ctrl+C / SIGTERM when run
+// standalone): stop the data sources and relay clients so their sockets
+// close cleanly (Tacview's RTT server is sensitive to abrupt disconnects),
+// close browser sockets, then the HTTP server. Resolves when done, or after
+// 2 s if something hangs.
+let shutdownPromise = null
+function shutdown() {
+  if (shutdownPromise) return shutdownPromise
+  console.log('[server] shutting down')
+  shutdownPromise = new Promise((resolve) => {
+    const timer = setTimeout(resolve, 2000)
+    for (const type of sourceRegistry.SOURCE_TYPES) {
+      const source = sourceRegistry.get(type)
+      if (source.isPolling()) source.stop()
+    }
+    tacviewRelayClient.stop()
+    srs.stop()
+    for (const ws of wss.clients) ws.close(1001, 'server shutting down')
+    for (const ws of signalWss.clients) ws.close(1001, 'server shutting down')
+    server.close(() => { clearTimeout(timer); resolve() })
+    server.closeAllConnections?.()
+  })
+  return shutdownPromise
+}
+
+if (require.main === module) {
+  process.on('SIGINT',  () => shutdown().then(() => process.exit(0)))
+  process.on('SIGTERM', () => shutdown().then(() => process.exit(0)))
+}
+
+module.exports = { ready, shutdown }

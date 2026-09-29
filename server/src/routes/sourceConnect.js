@@ -1,5 +1,10 @@
 'use strict'
 
+const { statusPayload, srsStatusPayload } = require('../linkStatus')
+
+// Login-screen names for the coalition values, for error messages.
+const COALITION_NAMES = { blue: 'BLUE', red: 'RED', gm: 'GAME MASTER', admin: 'ADMIN' }
+
 // Registers /api/connect and its two theatre-override/reset companions —
 // the source-type auto-detection, crash-avoidance cooldowns, and
 // mutual-exclusivity teardown that carry essentially all of routes/api.js's
@@ -39,12 +44,16 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     }
   }
 
+  // Stops every source unconditionally, not just the ones reporting
+  // connected: a Tacview source between reconnect attempts reports
+  // not-connected but still has live timers and a pending reconnect, and
+  // skipping it left it broadcasting its own theatre (and later units)
+  // alongside the new source. Each stop() is safe on an idle source.
   function stopAllSources(sourceRegistry) {
     for (const type of sourceRegistry.SOURCE_TYPES) {
-      const source = sourceRegistry.get(type)
-      if (source.isPolling()) source.stop()
+      sourceRegistry.get(type).stop()
     }
-    if (tacviewRelayClient.isConnected()) tacviewRelayClient.stop()
+    tacviewRelayClient.stop()
   }
 
   // Rapid repeated /api/connect calls each tear down and rebuild the live
@@ -95,7 +104,10 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     if (relayUrl && !alreadyOnSameRelay) {
       srs.start(
         { relayUrl, password: relayAuthPassword, coalition: sourceCfg.coalition },
-        { onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }) },
+        {
+          onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }),
+          onLinkIssue:  (issue) => broadcast({ type: 'srs_status', data: srsStatusPayload(issue) }),
+        },
       )
     }
 
@@ -111,12 +123,29 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     if (sourceCfg.olympusUrl) {
       const currentType = state.getSourceType()
       const current = currentType ? sourceRegistry.get(currentType) : null
+      // Includes a feed in slow retry (Olympus unreachable): it's still
+      // retrying this address, so a new window joins and shows the same
+      // DISCONNECTED status, and recovers with the others, rather than being
+      // refused by a fresh probe of a server that's down.
       const alreadyLiveOnSameConfig = current
         && (!requestedSourceType || requestedSourceType === currentType)
         && current.isPolling()
         && current.getConfig()?.olympusUrl === sourceCfg.olympusUrl
       if (alreadyLiveOnSameConfig) {
-        broadcast({ type: 'status', data: { polling: true, sourceType: currentType } })
+        // One live feed serves every window, so a login can't change its
+        // coalition (whose view and fog of war it carries) or its password.
+        // Refuse a mismatch rather than join silently. The feed only stops
+        // when TRACS quits, so that's the way to change either.
+        const live = current.getConfig()
+        const coalition = sourceCfg.coalition ?? 'blue'
+        if ((live.coalition ?? 'blue') !== coalition) {
+          const name = COALITION_NAMES[live.coalition] ?? String(live.coalition).toUpperCase()
+          return res.status(409).json({ error: `TRACS is already connected as ${name}. Close and reopen TRACS to change coalitions.` })
+        }
+        if ((live.password ?? '') !== (sourceCfg.password ?? '')) {
+          return res.status(409).json({ error: 'That password doesn’t match the one TRACS is already connected with. Close and reopen TRACS to use a different one.' })
+        }
+        broadcast({ type: 'status', data: statusPayload(currentType, current.getLinkIssue?.() ?? null) })
         return res.json({ ok: true })
       }
     }
@@ -157,11 +186,12 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
             onWeaponsDelta: (delta) => broadcast({ type: 'weapons_delta', data: delta }),
             onMission:      (data)  => broadcast({ type: 'mission',    data }),
             onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
+            onLinkIssue:    (issue) => broadcast({ type: 'status', data: statusPayload('tacview', issue) }),
           }
         )
         broadcast({ type: 'units_clear' })
       }
-      broadcast({ type: 'status', data: { polling: true, sourceType: 'tacview' } })
+      broadcast({ type: 'status', data: statusPayload('tacview', tacviewRelayClient.getLinkIssue()) })
       return res.json({ ok: true })
     }
 
@@ -196,6 +226,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     // a duplicate of the same session.
     const alreadyOnSameSource = state.getSourceType() === sourceType
       && source.isPolling()
+      && !source.isUnreachable?.()
       && source.getConfig()?.olympusUrl === sourceCfg.olympusUrl
       && source.getConfig()?.coalition === sourceCfg.coalition
       && source.getConfig()?.password === sourceCfg.password
@@ -212,11 +243,15 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
         return res.status(429).json({ error: 'Reconnected to Tacview too recently — wait a few seconds before trying again (rapid reconnects can crash Tacview’s DCS export)' })
       }
 
+      // A successful Tacview probe (here or in auto-detect) leaves its
+      // connection open, and source.start() below adopts it, so the probe
+      // and the live feed are one RTT connection (see tacview.js probe()).
       if (!alreadyProbed) {
         try {
           await source.probe(sourceCfg)
         } catch (err) {
-          return res.status(502).json({ error: `Cannot reach ${sourceType} source: ${err.message}` })
+          const label = sourceType === 'olympus' ? 'Olympus' : 'Tacview'
+          return res.status(502).json({ error: err.identified || err.describesItself ? err.message : `Cannot reach ${label}: ${err.message}` })
         }
       }
 
@@ -234,7 +269,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
           onMission:      (data)  => broadcast({ type: 'mission',    data }),
           onAirbases:     (data)  => broadcast({ type: 'airbases',  data }),
           onBullseyes:    (data)  => broadcast({ type: 'bullseyes', data }),
-          onDisconnect:   ()      => broadcast({ type: 'status', data: { polling: false, reason: `${sourceType}_unreachable` } }),
+          onLinkIssue:    (issue) => broadcast({ type: 'status', data: statusPayload(sourceType, issue) }),
         }
       )
       broadcast({ type: 'units_clear' })
@@ -242,7 +277,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
 
     // Notify all currently-connected WS clients that polling has started (or is
     // already running). This covers new browser windows joining an active session.
-    broadcast({ type: 'status', data: { polling: true, sourceType } })
+    broadcast({ type: 'status', data: statusPayload(sourceType, source.getLinkIssue?.() ?? null) })
 
     res.json({ ok: true })
   })

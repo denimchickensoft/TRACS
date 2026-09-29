@@ -14,8 +14,21 @@ const path = require('path')
 const net = require('net')
 const { gateConnection } = require('./auth')
 const tacviewCore = require('./tacviewCore')
+const { RELAY_DIR } = require('./paths')
 
-const RECONNECT_MS = 3000
+// Same reconnect policy as the backend's direct Tacview connection
+// (server/src/tacview.js): rapid connect/disconnect churn against Tacview's
+// Real-Time Telemetry port is known to crash tacview.dll (and DCS with it).
+// Backoff starts at RECONNECT_MIN_MS, doubles per failed attempt up to
+// RECONNECT_MAX_MS, and resets once telemetry flows. MAX_HANDSHAKE_FAILURES
+// closes in a row right after our handshake mean a wrong RTT password, so
+// the relay stops retrying instead of cycling the port forever.
+const RECONNECT_MIN_MS = 3000
+const RECONNECT_MAX_MS = 60000
+const MAX_HANDSHAKE_FAILURES = 3
+// Real ACMI lines are short; an unterminated one past this size means a
+// broken or hostile peer, so drop the connection rather than buffer forever.
+const MAX_PARTIAL_LINE = 1024 * 1024
 
 // Relay-operator-owned detection/fog-of-war tuning — gitignored, optional,
 // same key shape as server/tacviewDetectionConfig.json. Loaded once at relay startup,
@@ -24,7 +37,7 @@ const RECONNECT_MS = 3000
 // merge/shape validation here — server/src/tacviewDetection.js's
 // applyRelayConfig()/mergeConfig() is the one place that happens, exactly
 // mirroring how the local-file case already works for direct mode).
-const DETECTION_CONFIG_PATH = path.join(__dirname, 'tacviewDetectionConfig.json')
+const DETECTION_CONFIG_PATH = path.join(RELAY_DIR, 'tacviewDetectionConfig.json')
 function loadDetectionConfig() {
   try {
     return JSON.parse(fs.readFileSync(DETECTION_CONFIG_PATH, 'utf8'))
@@ -38,6 +51,10 @@ function createTacviewRelay(wss, config) {
   let parser = tacviewCore.createParser()
   let lineBuffer = ''
   let socket = null
+  let reconnectTimer = null
+  let reconnectDelayMs = RECONNECT_MIN_MS
+  let handshakeFailures = 0
+  let stopped = false
 
   // Merged running snapshot, so a newly-authenticated client can catch up
   // immediately rather than waiting for the next upstream change — same
@@ -62,6 +79,12 @@ function createTacviewRelay(wss, config) {
     lineBuffer += text
     const lines = lineBuffer.split('\n')
     lineBuffer = lines.pop() ?? ''
+    if (lineBuffer.length > MAX_PARTIAL_LINE) {
+      console.error(`[relay:tacview] over ${MAX_PARTIAL_LINE} bytes without a line break - dropping the connection`)
+      lineBuffer = ''
+      socket?.destroy()
+      return
+    }
     if (!lines.length) return
 
     const result = parser.parseLines(lines)
@@ -77,37 +100,68 @@ function createTacviewRelay(wss, config) {
 
   function connect() {
     let handshakeSent = false
-    socket = net.createConnection({ host: config.tacviewHost, port: config.tacviewPort })
+    let receivedTelemetry = false
+    // Handlers close over this connection's own socket and ignore events
+    // once it's no longer the current one, same as server/src/tacview.js.
+    const localSocket = net.createConnection({ host: config.tacviewHost, port: config.tacviewPort })
+    socket = localSocket
 
-    socket.on('connect', () => {
+    localSocket.on('connect', () => {
+      if (localSocket !== socket) { localSocket.destroy(); return }
       console.log(`[relay:tacview] connected to ${config.tacviewHost}:${config.tacviewPort}`)
     })
 
-    socket.on('data', (chunk) => {
+    localSocket.on('data', (chunk) => {
+      if (localSocket !== socket) return
       if (!handshakeSent) {
         handshakeSent = true
-        socket.write(tacviewCore.buildClientHandshake('TRACS-Relay', config.tacviewPassword))
+        localSocket.write(tacviewCore.buildClientHandshake('TRACS-Relay', config.tacviewPassword))
         const text = chunk.toString('utf8')
         const nullIdx = text.indexOf('\0')
         const remainder = nullIdx === -1 ? '' : text.slice(nullIdx + 1)
-        if (remainder) processIncoming(remainder)
+        if (remainder) { receivedTelemetry = true; processIncoming(remainder) }
         return
       }
+      receivedTelemetry = true
       processIncoming(chunk.toString('utf8'))
     })
 
-    socket.on('close', () => {
-      console.log(`[relay:tacview] disconnected from Tacview - reconnecting in ${RECONNECT_MS}ms`)
+    localSocket.on('close', () => {
+      if (localSocket !== socket) return
       parser = tacviewCore.createParser() // fresh per-connection delta state
       lineBuffer = ''
       snapshotUnits = {}
       snapshotBullseyes = null
-      setTimeout(connect, RECONNECT_MS)
+      if (stopped) return
+
+      if (receivedTelemetry) {
+        handshakeFailures = 0
+        reconnectDelayMs = RECONNECT_MIN_MS
+      } else if (handshakeSent && ++handshakeFailures >= MAX_HANDSHAKE_FAILURES) {
+        // Only a close right after our handshake counts as a rejection; a
+        // refused connection (no greeting) is Tacview not running yet, e.g.
+        // a mission restart, and keeps retrying below.
+        console.error(`[relay:tacview] rejected ${handshakeFailures}x in a row right after the handshake - likely a wrong tacviewPassword. Giving up; fix config.json and restart the relay.`)
+        return
+      }
+
+      const delay = reconnectDelayMs
+      reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
+      console.log(`[relay:tacview] disconnected from Tacview - reconnecting in ${Math.round(delay / 1000)}s`)
+      reconnectTimer = setTimeout(connect, delay)
     })
 
-    socket.on('error', (err) => {
+    localSocket.on('error', (err) => {
+      if (localSocket !== socket) return
       console.error(`[relay:tacview] connection error: ${err.code ?? err.name ?? 'unknown'} - ${err.message || '(no message)'}`)
     })
+  }
+
+  // Closes the Tacview connection for good (relay shutdown).
+  function stop() {
+    stopped = true
+    clearTimeout(reconnectTimer)
+    socket?.destroy()
   }
 
   if (config.tacviewHost && config.tacviewPort) {
@@ -116,8 +170,9 @@ function createTacviewRelay(wss, config) {
     console.log('[relay:tacview] no tacviewHost/tacviewPort configured - capability idle')
   }
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
     gateConnection(ws, config.passwords, {
+      req,
       label: 'tacview',
       onAuthenticated: (authMsg) => {
         authenticatedClients.add(ws)
@@ -171,6 +226,8 @@ function createTacviewRelay(wss, config) {
       console.error('[relay:tacview] client socket error:', err.message)
     })
   })
+
+  return { stop }
 }
 
 module.exports = { createTacviewRelay }

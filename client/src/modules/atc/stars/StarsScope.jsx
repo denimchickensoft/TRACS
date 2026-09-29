@@ -7,28 +7,28 @@ import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../../store/atc.j
 import { useDisplayStore }  from '../../../store/display.js'
 import { useOdsStore }      from '../../../store/ods.js'
 import { usePreviewStore }  from '../../../store/preview.js'
-import { getVisibleUnits }      from './visibleUnits.js'
+import { getVisibleUnits }      from '../../../utils/visibleUnits.js'
 import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './starsStoreSelectors.js'
-import { computeStarsSymbolMap, computeStarsFilteredUnits } from './starsScopeHelpers.js'
+import { computeStarsSymbolMap, computeStarsFilteredUnits, findPlanForUid, deriveDisplaySettings } from './starsScopeHelpers.js'
 import { useStarsNavdataLoading } from './starsNavdataLoading.js'
 import { useStcaTracker } from './stca/useStcaCompute.js'
-import { useHistoryCapture } from './useHistoryCapture.js'
+import { useHistoryCapture } from '../../../utils/useHistoryCapture.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
-import { drawCompassRose }      from './canvas/drawCompassRose.js'
+import { drawCompassRose }      from '../../../canvas/drawCompassRose.js'
 import { drawContacts }         from './canvas/drawContacts.js'
 import { drawRbls }             from './canvas/drawRbls.js'
 import { drawMinSep }          from './canvas/drawMinSep.js'
 import { drawMaps }                   from './canvas/drawMaps.js'
 import { drawExtendedCenterlines }    from './canvas/drawExtendedCenterlines.js'
-import { drawHoldings }               from './canvas/drawHoldings.js'
-import { drawAirways }                from './canvas/drawAirways.js'
+import { drawHoldings }               from '../../../canvas/drawHoldings.js'
+import { drawAirways }                from '../../../canvas/drawAirways.js'
 import { drawMsa }                    from './canvas/drawMsa.js'
-import { drawMora }                   from './canvas/drawMora.js'
-import { drawRelief }                 from './canvas/drawRelief.js'
+import { drawMora }                   from '../../../canvas/drawMora.js'
+import { drawRelief }                 from '../../../canvas/drawRelief.js'
 import { drawMva }                    from './canvas/drawMva.js'
-import { drawGeo }                    from './canvas/drawGeo.js'
-import { drawAbmFixSymbols }          from '../../abm/canvas/drawAbmFixSymbols.js'
+import { drawGeo }                    from '../../../canvas/drawGeo.js'
+import { drawAbmFixSymbols }          from '../../../canvas/drawAbmFixSymbols.js'
 import { drawProcedures }             from './canvas/drawProcedures.js'
 import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
@@ -44,7 +44,7 @@ import { TowerLists }           from './lists/TowerList.jsx'
 import { CoastList }            from './lists/CoastList.jsx'
 import { AlertList }            from './lists/AlertList.jsx'
 import { VFRList }              from './lists/VFRList.jsx'
-import { resolveSlew }          from './input/slewResolver.js'
+import { resolveSlew }          from '../../../utils/slewResolver.js'
 import { parseCommand, looksLikeKnownCommand } from './input/commandParser.js'
 import { dispatch as dispatchAction, INIT_CNTL, ackConflict, recenterScope } from '../actions/index.js'
 import { useStcaStore }         from '../../../store/stca.js'
@@ -239,8 +239,6 @@ export default function StarsScope() {
           dcbActiveSpinner: null,
         })
         applyLayerVisibility(settings)
-        if (settings.previewPosition !== undefined)
-          usePreviewStore.getState().setPosition(settings.previewPosition)
         usePresetsStore.getState().setActiveSlot(defaultSlot)
       }
       usePresetsStore.getState().markDefaultApplied()
@@ -303,7 +301,6 @@ export default function StarsScope() {
     const w = canvas.width
     const h = canvas.height
     if (!w || !h) return null
-    const effectiveDeclination = typeof window.__magvarOverride === 'number' ? window.__magvarOverride : declinationDeg
     return {
       centerLat: centerLat ?? 0,
       centerLng: centerLng ?? 0,
@@ -311,7 +308,7 @@ export default function StarsScope() {
       pixelsPerNm: rangeToPixelsPerNm(rangeNm, w, h),
       width: w,
       height: h,
-      declinationDeg: effectiveDeclination,
+      declinationDeg,
       theatre,
     }
   }, [windowSettings, declinationDeg, theatre])
@@ -342,11 +339,10 @@ export default function StarsScope() {
     return () => ro.disconnect()
   }, [buildView])
 
-  // blinkTick fires every 200ms and doesn't itself affect buildView's output
-  // (it's only here to catch window.__magvarOverride changes, which aren't
-  // reactive). Bail out when the rebuilt view is field-identical to the
+  // buildView changes on any windowSettings change, including fields the view
+  // doesn't use. Bail out when the rebuilt view is field-identical to the
   // current one so its reference stays stable and doesn't force every
-  // view-dependent layer (map/relief/geo/etc.) to redraw 5x/sec for nothing.
+  // view-dependent layer (map/relief/geo/etc.) to redraw for nothing.
   useEffect(() => {
     const next = buildView()
     setView((prev) => (prev && next &&
@@ -360,7 +356,7 @@ export default function StarsScope() {
       prev.theatre === next.theatre)
       ? prev
       : next)
-  }, [buildView, blinkTick])
+  }, [buildView])
 
   // ── Auto-center on facility airbase ──────────────────────────────
   // Tracks the facilityDcsName last auto-centered in windowSettings.autoCenteredFacility
@@ -458,10 +454,7 @@ export default function StarsScope() {
     const allUnits = useUnitsStore.getState().units
     const icaosNeeded = new Set()
     for (const uid of routeDisplayedUids) {
-      const unit = Object.values(allUnits).find(u => String(u.id) === uid)
-      const aid  = unit ? findFlightPlanAid(unit, plans) : null
-      const fpl  = (aid ? plans[aid] : null)
-                ?? Object.values(plans).find(p => String(p.unitId) === uid)
+      const fpl  = findPlanForUid(uid, allUnits, plans)
       if (fpl?.dep)  icaosNeeded.add(fpl.dep.toUpperCase())
       if (fpl?.dest) icaosNeeded.add(fpl.dest.toUpperCase())
     }
@@ -502,10 +495,7 @@ export default function StarsScope() {
     const allUnits = useUnitsStore.getState().units
     const routesByUid = new Map()
     for (const uid of routeDisplayedUids) {
-      const unit = Object.values(allUnits).find(u => String(u.id) === uid)
-      const aid  = unit ? findFlightPlanAid(unit, plans) : null
-      const fpl  = (aid ? plans[aid] : null)
-                ?? Object.values(plans).find(p => String(p.unitId) === uid)
+      const fpl  = findPlanForUid(uid, allUnits, plans)
       if (!fpl) continue
       const depProcs  = fpl.dep  ? (routeProcData[fpl.dep.toUpperCase()]  ?? null) : null
       const destProcs = fpl.dest ? (routeProcData[fpl.dest.toUpperCase()] ?? null) : null
@@ -697,7 +687,6 @@ export default function StarsScope() {
       const enriched = {
         ...win,
         ...snapshotLayerVisibility(),
-        previewPosition: usePreviewStore.getState().position,
       }
       usePresetsStore.getState().saveToSlot(pending.slotIndex, name, enriched)
       usePreviewStore.getState().clear()
@@ -1070,30 +1059,10 @@ export default function StarsScope() {
 
   const previewEnabled = activeProfile.interaction?.previewArea?.enabled ?? false
 
-  // Background brightness: 0 = black, 100 = medium gray (~#A0A0A0)
-  const bkgGray = Math.round((windowSettings.briteBkg ?? 0) / 100 * 160)
-  const bgColor = `rgb(${bkgGray},${bkgGray},${bkgGray})`
-
-  // ldrLength stored as 0–7; convert to pixels (10px per unit). null → profile default.
-  const ldrLength = windowSettings.ldrLength != null
-    ? windowSettings.ldrLength * 10
-    : activeProfile.visual.dataBlock?.leaderLength ?? 40
-  // ldrAngleDeg stored as canvas degrees (0=right, CW). null → profile default.
-  const ldrAngleDeg = windowSettings.ldrAngleDeg ?? activeProfile.visual.dataBlock?.leaderAngleDeg ?? -45
-
-  // Datablock brightness (0–1 opacity)
-  const briteFdb = (windowSettings.briteFdb ?? 80) / 100
-  const briteLdb = (windowSettings.briteLdb ?? 70) / 100
-
-  // DCB brightness (0–1 opacity)
-  const briteDcb = (windowSettings.briteDcb ?? 80) / 100
-
-  // Character size (0–5 scale; 3 = default)
-  const csDatablocks = windowSettings.csDatablocks ?? 3
-  const csDcb        = windowSettings.csDcb        ?? 3
-
-  const dcbPos      = windowSettings.dcbPosition ?? 'top'
-  const coordsVisible = windowSettings.coordsVisible ?? false
+  const {
+    bgColor, ldrLength, ldrAngleDeg, briteFdb, briteLdb, briteDcb,
+    csDatablocks, csDcb, dcbPos, coordsVisible,
+  } = deriveDisplaySettings(windowSettings, activeProfile)
 
   return (
     <div className="atc-scope" data-dcb-pos={dcbVisible && activeProfile.dcb ? dcbPos : undefined} style={{ background: bgColor }}>

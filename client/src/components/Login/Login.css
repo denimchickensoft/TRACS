@@ -27,6 +27,21 @@
   padding: 32px;
 }
 
+/* The login box with the OSM credit under it; the credit wraps at the box's width. */
+.login-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-attribution {
+  margin: 8px 0 0;
+  max-width: 0;
+  min-width: 100%;
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 .login-header {
   margin-bottom: 28px;
   border-bottom: 1px solid var(--border);
@@ -60,7 +75,8 @@
   gap: 6px;
 }
 
-.login-form label {
+.login-form label,
+.login-form .login-label {
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;

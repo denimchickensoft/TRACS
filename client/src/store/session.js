@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { shallowEqual } from '../utils/storeSync.js'
 
 export const MODULE = {
   ATC:   'ATC',
@@ -34,6 +35,13 @@ export const useSessionStore = create((set) => ({
   relayUrl: '',   // SRS relay — optional, empty means none configured/reachable
   syncCapable: false,   // relay's /sync reachable + authenticated (checked in Login's ConnectPhase)
   connected: false,
+  // Why the data source is disconnected or being retried, from the server's
+  // status reason (e.g. Olympus unreachable and retrying), or null. Shown in
+  // the top bar.
+  connectionIssue: null,
+  // The source is still selected but has stopped responding and is being
+  // retried: the top bar shows NO RESPONSE: RECONNECTING.
+  connectionRetrying: false,
   // 'olympus' | 'tacview' — set optimistically by ConnectPhase's setConnection
   // (matching the source-selector's mode, collapsing 'tacview-direct'/'relay'
   // both to 'tacview' here since that's the dispatch-level distinction this
@@ -75,8 +83,11 @@ export const useSessionStore = create((set) => ({
 
   // WebRTC / session
   webrtcStatus: 'disconnected',  // 'webrtc' | 'relay' | 'disconnected' | 'rejected'
-  sessionCode: null,
-  isHost: false,
+  // Relay sync connection trouble, shown in the top bar: null (fine or not
+  // in use) | 'retrying' | 'password' | 'protocol'.
+  syncIssue: null,
+  // Same values for the SRS transponder feed from the relay (server srs.js).
+  srsIssue: null,
   peers: [],
   controllerMessages: [],  // { id, from, fromPosition, text, timestamp, broadcast, toPosition? }[]
   unreadGeneral: 0,
@@ -98,6 +109,10 @@ export const useSessionStore = create((set) => ({
     }),
 
   setConnected: (connected) => set({ connected }),
+  setConnectionIssue: (connectionIssue) => set({ connectionIssue }),
+  setConnectionRetrying: (connectionRetrying) => set({ connectionRetrying }),
+  setSyncIssue: (syncIssue) => set({ syncIssue }),
+  setSrsIssue: (srsIssue) => set({ srsIssue }),
 
   setSourceType: (sourceType) => set({ sourceType }),
 
@@ -134,9 +149,11 @@ export const useSessionStore = create((set) => ({
   // majority-vote mitigation can never disambiguate MarianaIslands vs.
   // MarianaIslandsWWII (identical bboxes). Patches mission.mission.theatre
   // in place so every consumer that already reads mission?.mission?.theatre
-  // sees the override with no other code changes.
+  // sees the override with no other code changes. theatreOverridden mirrors
+  // the flag the server sends with the theatre; null means back to
+  // auto-detect.
   overrideTheatre: (theatre) => set((s) => ({
-    mission: { ...s.mission, mission: { ...s.mission?.mission, theatre } },
+    mission: { ...s.mission, mission: { ...s.mission?.mission, theatre, theatreOverridden: theatre != null } },
   })),
   setAirbases:   (airbases)   => set({ airbases }),
   setBullseyes:  (bullseyes)  => set({ bullseyes }),
@@ -145,10 +162,6 @@ export const useSessionStore = create((set) => ({
 
   setWebrtcRejection: (msg) => set({ webrtcRejection: msg }),
   clearWebrtcRejection: () => set({ webrtcRejection: null }),
-
-  setSessionCode: (code) => set({ sessionCode: code }),
-
-  setIsHost: (isHost) => set({ isHost }),
 
   setPeers: (peers) => set({ peers }),
 
@@ -165,8 +178,6 @@ export const useSessionStore = create((set) => ({
       }
       return { controllerMessages: [...s.controllerMessages, entry], unreadGeneral: s.unreadGeneral + 1 }
     }),
-
-  clearControllerMessages: () => set({ controllerMessages: [] }),
 
   markMessagesRead: (tab) =>
     set((s) => tab === 'main'
@@ -212,8 +223,8 @@ export const useSessionStore = create((set) => ({
       aicUnitId:           null,
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
-      sessionCode:         null,
-      isHost:              false,
+      syncIssue:           null,
+      srsIssue:            null,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,
@@ -233,6 +244,8 @@ export const useSessionStore = create((set) => ({
       relayUrl:            '',
       syncCapable:         false,
       connected:           false,
+      connectionIssue:     null,
+      connectionRetrying:  false,
       positionMode:        POSITION_MODE.FREEFORM,
       positionName:        '',
       positionConfig:      null,
@@ -250,8 +263,8 @@ export const useSessionStore = create((set) => ({
       aicUnitId:           null,
       aicUnitName:         '',
       webrtcStatus:        'disconnected',
-      sessionCode:         null,
-      isHost:              false,
+      syncIssue:           null,
+      srsIssue:            null,
       peers:               [],
       controllerMessages:  [],
       unreadGeneral:       0,
@@ -313,8 +326,10 @@ if (typeof window !== 'undefined') {
     _ch.postMessage({ type: 'REQUEST_STATE' })
   }
 
-  useSessionStore.subscribe((state) => {
-    if (!_isSyncing && _ch) _ch.postMessage({ type: 'STATE_UPDATE', state: _pick(state) })
+  useSessionStore.subscribe((state, prev) => {
+    if (_isSyncing || !_ch) return
+    const slice = _pick(state)
+    if (!shallowEqual(slice, _pick(prev))) _ch.postMessage({ type: 'STATE_UPDATE', state: slice })
   })
 
   if (_isPopup) {

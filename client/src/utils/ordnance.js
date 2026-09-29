@@ -5,15 +5,16 @@
 // Lazy-loaded on first call rather than bundled eagerly: aircraftdatabase.json
 // alone carries 14k+ CLSID entries.
 
+import { fetchJson } from './fetchJson.js'
+
 let _map = null
 let _loading = null
 
 async function loadDb() {
-  const [acRes, heloRes] = await Promise.all([
-    fetch('/units/aircraftdatabase.json'),
-    fetch('/units/helicopterdatabase.json'),
+  const [acDb, heloDb] = await Promise.all([
+    fetchJson('/units/aircraftdatabase.json'),
+    fetchJson('/units/helicopterdatabase.json'),
   ])
-  const [acDb, heloDb] = await Promise.all([acRes.json(), heloRes.json()])
 
   const map = {}
   for (const db of [acDb, heloDb]) {

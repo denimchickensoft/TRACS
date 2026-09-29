@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { usePreviewStore }  from '../../../../store/preview.js'
 import { useFpeStore }      from '../../../../store/fpe.js'
-import { matchStarsKey, isTypedInput } from './starsKeys.js'
+import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../../../utils/starsKeys.js'
 
 /**
  * Keyboard input handler for the STARS ODS.
@@ -21,10 +21,12 @@ import { matchStarsKey, isTypedInput } from './starsKeys.js'
  *   - Immediate actions → fire onImmediateAction callback
  */
 export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
-  const preview     = usePreviewStore()
-
+  // Store actions are read via getState() inside the handler, not a
+  // subscription: subscribing made the listener re-attach on every keystroke
+  // (each one changes the preview buffer).
   useEffect(() => {
     function handleKeyDown(e) {
+      const preview = usePreviewStore.getState()
       // FPE takes precedence over all STARS input while open
       if (useFpeStore.getState().open) return
 
@@ -60,7 +62,7 @@ export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
         e.preventDefault()
         if (starsKey.action) {
           onImmediateAction?.(starsKey.action)
-        } else if (starsKey.token) {
+        } else if (starsKey.token && shouldAppendToken(starsKey.code, starsKey.token, preview.buffer, e.repeat)) {
           preview.appendToken(starsKey.token)
         }
         return
@@ -75,7 +77,7 @@ export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [preview, onEnter, onImmediateAction, onEsc])
+  }, [onEnter, onImmediateAction, onEsc])
 
   return null  // no DOM output — purely a side-effect component
 }

@@ -67,6 +67,23 @@
 }
 .braa-btn:hover { color: #888; }
 
+/* Same look as the Strip Bay's sort dropdown. */
+.braa-sort-select {
+  background:     #111;
+  border:         1px solid #222;
+  color:          #666;
+  font-family:    inherit;
+  font-size:      0.6rem;
+  padding:        1px 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  outline:        none;
+}
+.braa-sort-dir {
+  font-size:      0.6rem;
+  margin:         0 6px 0 3px;
+}
+
 .braa-body {
   flex:           1;
   overflow-y:     auto;

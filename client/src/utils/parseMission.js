@@ -1,5 +1,6 @@
 import { CARRIER_TYPES } from './carriers.js'
 import { dcsPointToLatLng } from './dcsCoords.js'
+import { M_TO_FT } from './units.js'
 
 // ── Lua parser ────────────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export function extractWeather(mission) {
     }
 
     if (known) {
-      const baseFt = Math.round((clouds.base ?? 0) * 3.28084)
+      const baseFt = Math.round((clouds.base ?? 0) * M_TO_FT)
       if (isCeiling) {
         clg = String(Math.round(baseFt / 100)).padStart(3, '0')
         ceilingNote = `${preset ?? `density ${clouds.density}`} — BKN/OVC at ${baseFt.toLocaleString()} ft`

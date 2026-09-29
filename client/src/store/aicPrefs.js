@@ -10,7 +10,7 @@ import { create } from 'zustand'
 // .getState() — same auto-persist-on-change shape utils/createDeclarationStore.js
 // already uses for autoDeclareMode.
 
-const KEY = 'tracs-aic-prefs'
+const KEY = 'tracs.aic.prefs'
 
 const DEFAULTS = {
   autoThreat:  false, // .autothreat — auto-lit threat rings on breach

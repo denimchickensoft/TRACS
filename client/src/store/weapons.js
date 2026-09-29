@@ -32,5 +32,5 @@ export const useWeaponsStore = create((set) => ({
 }))
 
 if (typeof window !== 'undefined') {
-  syncStore(useWeaponsStore, 'tracs-weapons', (s) => ({ weapons: s.weapons, lastUpdateTime: s.lastUpdateTime }))
+  syncStore(useWeaponsStore, 'tracs-weapons', (s) => ({ weapons: s.weapons, lastUpdateTime: s.lastUpdateTime }), { onlyWithPeers: true })
 }

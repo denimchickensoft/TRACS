@@ -7,6 +7,22 @@ export const DISPLAY_PARADIGM = {
   HYBRID: 'HYBRID',
 }
 
+// STARS list and preview-area placement: top-left corner as a percentage of
+// the scope canvas. List components fall back to these when a loaded preset
+// predates a list.
+export const DEFAULT_LISTS = {
+  ssa:     {                  xPct:  5, yPct:  5 },
+  preview: {                  xPct:  5, yPct: 20 },
+  tower1:  { visible: false,  xPct:  5, yPct: 40, lines: 5 },
+  tower2:  { visible: false,  xPct:  5, yPct: 60, lines: 5 },
+  tower3:  { visible: false,  xPct:  5, yPct: 80, lines: 5 },
+  signOn:  { visible: true,   xPct: 90, yPct:  5 },
+  tab:     { visible: true,   xPct: 90, yPct: 40, lines: 5 },
+  vfr:     { visible: true,   xPct: 90, yPct: 80, lines: 5 },
+  coast:   { visible: false,  xPct: 90, yPct: 90, lines: 5 },
+  alert:   { visible: true,   xPct: 65, yPct: 90, lines: 5 },
+}
+
 // Default scope settings — ODS profile defaults override these at session start
 const SCOPE_DEFAULTS = {
   vol: 10,                // audio volume 1–10
@@ -92,17 +108,7 @@ const SCOPE_DEFAULTS = {
   pendingDraw: null,          // in-progress .line/.rect/.circ/.poly/.sect/.race/.text — see draw/drawCommands.js
   pendingClearClick: false,   // bare `.clear`/click armed — next click hit-tests a drawing to remove
   pendingClearAllConfirm: false, // `.clear all` awaiting a y/n answer on the next submitted line
-  lists: {
-    ssa:    {                   xPct:  2, yPct:  2 },
-    signOn: { visible: true,   xPct: 88, yPct: 88 },
-    tab:    { visible: true,   xPct:  2, yPct: 65, lines: 5 },
-    tower1: { visible: false,  xPct:  2, yPct: 50, lines: 5 },
-    tower2: { visible: false,  xPct: 20, yPct: 50, lines: 5 },
-    tower3: { visible: false,  xPct: 38, yPct: 50, lines: 5 },
-    coast:  { visible: false,  xPct: 78, yPct: 65, lines: 5 },
-    alert:  { visible: true,   xPct: 78, yPct: 25, lines: 5 },
-    vfr:    { visible: true,   xPct:  2, yPct: 20, lines: 5 },
-  },
+  lists: DEFAULT_LISTS,
 }
 
 export const useDisplayStore = create((set) => ({

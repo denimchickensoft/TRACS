@@ -41,24 +41,17 @@ import { getIffStatus } from '../../../utils/transponder.js'
 import { toTrueFromMagnetic } from '../../../utils/bearing.js'
 import { sectorAxisBearing } from '../canvas/computePicture.js'
 import { navdataNotFound } from '../../../store/lnm.js'
+import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
+import { fetchJson } from '../../../utils/fetchJson.js'
 
 const WINDOW_ID = 'aic-main'
 
-// .dec declaration letters — duplicated from AicScope.jsx rather than
-// imported, matching this codebase's existing convention of keeping small
-// stable per-scope helpers independent (see e.g. ABM's own trueDeclaration
-// copy, kept separate from AIC's for the same reason).
+// .dec declaration letters (f/n/b/h).
 const DECLARATION_LETTER = {
   f: DECLARATION.FRIENDLY,
   n: DECLARATION.NEUTRAL,
   b: DECLARATION.BOGEY,
   h: DECLARATION.HOSTILE,
-}
-
-function trueDeclaration(unit, myCoalitionNum) {
-  if (unit.coalition === myCoalitionNum) return DECLARATION.FRIENDLY
-  if (unit.coalition === 0) return DECLARATION.NEUTRAL
-  return DECLARATION.HOSTILE
 }
 
 function getWin() {
@@ -243,8 +236,7 @@ export async function ASPCOLORS({ captures }) {
   let palettes = useMapsStore.getState().palettes
   if (!palettes.length) {
     try {
-      const res = await fetch('/api/navdata/palettes')
-      palettes = await res.json()
+      palettes = await fetchJson('/api/navdata/palettes')
       useMapsStore.getState().setPalettes(palettes)
     } catch {
       return 'PALETTE LOAD FAILED'

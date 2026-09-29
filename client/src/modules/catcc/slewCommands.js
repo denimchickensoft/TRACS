@@ -24,28 +24,14 @@
 
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
 import { useDisplayStore }     from '../../store/display.js'
-import { useSessionStore }     from '../../store/session.js'
-import { useControllersStore } from '../../store/controllers.js'
 import { usePreviewStore }     from '../../store/preview.js'
 import { sendWebrtcEvent }     from '../../webrtc/client.js'
+import { getMyControllerId, getKnownControllerIds } from '../../utils/myControllerId.js'
 
 const WINDOW_ID = 'catcc-main'
 
 function ok()     { usePreviewStore.getState().clearAfterCommand() }
 function err(msg) { usePreviewStore.getState().setResponse(msg) }
-
-function getMyControllerId() {
-  const pos = useSessionStore.getState().positionName
-  return useControllersStore.getState().registry[pos]?.controllerId ?? null
-}
-
-function knownControllerIds() {
-  return new Set(
-    Object.values(useControllersStore.getState().registry)
-      .map((e) => e.controllerId)
-      .filter(Boolean)
-  )
-}
 
 // ── Modifier-click shortcuts (Ctrl+Shift+Click / Shift+Click) + "IC"/"TC" + slew ──
 
@@ -86,7 +72,7 @@ function handOff(tcp, target) {
   }
 
   if (!tcp || tcp === controllerId) return err('ILL POS')
-  if (!knownControllerIds().has(tcp)) return err('ILL POS')
+  if (!getKnownControllerIds().has(tcp)) return err('ILL POS')
   if (ownership[target.unitId] !== controllerId) return err('ILL TRK')
   setHandoff(target.unitId, { state: HANDOFF_STATE.INITIATED, from: controllerId, to: tcp })
   sendWebrtcEvent('HANDOFF_INITIATED', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
@@ -99,7 +85,7 @@ function pointOut(tcp, target) {
   if (!tcp) return err('ILL POS')
   const controllerId = getMyControllerId()
   if (tcp === controllerId) return err('ILL POS')
-  if (!knownControllerIds().has(tcp)) return err('ILL POS')
+  if (!getKnownControllerIds().has(tcp)) return err('ILL POS')
   useAtcStore.getState().setPointOut(target.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
   sendWebrtcEvent('POINT_OUT_SENT', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
   ok()

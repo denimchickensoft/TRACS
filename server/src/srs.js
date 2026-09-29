@@ -12,7 +12,11 @@ const WebSocket = require('ws')
 const state = require('./state')
 const { PROTOCOL_VERSION } = require('./protocolVersion')
 
-const RECONNECT_MS = 3000
+// Reconnect backoff: starts at RECONNECT_MIN_MS, doubles per failed attempt
+// up to RECONNECT_MAX_MS, and resets once the relay sends data after auth.
+const RECONNECT_MIN_MS = 3000
+const RECONNECT_MAX_MS = 60000
+let reconnectDelayMs = RECONNECT_MIN_MS
 
 let ws = null
 let onUnitsDelta = null
@@ -21,6 +25,16 @@ let password = null
 let coalition = null
 let intentionalClose = false
 let reconnectTimer = null
+// Same shape as the data sources' link issue (server/src/linkStatus.js):
+// null while connected, { retrying: true, reason } while reconnecting,
+// { retrying: false, reason } after a rejection that retrying can't fix.
+let linkIssue = null
+let onLinkIssue = null
+
+function setLinkIssue(issue) {
+  linkIssue = issue
+  if (onLinkIssue) onLinkIssue(issue)
+}
 let knownTransponderIds = new Set()
 
 function applyTransponders(transponders) {
@@ -107,6 +121,8 @@ function connect() {
 
   socket.on('message', (raw) => {
     if (socket !== ws) return
+    reconnectDelayMs = RECONNECT_MIN_MS
+    if (linkIssue) setLinkIssue(null)
     let msg
     try {
       msg = JSON.parse(raw.toString('utf8'))
@@ -123,13 +139,14 @@ function connect() {
 
     // An explicit password rejection will never resolve itself by retrying —
     // it needs a config change (see the relay's auth.js). Retrying every
-    // RECONNECT_MS forever in that case just floods the relay's logs
+    // reconnect interval forever in that case just floods the relay's logs
     // indefinitely for no benefit. Log once and stop, unlike every other
     // close reason (network blip, relay restart), which genuinely is worth
     // retrying.
     if (reason?.toString() === 'invalid password') {
       console.error('[srs] relay rejected our password - not retrying until reconnected with a corrected one')
       ws = null
+      setLinkIssue({ retrying: false, reason: 'password' })
       return
     }
     // Same reasoning as the password case above — a protocol mismatch needs
@@ -137,11 +154,15 @@ function connect() {
     if (reason?.toString().startsWith('protocol mismatch')) {
       console.error(`[srs] ${reason} - not retrying until one side is updated`)
       ws = null
+      setLinkIssue({ retrying: false, reason: 'protocol' })
       return
     }
 
-    console.log(`[srs] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${RECONNECT_MS}ms`)
-    reconnectTimer = setTimeout(connect, RECONNECT_MS)
+    if (!linkIssue) setLinkIssue({ retrying: true, reason: 'no_response' })
+    const delay = reconnectDelayMs
+    reconnectDelayMs = Math.min(reconnectDelayMs * 2, RECONNECT_MAX_MS)
+    console.log(`[srs] disconnected from relay (code ${code}${reason?.length ? `, reason: ${reason}` : ''}) - reconnecting in ${Math.round(delay / 1000)}s`)
+    reconnectTimer = setTimeout(connect, delay)
   })
 
   socket.on('error', (err) => {
@@ -152,11 +173,15 @@ function connect() {
 
 function start(cfg, callbacks = {}) {
   if (ws) stop()
+  reconnectDelayMs = RECONNECT_MIN_MS
 
   relayUrl = cfg.relayUrl
   password = cfg.password ?? null
   coalition = cfg.coalition ?? null
   onUnitsDelta = callbacks.onUnitsDelta ?? null
+  onLinkIssue = callbacks.onLinkIssue ?? null
+  // A fresh start clears whatever the last connection ended with.
+  setLinkIssue(null)
   intentionalClose = false
   connect()
 }
@@ -169,6 +194,8 @@ function stop() {
     ws.close()
     ws = null
   }
+  if (linkIssue) setLinkIssue(null)
+  onLinkIssue = null
   onUnitsDelta = null
   knownTransponderIds = new Set()
   console.log('[srs] stopped')
@@ -178,8 +205,12 @@ function isConnected() {
   return ws !== null && ws.readyState === WebSocket.OPEN
 }
 
+function getLinkIssue() {
+  return linkIssue
+}
+
 function getConfig() {
   return relayUrl ? { relayUrl, password, coalition } : null
 }
 
-module.exports = { start, stop, isConnected, getConfig }
+module.exports = { start, stop, isConnected, getLinkIssue, getConfig }
