@@ -12,7 +12,7 @@ A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC,
 Each controller runs TRACS on their own machine. TRACS reads unit data from three possible sources:
 - the [DCS Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API
 - a direct connection to Tacview's Real-Time Telemetry export
-- a **TRACS Relay** running on or near the DCS server, which can also relay Tacview & SRS-sourced transponder data.
+- a **TRACS Relay** running on or near the DCS server, which can also relay Tacview data.
 
 Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data. Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer method requires no shared server.
 
