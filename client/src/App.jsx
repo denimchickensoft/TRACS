@@ -86,6 +86,7 @@ export function App() {
   const facilityName     = useSessionStore((s) => s.facilityName)
   const positionTypeName = useSessionStore((s) => s.positionTypeName)
   const olympusUrl       = useSessionStore((s) => s.olympusUrl)
+  const relayUrl         = useSessionStore((s) => s.relayUrl)
   const webrtcStatus     = useSessionStore((s) => s.webrtcStatus)
   const peers            = useSessionStore((s) => s.peers)
   const resetPosition    = useSessionStore((s) => s.resetPosition)
@@ -517,7 +518,7 @@ export function App() {
               ? `DISCONNECTED${connectionIssue ? ` (${connectionIssue})` : ''}`
               : connectionRetrying
                 ? `NO RESPONSE: RECONNECTING${connectionIssue ? ` (${connectionIssue})` : ''}`
-                : `CONNECTED: ${olympusUrl.replace(/^https?:\/\//, '')}`}
+                : `CONNECTED: ${(olympusUrl || relayUrl).replace(/^(https?|wss?):\/\//, '')}`}
           </span>
           &mdash;
           {facilityName && positionTypeName && <> {facilityName} {positionTypeName} &mdash;</>}
