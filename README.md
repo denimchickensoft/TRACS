@@ -42,7 +42,9 @@ Download the installer for your platform from the latest `v*` release on the [Re
 
 The builds are not code-signed. Windows SmartScreen and macOS Gatekeeper will warn on first launch.
 
-**macOS:** because the app isn't signed, macOS may say "TRACS is damaged and can't be opened" instead of offering to open it. After dragging TRACS into Applications, clear the download quarantine flag once from Terminal:
+**macOS:** the app isn't signed, so the first time you open it macOS blocks it ("TRACS" Not Opened … Apple could not verify TRACS is free of malware). Click **Done**, then open **System Settings → Privacy & Security**, scroll down to the message about TRACS, and click **Open Anyway**. You only need to do this once.
+
+If macOS instead says "TRACS is damaged and can't be opened", clear the download quarantine flag once from Terminal:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/TRACS.app
