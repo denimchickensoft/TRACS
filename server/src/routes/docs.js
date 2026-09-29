@@ -82,13 +82,6 @@ const PAGE_STYLE = `
   table { border-collapse: collapse; }
   th, td { border: 1px solid #333; padding: 4px 10px; }
   blockquote { border-left: 3px solid #444; margin-left: 0; padding-left: 14px; color: #999; }
-  #docs-find { position: fixed; top: 8px; right: 12px; display: flex; align-items: center; gap: 4px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; padding: 4px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
-  #docs-find[hidden] { display: none; }
-  #docs-find input { background: #111; color: #eee; border: 1px solid #333; border-radius: 3px; padding: 3px 6px; width: 200px; font: inherit; font-size: 0.9em; outline: none; }
-  #docs-find input:focus { border-color: #6cf; }
-  #docs-find .docs-find-count { color: #999; font-size: 0.8em; min-width: 64px; text-align: center; }
-  #docs-find button { background: transparent; color: #aaa; border: none; cursor: pointer; font-size: 0.9em; padding: 2px 5px; }
-  #docs-find button:hover { color: #fff; }
 `
 
 // Registers TRACS's own local operator docs — GET /docs/:page — so the

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src file:; style-src 'unsafe-inline'; font-src file:">
+<title>Find</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1a1a1a; overflow: hidden; }
+  body {
+    display: flex; align-items: center; gap: 6px;
+    box-sizing: border-box; padding: 0 6px;
+    border: 1px solid #444; border-radius: 3px;
+    font-family: 'Roboto Mono', monospace; font-size: 12px; color: #aaa;
+  }
+  input {
+    flex: 1; min-width: 0;
+    background: #222; border: 1px solid #444; border-radius: 3px; color: #ddd;
+    padding: 3px 6px; font-family: inherit; font-size: 12px; outline: none;
+  }
+  input:focus { border-color: #4488cc; }
+  .count { min-width: 64px; text-align: right; white-space: nowrap; }
+  button {
+    background: none; border: none; color: #aaa; cursor: pointer;
+    font-family: inherit; font-size: 12px; padding: 2px 4px;
+  }
+  button:hover { color: #ddd; }
+</style>
+</head>
+<body>
+  <input id="query" type="text" aria-label="Find in page" spellcheck="false">
+  <span class="count" id="count"></span>
+  <button id="prev" type="button" title="Previous (Shift+Enter)">▲</button>
+  <button id="next" type="button" title="Next (Enter)">▼</button>
+  <button id="close" type="button" title="Close (Esc)">×</button>
+  <script src="findBar.js"></script>
+</body>
+</html>

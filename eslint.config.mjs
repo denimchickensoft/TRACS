@@ -109,9 +109,9 @@ export default [
     },
   },
   // Scripts that run in a browser page, not in Node: the port-conflict
-  // dialog's and the docs pages' Ctrl+F box.
+  // dialog, the docs pages' Ctrl+F trigger and the find box itself.
   {
-    files: ['electron/portConflict.js', 'server/src/docsFind.js'],
+    files: ['electron/portConflict.js', 'server/src/docsFind.js', 'electron/findBar.js'],
     languageOptions: {
       sourceType: 'script',
       globals: globals.browser,

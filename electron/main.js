@@ -9,7 +9,7 @@
 // running it directly, just with a few env vars set first (see resolvePort()
 // and the userData state-dir line below).
 
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog, shell, Menu } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 const net  = require('net')
@@ -61,10 +61,13 @@ if (!app.requestSingleInstanceLock()) {
 let mainWindow = null
 
 // ── Navigation / window-open / IPC guards ─────────────────────────────────
-// Every TRACS window carries the preload's electronAPI (update install, file
-// picker), so only TRACS's own pages may ever load in one. Pop-out windows
-// (window.open to the same origin) are allowed; any other http(s) URL opens
-// in the user's normal browser instead; everything else is refused.
+// Windows TRACS creates itself (main window, File > New Window) and the docs
+// windows carry the preload's electronAPI (update install, file picker, the
+// docs pages' Ctrl+F box), so only TRACS's own pages may ever load in one.
+// Pop-out windows (window.open to the same origin) are allowed but get no
+// preload: they don't use electronAPI and stay tied to their opener. Any
+// other http(s) URL opens in the user's normal browser instead; everything
+// else is refused.
 
 function isAppUrl(url) {
   try {
@@ -86,6 +89,9 @@ function openExternally(url) {
 
 app.on('web-contents-created', (_event, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
+    if (isAppUrl(url) && new URL(url).pathname.startsWith('/docs/')) {
+      return { action: 'allow', overrideBrowserWindowOptions: { webPreferences: WINDOW_OPTS.webPreferences } }
+    }
     if (isAppUrl(url)) return { action: 'allow' }
     openExternally(url)
     return { action: 'deny' }
@@ -388,25 +394,97 @@ handleFromApp('lnm:pickDatabase', async (event) => {
 })
 
 // ── Find in page (docs windows' Ctrl+F) ─────────────────────────────────
-// Electron has Chromium's page search but not Chrome's find bar. The docs
-// page draws the box (server/src/docsFind.js); the searching, highlighting
-// and match count are Electron's own findInPage.
-const findResultsForwarded = new WeakSet()
+// Electron has Chromium's page search but not Chrome's find bar. The box
+// (findBar.html) is its own view laid over the top-right of the docs window,
+// like a browser's find bar, rather than part of the page: Chromium's search
+// also matches text typed in the page's own inputs, so an in-page box found,
+// selected and took focus from its own query. The docs page only asks for
+// the box to open or close (server/src/docsFind.js).
+const FIND_BAR = { width: 340, height: 34, margin: 8, scrollbar: 16 }
+const findBars = new Map() // docs window id -> { win, view, visible }
 
-handleFromApp('find:start', (event, text, options) => {
-  const contents = event.sender
-  if (!findResultsForwarded.has(contents)) {
-    findResultsForwarded.add(contents)
-    contents.on('found-in-page', (_e, result) => {
-      if (!contents.isDestroyed()) contents.send('find:result', { activeMatchOrdinal: result.activeMatchOrdinal, matches: result.matches })
-    })
+function placeFindBar(bar) {
+  const { width } = bar.win.getContentBounds()
+  bar.view.setBounds({
+    x:      Math.max(0, width - FIND_BAR.width - FIND_BAR.scrollbar - FIND_BAR.margin),
+    y:      FIND_BAR.margin,
+    width:  FIND_BAR.width,
+    height: FIND_BAR.height,
+  })
+}
+
+function createFindBar(win) {
+  const view = new WebContentsView({
+    webPreferences: {
+      preload:          path.join(__dirname, 'findBarPreload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+      sandbox:          true,
+    },
+  })
+  const bar = { win, view, visible: false, loaded: view.webContents.loadFile(path.join(__dirname, 'findBar.html')) }
+  win.webContents.on('found-in-page', (_e, result) => {
+    if (!view.webContents.isDestroyed()) view.webContents.send('findbar:result', { activeMatchOrdinal: result.activeMatchOrdinal, matches: result.matches })
+  })
+  win.on('resize', () => placeFindBar(bar))
+  win.on('closed', () => {
+    findBars.delete(win.id)
+    if (!view.webContents.isDestroyed()) view.webContents.close()
+  })
+  findBars.set(win.id, bar)
+  return bar
+}
+
+async function showFindBar(win) {
+  const bar = findBars.get(win.id) ?? createFindBar(win)
+  if (!bar.visible) {
+    win.contentView.addChildView(bar.view)
+    bar.visible = true
   }
-  if (typeof text !== 'string' || text === '') return
-  // findNext: true starts a new search, false moves to the next match.
-  contents.findInPage(text, { forward: options?.forward !== false, findNext: options?.newSearch === true })
+  placeFindBar(bar)
+  await bar.loaded
+  bar.view.webContents.focus()
+  bar.view.webContents.send('findbar:opened')
+}
+
+function hideFindBar(bar) {
+  if (!bar?.visible) return
+  bar.win.contentView.removeChildView(bar.view)
+  bar.visible = false
+  bar.win.webContents.stopFindInPage('clearSelection')
+  bar.win.webContents.focus()
+}
+
+handleFromApp('find:open', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (win) return showFindBar(win)
 })
 
-handleFromApp('find:stop', (event) => event.sender.stopFindInPage('clearSelection'))
+handleFromApp('find:close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (win) hideFindBar(findBars.get(win.id))
+})
+
+// The find box's own calls; only a find box view may make them.
+function findBarOf(sender) {
+  for (const bar of findBars.values()) if (bar.view.webContents === sender) return bar
+  throw new Error('IPC not allowed from this page')
+}
+
+ipcMain.handle('findbar:info', (event) => {
+  findBarOf(event.sender)
+  return { fontUrl: findBundledFontUrl() }
+})
+
+ipcMain.handle('findbar:search', (event, text, forward, newSearch) => {
+  const bar = findBarOf(event.sender)
+  const page = bar.win.webContents
+  if (typeof text !== 'string' || text === '') { page.stopFindInPage('clearSelection'); return }
+  // findNext: true starts a new search, false moves to the next match.
+  page.findInPage(text, { forward: forward !== false, findNext: newSearch === true })
+})
+
+ipcMain.handle('findbar:close', (event) => hideFindBar(findBarOf(event.sender)))
 
 // ── Auto-update ("check on launch, ask before downloading") ─────────────
 // autoDownload:false — respects variable end-user bandwidth rather than
