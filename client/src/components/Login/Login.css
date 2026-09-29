@@ -197,7 +197,7 @@
 .profile-name-btn {
   flex: 1;
   min-width: 0;
-  text-align: center;
+  text-align: left;
   background: transparent;
   border: none;
   color: var(--text);
