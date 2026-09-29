@@ -86,6 +86,11 @@ function syncStaged() {
   }
 }
 
+// Line endings are ignored: on a Windows checkout with core.autocrlf, Git
+// writes the source and target files with CRLF while the generated header
+// is LF, so an exact compare would flag files whose content is identical.
+const normalizeEol = (text) => text?.replace(/\r\n/g, '\n')
+
 function main() {
   if (process.argv.includes('--staged')) return syncStaged()
   const checkOnly = process.argv.includes('--check')
@@ -95,7 +100,7 @@ function main() {
     const expected   = build(fs.readFileSync(path.join(ROOT, source), 'utf8'))
     const targetPath = path.join(ROOT, target)
     const actual     = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : null
-    if (actual === expected) continue
+    if (normalizeEol(actual) === normalizeEol(expected)) continue
 
     if (checkOnly) {
       console.error(`[sync-tacview-core] ${target} is out of sync with ${source}.`)
