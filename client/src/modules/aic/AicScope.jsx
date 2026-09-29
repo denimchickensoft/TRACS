@@ -635,6 +635,9 @@ export default function AicScope() {
       return
     }
 
+    // Ctrl+Up/Down belong to the side panels (RightTabStrip), not history.
+    if (e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return
+
     // While a .define readout is up, ArrowUp/ArrowDown browse the glossary
     // alphabetically instead of the command history, until Escape.
     if (defineEntry && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {

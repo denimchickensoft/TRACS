@@ -85,7 +85,12 @@ Click **Sign In**. This establishes your position, registers you with other cont
 | AIC | BRAA |
 | ABM | ATO, FRAG, DRAW (Drawings) |
 
-- Click a tab to show or hide its panel, or press `Ctrl+Shift+1`, `2` or `3` for the first, second or third tab (top to bottom), e.g. `Ctrl+Shift+2` for PAR in ATC.
+- Click a tab to show or hide its panel.
+- Keyboard (ignored while you're typing in a text box):
+  - `Ctrl+Left` reopens the panel you used last, or brings its window to the front if it's popped out.
+  - `Ctrl+Right` closes the open panel.
+  - `Ctrl+Up` / `Ctrl+Down` switch to the panel above / below, wrapping around at the ends and skipping popped-out panels. With no panel open, they reopen the last-used one.
+  - On macOS, the system uses Ctrl+arrow keys for Mission Control and switching desktops, so these shortcuts only work if you turn those off in System Settings > Keyboard > Keyboard Shortcuts.
 - A panel's **⬡** button pops it out into its own window. You can move that window to another monitor.
 - While a panel is popped out, its tab shows **↗** (e.g. `STRIPS ↗`). Clicking the tab brings that window to the front.
 

@@ -141,7 +141,7 @@ Rows are listed in the order they were added. Mouse wheel on the panel's title b
 | `F1` / `F2` / `F3` / `F4` | Arm a pending declaration — Hostile / Bogey / Neutral / Friendly — then click a contact to apply it. Press the same key again to cancel. Also cancels a pending BRAA pairing |
 | `Escape` | Clears one thing per press: a `.find` marker first, then a `.define` readout. Next come any pending declaration, pending BRAA pairing, typed command, or command feedback, all cleared together. Once none of those remain, it clears the RBL and hides the sector |
 | `Enter` | Runs the current command |
-| `Ctrl+Shift+1` | Shows or hides the BRAA list (app-wide, see Getting Started) |
+| `Ctrl+Left` / `Ctrl+Right` | Shows / hides the BRAA list (app-wide, see Getting Started) |
 | `Ctrl+M` | Opens Messages — a general chat window shared across all modules (DM another position with `.chat <POSITION>`, broadcast to everyone with `/ <text>`) |
 
 Typing into the command line cancels any pending F-key declaration and BRAA pairing.

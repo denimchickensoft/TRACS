@@ -1482,7 +1482,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
     // View bookmarks — Ctrl+Alt+0-9 saves the current view, Ctrl+0-9 recalls
     // it. e.code (not e.key) so this is layout-independent, matching STARS'
-    // starsKeys.js. Shift is left for Ctrl+Shift+Digit (right-side panels).
+    // starsKeys.js. Shift is excluded, leaving Ctrl+Shift+Digit free.
     // Reads live window state rather than the closed-over windowSettings,
     // same pattern as buildView.
     if (e.ctrlKey && !e.shiftKey && e.code?.startsWith('Digit')) {
@@ -1547,6 +1547,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       cmdDraftRef.current = ''
       return
     }
+
+    // Ctrl+Up/Down belong to the side panels (RightTabStrip), not history.
+    if (e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return
 
     // While a .define readout is up, ArrowUp/ArrowDown browse the glossary
     // alphabetically instead of the command history, until Escape.

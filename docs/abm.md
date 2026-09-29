@@ -382,7 +382,8 @@ Fields:
 | `Ctrl+V` | Paste into the command line |
 | `Ctrl+Alt+0`–`9` | Save the current view to bookmark slot 0–9 |
 | `Ctrl+0`–`9` | Load view bookmark 0–9 |
-| `Ctrl+Shift+1` / `2` / `3` | Show or hide the ATO / FRAG / DRAW panel (app-wide, see Getting Started) |
+| `Ctrl+Left` / `Ctrl+Right` | Reopen the last-used side panel / close the open one (app-wide, see Getting Started) |
+| `Ctrl+Up` / `Ctrl+Down` | Switch between the ATO, FRAG and DRAW panels (app-wide, see Getting Started) |
 | `Ctrl+M` | Open Messages (app-wide) |
 
 ---
