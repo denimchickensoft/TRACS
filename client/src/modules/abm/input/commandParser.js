@@ -126,6 +126,7 @@ const COMMANDS = [
   { id: 'ACQ_TOGGLE',       pattern: /^\.acq$/ },
   { id: 'ENG_DECL',         pattern: /^\.eng\s+([fnbh])$/, captures: ['letter'] },
   { id: 'ENG_TOGGLE',       pattern: /^\.eng$/ },
+  { id: 'GROUND_TOGGLE',    pattern: /^\.(?:gc|groundcontacts)$/ },
 ]
 
 /**

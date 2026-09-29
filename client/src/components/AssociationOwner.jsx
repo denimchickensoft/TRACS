@@ -4,6 +4,7 @@ import { useUnitsStore }       from '../store/units'
 import { useFlightPlansStore } from '../store/flightPlans'
 import { useAssociationStore } from '../store/association'
 import { useAtcStore }         from '../store/atc.js'
+import { useAbmMissionStore }  from '../store/abmMission.js'
 import { computeAssociations } from '../modules/atc/shared/associationEngine.js'
 import { dcsUnitIdReliable }   from '../utils/callsign.js'
 
@@ -33,14 +34,19 @@ export function AssociationOwner() {
   // Latches identUnacked on the edge (status becomes 2) — same blink
   // treatment as a handoff, cleared only by slewing the contact (see
   // StarsScope.jsx's bare-slew handler and dispatch call), not by a timer
-  // and not just because status reverts.
+  // and not just because status reverts. In ABM the same onset starts the
+  // FRAG-roster datablock blink, cancelled by clicking the contact.
   const prevIdentStatusRef = useRef({})
   useEffect(() => {
     const prev = prevIdentStatusRef.current
     const nextStatus = {}
+    const abmActive = useSessionStore.getState().activeModule === 'ABM'
     for (const [uid, unit] of Object.entries(unitsForAssoc)) {
       const status = unit.transponder?.status
-      if (status === 2 && prev[uid] !== 2) useAtcStore.getState().markIdent(uid)
+      if (status === 2 && prev[uid] !== 2) {
+        useAtcStore.getState().markIdent(uid)
+        if (abmActive) useAbmMissionStore.getState().addBlink(uid)
+      }
       if (status != null) nextStatus[uid] = status
     }
     prevIdentStatusRef.current = nextStatus

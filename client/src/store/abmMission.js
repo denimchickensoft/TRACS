@@ -205,6 +205,12 @@ export const useAbmMissionStore = create((set, get) => ({
     return { blinkIds: [...next] }
   }),
 
+  // Start a blink without toggling — a transponder IDENT onset (see
+  // AssociationOwner.jsx) must never cancel one already running from FRAG.
+  addBlink: (unitKey) => set((s) => (
+    s.blinkIds.includes(unitKey) ? s : { blinkIds: [...s.blinkIds, unitKey] }
+  )),
+
   toggleRouteGroup: (groupId) => set((s) => {
     const next = new Set(s.routeGroupIds)
     next.has(groupId) ? next.delete(groupId) : next.add(groupId)

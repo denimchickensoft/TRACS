@@ -378,7 +378,12 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     }
   }, [visibleGroundUnits, highlightedIds, units])
 
+  // .gc off empties the ground/naval pool here, before it feeds drawing,
+  // readouts, clicks, focus, BRAA, threat rings and the command context,
+  // so a hidden contact is excluded from all of them, not just undrawn.
+  const groundVisible = windowSettings?.groundVisible ?? true
   const pinnedGroundUnits = useMemo(() => {
+    if (!groundVisible) return EMPTY_OBJECT
     let merged = visibleGroundUnits
     for (const id of highlightedIds) {
       if (!merged[id] && pinnedGroundRef.current[id]) {
@@ -387,7 +392,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       }
     }
     return merged
-  }, [visibleGroundUnits, highlightedIds])
+  }, [visibleGroundUnits, highlightedIds, groundVisible])
 
   const visibleGroundUnitsRef = useRef(pinnedGroundUnits)
   useEffect(() => { visibleGroundUnitsRef.current = pinnedGroundUnits }, [pinnedGroundUnits])
@@ -879,6 +884,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
       coordsVisible: abmPrefs.coordsVisible, coordFormat: abmPrefs.coordFormat,
       elevUnit: abmPrefs.elevUnit, becVisible: abmPrefs.becVisible,
       acqHidden: new Set(abmPrefs.acqHidden ?? []), engHidden: new Set(abmPrefs.engHidden ?? []),
+      groundVisible: abmPrefs.groundVisible,
       autoThreat: abmPrefs.autoThreat,
       geoVisible: abmPrefs.geoVisible, reliefVisible: abmPrefs.reliefVisible,
       holdingsVisible: abmPrefs.holdingsVisible, moraVisible: abmPrefs.moraVisible,
@@ -1475,10 +1481,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     }
 
     // View bookmarks — Ctrl+Alt+0-9 saves the current view, Ctrl+0-9 recalls
-    // it. e.code (not e.key) so this is layout/shift-independent, matching
-    // STARS' starsKeys.js. Reads live window state rather than the
-    // closed-over windowSettings, same pattern as buildView.
-    if (e.ctrlKey && e.code?.startsWith('Digit')) {
+    // it. e.code (not e.key) so this is layout-independent, matching STARS'
+    // starsKeys.js. Shift is left for Ctrl+Shift+Digit (right-side panels).
+    // Reads live window state rather than the closed-over windowSettings,
+    // same pattern as buildView.
+    if (e.ctrlKey && !e.shiftKey && e.code?.startsWith('Digit')) {
       const n = parseInt(e.code.slice(5), 10)
       if (!Number.isNaN(n)) {
         e.preventDefault()

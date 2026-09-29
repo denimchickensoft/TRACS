@@ -85,7 +85,7 @@ Click **Sign In**. This establishes your position, registers you with other cont
 | AIC | BRAA |
 | ABM | ATO, FRAG, DRAW (Drawings) |
 
-- Click a tab to show or hide its panel.
+- Click a tab to show or hide its panel, or press `Ctrl+Shift+1`, `2` or `3` for the first, second or third tab (top to bottom), e.g. `Ctrl+Shift+2` for PAR in ATC.
 - A panel's **⬡** button pops it out into its own window. You can move that window to another monitor.
 - While a panel is popped out, its tab shows **↗** (e.g. `STRIPS ↗`). Clicking the tab brings that window to the front.
 

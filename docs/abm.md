@@ -18,7 +18,7 @@ When SRS transponder data reaches TRACS through a relay, ABM uses it for every c
 - **Correlated datablock:** shows the callsign and aircraft type on the datablock and in the cursor readout. This depends on correlation alone, not on declaration. A contact declared FRIENDLY that stops correlating goes back to cycling codes.
 - `.autodec iff` uses the same correlation (see Declaration below).
 
-ABM has no IDENT or Beaconator display.
+When a contact starts squawking IDENT, its datablock blinks (the same blink as clicking its FRAG roster row). Click the contact to stop it. ABM has no Beaconator display.
 
 ## Command line
 
@@ -102,7 +102,7 @@ ABM does not display SID/STAR/approach procedures.
 
 ### Brevity glossary
 
-`.define <term>` (or `.def <term>`) looks up a tactical brevity term (ATP 1-02.1, April 2025) and shows its full definition in a readout above the command line. Multi-word terms work as typed, e.g. `.define bogey dope`. The readout stays up until you dismiss it: press Escape, run another `.define`, or click it.
+`.define <term>` (or `.def <term>`) looks up a tactical brevity term (ATP 1-02.1, April 2025) and shows its full definition in a readout above the command line. Multi-word terms work as typed, e.g. `.define bogey dope`. A single letter, e.g. `.def a`, jumps to the first term starting with that letter. The readout stays up until you dismiss it: press Escape, run another `.define`, or click it.
 
 ### Cursor readout
 
@@ -173,6 +173,10 @@ BRAA pairs are drawn on the scope as a dashed line with an inline bearing/range 
 ### Ground/naval acquisition & engagement rings
 
 `.acq` / `.eng` (all) or `.acq <f|n|b|h>` / `.eng <f|n|b|h>` (one class)
+
+### Ground/naval contacts
+
+`.gc` (or `.groundcontacts`) shows or hides every ground/naval contact in this window, along with its acquisition/engagement rings. Hidden contacts also can't be clicked, focused, paired or found with `.where`, and don't trip threat rings. The setting is saved.
 
 ### Scope drawing
 
@@ -245,6 +249,7 @@ Display toggles (`.coords`, `.db`, `.geo`, etc.) apply to the window you type th
 | **Digit 1–9, then click** | Set that contact's leader-line direction (`5` returns it to the global direction) |
 | **Double-click** a contact | Open a Focus window on it |
 | **Click** a blinking missile symbol | Cancel its launch alert |
+| **Click** a contact with a blinking datablock | Stop the blink (FRAG roster, `.where` or IDENT) |
 | **Mouse wheel** | Zoom, 1–600 NM: 1 NM per step inside 10 NM, 10 NM per step beyond (25 NM with Ctrl) |
 
 **F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly). The next click declares every contact within 10 px of the click point. Pressing the same key again cancels.
@@ -377,6 +382,7 @@ Fields:
 | `Ctrl+V` | Paste into the command line |
 | `Ctrl+Alt+0`–`9` | Save the current view to bookmark slot 0–9 |
 | `Ctrl+0`–`9` | Load view bookmark 0–9 |
+| `Ctrl+Shift+1` / `2` / `3` | Show or hide the ATO / FRAG / DRAW panel (app-wide, see Getting Started) |
 | `Ctrl+M` | Open Messages (app-wide) |
 
 ---

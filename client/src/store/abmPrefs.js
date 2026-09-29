@@ -79,6 +79,7 @@ const DEFAULTS = {
   becVisible:         false,
   acqHidden:          [],
   engHidden:          [],
+  groundVisible:      true,
   autoThreat:         false,
 
   // ── Per-window navdata-layer visibility — geo/relief/

@@ -654,6 +654,11 @@ export function FOCUS_OPEN({ captures, context }) {
 
 // ── Runways / polygons / grid / towns / raster layers ───────────────────────
 
+// .gc / .groundcontacts — hides every ground/naval contact along with its
+// acq/eng rings. AbmScope drops them from the unit pool entirely, so hidden
+// contacts also can't be clicked, focused, BRAA'd or found with .where.
+export const GROUND_TOGGLE = makeWinToggle('groundVisible', true, 'GROUND ON', 'GROUND OFF')
+
 export const RUNWAYS_TOGGLE = makeWinToggle('runwaysVisible', false, 'RUNWAYS ON', 'RUNWAYS OFF')
 
 export const POLYGONS_TOGGLE = makeWinToggle('polygonsVisible', false, 'POLYGONS ON', 'POLYGONS OFF')
@@ -982,7 +987,7 @@ const ACTION_MAP = {
   DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,
   DECLARATION_RESET, DECLARATION_SET_BULK, AUTO_DECLARE, AUTO_DECLARE_IFF, AUTOTHREAT, ROE, ROE_TOGGLE,
-  ACQ_DECL, ACQ_TOGGLE, ENG_DECL, ENG_TOGGLE,
+  ACQ_DECL, ACQ_TOGGLE, ENG_DECL, ENG_TOGGLE, GROUND_TOGGLE,
 }
 
 /**

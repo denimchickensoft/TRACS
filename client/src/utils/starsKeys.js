@@ -40,9 +40,10 @@ export const STARS_KEY_MAP = [
   { code: 'KeyT',              alt: true,   action: 'TOGGLE_TOPDOWN' }, // Alt+T = top-down
 
   // ── Bookmarks ─────────────────────────────────────────────────────
-  // Ctrl+Alt+Digit0–9 = set bookmark; Ctrl+Digit0–9 = load bookmark
-  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: true,  action: `SET_BOOKMARK_${i}`  })),
-  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: false, action: `LOAD_BOOKMARK_${i}` })),
+  // Ctrl+Alt+Digit0–9 = set bookmark; Ctrl+Digit0–9 = load bookmark.
+  // Shift excluded: Ctrl+Shift+Digit toggles the right-side panels.
+  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: true,  shift: false, action: `SET_BOOKMARK_${i}`  })),
+  ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: false, shift: false, action: `LOAD_BOOKMARK_${i}` })),
 ]
 
 /**
