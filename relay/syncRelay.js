@@ -127,6 +127,9 @@ function createSyncRelay(wss, config) {
         groupAssignments: saved.groupAssignments ?? {},
         nextGroupNumber:  saved.nextGroupNumber ?? 1,
         evictionTimers:   {},
+        // Restored members that haven't connected since the restart (see
+        // startEvictionTimer).
+        restoredOnly:     new Set((saved.clientList ?? []).map((c) => c.peerId)),
       })
       const session = sessions.get(topic)
       for (const client of session.clientList) startEvictionTimer(topic, client.peerId)
@@ -166,6 +169,18 @@ function createSyncRelay(wss, config) {
         console.log(`[relay:sync] session ${topic} fully departed - registry record deleted`)
       } else {
         broadcastRegistryUpdate(topic)
+        // Clients only add from registry_update; they remove a peer on
+        // peer_leave. A member restored from sessions.json after a relay
+        // restart that never reconnected had no connection to close, so no
+        // peer_leave was ever sent for it and it would stay in every client's
+        // list as a ghost. Send one now. (A peer that left normally already
+        // got its peer_leave when its connection closed.)
+        if (session.restoredOnly?.delete(peerId) && !memberByPeerId(topic, peerId)) {
+          const leaveMsg = JSON.stringify({ type: 'peer_leave', topic, peerId })
+          for (const m of topics.get(topic) ?? []) {
+            if (m.ws.readyState === m.ws.OPEN) m.ws.send(leaveMsg)
+          }
+        }
       }
       persistSessionsDebounced()
     }, SESSION_DISCONNECT_TIMEOUT_MS)
@@ -268,6 +283,7 @@ function createSyncRelay(wss, config) {
     // A genuine reconnect under the same peerId (syncClient.js's flat
     // reconnect-after-drop) -- cancel its own eviction timer if one is running.
     cancelEvictionTimer(session, peerId)
+    session.restoredOnly?.delete(peerId)
 
     // Frequency deconfliction -- port of client.js's HANDSHAKE handler. A
     // frequency is blocked if another position with a different
@@ -397,6 +413,7 @@ function createSyncRelay(wss, config) {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'peer_join', topic, peerId: m.peerId }))
     }
     members.add({ ws, peerId, coalition })
+    sessions.get(topic)?.restoredOnly?.delete(peerId) // it's back: a normal member again
     console.log(`[relay:sync] peerId=${peerId} joined topic=${topic} (${members.size} member${members.size === 1 ? '' : 's'})`)
   }
 
