@@ -2,7 +2,7 @@
 
 [![Discord](https://img.shields.io/discord/1521314576409559100?style=flat-square&label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/5W6cuezyPD)
 [![Release](https://img.shields.io/github/v/release/denimchickensoft/TRACS?filter=v*&style=flat-square&label=release)](https://github.com/denimchickensoft/TRACS/releases/latest)
-[![Build](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml/badge.svg)](https://github.com/denimchickensoft/TRACS/actions/workflows/release-tracs.yml)
+[![Build](https://github.com/denimchickensoft/TRACS/actions/workflows/ci.yml/badge.svg)](https://github.com/denimchickensoft/TRACS/actions/workflows/ci.yml)
 [![Downloads](https://img.shields.io/github/downloads/denimchickensoft/TRACS/total?style=flat-square)](https://github.com/denimchickensoft/TRACS/releases)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
@@ -12,9 +12,9 @@ A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC,
 Each controller runs TRACS on their own machine. TRACS reads unit data from one of three sources:
 - the [DCS Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API
 - a direct connection to Tacview's Real-Time Telemetry export
-- a **TRACS Relay** running on or near the DCS server, which also supplies SRS transponder/IFF data
+- a **TRACS Relay** running on or near the DCS server, which connects to Tacview for you
 
-Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer mode needs no port forwarding and no shared server.
+Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data. Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer mode needs no port forwarding and no shared server.
 
 **Operator guides** live in [`docs/`](docs/index.md): connecting, signing in, and every module's commands.
 
