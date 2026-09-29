@@ -20,10 +20,10 @@ Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data
 
 | Module | What it is |
 |---|---|
-| [ATC](docs/atc.md) | Air Traffic Control - STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
-| [CATCC](docs/catcc.md) | Carrier Air Traffic Control Center - Carrier locked scope, synchronized Status Board, PAR, and Deck view |
-| [AIC](docs/aic.md) | Air Intercept Controller - AWACS/GCI focused scope, declarations, BRAA list, ROE, PICTURE |
-| [ABM](docs/abm.md) | Air Battle Manager - Mission-wide: ATO/FRAG from `.miz` imports, IFF correlation, custom drawings, MGRS |
+| [ATC](docs/atc.md) | Air Traffic Control — STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
+| [CATCC](docs/catcc.md) | Carrier Air Traffic Control Center — Carrier locked scope, synchronized Status Board, PAR, and Deck view |
+| [AIC](docs/aic.md) | Air Intercept Controller — AWACS/GCI focused scope, declarations, BRAA list, ROE, PICTURE |
+| [ABM](docs/abm.md) | Air Battle Manager — Mission-wide: ATO/FRAG from `.miz` imports, IFF correlation, custom drawings, MGRS |
 
 ---
 
@@ -49,12 +49,20 @@ xattr -dr com.apple.quarantine /Applications/TRACS.app
 - On Windows and Linux it asks before downloading an update, then offers to restart and install it.
 - On macOS it shows a notice with a link to the release page, and you install the new `.dmg` yourself.
 
-**Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If another program is using that port at launch, TRACS names the program and lets you retry after closing it, use a nearby port for that session only (without your saved preferences), or quit.
+**Local server and port:** the app runs its own local server in-process, on port 8722 or the next free port. The first port that works is remembered for later launches, because saved preferences are tied to it. If another program is using that port at launch, TRACS names the program and lets you retry after closing it, use a nearby port for that session only (without your saved preferences), or quit. The remembered port is stored in `port.json` in the app data folder (see below).
 
 **Menu:**
 - **File → New Window** opens another TRACS window.
 - **File → Open Logs Folder** shows the log file.
 - **File → Open Config Folder** shows the config files described below.
+
+**App data folder:** TRACS keeps its per-user files here: `port.json`, the `config` folder, the navigation data cache, and saved scope state.
+
+| Platform | App data | Log file |
+|---|---|---|
+| Windows | `%APPDATA%\tracs\` | `%APPDATA%\tracs\logs\main.log` |
+| macOS | `~/Library/Application Support/tracs/` | `~/Library/Logs/tracs/main.log` |
+| Linux | `~/.config/tracs/` | `~/.config/tracs/logs/main.log` |
 
 **Navigation data (LittleNavMap):**
 - The installer bundles theatre geography, terrain, elevation, and airport data.
@@ -64,7 +72,7 @@ xattr -dr com.apple.quarantine /Applications/TRACS.app
 - To set or change the database later, open **Settings → Navigation data → Change…**. The new data takes effect the next time you sign in to a position.
 
 **Config files:**
-- TRACS stores a few hand-editable config files in `%APPDATA%\TRACS\config\` (Windows) — seeded from bundled defaults on first launch, and never overwritten once present, so your edits survive every update.
+- TRACS stores a few hand-editable config files in the `config` folder inside the app data folder. They're seeded from bundled defaults on first launch, and never overwritten once present, so your edits survive every update.
 - `rateConfig.json` — radar scan-rate cadence (unit position/detection refresh intervals) for direct-mode Olympus/Tacview connections.
 - `tacviewDetectionConfig.json` — synthetic radar-detection model tuning for Tacview-sourced connections (sensor ranges, RWR behavior, scan cone).
 - `airspace_colors.json` / `asdex_colors.json` — STARS/ASDE-X display color palettes.
@@ -223,6 +231,70 @@ The relay writes its log to the console only. Keep it with your service manager:
 ### Version compatibility
 
 TRACS and the relay exchange a protocol version when they connect. If they don't match, the relay closes the connection with a message naming both versions. TRACS then shows "Relay protocol mismatch … — using peer-to-peer." and doesn't retry. Update whichever side is older. The Settings panel in TRACS shows the connected relay's version and protocol number.
+
+---
+
+## FAQ
+
+### Applications like LotATC & Combined Ops already exist. Why use TRACS?
+*(answer)*
+
+### Is TRACS free? Will it stay free?
+*(answer)*
+
+### Do I need to own DCS, or any modules, to use TRACS?
+*(answer)*
+
+### Can I use TRACS in single-player?
+*(answer)*
+
+### I control on VATSIM with CRC. Will TRACS feel familiar?
+*(answer)*
+
+### Is TRACS affiliated with Eagle Dynamics, Tacview, DCS Olympus, SRS, or vNAS?
+*(answer)*
+
+### Which data source should I use: Olympus, Tacview, or a Relay?
+*(answer)*
+
+### Does the server admin have to install anything?
+*(answer)*
+
+### Do I need a LittleNavMap / Navigraph subscription?
+*(answer)*
+
+### Do controllers need to be in SRS to use TRACS?
+*(answer)*
+
+### How many controllers can connect at once?
+*(answer)*
+
+### Does TRACS work on the server's own machine, or does it have to be a separate PC?
+*(answer)*
+
+### Can I control both coalitions, or be a Game Master?
+*(answer)*
+
+### How realistic are the scopes? Are they meant to match real-world systems?
+*(answer)*
+
+### Why don't I see some aircraft on my scope?
+*(answer)*
+
+### Can pilots see what controllers are doing, or file flight plans?
+*(answer)*
+
+### Does TRACS affect server performance or the pilots' frame rates?
+*(answer)*
+
+### How do I report a bug or request a feature?
+*(answer)*
+
+### Can I contribute?
+*(answer)*
+
+### Is this "AI slop"?
+*(answer)*
 
 ---
 
