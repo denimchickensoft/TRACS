@@ -16,7 +16,6 @@ Knowing what TRACS does and doesn't protect helps you judge whether something is
 
 - **The local server** (built into the desktop app) listens only on this machine (`127.0.0.1`). It has no login of its own. It rejects requests from other websites and from DNS-rebinding hosts. Setting `TRACS_HOST` opts in to LAN access, and then anyone who can reach the port can read and control it.
 - **The TRACS Relay** trusts its authenticated clients.
-  - Coalition passwords control who can *connect*. They don't hide one coalition's data from a client that deliberately misbehaves: a modified client with a valid password can see the full picture the relay forwards.
-  - Don't share relay passwords with players you don't trust.
+  - Anyone with a coalition password is trusted as a controller. Don't share relay passwords with players you don't trust.
   - The relay speaks plain `ws://`. Use a TLS reverse proxy if it's exposed to the internet.
 - **Peer-to-peer sync without a relay** sets up connections through public Nostr relays and Google STUN servers. Connection details are encrypted only when a session password is set.

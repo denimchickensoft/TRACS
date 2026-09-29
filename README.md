@@ -12,7 +12,7 @@ A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC,
 Each controller runs TRACS on their own machine. TRACS reads unit data from three possible sources:
 - the [DCS Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API
 - a direct connection to Tacview's Real-Time Telemetry export
-- a **TRACS Relay** running on or near the DCS server, which can also relay Tacview data.
+- a **TRACS Relay** running on or near the DCS server, which can also relay Tacview data
 
 Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data. Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer method requires no shared server.
 
@@ -21,9 +21,9 @@ Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data
 | Module | What it is |
 |---|---|
 | [ATC](docs/atc.md) | Air Traffic Control - STARS-style approach/departure radar, plus ASDE-X ground radar, PAR, and Strip Bay |
-| [CATCC](docs/catcc.md) | Carrier Air Traffic Control Center - carrier locked scope, synchronized Status Board, PAR, and Deck view |
+| [CATCC](docs/catcc.md) | Carrier Air Traffic Control Center - Carrier locked scope, synchronized Status Board, PAR, and Deck view |
 | [AIC](docs/aic.md) | Air Intercept Controller - AWACS/GCI focused scope, declarations, BRAA list, ROE, PICTURE |
-| [ABM](docs/abm.md) | Air Battle Manager - Mission wide : ATO/FRAG from `.miz` imports, IFF correlation, custom drawings, MGRS |
+| [ABM](docs/abm.md) | Air Battle Manager - Mission-wide: ATO/FRAG from `.miz` imports, IFF correlation, custom drawings, MGRS |
 
 ---
 
@@ -199,7 +199,7 @@ The service user needs write access to the folder, since self-updates replace th
 - **Always set `passwords`.** An empty `passwords` object lets anyone who can reach the relay connect as any coalition. The relay logs a warning at startup when no passwords are set.
 - **Keep `config.json` private.** It holds the passwords in plain text, so make it readable only by the account that runs the relay.
 - **Password guessing is rate-limited.** Ten wrong passwords from one address within a minute block that address for 30 seconds, doubling with each repeat up to 10 minutes.
-- **Coalition passwords control who can connect, not what they receive.** The relay forwards every unit (Tacview telemetry and transponders) to every authenticated client, and each controller's own TRACS applies fog of war. A player with a valid password and a modified client could see the other side's full picture, so only give passwords to players you trust.
+- **Only give passwords to players you trust.** Anyone with a coalition password is trusted as a controller on your relay.
 - **Traffic isn't encrypted by default.** Controllers connect over plain `ws://`, so passwords and data can be read by anyone who can watch the network between them and the relay. For an internet-facing relay, put it behind TLS (below), or use a trusted network or a VPN.
 
 ### TLS (`wss://`)

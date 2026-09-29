@@ -2,7 +2,7 @@
 
 [← All docs](index.md)
 
-Carrier air traffic control: a radar scope with a text command line, a synchronized Status Board, and a Deck view for visual traffic on and around the carrier.
+Carrier air traffic control: a radar scope with a text command line, a synchronized Status Board, a PAR, and a Deck view for visual traffic on and around the carrier.
 
 ## Side numbers and correlation
 
@@ -126,6 +126,10 @@ A top-down carrier deck view for visual traffic near the boat.
 - **Right-click + drag** — pan
 - Aircraft near deck altitude and within the hull footprint are plotted as small triangles, labeled with side number or callsign, oriented to heading relative to the carrier
 - Zoom resets when you switch carrier class
+
+## PAR
+
+The **PAR** tab (next to Status Board and Deck) opens a precision approach radar that starts in carrier mode on your signed-in carrier. It works the same as the ATC PAR; see [PAR](atc.md#par-precision-approach-radar).
 
 ## Mission Import
 
