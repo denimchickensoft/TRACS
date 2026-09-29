@@ -55,10 +55,11 @@ process.on('unhandledRejection', (reason) => {
 
 // Scan-rate intervals are pushed to every connected backend, which uses them
 // as timer periods, so a non-numeric or absurd value must never leave here.
+// The 1000ms floor matches the controllers' own clamp (server/src/rateConfig.js).
 function rateMs(key, fileValue, envValue, fallback) {
   const value = Number(fileValue ?? envValue ?? fallback)
-  if (Number.isFinite(value) && value >= 100 && value <= 60000) return value
-  console.warn(`[relay] config ${key}=${JSON.stringify(fileValue ?? envValue)} is invalid (need 100-60000ms) - using ${fallback}ms`)
+  if (Number.isFinite(value) && value >= 1000 && value <= 60000) return value
+  console.warn(`[relay] config ${key}=${JSON.stringify(fileValue ?? envValue)} is invalid (need 1000-60000ms) - using ${fallback}ms`)
   return fallback
 }
 

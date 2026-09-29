@@ -42,8 +42,10 @@ const DEFAULTS = {
 // Every value here becomes a setInterval/setTimeout period, and a bad one
 // (null, NaN, 0, a string) makes Node fire the timer about every 1ms, pinning
 // a CPU core. So each key must be a finite number, clamped to a sane range;
-// anything else falls back to its default with a warning.
-const MIN_MS = 100
+// anything else falls back to its default with a warning. The floor is 1s
+// because in Olympus mode these are poll intervals and every controller
+// polls the DCS server separately; faster adds server load, not realism.
+const MIN_MS = 1000
 const MAX_MS = 60000
 
 function mergeConfig(rawConfig) {
