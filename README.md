@@ -88,6 +88,7 @@ Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
 - **Navigation data needs your own LittleNavMap Navigraph database.** Without it, fixes, navaids, airways and procedures aren't available.
 - **Not every STARS command is implemented.** See [ATC known limitations](docs/atc.md#known-limitations) for the list.
 - **Tacview detection is simulated.** In Tacview mode, radar and RWR fog-of-war is TRACS's own approximation, not DCS's detection data.
+- **One coalition per running TRACS.** All windows share one data feed, so every window uses the coalition and password of the first login. To switch coalitions, close and reopen TRACS.
 
 ## Data sources
 

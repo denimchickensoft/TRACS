@@ -23,7 +23,7 @@ Which fields are shown and required depends on the mode:
 - **Relay Port** — the TRACS Relay's port. The relay is always reached at the Server URL's host on this port: `ws://<host>:<Relay Port>`, or `wss://` when the Server URL starts with `https://` (a relay behind TLS; see the README's relay TLS section).
   - In **Olympus**/**Tacview** modes this is optional. Fill it in to get SRS transponder/IFF data merged onto tracks, and to sync with other controllers through the relay rather than peer-to-peer.
   - In **Relay** mode it's required.
-- **Coalition Role** — Blue Commander, Red Commander, Game Master, or Admin. Determines which units you can see and control.
+- **Coalition Role** — Blue Commander, Red Commander, Game Master, or Admin. Determines which units you can see and control. Every window in one running TRACS shares the first login's coalition and password; to switch, close and reopen TRACS.
 - **Password field(s)** — the label and meaning depend on mode:
   - **Olympus**: "Coalition Password" — the Olympus password for your role, set on the DCS server.
   - **Tacview**: "Tacview RTT Password" — Tacview's own export password. It's set once in DCS's options and is the same for every coalition. If you also fill in a Relay Port, a second "Coalition Password" field appears for the relay itself.
@@ -101,8 +101,8 @@ The **⚙** icon (top right, once signed in) opens the settings panel:
 - **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking it silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
 - **Navigation data** — the LittleNavMap database TRACS is using, and (desktop app) a **Change…** button. See [Navigation data](#navigation-data-littlenavmap).
 - **Version line** — the TRACS version (`TRACS (dev)` when running from source), plus the relay's version and protocol number when connected to one.
-- **Help / Docs** — opens the documentation page for the module you're signed into, in a new tab. In the desktop app, Ctrl+F there opens a find box: Enter / Shift+Enter step through matches, Esc closes it.
-- **About** — copyright, license (GPL v3.0 or later, no warranty), data attributions, and links to the full **License** and **Third-party notices**.
+- **Help / Docs** — opens the documentation page for the module you're signed into, in a new window (a new tab in a browser). In the desktop app, Ctrl+F opens a find box at the top right: Enter / Shift+Enter or ▲ ▼ step through matches, and Esc or × closes it.
+- **License / Third-party notices** — links to the full license (GPL v3.0 or later) and the third-party notices (copyright, no warranty, data attributions).
 
 ## Navigation data (LittleNavMap)
 
