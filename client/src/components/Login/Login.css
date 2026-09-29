@@ -27,8 +27,16 @@
   padding: 32px;
 }
 
+/* The login box with the OSM credit under it; the credit wraps at the box's width. */
+.login-stack {
+  display: flex;
+  flex-direction: column;
+}
+
 .login-attribution {
-  margin: 20px 0 0;
+  margin: 8px 0 0;
+  max-width: 0;
+  min-width: 100%;
   font-size: 0.6rem;
   color: var(--text-dim);
   text-align: center;
@@ -189,7 +197,7 @@
 .profile-name-btn {
   flex: 1;
   min-width: 0;
-  text-align: left;
+  text-align: center;
   background: transparent;
   border: none;
   color: var(--text);
