@@ -89,6 +89,7 @@ Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
 - **Not every STARS command is implemented.** See [ATC known limitations](docs/atc.md#known-limitations) for the list.
 - **Tacview detection is simulated.** In Tacview mode, radar and RWR fog-of-war is TRACS's own approximation, not DCS's detection data.
 - **One coalition per running TRACS.** All windows share one data feed, so every window uses the coalition and password of the first login. To switch coalitions, close and reopen TRACS.
+- **Game Master / Admin on a relay see only their own controller sync.** A relay keeps each coalition's controller sync separate. The relay would allow a Game Master or Admin into every coalition's, but TRACS doesn't join more than one yet.
 
 ## Data sources
 

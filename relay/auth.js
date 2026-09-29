@@ -92,11 +92,9 @@ function clientIp(req) {
 // coalition claimed — validPasswords is a { coalition: password } map, not
 // a flat list, so a Red client can't authenticate by supplying Blue's
 // password under a false coalition claim. This only gates the connection
-// itself; it does not separately restrict which topics an authenticated
-// connection may subscribe to afterward. That's intentional: it lets a
-// GM/Admin session subscribe to every coalition's sync topic, and the relay
-// is trusted single-mission infrastructure, not a hardened multi-tenant
-// boundary.
+// itself; each capability then uses the verified coalition. syncRelay.js
+// confines a sync connection to its own coalition's topics (Game Master and
+// Admin may use every coalition's).
 // `label` identifies which capability's connection this is in the logs
 // (e.g. 'transponders', 'sync') — two capabilities rejecting two unrelated
 // connections at the same moment (e.g. a bad password tested through both

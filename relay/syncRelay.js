@@ -33,6 +33,25 @@ const SESSION_DISCONNECT_TIMEOUT_MS = 5_000
 const SESSIONS_FILE          = path.join(RELAY_DIR, 'sessions.json')
 const PERSIST_DEBOUNCE_MS    = 500
 
+// Each connection is confined to its own coalition's topics: the session
+// topic `tracs-relay-<coalition>` and its module topics
+// `tracs-relay-<coalition>-<module>` (client.js's relayTopicFor/initWebrtc).
+// The coalition is the one the connection authenticated as, checked against
+// that coalition's password in auth.js. Game Master and Admin may use every
+// coalition's topics. Without this, any coalition's password would open every
+// coalition's sync, including taking over or evicting its controllers.
+const TOPIC_RE = /^tracs-relay-([a-z]+)(?:-[a-z]+)?$/
+const ALL_COALITIONS_ROLES = new Set(['gm', 'admin'])
+// A TRACS window joins 2 topics; anything past this is refused, so a client
+// can't grow the relay's topic/session maps without limit.
+const MAX_TOPICS_PER_CONNECTION = 8
+
+function topicAllowed(coalition, topic) {
+  const m = TOPIC_RE.exec(topic)
+  if (!m) return false
+  return m[1] === coalition || ALL_COALITIONS_ROLES.has(coalition)
+}
+
 function createSyncRelay(wss, config) {
   const topics = new Map()   // topic → Set<{ws, peerId}>
 
@@ -156,9 +175,14 @@ function createSyncRelay(wss, config) {
   // finds every session this peerId was registered to (in practice at most
   // one: a browser tab joins exactly one session room per sign-on) and
   // starts its reconnect-grace eviction timer, mirroring client.js's
-  // sessionRoom.onPeerLeave -> startDisconnectTimer.
-  function handleSessionDisconnect(peerId) {
+  // sessionRoom.onPeerLeave -> startDisconnectTimer. Only for sessions the
+  // closing connection's coalition may use, and not while another live
+  // connection holds that peerId in the session topic (e.g. a reconnect that
+  // already took over).
+  function handleSessionDisconnect(peerId, coalition) {
     for (const [topic, session] of sessions) {
+      if (!topicAllowed(coalition, topic)) continue
+      if (memberByPeerId(topic, peerId)) continue
       if (session.clientList.some((c) => c.peerId === peerId)) startEvictionTimer(topic, peerId)
     }
   }
@@ -321,10 +345,22 @@ function createSyncRelay(wss, config) {
     return null
   }
 
-  function subscribe(topic, ws, peerId) {
+  function topicCount(ws) {
+    let n = 0
+    for (const members of topics.values()) {
+      for (const m of members) if (m.ws === ws) { n++; break }
+    }
+    return n
+  }
+
+  function subscribe(topic, ws, peerId, coalition) {
+    if (memberOf(topic, ws)) return // already subscribed — ignore duplicate
+    if (topicCount(ws) >= MAX_TOPICS_PER_CONNECTION) {
+      console.warn(`[relay:sync] refused subscribe from peerId=${peerId}: over ${MAX_TOPICS_PER_CONNECTION} topics`)
+      return
+    }
     let members = topics.get(topic)
     if (!members) { members = new Set(); topics.set(topic, members) }
-    if (memberOf(topic, ws)) return // already subscribed — ignore duplicate
 
     // Reconnect under the same peerId (e.g. a brief drop-and-retry on the
     // flat 3s reconnect in syncClient.js) — replace the stale socket in
@@ -336,6 +372,12 @@ function createSyncRelay(wss, config) {
     // real departure.
     const existing = memberByPeerId(topic, peerId)
     if (existing) {
+      // Only a connection of the same coalition may take a peerId's place
+      // (GM/Admin included: they can't take over another coalition's peer).
+      if (existing.coalition !== coalition) {
+        console.warn(`[relay:sync] refused takeover of peerId=${peerId} on topic=${topic}: coalition ${coalition} != ${existing.coalition}`)
+        return
+      }
       existing.ws = ws
       console.log(`[relay:sync] peerId=${peerId} resubscribed topic=${topic} (${members.size} member${members.size === 1 ? '' : 's'})`)
       return
@@ -354,7 +396,7 @@ function createSyncRelay(wss, config) {
     for (const m of members) {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'peer_join', topic, peerId: m.peerId }))
     }
-    members.add({ ws, peerId })
+    members.add({ ws, peerId, coalition })
     console.log(`[relay:sync] peerId=${peerId} joined topic=${topic} (${members.size} member${members.size === 1 ? '' : 's'})`)
   }
 
@@ -408,6 +450,7 @@ function createSyncRelay(wss, config) {
 
   wss.on('connection', (ws, req) => {
     let peerId = null
+    let coalition = null // as authenticated; confines this connection's topics
     ws.isAlive = true
     ws.on('pong', () => { ws.isAlive = true })
 
@@ -416,6 +459,7 @@ function createSyncRelay(wss, config) {
       label: 'sync',
       onAuthenticated: (authMsg) => {
         peerId = typeof authMsg.peerId === 'string' && authMsg.peerId ? authMsg.peerId : null
+        coalition = typeof authMsg.coalition === 'string' ? authMsg.coalition : ''
         console.log(`[relay:sync] client authenticated coalition=${authMsg.coalition} peerId=${peerId}`)
       },
     })
@@ -436,11 +480,21 @@ function createSyncRelay(wss, config) {
       // Safety net: a bug or an unexpected message shape in one handler must
       // not take down the whole relay for every other connected controller.
       try {
-        if (msg.type === 'subscribe' && typeof msg.topic === 'string') {
-          subscribe(msg.topic, ws, peerId)
-        } else if (msg.type === 'publish' && typeof msg.topic === 'string') {
+        const isTopicMsg = ['subscribe', 'publish', 'register'].includes(msg.type) && typeof msg.topic === 'string'
+        if (isTopicMsg && !topicAllowed(coalition, msg.topic)) {
+          console.warn(`[relay:sync] refused ${msg.type} from peerId=${peerId} coalition=${coalition}: topic ${JSON.stringify(msg.topic.slice(0, 80))} not allowed`)
+          return
+        }
+        if (msg.type === 'subscribe' && isTopicMsg) {
+          subscribe(msg.topic, ws, peerId, coalition)
+        } else if (msg.type === 'publish' && isTopicMsg) {
           publish(msg.topic, msg.payload, ws, msg.targetPeerId)
-        } else if (msg.type === 'register' && typeof msg.topic === 'string') {
+        } else if (msg.type === 'register' && isTopicMsg) {
+          // Registration only happens on a session topic, never a module one.
+          if (!/^tracs-relay-[a-z]+$/.test(msg.topic)) {
+            console.warn(`[relay:sync] refused register from peerId=${peerId} on non-session topic ${msg.topic}`)
+            return
+          }
           handleRegister(msg.topic, ws, peerId, msg)
         }
       } catch (err) {
@@ -451,7 +505,7 @@ function createSyncRelay(wss, config) {
     ws.on('close', () => {
       console.log(`[relay:sync] connection closed peerId=${peerId}`)
       unsubscribeAll(ws)
-      handleSessionDisconnect(peerId)
+      if (peerId) handleSessionDisconnect(peerId, coalition)
     })
 
     ws.on('error', (err) => {
