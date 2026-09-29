@@ -71,15 +71,17 @@ async function main() {
   fs.mkdirSync(DIST_DIR, { recursive: true })
   const exePath = path.join(DIST_DIR, EXE_NAME)
 
+  // esbuild's JS API, not `node esbuild/bin/esbuild`: on Linux and macOS,
+  // esbuild's installer replaces bin/esbuild with the native binary, which
+  // Node can't run as a script.
   console.log('\n[1/5] Bundling with esbuild...')
-  run(process.execPath, [
-    resolveBin('esbuild', 'esbuild'),
-    path.join(RELAY_DIR, 'index.js'),
-    '--bundle',
-    '--platform=node',
-    '--format=cjs',
-    `--outfile=${BUNDLE}`,
-  ])
+  require('esbuild').buildSync({
+    entryPoints: [path.join(RELAY_DIR, 'index.js')],
+    bundle:      true,
+    platform:    'node',
+    format:      'cjs',
+    outfile:     BUNDLE,
+  })
 
   console.log('\n[2/5] Generating Node SEA blob...')
   if (fs.existsSync(BLOB)) fs.rmSync(BLOB)
