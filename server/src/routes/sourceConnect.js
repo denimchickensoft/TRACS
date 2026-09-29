@@ -123,10 +123,13 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     if (sourceCfg.olympusUrl) {
       const currentType = state.getSourceType()
       const current = currentType ? sourceRegistry.get(currentType) : null
+      // Includes a feed in slow retry (Olympus unreachable): it's still
+      // retrying this address, so a new window joins and shows the same
+      // DISCONNECTED status, and recovers with the others, rather than being
+      // refused by a fresh probe of a server that's down.
       const alreadyLiveOnSameConfig = current
         && (!requestedSourceType || requestedSourceType === currentType)
         && current.isPolling()
-        && !current.isUnreachable?.()
         && current.getConfig()?.olympusUrl === sourceCfg.olympusUrl
       if (alreadyLiveOnSameConfig) {
         // One live feed serves every window, so a login can't change its
