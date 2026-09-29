@@ -1,4 +1,11 @@
-# TRACS — Tactical Radar And Control Suite
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/images/logo-dark.png">
+    <img src=".github/images/logo-light.png" alt="TRACS — Tactical Radar And Control Suite" width="200">
+  </picture>
+</h1>
+
+<div align="center">
 
 [![Discord](https://img.shields.io/discord/1521314576409559100?style=flat-square&label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/5W6cuezyPD)
 [![Release](https://img.shields.io/github/v/release/denimchickensoft/TRACS?filter=v*&style=flat-square&label=release)](https://github.com/denimchickensoft/TRACS/releases/latest)
@@ -7,7 +14,15 @@
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
+</div>
+
 ![TRACS ATC, CATCC, AIC and ABM scopes](.github/images/hero.png)
+
+<table align="center"><tr><td align="center">
+
+[Install](#installing-tracs-controllers) · [Limitations](#known-limitations) · [Data sources](#data-sources) · [Relay](#running-a-tracs-relay-server-operators) · [FAQ](#faq) · [From source](#running-from-source-developers) · [Releasing](#releasing-maintainers) · [Architecture](#architecture) · [Thanks](#special-thanks) · [License](#license)
+
+</td></tr></table>
 
 A desktop control suite for DCS World multiplayer servers, providing ATC, CATCC, AIC, and ABM scopes.
 
