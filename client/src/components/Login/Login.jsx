@@ -32,7 +32,7 @@ export function Login() {
 
         {/* OSM credit shown at startup, per the OSMF attribution guidelines;
             the full ODbL notice is on the Third-party notices page. */}
-        <p className="login-attribution">© OpenStreetMap</p>
+        <p className="login-attribution">© OpenStreetMap data was harmed in the making of this application.</p>
       </div>
     </div>
   )
