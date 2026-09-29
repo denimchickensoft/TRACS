@@ -62,6 +62,8 @@ xattr -dr com.apple.quarantine /Applications/TRACS.app
 - **File → New Window** opens another TRACS window.
 - **File → Open Logs Folder** shows the log file.
 - **File → Open Config Folder** shows the config files described below.
+- **Help** opens the documentation, the GitHub page, the latest release notes, or a new issue.
+- **Help → About TRACS** shows the installed version (also on the last line of the in-app Settings menu). On macOS, **TRACS → About TRACS** shows it too.
 
 **App data folder:** TRACS keeps its per-user files here: `port.json`, the `config` folder, the navigation data cache, and saved scope state.
 

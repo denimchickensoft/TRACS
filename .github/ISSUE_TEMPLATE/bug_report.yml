@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: TRACS version
-      description: Shown at the bottom of the Settings panel (gear icon). For relay bugs, include the relay version too.
+      description: Shown in Help → About TRACS, and at the bottom of the Settings panel (gear icon). For relay bugs, include the relay version too.
       placeholder: e.g. TRACS v0.2.0, Relay v0.2.0
     validations:
       required: true

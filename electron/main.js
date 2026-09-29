@@ -308,8 +308,52 @@ function openNewWindow(port) {
   return win
 }
 
+const REPO_URL = 'https://github.com/denimchickensoft/TRACS'
+
+function aboutDetail() {
+  return [
+    `Version ${app.getVersion()}`,
+    `Electron ${process.versions.electron}, Chromium ${process.versions.chrome}, Node ${process.versions.node}`,
+    '',
+    'Copyright (C) 2026 denimchickensoft.',
+    'Free software under the GNU GPL v3.0 or later, with ABSOLUTELY NO WARRANTY.',
+    REPO_URL,
+  ].join('\n')
+}
+
+async function showAbout() {
+  const parent = BrowserWindow.getFocusedWindow()
+  const opts = {
+    type:     'none',
+    title:    'About TRACS',
+    message:  'TRACS',
+    detail:   aboutDetail(),
+    buttons:  ['OK', 'Open GitHub'],
+    defaultId: 0,
+    cancelId:  0,
+    noLink:    true,
+  }
+  const { response } = parent ? await dialog.showMessageBox(parent, opts) : await dialog.showMessageBox(opts)
+  if (response === 1) shell.openExternal(REPO_URL)
+}
+
+function openDocs(port) {
+  const win = new BrowserWindow(WINDOW_OPTS)
+  win.loadURL(`http://localhost:${port}/docs/index`)
+}
+
 function buildMenu(port) {
   const isMac = process.platform === 'darwin'
+
+  if (isMac) {
+    app.setAboutPanelOptions({
+      applicationName:    'TRACS',
+      applicationVersion: app.getVersion(),
+      version:            `Electron ${process.versions.electron}`,
+      copyright:          'Copyright (C) 2026 denimchickensoft. GPL-3.0-or-later.',
+      website:            REPO_URL,
+    })
+  }
 
   const template = [
     ...(isMac ? [{
@@ -369,6 +413,18 @@ function buildMenu(port) {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      role:  'help',
+      label: 'Help',
+      submenu: [
+        { label: 'Documentation', click: () => openDocs(port) },
+        { label: 'TRACS on GitHub', click: () => shell.openExternal(REPO_URL) },
+        { label: 'Check for Updates / Release Notes', click: () => shell.openExternal(`${REPO_URL}/releases/latest`) },
+        { label: 'Report an Issue', click: () => shell.openExternal(`${REPO_URL}/issues/new`) },
+        { type: 'separator' },
+        { label: 'About TRACS', click: () => showAbout() },
       ],
     },
   ]
@@ -525,7 +581,7 @@ function setupAutoUpdate() {
   autoUpdater.checkForUpdates().catch((err) => console.error('[update] check failed:', err.message))
 }
 
-handleFromApp('update:openReleasePage', () => shell.openExternal('https://github.com/denimchickensoft/TRACS/releases/latest'))
+handleFromApp('update:openReleasePage', () => shell.openExternal(`${REPO_URL}/releases/latest`))
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
 
