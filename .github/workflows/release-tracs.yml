@@ -54,6 +54,15 @@ jobs:
       - name: Stage bundled navdata
         run: npm run stage-navdata
 
+      # Electron's Node headers need GCC >= 12.2 (Node 24's minimum); the
+      # runner's default is GCC 11, which rejects them. GCC 12 is preinstalled
+      # on this image. Only the compiler changes; the glibc floor stays 2.35.
+      - name: Use GCC 12
+        if: matrix.target == 'linux'
+        run: |
+          echo "CC=gcc-12" >> "$GITHUB_ENV"
+          echo "CXX=g++-12" >> "$GITHUB_ENV"
+
       - name: Stage better-sqlite3 rebuilt for Electron
         run: npm run stage-better-sqlite3
 
