@@ -547,38 +547,68 @@ ipcMain.handle('findbar:close', (event) => hideFindBar(findBarOf(event.sender)))
 // silently consuming data. Mac builds aren't code-signed, so electron-updater's Squirrel.Mac backend can't verify unsigned
 // updates — Mac falls back to notify-only (link to the release page).
 
+// The update state lives here rather than in the page, so a window that
+// loads after the check finished (or a second window) still shows the
+// banner: each window reads it on mount and then follows 'update:state'.
+// status: null | 'available' | 'notify-only' | 'downloading' | 'ready'
+let updateState = { status: null, version: null, percent: 0 }
+
+function setUpdateState(patch) {
+  updateState = { ...updateState, ...patch }
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('update:state', updateState)
+  }
+}
+
+handleFromApp('update:getState', () => updateState)
+
+// One short line per failure. electron-updater's errors carry the whole
+// HTTP response (headers, cookies) in their message.
+function describeUpdateError(err) {
+  const msg   = String(err?.message ?? err)
+  const first = msg.split('\n')[0].trim()
+  const url   = msg.match(/url: ([^\s"\\]+)/)?.[1]
+  return url ? `${first} (${url})` : first
+}
+
 function setupAutoUpdate() {
+  const { autoUpdater } = require('electron-updater')
+  autoUpdater.autoDownload = false
+  // Keep electron-updater's progress lines; its error lines duplicate the
+  // 'error' handler below.
+  autoUpdater.logger = {
+    info:  (...a) => console.info(...a),
+    warn:  (...a) => console.warn(...a),
+    error: () => {},
+    debug: () => {},
+  }
+  autoUpdater.on('error', (err) => {
+    console.error('[update] failed:', describeUpdateError(err))
+    // A failed download goes back to offering it, so it can be retried.
+    if (updateState.status === 'downloading') setUpdateState({ status: 'available', percent: 0 })
+  })
+
   if (process.platform === 'darwin') {
-    const { autoUpdater } = require('electron-updater')
     // Notify-only: never download an update the unsigned app can't install.
     // The zip target is what makes electron-builder publish latest-mac.yml,
     // which this check reads.
-    autoUpdater.autoDownload = false
-    autoUpdater.on('update-available', (info) => {
-      mainWindow?.webContents.send('update:notify-only', info.version)
+    autoUpdater.on('update-available', (info) => setUpdateState({ status: 'notify-only', version: info.version }))
+  } else {
+    autoUpdater.on('update-available', (info) => setUpdateState({ status: 'available', version: info.version }))
+    autoUpdater.on('download-progress', (progress) => setUpdateState({ status: 'downloading', percent: progress.percent }))
+    autoUpdater.on('update-downloaded', () => setUpdateState({ status: 'ready' }))
+
+    handleFromApp('update:download', () => {
+      if (updateState.status !== 'available') return
+      setUpdateState({ status: 'downloading', percent: 0 })
+      // A failure is logged and handled by the 'error' handler.
+      autoUpdater.downloadUpdate().catch(() => {})
     })
-    autoUpdater.checkForUpdates().catch((err) => console.error('[update] check failed:', err.message))
-    return
+    handleFromApp('update:install', () => autoUpdater.quitAndInstall())
   }
 
-  const { autoUpdater } = require('electron-updater')
-  autoUpdater.autoDownload = false
-
-  autoUpdater.on('update-available', (info) => {
-    mainWindow?.webContents.send('update:available', info.version)
-  })
-  autoUpdater.on('download-progress', (progress) => {
-    mainWindow?.webContents.send('update:progress', progress.percent)
-  })
-  autoUpdater.on('update-downloaded', () => {
-    mainWindow?.webContents.send('update:downloaded')
-  })
-  autoUpdater.on('error', (err) => console.error('[update] error:', err.message))
-
-  handleFromApp('update:download', () => autoUpdater.downloadUpdate())
-  handleFromApp('update:install', () => autoUpdater.quitAndInstall())
-
-  autoUpdater.checkForUpdates().catch((err) => console.error('[update] check failed:', err.message))
+  // A failure is logged by the 'error' handler.
+  autoUpdater.checkForUpdates().catch(() => {})
 }
 
 handleFromApp('update:openReleasePage', () => shell.openExternal(`${REPO_URL}/releases/latest`))

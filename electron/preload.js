@@ -13,8 +13,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadUpdate:   () => ipcRenderer.invoke('update:download'),
   installUpdate:    () => ipcRenderer.invoke('update:install'),
   openReleasePage:  () => ipcRenderer.invoke('update:openReleasePage'),
-  onUpdateAvailable:   (cb) => ipcRenderer.on('update:available',    (_e, version) => cb(version)),
-  onUpdateNotifyOnly:  (cb) => ipcRenderer.on('update:notify-only',  (_e, version) => cb(version)),
-  onUpdateProgress:    (cb) => ipcRenderer.on('update:progress',     (_e, percent) => cb(percent)),
-  onUpdateDownloaded:  (cb) => ipcRenderer.on('update:downloaded',   () => cb()),
+  getUpdateState:   () => ipcRenderer.invoke('update:getState'),
+  // Returns an unsubscribe function.
+  onUpdateState:    (cb) => {
+    const listener = (_e, state) => cb(state)
+    ipcRenderer.on('update:state', listener)
+    return () => ipcRenderer.removeListener('update:state', listener)
+  },
 })

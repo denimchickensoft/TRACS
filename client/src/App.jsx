@@ -121,17 +121,20 @@ export function App() {
   // "Check on launch, ask before downloading" —
   // electronAPI events only fire inside the packaged Electron app; a plain
   // browser tab never receives them.
-  const [updateBanner, setUpdateBanner] = useState(null) // null | 'available' | 'notify-only' | 'downloading' | 'ready'
-  const [updateVersion, setUpdateVersion] = useState(null)
-  const [updateProgress, setUpdateProgress] = useState(0)
+  // The main process owns the state; read it on mount in case the check
+  // finished before this page loaded, then follow its changes.
+  const [update, setUpdate] = useState({ status: null, version: null, percent: 0 })
+  // Dismissing hides the banner until the status changes (e.g. to 'ready').
+  const [dismissedStatus, setDismissedStatus] = useState(null)
 
   useEffect(() => {
     if (!isElectron) return
-    window.electronAPI.onUpdateAvailable((version) => { setUpdateVersion(version); setUpdateBanner('available') })
-    window.electronAPI.onUpdateNotifyOnly((version) => { setUpdateVersion(version); setUpdateBanner('notify-only') })
-    window.electronAPI.onUpdateProgress((percent) => setUpdateProgress(percent))
-    window.electronAPI.onUpdateDownloaded(() => setUpdateBanner('ready'))
+    const off = window.electronAPI.onUpdateState(setUpdate)
+    window.electronAPI.getUpdateState().then(setUpdate)
+    return off
   }, [isElectron])
+
+  const updateBanner = update.status !== dismissedStatus ? update.status : null
 
   useEffect(() => {
     if (!settingsOpen) return
@@ -404,7 +407,50 @@ export function App() {
     <LnmSetupDialog firstRun={lnmDialog === 'first-run'} onClose={() => setLnmDialog(null)} />
   )
 
-  if (!positionSet) return <><AssociationOwner />{lnmDialogEl}<Login /></>
+  const updateButtonStyle = { background: '#254', border: '1px solid #4a6', borderRadius: '2px', color: '#cfc', fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer' }
+  // Shown on the sign-in screen too, where it overlays the top edge instead
+  // of taking a row in the layout.
+  const updateBannerEl = updateBanner && (
+    <div style={{
+      display:        'flex',
+      alignItems:     'center',
+      gap:            '10px',
+      padding:        '4px 10px',
+      background:     '#1a2a1a',
+      color:          '#9c9',
+      fontSize:       '0.7rem',
+      fontFamily:     'Roboto Mono, monospace',
+      flexShrink:     0,
+      ...(!positionSet && { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }),
+    }}>
+      {updateBanner === 'available'   && <span>Update available — v{update.version}</span>}
+      {updateBanner === 'notify-only' && <span>Update available — v{update.version} (download manually — auto-update isn't supported on Mac without a code-signing certificate)</span>}
+      {updateBanner === 'downloading' && <span>Downloading update... {Math.round(update.percent)}%</span>}
+      {updateBanner === 'ready'       && <span>Update downloaded — restart to install</span>}
+
+      {updateBanner === 'available' && (
+        <button onClick={() => window.electronAPI.downloadUpdate()} style={updateButtonStyle}>
+          Download
+        </button>
+      )}
+      {updateBanner === 'notify-only' && (
+        <button onClick={() => window.electronAPI.openReleasePage()} style={updateButtonStyle}>
+          View release
+        </button>
+      )}
+      {updateBanner === 'ready' && (
+        <button onClick={() => window.electronAPI.installUpdate()} style={updateButtonStyle}>
+          Restart to install
+        </button>
+      )}
+      <button onClick={() => setDismissedStatus(update.status)}
+        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#688', cursor: 'pointer', fontSize: '0.7rem' }}>
+        dismiss
+      </button>
+    </div>
+  )
+
+  if (!positionSet) return <><AssociationOwner />{lnmDialogEl}{updateBannerEl}<Login /></>
 
   const hasAtc   = activeModule === MODULE.ATC
   const hasCatcc = activeModule === MODULE.CATCC
@@ -452,47 +498,7 @@ export function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: activeProfile?.visual.colors.background ?? '#1A1A1A', overflow: 'hidden' }}>
       {lnmDialogEl}
 
-      {updateBanner && (
-        <div style={{
-          display:        'flex',
-          alignItems:     'center',
-          gap:            '10px',
-          padding:        '4px 10px',
-          background:     '#1a2a1a',
-          color:          '#9c9',
-          fontSize:       '0.7rem',
-          fontFamily:     'Roboto Mono, monospace',
-          flexShrink:     0,
-        }}>
-          {updateBanner === 'available'   && <span>Update available — v{updateVersion}</span>}
-          {updateBanner === 'notify-only' && <span>Update available — v{updateVersion} (download manually — auto-update isn't supported on Mac without a code-signing certificate)</span>}
-          {updateBanner === 'downloading' && <span>Downloading update... {Math.round(updateProgress)}%</span>}
-          {updateBanner === 'ready'       && <span>Update downloaded — restart to install</span>}
-
-          {updateBanner === 'available' && (
-            <button onClick={() => { setUpdateBanner('downloading'); window.electronAPI.downloadUpdate() }}
-              style={{ background: '#254', border: '1px solid #4a6', borderRadius: '2px', color: '#cfc', fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer' }}>
-              Download
-            </button>
-          )}
-          {updateBanner === 'notify-only' && (
-            <button onClick={() => window.electronAPI.openReleasePage()}
-              style={{ background: '#254', border: '1px solid #4a6', borderRadius: '2px', color: '#cfc', fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer' }}>
-              View release
-            </button>
-          )}
-          {updateBanner === 'ready' && (
-            <button onClick={() => window.electronAPI.installUpdate()}
-              style={{ background: '#254', border: '1px solid #4a6', borderRadius: '2px', color: '#cfc', fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer' }}>
-              Restart to install
-            </button>
-          )}
-          <button onClick={() => setUpdateBanner(null)}
-            style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#688', cursor: 'pointer', fontSize: '0.7rem' }}>
-            dismiss
-          </button>
-        </div>
-      )}
+      {updateBannerEl}
 
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <div style={{
