@@ -84,6 +84,7 @@ const PAGE_STYLE = `
   table { border-collapse: collapse; }
   th, td { border: 1px solid #333; padding: 4px 10px; }
   blockquote { border-left: 3px solid #444; margin-left: 0; padding-left: 14px; color: #999; }
+  img { max-width: 100%; height: auto; }
 `
 
 // Registers TRACS's own local operator docs — GET /docs/:page — so the
@@ -95,6 +96,16 @@ function registerDocsRoutes(app) {
   // inline script, so the Content-Security-Policy allows it.
   app.get('/docs/assets/find.js', (req, res) => {
     res.type('application/javascript').sendFile(path.join(__dirname, '../docsFind.js'))
+  })
+
+  // Screenshots referenced from the docs as "images/<name>", which resolves
+  // here from a /docs/<page> URL and to docs/images/ on GitHub. The filename
+  // pattern keeps the lookup inside docs/images.
+  app.get('/docs/images/:file', (req, res) => {
+    if (!/^[a-z0-9-]+\.(png|jpg|webp)$/.test(req.params.file)) return res.status(404).send('Not found')
+    res.sendFile(path.join(DOCS_DIR, 'images', req.params.file), (err) => {
+      if (err && !res.headersSent) res.status(404).send('Not found')
+    })
   })
 
   app.get('/docs/:page', (req, res) => {
