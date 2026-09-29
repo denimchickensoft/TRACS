@@ -130,10 +130,12 @@
         { "target": "dmg", "arch": ["universal"] },
         { "target": "zip", "arch": ["universal"] }
       ],
-      "x64ArchFiles": "**/better_sqlite3.node"
+      "x64ArchFiles": "**/better_sqlite3.node",
+      "icon": "electron/icons/icon.png"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "electron/icons/icon.png"
     }
   }
 }
