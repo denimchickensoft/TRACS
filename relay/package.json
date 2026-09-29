@@ -13,7 +13,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "esbuild": "^0.21.5",
+    "esbuild": "^0.28.2",
     "png-to-ico": "^3.0.2",
     "postject": "^1.0.0-alpha.6",
     "resedit": "^3.1.0"
