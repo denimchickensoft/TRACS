@@ -72,7 +72,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const mission     = useSessionStore((s) => s.mission)
   const carrierUnitId = useSessionStore((s) => s.carrierUnitId)
 
-  const visibleUnits = useMemo(() => getVisibleUnits(units, coalition), [units, coalition])
+  // No AGL floor: aircraft parked on deck or on short final below 100 ft
+  // still need their side number for the DECK tab and PAR.
+  const visibleUnits = useMemo(() => getVisibleUnits(units, coalition, true), [units, coalition])
 
   // ── Carrier-derived values ─────────────────────────────────────────
   const carrier      = carrierUnitId != null ? units[carrierUnitId] : null
