@@ -26,6 +26,12 @@ const SCALE_MIN     = 0.5
 const SCALE_MAX     = 2.0
 const SCALE_STEP    = 0.05
 
+// In popup mode the carrier arrives via URL param, since the session
+// BroadcastChannel doesn't carry carrierUnitId (per-scope, see
+// store/session.js). It's fixed when the popup opens: picking a different
+// carrier in the main window afterwards only reaches a re-popped board.
+const _URL_CARRIER_UNITID = new URLSearchParams(window.location.search).get('carrierUnitId')
+
 // ── Main component ────────────────────────────────────────────────────────────
 export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
@@ -70,7 +76,8 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const units       = useUnitsStore((s) => s.units)
   const coalition   = useSessionStore((s) => s.coalition)
   const mission     = useSessionStore((s) => s.mission)
-  const carrierUnitId = useSessionStore((s) => s.carrierUnitId)
+  const sessionCarrierId = useSessionStore((s) => s.carrierUnitId)
+  const carrierUnitId = _URL_CARRIER_UNITID ? Number(_URL_CARRIER_UNITID) : sessionCarrierId
 
   // No AGL floor: aircraft parked on deck or on short final below 100 ft
   // still need their side number for the DECK tab and PAR.

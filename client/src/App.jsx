@@ -285,7 +285,13 @@ export function App() {
   const catccWidthRef = useRef(initCatccWidth)
   const sbPopupRef    = useRef(null)
   const handleCatccResize = useCallback(makeResizeHandler(catccWidthRef, setCatccWidth, 320, 1400, SB_WIDTH_KEY), []) // eslint-disable-line
-  const handleSbUndock    = useCallback(makeUndockHandler('/?window=catcc-board', 'tracs-catcc-board', catccWidthRef, setSbDocked, sbPopupRef), []) // eslint-disable-line
+  // carrierUnitId goes in the URL (the session channel doesn't carry it), so
+  // the popup keeps the carrier it was opened with; changing carriers here
+  // afterwards needs a fresh pop-out.
+  const handleSbUndock    = useCallback(makeUndockHandler(() => { // eslint-disable-line
+    const { carrierUnitId } = useSessionStore.getState()
+    return carrierUnitId != null ? `/?window=catcc-board&carrierUnitId=${carrierUnitId}` : '/?window=catcc-board'
+  }, 'tracs-catcc-board', catccWidthRef, setSbDocked, sbPopupRef), [])
 
   const [deckDocked, setDeckDocked] = useState(true)
   const deckPopupRef   = useRef(null)
