@@ -251,6 +251,14 @@ The DCB aux bar (SHIFT) has a **WNG** toggle button next to **CA**.
 
 Tracks outside the active filter range don't draw. Tracks with no altitude data are never filtered.
 
+## Top-down mode (TDM)
+
+**Ctrl+T** (desktop app) or **Alt+T** toggles top-down mode. Ctrl+T doesn't work in a browser tab, which always opens a new tab on it.
+
+The scope normally hides contacts below about 100 ft AGL. With TDM on:
+- Those contacts draw too, so you can see aircraft on the ground and taxiing.
+- Airport surfaces (taxiway and runway pavement) draw under every other layer, at MAP B brightness. They cover the airports within the same radius DCB MAP uses for runways: 60 NM for APP, 30 NM for TWR, and the whole theatre for CTR.
+
 ## Mouse gestures
 
 | Gesture | Effect |
@@ -325,7 +333,7 @@ These act immediately, without the buffer:
 | `F1` (press and hold) | Beaconator (see Transponder/IFF correlation above) |
 | `Ctrl+F1` | Return the scope to its original center (same as `.CENTER`) |
 | `Ctrl+F8` | Show/hide the DCB |
-| `Alt+T` | Toggle top-down display mode |
+| `Ctrl+T` / `Alt+T` | Toggle [top-down mode](#top-down-mode-tdm) (Ctrl+T in the desktop app only) |
 | `Ctrl+Alt+0`–`9` | Save current view (center/range/overlays) to bookmark slot 0–9 |
 | `Ctrl+0`–`9` | Load view bookmark 0–9 |
 | `Escape` | Clears the buffer. Each press also clears one pending item, in this order: displayed route lines, then a `.FIND` marker, then a pending RBL/MIN/WNG second point or PLACE CNTR/PLACE RR click |

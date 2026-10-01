@@ -37,7 +37,10 @@ export const STARS_KEY_MAP = [
   { code: 'F9',                ctrl: true,  action: 'DCB_RNG_RING' },  // RNG RING
   { code: 'F10',               ctrl: true,  action: 'DCB_RANGE'   },  // RANGE
   { code: 'Insert',            ctrl: false, action: 'DCB_PREF'    },  // PREF SET
-  { code: 'KeyT',              alt: true,   action: 'TOGGLE_TOPDOWN' }, // Alt+T = top-down
+  // Top-down. Ctrl+T works in the desktop app only - a browser tab always
+  // opens a new tab on it - so Alt+T stays as the binding that works anywhere.
+  { code: 'KeyT',              ctrl: true,  alt: false, action: 'TOGGLE_TOPDOWN' },
+  { code: 'KeyT',              alt: true,   action: 'TOGGLE_TOPDOWN' },
 
   // ── Bookmarks ─────────────────────────────────────────────────────
   // Ctrl+Alt+Digit0–9 = set bookmark; Ctrl+Digit0–9 = load bookmark.
