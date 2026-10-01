@@ -7,14 +7,7 @@ import { M_TO_FT, MS_TO_KT } from '../../../utils/units.js'
 const SYMBOL_RADIUS  = 5     // px — matches circle radius in drawCatccContacts
 const LEADER_LEN     = 16    // px default — long enough that bbox near-edge clears symbol for all angles
 const PADDING        = 2     // extra clearance around each bbox
-const RADIAL_PENALTY = 1e6   // score penalty for hitting a radial line
-const OFF_MODE_ANGLE = -45   // NE — CATCC's fixed default when .dbca is off and no preference is set
-
-// Preference bonuses: subtracted from the chosen direction's collision score.
-// Unit-level wins against any label overlap but still yields to the radial (1e6).
-// Global-level yields to roughly one full label worth of overlap (~960 px²).
-const UNIT_DIR_BONUS   = 9e5
-const GLOBAL_DIR_BONUS = 400
+const DEFAULT_ANGLE  = -45   // NE — CATCC's general leader direction when no .LD is set
 
 function fmtAlt(metres) {
   if (metres == null) return '---'
@@ -29,13 +22,13 @@ function fmtGs(mps) {
 /**
  * Draw CATCC datablocks for all visible contacts.
  *
- * When dbca is true, label placement uses 8-direction candidate testing
- * (NE preferred), scored against placed labels, contact symbols, and the
+ * When dbca is true, a contact with an individually-set direction keeps it;
+ * every other contact starts from the general direction (.LD, else NE) and
+ * moves only to avoid other datablocks/leaders/symbols and the
  * marshal/approach radial line (see utils/datablockPlacement.js). When
  * false, each contact is placed at its individually-set direction, else the
- * module default direction, else NE — no avoidance, matching pre-.dbca
- * behavior. Leaders are drawn to the bbox near-edge so they never enter the
- * text area.
+ * general direction — no avoidance. Leaders are drawn to the bbox near-edge
+ * so they never enter the text area.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} view            { centerLat, centerLng, pixelsPerNm, width, height }
@@ -64,6 +57,8 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
   ctx.font         = `${fontPx}px "Roboto Mono", monospace`
   ctx.textBaseline = 'alphabetic'
 
+  const generalAngleDeg = DIR_TO_ANGLE[globalLeaderDir] ?? DEFAULT_ANGLE
+
   // ── Pass 1: collect visible contacts and measure text ─────────────────────
   const contacts = []
   for (const [id, unit] of Object.entries(units)) {
@@ -73,15 +68,11 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     if (x < -100 || x > width + 100 || y < -100 || y > height + 100) continue
     const line1 = correlations[String(id)] ?? pendingCodes[String(id)] ?? 'XXX'
     const line2 = `${fmtAlt(pos.alt)} ${fmtGs(unit.speed)}`
-    const unitDir = leaderDirs[String(id)] ?? null
-    const prefAngleDeg = unitDir != null ? DIR_TO_ANGLE[unitDir]
-                        : globalLeaderDir != null ? DIR_TO_ANGLE[globalLeaderDir]
-                        : null
-    const prefTier = unitDir != null ? 'unit' : globalLeaderDir != null ? 'global' : null
     contacts.push({
       id, x, y, line1, line2,
       lineWidths: [ctx.measureText(line1).width, ctx.measureText(line2).width],
-      prefAngleDeg, prefTier,
+      unitAngleDeg: DIR_TO_ANGLE[leaderDirs[String(id)]] ?? null,
+      generalAngleDeg,
     })
   }
 
@@ -93,8 +84,6 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     ascent,
     descent,
     padding: PADDING,
-    unitBonus: UNIT_DIR_BONUS,
-    globalBonus: GLOBAL_DIR_BONUS,
   }
 
   let placements
@@ -108,7 +97,6 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
         x0: cx, y0: cy,
         x1: cx + Math.sin(rad) * 50 * pixelsPerNm,
         y1: cy - Math.cos(rad) * 50 * pixelsPerNm,
-        penalty: RADIAL_PENALTY,
       })
     }
 
@@ -126,15 +114,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
 
     placements = placeDatablocks(contacts, { ...placementOpts, extraObstacles, filterCandidates })
   } else {
-    // No cross-contact avoidance — each contact placed independently at its
-    // individually-set direction, else the module default, else NE.
-    placements = {}
-    for (const contact of contacts) {
-      Object.assign(placements, placeDatablocks([contact], {
-        ...placementOpts,
-        candidateAnglesDeg: [contact.prefAngleDeg ?? OFF_MODE_ANGLE],
-      }))
-    }
+    placements = placeDatablocks(contacts, { ...placementOpts, avoid: false })
   }
 
   // ── Pass 3: draw leaders and text ─────────────────────────────────────────

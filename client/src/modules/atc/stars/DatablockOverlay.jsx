@@ -11,7 +11,7 @@ import { latLngToCanvas }      from '../../../utils/projection.js'
 import { resolveCallsign }     from '../../../utils/callsign.js'
 import { hasLiveSquawk }       from '../../../utils/transponder.js'
 import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from '../../../utils/scopeConstants.js'
-import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
+import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { MS_TO_KT as M_PER_S_TO_KNOTS, M_TO_FT as METERS_TO_FEET } from '../../../utils/units.js'
 
 const WINDOW_ID        = 'atc-main'
@@ -143,7 +143,7 @@ function computeLine3(codeMismatchText, tempAlt, line2Len) {
 const Datablock = memo(function Datablock({
   id, unit, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks,
   ownership, handoffs, pointOuts, quickLook, displayFdb, scratchpads,
-  myId, unitLeaderDir, globalLeaderDir, placement,
+  myId, unitLeaderDir, placement,
   clockPhase, rightSlot, actype, reqAlt, planSp1, planSp2, slewed, isBlinking, blinkOn, isHighlighted,
   conflict, wingman, assoc, assignedBcn, isIdent, beaconReadout,
 }) {
@@ -179,10 +179,7 @@ const Datablock = memo(function Datablock({
     ty  = placement.bbox.ly1
     anchor = placement.bbox.align === 'right' ? 'end' : placement.bbox.align === 'left' ? 'start' : 'middle'
   } else {
-    const dir = unitLeaderDir ?? globalLeaderDir ?? null
-    const angleDeg = dir != null
-      ? (DIR_TO_ANGLE[dir] ?? (ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45))
-      : (ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45)
+    const angleDeg = DIR_TO_ANGLE[unitLeaderDir] ?? ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45
 
     const leaderAngle = angleDeg * Math.PI / 180
     const textDist    = Math.max(leaderLen, symR)
@@ -192,7 +189,8 @@ const Datablock = memo(function Datablock({
     lx1 = x + Math.cos(leaderAngle) * textDist
     ly1 = y + Math.sin(leaderAngle) * textDist
 
-    const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
+    // The DCB spinner stores NW as -135, RIGHT_ALIGN_ANGLES uses 0-360
+    const rightAlign = RIGHT_ALIGN_ANGLES.has((angleDeg + 360) % 360)
     tx     = rightAlign ? lx1 - 2 : lx1 + 2
     ty     = ly1
     anchor = rightAlign ? 'end' : 'start'
@@ -421,7 +419,6 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   const myId            = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
 
   const leaderDirs      = useDisplayStore((s) => s.windows[WINDOW_ID]?.leaderDirs      ?? {})
-  const globalLeaderDir = useDisplayStore((s) => s.windows[WINDOW_ID]?.globalLeaderDir ?? null)
   const dbca            = useDisplayStore((s) => s.windows[WINDOW_ID]?.dbca ?? false)
 
   const plans = useFlightPlansStore((s) => s.plans)
@@ -475,6 +472,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
     if (!dbca || !view) return null
 
     const fontPx = 10 + (csDatablocks ?? 3) * 2
+    const generalAngleDeg = ldrAngleDeg ?? visual.dataBlock.leaderAngleDeg ?? -45
     const contacts = []
     for (const [id, unit] of entries) {
       const pos = unit.position
@@ -521,12 +519,11 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       // altitude is, since it stays up for as long as it's assigned
       else lines = tempAlt ? [cs, line2, ('A' + tempAlt).padStart(line2.length)] : [cs, line2]
 
-      const unitDir = leaderDirs[uid] ?? null
       contacts.push({
         id: uid, x, y,
         lineWidths: lines.map((t) => t.length * fontPx * MONO_CHAR_RATIO),
-        prefAngleDeg: unitDir != null ? DIR_TO_ANGLE[unitDir] : globalLeaderDir != null ? DIR_TO_ANGLE[globalLeaderDir] : null,
-        prefTier: unitDir != null ? 'unit' : globalLeaderDir != null ? 'global' : null,
+        unitAngleDeg: DIR_TO_ANGLE[leaderDirs[uid]] ?? null,
+        generalAngleDeg,
       })
     }
     if (contacts.length === 0) return {}
@@ -535,7 +532,6 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
     const lh   = visual.dataBlock.lineHeight ?? Math.round(fontPx * 1.2)
 
     return placeDatablocks(contacts, {
-      candidateAnglesDeg: DEFAULT_CANDIDATE_ANGLES_DEG,
       symbolRadius: symR,
       leaderLen: ldrLength ?? visual.dataBlock.leaderLength ?? 40,
       lineHeight: lh,
@@ -544,7 +540,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       padding: 2,
     })
   }, [dbca, view, entries, ownership, handoffs, pointOuts, quickLook, displayFdb, myId,
-      scratchpads, clockPhase, rightSlot, plansByUnit, slewedPdbs, leaderDirs, globalLeaderDir,
+      scratchpads, clockPhase, rightSlot, plansByUnit, slewedPdbs, leaderDirs, ldrAngleDeg,
       ldrLength, csDatablocks, visual, isAssociated, beaconReadout, identUnacked])
 
   if (!view) return null
@@ -578,7 +574,6 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
           scratchpads={scratchpads}
           myId={myId}
           unitLeaderDir={leaderDirs[String(id)] ?? null}
-          globalLeaderDir={globalLeaderDir}
           placement={placements ? (placements[String(id)] ?? null) : null}
           clockPhase={clockPhase}
           rightSlot={rightSlot}

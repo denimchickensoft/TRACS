@@ -95,7 +95,7 @@ A requested altitude amended with `++###` shows as `R###` on the right side of F
 
 | Command | Shortcut | Effect |
 |---|---|---|
-| `MF L<d><d>` (same digit twice, e.g. `MF L33`) + SLEW | `F7` | Set the facility-wide default leader direction; digit `5` clears it |
+| `MF L<d><d>` (same digit twice, e.g. `MF L33`) + SLEW | `F7` | Set the default leader direction (same setting as the **LDR DIR** DCB control); digit `5` returns to the profile default |
 | `MF L<d>` + SLEW | `F7` | Set direction for one track |
 | `<d>` (single digit 1–9) + SLEW | — | Shorthand for `MF L<d>` |
 | `LD <0-7>` + ENTER | — | Set leader length (same setting as the DCB's LDR LEN) |
@@ -138,7 +138,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.ALTIM <val>` / `.QNH <val>` + ENTER | — | Set altimeter (inHg or hPa, auto-detected by range) |
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
-| `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement |
+| `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement: a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction |
 | `.LABELSIZE <0-5>` + ENTER | — | Set map/airspace label size (same as the DCB's CHAR SIZE > MAP); bare `.LABELSIZE` reports the current value |
 | `.LABELS` (or `.LBL` / `.LABEL`) + ENTER | — | Toggle the LBL map button (map/airspace name labels) |
 | `.FIXES` + ENTER | — | Toggle the FIXES map button (theatre fix points) |

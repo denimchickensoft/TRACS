@@ -13,7 +13,7 @@ import { destinationPoint, gridBearingRangeNm, toMagneticFromTrue } from '../../
 import { drawPtl, DECL_COLOR, drawHistoryTrail } from '../../../utils/declarationSymbols.js'
 import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../../utils/scopeConstants.js'
 import { DECLARATION } from '../../../store/abm.js'
-import { placeDatablocks, DEFAULT_CANDIDATE_ANGLES_DEG } from '../../../utils/datablockPlacement.js'
+import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
 import { MS_TO_KT, M_TO_FT } from '../../../utils/units.js'
 
@@ -301,8 +301,7 @@ export function drawAbmContacts(
     if (dbca) {
       dbCandidates.push({
         id, x, y, color: dbColor, textColor, lines,
-        prefAngleDeg: unitDir != null ? (DIR_TO_ANGLE[unitDir] ?? ldrAngleDeg) : ldrAngleDeg,
-        prefTier: unitDir != null ? 'unit' : 'global',
+        unitAngleDeg: DIR_TO_ANGLE[unitDir] ?? null,
       })
       continue
     }
@@ -350,11 +349,10 @@ export function drawAbmContacts(
       dbCandidates.map((c) => ({
         id: c.id, x: c.x, y: c.y,
         lineWidths: c.lines.map((t) => ctx.measureText(t).width),
-        prefAngleDeg: c.prefAngleDeg,
-        prefTier: c.prefTier,
+        unitAngleDeg: c.unitAngleDeg,
+        generalAngleDeg: ldrAngleDeg,
       })),
       {
-        candidateAnglesDeg: DEFAULT_CANDIDATE_ANGLES_DEG,
         symbolRadius: SYM_HALF,
         leaderLen: ldrLength * 10,
         lineHeight,

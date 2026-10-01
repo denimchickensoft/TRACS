@@ -40,6 +40,7 @@ import { WORD_VERBS } from '../stars/input/commandParser.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
+import { DIR_TO_ANGLE } from '../../../utils/scopeConstants.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { getMyControllerId, getKnownControllerIds } from '../../../utils/myControllerId.js'
 import { log } from '../../../utils/log.js'
@@ -395,9 +396,14 @@ export function SET_LEADER_MF({ captures, slewTarget, windowId }) {
   return SET_LEADER_SHORT({ captures, slewTarget, windowId })
 }
 
+// MF L<n><n> sets the same general leader direction the LDR DIR DCB spinner
+// does — stored in the spinner's -135..180° range so the DCB can display it.
+// '5' returns to the profile default.
 export function SET_LEADER_GLOBAL({ captures, windowId }) {
-  const dir = captures.dir
-  getDisplay().updateWindow(windowId ?? WINDOW_ID, { globalLeaderDir: dir === '5' ? null : dir })
+  const angle = DIR_TO_ANGLE[captures.dir]
+  getDisplay().updateWindow(windowId ?? WINDOW_ID, {
+    ldrAngleDeg: angle == null ? null : angle > 180 ? angle - 360 : angle,
+  })
   ok()
 }
 
