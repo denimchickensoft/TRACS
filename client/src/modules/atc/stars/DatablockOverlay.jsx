@@ -165,10 +165,8 @@ const Datablock = memo(function Datablock({
   const font   = `500 ${fontPx}px "Roboto Mono", monospace`
 
   // ── Leader geometry ─────────────────────────────────────────────────
-  // With a placement (dbca on), the leader endpoint (bbox edge) and the
-  // text anchor (first line's baseline) differ — placeDatablocks already
-  // resolved both. Without one, leader endpoint and text anchor are the
-  // same fixed-angle point, as before .dbca existed.
+  // With a placement (dbca on), placeDatablocks has resolved the direction
+  // and both points, using the same geometry as the fixed-angle path below.
   const leaderLen = ldrLength ?? dataBlock.leaderLength ?? 40
 
   let lx0, ly0, lx1, ly1, tx, ty, anchor
@@ -177,7 +175,7 @@ const Datablock = memo(function Datablock({
     lx1 = placement.leaderEnd.x;   ly1 = placement.leaderEnd.y
     tx  = placement.bbox.textX
     ty  = placement.bbox.ly1
-    anchor = placement.bbox.align === 'right' ? 'end' : placement.bbox.align === 'left' ? 'start' : 'middle'
+    anchor = placement.bbox.align === 'right' ? 'end' : 'start'
   } else {
     const angleDeg = DIR_TO_ANGLE[unitLeaderDir] ?? ldrAngleDeg ?? dataBlock.leaderAngleDeg ?? -45
 

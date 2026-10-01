@@ -31,12 +31,17 @@
 //      blind to the ones placed after it.
 //
 // With avoid: false each contact is simply placed at unitAngleDeg ??
-// generalAngleDeg, reusing the same bbox/leader-end math.
+// generalAngleDeg, reusing the same geometry.
+//
+// Geometry matches each module's non-dbca leader: the line runs from the
+// symbol edge to a tip leaderLen px from the contact center, and the text
+// starts TEXT_GAP past the tip — right-aligned for S/SW/W/NW, left-aligned
+// otherwise — so toggling .dbca never changes leader length.
 
 const COMPASS_ANGLES_DEG = [-90, -45, 0, 45, 90, 135, 180, -135]
 
-const DEFAULT_PADDING    = 2
-const DEFAULT_LEADER_GAP = 2
+const DEFAULT_PADDING = 2
+const TEXT_GAP        = 2 // px between the leader tip and the text, same as each module's non-dbca path
 
 // Signed angular difference in (-π, π], robust to callers mixing angle
 // ranges (e.g. DIR_TO_ANGLE's 0–360° vs the -135..180° compass set).
@@ -44,25 +49,20 @@ function angleDiff(a, b) {
   return Math.atan2(Math.sin(a - b), Math.cos(a - b))
 }
 
-// Axis-aligned bbox for an N-line label anchored at the leader tip (lx1,ly1
-// is the first line's baseline). Text alignment flips so the block always
-// extends away from the symbol.
-function computeBBox(lx1, ly1, angleRad, lineWidths, { lineHeight, ascent, descent, padding }) {
-  const cosA  = Math.cos(angleRad)
+// Axis-aligned bbox for an N-line label whose first line's baseline is at
+// (textX, ly1), left- or right-aligned on textX.
+function computeBBox(textX, ly1, align, lineWidths, { lineHeight, ascent, descent, padding }) {
   const width = Math.max(...lineWidths)
-  let left
-  if      (cosA >  0.1) left = lx1
-  else if (cosA < -0.1) left = lx1 - width
-  else                  left = lx1 - width / 2
+  const left  = align === 'right' ? textX - width : textX
   const blockHeight = ascent + (lineWidths.length - 1) * lineHeight + descent
   return {
     x1: left - padding,
     y1: ly1 - ascent - padding,
     x2: left + width + padding,
     y2: ly1 - ascent + blockHeight + padding,
-    textX: lx1,
-    align: cosA > 0.1 ? 'left' : cosA < -0.1 ? 'right' : 'center',
-    lx1, ly1,
+    textX,
+    align,
+    ly1,
   }
 }
 
@@ -103,33 +103,6 @@ function segmentsIntersect(a, b) {
   return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
 }
 
-// Where the ray from the symbol center (ox,oy) in direction (nx,ny) enters
-// the bbox — the leader line stops just outside the text (leaderGap) rather
-// than terminating at the anchor corner or poking into the text.
-function computeLeaderEnd(ox, oy, nx, ny, bbox, textDist, symbolRadius, leaderGap) {
-  let tBest = Infinity
-  if (Math.abs(nx) > 1e-6) {
-    for (const ex of [bbox.x1, bbox.x2]) {
-      const t = (ex - ox) / nx
-      if (t > symbolRadius) {
-        const py = oy + t * ny
-        if (py >= bbox.y1 && py <= bbox.y2 && t < tBest) tBest = t
-      }
-    }
-  }
-  if (Math.abs(ny) > 1e-6) {
-    for (const ey of [bbox.y1, bbox.y2]) {
-      const t = (ey - oy) / ny
-      if (t > symbolRadius) {
-        const px = ox + t * nx
-        if (px >= bbox.x1 && px <= bbox.x2 && t < tBest) tBest = t
-      }
-    }
-  }
-  const t = tBest === Infinity ? textDist : Math.max(symbolRadius + 1, tBest - leaderGap)
-  return { x: ox + t * nx, y: oy + t * ny }
-}
-
 function compareVectors(a, b) {
   for (let k = 0; k < a.length; k++) {
     if (a[k] !== b[k]) return a[k] - b[k]
@@ -147,7 +120,8 @@ function compareVectors(a, b) {
  * @param {number} opts.ascent
  * @param {number} opts.descent
  * @param {number} [opts.padding]
- * @param {number} [opts.leaderGap]
+ * @param {'baseline'|'center'} [opts.textAnchor]  'baseline': first line's baseline on the
+ *   leader tip (STARS); 'center': multi-line blocks shifted up half a line (ABM/CATCC)
  * @param {Array}  [opts.extraObstacles]     [{ x0, y0, x1, y1, penalty }] — e.g. CATCC's marshal radial
  * @param {Function} [opts.filterCandidates] (contact, candidateAnglesRad) => candidateAnglesRad | null
  * @returns {Object} { [id]: { angleDeg, bbox, leaderStart: {x,y}, leaderEnd: {x,y} } }
@@ -161,26 +135,31 @@ export function placeDatablocks(contacts, opts) {
     ascent,
     descent,
     padding      = DEFAULT_PADDING,
-    leaderGap    = DEFAULT_LEADER_GAP,
+    textAnchor   = 'baseline',
     extraObstacles   = [],
     filterCandidates = null,
   } = opts
 
-  const textDist = symbolRadius + leaderLen
+  const tipDist  = Math.max(leaderLen, symbolRadius)
   const bboxOpts = { lineHeight, ascent, descent, padding }
 
   function placeAt(contact, angle) {
-    const lx1  = contact.x + Math.cos(angle) * textDist
-    const ly1  = contact.y + Math.sin(angle) * textDist
-    const bbox = computeBBox(lx1, ly1, angle, contact.lineWidths, bboxOpts)
     const nx   = Math.cos(angle)
     const ny   = Math.sin(angle)
+    const tipX = contact.x + nx * tipDist
+    const tipY = contact.y + ny * tipDist
+    // Matches RIGHT_ALIGN_ANGLES (S/SW/W/NW): straight down counts as right.
+    const align = nx < -0.1 || (Math.abs(nx) <= 0.1 && ny > 0) ? 'right' : 'left'
+    const textX = tipX + (align === 'right' ? -TEXT_GAP : TEXT_GAP)
+    const ly1   = textAnchor === 'center' && contact.lineWidths.length > 1
+      ? tipY - Math.round(lineHeight / 2)
+      : tipY
     return {
       angle,
-      bbox,
+      bbox: computeBBox(textX, ly1, align, contact.lineWidths, bboxOpts),
       leader: {
         start: { x: contact.x + nx * symbolRadius, y: contact.y + ny * symbolRadius },
-        end:   computeLeaderEnd(contact.x, contact.y, nx, ny, bbox, textDist, symbolRadius, leaderGap),
+        end:   { x: tipX, y: tipY },
       },
     }
   }
@@ -202,7 +181,7 @@ export function placeDatablocks(contacts, opts) {
   // Contacts close enough for their side to matter in the away-from-neighbour
   // tiebreak — roughly one leader + one datablock away.
   const maxWidth   = Math.max(0, ...contacts.map((c) => Math.max(...c.lineWidths)))
-  const nearRadius = textDist + maxWidth + lineHeight * 2
+  const nearRadius = tipDist + maxWidth + lineHeight * 2
 
   function conflictVector(i, cand, generalRad) {
     const contact = contacts[i]

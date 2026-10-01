@@ -5,7 +5,7 @@ import { M_TO_FT, MS_TO_KT } from '../../../utils/units.js'
 
 
 const SYMBOL_RADIUS  = 5     // px — matches circle radius in drawCatccContacts
-const LEADER_LEN     = 16    // px default — long enough that bbox near-edge clears symbol for all angles
+const LEADER_LEN     = 20    // px default (.LL 2), measured from contact center
 const PADDING        = 2     // extra clearance around each bbox
 const DEFAULT_ANGLE  = -45   // NE — CATCC's general leader direction when no .LD is set
 
@@ -27,8 +27,8 @@ function fmtGs(mps) {
  * moves only to avoid other datablocks/leaders/symbols and the
  * marshal/approach radial line (see utils/datablockPlacement.js). When
  * false, each contact is placed at its individually-set direction, else the
- * general direction — no avoidance. Leaders are drawn to the bbox near-edge
- * so they never enter the text area.
+ * general direction — no avoidance. Leaders run from the symbol edge to a
+ * tip leaderLen px from the contact, with the text just past the tip.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} view            { centerLat, centerLng, pixelsPerNm, width, height }
@@ -84,6 +84,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     ascent,
     descent,
     padding: PADDING,
+    textAnchor: 'center',
   }
 
   let placements

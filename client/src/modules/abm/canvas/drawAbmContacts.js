@@ -308,7 +308,7 @@ export function drawAbmContacts(
 
     const angleDeg   = unitDir != null ? (DIR_TO_ANGLE[unitDir] ?? ldrAngleDeg) : ldrAngleDeg
     const angleRad   = angleDeg * Math.PI / 180
-    const ldrPx      = ldrLength * 10
+    const ldrPx      = Math.max(ldrLength * 10, SYM_HALF) // .ll 0: no line, not one drawn back inward
     const rightAlign = RIGHT_ALIGN_ANGLES.has(angleDeg)
 
     const lx0 = x + Math.cos(angleRad) * SYM_HALF
@@ -359,6 +359,7 @@ export function drawAbmContacts(
         ascent: dbAscent,
         descent: dbDescent,
         padding: 2,
+        textAnchor: 'center',
       },
     )
 
