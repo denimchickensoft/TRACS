@@ -6,7 +6,7 @@ import { log } from '../utils/log.js'
 
 const FT_PER_NM = 6076.115
 
-function nmBetween(lat1, lng1, lat2, lng2) {
+export function nmBetween(lat1, lng1, lat2, lng2) {
   const R  = EARTH_RADIUS_NM
   const φ1 = lat1 * Math.PI / 180
   const φ2 = lat2 * Math.PI / 180
@@ -95,6 +95,10 @@ export const useRunwaysStore = create((set, get) => ({
   cltrVisible:      {},
   satBuckets:       [],   // [{ label: 'NW', ids: [...] }, { label: 'SE', ids: [...] }]
   airportPositions: {},   // ICAO → {lat, lon} — all theatre airports, no distance filter
+  // The circle the centerlines were filtered to, for other layers that should
+  // cover the same area: { lat, lng, radiusNm }, or null when there's no
+  // facility position and the whole theatre is in range.
+  filterCenter:     null,
 
   theatre:         null,
   facilityAirbase: null,
@@ -334,7 +338,9 @@ export const useRunwaysStore = create((set, get) => ({
         if (bucketB.ids.length > 0) satBuckets.push(bucketB)
       }
 
-      set({ centerlines, cltrVisible, satBuckets, theatre, facilityAirbase: facilityAirbase || null, airportPositions, _lastLoadKey: loadKey })
+      const filterCenter = hasPos ? { lat: facilityLat, lng: facilityLng, radiusNm: threshold } : null
+
+      set({ centerlines, cltrVisible, satBuckets, theatre, facilityAirbase: facilityAirbase || null, airportPositions, filterCenter, _lastLoadKey: loadKey })
       log.info(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
     } catch (err) {
       console.error('[runways] load error:', err.message)
@@ -352,5 +358,5 @@ export const useRunwaysStore = create((set, get) => ({
     return { cltrVisible: { ...s.cltrVisible, ...updates } }
   }),
 
-  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], theatre: null, facilityAirbase: null, airportPositions: {} }),
+  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], theatre: null, facilityAirbase: null, airportPositions: {}, filterCenter: null }),
 }))

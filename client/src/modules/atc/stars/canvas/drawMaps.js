@@ -16,8 +16,6 @@ const SUA_CATEGORIES = new Set(['SUA', 'MIL'])
  * @param {object}   colors     { [displayCategory]: { stroke, fill, dash, label } } from navdata
  */
 export function drawMaps(ctx, view, maps, visible, briteMapA, briteMapB, csMap, colors, polygonFill = 0) {
-  const { width, height } = view
-  ctx.clearRect(0, 0, width, height)
   if (!maps.length) return
 
   const alphaA = Math.max(0, Math.min(1, (briteMapA ?? 80) / 100))

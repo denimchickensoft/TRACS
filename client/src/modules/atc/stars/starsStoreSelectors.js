@@ -89,6 +89,7 @@ export function useStarsNavdataLayers() {
 
   const centerlines  = useRunwaysStore((s) => s.centerlines)
   const cltrVisible  = useRunwaysStore((s) => s.cltrVisible)
+  const filterCenter = useRunwaysStore((s) => s.filterCenter)
 
   return {
     maps, mapPalettes, mapVisible,
@@ -96,6 +97,6 @@ export function useStarsNavdataLayers() {
     mora, moraVisible, relief, reliefVisible, mva, mvaVisible,
     geoBoundaries, geoCoastlines, geoVisible, fixes, fixesVisible,
     procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
-    centerlines, cltrVisible,
+    centerlines, cltrVisible, filterCenter,
   }
 }

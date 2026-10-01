@@ -29,6 +29,7 @@ import { drawRelief }                 from '../../../canvas/drawRelief.js'
 import { drawMva }                    from './canvas/drawMva.js'
 import { drawGeo }                    from '../../../canvas/drawGeo.js'
 import { drawAbmFixSymbols }          from '../../../canvas/drawAbmFixSymbols.js'
+import { drawAbmAirportPolygons }     from '../../abm/canvas/drawAbmAirportPolygons.js'
 import { drawProcedures }             from './canvas/drawProcedures.js'
 import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
@@ -53,6 +54,7 @@ import { useAssociationStore }  from '../../../store/association.js'
 import { usePresetsStore }  from '../../../store/presets.js'
 import { useFpeStore }      from '../../../store/fpe.js'
 import { useNavdataStore }      from '../../../store/navdata.js'
+import { nmBetween }            from '../../../store/runways.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { findFlightPlanAid } from '../../../utils/callsign.js'
 import { formatElevation } from '../../../utils/coords.js'
@@ -86,7 +88,7 @@ export default function StarsScope() {
     mora, moraVisible, relief, reliefVisible, mva, mvaVisible,
     geoBoundaries, geoCoastlines, geoVisible, fixes, fixesVisible,
     procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
-    centerlines, cltrVisible,
+    centerlines, cltrVisible, filterCenter,
   } = useStarsNavdataLayers()
 
   const displayStore   = useDisplayStore()
@@ -294,6 +296,45 @@ export default function StarsScope() {
   // ── Theatre/facility-driven navdata loading — see starsNavdataLoading.js ──
   useStarsNavdataLoading({ theatre, mission, airbases, facilityDcsName, facilityId, positionSuffix, positionName })
 
+  // ── Airport surfaces for TDM ──────────────────────────────────────
+  // Same endpoint ABM and ASDE-X fetch. Kept to the circle the runway
+  // centerlines are filtered to, so TDM shows the surfaces of the same
+  // airports DCB MAP lists. Polygon airport names don't match the runway
+  // database's airbase names, so the cut is by distance: an airport is in
+  // if the centroid of its surface vertices is inside the circle, and its
+  // surfaces are kept or dropped as a whole.
+  const [surfaceFeatures, setSurfaceFeatures] = useState([])
+  useEffect(() => {
+    if (!theatre) return
+    let cancelled = false
+    fetch(`/api/airports/polygons/${encodeURIComponent(theatre)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(geojson => { if (!cancelled) setSurfaceFeatures(geojson?.features ?? []) })
+      .catch(() => { if (!cancelled) setSurfaceFeatures([]) })
+    return () => { cancelled = true }
+  }, [theatre])
+
+  const nearbySurfaces = useMemo(() => {
+    if (!filterCenter) return surfaceFeatures
+    const byAirport = new Map()
+    for (const f of surfaceFeatures) {
+      const name = f.properties?.airport
+      let a = byAirport.get(name)
+      if (!a) { a = { features: [], latSum: 0, lngSum: 0, n: 0 }; byAirport.set(name, a) }
+      a.features.push(f)
+      for (const [lng, lat] of f.geometry?.coordinates?.[0] ?? []) {
+        a.latSum += lat; a.lngSum += lng; a.n++
+      }
+    }
+    const kept = []
+    for (const a of byAirport.values()) {
+      if (!a.n) continue
+      const d = nmBetween(filterCenter.lat, filterCenter.lng, a.latSum / a.n, a.lngSum / a.n)
+      if (d <= filterCenter.radiusNm) kept.push(...a.features)
+    }
+    return kept
+  }, [surfaceFeatures, filterCenter])
+
   const buildView = useCallback(() => {
     const canvas = ringCanvasRef.current
     if (!canvas || !windowSettings) return null
@@ -421,6 +462,11 @@ export default function StarsScope() {
     const briteB = windowSettings?.briteMapB ?? 50
     const csMap  = windowSettings?.csMap ?? 2
     const ctx = mapCanvasRef.current.getContext('2d')
+    ctx.clearRect(0, 0, view.width, view.height)
+    if (tdmMode) {
+      const a = Math.max(0, Math.min(1, briteB / 100))
+      drawAbmAirportPolygons(ctx, view, nearbySurfaces, true, `rgba(58,58,58,${a})`, `rgba(90,90,90,${a})`)
+    }
     drawMaps(ctx, view, maps, mapVisible,
       windowSettings?.briteMapA ?? 50, briteB, csMap, activeColors,
       windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0)
@@ -440,7 +486,7 @@ export default function StarsScope() {
     const pinnedIds  = new Set(windowSettings?.pinnedFixes?.[theatre] ?? [])
     const fixesToDraw = fixesVisible ? fixes : fixes.filter((f) => pinnedIds.has(f.id.toUpperCase()))
     drawAbmFixSymbols(ctx, view, fixesToDraw, fixesToDraw.length > 0, '#66CCFF', 60, mapVisible.lbl)
-  }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible,
+  }, [view, maps, mapPalettes, mapVisible, centerlines, cltrVisible, tdmMode, nearbySurfaces,
       holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible, mva, mvaVisible, facilityId,
       procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
       fixes, fixesVisible, windowSettings?.pinnedFixes, theatre,
