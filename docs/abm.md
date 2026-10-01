@@ -124,10 +124,11 @@ ABM does not display SID/STAR/approach procedures.
 | `.history` / `.hist` | Toggle trails; `.history <len>` sets length (0=off, max 10); `.history <len> <rate>` sets length + capture rate |
 | `.db` | Toggle global datablock visibility; typed (no Enter) + click a contact toggles just that one |
 | `.dbreset` | Clear all per-contact `.db` overrides |
-| `.dbca` | Datablock collision-avoidance placement (off by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction (the `.ldr` direction) |
+| `.dbca` | Datablock collision-avoidance placement (off by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction (`.ld`) unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction |
 | `.dbsize [0-5]` | Set aircraft datablock size; bare form reports the current value |
 | `.dbs` | Formation datablock suppression (on by default). Among aircraft whose callsigns end in two or more digits (e.g. `ENFIELD11`, `ENFIELD12`), only the flight lead shows a datablock while the others are inside a 6×6 NM box around it. The box extends ±3 NM along and across the lead's heading |
-| `.ldr <length 0-7> <dir 1-9>` | Leader line length/direction; direction `5` uses the default direction |
+| `.ll [0-7]` | Set leader line length (10 px per step); bare `.ll` reports the current value |
+| `.ld <1-9>` | Set leader line direction (numpad layout); `5` returns to the default direction |
 | `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
 ### Missile tracking & launch alert

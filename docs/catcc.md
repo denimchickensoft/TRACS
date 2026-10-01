@@ -34,8 +34,8 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `PO <callsign\|side> <tcp>` | Point out a track to another controller |
 | `RN <callsign\|side> [newCallsign]` | Rename a track's callsign, or omit the second argument to reset to default |
 | `.HISTORY` / `.HIST` | Toggle history-trail display |
-| `.LL [0-99]` | Set leader-line length (pixels); bare `.LL` queries the current value |
-| `.LD [N\|NE\|E\|SE\|S\|SW\|W\|NW\|1-9\|OFF]` | Set the default leader-line direction |
+| `.LL [0-7]` | Set leader-line length (10 px per step); bare `.LL` queries the current value |
+| `.LD [N\|NE\|E\|SE\|S\|SW\|W\|NW\|1-9\|OFF]` | Set the default leader-line direction; bare `.LD` or `.LD OFF` returns to NE |
 | `.LABELSIZE [0-5]` | Set airspace/fix label size; bare `.LABELSIZE` queries the current value |
 | `.DBSIZE [0-5]` | Set aircraft datablock size; bare `.DBSIZE` queries the current value |
 | `.DBCA` | Toggle datablock collision avoidance (on by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction, and off the marshal radial |

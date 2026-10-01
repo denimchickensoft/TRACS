@@ -199,7 +199,7 @@ export default function CatccScope() {
         fillVisible: catccPrefs.fillVisible, fillPct: catccPrefs.fillPct,
         pinnedFixes: catccPrefs.pinnedFixes,
         csMap: catccPrefs.csMap, dbSize: catccPrefs.dbSize,
-        catccLeaderLen: catccPrefs.catccLeaderLen, globalLeaderDir: catccPrefs.globalLeaderDir,
+        ldrLength: catccPrefs.ldrLength, globalLeaderDir: catccPrefs.globalLeaderDir,
       })
     }
   }, []) // eslint-disable-line
@@ -359,14 +359,14 @@ export default function CatccScope() {
       blinkOn,
       ownership,
       myControllerId,
-      windowSettings?.catccLeaderLen  ?? 16,
+      (windowSettings?.ldrLength ?? 2) * 10,
       windowSettings?.dbca ?? true,
       windowSettings?.dbSize ?? 2,
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef is a stable ref returned by useHistoryCapture
   }, [visibleUnits, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos, windowSettings?.dbSize,
-      windowSettings?.globalLeaderDir, windowSettings?.catccLeaderLen, windowSettings?.dbca,
+      windowSettings?.globalLeaderDir, windowSettings?.ldrLength, windowSettings?.dbca,
       windowSettings?.showHistory, windowSettings?.historyLength, windowSettings?.briteHst, windowSettings?.leaderDirs])
 
   // ── Marking MOMS — bullseye readout from carrier to cursor ───────

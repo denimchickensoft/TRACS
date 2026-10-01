@@ -814,12 +814,23 @@ export const DBCA_TOGGLE = makeWinToggle('dbca', false, 'DBCA ON', 'DBCA OFF')
 // lead's datablock shows. On by default.
 export const DBS_TOGGLE = makeWinToggle('dbSuppress', true, 'DB SUPPRESSION ON', 'DB SUPPRESSION OFF')
 
-export function LDR({ captures, context }) {
+export function LDR_LEN_SHOW({ context }) {
+  return `LL ${getWin(context.windowId)?.ldrLength ?? 2}`
+}
+
+export function LDR_LEN({ captures, context }) {
   const length = parseInt(captures.length, 10)
+  updateWin(context.windowId, { ldrLength: length })
+  saveAbmPrefs({ ldrLength: length })
+  return `LL ${length}`
+}
+
+// Direction 5 has no DIR_TO_ANGLE entry, so it clears back to the default.
+export function LDR_DIR({ captures, context }) {
   const dir = captures.dir
-  updateWin(context.windowId, { ldrLength: length, ldrAngleDeg: DIR_TO_ANGLE[dir] })
-  saveAbmPrefs({ ldrLength: length, ldrAngleDeg: DIR_TO_ANGLE[dir] })
-  return `LDR ${length} ${dir}`
+  updateWin(context.windowId, { ldrAngleDeg: DIR_TO_ANGLE[dir] })
+  saveAbmPrefs({ ldrAngleDeg: DIR_TO_ANGLE[dir] })
+  return `LD ${dir}`
 }
 
 // ── BRAA line / bogey dope / threat rings — ported from AIC, same commands.
@@ -984,7 +995,7 @@ const ACTION_MAP = {
   MAP_TOGGLE, WATER_TOGGLE, ROADS_TOGGLE,
   COORDS_TOGGLE, BEC_TOGGLE, BEDB_TOGGLE, MALERT_TOGGLE, VOL_SHOW, VOL_SET, DDM, DMS, METERS, FEET,
   PTL, FADED, HISTORY_TOGGLE, HISTORY_LEN_RATE, HISTORY_LEN,
-  DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR,
+  DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR_LEN_SHOW, LDR_LEN, LDR_DIR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,
   DECLARATION_RESET, DECLARATION_SET_BULK, AUTO_DECLARE, AUTO_DECLARE_IFF, AUTOTHREAT, ROE, ROE_TOGGLE,
   ACQ_DECL, ACQ_TOGGLE, ENG_DECL, ENG_TOGGLE, GROUND_TOGGLE,

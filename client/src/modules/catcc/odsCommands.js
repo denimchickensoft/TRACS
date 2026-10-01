@@ -164,17 +164,17 @@ function toggleHistory() {
 register('.HISTORY', toggleHistory)
 register('.HIST', toggleHistory)
 
-// .LL [0-99] — set leader line length in pixels (omit to query current)
+// .LL [0-7] — set leader line length, 10 px per step like ABM/STARS (omit to query current)
 register('.LL', (parts) => {
   const val = parts[1]
   if (!val) {
     const ws = useDisplayStore.getState().windows[WINDOW_ID]
-    return [`LL: ${ws?.catccLeaderLen ?? 16}`]
+    return [`LL: ${ws?.ldrLength ?? 2}`]
   }
+  if (!/^[0-7]$/.test(val)) return ['ILL VAL']
   const n = parseInt(val, 10)
-  if (isNaN(n) || n < 0 || n > 99) return ['ILL VAL']
-  useDisplayStore.getState().updateWindow(WINDOW_ID, { catccLeaderLen: n })
-  saveCatccPrefs({ catccLeaderLen: n })
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { ldrLength: n })
+  saveCatccPrefs({ ldrLength: n })
   return []
 })
 

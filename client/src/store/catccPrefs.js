@@ -21,7 +21,7 @@ const DEFAULTS = {
   csMap:         2,     // airspace/fix label size (0-5), see .labelsize
   dbSize:        2,     // aircraft datablock size (0-5), see .dbsize
   showHistory:   true,  // history trails on/off — .history toggles
-  catccLeaderLen: 16,   // leader line length in pixels — .ll sets
+  ldrLength:     2,     // leader line length 0-7 (10 px per step) — .ll sets
   globalLeaderDir: null, // default leader direction — .ld sets (null = OFF)
 }
 

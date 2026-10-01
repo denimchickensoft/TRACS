@@ -52,9 +52,13 @@ describe('ABM parseCommand', () => {
     expect(parseCommand('.airways j').captures).toEqual({ type: 'j' })
   })
 
-  test('.ldr takes a length 0-7 and a direction 1-9', () => {
-    expect(parseCommand('.ldr 3 9').captures).toEqual({ length: '3', dir: '9' })
-    expect(idOf('.ldr 8 9')).toBe(null)
+  test('.ll takes a length 0-7, .ld a direction 1-9', () => {
+    expect(idOf('.ll')).toBe('LDR_LEN_SHOW')
+    expect(parseCommand('.ll 3').captures).toEqual({ length: '3' })
+    expect(idOf('.ll 8')).toBe(null)
+    expect(parseCommand('.ld 9').captures).toEqual({ dir: '9' })
+    expect(idOf('.ld 0')).toBe(null)
+    expect(idOf('.ldr 3 9')).toBe(null)
   })
 
   test('aliases', () => {
