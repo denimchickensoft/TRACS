@@ -663,6 +663,16 @@ export const RUNWAYS_TOGGLE = makeWinToggle('runwaysVisible', false, 'RUNWAYS ON
 
 export const POLYGONS_TOGGLE = makeWinToggle('polygonsVisible', false, 'TAXIWAYS ON', 'TAXIWAYS OFF')
 
+// .airports — .runways + .taxiways together, same any-on pattern as .map.
+export function AIRPORTS_TOGGLE({ context }) {
+  const win = getWin(context.windowId)
+  const next = !((win?.runwaysVisible ?? false) || (win?.polygonsVisible ?? false))
+  const patch = { runwaysVisible: next, polygonsVisible: next }
+  updateWin(context.windowId, patch)
+  saveAbmPrefs(patch)
+  return next ? 'AIRPORTS ON' : 'AIRPORTS OFF'
+}
+
 export const MGRS_TOGGLE = makeWinToggle('mgrsVisible', false, 'MGRS GRID ON', 'MGRS GRID OFF')
 
 export const TOWNS_TOGGLE = makeWinToggle('townsVisible', false, 'TOWNS ON', 'TOWNS OFF')
@@ -991,7 +1001,7 @@ const ACTION_MAP = {
   DCLEAR_BARE, DCLEAR_ALL, DCLEAR_NAME,
   FIXES_TOGGLE, NAVAIDS_TOGGLE, FIX_CLEAR, FIX_PIN, FIND, DEFINE, WHERE, FRAG_FIND, ROUTE_FIND, RCLEAR,
   FOCUS_DEFAULT_RANGE, FOCUS_OPEN_RANGE, FOCUS_OPEN,
-  RUNWAYS_TOGGLE, POLYGONS_TOGGLE, MGRS_TOGGLE, TOWNS_TOGGLE, BASE_TOGGLE, TERRAIN_TOGGLE,
+  RUNWAYS_TOGGLE, POLYGONS_TOGGLE, AIRPORTS_TOGGLE, MGRS_TOGGLE, TOWNS_TOGGLE, BASE_TOGGLE, TERRAIN_TOGGLE,
   MAP_TOGGLE, WATER_TOGGLE, ROADS_TOGGLE,
   COORDS_TOGGLE, BEC_TOGGLE, BEDB_TOGGLE, MALERT_TOGGLE, VOL_SHOW, VOL_SET, DDM, DMS, METERS, FEET,
   PTL, FADED, HISTORY_TOGGLE, HISTORY_LEN_RATE, HISTORY_LEN,

@@ -84,6 +84,7 @@ const COMMANDS = [
   { id: 'RCLEAR',           pattern: /^\.rclear$/ },
   { id: 'RUNWAYS_TOGGLE',   pattern: /^\.runways$/ },
   { id: 'POLYGONS_TOGGLE',  pattern: /^\.(polygons|taxiways)$/ },
+  { id: 'AIRPORTS_TOGGLE',  pattern: /^\.airports$/ },
   { id: 'MGRS_TOGGLE',      pattern: /^\.mgrs$/ },
   { id: 'TOWNS_TOGGLE',     pattern: /^\.towns$/ },
   { id: 'BASE_TOGGLE',      pattern: /^\.base$/ },

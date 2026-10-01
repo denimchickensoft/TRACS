@@ -65,6 +65,7 @@ describe('ABM parseCommand', () => {
     expect(idOf('.compass')).toBe('ROSE_TOGGLE')
     expect(idOf('.cust')).toBe('CUSTOM_TOGGLE')
     expect(idOf('.lbl')).toBe('LABELS_TOGGLE')
+    expect(idOf('.airports')).toBe('AIRPORTS_TOGGLE')
   })
 
   test('acquisition and engagement declarations', () => {
