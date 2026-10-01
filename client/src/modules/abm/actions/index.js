@@ -661,7 +661,7 @@ export const GROUND_TOGGLE = makeWinToggle('groundVisible', true, 'GROUND ON', '
 
 export const RUNWAYS_TOGGLE = makeWinToggle('runwaysVisible', false, 'RUNWAYS ON', 'RUNWAYS OFF')
 
-export const POLYGONS_TOGGLE = makeWinToggle('polygonsVisible', false, 'POLYGONS ON', 'POLYGONS OFF')
+export const POLYGONS_TOGGLE = makeWinToggle('polygonsVisible', false, 'TAXIWAYS ON', 'TAXIWAYS OFF')
 
 export const MGRS_TOGGLE = makeWinToggle('mgrsVisible', false, 'MGRS GRID ON', 'MGRS GRID OFF')
 

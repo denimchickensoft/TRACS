@@ -83,7 +83,7 @@ const COMMANDS = [
   { id: 'ROUTE_FIND',       pattern: /^\.route\s+(.+)$/, captures: ['callsign'] },
   { id: 'RCLEAR',           pattern: /^\.rclear$/ },
   { id: 'RUNWAYS_TOGGLE',   pattern: /^\.runways$/ },
-  { id: 'POLYGONS_TOGGLE',  pattern: /^\.polygons$/ },
+  { id: 'POLYGONS_TOGGLE',  pattern: /^\.(polygons|taxiways)$/ },
   { id: 'MGRS_TOGGLE',      pattern: /^\.mgrs$/ },
   { id: 'TOWNS_TOGGLE',     pattern: /^\.towns$/ },
   { id: 'BASE_TOGGLE',      pattern: /^\.base$/ },

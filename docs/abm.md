@@ -90,7 +90,7 @@ The drawing commands (`.line`, `.rect`, `.circ`, `.poly`, `.sect`, `.race`, `.te
 | `.navaids` | Toggle navaids |
 | `.find <fix>` | Drop a marker at a named fix |
 | `.runways` | Toggle runways |
-| `.polygons` | Toggle airport polygons |
+| `.taxiways` / `.polygons` | Toggle airport surfaces (taxiway and runway pavement) |
 | `.mgrs` | Toggle the theatre-aware UTM/MGRS grid — see below |
 | `.towns` | Toggle towns |
 | `.base` / `.terrain` / `.water` / `.roads` | Toggle individual terrain raster layers; `.map` toggles all four together plus `.geo` |
