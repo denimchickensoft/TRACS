@@ -10,7 +10,7 @@
     "build": "node scripts/build.js"
   },
   "dependencies": {
-    "ws": "^8.18.0"
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
