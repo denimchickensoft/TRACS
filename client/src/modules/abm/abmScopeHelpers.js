@@ -1,3 +1,4 @@
+import { isOnGround } from '../../utils/visibleUnits.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { typeAbbrev, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { DECLARATION, getAbmEffectiveDeclaration } from '../../store/abm.js'
@@ -14,7 +15,6 @@ export function drawCmdTokens(str, raw) {
   return spaceIdx === -1 ? [] : trimmedRaw.slice(spaceIdx + 1).trim().split(/\s+/).filter(Boolean)
 }
 
-const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts, same floor AIC uses
 
 // Same fog-of-war model as AIC (client/src/modules/aic/AicScope.jsx
 // getAicVisibleUnits) — kept as a local copy rather than a shared import
@@ -35,7 +35,7 @@ export function getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
     if (!unit.position) continue
     if (unit.alive === false) continue
     if (unit.category !== 'Aircraft' && unit.category !== 'Helicopter') continue
-    if (unit.agl !== undefined && unit.agl < AGL_FLOOR_M) continue
+    if (isOnGround(unit)) continue
     const c = unit.coalition
     if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
   }

@@ -255,7 +255,7 @@ Tracks outside the active filter range don't draw. Tracks with no altitude data 
 
 **Ctrl+T** (desktop app) or **Alt+T** toggles top-down mode. Ctrl+T doesn't work in a browser tab, which always opens a new tab on it.
 
-The scope normally hides contacts below about 100 ft AGL. With TDM on:
+The scope normally hides aircraft on the ground (parked or taxiing). With TDM on:
 - Those contacts draw too, so you can see aircraft on the ground and taxiing.
 - Airport surfaces (taxiway and runway pavement) draw under every other layer, at MAP B brightness. They cover the airports within the same radius DCB MAP uses for runways: 60 NM for APP, 30 NM for TWR, and the whole theatre for CTR.
 

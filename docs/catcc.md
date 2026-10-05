@@ -76,7 +76,7 @@ Errors appear in the ODS response area:
 | **Ctrl+Click** a contact | Add it to the Status Board |
 | **Mouse wheel** over the scope | Zoom range, 1 NM per step (3 NM with Ctrl), 6–256 NM |
 | Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
-| **Ctrl+T** / **Alt+T** | Toggle top-down mode: also shows contacts below about 100 ft AGL, such as aircraft on deck. Ctrl+T works in the desktop app only |
+| **Ctrl+T** / **Alt+T** | Toggle top-down mode: also shows aircraft on the ground, such as aircraft on deck. Ctrl+T works in the desktop app only |
 | **Ctrl+Alt+0**–**9** | Save current range to bookmark slot 0–9 |
 | **Ctrl+0**–**9** | Load range bookmark 0–9 |
 | `F3` / `F4` / `F5` / `F7` | Insert `IC` / `TC` / `HO ` / `MF ` into the command line. `F2`, `F6`, `F9`, and `F11` insert `TR `, `FD `, `FP `, and `CA `, which CATCC has no commands for |

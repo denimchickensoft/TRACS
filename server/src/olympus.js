@@ -143,11 +143,18 @@ async function pollUnits() {
       }
     }
 
-    // Attach AGL to airborne units only; scrub any stale value from ground/naval
+    // Attach AGL to aircraft/helicopters only; scrub any stale value from ground/naval
     for (const [id, unit] of Object.entries(updatedMap)) {
-      if (!unit.position) continue
       const category = unit.category ?? state.getUnit(id)?.category
       if (category !== 'Aircraft' && category !== 'Helicopter') { delete unit.agl; continue }
+      // Olympus only ever sends a field once it has changed from its default,
+      // even on a full refresh — and `airborne` defaults to false. An aircraft
+      // that has sat on the ground since spawn therefore never sends it at
+      // all. Fill in that default the first time we see the unit, so "never
+      // sent" reads as on the ground; any real value Olympus sends later
+      // (takeoff, an air start) overwrites it in the normal delta merge.
+      if (unit.airborne === undefined && state.getUnit(id)?.airborne === undefined) unit.airborne = false
+      if (!unit.position) continue
       const agl = elevation.getAgl(unit.position.lat, unit.position.lng, unit.position.alt)
       if (agl !== null) unit.agl = Math.max(0, Math.round(agl))
     }

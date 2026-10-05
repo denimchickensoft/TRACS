@@ -17,10 +17,21 @@ const AIRBORNE_CATEGORIES = new Set(['Aircraft', 'Helicopter'])
 
 const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
 
+// An aircraft sitting on the ground (parked, taxiing). Trusts the source's
+// own airborne flag when it sends one: Olympus reports DCS's unit:inAir(),
+// and Tacview derives it from its own DCS-terrain AGL. The server-computed
+// Olympus `agl` is only a fallback — it comes from a coarse real-world
+// elevation grid that can sit 30m+ below DCS's flattened airfield terrain,
+// which let some parked aircraft through.
+export function isOnGround(unit) {
+  if (unit.airborne !== undefined) return !unit.airborne
+  return unit.agl !== undefined && unit.agl < AGL_FLOOR_M
+}
+
 /**
  * @param {Object}  allUnits   { [id]: unitObject }  — raw units from store
  * @param {string}  coalition  controller coalition: 'blue' | 'red' | 'gm' | 'admin'
- * @param {boolean} tdmMode    top-down mode — when true, bypass the AGL floor filter
+ * @param {boolean} tdmMode    top-down mode — when true, bypass the ground filter
  * @returns {Object}           filtered units map (same shape)
  */
 export function getVisibleUnits(allUnits, coalition, tdmMode = false) {
@@ -59,12 +70,10 @@ export function getVisibleUnits(allUnits, coalition, tdmMode = false) {
     }
   }
 
-  // AGL filter: suppress contacts below 100ft AGL when not in top-down mode.
-  // Units without an agl field (elevation DB unavailable) are shown by default.
+  // Ground filter: suppress aircraft on the ground when not in top-down mode.
   if (!tdmMode) {
     for (const id of Object.keys(visible)) {
-      const agl = visible[id].agl
-      if (agl !== undefined && agl < AGL_FLOOR_M) delete visible[id]
+      if (isOnGround(visible[id])) delete visible[id]
     }
   }
 

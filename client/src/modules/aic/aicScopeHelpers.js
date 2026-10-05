@@ -1,4 +1,5 @@
 // Pure AIC picture/readout helpers (no React, no store access).
+import { isOnGround } from '../../utils/visibleUnits.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
 
 export const CARDINAL_ABBR = {
@@ -25,7 +26,6 @@ export function picFillIns(g) {
   return parts.join('  ')
 }
 
-const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
 
 export function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
   const result      = {}
@@ -43,7 +43,7 @@ export function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
     if (!unit.position) continue
     if (unit.alive === false) continue
     if (unit.category !== 'Aircraft' && unit.category !== 'Helicopter') continue
-    if (unit.agl !== undefined && unit.agl < AGL_FLOOR_M) continue
+    if (isOnGround(unit)) continue
     const c = unit.coalition
     if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
   }
