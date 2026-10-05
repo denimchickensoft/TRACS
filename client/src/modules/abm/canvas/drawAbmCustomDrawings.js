@@ -48,7 +48,7 @@
  * off).
  */
 
-import { latLngToCanvas } from '../../../utils/projection.js'
+import { latLngToCanvas, screenBoundsOfBbox } from '../../../utils/projection.js'
 
 const MARKER_RADIUS = 3
 
@@ -395,8 +395,6 @@ function longestNearStraightRun(ring, view, toleranceDeg) {
 }
 
 function bboxInView(bbox, view) {
-  const [minLng, minLat, maxLng, maxLat] = bbox
-  const tl = latLngToCanvas(maxLat, minLng, view)
-  const br = latLngToCanvas(minLat, maxLng, view)
-  return !(br.x < -50 || tl.x > view.width + 50 || tl.y > view.height + 50 || br.y < -50)
+  const { x0, x1, y0, y1 } = screenBoundsOfBbox(bbox, view)
+  return !(x1 < -50 || x0 > view.width + 50 || y1 < -50 || y0 > view.height + 50)
 }
