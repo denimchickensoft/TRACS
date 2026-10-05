@@ -65,7 +65,8 @@ import {
   getAbmVisibleUnits, getAbmVisibleGroundUnits, buildReadoutFields, buildFriendlyAirFields, distToSegment, airbaseCenterFromStrips, buildAirportFields, flightRouteGroupLabel, buildAirportStrips, groupReadoutHits,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
-import { dispatch, openAbmFocusPanel, RCLEAR } from './actions/index.js'
+import { dispatch, openAbmFocusPanel, RCLEAR, TDM_TOGGLE } from './actions/index.js'
+import { isOnGround } from '../../utils/visibleUnits.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
@@ -142,6 +143,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   const theatre   = mission?.mission?.theatre
   const missionDate = mission?.mission?.dateAndTime?.date ?? null
   const myCoalitionNum = COALITION_NUM[coalition] ?? 2
+  // GM/Admin aren't tied to a side: they see every unit on both sides (see
+  // getAbmVisibleUnits), and can open either side's aircraft in FRAG.
+  const isGmOrAdmin = coalition === 'gm' || coalition === 'admin'
 
   // ── Mission clock — click to toggle Zulu/Local, .time to toggle visibility ─────
   const { timeStr, localTimeStr } = useMissionClock()
@@ -268,9 +272,12 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // contact is RWR-detected, its type stays revealed in the air-unit readout
   // below even if RWR drops out again.
   const rwrEverDetectedRef = useRef(new Set())
+  // .tdm / Ctrl+T / Alt+T — top-down mode brings back your own side's
+  // aircraft on the ground, which are otherwise hidden.
+  const tdmMode = windowSettings?.tdmMode ?? false
   const visibleUnits = useMemo(
-    () => getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetectedRef.current),
-    [units, myCoalitionNum]
+    () => getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetectedRef.current, { tdm: tdmMode, allSides: isGmOrAdmin }),
+    [units, myCoalitionNum, tdmMode, isGmOrAdmin]
   )
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
@@ -336,7 +343,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     for (const [id, unit] of Object.entries(visibleUnits)) {
       if (!unit.position) continue
       const decl = getDecl(id, unit)
-      if (decl === DECLARATION.FRIENDLY) friendlies.push([id, unit])
+      // Parked/taxiing friendlies shown by .tdm don't trip threat rings —
+      // a hostile near an airfield would otherwise ring every jet on the ramp.
+      if (decl === DECLARATION.FRIENDLY) { if (!isOnGround(unit)) friendlies.push([id, unit]) }
       else if (decl === DECLARATION.HOSTILE || decl === DECLARATION.BOGEY) hostiles.push(unit)
     }
     const breached = new Set()
@@ -354,8 +363,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // the Olympus unit.name type identifier. No moving/stationary distinction
   // — every ground/naval unit renders the same way.
   const visibleGroundUnits = useMemo(
-    () => getAbmVisibleGroundUnits(units, myCoalitionNum),
-    [units, myCoalitionNum]
+    () => getAbmVisibleGroundUnits(units, myCoalitionNum, { allSides: isGmOrAdmin }),
+    [units, myCoalitionNum, isGmOrAdmin]
   )
 
   // Middle-click "pin" — a highlighted ground/naval unit stays
@@ -468,6 +477,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     const prev = prevVisibleRef.current
     const curr = visibleUnits
     for (const [id, unit] of Object.entries(prev)) {
+      // An aircraft that dropped out because it's on the ground (it landed,
+      // or .tdm was turned off) isn't a lost contact — it vanishes instead
+      // of coasting on as a dead-reckoned ghost.
+      const live = units[id]
+      if (live && isOnGround(live)) continue
       if (!curr[id] && !fadedRef.current[id]) {
         fadedRef.current[id] = { unit: { ...unit }, disappearedAt: now }
       }
@@ -476,7 +490,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       if (curr[id]) delete fadedRef.current[id]
     }
     prevVisibleRef.current = curr
-  }, [visibleUnits])
+  }, [visibleUnits, units])
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -888,6 +902,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       elevUnit: abmPrefs.elevUnit, becVisible: abmPrefs.becVisible,
       acqHidden: new Set(abmPrefs.acqHidden ?? []), engHidden: new Set(abmPrefs.engHidden ?? []),
       groundVisible: abmPrefs.groundVisible,
+      tdmMode: abmPrefs.tdmMode,
       autoThreat: abmPrefs.autoThreat,
       geoVisible: abmPrefs.geoVisible, reliefVisible: abmPrefs.reliefVisible,
       holdingsVisible: abmPrefs.holdingsVisible, moraVisible: abmPrefs.moraVisible,
@@ -1485,6 +1500,15 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       return
     }
 
+    // Top-down mode — same keys as STARS/CATCC. Ctrl+T only reaches the page
+    // in the desktop app (a browser tab opens a new tab on it), so Alt+T is
+    // the binding that works anywhere.
+    if (e.code === 'KeyT' && !e.shiftKey && e.ctrlKey !== e.altKey) {
+      e.preventDefault()
+      setCmdFeedback(TDM_TOGGLE({ context: { windowId } }))
+      return
+    }
+
     // View bookmarks — Ctrl+Alt+0-9 saves the current view, Ctrl+0-9 recalls
     // it. e.code (not e.key) so this is layout-independent, matching STARS'
     // starsKeys.js. Shift is excluded, leaving Ctrl+Shift+Digit free.
@@ -1733,7 +1757,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     // GM/Admin aren't tied to a side, so they can open either side's
     // aircraft; the flight is filed under the aircraft's own coalition.
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
-      const isGmOrAdmin = coalition === 'gm' || coalition === 'admin'
       const unitSide = target?.unit?.coalition === 2 ? 'blue' : target?.unit?.coalition === 1 ? 'red' : null
       if (target?.unit && (isGmOrAdmin ? unitSide != null : target.unit.coalition === myCoalitionNum)) {
         const liveCallsign = resolveCallsign(target.unit)
@@ -1911,7 +1934,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
         }
       }
     }
-  }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, getDecl,
+  }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, isGmOrAdmin, getDecl,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
       pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId])

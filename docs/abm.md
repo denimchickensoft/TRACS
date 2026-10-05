@@ -182,6 +182,12 @@ BRAA pairs are drawn on the scope as a dashed line with an inline bearing/range 
 
 `.gc` (or `.groundcontacts`) shows or hides every ground/naval contact in this window, along with its acquisition/engagement rings. Hidden contacts also can't be clicked, focused, paired or found with `.where`, and don't trip threat rings. The setting is saved.
 
+### Aircraft on the ground
+
+ABM hides aircraft on the ground (parked or taxiing). `.tdm` (or **Ctrl+T** in the desktop app, **Alt+T** anywhere) toggles top-down mode for this window, which shows your own side's aircraft on the ground. They behave like any other friendly contact, except that they don't trip auto threat rings. Another side's aircraft on the ground never show, detected or not. An aircraft that lands, or is hidden again when you turn top-down mode off, disappears right away instead of fading out. The setting is saved.
+
+GM/Admin sessions see every aircraft and ground/naval unit on both sides, without fog of war, and top-down mode shows both sides' aircraft on the ground.
+
 ### Scope drawing
 
 Each command runs on Enter. Arguments you type are used directly; anything missing is placed by clicking on the scope. A point argument can be a fix/navaid/airport name or a coordinate (e.g. `N20W040`).
@@ -392,6 +398,7 @@ Fields:
 | `Ctrl+V` | Paste into the command line |
 | `Ctrl+Alt+0`–`9` | Save the current view to bookmark slot 0–9 |
 | `Ctrl+0`–`9` | Load view bookmark 0–9 |
+| `Ctrl+T` (desktop app) / `Alt+T` | Toggle top-down mode (same as `.tdm`) |
 | `Ctrl+Left` / `Ctrl+Right` | Reopen the last-used side panel / close the open one (app-wide, see Getting Started) |
 | `Ctrl+Up` / `Ctrl+Down` | Switch between the ATO, FRAG and DRAW panels (app-wide, see Getting Started) |
 | `Ctrl+M` | Open Messages (app-wide) |

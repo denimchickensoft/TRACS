@@ -35,6 +35,12 @@ describe('ABM parseCommand', () => {
     expect(parseCommand('.focus 24.43N54.66E 30')).toMatchObject({ command: { id: 'FOCUS_OPEN_RANGE' }, captures: { callsign: '24.43n54.66e', nm: '30' } })
   })
 
+  test('.tdm toggles top-down mode', () => {
+    expect(idOf('.tdm')).toBe('TDM_TOGGLE')
+    expect(idOf('.TDM')).toBe('TDM_TOGGLE')
+    expect(idOf('.tdm on')).toBe(null)
+  })
+
   test('history length and rate', () => {
     expect(idOf('.history')).toBe('HISTORY_TOGGLE')
     expect(idOf('.hist')).toBe('HISTORY_TOGGLE')

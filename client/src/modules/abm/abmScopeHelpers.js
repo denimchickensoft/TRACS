@@ -19,7 +19,13 @@ export function drawCmdTokens(str, raw) {
 // Same fog-of-war model as AIC (client/src/modules/aic/AicScope.jsx
 // getAicVisibleUnits) — kept as a local copy rather than a shared import
 // since it's a small, stable filter and AIC doesn't export it.
-export function getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
+// GM/Admin (`allSides`) aren't tied to a side and see every aircraft, the
+// same as STARS's getVisibleUnits — no fog of war. Aircraft on the ground
+// are hidden, except in top-down mode (`tdm`), which brings back the
+// viewer's own side's (both sides' for GM/Admin). Detection is untouched:
+// for a side's controller, another side's aircraft on the ground never show,
+// detected or not.
+export function getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetected, { tdm = false, allSides = false } = {}) {
   const result      = {}
   const detectedIds = new Set()
 
@@ -35,9 +41,12 @@ export function getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
     if (!unit.position) continue
     if (unit.alive === false) continue
     if (unit.category !== 'Aircraft' && unit.category !== 'Helicopter') continue
-    if (isOnGround(unit)) continue
     const c = unit.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
+    if (isOnGround(unit)) {
+      const ownSide = allSides ? (c === 1 || c === 2) : c === myCoalitionNum
+      if (!(tdm && ownSide)) continue
+    }
+    if (allSides || c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
   }
 
   return result
@@ -51,7 +60,7 @@ export function getAbmVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
 // spotted visually or optically is just as "detected" as one painted by radar.
 const GROUND_DETECTION_MASK = 1 | 2 | 4 | 8 | 16 | 32
 
-export function getAbmVisibleGroundUnits(units, myCoalitionNum) {
+export function getAbmVisibleGroundUnits(units, myCoalitionNum, { allSides = false } = {}) {
   const result      = {}
   const detectedIds = new Set()
 
@@ -67,7 +76,7 @@ export function getAbmVisibleGroundUnits(units, myCoalitionNum) {
     if (unit.alive === false) continue
     if (unit.category !== 'GroundUnit' && unit.category !== 'NavyUnit') continue
     const c = unit.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
+    if (allSides || c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
   }
 
   return result

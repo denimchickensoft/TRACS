@@ -27,7 +27,9 @@ export function picFillIns(g) {
 }
 
 
-export function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
+// GM/Admin (`allSides`) aren't tied to a side and see every aircraft, the
+// same as STARS's getVisibleUnits and ABM — no fog of war.
+export function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected, { allSides = false } = {}) {
   const result      = {}
   const detectedIds = new Set()
 
@@ -45,7 +47,7 @@ export function getAicVisibleUnits(units, myCoalitionNum, rwrEverDetected) {
     if (unit.category !== 'Aircraft' && unit.category !== 'Helicopter') continue
     if (isOnGround(unit)) continue
     const c = unit.coalition
-    if (c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
+    if (allSides || c === myCoalitionNum || c === 0 || detectedIds.has(id)) result[id] = unit
   }
 
   return result

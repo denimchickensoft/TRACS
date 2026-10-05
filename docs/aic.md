@@ -8,6 +8,8 @@ Tactical display for airborne intercept control — AWACS/GCI style: bullseye-ce
 
 Sign-in requires a Callsign and Frequency — see [Getting Started](getting-started.md).
 
+The scope shows your own side's and neutral airborne aircraft, plus another side's once a friendly radar or datalink detects them. GM/Admin sessions see every airborne aircraft on both sides, without fog of war. Aircraft on the ground are hidden.
+
 ## SRS transponder data (Mode 4 IFF)
 
 When SRS transponder data reaches TRACS through a relay, AIC uses each contact's Mode 4 reply:

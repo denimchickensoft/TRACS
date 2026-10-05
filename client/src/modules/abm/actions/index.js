@@ -681,6 +681,11 @@ export function FOCUS_OPEN({ captures, context }) {
 // contacts also can't be clicked, focused, BRAA'd or found with .where.
 export const GROUND_TOGGLE = makeWinToggle('groundVisible', true, 'GROUND ON', 'GROUND OFF')
 
+// .tdm (also Ctrl+T / Alt+T in AbmScope) — top-down mode: shows your own
+// side's aircraft on the ground, which ABM otherwise hides. Display only;
+// another side's aircraft on the ground stay hidden either way.
+export const TDM_TOGGLE = makeWinToggle('tdmMode', false, 'TDM ON', 'TDM OFF')
+
 export const RUNWAYS_TOGGLE = makeWinToggle('runwaysVisible', false, 'RUNWAYS ON', 'RUNWAYS OFF')
 
 export const POLYGONS_TOGGLE = makeWinToggle('polygonsVisible', false, 'TAXIWAYS ON', 'TAXIWAYS OFF')
@@ -1030,7 +1035,7 @@ const ACTION_MAP = {
   DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR_LEN_SHOW, LDR_LEN, LDR_DIR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,
   DECLARATION_RESET, DECLARATION_SET_BULK, AUTO_DECLARE, AUTO_DECLARE_IFF, AUTOTHREAT, ROE, ROE_TOGGLE,
-  ACQ_DECL, ACQ_TOGGLE, ENG_DECL, ENG_TOGGLE, GROUND_TOGGLE,
+  ACQ_DECL, ACQ_TOGGLE, ENG_DECL, ENG_TOGGLE, GROUND_TOGGLE, TDM_TOGGLE,
 }
 
 /**

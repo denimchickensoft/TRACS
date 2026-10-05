@@ -80,6 +80,7 @@ const DEFAULTS = {
   acqHidden:          [],
   engHidden:          [],
   groundVisible:      true,
+  tdmMode:            false,
   autoThreat:         false,
 
   // ── Per-window navdata-layer visibility — geo/relief/

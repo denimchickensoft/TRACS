@@ -106,6 +106,9 @@ export default function AicScope() {
 
   // ── Derived session values ────────────────────────────────────────────────────
   const myCoalitionNum = COALITION_NUM[coalition] ?? 2
+  // GM/Admin aren't tied to a side and see every aircraft on both sides (see
+  // getAicVisibleUnits).
+  const isGmOrAdmin = coalition === 'gm' || coalition === 'admin'
   const theatre        = mission?.mission?.theatre
   const missionDate    = mission?.mission?.dateAndTime?.date ?? null
 
@@ -159,8 +162,8 @@ export default function AicScope() {
   // contact is RWR-detected, its type stays revealed even if RWR drops out.
   const rwrEverDetectedRef = useRef(new Set())
   const visibleUnits = useMemo(
-    () => getAicVisibleUnits(units, myCoalitionNum, rwrEverDetectedRef.current),
-    [units, myCoalitionNum]
+    () => getAicVisibleUnits(units, myCoalitionNum, rwrEverDetectedRef.current, { allSides: isGmOrAdmin }),
+    [units, myCoalitionNum, isGmOrAdmin]
   )
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
