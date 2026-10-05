@@ -1003,8 +1003,8 @@ export function App() {
         {/* ABM focus panels — mounted unconditionally (not gated on hasAbm) so a
             focus panel keeps tracking its contact even after switching modules,
             same as ControllerList/Messages above. */}
-        {abmFocusOrder.map((callsign, i) => (
-          <AbmFocusPanel key={callsign} callsign={callsign} zIndex={850 + i} cascadeIndex={i} />
+        {abmFocusOrder.map((focusKey, i) => (
+          <AbmFocusPanel key={focusKey} focusKey={focusKey} zIndex={850 + i} cascadeIndex={i} />
         ))}
         {!clDocked && (
           <div

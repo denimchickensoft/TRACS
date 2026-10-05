@@ -140,9 +140,9 @@ function parseLatLonToken(token) {
 // Resolves ANY point token — a raw N20W040/20N040W coordinate first (a
 // precise format match, so no risk of misreading a real fix id), falling
 // back to a fix/navaid/airport lookup. The one shared point-resolver every
-// draw command's parser uses, so a coordinate token works anywhere an
-// identifier already did.
-function resolvePoint(token, lookupFix) {
+// draw command's parser (and `.focus`) uses, so a coordinate token works
+// anywhere an identifier already did.
+export function resolvePoint(token, lookupFix) {
   return parseLatLonToken(token) ?? toLatLng(lookupFix(token))
 }
 

@@ -10,7 +10,7 @@ import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
-import { resolveCallsign, unitFocusKey, findFocusedUnit } from '../../utils/callsign.js'
+import { resolveCallsign, unitFocusKey, findFocusedUnit, airfieldFocusKey, pointFocusKey } from '../../utils/callsign.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }  from '../../store/navdata.js'
 import { useRunwaysStore }  from '../../store/runways.js'
@@ -109,7 +109,7 @@ const F_KEY_DECL = {
 // AIC's. No STARS/CATCC-style track ownership/initiation — declare-and-
 // display only. Magnetic-north-up projection (real WMM declination) and a
 // compass rose (CATCC's smaller fontScale, not STARS's).
-export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign = null, initialRangeNm = null } = {}) {
+export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null, initialRangeNm = null, initialCenter = null } = {}) {
   const canvasAreaRef  = useRef(null)
   const mapRef         = useRef(null)
   const layersRef      = useRef(null)
@@ -846,8 +846,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     if (windowSettings) return
     let initCenterLat = bullseyeLat
     let initCenterLng = bullseyeLng
-    if (followCallsign) {
-      const followed = findFocusedUnit(followCallsign, useUnitsStore.getState().units)
+    if (initialCenter) {
+      initCenterLat = initialCenter.lat
+      initCenterLng = initialCenter.lng
+    } else if (focusKey) {
+      const followed = findFocusedUnit(focusKey, useUnitsStore.getState().units)
       if (followed?.position) {
         initCenterLat = followed.position.lat
         initCenterLng = followed.position.lng
@@ -898,19 +901,21 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   // via the normal pan handler below; this effect just overwrites it again
   // on the next position tick, giving the "pan snaps back" behavior). Skips
   // a tick rather than clearing the center if the contact briefly drops out
-  // or the prefix match goes ambiguous, so the view never jumps to 0,0.
+  // or the prefix match goes ambiguous, so the view never jumps to 0,0. A
+  // location focus key never resolves to a unit, so a location panel is
+  // never re-centered here and pans freely from where it opened.
   const unitsLastUpdate = useUnitsStore(s => s.lastUpdateTime)
   useEffect(() => {
-    if (!followCallsign) return
-    const followed = findFocusedUnit(followCallsign, useUnitsStore.getState().units)
+    if (!focusKey) return
+    const followed = findFocusedUnit(focusKey, useUnitsStore.getState().units)
     if (!followed?.position) return
     displayStore.updateWindow(windowId, { centerLat: followed.position.lat, centerLng: followed.position.lng })
-  }, [followCallsign, unitsLastUpdate]) // eslint-disable-line
+  }, [focusKey, unitsLastUpdate]) // eslint-disable-line
 
   const centerOverridden = windowSettings?.centerOverridden ?? false
-  const centerLat = followCallsign ? (windowSettings?.centerLat ?? bullseyeLat)
+  const centerLat = focusKey ? (windowSettings?.centerLat ?? bullseyeLat)
     : centerOverridden ? (windowSettings?.centerLat ?? bullseyeLat) : bullseyeLat
-  const centerLng = followCallsign ? (windowSettings?.centerLng ?? bullseyeLng)
+  const centerLng = focusKey ? (windowSettings?.centerLng ?? bullseyeLng)
     : centerOverridden ? (windowSettings?.centerLng ?? bullseyeLng) : bullseyeLng
 
   const centerLatRef = useRef(centerLat)
@@ -1913,7 +1918,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
 
   // Double-click a contact → open/reuse its in-page focus panel (same
   // mechanism as the .focus command, see AbmFocusPanel.jsx) at the persisted
-  // default range. Guarded against
+  // default range. Off any contact, a plain double-click focuses the airfield
+  // under the cursor, or failing that the map point itself. Guarded against
   // every pending click-completion state handleMouseUp itself checks, so
   // the double-click's two constituent mouseup events don't also fire a
   // classify/BRAA/leader-dir/etc. side effect while a command is armed.
@@ -1924,13 +1930,34 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
     const rect = interactiveRef.current?.getBoundingClientRect()
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const rangeNm = loadAbmPrefs().focusDefaultRangeNm ?? 20
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
-    if (!target) return
-    // Another side's aircraft is followed by unit ID, so its panel never
-    // shows the callsign.
-    const focusKey = isOwnSide(target.unit, coalition) ? resolveCallsign(target.unit) : unitFocusKey(target.unitId)
-    openAbmFocusPanel(focusKey, loadAbmPrefs().focusDefaultRangeNm ?? 20)
-  }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer, coalition])
+    if (target) {
+      // Another side's aircraft is followed by unit ID, so its panel never
+      // shows the callsign.
+      const key = isOwnSide(target.unit, coalition) ? resolveCallsign(target.unit) : unitFocusKey(target.unitId)
+      openAbmFocusPanel(key, rangeNm)
+      return
+    }
+    // Modified double-clicks belong to the Ctrl/Shift/Alt click commands.
+    if (e.ctrlKey || e.shiftKey || e.altKey) return
+    // Same runway-strip hit test as the airport readout, and gated the same
+    // way: only when runways or polygons are actually drawn. Keyed by ICAO
+    // where there is one, so it shares a panel with `.focus <ICAO>`.
+    const airport = (runwaysVisible || polygonsVisible) && airportStripsRef.current.find((ap) => ap.strips.some((strip) => {
+      const p1 = latLngToCanvas(strip.rwyEnd1.lat, strip.rwyEnd1.lng, viewRef.current)
+      const p2 = latLngToCanvas(strip.rwyEnd2.lat, strip.rwyEnd2.lng, viewRef.current)
+      return distToSegment(pos.x, pos.y, p1.x, p1.y, p2.x, p2.y) <= READOUT_RADIUS_PX
+    }))
+    const airportCenter = airport ? airbaseCenterFromStrips(airportStripsRef.current, airport.airbase) : null
+    if (airportCenter) {
+      openAbmFocusPanel(airfieldFocusKey(airport.icao ?? airport.airbase), rangeNm, airportCenter)
+      return
+    }
+    const ll = canvasToLatLng(pos.x, pos.y, viewRef.current)
+    openAbmFocusPanel(pointFocusKey(ll.lat, ll.lng), rangeNm, { lat: ll.lat, lng: ll.lng })
+  }, [pendingClearClick, pendingClearAllConfirm, pendingDraw, pendingDeclaration, pendingBraaFighter, cmdBuffer, coalition,
+      runwaysVisible, polygonsVisible])
 
   if (!windowSettings) return null
 

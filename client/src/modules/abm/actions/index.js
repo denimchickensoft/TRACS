@@ -15,7 +15,7 @@
  *                                  else works fine from lowercased captures)
  *                windowId        — which displayStore.windows[] entry this
  *                                  scope instance owns ('abm-main', or
- *                                  'abm-focus-<callsign>' for a focus panel/
+ *                                  'abm-focus-<focus key>' for a focus panel/
  *                                  popup — see AbmFocusPanel.jsx). getWin()/updateWin()
  *                                  take it explicitly rather than closing over
  *                                  a module constant, so a command typed in a
@@ -63,16 +63,17 @@ import { AUTO_DECLARE_MODE } from '../../../utils/createDeclarationStore.js'
 import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { loadAbmPrefs, saveAbmPrefs } from '../../../store/abmPrefs.js'
 import { useNavdataStore } from '../../../store/navdata.js'
+import { useRunwaysStore } from '../../../store/runways.js'
 import { useAbmAirspaceStore } from '../../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../../store/abmDrawings.js'
 import { useAbmMissionStore } from '../../../store/abmMission.js'
 import { useBrevityStore } from '../../../store/brevity.js'
 import { useSessionStore } from '../../../store/session.js'
-import { matchLiveByPrefix, sanitizeFocusToken } from '../../../utils/callsign.js'
+import { matchLiveByPrefix, sanitizeFocusToken, airfieldFocusKey, pointFocusKey } from '../../../utils/callsign.js'
 import { DIR_TO_ANGLE } from '../../../utils/scopeConstants.js'
 import { drawCmdTokens } from '../abmScopeHelpers.js'
 import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
-import { parseDrawCommand } from '../draw/drawCommands.js'
+import { parseDrawCommand, resolvePoint } from '../draw/drawCommands.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 
 const WINDOW_ID = 'abm-main'
@@ -590,36 +591,43 @@ export function RCLEAR() {
 
 // ── Focus-panel window management ────────────────────────────────────────────
 
-// `.focus <callsign> [range]` — opens (or brings to front / live-updates the
-// range of) an in-page floating focus panel (AbmFocusPanel.jsx) permanently
-// centered on that live contact. Exported so AbmScope.jsx's
-// double-click-a-contact handler can reuse the exact same logic. If a panel
-// for this callsign is already open, this just pushes the new range straight
+// `.focus <callsign|ICAO|coordinate|fix> [range]` — opens (or brings to front / live-updates
+// the range of) an in-page floating focus panel (AbmFocusPanel.jsx). A
+// callsign/unit key keeps the panel centered on that live contact; a
+// location key ('@...', see utils/callsign.js) opens it centered on `center`
+// and then pans freely. Exported so AbmScope.jsx's double-click handler can
+// reuse the exact same logic. If a panel for this key is already open, this
+// just pushes the new range (and, for a location, re-centers it) straight
 // into its displayStore window and brings it to front — no need to reopen.
-export function openAbmFocusPanel(callsign, rangeNm) {
-  const windowId = `abm-focus-${sanitizeFocusToken(callsign)}`
+export function openAbmFocusPanel(key, rangeNm, center = null) {
+  const windowId = `abm-focus-${sanitizeFocusToken(key)}`
   const panels = useAbmFocusPanelsStore.getState()
-  if (panels.order.includes(callsign)) {
-    useDisplayStore.getState().updateWindow(windowId, { rangeNm })
-    panels.bringToFront(callsign)
+  if (panels.order.includes(key)) {
+    useDisplayStore.getState().updateWindow(windowId, center
+      ? { rangeNm, centerLat: center.lat, centerLng: center.lng }
+      : { rangeNm })
+    panels.bringToFront(key)
     return
   }
-  panels.openPanel(callsign, rangeNm)
+  panels.openPanel(key, rangeNm, center)
 }
 
 // The focus panel's own "pop out" button hands off to a real OS popup
 // (AbmFocusWindow.jsx) for anyone who wants it on a separate monitor / truly
 // always-on-top of the OS — window.open()'s native same-name behavior
 // (navigates/refocuses an already-open window sharing that name, rather than
-// opening a duplicate) means popping the same callsign out twice reuses the
+// opening a duplicate) means popping the same key out twice reuses the
 // same popup — see sanitizeFocusToken's header (utils/callsign.js) for why
 // the popup name and the focus scope's own windowId are derived identically.
-export function popOutAbmFocusPanel(callsign, rangeNm) {
-  const token = sanitizeFocusToken(callsign)
+// A location's center rides along in the URL, so the popup doesn't depend on
+// its own navdata having loaded before it can place itself.
+export function popOutAbmFocusPanel(key, rangeNm, center = null) {
+  const token = sanitizeFocusToken(key)
   // facilityId/positionName scope the popup's cross-window sync to this
   // position, the same as every other pop-out (see App.jsx's makeUndockHandler).
   const { facilityId, positionName } = useSessionStore.getState()
-  const params = new URLSearchParams({ window: 'abm-focus', callsign, range: String(rangeNm), facilityId, positionName })
+  const params = new URLSearchParams({ window: 'abm-focus', key, range: String(rangeNm), facilityId, positionName })
+  if (center) { params.set('lat', String(center.lat)); params.set('lng', String(center.lng)) }
   const popup = window.open(`/?${params}`, `abm-focus-${token}`, 'width=520,height=580,resizable=yes')
   popup?.focus()
 }
@@ -634,22 +642,36 @@ export function FOCUS_DEFAULT_RANGE({ captures }) {
   return `FOCUS RANGE ${nm}NM`
 }
 
+// Live callsign first, so a contact can never be shadowed by an airport code
+// or fix name. Then an airfield ICAO (the same panel a runway double-click
+// opens), then any other point the draw commands accept: a coordinate token
+// (N24.43E54.66 / 24.43N54.66E) or a fix/navaid id.
+function resolveFocusTarget(token, context) {
+  const matches = matchLiveByPrefix(token, context.allVisibleUnits)
+  if (matches.length > 1) return { error: 'AMBIGUOUS' }
+  if (matches.length === 1) return { key: matches[0].callsign, label: matches[0].callsign, center: null }
+  const id = token.toUpperCase()
+  const ap = useRunwaysStore.getState().airportPositions[id]
+  if (ap) return { key: airfieldFocusKey(id), label: id, center: { lat: ap.lat, lng: ap.lon } }
+  const pt = resolvePoint(token, useNavdataStore.getState().lookupFix)
+  if (pt) return { key: pointFocusKey(pt.lat, pt.lng), label: id, center: pt }
+  return { error: 'NOT FOUND' }
+}
+
 export function FOCUS_OPEN_RANGE({ captures, context }) {
-  const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
-  if (matches.length === 0) return 'NOT FOUND'
-  if (matches.length > 1) return 'AMBIGUOUS'
+  const t = resolveFocusTarget(captures.callsign, context)
+  if (t.error) return t.error
   const nm = parseFloat(captures.nm)
-  openAbmFocusPanel(matches[0].callsign, nm)
-  return `FOCUS ${matches[0].callsign} ${nm}NM`
+  openAbmFocusPanel(t.key, nm, t.center)
+  return `FOCUS ${t.label} ${nm}NM`
 }
 
 export function FOCUS_OPEN({ captures, context }) {
-  const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
-  if (matches.length === 0) return 'NOT FOUND'
-  if (matches.length > 1) return 'AMBIGUOUS'
+  const t = resolveFocusTarget(captures.callsign, context)
+  if (t.error) return t.error
   const nm = loadAbmPrefs().focusDefaultRangeNm ?? 20
-  openAbmFocusPanel(matches[0].callsign, nm)
-  return `FOCUS ${matches[0].callsign} ${nm}NM`
+  openAbmFocusPanel(t.key, nm, t.center)
+  return `FOCUS ${t.label} ${nm}NM`
 }
 
 // ── Runways / polygons / grid / towns / raster layers ───────────────────────

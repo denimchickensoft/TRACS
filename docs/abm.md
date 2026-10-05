@@ -218,21 +218,27 @@ All three accept a partial/prefix match and report `AMBIGUOUS` or `NOT FOUND` wh
 
 ### Focus windows
 
-A floating mini-scope locked onto one contact.
+A floating mini-scope locked onto one contact, or opened on an airfield or any point on the map.
 
 | Command | Effect |
 |---|---|
 | `.focus <callsign>` | Open (or bring to front) a focus window on that contact, at your saved default range |
-| `.focus <callsign> <range>` | Same, with an explicit range in NM |
+| `.focus <ICAO>` | Open a focus window on that airfield (used when no live callsign matches) |
+| `.focus <coordinate or fix>` | Open a focus window on a point: a coordinate written as one word (`N24.43E54.66` or `24.43N54.66E`), or a fix/navaid id |
+| `.focus <callsign, ICAO, coordinate or fix> <range>` | Same, with an explicit range in NM |
 | `.focus <range>` | Set the default range for future focus windows, without opening one |
 | Double-click a contact on the main scope | Same as `.focus <callsign>` |
+| Double-click a runway (while runways or airport polygons are shown) | Open a focus window on that airfield |
+| Double-click anywhere else | Open a focus window on that point |
 
-The callsign forms accept the same partial/prefix matching as `.where`/`.frag`/`.route`.
+The callsign forms accept the same partial/prefix matching as `.where`/`.frag`/`.route`. A live callsign always wins; then an airfield ICAO, then a coordinate or fix/navaid.
+
+A contact focus window stays centered on its contact, and snaps back if you pan it. An airfield or point focus window opens centered on its location and then pans freely. Double-clicking the same airfield or spot again re-centers the window that's already open.
 
 A focus window is a full independent scope:
 - Drag it to move it, and drag an edge or corner to resize it.
 - The mouse wheel over its title bar adjusts its opacity.
-- **⬡** pops it out into a separate OS window and closes the in-page panel. Popping out the same callsign twice refocuses the existing popup.
+- **⬡** pops it out into a separate OS window and closes the in-page panel. Popping out the same contact or location twice refocuses the existing popup.
 - **×** closes it.
 
 Display toggles (`.coords`, `.db`, `.geo`, etc.) apply to the window you type them in. Each toggle also becomes the starting setting for windows you open afterward. Drawings, `.custom`, `.malert`, and `.vol` are shared rather than per-window (see above).
@@ -251,7 +257,7 @@ Display toggles (`.coords`, `.db`, `.geo`, etc.) apply to the window you type th
 | **Right-click + drag** | Pan the scope |
 | **Left-click + drag** | Draw a range/bearing line |
 | **Digit 1–9, then click** | Set that contact's leader-line direction (`5` returns it to the global direction) |
-| **Double-click** a contact | Open a Focus window on it |
+| **Double-click** a contact, runway or point | Open a Focus window on it |
 | **Click** a blinking missile symbol | Cancel its launch alert |
 | **Click** a contact with a blinking datablock | Stop the blink (FRAG roster, `.where` or IDENT) |
 | **Mouse wheel** | Zoom, 1–600 NM: 1 NM per step inside 10 NM, 10 NM per step beyond (25 NM with Ctrl) |

@@ -123,15 +123,15 @@ export function findFlightPlanAid(unit, plans) {
  * sorted by callsign for stable display order.
  */
 /**
- * Normalizes a callsign into a token safe for use as a popup window `name`
- * (and, identically, as an ABM focus-window's displayStore windowId) — see
- * modules/abm/AbmFocusWindow.jsx / modules/abm/actions/index.js's
- * popOutAbmFocusPanel. Both derive the token this same way so popping the
- * same callsign out twice reuses window.open()'s same-name-reuses-the-window
- * behavior instead of spawning a duplicate popup.
+ * Normalizes a focus key (callsign, unit or location) into a token safe for
+ * use as a popup window `name` (and, identically, as an ABM focus-window's
+ * displayStore windowId) — see modules/abm/AbmFocusWindow.jsx /
+ * modules/abm/actions/index.js's popOutAbmFocusPanel. Both derive the token
+ * this same way so popping the same key out twice reuses window.open()'s
+ * same-name-reuses-the-window behavior instead of spawning a duplicate popup.
  */
-export function sanitizeFocusToken(callsign) {
-  return (callsign ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_')
+export function sanitizeFocusToken(key) {
+  return (key ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_')
 }
 
 // ABM focus panels are keyed by the callsign they follow, except another
@@ -144,13 +144,34 @@ export function unitFocusKey(unitId) {
   return `${UNIT_FOCUS_PREFIX}${unitId}`
 }
 
-// The name shown in a focus panel's title bar.
-export function focusTitle(key) {
-  return key.startsWith(UNIT_FOCUS_PREFIX) ? 'CONTACT' : key
+// A focus panel can also sit on a fixed place instead of a unit: '@<ICAO>'
+// for an airfield, '@<lat>,<lng>' for any other map point. '@' can't appear
+// in a callsign key either. Points are rounded to 3 decimals (~100m) so
+// double-clicking the same spot again reuses the panel already open there.
+const LOCATION_FOCUS_PREFIX = '@'
+
+export function airfieldFocusKey(icao) {
+  return `${LOCATION_FOCUS_PREFIX}${icao}`
 }
 
-// The live unit a focus panel follows, or null.
+export function pointFocusKey(lat, lng) {
+  return `${LOCATION_FOCUS_PREFIX}${lat.toFixed(3)},${lng.toFixed(3)}`
+}
+
+export function isLocationFocusKey(key) {
+  return key.startsWith(LOCATION_FOCUS_PREFIX)
+}
+
+// The name shown in a focus panel's title bar.
+export function focusTitle(key) {
+  if (key.startsWith(UNIT_FOCUS_PREFIX)) return 'CONTACT'
+  if (isLocationFocusKey(key)) return key.slice(LOCATION_FOCUS_PREFIX.length).replace(',', ' ')
+  return key
+}
+
+// The live unit a focus panel follows, or null (always null for a location).
 export function findFocusedUnit(key, liveUnits) {
+  if (isLocationFocusKey(key)) return null
   if (key.startsWith(UNIT_FOCUS_PREFIX)) return liveUnits?.[key.slice(UNIT_FOCUS_PREFIX.length)] ?? null
   return matchLiveByPrefix(key, liveUnits).find((m) => m.callsign === key)?.unit ?? null
 }

@@ -30,6 +30,11 @@ describe('ABM parseCommand', () => {
     expect(parseCommand('.focus viper11')).toMatchObject({ command: { id: 'FOCUS_OPEN' }, captures: { callsign: 'viper11' } })
   })
 
+  test('.focus: a one-word coordinate parses like a callsign, with or without a range', () => {
+    expect(parseCommand('.focus N24.43E54.66')).toMatchObject({ command: { id: 'FOCUS_OPEN' }, captures: { callsign: 'n24.43e54.66' } })
+    expect(parseCommand('.focus 24.43N54.66E 30')).toMatchObject({ command: { id: 'FOCUS_OPEN_RANGE' }, captures: { callsign: '24.43n54.66e', nm: '30' } })
+  })
+
   test('history length and rate', () => {
     expect(idOf('.history')).toBe('HISTORY_TOGGLE')
     expect(idOf('.hist')).toBe('HISTORY_TOGGLE')
