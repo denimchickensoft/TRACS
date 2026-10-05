@@ -10,6 +10,8 @@ import { AbmDrawingImport } from './AbmDrawingImport.jsx'
 import { exportDrawingsZip } from './exportDrawings.js'
 import './Drawings.css'
 
+const EMPTY_ARRAY = []
+
 // Editable numeric/select knobs per command-drawn shapeType (store/
 // abmDrawings.js's `params`) — see modules/abm/draw/drawCommands.js for
 // what each field means. Absent from this table (e.g. 'line', and now
@@ -164,7 +166,7 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const theatre = mission?.mission?.theatre ?? null
   const declinationDeg = useAbmDeclination()
 
-  const layers              = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
+  const layers              = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? EMPTY_ARRAY : EMPTY_ARRAY))
   const toggleVisible       = useAbmDrawingsStore(s => s.toggleVisible)
   const toggleLabelOverride = useAbmDrawingsStore(s => s.toggleLabelOverride)
   const setLayerColor       = useAbmDrawingsStore(s => s.setLayerColor)

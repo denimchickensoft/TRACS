@@ -535,7 +535,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, followCallsign =
   const labelsVisible   = windowSettings?.labelsVisible ?? false
   const fillVisible     = windowSettings?.fillVisible ?? false
   const fillPct         = windowSettings?.fillPct ?? 30
-  const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? [] : []))
+  const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? EMPTY_ARRAY : EMPTY_ARRAY))
   const addDrawnShape = useAbmDrawingsStore(s => s.addDrawnShape)
   const removeDrawingLayer = useAbmDrawingsStore(s => s.removeLayer)
   const clearAllDrawings = useAbmDrawingsStore(s => s.clearTheatre)

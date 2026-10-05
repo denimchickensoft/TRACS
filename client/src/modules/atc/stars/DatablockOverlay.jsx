@@ -101,6 +101,7 @@ function resolveHandoffId(uid, handoffs, myId) {
 // (no type, or no amended requested altitude) falls back to gs.
 const RIGHT_SLOT_MS = 2000
 const RIGHT_SLOTS   = ['gs', 'type', 'gs', 'req']
+const EMPTY_OBJECT  = {}
 
 function getRightSlot() {
   return RIGHT_SLOTS[Math.floor(Date.now() / RIGHT_SLOT_MS) % RIGHT_SLOTS.length]
@@ -416,7 +417,7 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   const positionName    = useSessionStore((s) => s.positionName)
   const myId            = useControllersStore((s) => s.registry[positionName]?.controllerId ?? null)
 
-  const leaderDirs      = useDisplayStore((s) => s.windows[WINDOW_ID]?.leaderDirs      ?? {})
+  const leaderDirs      = useDisplayStore((s) => s.windows[WINDOW_ID]?.leaderDirs      ?? EMPTY_OBJECT)
   const dbca            = useDisplayStore((s) => s.windows[WINDOW_ID]?.dbca ?? false)
 
   const plans = useFlightPlansStore((s) => s.plans)
