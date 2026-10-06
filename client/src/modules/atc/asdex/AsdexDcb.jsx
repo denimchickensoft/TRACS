@@ -2,6 +2,8 @@ import { useCallback, useRef } from 'react'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { useDisplayStore }   from '../../../store/display.js'
 import { saveAsdexPrefs }   from '../../../store/asdexPrefs.js'
+import { useUnitSystem }    from '../../../store/unitSystem.js'
+import { distFromNm, distUnit } from '../../../utils/units.js'
 import { LDR_DIR_SEQUENCE, LDR_DIR_CANVAS_ANGLES, ldrDirWraparound, clampValueDelta } from '../../../utils/dcbSpinner.js'
 import { useNonPassiveWheel } from '../../../utils/useNonPassiveWheel.js'
 import { setAllDatablocks } from './asdexDatablockToggle.js'
@@ -183,6 +185,7 @@ export function AsdexDcb() {
   const barRef           = useRef(null)
   const updateWindow = useDisplayStore((s) => s.updateWindow)
   const win              = useDisplayStore(s => s.windows[ASDEX_WINDOW_ID])
+  const unitSystem       = useUnitSystem('atc')
   const activeSpinner    = win?.dcbActiveSpinner ?? null
   const menu             = win?.dcbMenu ?? 'main'
 
@@ -227,7 +230,7 @@ export function AsdexDcb() {
     let   valStr   = null
     if (raw != null) {
       valStr = btn.id === 'RANGE'
-        ? `${raw}NM`
+        ? `${Number(distFromNm(raw, unitSystem).toFixed(1))}${distUnit(unitSystem)}`
         : VALUE_CONFIG[btn.id]?.fmt(raw) ?? null
     }
     return (

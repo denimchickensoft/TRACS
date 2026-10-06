@@ -1,5 +1,5 @@
 import { latLngToCanvas } from '../../../../utils/projection.js'
-import { MS_TO_KT as M_PER_S_TO_KT } from '../../../../utils/units.js'
+import { MS_TO_KT as M_PER_S_TO_KT, formatDistance } from '../../../../utils/units.js'
 
 const NM_PER_DEG_LAT  = 60
 
@@ -129,7 +129,7 @@ export function drawMinSep(ctx, view, minSep, minWip, cursor, units, csTools = 3
   if (!u0?.position || !u1?.position) { ctx.restore(); return }
 
   const { past, cp0, cp1, cur0, cur1, dist } = closestApproach(u0, u1)
-  const distStr = `${dist.toFixed(2)}NM`
+  const distStr = formatDistance(dist, view.unitSystem, 2)
 
   if (past) {
     // Single line between current positions + NO XING label

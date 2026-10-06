@@ -17,6 +17,8 @@ import { useAsdexManualTagsStore } from '../../../../store/asdexManualTags.js'
 import { saveAsdexPrefs }          from '../../../../store/asdexPrefs.js'
 import { resolveCallsign }         from '../../../../utils/callsign.js'
 import { ASDEX_WINDOW_ID }         from '../AsdexDcb.jsx'
+import { setUnitSystem }           from '../../../../store/unitSystem.js'
+import { METRIC, IMPERIAL }        from '../../../../utils/units.js'
 
 const preview = () => useAsdexPreviewStore.getState()
 
@@ -34,6 +36,17 @@ function TOGGLE_CENTERLINE({ setCenterlineVisible }) {
 
 function TOGGLE_COORDS({ setCoordsVisible }) {
   setCoordsVisible(v => { saveAsdexPrefs({ coordsVisible: !v }); return !v })
+  preview().clearAfterCommand()
+}
+
+// .METRIC / .IMPERIAL — shared with STARS/PAR (the ATC module's units).
+function METRIC_UNITS() {
+  setUnitSystem('atc', METRIC)
+  preview().clearAfterCommand()
+}
+
+function IMPERIAL_UNITS() {
+  setUnitSystem('atc', IMPERIAL)
   preview().clearAfterCommand()
 }
 
@@ -77,7 +90,7 @@ function TAG_TARGET({ captures, slewTarget }) {
 }
 
 const ACTION_MAP = {
-  OPEN_FPE, TOGGLE_CENTERLINE, TOGGLE_COORDS, SET_COLORS,
+  OPEN_FPE, TOGGLE_CENTERLINE, TOGGLE_COORDS, METRIC_UNITS, IMPERIAL_UNITS, SET_COLORS,
   SET_LEADER_SHORT, TAG_TARGET,
 }
 

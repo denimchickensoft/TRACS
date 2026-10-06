@@ -7,12 +7,13 @@ import { CARRIER_TYPES, computeCarrierBrcFb, carrierDeckAltFt, deckPosition } fr
 import { computeMagvar, theatreConvergence } from '../../utils/magvar.js'
 import { resolveCallsign }      from '../../utils/callsign.js'
 import { ElevationPanel, AzimuthPanel } from './ParPanels.jsx'
-import { D2R, NM_TO_FEET, PAR_MAX_ELEV, PAR_AZ_HALF, GS_TOL_DEG, AZ_TOL_DEG } from './parConstants.js'
+import { D2R, PAR_MAX_ELEV, PAR_AZ_HALF, GS_TOL_DEG, AZ_TOL_DEG } from './parConstants.js'
+import { NM_TO_FT, M_TO_FT, distFromNm, distToNm, distUnit } from '../../utils/units.js'
+import { useUnitSystem } from '../../store/unitSystem.js'
 import './Par.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const METERS_TO_FEET = 3.28084
 const AIRBORNE       = new Set(['Aircraft', 'Helicopter'])
 const TCH_FT         = 50   // standard threshold crossing height (airfield)
 
@@ -45,9 +46,9 @@ function projectOnApproach(pos, cfg) {
   const offRad     = off * D2R
   const rangeFinal = dist * Math.cos(offRad)
   const lateralDev = dist * Math.sin(offRad)
-  const altFt      = (pos.alt ?? 0) * METERS_TO_FEET
+  const altFt      = (pos.alt ?? 0) * M_TO_FT
   const altAgl     = altFt - (cfg.threshElev ?? 0)
-  const gpAlt      = rangeFinal * NM_TO_FEET * Math.tan(cfg.gsAngle * D2R) + (cfg.tch ?? 0)
+  const gpAlt      = rangeFinal * NM_TO_FT * Math.tan(cfg.gsAngle * D2R) + (cfg.tch ?? 0)
   const vertDev    = altAgl - gpAlt
   return { rangeFinal, lateralDev, vertDev, altAgl }
 }
@@ -106,6 +107,13 @@ export function Par({
     ? sessionFacilityDcsName
     : (params.get('facilityDcsName') ?? null)
 
+  // PAR follows its host module's units (ATC or CATCC) — the popup gets the
+  // host from its URL, set by App.jsx's handleParUndock.
+  const hostModule = docked
+    ? (sessionModule === MODULE.CATCC ? 'catcc' : 'atc')
+    : (params.get('module') === 'catcc' ? 'catcc' : 'atc')
+  const unitSystem = useUnitSystem(hostModule)
+
   // ── WebSocket connection (standalone popup only) ───────────────────
   useEffect(() => {
     if (docked) return
@@ -149,6 +157,10 @@ export function Par({
   })
   const gsAngle = Math.min(7, Math.max(1, parseFloat(gsAngleRaw) || (mode === 'carrier' ? 3.5 : 3.0)))
   const rangeNm = parseFloat(rangeNmRaw) || 10
+  // RNG is typed/shown in the display unit (NM or km) but stored as NM;
+  // the draft holds the text only while the field is being edited.
+  const [rangeDraft, setRangeDraft] = useState(null)
+  const rangeDisplay = rangeDraft ?? String(Number(distFromNm(rangeNm, unitSystem).toFixed(1)))
 
   // GS angle and range default/persistence are per-mode (carrier GS defaults to 3.5,
   // airfield to 3.0) — re-derive whenever mode changes instead of sharing one storage
@@ -182,7 +194,7 @@ export function Par({
   }, [runwayId, centerlines])
 
   // Tolerances derived from standard angular FSD values — not user-configurable
-  const vertTol = rangeNm * NM_TO_FEET * Math.tan(GS_TOL_DEG * D2R)
+  const vertTol = rangeNm * NM_TO_FT * Math.tan(GS_TOL_DEG * D2R)
   const latTol  = rangeNm * Math.tan(AZ_TOL_DEG * D2R)
 
   // ── Computed approach configuration ───────────────────────────────
@@ -253,7 +265,7 @@ export function Par({
     if (!approachCfg.valid) return []
     const results = []
     const azConeSlope = Math.tan(PAR_AZ_HALF * D2R)
-    const svCeilSlope = Math.tan(PAR_MAX_ELEV * D2R) * NM_TO_FEET
+    const svCeilSlope = Math.tan(PAR_MAX_ELEV * D2R) * NM_TO_FT
     const carrierType = mode === 'carrier' ? CARRIER_TYPES[carrierUnit?.name] : null
     for (const [id, unit] of Object.entries(units)) {
       if (!AIRBORNE.has(unit.category) || !unit.position) continue
@@ -423,10 +435,15 @@ export function Par({
           <span className="par-label" style={{ marginLeft: 6 }}>RNG</span>
           <input
             className="par-input par-input--xs"
-            value={rangeNmRaw}
-            onChange={(e) => setRangeNmRaw(e.target.value)}
+            value={rangeDisplay}
+            onChange={(e) => {
+              setRangeDraft(e.target.value)
+              const v = parseFloat(e.target.value)
+              if (v > 0) setRangeNmRaw(String(distToNm(v, unitSystem)))
+            }}
+            onBlur={() => setRangeDraft(null)}
           />
-          <span className="par-label">NM</span>
+          <span className="par-label">{distUnit(unitSystem)}</span>
           <span className="par-info" style={{ marginLeft: 10 }}>
             GS ±{GS_TOL_DEG}°  AZ ±{AZ_TOL_DEG}°
           </span>
@@ -443,6 +460,7 @@ export function Par({
               height={elSize.height}
               mode={mode}
               mirrored={mirrored}
+              unitSystem={unitSystem}
             />
           : <div className="par-panel-msg">CONFIGURE APPROACH</div>
         }
@@ -458,6 +476,7 @@ export function Par({
               height={azSize.height}
               mode={mode}
               mirrored={mirrored}
+              unitSystem={unitSystem}
             />
           : <div className="par-panel-msg">CONFIGURE APPROACH</div>
         }

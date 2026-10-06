@@ -12,7 +12,7 @@ import { resolveCallsign }     from '../../../utils/callsign.js'
 import { hasLiveSquawk }       from '../../../utils/transponder.js'
 import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from '../../../utils/scopeConstants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
-import { MS_TO_KT as M_PER_S_TO_KNOTS, M_TO_FT as METERS_TO_FEET } from '../../../utils/units.js'
+import { altHundreds, speedFromMs, speedTens, METRIC } from '../../../utils/units.js'
 
 const WINDOW_ID        = 'atc-main'
 // SVG text isn't measured against a canvas context here, so estimate width
@@ -30,16 +30,19 @@ const CA_SOLID        = '#FF3333'
 
 // ── Formatting ───────────────────────────────────────────────────────────────
 
-function fmtAlt(metres) {
+// sys: the ATC unit system (view.unitSystem) — hundreds of ft/m, tens of
+// kt/kmh. The 99 speed cap is imperial-only: tens of km/h passes 99 at
+// ordinary jet speeds (1000 km/h ≈ 540 kt), so metric grows to 3 digits.
+function fmtAlt(metres, sys) {
   if (metres == null) return '   '
-  const hundreds = Math.round(metres * METERS_TO_FEET / 100)
-  return String(hundreds).padStart(3, '0')
+  return altHundreds(metres, sys)
 }
 
-function fmtSpd(mps) {
+function fmtSpd(mps, sys) {
   if (mps == null) return '  '
-  const kt = Math.round(mps * M_PER_S_TO_KNOTS / 10)
-  return String(Math.min(kt, 99)).padStart(2, '0')
+  if (sys === METRIC) return speedTens(mps, sys)
+  const tens = Math.round(speedFromMs(mps, sys) / 10)
+  return String(Math.min(tens, 99)).padStart(2, '0')
 }
 
 // ── Clock phase ──────────────────────────────────────────────────────────────
@@ -224,8 +227,8 @@ const Datablock = memo(function Datablock({
   // FDB/PDB (both share that layout), or to the squawk code for LDB — see
   // the LDB block below.
   const identTspan = isIdent ? <tspan opacity={blinkOn ? 1 : 0.25}>ID</tspan> : null
-  const alt       = fmtAlt(pos.alt)
-  const gs        = fmtSpd(unit.speed)
+  const alt       = fmtAlt(pos.alt, view.unitSystem)
+  const gs        = fmtSpd(unit.speed, view.unitSystem)
   // A track's own scratchpad wins (even '' from a clear); otherwise the one
   // entered on its flight plan (FLT DATA) before the track existed.
   const sp1       = scratchpads[uid]?.sp1 ?? planSp1 ?? ''
@@ -492,8 +495,8 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
       const cs     = (readoutActive && unit.transponder?.mode3 != null)
         ? String(unit.transponder.mode3).padStart(4, '0')
         : resolveCallsign(unit).toUpperCase()
-      const alt    = fmtAlt(pos.alt)
-      const gs     = fmtSpd(unit.speed)
+      const alt    = fmtAlt(pos.alt, view.unitSystem)
+      const gs     = fmtSpd(unit.speed, view.unitSystem)
       const sp1    = scratchpads[uid]?.sp1 ?? plansByUnit[uid]?.sp1 ?? ''
       const sp2    = scratchpads[uid]?.sp2 ?? plansByUnit[uid]?.sp2 ?? ''
       const handoffId = resolveHandoffId(uid, handoffs, myId)

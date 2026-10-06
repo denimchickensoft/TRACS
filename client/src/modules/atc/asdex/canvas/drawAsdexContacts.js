@@ -3,7 +3,7 @@ import { resolveCallsign } from '../../../../utils/callsign.js'
 import { destinationPoint } from '../../../../utils/bearing.js'
 import { DIR_TO_ANGLE }    from '../../../../utils/scopeConstants.js'
 import { hasLiveSquawk }   from '../../../../utils/transponder.js'
-import { MS_TO_KT as M_PER_S_TO_KT, M_TO_FT } from '../../../../utils/units.js'
+import { MS_TO_KT as M_PER_S_TO_KT, altHundreds, speedTens } from '../../../../utils/units.js'
 
 const LINE_H               = 13
 const TIMESHARE_MS         = 2000 // line 2: F/H/I <-> J/K scratchpad alternation per phase
@@ -193,15 +193,14 @@ export function drawAsdexContacts(ctx, view, units, win, plans, history, centerl
           // No Mode C without a live squawk — only for SRS-fielded units;
           // non-SRS units fall back to ground truth like their callsign does.
           const noModeC = !!unit.srsCapable && !hasLiveSquawk(unit)
-          const altHds  = Math.max(0, Math.round((pos.alt ?? 0) * M_TO_FT / 100))
-          line1 += ' ' + (noModeC ? 'XXX' : String(altHds).padStart(3, '0'))
+          line1 += ' ' + (noModeC ? 'XXX' : altHundreds(pos.alt ?? 0, view.unitSystem))
         }
 
         const plan  = isKnown ? plansByUnit[uid] : null
         const typ   = dbType && plan?.typ ? plan.typ.trim() : ''
         const fix   = dbFix  && plan ? pairedFixFor(plan) : ''
         const vel   = dbVelocity && unit.speed != null
-          ? String(Math.round(unit.speed * M_PER_S_TO_KT / 10)).padStart(2, '0')
+          ? speedTens(unit.speed, view.unitSystem)
           : ''
         const fieldsFHI = [typ, fix, vel].filter(Boolean).join(' ')
 

@@ -40,6 +40,8 @@ import { WORD_VERBS } from '../stars/input/commandParser.js'
 import { applyCallsignChange } from '../../../utils/callsignRename.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.js'
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
+import { setUnitSystem, getUnitSystem } from '../../../store/unitSystem.js'
+import { METRIC, IMPERIAL, distToNm } from '../../../utils/units.js'
 import { DIR_TO_ANGLE } from '../../../utils/scopeConstants.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { getMyControllerId, getKnownControllerIds } from '../../../utils/myControllerId.js'
@@ -720,8 +722,9 @@ export function SET_ALT_FILTER_ASSOC({ captures }) {
   ok()
 }
 
+// RG <n> is typed in the ATC display unit (NM or km), stored as whole NM.
 export function SET_RANGE({ captures }) {
-  const range = parseInt(captures.range, 10)
+  const range = Math.round(distToNm(parseInt(captures.range, 10), getUnitSystem('atc')))
   if (range < 6 || range > 256) return err('INVALID RANGE')
   getDisplay().updateWindow(WINDOW_ID, { rangeNm: range })
   ok()
@@ -899,6 +902,18 @@ export async function REFRESH_ASP_COLORS() {
 export function TOGGLE_COORDS() {
   const win = getDisplay().windows[WINDOW_ID]
   getDisplay().updateWindow(WINDOW_ID, { coordsVisible: !(win?.coordsVisible ?? false) })
+  ok()
+}
+
+// .METRIC / .IMPERIAL — ATC display units (STARS, ASDE-X, PAR), see
+// store/unitSystem.js.
+export function METRIC_UNITS() {
+  setUnitSystem('atc', METRIC)
+  ok()
+}
+
+export function IMPERIAL_UNITS() {
+  setUnitSystem('atc', IMPERIAL)
   ok()
 }
 
@@ -1163,6 +1178,8 @@ const ACTION_MAP = {
   SET_ASP_COLORS,
   REFRESH_ASP_COLORS,
   TOGGLE_COORDS,
+  METRIC_UNITS,
+  IMPERIAL_UNITS,
   TOGGLE_DBCA,
   TOGGLE_LABELS,
   TOGGLE_FIXES,

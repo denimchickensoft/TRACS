@@ -1,4 +1,5 @@
 import { latLngToCanvas } from '../../../../utils/projection.js'
+import { altFromFt } from '../../../../utils/units.js'
 
 const MSA_COLOR_FALLBACK = '#FF8800'
 const NM_TO_RAD = Math.PI / 10800.066  // 1 nm in radians (Earth radius 3440.065 nm)
@@ -91,7 +92,7 @@ export function drawMsa(ctx, view, msa, visible, brite = 50, csMap = 2, colors =
     if (sectors.length === 0) {
       if (label) ctx.fillText(label, cpt.x, cpt.y)
     } else if (sectors.length === 1) {
-      const altText = `${Math.round(sectors[0].altFt / 100)}`
+      const altText = `${Math.round(altFromFt(sectors[0].altFt, view.unitSystem) / 100)}`
       const lp  = projectBearing(ring.lat, ring.lon, 0, radiusNm * 0.4)
       const lpt = latLngToCanvas(lp.lat, lp.lon, view)
       ctx.fillText(altText, lpt.x, lpt.y)
@@ -103,7 +104,7 @@ export function drawMsa(ctx, view, msa, visible, brite = 50, csMap = 2, colors =
         const mid = midBearing(b1, b2)
         const lp  = projectBearing(ring.lat, ring.lon, mid, radiusNm * 0.7)
         const lpt = latLngToCanvas(lp.lat, lp.lon, view)
-        ctx.fillText(`${Math.round(sectors[i].altFt / 100)}`, lpt.x, lpt.y)
+        ctx.fillText(`${Math.round(altFromFt(sectors[i].altFt, view.unitSystem) / 100)}`, lpt.x, lpt.y)
       }
       if (label) ctx.fillText(label, cpt.x, cpt.y)
     }

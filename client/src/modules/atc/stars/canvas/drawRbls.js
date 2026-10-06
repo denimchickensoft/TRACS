@@ -1,6 +1,6 @@
 import { latLngToCanvas, canvasToLatLng } from '../../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../../utils/bearing.js'
-import { MS_TO_KT as M_PER_S_TO_KT } from '../../../../utils/units.js'
+import { MS_TO_KT as M_PER_S_TO_KT, distFromNm } from '../../../../utils/units.js'
 
 
 function resolveEndpoint(ep, units) {
@@ -62,7 +62,7 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
     const { gridBearingDeg, rangeNm: dist } = gridBearingRangeNm(ep0.lat, ep0.lng, ep1.lat, ep1.lng, view.theatre)
     const magBrg  = toMagneticFromTrue(gridBearingDeg, declinationDeg)
     const hdg     = String(Math.round(magBrg) || 360).padStart(3, '0')
-    const distStr = dist.toFixed(2)
+    const distStr = distFromNm(dist, view.unitSystem).toFixed(2)
 
     let label = `${hdg}/${distStr}`
 
@@ -100,7 +100,7 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
 
       const { gridBearingDeg, rangeNm: dist } = gridBearingRangeNm(ep0.lat, ep0.lng, curLat, curLng, view.theatre)
       const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
-      const label  = `${String(Math.round(magBrg) || 360).padStart(3, '0')}/${dist.toFixed(2)}`
+      const label  = `${String(Math.round(magBrg) || 360).padStart(3, '0')}/${distFromNm(dist, view.unitSystem).toFixed(2)}`
       ctx.fillText(label, rblCursor.x + 4, rblCursor.y - 4)
     }
   }

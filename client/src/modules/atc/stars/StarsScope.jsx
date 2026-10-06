@@ -57,7 +57,8 @@ import { useNavdataStore }      from '../../../store/navdata.js'
 import { nmBetween }            from '../../../store/runways.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { findFlightPlanAid } from '../../../utils/callsign.js'
-import { formatElevation } from '../../../utils/coords.js'
+import { formatAltitude } from '../../../utils/units.js'
+import { getUnitSystem, useUnitSystem } from '../../../store/unitSystem.js'
 import { FPE }             from '../../../components/FPE/FPE.jsx'
 import { loadStarsPrefs, saveStarsPrefs }  from '../../../store/starsPrefs.js'
 import './StarsScope.css'
@@ -335,6 +336,7 @@ export default function StarsScope() {
     return kept
   }, [surfaceFeatures, filterCenter])
 
+  const unitSystem = useUnitSystem('atc')
   const buildView = useCallback(() => {
     const canvas = ringCanvasRef.current
     if (!canvas || !windowSettings) return null
@@ -351,8 +353,9 @@ export default function StarsScope() {
       height: h,
       declinationDeg,
       theatre,
+      unitSystem,
     }
-  }, [windowSettings, declinationDeg, theatre])
+  }, [windowSettings, declinationDeg, theatre, unitSystem])
 
   const canvasAreaRef = useRef(null)
 
@@ -394,7 +397,8 @@ export default function StarsScope() {
       prev.width === next.width &&
       prev.height === next.height &&
       prev.declinationDeg === next.declinationDeg &&
-      prev.theatre === next.theatre)
+      prev.theatre === next.theatre &&
+      prev.unitSystem === next.unitSystem)
       ? prev
       : next)
   }, [buildView])
@@ -856,7 +860,7 @@ export default function StarsScope() {
         const { lat, lng } = canvasToLatLng(pos.x, pos.y, viewRef.current)
         const latStr = `${Math.abs(lat).toFixed(6)}°${lat >= 0 ? 'N' : 'S'}`
         const lngStr = `${Math.abs(lng).toFixed(6)}°${lng >= 0 ? 'E' : 'W'}`
-        const elevStr = formatElevation(elevRef.current, 'feet')
+        const elevStr = formatAltitude(elevRef.current, getUnitSystem('atc'))
         coordsRef.current.textContent = `${latStr}  ${lngStr}  ${elevStr}`
 
         // Throttle elevation lookups to ~100m cells (same pattern as ABM's .coords).

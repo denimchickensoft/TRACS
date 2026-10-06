@@ -14,6 +14,7 @@ import { useNavdataStore }     from '../../../store/navdata.js'
 import { hasLiveSquawk }       from '../../../utils/transponder.js'
 import { pairedFix }           from './pairedFix.js'
 import { loadAsdexPrefs } from '../../../store/asdexPrefs.js'
+import { useUnitSystem, getUnitSystem } from '../../../store/unitSystem.js'
 import { rangeToPixelsPerNm, canvasToLatLng } from '../../../utils/projection.js'
 import { useWheelDirection } from '../../../utils/wheel.js'
 import { findFlightPlanAid } from '../../../utils/callsign.js'
@@ -106,6 +107,7 @@ export default function AsdexScope() {
 
   // ── Component state ──────────────────────────────────────────────────────────
   const [view, setView]                       = useState(null)
+  const unitSystem                            = useUnitSystem('atc')
   const [polygonData, setPolygonData]         = useState(null)    // raw GeoJSON features for theatre
   const [nameMap, setNameMap]                 = useState(null)    // { dcsName: stemName }
   const [profiles, setProfiles]               = useState(DEFAULT_PROFILES)
@@ -296,6 +298,7 @@ export default function AsdexScope() {
       width: rawW, height: rawH,
       declinationDeg: declinationRef.current,
       theatre,
+      unitSystem: getUnitSystem('atc'),
     }
   }, [theatre])
 
@@ -315,7 +318,7 @@ export default function AsdexScope() {
     return () => ro.disconnect()
   }, [hasWindowSettings]) // eslint-disable-line
 
-  useEffect(() => { setView(buildView()) }, [windowSettings?.rangeNm, windowSettings?.centerLat, windowSettings?.centerLng, declinationDeg]) // eslint-disable-line
+  useEffect(() => { setView(buildView()) }, [windowSettings?.rangeNm, windowSettings?.centerLat, windowSettings?.centerLng, declinationDeg, unitSystem]) // eslint-disable-line
   useEffect(() => { viewRef.current = view }, [view])
 
   // ── History capture ──────────────────────────────────────────────────────────
@@ -456,6 +459,7 @@ export default function AsdexScope() {
       width: rawW, height: rawH,
       declinationDeg: declinationRef.current,
       theatre: v.theatre,
+      unitSystem: v.unitSystem,
     }
     viewRef.current = nextView
     setView(nextView)

@@ -1,6 +1,7 @@
 // STARS DCB menu layout, value-spinner configuration and the pure helpers
 // that read/adjust those values. Rendering and click handling live in Dcb.jsx.
 import { LDR_DIR_SEQUENCE, LDR_DIR_CANVAS_ANGLES, ldrDirWraparound, clampValueDelta } from '../../../../utils/dcbSpinner.js'
+import { distFromNm } from '../../../../utils/units.js'
 
 export const WINDOW_ID = 'atc-main'
 
@@ -185,10 +186,12 @@ export const SUBMENU_DEFS = {
 
 // dir: 1 = scroll-down increases (matches scope zoom convention used for RANGE)
 //      -1 = scroll-up increases (standard for everything else)
+// fmt(value, unitSystem): RANGE/RR spin in NM steps and show the value in
+// the ATC display unit (NM or km).
 export const VALUE_CONFIG = {
   VOL:           { min: 1,   max: 10,  step: 1,   dir: -1, fmt: v => String(v)                  },
-  RANGE:         { min: 6,   max: 256, step: 1,   dir:  1, fmt: v => String(v)                  },
-  RR:            { min: 0,   max: 3,   step: 1,   dir: -1, fmt: v => String(RR_VALUES[v] ?? 10) },
+  RANGE:         { min: 6,   max: 256, step: 1,   dir:  1, fmt: (v, sys) => String(Math.round(distFromNm(v, sys))) },
+  RR:            { min: 0,   max: 3,   step: 1,   dir: -1, fmt: (v, sys) => String(Math.round(distFromNm(RR_VALUES[v] ?? 10, sys))) },
   LDR_DIR:       { min: 0,   max: 7,   step: 1,   dir: -1, fmt: v => LDR_DIR_SEQUENCE[v] ?? 'NE' },
   LDR_LEN:       { min: 0,   max: 7,   step: 1,   dir: -1, fmt: v => String(v)                  },
   PTL_LNTH:      { min: 0,   max: 5,   step: 0.5, dir: -1, fmt: v => v.toFixed(1)               },

@@ -5,7 +5,6 @@
 
 import { utmZoneNumber, utmZoneParams, mgrs100kSquareId, latBand } from './mgrs.js'
 import { tmForward } from './transverseMercator.js'
-import { M_TO_FT } from './units.js'
 
 function pad(n, width) {
   return String(Math.trunc(n)).padStart(width, '0')
@@ -83,10 +82,4 @@ export function parseIcaoRoutePoint(token) {
   const lng = (Number(lngDeg) + Number(lngMin) / 60) * (lngLetter === 'W' ? -1 : 1)
   if (lat > 90 || lng > 180) return null
   return { lat, lng }
-}
-
-export function formatElevation(elevationM, unit) {
-  if (elevationM === null || elevationM === undefined) return 'ELEV N/A'
-  const value = unit === 'feet' ? elevationM * M_TO_FT : elevationM
-  return `${Math.round(value)}${unit === 'feet' ? 'FT' : 'M'}`
 }

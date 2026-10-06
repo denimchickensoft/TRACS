@@ -3,6 +3,8 @@ import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }      from '../../../../store/ods.js'
 import { useMissionClock }  from '../../../../utils/useMissionClock.js'
 import { ListPanel }        from './ListPanel.jsx'
+import { useUnitSystem }    from '../../../../store/unitSystem.js'
+import { formatDistance }   from '../../../../utils/units.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -17,6 +19,7 @@ export function SSA() {
   const connected      = useSessionStore((s) => s.connected)
   const facilityId     = useSessionStore((s) => s.facilityId)
   const windowSettings = useDisplayStore((s) => s.windows[WINDOW_ID])
+  const unitSystem     = useUnitSystem('atc')
   const activeProfile  = useOdsStore((s) => s.activeProfile)
 
   // STARS SSA time is always UTC — real ATC scopes never show theatre-local time.
@@ -52,7 +55,7 @@ export function SSA() {
     ...(atis || giText ? [`${atis ?? ''} ${giText ?? ''}`] : []),
     ...(giAux ?? []).filter(Boolean),
     statusLine,
-    `${rangeNm}NM PTL: ${Number(ptlLength).toFixed(1)}`,
+    `${formatDistance(rangeNm, unitSystem)} PTL: ${Number(ptlLength).toFixed(1)}`,
     altFilterLine,
     `${facilityId || '----'} ${qnhStr}`,
   ]

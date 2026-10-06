@@ -1,18 +1,43 @@
-import { D2R, NM_TO_FEET, PAR_MAX_ELEV, PAR_AZ_HALF, GS_TOL_DEG, AZ_TOL_DEG } from './parConstants.js'
+import { D2R, PAR_MAX_ELEV, PAR_AZ_HALF, GS_TOL_DEG, AZ_TOL_DEG } from './parConstants.js'
+import { NM_TO_FT, M_TO_FT, METRIC, distFromNm, distToNm, altFromFt } from '../../utils/units.js'
 
-export function ElevationPanel({ contacts, config, width, height, mode, mirrored }) {
+// Axis ticks land on round numbers in the display unit (NM/km, ft/m) while
+// all plotting stays in NM/ft: each tick is { at } in NM or ft, { label } in
+// the display unit.
+function rangeTicks(rangeNm, sys) {
+  const range = distFromNm(rangeNm, sys)
+  const step  = range <= 5 ? 1 : range <= 12 ? 2 : 5
+  const ticks = []
+  for (let d = 0; d <= range; d += step) ticks.push({ at: distToNm(d, sys), label: d })
+  return ticks
+}
+
+// Returns the plot's top altitude (ft) and its ticks.
+function altTicks(ceilFt, sys) {
+  const metric = sys === METRIC
+  const ceil   = altFromFt(ceilFt, sys)
+  const step   = metric
+    ? (ceil <= 600 ? 100 : ceil <= 2000 ? 200 : 500)
+    : (ceil <= 2000 ? 250 : ceil <= 6000 ? 500 : 1000)
+  const max    = Math.ceil(ceil / step) * step
+  const toFt   = (a) => metric ? a * M_TO_FT : a
+  const ticks  = []
+  for (let a = 0; a <= max; a += step) ticks.push({ at: toFt(a), label: a === 0 ? '0' : a >= 1000 ? `${a / 1000}k` : String(a) })
+  return { maxAlt: toFt(max), ticks }
+}
+
+export function ElevationPanel({ contacts, config, width, height, mode, mirrored, unitSystem }) {
   const { rangeNm, gsAngle, vertTol, tch = 0 } = config
   const M = { t: 14, b: 22, l: 42, r: 10 }
   const W = width  - M.l - M.r
   const H = height - M.t - M.b
 
   // Altitude at far range for glideslope (includes TCH offset) and service volume ceiling
-  const gsEndAlt  = rangeNm * NM_TO_FEET * Math.tan(gsAngle * D2R) + tch
-  const svCeilAlt = rangeNm * NM_TO_FEET * Math.tan(PAR_MAX_ELEV * D2R) + tch
+  const gsEndAlt  = rangeNm * NM_TO_FT * Math.tan(gsAngle * D2R) + tch
+  const svCeilAlt = rangeNm * NM_TO_FT * Math.tan(PAR_MAX_ELEV * D2R) + tch
 
   // Round display max up to a clean tick boundary
-  const altStep = svCeilAlt <= 2000 ? 250 : svCeilAlt <= 6000 ? 500 : 1000
-  const maxAlt  = Math.ceil(svCeilAlt / altStep) * altStep
+  const { maxAlt, ticks: aTicks } = altTicks(svCeilAlt, unitSystem)
 
   // x: threshold at right (standard) or left (mirrored); far range is the opposite end
   const xr = mirrored
@@ -29,11 +54,7 @@ export function ElevationPanel({ contacts, config, width, height, mode, mirrored
   const tolOffset = mirrored ? 2         : -2
   const tolAnchor = mirrored ? 'start'   : 'end'
 
-  const rTickStep = rangeNm <= 5 ? 1 : rangeNm <= 12 ? 2 : 5
-  const rTicks    = []
-  const aTicks    = []
-  for (let r = 0; r <= rangeNm; r += rTickStep) rTicks.push(r)
-  for (let a = 0; a <= maxAlt; a += altStep) aTicks.push(a)
+  const rTicks = rangeTicks(rangeNm, unitSystem)
 
   // Tolerance corridor: triangle that tapers to TCH point at the threshold.
   const tolPoly = [
@@ -57,17 +78,17 @@ export function ElevationPanel({ contacts, config, width, height, mode, mirrored
 
       <g clipPath="url(#par-el-clip)">
         {/* Altitude grid lines (horizontal) */}
-        {aTicks.map((a) => (
-          <line key={a}
-            x1={M.l} y1={ya(a)} x2={M.l + W} y2={ya(a)}
-            stroke={a === 0 ? '#1c1c1c' : '#161616'} strokeWidth={1}
+        {aTicks.map(({ at }) => (
+          <line key={at}
+            x1={M.l} y1={ya(at)} x2={M.l + W} y2={ya(at)}
+            stroke={at === 0 ? '#1c1c1c' : '#161616'} strokeWidth={1}
           />
         ))}
 
         {/* Range grid lines (vertical) */}
-        {rTicks.map((r) => (
-          <line key={r}
-            x1={xr(r)} y1={M.t} x2={xr(r)} y2={M.t + H}
+        {rTicks.map(({ at }) => (
+          <line key={at}
+            x1={xr(at)} y1={M.t} x2={xr(at)} y2={M.t + H}
             stroke="#161616" strokeWidth={1}
           />
         ))}
@@ -97,7 +118,7 @@ export function ElevationPanel({ contacts, config, width, height, mode, mirrored
 
         {/* CASE III — 1200 ft minimum descent altitude (carrier only) */}
         {mode === 'carrier' && (() => {
-          const interceptRange = 1200 / (NM_TO_FEET * Math.tan(gsAngle * D2R))
+          const interceptRange = 1200 / (NM_TO_FT * Math.tan(gsAngle * D2R))
           return (
             <line
               x1={xr(rangeNm)}      y1={ya(1200)}
@@ -145,11 +166,11 @@ export function ElevationPanel({ contacts, config, width, height, mode, mirrored
         fill="none" stroke="#1e1e1e" strokeWidth={1} />
 
       {/* Altitude axis labels (left of plot) */}
-      {aTicks.map((a) => (
-        <text key={a} x={M.l - 4} y={ya(a) + 3}
+      {aTicks.map(({ at, label }) => (
+        <text key={at} x={M.l - 4} y={ya(at) + 3}
           textAnchor="end" fontSize={9}
-          fill={a === 0 ? '#2a2a2a' : '#383838'}>
-          {a === 0 ? '0' : a >= 1000 ? `${a / 1000}k` : a}
+          fill={at === 0 ? '#2a2a2a' : '#383838'}>
+          {label}
         </text>
       ))}
 
@@ -161,9 +182,9 @@ export function ElevationPanel({ contacts, config, width, height, mode, mirrored
 
 
       {/* Range tick labels (bottom) */}
-      {rTicks.map((r) => (
-        <text key={r} x={xr(r)} y={height - 5}
-          textAnchor="middle" fontSize={9} fill="#343434">{r}</text>
+      {rTicks.map(({ at, label }) => (
+        <text key={at} x={xr(at)} y={height - 5}
+          textAnchor="middle" fontSize={9} fill="#343434">{label}</text>
       ))}
 
       {/* Panel identifier (far end) and threshold marker */}
@@ -181,7 +202,7 @@ export function ElevationPanel({ contacts, config, width, height, mode, mirrored
 // (i.e., the display is consistent regardless of approach direction).
 // The PAR's ±10° azimuth coverage forms a V-cone from the threshold point outward.
 
-export function AzimuthPanel({ contacts, config, width, height, mode, mirrored }) {
+export function AzimuthPanel({ contacts, config, width, height, mode, mirrored, unitSystem }) {
   const { rangeNm, latTol } = config
   const M  = { t: 14, b: 22, l: 42, r: 10 }
   const W  = width  - M.l - M.r
@@ -205,9 +226,7 @@ export function AzimuthPanel({ contacts, config, width, height, mode, mirrored }
   const farX      = mirrored ? M.l + W - 2 : M.l + 4
   const farAnchor = mirrored ? 'end'     : 'start'
 
-  const rTickStep = rangeNm <= 5 ? 1 : rangeNm <= 12 ? 2 : 5
-  const rTicks    = []
-  for (let r = 0; r <= rangeNm; r += rTickStep) rTicks.push(r)
+  const rTicks = rangeTicks(rangeNm, unitSystem)
 
   // Cone origin: threshold = right-center of the plot area
   const coneOX = xr(0)
@@ -228,9 +247,9 @@ export function AzimuthPanel({ contacts, config, width, height, mode, mirrored }
 
       <g clipPath="url(#par-az-clip)">
         {/* Range grid lines */}
-        {rTicks.map((r) => (
-          <line key={r}
-            x1={xr(r)} y1={M.t} x2={xr(r)} y2={M.t + H}
+        {rTicks.map(({ at }) => (
+          <line key={at}
+            x1={xr(at)} y1={M.t} x2={xr(at)} y2={M.t + H}
             stroke="#161616" strokeWidth={1}
           />
         ))}
@@ -297,9 +316,9 @@ export function AzimuthPanel({ contacts, config, width, height, mode, mirrored }
       </text>
 
       {/* Range tick labels (bottom) */}
-      {rTicks.map((r) => (
-        <text key={r} x={xr(r)} y={height - 5}
-          textAnchor="middle" fontSize={9} fill="#343434">{r}</text>
+      {rTicks.map(({ at, label }) => (
+        <text key={at} x={xr(at)} y={height - 5}
+          textAnchor="middle" fontSize={9} fill="#343434">{label}</text>
       ))}
 
       {/* Panel identifier (far end) and threshold marker */}

@@ -15,6 +15,7 @@ import { useGeoStore }        from '../../../../store/geo.js'
 import { useFixesStore }      from '../../../../store/fixes.js'
 import { useProceduresStore } from '../../../../store/procedures.js'
 import { saveStarsPrefs }     from '../../../../store/starsPrefs.js'
+import { useUnitSystem }      from '../../../../store/unitSystem.js'
 import { recenterScope }      from '../../actions/index.js'
 import { useNonPassiveWheel } from '../../../../utils/useNonPassiveWheel.js'
 import { snapshotLayerVisibility, applyLayerVisibility } from '../layerVisibility.js'
@@ -63,6 +64,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
   const [menuKey, setMenuKey] = useState('main')
 
   const updateWindow = useDisplayStore((s) => s.updateWindow)
+  const unitSystem       = useUnitSystem('atc')
   const windowSettings   = useDisplayStore((s) => s.windows[WINDOW_ID])
 
   const presetSlots    = usePresetsStore((s) => s.slots)
@@ -460,7 +462,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
     }
 
     const rawVal = (displayBtn.type === 'value') ? getWindowValue(displayBtn.id, windowSettings) : null
-    const valStr = rawVal != null ? VALUE_CONFIG[displayBtn.id]?.fmt(rawVal) : null
+    const valStr = rawVal != null ? VALUE_CONFIG[displayBtn.id]?.fmt(rawVal, unitSystem) : null
 
     return (
       <DcbButton

@@ -130,6 +130,8 @@ const COMMANDS = [
 
   // ── Cursor readout ───────────────────────────────────────────────
   { id: 'TOGGLE_COORDS',        pattern: /^\.COORDS$/,            trigger: 'ENTER' },
+  { id: 'METRIC_UNITS',         pattern: /^\.METRIC$/,            trigger: 'ENTER' },
+  { id: 'IMPERIAL_UNITS',       pattern: /^\.IMPERIAL$/,          trigger: 'ENTER' },
 
   // ── Find fix/navaid/airport ──────────────────────────────────────
   { id: 'FIND_FIX',             pattern: /^\.FIND (.+)$/,         trigger: 'ENTER', captures: ['query'] },

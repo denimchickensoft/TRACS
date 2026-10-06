@@ -9,6 +9,11 @@ describe('STARS parseCommand', () => {
     expect(parseCommand('rg 40', 'ENTER').captures).toEqual({ range: '40' })
   })
 
+  test('unit system commands', () => {
+    expect(idOf('.metric', 'ENTER')).toBe('METRIC_UNITS')
+    expect(idOf('.IMPERIAL', 'ENTER')).toBe('IMPERIAL_UNITS')
+  })
+
   test('trigger decides between commands that share a pattern', () => {
     expect(idOf('MF TS', 'ENTER')).toBe('TOGGLE_SIGNON')
     expect(idOf('MF TS', 'SLEW')).toBe('RELOCATE_SIGNON')

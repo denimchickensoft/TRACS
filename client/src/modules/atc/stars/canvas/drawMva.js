@@ -1,4 +1,5 @@
 import { latLngToCanvas, screenBoundsOfBbox } from '../../../../utils/projection.js'
+import { altFromFt } from '../../../../utils/units.js'
 
 const MVA_STROKE_FALLBACK = '#7788AA'
 const MVA_LABEL_FALLBACK  = '#AABBDD'
@@ -55,7 +56,7 @@ export function drawMva(ctx, view, mva, visible, brite = 50, colors = null) {
     const { x: lx, y: ly } = latLngToCanvas(sector.labelPt[1], sector.labelPt[0], view)
 
     // Grid-MORA split: hundreds value → big main digits + superscript ones digit
-    const hundreds = Math.round(sector.alt / 100)
+    const hundreds = Math.round(altFromFt(sector.alt, view.unitSystem) / 100)
     const mainStr  = String(Math.floor(hundreds / 10))
     const subStr   = String(hundreds % 10)
 
