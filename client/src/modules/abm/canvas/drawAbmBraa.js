@@ -9,6 +9,7 @@
 
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
+import { formatRangeFine } from '../../../utils/units.js'
 
 function computeBraa(fighter, bogey, declinationDeg, theatre) {
   const fp = fighter.position, bp = bogey.position
@@ -17,7 +18,7 @@ function computeBraa(fighter, bogey, declinationDeg, theatre) {
   const { gridBearingDeg, rangeNm } = gridBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng, theatre)
   const magBrgDeg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
 
-  return { bearing: Math.round(magBrgDeg) || 360, range: Math.round(rangeNm) }
+  return { bearing: Math.round(magBrgDeg) || 360, rangeNm }
 }
 
 // units: merged air+ground/naval visible units (BRAA pairing works across both)
@@ -41,7 +42,7 @@ export function drawBraaOverlays(ctx, view, braaList, units, declinationDeg, csM
 
     const braa = computeBraa(fighter, bogey, declinationDeg, view.theatre)
     if (braa) {
-      const label = `${String(braa.bearing).padStart(3, '0')}°M  ${braa.range}NM`
+      const label = `${String(braa.bearing).padStart(3, '0')}°M  ${formatRangeFine(braa.rangeNm, view.unitSystem)}`
       const midX  = (fp.x + bp.x) / 2
       const midY  = (fp.y + bp.y) / 2
       ctx.font      = `${6 + csMap * 2}px "Roboto Mono", monospace`

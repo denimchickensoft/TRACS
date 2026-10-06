@@ -62,6 +62,8 @@ import { useAbmStore, DECLARATION, getAbmEffectiveDeclaration } from '../../../s
 import { AUTO_DECLARE_MODE } from '../../../utils/createDeclarationStore.js'
 import { useRoeStore, ROE_STATE } from '../../../store/roe.js'
 import { loadAbmPrefs, saveAbmPrefs } from '../../../store/abmPrefs.js'
+import { getUnitSystem, setUnitSystem } from '../../../store/unitSystem.js'
+import { distToNm, distUnit, formatDistance, METRIC, IMPERIAL } from '../../../utils/units.js'
 import { useNavdataStore } from '../../../store/navdata.js'
 import { useRunwaysStore } from '../../../store/runways.js'
 import { useAbmAirspaceStore } from '../../../store/abmAirspace.js'
@@ -128,11 +130,19 @@ export function RR_TOGGLE({ context }) {
   const on = !(getWin(context.windowId)?.ringsVisible ?? false)
   updateWin(context.windowId, { ringsVisible: on })
   saveAbmPrefs({ ringsVisible: on })
-  return on ? `RANGE RINGS ${getWin(context.windowId)?.ringSpacingNm ?? 20}NM` : 'RANGE RINGS OFF'
+  return on ? `RANGE RINGS ${formatDistance(getWin(context.windowId)?.ringSpacingNm ?? 20, getUnitSystem('abm'))}` : 'RANGE RINGS OFF'
+}
+
+// Typed distances are in the module's display unit (NM or km) and stored
+// as NM; feedback echoes the value as typed.
+function typedDist(captures) {
+  const sys = getUnitSystem('abm')
+  const value = parseFloat(captures.dist)
+  return { nm: distToNm(value, sys), label: `${value}${distUnit(sys)}` }
 }
 
 export function RR_SET({ captures, context }) {
-  const nm = parseFloat(captures.nm)
+  const { nm, label } = typedDist(captures)
   if (nm <= 0) {
     updateWin(context.windowId, { ringsVisible: false })
     saveAbmPrefs({ ringsVisible: false })
@@ -140,7 +150,7 @@ export function RR_SET({ captures, context }) {
   }
   updateWin(context.windowId, { ringsVisible: true, ringSpacingNm: nm })
   saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
-  return `RANGE RINGS ${nm}NM`
+  return `RANGE RINGS ${label}`
 }
 
 // ── Label / datablock size ──────────────────────────────────────────────────
@@ -170,7 +180,7 @@ export function DBSIZE_SET({ captures, context }) {
 }
 
 export function RR_SET_ANCHOR({ captures, context }) {
-  const nm = parseFloat(captures.nm)
+  const { nm, label } = typedDist(captures)
   const anchor = captures.anchor
   if (nm <= 0) {
     updateWin(context.windowId, { ringsVisible: false })
@@ -180,7 +190,7 @@ export function RR_SET_ANCHOR({ captures, context }) {
   if (anchor === 'bullseye' || anchor === 'bs') {
     updateWin(context.windowId, { ringsVisible: true, ringSpacingNm: nm, ringAnchorLat: null, ringAnchorLng: null, ringAnchorId: null })
     saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
-    return `RANGE RINGS ${nm}NM @ BULLSEYE`
+    return `RANGE RINGS ${label} @ BULLSEYE`
   }
   const result = useNavdataStore.getState().lookupFix(anchor)
   if (!result) return navdataNotFound('FIX NOT FOUND')
@@ -188,7 +198,7 @@ export function RR_SET_ANCHOR({ captures, context }) {
   // specific fix, not a persisted preference (see store/abmPrefs.js header).
   updateWin(context.windowId, { ringsVisible: true, ringSpacingNm: nm, ringAnchorLat: result.lat, ringAnchorLng: result.lon, ringAnchorId: result.id })
   saveAbmPrefs({ ringsVisible: true, ringSpacingNm: nm })
-  return `RANGE RINGS ${nm}NM @ ${result.id}`
+  return `RANGE RINGS ${label} @ ${result.id}`
 }
 
 // ── Bullseye override ────────────────────────────────────────────────────────
@@ -386,7 +396,7 @@ function handleDrawCommand(type, { context }) {
   if (!theatre) return 'NO THEATRE'
   const str = raw.trim().toLowerCase()
   const tokens = drawCmdTokens(str, raw)
-  const result = parseDrawCommand(type, tokens, useNavdataStore.getState().lookupFix, declinationDeg, theatre)
+  const result = parseDrawCommand(type, tokens, useNavdataStore.getState().lookupFix, declinationDeg, theatre, getUnitSystem('abm'))
   if (result.error) return result.error
   if (result.immediate) {
     if (type === 'sect' && Array.isArray(result.immediate)) {
@@ -636,10 +646,10 @@ export function popOutAbmFocusPanel(key, rangeNm, center = null) {
 // against FOCUS_OPEN/FOCUS_OPEN_RANGE) sets the default range used whenever
 // a `.focus <callsign>` / double-click doesn't specify one. Opens no panel.
 export function FOCUS_DEFAULT_RANGE({ captures }) {
-  const nm = parseFloat(captures.nm)
+  const { nm, label } = typedDist(captures)
   if (!(nm > 0)) return 'ILL VAL'
   saveAbmPrefs({ focusDefaultRangeNm: nm })
-  return `FOCUS RANGE ${nm}NM`
+  return `FOCUS RANGE ${label}`
 }
 
 // Live callsign first, so a contact can never be shadowed by an airport code
@@ -661,9 +671,9 @@ function resolveFocusTarget(token, context) {
 export function FOCUS_OPEN_RANGE({ captures, context }) {
   const t = resolveFocusTarget(captures.callsign, context)
   if (t.error) return t.error
-  const nm = parseFloat(captures.nm)
+  const { nm, label } = typedDist(captures)
   openAbmFocusPanel(t.key, nm, t.center)
-  return `FOCUS ${t.label} ${nm}NM`
+  return `FOCUS ${t.label} ${label}`
 }
 
 export function FOCUS_OPEN({ captures, context }) {
@@ -671,7 +681,7 @@ export function FOCUS_OPEN({ captures, context }) {
   if (t.error) return t.error
   const nm = loadAbmPrefs().focusDefaultRangeNm ?? 20
   openAbmFocusPanel(t.key, nm, t.center)
-  return `FOCUS ${t.label} ${nm}NM`
+  return `FOCUS ${t.label} ${formatDistance(nm, getUnitSystem('abm'))}`
 }
 
 // ── Runways / polygons / grid / towns / raster layers ───────────────────────
@@ -768,16 +778,16 @@ export function DMS({ context }) {
   return 'DMS — DEGREES MINUTES SECONDS'
 }
 
-export function METERS({ context }) {
-  updateWin(context.windowId, { elevUnit: 'meters' })
-  saveAbmPrefs({ elevUnit: 'meters' })
-  return 'ELEV METERS'
+// .metric / .imperial — module-wide display units (every ABM window and
+// popup), see store/unitSystem.js.
+export function METRIC_UNITS() {
+  setUnitSystem('abm', METRIC)
+  return 'METRIC'
 }
 
-export function FEET({ context }) {
-  updateWin(context.windowId, { elevUnit: 'feet' })
-  saveAbmPrefs({ elevUnit: 'feet' })
-  return 'ELEV FEET'
+export function IMPERIAL_UNITS() {
+  setUnitSystem('abm', IMPERIAL)
+  return 'IMPERIAL'
 }
 
 // ── Contact display commands ─────────────────────────────────────────────────
@@ -881,10 +891,10 @@ export function THREAT_CLEAR({ context }) {
 }
 
 export function THREAT_RADIUS({ captures, context }) {
-  const nm = parseFloat(captures.nm)
+  const { nm, label } = typedDist(captures)
   updateWin(context.windowId, { threatRadius: nm })
   saveAbmPrefs({ threatRadius: nm })
-  return `THREAT RING ${nm}NM`
+  return `THREAT RING ${label}`
 }
 
 // Clears RBL, BRAA/bogey-dope pairs, and threat rings (.tclear — distinct
@@ -1030,7 +1040,7 @@ const ACTION_MAP = {
   FOCUS_DEFAULT_RANGE, FOCUS_OPEN_RANGE, FOCUS_OPEN,
   RUNWAYS_TOGGLE, POLYGONS_TOGGLE, AIRPORTS_TOGGLE, MGRS_TOGGLE, TOWNS_TOGGLE, BASE_TOGGLE, TERRAIN_TOGGLE,
   MAP_TOGGLE, WATER_TOGGLE, ROADS_TOGGLE,
-  COORDS_TOGGLE, BEC_TOGGLE, BEDB_TOGGLE, MALERT_TOGGLE, VOL_SHOW, VOL_SET, DDM, DMS, METERS, FEET,
+  COORDS_TOGGLE, BEC_TOGGLE, BEDB_TOGGLE, MALERT_TOGGLE, VOL_SHOW, VOL_SET, DDM, DMS, METRIC_UNITS, IMPERIAL_UNITS,
   PTL, FADED, HISTORY_TOGGLE, HISTORY_LEN_RATE, HISTORY_LEN,
   DB_TOGGLE, DBRESET, DBCA_TOGGLE, DBS_TOGGLE, LDR_LEN_SHOW, LDR_LEN, LDR_DIR,
   THREAT_CLEAR, THREAT_RADIUS, TCLEAR,

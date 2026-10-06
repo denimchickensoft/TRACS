@@ -20,6 +20,7 @@ import {
   buildSectFeature, buildRaceFeature,
 } from '../../../utils/drawShapes.js'
 import { toMagneticFromTrue } from '../../../utils/bearing.js'
+import { formatDistance } from '../../../utils/units.js'
 import { previewParams } from '../draw/drawCommands.js'
 
 const PREVIEW_COLOR   = '#FFFFFF'
@@ -38,7 +39,7 @@ const BUILDERS = {
 export function drawPendingDraw(ctx, view, pendingDraw, cursor, csMap = 2) {
   if (!pendingDraw) return
   const declinationDeg = view.declinationDeg ?? 0
-  const params = previewParams(pendingDraw, cursor, declinationDeg, view.theatre)
+  const params = previewParams(pendingDraw, cursor, declinationDeg, view.theatre, view.unitSystem)
   if (!params) return
 
   if (pendingDraw.type === 'text') {
@@ -78,7 +79,7 @@ function drawPolyPreview(ctx, view, { vertices, rangeNm, trueBearingDeg }, decli
   for (const v of vertices.slice(0, -1)) drawPoint(ctx, view, [v.lng, v.lat], PREVIEW_COLOR, PREVIEW_OPACITY)
 
   const last = vertices[vertices.length - 2]
-  drawDimLabel(ctx, view, last, vertices[vertices.length - 1], lenBrgLabel(rangeNm, trueBearingDeg, declinationDeg), csMap)
+  drawDimLabel(ctx, view, last, vertices[vertices.length - 1], lenBrgLabel(rangeNm, trueBearingDeg, declinationDeg, view.unitSystem), csMap)
 }
 
 // No marker dot — .text has none once committed either (drawAbmCustomDrawings.js),
@@ -111,9 +112,9 @@ function drawTextPreview(ctx, view, { anchor, text, rotationDeg }, csMap = 2) {
 // slightly different numbers. Building the label straight from the numbers
 // that generated the shape sidesteps the whole problem.
 
-function lenBrgLabel(rangeNm, trueBearingDeg, declinationDeg) {
+function lenBrgLabel(rangeNm, trueBearingDeg, declinationDeg, sys) {
   const magBrg = Math.round(toMagneticFromTrue(trueBearingDeg, declinationDeg)) || 360
-  return `${String(magBrg).padStart(3, '0')}°M  ${Math.round(rangeNm)}NM`
+  return `${String(magBrg).padStart(3, '0')}°M  ${formatDistance(rangeNm, sys)}`
 }
 
 function drawDimLabelAt(ctx, x, y, text, csMap = 2) {
@@ -154,33 +155,33 @@ function drawRectDims(ctx, view, params, built, declinationDeg, csMap = 2) {
   const lengths  = [widthNm, heightNm, widthNm, heightNm]
   const headings = [widthBrg, heightBrg, (widthBrg + 180) % 360, (heightBrg + 180) % 360]
   for (let i = 0; i < 4; i++) {
-    drawDimLabel(ctx, view, pts[i], pts[(i + 1) % 4], lenBrgLabel(lengths[i], headings[i], declinationDeg), csMap)
+    drawDimLabel(ctx, view, pts[i], pts[(i + 1) % 4], lenBrgLabel(lengths[i], headings[i], declinationDeg, view.unitSystem), csMap)
   }
 }
 
 function drawDimensions(ctx, view, type, params, built, declinationDeg, csMap = 2) {
   switch (type) {
     case 'line':
-      drawDimLabel(ctx, view, params.p1, params.p2, lenBrgLabel(params.rangeNm, params.trueBearingDeg, declinationDeg), csMap)
+      drawDimLabel(ctx, view, params.p1, params.p2, lenBrgLabel(params.rangeNm, params.trueBearingDeg, declinationDeg, view.unitSystem), csMap)
       return
     case 'rect':
       drawRectDims(ctx, view, params, built, declinationDeg, csMap)
       return
     case 'circ': {
       const { x, y } = latLngToCanvas(params.center.lat, params.center.lng, view)
-      drawDimLabelAt(ctx, x, y - 14, `R ${Math.round(params.radiusNm)}NM`, csMap)
+      drawDimLabelAt(ctx, x, y - 14, `R ${formatDistance(params.radiusNm, view.unitSystem)}`, csMap)
       return
     }
     case 'sect': {
       const spanDeg = ((params.endBrg - params.startBrg) % 360 + 360) % 360
       const { x, y } = latLngToCanvas(params.center.lat, params.center.lng, view)
-      drawDimLabelAt(ctx, x, y - 14, `${Math.round(params.radiusNm)}NM  ${Math.round(spanDeg)}°`, csMap)
+      drawDimLabelAt(ctx, x, y - 14, `${formatDistance(params.radiusNm, view.unitSystem)}  ${Math.round(spanDeg)}°`, csMap)
       return
     }
     case 'race': {
       const magRad = Math.round(toMagneticFromTrue(params.radialDeg, declinationDeg)) || 360
       const { x, y } = latLngToCanvas(params.fix.lat, params.fix.lng, view)
-      drawDimLabelAt(ctx, x, y - 14, `${params.turnDir} ${Math.round(params.legNm)}NM  ${String(magRad).padStart(3, '0')}°M`, csMap)
+      drawDimLabelAt(ctx, x, y - 14, `${params.turnDir} ${formatDistance(params.legNm, view.unitSystem)}  ${String(magRad).padStart(3, '0')}°M`, csMap)
       return
     }
     default:

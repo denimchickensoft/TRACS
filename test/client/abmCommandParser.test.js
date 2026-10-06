@@ -6,8 +6,14 @@ const idOf = (buffer) => parseCommand(buffer)?.command.id ?? null
 describe('ABM parseCommand', () => {
   test('range rings: toggle, set, set with anchor', () => {
     expect(idOf('.rr')).toBe('RR_TOGGLE')
-    expect(parseCommand('.rr 10').captures).toEqual({ nm: '10' })
-    expect(parseCommand('.RR 10 BATUMI')).toMatchObject({ command: { id: 'RR_SET_ANCHOR' }, captures: { nm: '10', anchor: 'batumi' } })
+    expect(parseCommand('.rr 10').captures).toEqual({ dist: '10' })
+    expect(parseCommand('.RR 10 BATUMI')).toMatchObject({ command: { id: 'RR_SET_ANCHOR' }, captures: { dist: '10', anchor: 'batumi' } })
+  })
+
+  test('unit system commands', () => {
+    expect(idOf('.metric')).toBe('METRIC_UNITS')
+    expect(idOf('.IMPERIAL')).toBe('IMPERIAL_UNITS')
+    expect(idOf('.meters')).toBe(null)
   })
 
   test('draw commands detect the shape with or without arguments', () => {
@@ -25,14 +31,14 @@ describe('ABM parseCommand', () => {
   })
 
   test('.focus: a bare number is the default range, not a callsign', () => {
-    expect(parseCommand('.focus 50')).toMatchObject({ command: { id: 'FOCUS_DEFAULT_RANGE' }, captures: { nm: '50' } })
-    expect(parseCommand('.focus viper11 30')).toMatchObject({ command: { id: 'FOCUS_OPEN_RANGE' }, captures: { callsign: 'viper11', nm: '30' } })
+    expect(parseCommand('.focus 50')).toMatchObject({ command: { id: 'FOCUS_DEFAULT_RANGE' }, captures: { dist: '50' } })
+    expect(parseCommand('.focus viper11 30')).toMatchObject({ command: { id: 'FOCUS_OPEN_RANGE' }, captures: { callsign: 'viper11', dist: '30' } })
     expect(parseCommand('.focus viper11')).toMatchObject({ command: { id: 'FOCUS_OPEN' }, captures: { callsign: 'viper11' } })
   })
 
   test('.focus: a one-word coordinate parses like a callsign, with or without a range', () => {
     expect(parseCommand('.focus N24.43E54.66')).toMatchObject({ command: { id: 'FOCUS_OPEN' }, captures: { callsign: 'n24.43e54.66' } })
-    expect(parseCommand('.focus 24.43N54.66E 30')).toMatchObject({ command: { id: 'FOCUS_OPEN_RANGE' }, captures: { callsign: '24.43n54.66e', nm: '30' } })
+    expect(parseCommand('.focus 24.43N54.66E 30')).toMatchObject({ command: { id: 'FOCUS_OPEN_RANGE' }, captures: { callsign: '24.43n54.66e', dist: '30' } })
   })
 
   test('.tdm toggles top-down mode', () => {

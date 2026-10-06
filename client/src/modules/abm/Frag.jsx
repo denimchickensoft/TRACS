@@ -11,7 +11,8 @@ import { computeAirbaseLabels } from '../../store/runways.js'
 import { groundState } from '../../utils/carriers.js'
 import { ZERO_INDEXED_WAYPOINT_TYPES } from '../../utils/parseMission.js'
 import './Frag.css'
-import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
+import { altFromM, altUnit, speedFromMs, speedUnit } from '../../utils/units.js'
+import { useUnitSystem } from '../../store/unitSystem.js'
 import { getIcaoMapping } from '../../utils/icaoMapping.js'
 
 const FRAG_SCALE_KEY = 'tracs.frag.scale'
@@ -123,14 +124,14 @@ function resolveBase(flight) {
   return flight.launch
 }
 
-function fmtAlt(m) {
+function fmtAlt(m, sys) {
   if (m == null) return '—'
-  return `${Math.round(m * M_TO_FT).toLocaleString()} FT`
+  return `${Math.round(altFromM(m, sys)).toLocaleString()} ${altUnit(sys)}`
 }
 
-function fmtSpeed(mps) {
+function fmtSpeed(mps, sys) {
   if (mps == null) return '—'
-  return `${Math.round(mps * MS_TO_KT)} KT`
+  return `${Math.round(speedFromMs(mps, sys))} ${speedUnit(sys)}`
 }
 
 function radioPresets(radio) {
@@ -160,6 +161,7 @@ function ordnanceSummary(unit) {
 export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
   const flights = useAbmMissionStore(s => s.flights)
+  const unitSystem = useUnitSystem('abm')
   const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
   const requestFind = useAbmMissionStore(s => s.requestFind)
   const findKey = useAbmMissionStore(s => s.findKey)
@@ -565,8 +567,8 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                       >
                         <span className="frag-wp-idx">{i + wpLabelOffset}</span>
                         <span className="frag-wp-name">{wpName}</span>
-                        <span className="frag-wp-alt">{fmtAlt(wp.alt)}</span>
-                        <span className="frag-wp-speed">{fmtSpeed(wp.speed)}</span>
+                        <span className="frag-wp-alt">{fmtAlt(wp.alt, unitSystem)}</span>
+                        <span className="frag-wp-speed">{fmtSpeed(wp.speed, unitSystem)}</span>
                       </div>
                     )
                   })

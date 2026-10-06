@@ -75,7 +75,6 @@ const DEFAULTS = {
   roadsVisible:       false,
   coordsVisible:      false,
   coordFormat:        'dms',
-  elevUnit:           'feet',
   becVisible:         false,
   acqHidden:          [],
   engHidden:          [],

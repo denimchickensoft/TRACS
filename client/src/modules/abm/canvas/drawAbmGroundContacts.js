@@ -16,13 +16,13 @@ import { latLngToCanvas } from '../../../utils/projection.js'
 import { DECL_COLOR } from '../../../utils/declarationSymbols.js'
 import { DECLARATION } from '../../../store/abm.js'
 import { HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../../utils/scopeConstants.js'
+import { M_PER_NM } from '../../../utils/units.js'
 
 const GROUND_RADIUS = 1.5
 const CULL_MARGIN   = 60
-const METERS_PER_NM = 1852
 
 function drawRangeRing(ctx, x, y, rangeM, pixelsPerNm, color, dashed) {
-  const radiusPx = (rangeM / METERS_PER_NM) * pixelsPerNm
+  const radiusPx = (rangeM / M_PER_NM) * pixelsPerNm
   if (radiusPx <= 0) return
   ctx.save()
   ctx.globalAlpha = 0.6

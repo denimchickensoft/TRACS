@@ -2,6 +2,7 @@ import { isOnGround } from '../../utils/visibleUnits.js'
 import { resolveCallsign } from '../../utils/callsign.js'
 import { typeAbbrev, parseFlightElement } from './canvas/drawAbmContacts.js'
 import { DECLARATION, getAbmEffectiveDeclaration } from '../../store/abm.js'
+import { formatDistance, M_PER_NM } from '../../utils/units.js'
 
 // Draw-command arg tokens (.line/.rect/.circ/.poly/.sect/.race/.text) must
 // come from the ORIGINAL-case command text, not the lowercased `str`
@@ -82,9 +83,8 @@ export function getAbmVisibleGroundUnits(units, myCoalitionNum, { allSides = fal
   return result
 }
 
-const METERS_PER_NM = 1852
-export function formatNmRange(meters, suffix) {
-  return `${Math.round(meters / METERS_PER_NM)} NM ${suffix}`
+function formatRangeField(meters, suffix, sys) {
+  return `${formatDistance(meters / M_PER_NM, sys)} ${suffix}`
 }
 
 // Cursor-proximity readout field list — pulled from the ground/navy unit
@@ -94,13 +94,13 @@ export function formatNmRange(meters, suffix) {
 // "no ring drawn" (see drawAbmGroundContacts.js), not "range is zero". No
 // labels on the lines themselves — the acq/eng lines carry their own
 // "acquisition"/"engagement" suffix instead.
-export function buildReadoutFields(dbEntry) {
+export function buildReadoutFields(dbEntry, sys) {
   if (!dbEntry) return []
   const fields = [
     dbEntry.label,
     dbEntry.type,
-    dbEntry.acquisitionRange > 0 ? formatNmRange(dbEntry.acquisitionRange, 'acquisition') : null,
-    dbEntry.engagementRange  > 0 ? formatNmRange(dbEntry.engagementRange,  'engagement')  : null,
+    dbEntry.acquisitionRange > 0 ? formatRangeField(dbEntry.acquisitionRange, 'acquisition', sys) : null,
+    dbEntry.engagementRange  > 0 ? formatRangeField(dbEntry.engagementRange,  'engagement', sys)  : null,
     dbEntry.description,
   ]
   return fields.filter(v => v !== undefined && v !== null && v !== '')

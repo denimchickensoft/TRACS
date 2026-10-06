@@ -27,8 +27,8 @@
 
 const COMMANDS = [
   { id: 'RR_TOGGLE',        pattern: /^\.rr$/ },
-  { id: 'RR_SET',           pattern: /^\.rr\s+(\d+(?:\.\d+)?)$/, captures: ['nm'] },
-  { id: 'RR_SET_ANCHOR',    pattern: /^\.rr\s+(\d+(?:\.\d+)?)\s+(\S+)$/, captures: ['nm', 'anchor'] },
+  { id: 'RR_SET',           pattern: /^\.rr\s+(\d+(?:\.\d+)?)$/, captures: ['dist'] },
+  { id: 'RR_SET_ANCHOR',    pattern: /^\.rr\s+(\d+(?:\.\d+)?)\s+(\S+)$/, captures: ['dist', 'anchor'] },
   { id: 'BE_RESET',         pattern: /^\.be$/ },
   { id: 'BE_LATLNG',        pattern: /^\.be\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/, captures: ['lat', 'lng'] },
   { id: 'BE_FIX',           pattern: /^\.be\s+(\S+)$/, captures: ['fix'] },
@@ -76,8 +76,8 @@ const COMMANDS = [
   { id: 'WHERE',            pattern: /^\.where\s+(.+)$/, captures: ['callsign'] },
   // Digits-only form must precede the single-token callsign form, or bare
   // `.focus 50` (set the default range) would be misread as a callsign.
-  { id: 'FOCUS_DEFAULT_RANGE', pattern: /^\.focus\s+(\d+(?:\.\d+)?)$/, captures: ['nm'] },
-  { id: 'FOCUS_OPEN_RANGE',    pattern: /^\.focus\s+(\S+)\s+(\d+(?:\.\d+)?)$/, captures: ['callsign', 'nm'] },
+  { id: 'FOCUS_DEFAULT_RANGE', pattern: /^\.focus\s+(\d+(?:\.\d+)?)$/, captures: ['dist'] },
+  { id: 'FOCUS_OPEN_RANGE',    pattern: /^\.focus\s+(\S+)\s+(\d+(?:\.\d+)?)$/, captures: ['callsign', 'dist'] },
   { id: 'FOCUS_OPEN',          pattern: /^\.focus\s+(\S+)$/, captures: ['callsign'] },
   { id: 'FRAG_FIND',        pattern: /^\.frag\s+(.+)$/, captures: ['callsign'] },
   { id: 'ROUTE_FIND',       pattern: /^\.route\s+(.+)$/, captures: ['callsign'] },
@@ -100,8 +100,8 @@ const COMMANDS = [
   { id: 'VOL_SET',          pattern: /^\.vol\s+(10|[0-9])$/, captures: ['n'] },
   { id: 'DDM',              pattern: /^\.ddm$/ },
   { id: 'DMS',              pattern: /^\.dms$/ },
-  { id: 'METERS',           pattern: /^\.meters$/ },
-  { id: 'FEET',             pattern: /^\.feet$/ },
+  { id: 'METRIC_UNITS',     pattern: /^\.metric$/ },
+  { id: 'IMPERIAL_UNITS',   pattern: /^\.imperial$/ },
   { id: 'PTL',              pattern: /^\.ptl\s+(\d+(?:\.\d+)?)$/, captures: ['mins'] },
   { id: 'FADED',            pattern: /^\.faded\s+(\d+)$/, captures: ['s'] },
   // .hist is short for .history
@@ -116,7 +116,7 @@ const COMMANDS = [
   { id: 'LDR_LEN',          pattern: /^\.ll\s+([0-7])$/, captures: ['length'] },
   { id: 'LDR_DIR',          pattern: /^\.ld\s+([1-9])$/, captures: ['dir'] },
   { id: 'THREAT_CLEAR',     pattern: /^\.threat$/ },
-  { id: 'THREAT_RADIUS',    pattern: /^\.threat\s+(\d+(?:\.\d+)?)$/, captures: ['nm'] },
+  { id: 'THREAT_RADIUS',    pattern: /^\.threat\s+(\d+(?:\.\d+)?)$/, captures: ['dist'] },
   { id: 'TCLEAR',           pattern: /^\.tclear$/ },
   { id: 'DECLARATION_RESET',    pattern: /^\.dec$/ },
   { id: 'DECLARATION_SET_BULK', pattern: /^\.dec\s+([fnbh])\s+([fnbh])$/, captures: ['oldLetter', 'newLetter'] },

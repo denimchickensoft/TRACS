@@ -26,7 +26,9 @@ import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { resolveSlew, resolveDeclareTargets } from '../../utils/slewResolver.js'
-import { formatDMS, formatDDM, formatMGRS, formatElevation } from '../../utils/coords.js'
+import { formatDMS, formatDDM, formatMGRS } from '../../utils/coords.js'
+import { formatAltitude, formatDistance, distFromNm } from '../../utils/units.js'
+import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
 import { drawCompassRose }  from '../../canvas/drawCompassRose.js'
@@ -602,7 +604,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // internally for per-unit AGL) and throttled to once per ~100m cell.
   const coordsVisible    = windowSettings?.coordsVisible ?? false
   const coordFormat      = windowSettings?.coordFormat ?? 'dms' // 'dms' | 'ddm'
-  const elevUnit         = windowSettings?.elevUnit ?? 'feet' // 'feet' | 'meters'
+  const unitSystem       = useUnitSystem('abm')
   const [coordsReadout, setCoordsReadout] = useState(null)
   const cursorLatLngRef  = useRef({ lat: null, lng: null })
   const elevRef          = useRef(null)
@@ -637,7 +639,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       if (hasBullseye) {
         const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatreRef.current)
         const magBrg = toMagneticFromTrue(gridBearingDeg, declinationRef.current)
-        setBecReadout({ x, y, bearing: Math.round(magBrg) || 360, range: Math.round(rangeNm) })
+        setBecReadout({ x, y, bearing: Math.round(magBrg) || 360, rangeNm })
       } else {
         setBecReadout(null)
       }
@@ -657,7 +659,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       if (hasBullseye) {
         const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatreRef.current)
         const magBrg = toMagneticFromTrue(gridBearingDeg, declinationRef.current)
-        bullseye = { bearing: Math.round(magBrg) || 360, range: Math.round(rangeNm) }
+        bullseye = { bearing: Math.round(magBrg) || 360, rangeNm }
       }
 
       setCoordsReadout({ lat, lng, elevationM: elevRef.current, bullseye })
@@ -886,7 +888,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       basemapVisible: abmPrefs.basemapVisible, terrainVisible: abmPrefs.terrainVisible,
       waterVisible: abmPrefs.waterVisible, roadsVisible: abmPrefs.roadsVisible,
       coordsVisible: abmPrefs.coordsVisible, coordFormat: abmPrefs.coordFormat,
-      elevUnit: abmPrefs.elevUnit, becVisible: abmPrefs.becVisible,
+      becVisible: abmPrefs.becVisible,
       acqHidden: new Set(abmPrefs.acqHidden ?? []), engHidden: new Set(abmPrefs.engHidden ?? []),
       groundVisible: abmPrefs.groundVisible,
       tdmMode: abmPrefs.tdmMode,
@@ -1026,6 +1028,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       width: rawW, height: rawH,
       declinationDeg: declinationRef.current,
       theatre,
+      unitSystem: getUnitSystem('abm'),
     }
   }, [theatre, windowId])
 
@@ -1045,7 +1048,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     return () => ro.disconnect()
   }, [hasWindowSettings]) // eslint-disable-line
 
-  useEffect(() => { setView(buildView()) }, [centerLat, centerLng, windowSettings?.rangeNm, declinationDeg]) // eslint-disable-line
+  useEffect(() => { setView(buildView()) }, [centerLat, centerLng, windowSettings?.rangeNm, declinationDeg, unitSystem]) // eslint-disable-line
 
   // ── Navdata layers draw (geo/relief/airspace/airways/mora/holdings) ─────────
   // Bottom canvas, under the rings/bullseye layer — same stacking AIC uses
@@ -1305,6 +1308,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       width: container.clientWidth, height: container.clientHeight,
       declinationDeg: v.declinationDeg ?? 0,
       theatre: v.theatre,
+      unitSystem: v.unitSystem,
     }
     viewRef.current = nextView
     setView(nextView)
@@ -1691,7 +1695,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       }
 
       const clickLatLng = canvasToLatLng(pos.x, pos.y, viewRef.current)
-      const result = advancePendingDraw(pendingDraw, clickLatLng, viewRef.current?.declinationDeg ?? 0, theatre)
+      const result = advancePendingDraw(pendingDraw, clickLatLng, viewRef.current?.declinationDeg ?? 0, theatre, unitSystem)
       if (result.immediate) {
         if (theatre) {
           addDrawnShape(theatre, pendingDraw.type, result.immediate)
@@ -1924,7 +1928,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, isGmOrAdmin, getDecl,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
-      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId])
+      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId, unitSystem])
 
   // Double-click a contact → open/reuse its in-page focus panel (same
   // mechanism as the .focus command, see AbmFocusPanel.jsx) at the persisted
@@ -2027,7 +2031,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
             ? buildAirportFields(active.airport)
             : active.kind === 'air'
               ? (active.isFriendly ? buildFriendlyAirFields(active.unit) : [active.revealed ? active.typeLabel : 'UNKNOWN'])
-              : buildReadoutFields(groundUnitDb[active.unit.name])
+              : buildReadoutFields(groundUnitDb[active.unit.name], unitSystem)
           if ((active.kind === 'ground' || (active.kind === 'air' && !active.isFriendly)) && active.count > 1) {
             fields.push(`x${active.count}`)
           }
@@ -2050,7 +2054,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
         {coordsVisible && coordsReadout && (
           <div className="abm-coords-box">
             {coordsReadout.bullseye && (
-              <div>BE {String(coordsReadout.bullseye.bearing).padStart(3, '0')}°M / {coordsReadout.bullseye.range}NM</div>
+              <div>BE {String(coordsReadout.bullseye.bearing).padStart(3, '0')}°M / {formatDistance(coordsReadout.bullseye.rangeNm, unitSystem)}</div>
             )}
             <div>
               {coordFormat === 'ddm'
@@ -2058,13 +2062,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
                 : formatDMS(coordsReadout.lat, coordsReadout.lng, 2)}
             </div>
             <div>{formatMGRS(coordsReadout.lat, coordsReadout.lng)}</div>
-            <div>{formatElevation(coordsReadout.elevationM, elevUnit)}</div>
+            <div>{formatAltitude(coordsReadout.elevationM, unitSystem)}</div>
           </div>
         )}
 
         {becVisible && becReadout && (
           <div className="abm-bec-box" style={{ left: becReadout.x, top: becReadout.y }}>
-            {String(becReadout.bearing).padStart(3, '0')} / {becReadout.range}
+            {String(becReadout.bearing).padStart(3, '0')} / {Math.round(distFromNm(becReadout.rangeNm, unitSystem))}
           </div>
         )}
 

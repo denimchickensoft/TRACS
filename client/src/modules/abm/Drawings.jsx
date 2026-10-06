@@ -6,6 +6,8 @@ import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { useAbmDeclination } from './useAbmDeclination.js'
 import { toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
+import { distFromNm, distToNm, distUnit } from '../../utils/units.js'
+import { useUnitSystem } from '../../store/unitSystem.js'
 import { AbmDrawingImport } from './AbmDrawingImport.jsx'
 import { exportDrawingsZip } from './exportDrawings.js'
 import './Drawings.css'
@@ -19,20 +21,21 @@ const EMPTY_ARRAY = []
 // means no expand/edit panel is offered; imported layers (no shapeType at
 // all) never get one either. `type: 'deg'` fields (headings) wrap into
 // [0,359] on commit (360 → 0) instead of a plain float parse — see
-// NumberField.
+// NumberField. `type: 'dist'` fields are stored in NM and shown/edited in
+// the ABM display unit (NM or km), with the unit appended to the label.
 const SHAPE_FIELDS = {
   rect: [{ key: 'rotationDeg', label: 'Rotation°', type: 'deg' }],
-  circ: [{ key: 'radiusNm', label: 'Radius NM' }],
+  circ: [{ key: 'radiusNm', label: 'Radius', type: 'dist' }],
   sect: [
     { key: 'startBrg', label: 'Start°', type: 'deg' },
     { key: 'endBrg',   label: 'End°', type: 'deg' },
-    { key: 'radiusNm', label: 'Radius NM' },
+    { key: 'radiusNm', label: 'Radius', type: 'dist' },
   ],
   race: [
     { key: 'radialDeg',     label: 'Radial°', type: 'deg' },
     { key: 'turnDir',       label: 'Turns', type: 'select', options: ['L', 'R'] },
-    { key: 'legNm',         label: 'Leg NM' },
-    { key: 'turnRadiusNm',  label: 'Turn radius NM' },
+    { key: 'legNm',         label: 'Leg', type: 'dist' },
+    { key: 'turnRadiusNm',  label: 'Turn radius', type: 'dist' },
   ],
   text: [
     { key: 'text',        label: 'Label', type: 'text' },
@@ -165,6 +168,7 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const mission = useSessionStore(s => s.mission)
   const theatre = mission?.mission?.theatre ?? null
   const declinationDeg = useAbmDeclination()
+  const unitSystem = useUnitSystem('abm')
 
   const layers              = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? EMPTY_ARRAY : EMPTY_ARRAY))
   const toggleVisible       = useAbmDrawingsStore(s => s.toggleVisible)
@@ -285,6 +289,8 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   // never holds a magnetic value.
   const magOf  = (trueDeg) => Math.round(((toMagneticFromTrue(trueDeg, declinationDeg) % 360) + 360) % 360)
   const trueOf = (magDeg)  => toTrueFromMagnetic(magDeg, declinationDeg)
+  // 2 decimals so a km value converted from NM doesn't show float noise.
+  const distOf = (nm) => Number(distFromNm(nm, unitSystem).toFixed(2))
 
   const [scale, setScale] = useState(() => {
     const saved = parseFloat(localStorage.getItem(DR_SCALE_KEY))
@@ -451,7 +457,7 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
                 <div className="dr-params">
                   {fields.map(f => (
                     <label key={f.key} className="dr-param-row">
-                      <span className="dr-param-label">{f.label}</span>
+                      <span className="dr-param-label">{f.type === 'dist' ? `${f.label} ${distUnit(unitSystem)}` : f.label}</span>
                       {f.type === 'select' ? (
                         <select
                           value={layer.params[f.key]}
@@ -470,6 +476,11 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
                           value={magOf(layer.params[f.key])}
                           deg
                           onCommit={v => setParam(layer, f.key, trueOf(v))}
+                        />
+                      ) : f.type === 'dist' ? (
+                        <NumberField
+                          value={distOf(layer.params[f.key])}
+                          onCommit={v => setParam(layer, f.key, distToNm(v, unitSystem))}
                         />
                       ) : (
                         <NumberField

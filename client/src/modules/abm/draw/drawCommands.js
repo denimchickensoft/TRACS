@@ -19,6 +19,7 @@ import {
   gridBearingRangeNm, gridDestinationPoint,
   toMagneticFromTrue, toTrueFromMagnetic,
 } from '../../../utils/bearing.js'
+import { distToNm } from '../../../utils/units.js'
 
 const NUM_RE = /^-?\d+(\.\d+)?$/
 const isNum = (t) => NUM_RE.test(t)
@@ -26,7 +27,8 @@ const isNum = (t) => NUM_RE.test(t)
 export const ROTATION_STEP_DEG = 1
 export const DEFAULT_RACE_TURN_RADIUS_NM = 1
 export const DEFAULT_SECT_HALF_WIDTH_DEG = 15
-export const DRAW_SNAP_STEP_NM = 1
+// One whole display unit (1 NM, or 1 km in metric) — see snapStepNm.
+const DRAW_SNAP_STEP = 1
 // Screen-pixel radius (AbmScope.jsx's canvas coordinates) — clicking within
 // this distance of .poly's first vertex closes the polygon there instead of
 // adding another vertex. Lives here as documentation of the contract even
@@ -40,25 +42,31 @@ export function supportsRotation(type) { return ROTATABLE_TYPES.has(type) }
 
 // Every shape's cursor-driven distance — .circ's radius, .poly's apothem,
 // .sect's radius, .race's leg length, and .rect's two side lengths (via
-// snapRectOffsets below) — snaps to whole-NM steps while free-drawing
+// snapRectOffsets below) — snaps to whole display-unit steps (NM or km,
+// per the module's unit system) while free-drawing
 // rather than tracking the cursor's exact fractional distance: easier to
 // read live and lands on a round number. Floored at one step so a preview
 // never collapses to nothing right next to the anchor/center point. Values
 // that were TYPED instead (e.g. `.circ 20`) bypass this entirely — only the
 // mouse-driven case snaps.
-function snapRadius(rangeNm) {
-  return Math.max(DRAW_SNAP_STEP_NM, Math.round(rangeNm / DRAW_SNAP_STEP_NM) * DRAW_SNAP_STEP_NM)
+function snapStepNm(sys) {
+  return distToNm(DRAW_SNAP_STEP, sys)
+}
+
+function snapRadius(rangeNm, sys) {
+  const step = snapStepNm(sys)
+  return Math.max(step, Math.round(rangeNm / step) * step)
 }
 
 // Signed variant for .rect's two independent side lengths (each can run
 // either direction from the anchor, unlike a radius/apothem/leg which is
 // always positive).
-function snapSigned(nm) {
+function snapSigned(nm, sys) {
   const sign = nm < 0 ? -1 : 1
-  return sign * Math.max(DRAW_SNAP_STEP_NM, Math.round(Math.abs(nm) / DRAW_SNAP_STEP_NM) * DRAW_SNAP_STEP_NM)
+  return sign * snapRadius(Math.abs(nm), sys)
 }
 
-// Snaps a live cursor/click position to whole-NM steps along both local
+// Snaps a live cursor/click position to whole-unit steps along both local
 // axes relative to `anchor` — via localOffsetNm/destinationPoint's shared
 // fromLat-referenced convention (NOT trueBearingRangeNm's average-lat one),
 // so this round-trips exactly with drawShapes.js's buildRectFeature, which
@@ -74,9 +82,9 @@ function snapSigned(nm) {
 // edges sit at different average latitudes, so that formula's east-west
 // scale factor differs slightly between them, making genuinely-equal sides
 // read back as slightly different lengths.
-function snapRectOffsets(anchor, point) {
+function snapRectOffsets(anchor, point, sys) {
   const { eastNm, northNm } = localOffsetNm(anchor.lat, anchor.lng, point.lat, point.lng)
-  return { widthNm: snapSigned(eastNm), heightNm: snapSigned(northNm) }
+  return { widthNm: snapSigned(eastNm, sys), heightNm: snapSigned(northNm, sys) }
 }
 
 function rectOppositeFromOffsets(anchor, widthNm, heightNm) {
@@ -148,16 +156,16 @@ export function resolvePoint(token, lookupFix) {
 
 // Shared by .line's second endpoint and .poly's next vertex — both are
 // "the next freehand point, chained off the previous one": bearing locks to
-// the nearest whole-degree magnetic heading, distance snaps to whole NM,
+// the nearest whole-degree magnetic heading, distance snaps to whole units,
 // then reprojects from `from` so the stored point reflects exactly those
 // locked/snapped numbers (not the cursor's raw fractional position). Grid-
 // frame throughout (gridBearingRangeNm/gridDestinationPoint) so the drawn
 // line reads back as the same clean magnetic number via RBL — see
 // utils/bearing.js.
-function lockedVertexFrom(from, to, declinationDeg, theatre) {
+function lockedVertexFrom(from, to, declinationDeg, theatre, sys) {
   const { gridBearingDeg, rangeNm } = gridBearingRangeNm(from.lat, from.lng, to.lat, to.lng, theatre)
   const lockedBrg = lockMagneticBearing(gridBearingDeg, declinationDeg)
-  const snappedNm = snapRadius(rangeNm)
+  const snappedNm = snapRadius(rangeNm, sys)
   return {
     point: gridDestinationPoint(from.lat, from.lng, lockedBrg, snappedNm, theatre),
     rangeNm: snappedNm,
@@ -189,12 +197,12 @@ function parseRect(tokens, lookupFix, declinationDeg) {
   return { pending: { type: 'rect', anchor, rotationDeg } }
 }
 
-function parseCirc(tokens, lookupFix) {
+function parseCirc(tokens, lookupFix, declinationDeg, theatre, sys) {
   let center = null, radiusNm = null
   for (const t of tokens) {
     if (isNum(t)) {
       if (radiusNm !== null) return { error: 'TOO MANY ARGS' }
-      radiusNm = parseFloat(t)
+      radiusNm = distToNm(parseFloat(t), sys)
       continue
     }
     if (center !== null) return { error: 'TOO MANY ARGS' }
@@ -217,7 +225,7 @@ function parsePoly(tokens, lookupFix) {
   return { pending: { type: 'poly', vertices: points } }
 }
 
-// Typed form is <id> <brg1> <brg2> ... <brgN> <radiusNm> — N boundary
+// Typed form is <id> <brg1> <brg2> ... <brgN> <radius> — N boundary
 // bearings (2+) sharing one trailing radius, producing N-1 adjoining
 // sectors (brg1-brg2, brg2-brg3, ...) all at that same center/radius. The
 // plain single-sector form (.sect OMDM 270 090 100) is just the N=2 case of
@@ -229,7 +237,7 @@ function parsePoly(tokens, lookupFix) {
 // NOTE: unlike every other command, a multi-sector result's
 // `immediate` is an ARRAY of param objects (one per sector), not a single
 // object — see the .sect branch in AbmScope.jsx's execCommand.
-function parseSect(tokens, lookupFix, declinationDeg, theatre) {
+function parseSect(tokens, lookupFix, declinationDeg, theatre, sys) {
   let center = null
   const nums = []
   for (const t of tokens) {
@@ -239,7 +247,7 @@ function parseSect(tokens, lookupFix, declinationDeg, theatre) {
     if (!center) return { error: 'FIX NOT FOUND' }
   }
   if (nums.length >= 3 && center) {
-    const radiusNm = nums[nums.length - 1]
+    const radiusNm = distToNm(nums[nums.length - 1], sys)
     // toTrueFromMagnetic == grid frame (DCS's own "true" — see
     // utils/bearing.js), matching buildSectFeature's gridDestinationPoint.
     const gridBrgs = nums.slice(0, -1).map(b => toTrueFromMagnetic(b, declinationDeg))
@@ -253,7 +261,7 @@ function parseSect(tokens, lookupFix, declinationDeg, theatre) {
   return { pending: { type: 'sect', center, halfWidthDeg: DEFAULT_SECT_HALF_WIDTH_DEG } }
 }
 
-function parseRace(tokens, lookupFix, declinationDeg) {
+function parseRace(tokens, lookupFix, declinationDeg, theatre, sys) {
   let fix = null, turnDir = null
   const nums = []
   for (const t of tokens) {
@@ -268,8 +276,14 @@ function parseRace(tokens, lookupFix, declinationDeg) {
     // convert to true here so it's stored the same way the click-driven
     // form's rotationDeg already is (rotatePendingDraw locks/steps in
     // magnetic space but stores the equivalent true bearing).
-    const [radialDeg, legNm, turnRadiusNm = DEFAULT_RACE_TURN_RADIUS_NM] = nums
-    return { immediate: { fix, radialDeg: toTrueFromMagnetic(radialDeg, declinationDeg), turnDir, legNm, turnRadiusNm } }
+    const [radialDeg, leg, turnRadius] = nums
+    return {
+      immediate: {
+        fix, radialDeg: toTrueFromMagnetic(radialDeg, declinationDeg), turnDir,
+        legNm: distToNm(leg, sys),
+        turnRadiusNm: turnRadius != null ? distToNm(turnRadius, sys) : DEFAULT_RACE_TURN_RADIUS_NM,
+      },
+    }
   }
   if (nums.length > 0 || turnDir) return { error: 'INCOMPLETE ARGS' }
   return {
@@ -297,24 +311,26 @@ const PARSERS = {
   poly: parsePoly, sect: parseSect, race: parseRace, text: parseText,
 }
 
-export function parseDrawCommand(type, tokens, lookupFix, declinationDeg = 0, theatre = null) {
-  return PARSERS[type](tokens, lookupFix, declinationDeg, theatre)
+// Typed sizes (radius/leg/turn radius) are in the module's display unit
+// (`sys`, see store/unitSystem.js) and stored as NM.
+export function parseDrawCommand(type, tokens, lookupFix, declinationDeg = 0, theatre = null, sys) {
+  return PARSERS[type](tokens, lookupFix, declinationDeg, theatre, sys)
 }
 
 // ───────────────────────── click state transitions ─────────────────────────
 // Returns { pending: nextState } to keep waiting, or { immediate: params }
 // to commit now via addDrawnShape.
 
-export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null) {
+export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null, sys) {
   switch (pd.type) {
     case 'line': {
       if (!pd.p1) return { pending: { ...pd, p1: click } }
-      const { point: p2 } = lockedVertexFrom(pd.p1, click, declinationDeg, theatre)
+      const { point: p2 } = lockedVertexFrom(pd.p1, click, declinationDeg, theatre, sys)
       return { immediate: { p1: pd.p1, p2 } }
     }
     case 'rect': {
       if (!pd.anchor) return { pending: { ...pd, anchor: click } }
-      const { widthNm, heightNm } = snapRectOffsets(pd.anchor, click)
+      const { widthNm, heightNm } = snapRectOffsets(pd.anchor, click, sys)
       const opposite = rectOppositeFromOffsets(pd.anchor, widthNm, heightNm)
       return { immediate: { anchor: pd.anchor, opposite, rotationDeg: pd.rotationDeg, theatre } }
     }
@@ -324,7 +340,7 @@ export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null
         return { pending: { ...pd, center: click } }
       }
       const { rangeNm } = trueBearingRangeNm(pd.center.lat, pd.center.lng, click.lat, click.lng)
-      return { immediate: { center: pd.center, radiusNm: snapRadius(rangeNm) } }
+      return { immediate: { center: pd.center, radiusNm: snapRadius(rangeNm, sys) } }
     }
     // .poly's "close near the first vertex" click is intercepted in
     // AbmScope.jsx (needs a screen-pixel proximity test against vertices[0],
@@ -333,7 +349,7 @@ export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null
     // is simply "add another vertex."
     case 'poly': {
       const last = pd.vertices[pd.vertices.length - 1]
-      const next = last ? lockedVertexFrom(last, click, declinationDeg, theatre).point : click
+      const next = last ? lockedVertexFrom(last, click, declinationDeg, theatre, sys).point : click
       return { pending: { ...pd, vertices: [...pd.vertices, next] } }
     }
     case 'sect': {
@@ -346,7 +362,7 @@ export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null
           center: pd.center,
           startBrg: (lockedBrg - half + 360) % 360,
           endBrg:   (lockedBrg + half) % 360,
-          radiusNm: snapRadius(rangeNm),
+          radiusNm: snapRadius(rangeNm, sys),
           theatre,
         },
       }
@@ -357,7 +373,7 @@ export function advancePendingDraw(pd, click, declinationDeg = 0, theatre = null
       return {
         immediate: {
           fix: pd.fix, radialDeg: pd.rotationDeg, turnDir: pd.turnDir,
-          legNm: snapRadius(rangeNm), turnRadiusNm: pd.turnRadiusNm,
+          legNm: snapRadius(rangeNm, sys), turnRadiusNm: pd.turnRadiusNm,
         },
       }
     }
@@ -390,14 +406,14 @@ export function rotatePendingDraw(pd, direction = 1, declinationDeg = 0) {
 // position — null means "nothing to show yet" (e.g. no point placed at
 // all). Never mutates pendingDraw or touches the store.
 
-export function previewParams(pd, cursor, declinationDeg = 0, theatre = null) {
+export function previewParams(pd, cursor, declinationDeg = 0, theatre = null, sys) {
   if (!cursor) return null
   switch (pd.type) {
     case 'line': {
       if (!pd.p1) return null
       const { gridBearingDeg, rangeNm } = gridBearingRangeNm(pd.p1.lat, pd.p1.lng, cursor.lat, cursor.lng, theatre)
       const lockedBrg  = lockMagneticBearing(gridBearingDeg, declinationDeg)
-      const snappedNm  = snapRadius(rangeNm)
+      const snappedNm  = snapRadius(rangeNm, sys)
       // rangeNm/trueBearingDeg carried through exactly (not re-measured from
       // p1/p2 later) — see the rect note below for why that matters.
       return {
@@ -407,7 +423,7 @@ export function previewParams(pd, cursor, declinationDeg = 0, theatre = null) {
     }
     case 'rect': {
       if (!pd.anchor) return null
-      const { widthNm, heightNm } = snapRectOffsets(pd.anchor, cursor)
+      const { widthNm, heightNm } = snapRectOffsets(pd.anchor, cursor, sys)
       // widthNm/heightNm carried through exactly for the dimension readout —
       // re-measuring the two rendered opposite corners with
       // trueBearingRangeNm would read the parallel sides as slightly
@@ -421,14 +437,14 @@ export function previewParams(pd, cursor, declinationDeg = 0, theatre = null) {
       const center = pd.center ?? cursor
       const radiusNm = pd.radiusNm != null
         ? pd.radiusNm
-        : (pd.center ? snapRadius(trueBearingRangeNm(pd.center.lat, pd.center.lng, cursor.lat, cursor.lng).rangeNm) : null)
+        : (pd.center ? snapRadius(trueBearingRangeNm(pd.center.lat, pd.center.lng, cursor.lat, cursor.lng).rangeNm, sys) : null)
       if (radiusNm == null) return null
       return { center, radiusNm }
     }
     case 'poly': {
       if (!pd.vertices.length) return null
       const last = pd.vertices[pd.vertices.length - 1]
-      const { point, rangeNm, trueBearingDeg } = lockedVertexFrom(last, cursor, declinationDeg, theatre)
+      const { point, rangeNm, trueBearingDeg } = lockedVertexFrom(last, cursor, declinationDeg, theatre, sys)
       // vertices includes the live cursor point (locked/snapped the same
       // way a click would commit it) appended after whatever's already
       // placed — drawPendingDraw.js reads vertices[0] to draw the "closing
@@ -444,7 +460,7 @@ export function previewParams(pd, cursor, declinationDeg = 0, theatre = null) {
         center: pd.center,
         startBrg: (lockedBrg - half + 360) % 360,
         endBrg:   (lockedBrg + half) % 360,
-        radiusNm: snapRadius(rangeNm),
+        radiusNm: snapRadius(rangeNm, sys),
         theatre,
       }
     }
@@ -453,7 +469,7 @@ export function previewParams(pd, cursor, declinationDeg = 0, theatre = null) {
       const { rangeNm } = trueBearingRangeNm(pd.fix.lat, pd.fix.lng, cursor.lat, cursor.lng)
       return {
         fix: pd.fix, radialDeg: pd.rotationDeg, turnDir: pd.turnDir,
-        legNm: snapRadius(rangeNm), turnRadiusNm: pd.turnRadiusNm,
+        legNm: snapRadius(rangeNm, sys), turnRadiusNm: pd.turnRadiusNm,
       }
     }
     case 'text': {

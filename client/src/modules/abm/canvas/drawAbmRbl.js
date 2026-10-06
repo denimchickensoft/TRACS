@@ -6,6 +6,7 @@
 
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
+import { formatRangeFine } from '../../../utils/units.js'
 
 export function drawRbl(ctx, view, rbl, declinationDeg, csMap = 2) {
   if (!rbl?.anchor || !rbl?.end) return
@@ -27,9 +28,8 @@ export function drawRbl(ctx, view, rbl, declinationDeg, csMap = 2) {
   ctx.beginPath(); ctx.arc(ep.x, ep.y, 3, 0, Math.PI * 2); ctx.fill()
 
   const { gridBearingDeg, rangeNm } = gridBearingRangeNm(rbl.anchor.lat, rbl.anchor.lng, rbl.end.lat, rbl.end.lng, view.theatre)
-  const range  = Math.round(rangeNm)
   const magBrg = Math.round(toMagneticFromTrue(gridBearingDeg, declinationDeg)) || 360
-  const label  = `${String(magBrg).padStart(3, '0')}°M  ${range}NM`
+  const label  = `${String(magBrg).padStart(3, '0')}°M  ${formatRangeFine(rangeNm, view.unitSystem)}`
 
   const midX = (ap.x + ep.x) / 2
   const midY = (ap.y + ep.y) / 2

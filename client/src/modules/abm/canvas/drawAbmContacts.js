@@ -15,7 +15,7 @@ import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } fr
 import { DECLARATION } from '../../../store/abm.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
-import { MS_TO_KT, M_TO_FT } from '../../../utils/units.js'
+import { altHundreds, speedTens, distFromNm } from '../../../utils/units.js'
 
 const SYM_HALF     = 3   // square half-width, px (hollow outline, not filled)
 const CULL_MARGIN  = 60
@@ -278,10 +278,8 @@ export function drawAbmContacts(
     // (rwrKnownIds — same sticky reveal as the air-unit readout in
     // AbmScope.jsx); until then it can't cycle to a type it doesn't have.
     const knowsType = isFriendly || rwrKnownIds.has(id)
-    const altFt   = Math.round((unit.position.alt ?? 0) * M_TO_FT)
-    const alt100  = String(Math.round(altFt / 100)).padStart(3, '0')
-    const spdKts  = (unit.speed ?? 0) * MS_TO_KT
-    const spd10   = String(Math.round(spdKts / 10)).padStart(2, '0')
+    const alt100  = altHundreds(unit.position.alt ?? 0, view.unitSystem)
+    const spd10   = speedTens(unit.speed ?? 0, view.unitSystem)
 
     const unitDir   = leaderDirs?.[String(id)]
     const altSpdLine = `${alt100} ${spd10}`
@@ -295,7 +293,7 @@ export function drawAbmContacts(
     if (showsBlock && bedbVisible && hasBullseye) {
       const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bullseyeLat, bullseyeLng, unit.position.lat, unit.position.lng, theatre)
       const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
-      lines.push(`${String(Math.round(magBrg) || 360).padStart(3, '0')}/${Math.round(rangeNm)}`)
+      lines.push(`${String(Math.round(magBrg) || 360).padStart(3, '0')}/${Math.round(distFromNm(rangeNm, view.unitSystem))}`)
     }
 
     if (dbca) {
