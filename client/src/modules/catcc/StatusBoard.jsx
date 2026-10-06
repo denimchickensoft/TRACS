@@ -19,7 +19,8 @@ import { useStabilityAlert } from './useStabilityAlert.js'
 import { HeaderField } from './HeaderField.jsx'
 import { CaseField } from './CaseField.jsx'
 import './StatusBoard.css'
-import { MS_TO_KT } from '../../utils/units.js'
+import { MS_TO_KT, speedFromMs } from '../../utils/units.js'
+import { useUnitSystem } from '../../store/unitSystem.js'
 
 const SB_SCALE_KEY  = 'tracs.sb.scale'
 const SCALE_MIN     = 0.5
@@ -73,6 +74,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     })
   }
 
+  const unitSystem  = useUnitSystem('catcc')
   const units       = useUnitsStore((s) => s.units)
   const coalition   = useSessionStore((s) => s.coalition)
   const mission     = useSessionStore((s) => s.mission)
@@ -99,7 +101,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const brc        = brcRaw === 0 ? 360 : brcRaw
   const fbRaw      = Math.round(fbF)
   const fb         = fbRaw === 0 ? 360 : fbRaw
-  const spd        = Math.round((carrier?.speed ?? 0) * MS_TO_KT)
+  // Alert compares knots whatever the display unit, so its threshold holds.
+  const spdKt      = Math.round((carrier?.speed ?? 0) * MS_TO_KT)
+  const spd        = Math.round(speedFromMs(carrier?.speed ?? 0, unitSystem))
 
   const carrierPos   = carrier?.position
   const tzOffset      = theatre ? getTheatreUtcOffset(theatre) : null
@@ -110,7 +114,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
 
   const brcAlert = useStabilityAlert(brc, { threshold: 5, stabilityMs: 20000, circular: true })
   const fbAlert  = useStabilityAlert(fb,  { threshold: 5, stabilityMs: 20000, circular: true })
-  const spdAlert = useStabilityAlert(spd, { threshold: 5, stabilityMs: 20000 })
+  const spdAlert = useStabilityAlert(spdKt, { threshold: 5, stabilityMs: 20000 })
 
   const { sunrise: sunriseZ, sunset: sunsetZ } = useMemo(() => {
     if (!utcDate || !carrierPos) return { sunrise: null, sunset: null }

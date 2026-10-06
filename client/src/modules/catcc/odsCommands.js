@@ -15,6 +15,8 @@ import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { saveCatccPrefs }      from '../../store/catccPrefs.js'
+import { setUnitSystem }       from '../../store/unitSystem.js'
+import { METRIC, IMPERIAL }    from '../../utils/units.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useNavdataStore }     from '../../store/navdata.js'
 import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../webrtc/client.js'
@@ -222,6 +224,18 @@ register('.LD', (parts) => {
   useDisplayStore.getState().updateWindow(WINDOW_ID, { globalLeaderDir: key })
   saveCatccPrefs({ globalLeaderDir: key })
   return []
+})
+
+// .METRIC / .IMPERIAL — CATCC display units (scope, status board, PAR when
+// hosted under CATCC), see store/unitSystem.js.
+register('.METRIC', () => {
+  setUnitSystem('catcc', METRIC)
+  return ['METRIC']
+})
+
+register('.IMPERIAL', () => {
+  setUnitSystem('catcc', IMPERIAL)
+  return ['IMPERIAL']
 })
 
 // .DBCA — toggle datablock collision avoidance (on by default for CATCC)

@@ -1,7 +1,7 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { DIR_TO_ANGLE }   from '../../../utils/scopeConstants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
-import { M_TO_FT, MS_TO_KT } from '../../../utils/units.js'
+import { altHundreds, speedFromMs } from '../../../utils/units.js'
 
 
 const SYMBOL_RADIUS  = 5     // px — matches circle radius in drawCatccContacts
@@ -9,14 +9,16 @@ const LEADER_LEN     = 20    // px default (.LL 2), measured from contact center
 const PADDING        = 2     // extra clearance around each bbox
 const DEFAULT_ANGLE  = -45   // NE — CATCC's general leader direction when no .LD is set
 
-function fmtAlt(metres) {
+// sys: the CATCC unit system (view.unitSystem) — hundreds of ft/m, whole
+// kt/kmh.
+function fmtAlt(metres, sys) {
   if (metres == null) return '---'
-  return String(Math.round((metres * M_TO_FT) / 100)).padStart(3, '0')
+  return altHundreds(metres, sys)
 }
 
-function fmtGs(mps) {
+function fmtGs(mps, sys) {
   if (mps == null) return '---'
-  return String(Math.round(mps * MS_TO_KT))
+  return String(Math.round(speedFromMs(mps, sys)))
 }
 
 /**
@@ -67,7 +69,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
     if (x < -100 || x > width + 100 || y < -100 || y > height + 100) continue
     const line1 = correlations[String(id)] ?? pendingCodes[String(id)] ?? 'XXX'
-    const line2 = `${fmtAlt(pos.alt)} ${fmtGs(unit.speed)}`
+    const line2 = `${fmtAlt(pos.alt, view.unitSystem)} ${fmtGs(unit.speed, view.unitSystem)}`
     contacts.push({
       id, x, y, line1, line2,
       lineWidths: [ctx.measureText(line1).width, ctx.measureText(line2).width],

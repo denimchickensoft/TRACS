@@ -30,6 +30,8 @@ import { processOdsCommand } from './odsCommands.js'
 import { initCntl, termCntl, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
+import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
+import { formatDistance } from '../../utils/units.js'
 import { getCatccBookmark, saveCatccBookmark } from '../../store/catccBookmarks.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
@@ -144,6 +146,7 @@ export default function CatccScope() {
   const { blinkTick, blinkOn } = useBlink()
 
   const [view, setView] = useState(null)
+  const unitSystem = useUnitSystem('catcc')
   const viewRef = useRef(null)
   useEffect(() => { viewRef.current = view }, [view])
 
@@ -223,6 +226,7 @@ export default function CatccScope() {
       height: h,
       declinationDeg: declinationRef.current,
       theatre,
+      unitSystem: getUnitSystem('catcc'),
     }
   }, [theatre]) // all other changing values read from refs/store
 
@@ -274,7 +278,7 @@ export default function CatccScope() {
   // Rebuild view when carrier position, zoom, or declination changes
   useEffect(() => {
     setView(buildView())
-  }, [carrierLat, carrierLng, declinationDeg, windowSettings?.rangeNm]) // eslint-disable-line
+  }, [carrierLat, carrierLng, declinationDeg, windowSettings?.rangeNm, unitSystem]) // eslint-disable-line
 
   // ── Render navdata layers (geo/airspace/fixes) — bottom canvas, under the
   //    rings/CCZ/CCA layer, same stacking ABM uses for its mapRef ──────────
@@ -414,7 +418,7 @@ export default function CatccScope() {
         const n = parseInt(setMatch[1], 10)
         const rangeNm = useDisplayStore.getState().windows[WINDOW_ID]?.rangeNm
         saveCatccBookmark(n, { rangeNm })
-        setOdsLines((prev) => [...prev, `BOOKMARK ${n} SAVED (${rangeNm}NM)`].slice(-ODS_MAX_LINES))
+        setOdsLines((prev) => [...prev, `BOOKMARK ${n} SAVED (${formatDistance(rangeNm, getUnitSystem('catcc'))})`].slice(-ODS_MAX_LINES))
         return
       }
       const loadMatch = starsKey.action?.match(/^LOAD_BOOKMARK_(\d)$/)
@@ -424,7 +428,7 @@ export default function CatccScope() {
         if (bm) {
           const rangeNm = Math.max(6, Math.min(256, bm.rangeNm))
           displayStore.updateWindow(WINDOW_ID, { rangeNm })
-          setOdsLines((prev) => [...prev, `BOOKMARK ${n} LOADED (${rangeNm}NM)`].slice(-ODS_MAX_LINES))
+          setOdsLines((prev) => [...prev, `BOOKMARK ${n} LOADED (${formatDistance(rangeNm, getUnitSystem('catcc'))})`].slice(-ODS_MAX_LINES))
         } else {
           setOdsLines((prev) => [...prev, `BOOKMARK ${n} EMPTY`].slice(-ODS_MAX_LINES))
         }
