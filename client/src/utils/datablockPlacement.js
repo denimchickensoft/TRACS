@@ -182,6 +182,7 @@ export function placeDatablocks(contacts, opts) {
   // tiebreak — roughly one leader + one datablock away.
   const maxWidth   = Math.max(0, ...contacts.map((c) => Math.max(...c.lineWidths)))
   const nearRadius = tipDist + maxWidth + lineHeight * 2
+  const neighbours = buildNeighbours(contacts, footprintReach(contacts, maxWidth, { symbolRadius, leaderLen, lineHeight, ascent, descent, padding }), nearRadius)
 
   function conflictVector(i, cand, generalRad) {
     const contact = contacts[i]
@@ -192,8 +193,7 @@ export function placeDatablocks(contacts, opts) {
       if (segmentHitsBBox(ob.x0, ob.y0, ob.x1, ob.y1, bbox)) extra += (ob.penalty ?? 1)
     }
 
-    for (let j = 0; j < contacts.length; j++) {
-      if (j === i) continue
+    for (const j of neighbours[i]) {
       const sym = symbolBBoxes[j]
       if (leaderHitsBBox(leader, sym)) ldrThruSym++
       if (overlapArea(bbox, sym) > 0)  dbOnOther++
@@ -258,6 +258,48 @@ export function placeDatablocks(contacts, opts) {
   }
 
   return toResult(contacts, placed)
+}
+
+// Furthest any part of a contact's own footprint (symbol, leader, datablock
+// at any of the 8 angles) can sit from its center, per axis, plus 1px slack
+// for the rounding in placeAt/computeBBox.
+function footprintReach(contacts, maxWidth, { symbolRadius, leaderLen, lineHeight, ascent, descent, padding }) {
+  const tipDist  = Math.max(leaderLen, symbolRadius)
+  const maxLines = Math.max(1, ...contacts.map((c) => c.lineWidths.length))
+  const reachX = tipDist + TEXT_GAP + maxWidth + padding
+  const reachY = tipDist + lineHeight + ascent + descent + (maxLines - 1) * lineHeight + padding
+  return Math.max(reachX, reachY) + 1
+}
+
+// For each contact, the indices (ascending, self excluded) of every contact
+// that can affect its conflict vector: one whose footprint can touch its
+// footprint (centers within 2 * reach on both axes) or that counts toward
+// the away-from-neighbour tiebreak (within nearRadius). Anything further
+// scores exactly 0 on every rank, so skipping it leaves placement unchanged,
+// and ascending order keeps the floating-point sums in the same order as a
+// full scan. Bucketed into a grid so this is ~O(n) instead of O(n²).
+function buildNeighbours(contacts, reach, nearRadius) {
+  const range = Math.max(2 * reach, nearRadius)
+  const cellOf = (v) => Math.floor(v / range)
+  const grid = new Map()
+  contacts.forEach((c, i) => {
+    const key = `${cellOf(c.x)},${cellOf(c.y)}`
+    let cell = grid.get(key)
+    if (!cell) grid.set(key, cell = [])
+    cell.push(i)
+  })
+  return contacts.map((c, i) => {
+    const cx = cellOf(c.x), cy = cellOf(c.y)
+    const out = []
+    for (let gx = cx - 1; gx <= cx + 1; gx++) {
+      for (let gy = cy - 1; gy <= cy + 1; gy++) {
+        for (const j of grid.get(`${gx},${gy}`) ?? []) {
+          if (j !== i && Math.abs(contacts[j].x - c.x) <= range && Math.abs(contacts[j].y - c.y) <= range) out.push(j)
+        }
+      }
+    }
+    return out.sort((a, b) => a - b)
+  })
 }
 
 function toResult(contacts, placed) {
