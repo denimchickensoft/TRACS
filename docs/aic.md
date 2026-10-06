@@ -31,7 +31,7 @@ Click the scope to focus it, type, then press **Enter** to run most commands. A 
 | Command | Effect |
 |---|---|
 | `.center` | Re-center on bullseye |
-| `.center <brg> <rng>` | Center at a magnetic bearing/range (NM) from bullseye |
+| `.center <brg> <rng>` | Center at a magnetic bearing/range (NM, or km under `.metric`) from bullseye |
 | `.center <fixname>` | Center on a named nav fix |
 | `.center` + click | Center on the clicked point |
 | `.find <fixname>` | Drop a marker at a named fix (cleared by Escape) |
@@ -41,7 +41,7 @@ Click the scope to focus it, type, then press **Enter** to run most commands. A 
 | `.be <fixname>` | Override bullseye to a named fix/navaid/runway |
 | `.be <lat> <lon>` | Override bullseye to explicit decimal-degree coordinates |
 | `.rr` | Toggle range rings |
-| `.rr <nm>` | Set range ring spacing (`0` = off) |
+| `.rr <dist>` | Set range ring spacing in NM, or km under `.metric` (`0` = off) |
 | `.ptl <seconds>` | Predicted Track Line length, 0–300s |
 | `.sym <n>` | Symbol size, 1–5 |
 | `.faded <seconds>` | How long a contact keeps showing (faded) after dropping out |
@@ -51,6 +51,7 @@ Click the scope to focus it, type, then press **Enter** to run most commands. A 
 | `.centroid` | Toggle a marker at the hostile-picture centroid |
 | `.axis` | Toggle a line along the computed threat axis |
 | `.bec` | Toggle bullseye-on-cursor — bearing/range readout that follows the mouse (off by default) |
+| `.metric` / `.imperial` | Set display units for the scope and BRAA list (default imperial). Metric shows distances in km, altitudes in m (thousands as `7.6km`), and speeds in km/h, and typed distances (`.rr`, `.threat`, `.sector`, `.center <brg> <rng>`) are read in km. The RBL shows ft under 1 NM, or m under 1 km |
 | `.clear` | Clears threat rings, RBL, sector, PICTURE-ack state, and **all** BRAA pairs |
 
 ### Declaration
@@ -74,8 +75,8 @@ You can also declare contacts with the F-keys and a click (see Keyboard, below).
 |---|---|
 | `.threat` (Enter) | Clears all threat rings |
 | `.threat`, then click a contact | Toggles that contact's ring |
-| `.threat <nm>` (Enter) | Sets the ring radius used by manual/auto rings |
-| `.threat <nm>`, then click a contact | Sets radius and toggles that contact's ring |
+| `.threat <dist>` (Enter) | Sets the ring radius used by manual/auto rings (NM, or km under `.metric`) |
+| `.threat <dist>`, then click a contact | Sets radius and toggles that contact's ring |
 | `.autothreat` | Toggle automatic lighting — any friendly within radius of a hostile/bogey lights up automatically |
 
 ### PICTURE panel
@@ -90,8 +91,8 @@ With a sector defined, only contacts inside the sector count. With no sector, ev
 |---|---|
 | `.sector` | Re-shows a hidden sector, or reports `NO SECTOR` if none is defined |
 | `.sector clear` / `.sector off` | Clears the sector |
-| `.sector <fromBrg> <toBrg> <rngNm>` (Enter) | Defines a sector wedge centered at the bullseye |
-| `.sector <fromBrg> <toBrg> <rngNm>`, then click on the scope | Same, but places the origin at the clicked point |
+| `.sector <fromBrg> <toBrg> <rng>` (Enter) | Defines a sector wedge centered at the bullseye (range in NM, or km under `.metric`) |
+| `.sector <fromBrg> <toBrg> <rng>`, then click on the scope | Same, but places the origin at the clicked point |
 | `.sector` (bare, sector already exists), then click | Moves the existing sector's origin without retyping the arc |
 
 Click the PICTURE panel to acknowledge the current picture. This stops its alert flash until the group composition changes again.

@@ -121,7 +121,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 
 | Command | Shortcut | Effect |
 |---|---|---|
-| `RG <n>` + ENTER | — | Set range, 6–256 NM |
+| `RG <n>` + ENTER | — | Set range, 6–256 NM (in km under `.METRIC`, about 11–474) |
 | `RR (2\|5\|10\|20)` + ENTER | — | Set range-ring spacing |
 | `.CENTER` + ENTER | `Ctrl+F1` | Return the scope to its original center (same as the DCB's OFF CNTR) |
 | `MF P` + SLEW | `F7` | Relocate the preview area (command line/response readout) to the clicked point |
@@ -152,6 +152,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.FILL` + ENTER | — | Toggle airspace polygon fill |
 | `.FILL <1-100>` + ENTER | — | Set fill transparency % and turn it on |
 | `.COORDS` + ENTER | — | Toggle a cursor lat/lng readout |
+| `.METRIC` / `.IMPERIAL` + ENTER | — | Set display units for STARS, ASDE-X and PAR (default imperial). Metric shows distances in km, datablock altitude in hundreds of m and speed in tens of km/h (3 digits above 999 km/h), and MVA/MSA and elevation in m; `RG <n>` is read in km. Typed altitudes, speeds and flight plans stay in ft/kt |
 | `.FIND <query>` + ENTER | — | Drop a marker at a named fix/navaid/airport |
 | `.FIX <name...>` + ENTER | — | Force-show one or more fixes regardless of the FIXES toggle; each name toggles independently. Bare `.FIX` clears them all |
 | `.PROC <name>` + ENTER | — | Toggle display of a named SID/STAR/approach procedure |
@@ -355,6 +356,7 @@ A ground-movement sub-scope showing surface traffic (aircraft/helicopters below 
 | `.FP <callsign>` / `.FP` + ENTER | Open Flight Plan Editor (prefilled or blank) |
 | `.CENTERLINE` + ENTER | Toggle runway centerline overlay |
 | `.COORDS` + ENTER | Toggle cursor lat/lng readout |
+| `.METRIC` / `.IMPERIAL` + ENTER | Set display units, shared with STARS and PAR (see STARS) |
 | `.COLORS <name>` + ENTER | Switch color profile (e.g. Day/Night) |
 | `<d>` (1–9) + SLEW | Set/clear a contact's leader-line direction (`5` clears) |
 | `.TAG <id>` + SLEW | Manually tag a target: type the aircraft ID, then click the target. The ID must match the callsign TRACS displays for that aircraft; a mismatch returns `ILL TRK` |
@@ -370,7 +372,7 @@ A ground-movement sub-scope showing surface traffic (aircraft/helicopters below 
 |---|---|
 | 0 | `DUP BCN` when two displayed targets squawk the same code and one of them is associated (shown in PART mode too) |
 | 1 | Altitude in hundreds of feet after the ID/beacon code (`XXX` for an SRS target with no live squawk) |
-| 2 | Aircraft type, fix, and velocity (groundspeed in tens of knots). If scratchpads are set, line 2 alternates every 2 seconds between these and the scratchpads |
+| 2 | Aircraft type, fix, and velocity (groundspeed in tens of knots, or tens of km/h under `.METRIC`). If scratchpads are set, line 2 alternates every 2 seconds between these and the scratchpads |
 
 The fix field shows the first three letters of the first known fix in the flight plan's route. If the route has no known fix, it shows the four-character destination, or nothing if the destination is this airport. **PART** mode shows only the ID/beacon code (plus `DUP BCN`). ASDE-X scratchpads are separate from STARS scratchpads, and they aren't shared with other controllers.
 

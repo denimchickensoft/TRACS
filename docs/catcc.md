@@ -39,6 +39,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.LABELSIZE [0-5]` | Set airspace/fix label size; bare `.LABELSIZE` queries the current value |
 | `.DBSIZE [0-5]` | Set aircraft datablock size; bare `.DBSIZE` queries the current value |
 | `.DBCA` | Toggle datablock collision avoidance (on by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction, and off the marshal radial |
+| `.METRIC` / `.IMPERIAL` | Set display units for the scope, status board and PAR (default imperial). Metric shows datablock altitude in hundreds of m, speeds in km/h and ranges in km |
 | `.ASP` | Bulk-toggle all airspace categories |
 | `.TMA` `.CTR` `.CTA` `.FIR` `.UIR` `.SUA` `.MIL` `.TRSA` `.CLASSA`–`.CLASSG` | Toggle one airspace category |
 | `.LABELS` (aliases `.LBL`, `.LABEL`) | Toggle airspace/fix name labels |

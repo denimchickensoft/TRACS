@@ -60,8 +60,8 @@ The drawing commands (`.line`, `.rect`, `.circ`, `.poly`, `.sect`, `.race`, `.te
 | Command | Effect |
 |---|---|
 | `.rr` | Toggle on/off |
-| `.rr <nm>` | Set spacing (≤0 turns off) |
-| `.rr <nm> <anchor>` | Set spacing and anchor to `bullseye`/`bs` or a named fix |
+| `.rr <dist>` | Set spacing in NM, or km under `.metric` (≤0 turns off) |
+| `.rr <dist> <anchor>` | Set spacing and anchor to `bullseye`/`bs` or a named fix |
 
 ### Map & reference layers (bare toggles unless noted)
 
@@ -113,7 +113,7 @@ ABM does not display SID/STAR/approach procedures.
 |---|---|
 | `.coords` | Toggle the cursor lat/lng readout |
 | `.ddm` / `.dms` | Set coordinate format |
-| `.meters` / `.feet` | Set elevation units |
+| `.metric` / `.imperial` | Set display units for every ABM window and popup (default imperial). Metric shows distances in km, altitudes and elevation in m, and speeds in km/h, and typed distances (`.rr`, `.threat`, `.focus`, draw-command sizes, Drawings fields) are read in km. The BRAA line and RBL show ft under 1 NM, or m under 1 km |
 | `.bec` | Toggle bullseye-on-cursor — bearing/range readout that follows the mouse |
 
 ### Contacts
@@ -152,8 +152,8 @@ Only one tone plays however many ABM windows are open (main scope, focus panels,
 
 | Command | Effect |
 |---|---|
-| `.threat` (Enter) | Clear all rings; `.threat <nm>` (Enter) sets the default radius instead |
-| `.threat` / `.threat <nm>`, then click a contact | Toggle that contact's ring (optionally set radius) |
+| `.threat` (Enter) | Clear all rings; `.threat <dist>` (Enter) sets the default radius instead (NM, or km under `.metric`) |
+| `.threat` / `.threat <dist>`, then click a contact | Toggle that contact's ring (optionally set radius) |
 | `.tclear` | Clears RBL, all BRAA pairs, and all threat rings at once |
 | `.dope`, then click | Bogey-dope the clicked contact to the nearest air contact declared hostile or bogey |
 | `.rename` / `.rename <newcallsign>`, then click | Rename or reset a contact's callsign (synced to other controllers) |
@@ -196,14 +196,14 @@ Each command runs on Enter. Arguments you type are used directly; anything missi
 |---|---|
 | `.line [p1] [p2]` | Line between two points |
 | `.rect [anchor]` | Rectangle: click the anchor (if not typed), then the opposite corner |
-| `.circ [center] [radiusNm]` | Circle |
+| `.circ [center] [radius]` | Circle |
 | `.poly [p1 p2 ...]` | Polygon. Typing 3+ points draws it immediately; otherwise click to add vertices, and click within 12 px of the first vertex (with 3+ vertices placed) to close it |
-| `.sect <center> <brg1> <brg2> ... <brgN> <radiusNm>` | N-1 adjoining sectors at one center and radius (e.g. `.sect OMDM 270 090 100`). Bearings are magnetic |
+| `.sect <center> <brg1> <brg2> ... <brgN> <radius>` | N-1 adjoining sectors at one center and radius (e.g. `.sect OMDM 270 090 100`). Bearings are magnetic |
 | `.sect` | Click the center, then click again: draws a ±15° sector toward that point, with radius set by the click distance |
 | `.race [fix] [radial] [leg] [L\|R] [turnRadius]` | Racetrack. Typing fix, radial (magnetic), leg length and turn direction draws it immediately (turn radius defaults to 1 NM); otherwise click the fix, then click to set the leg |
 | `.text [anchor] <text>` | Text label: click to place it (if no anchor was typed), then click again to commit |
 
-While placing a shape, headings snap to whole magnetic degrees and distances to whole NM. The scroll wheel rotates `.rect`, `.race`, and `.text` before you commit them. Escape discards an in-progress shape.
+Typed sizes (radius, leg, turn radius) are in NM, or km under `.metric`. While placing a shape, headings snap to whole magnetic degrees and distances to whole NM (whole km under `.metric`). The scroll wheel rotates `.rect`, `.race`, and `.text` before you commit them. Escape discards an in-progress shape.
 
 Clearing:
 - `.dclear` (bare), then click a drawing — removes one shape.
@@ -231,7 +231,7 @@ A floating mini-scope locked onto one contact, or opened on an airfield or any p
 | `.focus <callsign>` | Open (or bring to front) a focus window on that contact, at your saved default range |
 | `.focus <ICAO>` | Open a focus window on that airfield (used when no live callsign matches) |
 | `.focus <coordinate or fix>` | Open a focus window on a point: a coordinate written as one word (`N24.43E54.66` or `24.43N54.66E`), or a fix/navaid id |
-| `.focus <callsign, ICAO, coordinate or fix> <range>` | Same, with an explicit range in NM |
+| `.focus <callsign, ICAO, coordinate or fix> <range>` | Same, with an explicit range in NM (km under `.metric`) |
 | `.focus <range>` | Set the default range for future focus windows, without opening one |
 | Double-click a contact on the main scope | Same as `.focus <callsign>` |
 | Double-click a runway (while runways or airport polygons are shown) | Open a focus window on that airfield |
