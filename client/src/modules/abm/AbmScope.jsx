@@ -71,6 +71,7 @@ import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
 import { getIcaoMapping } from '../../utils/icaoMapping.js'
+import { getAirportPolygonFeatures, getTowns, getGroundUnitDb, getRasterLayer } from './abmTheatreData.js'
 
 const DEFAULT_windowId = 'abm-main'
 const EMPTY_ARRAY = []
@@ -444,10 +445,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
 
   const [groundUnitDb, setGroundUnitDb] = useState({})
   useEffect(() => {
-    Promise.all([
-      fetch('/units/groundunitdatabase.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      fetch('/units/navyunitdatabase.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-    ]).then(([ground, navy]) => setGroundUnitDb({ ...ground, ...navy }))
+    let cancelled = false
+    getGroundUnitDb().then(db => { if (!cancelled) setGroundUnitDb(db) })
+    return () => { cancelled = true }
   }, [])
 
   // Real ICAO codes only (client/public/icaoMapping.json) — fetched
@@ -565,17 +565,16 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // args) already yields theatre-wide unfiltered centerlines.
   const runwayCenterlines = useRunwaysStore(s => s.centerlines)
   const runwaysVisible    = windowSettings?.runwaysVisible ?? false
-  // Local fetch mirroring ASDE-X's pattern — no shared store exists for this,
-  // and unlike ASDE-X we want every airport in the theatre, not one facility.
+  // Unlike ASDE-X we want every airport in the theatre, not one facility.
+  // Loaded through abmTheatreData.js so focus windows share one copy.
   const [polygonFeatures, setPolygonFeatures] = useState([])
   const polygonsVisible    = windowSettings?.polygonsVisible ?? false
   // Real UTM/MGRS grid (see drawMgrsGrid.js) — matches DCS's own F10 map.
   // No shared store needed (ABM-only, like the toggles above), so plain
   // local state.
   const mgrsVisible    = windowSettings?.mgrsVisible ?? false
-  // Town/city name labels (.towns) — local fetch straight from the public
-  // static file, same as polygonFeatures below but no server API needed
-  // since towns are pre-baked per-theatre JSON, not derived from mission data.
+  // Town/city name labels (.towns) — pre-baked per-theatre JSON from the
+  // public folder, not derived from mission data.
   const [towns, setTowns] = useState([])
   const townsVisible    = windowSettings?.townsVisible ?? false
   // Baked raster layers (.map/.terrain/.water/.roads/.base) — see server's
@@ -777,25 +776,21 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     return () => clearInterval(id)
   }, [groupedReadout.length])
 
-  // `cancelled` drops a response that lands after a theatre switch, so a
-  // slow fetch for the previous theatre can't overwrite the current one.
+  // The theatre-static loads below go through abmTheatreData.js, so every
+  // focus window shares one parsed copy and one decoded raster Image instead
+  // of fetching its own. `cancelled` drops a result that lands after a
+  // theatre switch or unmount.
   useEffect(() => {
     if (!theatre) return
     let cancelled = false
-    fetch(`/api/airports/polygons/${encodeURIComponent(theatre)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(geojson => { if (!cancelled) setPolygonFeatures(geojson?.features ?? []) })
-      .catch(() => { if (!cancelled) setPolygonFeatures([]) })
+    getAirportPolygonFeatures(theatre).then(f => { if (!cancelled) setPolygonFeatures(f) })
     return () => { cancelled = true }
   }, [theatre])
 
   useEffect(() => {
     if (!theatre) return
     let cancelled = false
-    fetch(`/towns/${encodeURIComponent(theatre)}.json`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (!cancelled) setTowns(data?.towns ?? []) })
-      .catch(() => { if (!cancelled) setTowns([]) })
+    getTowns(theatre).then(t => { if (!cancelled) setTowns(t) })
     return () => { cancelled = true }
   }, [theatre])
 
@@ -805,15 +800,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     const setters = { basemap: setBasemap, terrain: setTerrain, water: setWater, roads: setRoads }
     for (const [layer, setLayer] of Object.entries(setters)) {
       setLayer(null)
-      fetch(`/api/abm/raster/${encodeURIComponent(theatre)}/${layer}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(meta => {
-          if (!meta || cancelled) return
-          const img = new Image()
-          img.onload = () => { if (!cancelled) setLayer({ ...meta, img }) }
-          img.src = `/api/abm/raster/${encodeURIComponent(theatre)}/${layer}/image.png`
-        })
-        .catch(() => { if (!cancelled) setLayer(null) })
+      getRasterLayer(theatre, layer).then(r => { if (!cancelled) setLayer(r) })
     }
     return () => { cancelled = true }
   }, [theatre])
