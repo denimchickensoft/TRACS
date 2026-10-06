@@ -11,20 +11,25 @@ import {
 // Round-trips parseHostPort()'s output back into what the Server URL field
 // should display: bare host for the (default) http case, 'https://host' when
 // the saved URL was explicitly https — so a saved HTTPS profile doesn't
-// silently downgrade to http on reload.
-function displayHost({ host, protocol }) {
-  return protocol === 'https' ? `https://${host}` : host
+// silently downgrade to http on reload. Any path (e.g. a reverse-proxy
+// prefix like "/server1") is shown back after the host.
+function displayHost({ host, path = '', protocol }) {
+  return `${protocol === 'https' ? 'https://' : ''}${host}${path}`
 }
 
-// Splits a user-typed Server URL into its explicit scheme (if any) and the
-// rest, so composedOlympusUrl/composedStorageUrl can preserve whatever
-// scheme was typed instead of forcing http://. Defaults to 'http' when no
+// Splits a user-typed Server URL into its explicit scheme (if any), host and
+// path, so composedOlympusUrl/composedStorageUrl can preserve whatever
+// scheme was typed instead of forcing http://, and insert the port between
+// host and path rather than after the path. Defaults to 'http' when no
 // scheme is present — never fabricates https.
 function splitScheme(raw) {
   const match = raw.trim().match(/^(https?):\/\//i)
+  const rest  = raw.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+  const slash = rest.indexOf('/')
   return {
     scheme: match ? match[1].toLowerCase() : 'http',
-    rest:   raw.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, ''),
+    host:   slash === -1 ? rest : rest.slice(0, slash),
+    path:   slash === -1 ? ''   : rest.slice(slash),
   }
 }
 
@@ -119,8 +124,7 @@ export function ConnectPhase({ onConnected }) {
     // value from before a mode switch; relying on "happens to be blank" is
     // exactly the implicit-inference pattern this selector replaces.
     if (sourceMode === 'relay' || !host.trim()) return ''
-    const { scheme, rest } = splitScheme(host)
-    return port ? `${scheme}://${rest}:${port}` : `${scheme}://${rest}`
+    return composedStorageUrl(host, port)
   }
 
   // Same composition, but for persistence (saved profiles, last-connection) —
@@ -132,18 +136,20 @@ export function ConnectPhase({ onConnected }) {
   // portless "http://host" (or "https://host") back into { host, port: '',
   // protocol } correctly.
   function composedStorageUrl(host = serverHost, port = sourcePort) {
-    const { scheme, rest } = splitScheme(host)
-    return port ? `${scheme}://${rest}:${port}` : `${scheme}://${rest}`
+    const { scheme, host: hostOnly, path } = splitScheme(host)
+    return `${scheme}://${hostOnly}${port ? `:${port}` : ''}${path}`
   }
 
   // Same host, XPNDR port instead — empty port means "no relay configured",
   // never a guess, since the relay always lives alongside Olympus/Tacview.
   // An https:// server host means TLS in front of the DCS server (see the
   // README's relay TLS setup), so the relay is reached over wss:// too.
+  // The Server URL's path is deliberately dropped: it's a prefix for the
+  // primary source's endpoint, not for the relay's own port.
   function composedRelayUrl(host = serverHost, port = xpndrPort) {
     if (!port) return ''
-    const { scheme, rest } = splitScheme(host)
-    return `${scheme === 'https' ? 'wss' : 'ws'}://${rest}:${port}`
+    const { scheme, host: hostOnly } = splitScheme(host)
+    return `${scheme === 'https' ? 'wss' : 'ws'}://${hostOnly}:${port}`
   }
 
   function handleSelectProfile(profile) {

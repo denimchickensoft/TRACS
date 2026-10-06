@@ -2,18 +2,22 @@ const STORAGE_KEY       = 'tracs.serverProfiles'
 const LAST_CONN_KEY     = 'tracs.lastConnection'
 const MAX_RECENTS  = 5
 
-// Splits a stored "http://host:port"-shaped string (or a bare host) back into
-// its host, port and protocol, for editing as separate fields. Malformed
-// input returns blanks rather than throwing. protocol defaults to 'http' —
-// the only other value ever produced is 'https', when the raw string had
-// that scheme explicitly.
+// Splits a stored "http://host:port/path"-shaped string (or a bare host) back
+// into its host, port, path and protocol, for editing as separate fields.
+// path keeps a reverse-proxy prefix like "/server1" (no trailing slash; ''
+// when absent). Malformed input returns blanks rather than throwing. protocol
+// defaults to 'http' — the only other value ever produced is 'https', when
+// the raw string had that scheme explicitly.
 export function parseHostPort(raw) {
-  if (!raw) return { host: '', port: '', protocol: 'http' }
+  if (!raw) return { host: '', port: '', path: '', protocol: 'http' }
   try {
     const u = new URL(raw.includes('://') ? raw : `http://${raw}`)
-    return { host: u.hostname, port: u.port, protocol: u.protocol.replace(':', '') }
+    return {
+      host: u.hostname, port: u.port, path: u.pathname.replace(/\/+$/, ''),
+      protocol: u.protocol.replace(':', ''),
+    }
   } catch {
-    return { host: '', port: '', protocol: 'http' }
+    return { host: '', port: '', path: '', protocol: 'http' }
   }
 }
 
