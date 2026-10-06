@@ -94,17 +94,18 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
     }
   }
 
-  // ── Contacts + history ────────────────────────────────────────────
+  // ── History pass — every trail under every symbol ─────────────────
+  const visible = []
+  const maxColor = colors.historyTrail.length - 1
   for (const [id, unit] of Object.entries(units)) {
     const pos = unit.position
     if (!pos) continue
 
     const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
     if (x < -50 || x > width + 50 || y < -50 || y > height + 50) continue
+    visible.push({ id, x, y })
 
-    // --- History trail ---
     const trail = history[id] || []
-    const maxColor = colors.historyTrail.length - 1
     for (let i = 0; i < trail.length && i < historyLimit; i++) {
       const hp = latLngToCanvas(trail[i].lat, trail[i].lng, view)
       ctx.globalAlpha = Math.max(0, Math.min(1, briteHst))
@@ -113,7 +114,17 @@ export function drawContacts(ctx, view, units, history, visual, symbolMap = {}, 
       ctx.fill()
       ctx.globalAlpha = 1.0
     }
+  }
 
+  // ── Symbol pass — ranked so later draws land on top: wingmen under
+  // everything, my own tracks over everything. Stable sort keeps unit-ID
+  // order within a rank so overlaps don't swap frame to frame.
+  const rank = (id) => wingmanUids?.has(String(id)) ? 0
+                     : symbolMap[id]?.mine          ? 2
+                     : 1
+  visible.sort((a, b) => rank(a.id) - rank(b.id))
+
+  for (const { id, x, y } of visible) {
     // --- Contact symbol --- (highlight does NOT touch the symbol shape/color —
     // only the interior text, below)
     const isBlinkUnit    = blinkingUids?.has(String(id)) ?? false
