@@ -101,6 +101,17 @@ app.on('web-contents-created', (_event, contents) => {
     event.preventDefault()
     openExternally(url)
   })
+  // Without these a dead or stuck page only shows up in main.log as a
+  // websocket disconnect, with no reason attached.
+  contents.on('render-process-gone', (_e, details) => {
+    console.error(`[electron] renderer gone - reason=${details.reason} exitCode=${details.exitCode} url=${contents.getURL()}`)
+  })
+  contents.on('unresponsive', () => console.warn(`[electron] renderer unresponsive - url=${contents.getURL()}`))
+  contents.on('responsive', () => console.info(`[electron] renderer responsive again - url=${contents.getURL()}`))
+})
+
+app.on('child-process-gone', (_e, details) => {
+  console.error(`[electron] child process gone - type=${details.type} reason=${details.reason} exitCode=${details.exitCode}${details.name ? ` name=${details.name}` : ''}`)
 })
 
 // ipcMain.handle, but only for requests from a TRACS page.
