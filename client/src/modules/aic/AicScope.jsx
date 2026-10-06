@@ -34,9 +34,10 @@ import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
 import { dispatch }            from './actions/index.js'
 import './AicScope.css'
-import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye } from './aicScopeHelpers.js'
+import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye, formatPictureDimensions } from './aicScopeHelpers.js'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
-import { MS_TO_KT, M_TO_FT } from '../../utils/units.js'
+import { speedFromMs, formatAltThousands, distFromNm } from '../../utils/units.js'
+import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
 import { fetchJson } from '../../utils/fetchJson.js'
 
 const WINDOW_ID = 'aic-main'
@@ -204,6 +205,7 @@ export default function AicScope() {
   }, [visibleUnits, autoDeclareMode, myCoalitionNum, setDeclaration])
 
   const [view, setView] = useState(null)
+  const unitSystem = useUnitSystem('aic')
   const viewRef = useRef(null)
   useEffect(() => { viewRef.current = view }, [view])
 
@@ -236,6 +238,7 @@ export default function AicScope() {
       width: size, height: size,
       declinationDeg: declinationRef.current,
       theatre,
+      unitSystem: getUnitSystem('aic'),
     }
   }, [theatre])
 
@@ -255,7 +258,7 @@ export default function AicScope() {
     return () => ro.disconnect()
   }, [hasWindowSettings]) // eslint-disable-line
 
-  useEffect(() => { setView(buildView()) }, [centerLat, centerLng, declinationDeg, windowSettings?.rangeNm]) // eslint-disable-line
+  useEffect(() => { setView(buildView()) }, [centerLat, centerLng, declinationDeg, windowSettings?.rangeNm, unitSystem]) // eslint-disable-line
 
   useEffect(() => {
     const saved = loadAicDisplayPrefs()
@@ -834,12 +837,10 @@ export default function AicScope() {
     const { unitId, unit } = hoveredUnit
     if (!unit.position) return null
 
-    const altFt      = Math.round((unit.position.alt ?? 0) * M_TO_FT)
-    const altK       = Math.round(altFt / 1000)
     const trueTrkDeg = ((unit.track ?? 0) * 180 / Math.PI + 360) % 360
     const magTrkDeg  = Math.round(toMagneticFromTrue(trueTrkDeg, declinationDeg)) || 360
     const { brg, range } = bearingRangeFromBullseye(
-      unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
+      unit.position.lat, unit.position.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre, unitSystem
     )
     const decl      = getAicEffectiveDeclaration(unitId, unit, myCoalitionNum)
     // Callsign/type reveal is no longer gated purely on the Declaration — a
@@ -869,28 +870,28 @@ export default function AicScope() {
     // for an srsCapable contact); only the non-revealing statuses need a
     // word on the line.
     const iffText   = iffStatus === 'INVALID' ? 'INVALID REPLY' : iffStatus === 'NO_REPLY' ? 'NO REPLY' : null
-    const spdKts    = Math.round((unit.speed ?? 0) * MS_TO_KT)
+    const spd       = Math.round(speedFromMs(unit.speed ?? 0, unitSystem))
 
     return {
       pos:      `${String(brg).padStart(3, '0')} / ${range}`,
-      alt:      `${altK}k`,
+      alt:      formatAltThousands(unit.position.alt ?? 0, unitSystem),
       trk:      `${subcardinal(magTrkDeg)} ${String(magTrkDeg).padStart(3, '0')}`,
       decl,
       type:     typeName,
-      spd:      `${spdKts}`,
+      spd:      `${spd}`,
       flags:    speedFlags(unit),
       callsign,
       iff:      iffText,
     }
-  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum, coalition]) // eslint-disable-line
+  }, [hoveredUnit, view, bullseyeLat, bullseyeLng, declinationDeg, declarations, myCoalitionNum, coalition, unitSystem]) // eslint-disable-line
 
   const cursorBullseye = useMemo(() => {
     if (!cursorLatLng || !bullseyeEntry) return null
     const { brg, range } = bearingRangeFromBullseye(
-      cursorLatLng.lat, cursorLatLng.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre
+      cursorLatLng.lat, cursorLatLng.lng, bullseyeLat, bullseyeLng, declinationDeg, theatre, unitSystem
     )
     return `${String(brg).padStart(3, '0')} / ${range}`
-  }, [cursorLatLng, bullseyeLat, bullseyeLng, declinationDeg, bullseyeEntry, theatre])
+  }, [cursorLatLng, bullseyeLat, bullseyeLng, declinationDeg, bullseyeEntry, theatre, unitSystem])
 
   const isPictureAlert = useMemo(() => {
     if (!picture || picture.labelKey === 'CLEAN') return false
@@ -910,12 +911,12 @@ export default function AicScope() {
     namedGroupCount = namedGroups.length
     pictureRows = namedGroups.slice(0, 6).map(g => ({
       name:       abbrGroupName(g.name),
-      bs:         `${String(g.bullseye.brg).padStart(3, '0')} / ${g.bullseye.range}`,
-      alt:        `${Math.round(g.altFt / 1000)}k`,
+      bs:         `${String(g.bullseye.brg).padStart(3, '0')} / ${Math.round(distFromNm(g.bullseye.rangeNm, unitSystem))}`,
+      alt:        formatAltThousands(g.altM, unitSystem),
       trk:        g.trackDir ? (CARDINAL_ABBR[g.trackDir] ?? g.trackDir) : '-',
       decl:       DECL_PICTURE[g.decl] ?? '?',
       strength:   g.isHeavy ? 'HVY' : `${g.contactCount}`,
-      fills:      picFillIns(g),
+      fills:      picFillIns(g, unitSystem),
     }))
     const colWidth = key => Math.max(0, ...pictureRows.map(r => r[key].length)) + 3
     const wName = colWidth('name'), wBs = colWidth('bs'), wAlt = colWidth('alt'), wTrk = colWidth('trk'), wDecl = colWidth('decl')
@@ -1015,7 +1016,7 @@ export default function AicScope() {
           >
             <div className={`aic-picture-header${isPictureAlert ? ' aic-picture-header--alert' : ''}`}>
               {picture.autoSector ? '~ ' : ''}{picture.label}
-              {picture.amplifiers?.dimensionStr ? `  ${picture.amplifiers.dimensionStr}` : ''}
+              {picture.amplifiers?.dimensions?.length ? `  ${formatPictureDimensions(picture.amplifiers.dimensions, unitSystem)}` : ''}
             </div>
             {picture.labelKey !== 'CLEAN' && picture.amplifiers &&
               (picture.amplifiers.openingClosing || picture.amplifiers.weighted || picture.amplifiers.echelon) && (
@@ -1036,7 +1037,7 @@ export default function AicScope() {
               <div className="aic-picture-more">+{namedGroupCount - 6} MORE</div>
             )}
             {picture.amplifiers?.followOnNm != null && (
-              <div className="aic-picture-ampls">FOLLOW ON {picture.amplifiers.followOnNm}</div>
+              <div className="aic-picture-ampls">FOLLOW ON {Math.round(distFromNm(picture.amplifiers.followOnNm, unitSystem))}</div>
             )}
           </div>
         )}

@@ -1,6 +1,7 @@
 // Pure AIC picture/readout helpers (no React, no store access).
 import { isOnGround } from '../../utils/visibleUnits.js'
 import { gridBearingRangeNm, toMagneticFromTrue } from '../../utils/bearing.js'
+import { distFromNm, formatAltThousands } from '../../utils/units.js'
 
 export const CARDINAL_ABBR = {
   NORTH: 'N', NORTHEAST: 'NE', EAST: 'E', SOUTHEAST: 'SE',
@@ -16,9 +17,14 @@ export function abbrGroupName(name) {
 }
 
 
-export function picFillIns(g) {
+// Whole display units (NM or km), e.g. "12 WIDE 8 DEEP".
+export function formatPictureDimensions(dimensions, sys) {
+  return dimensions.map(d => `${Math.round(distFromNm(d.nm, sys))}${d.word ? ` ${d.word}` : ''}`).join(' ')
+}
+
+export function picFillIns(g, sys) {
   const parts = []
-  if (g.isStack) parts.push(`STACK ${g.stackHighFt / 1000}K/${g.stackLowFt / 1000}K`)
+  if (g.isStack) parts.push(`STACK ${formatAltThousands(g.stackHighM, sys).toUpperCase()}/${formatAltThousands(g.stackLowM, sys).toUpperCase()}`)
   if (g.isHigh) parts.push('HIGH')
   if (g.isVeryFast) parts.push('VERY FAST')
   else if (g.isFast) parts.push('FAST')
@@ -58,8 +64,9 @@ export function subcardinal(deg) {
   return dirs[Math.round(((deg % 360) + 360) % 360 / 45) % 8]
 }
 
-export function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, declinationDeg, theatre) {
+// `range` is whole display units (NM or km, per `sys`).
+export function bearingRangeFromBullseye(lat, lng, bsLat, bsLng, declinationDeg, theatre, sys) {
   const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatre)
   const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
-  return { brg: Math.round(magBrg) || 360, range: Math.round(rangeNm) }
+  return { brg: Math.round(magBrg) || 360, range: Math.round(distFromNm(rangeNm, sys)) }
 }

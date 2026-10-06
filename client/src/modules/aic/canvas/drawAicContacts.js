@@ -11,6 +11,7 @@ import { gridBearingRangeNm, toMagneticFromTrue, destinationPoint } from '../../
 import { DECLARATION } from '../../../store/aic.js'
 import { DECL_COLOR, drawPtl } from '../../../utils/declarationSymbols.js'
 import { computeAicIntercept } from '../aicGeometry.js'
+import { formatRangeFine } from '../../../utils/units.js'
 
 // Pixel radius for symSize 1-5. Default (3) → 9px.
 export function symRadius(symSize) { return 3 + (symSize - 1) * 2 }
@@ -163,9 +164,8 @@ function drawRbl(ctx, view, rbl, declinationDeg) {
 
   // Bearing / range label at midpoint
   const { gridBearingDeg, rangeNm } = gridBearingRangeNm(rbl.anchor.lat, rbl.anchor.lng, rbl.end.lat, rbl.end.lng, view.theatre)
-  const range = Math.round(rangeNm)
   const magBrg = Math.round(toMagneticFromTrue(gridBearingDeg, declinationDeg)) || 360
-  const label       = `${String(magBrg).padStart(3, '0')}°M  ${range}NM`
+  const label       = `${String(magBrg).padStart(3, '0')}°M  ${formatRangeFine(rangeNm, view.unitSystem)}`
 
   const midX = (ap.x + ep.x) / 2
   const midY = (ap.y + ep.y) / 2

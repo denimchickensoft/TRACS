@@ -103,9 +103,12 @@ function _groupProps(contacts, bsLat, bsLng, declinationDeg, sector, theatre) {
   const lng  = contacts.reduce((s, c) => s + c.lng, 0) / n
 
   const altsM    = contacts.map(c => c.alt ?? 0)
-  const avgAltFt = (altsM.reduce((s, a) => s + a, 0) / n) * M_TO_FT
-  const maxAltFt = Math.max(...altsM) * M_TO_FT
-  const minAltFt = Math.min(...altsM) * M_TO_FT
+  const avgAltM  = altsM.reduce((s, a) => s + a, 0) / n
+  const maxAltM  = Math.max(...altsM)
+  const minAltM  = Math.min(...altsM)
+  const avgAltFt = avgAltM * M_TO_FT
+  const maxAltFt = maxAltM * M_TO_FT
+  const minAltFt = minAltM * M_TO_FT
 
   // Velocity components (m/s; track is real-geographic-true, not grid — see
   // utils/bearing.js — so this stays declination-only, same as every other
@@ -130,6 +133,8 @@ function _groupProps(contacts, bsLat, bsLng, declinationDeg, sector, theatre) {
     velocityAlongAxis = (avgVy * Math.cos(rad) + avgVx * Math.sin(rad)) * MS_TO_KT
   }
 
+  // Distances/altitudes are returned raw (NM / metres) — AicScope formats
+  // them in the module's display unit (see utils/units.js).
   // Bullseye (magnetic) — grid-frame bearing, matches the other bullseye
   // readouts in AbmScope.jsx/AicScope.jsx/BraaList.jsx.
   const { gridBearingDeg, rangeNm: bsRangeNm } = gridBearingRangeNm(bsLat, bsLng, lat, lng, theatre)
@@ -143,15 +148,15 @@ function _groupProps(contacts, bsLat, bsLng, declinationDeg, sector, theatre) {
 
   return {
     lat, lng, R, A,
-    bullseye:        { brg: magBrg, range: Math.round(bsRangeNm) },
-    altFt:           Math.round(avgAltFt / 1000) * 1000,
+    bullseye:        { brg: magBrg, rangeNm: bsRangeNm },
+    altM:            avgAltM,
     trackDir,
     decl,
     contactCount:    n,
     isHeavy:         n >= 3,
     isStack,
-    stackHighFt:     isStack ? Math.round(maxAltFt / 1000) * 1000 : null,
-    stackLowFt:      isStack ? Math.round(minAltFt / 1000) * 1000 : null,
+    stackHighM:      isStack ? maxAltM : null,
+    stackLowM:       isStack ? minAltM : null,
     isHigh:          avgAltFt >= 40000,
     isFast:          avgSpdKts >= 600 && avgSpdKts < 900,
     isVeryFast:      avgSpdKts >= 900,
@@ -339,18 +344,21 @@ function _nameGroups(formation, declinationDeg, theatre) {
 
 // ── Amplifiers ─────────────────────────────────────────────────────────────────
 
+// `dimensions` is a list of { nm, word } parts (e.g. 12 WIDE, 8 DEEP) with
+// raw unrounded NM, so the scope can round in whichever display unit is
+// active; `followOnNm` is raw NM too.
 function _amplifiers(formation, declinationDeg, theatre) {
   const { subtype, sorted } = formation
-  const result = { openingClosing: null, weighted: null, echelon: null, dimensionStr: '', followOnNm: null }
+  const result = { openingClosing: null, weighted: null, echelon: null, dimensions: [], followOnNm: null }
 
-  const totalDepth = sorted.length > 1 ? Math.round(sorted[sorted.length - 1].R - sorted[0].R) : 0
+  const rawDepth   = sorted.length > 1 ? sorted[sorted.length - 1].R - sorted[0].R : 0
   const sortedByA  = formation.sortedByA ?? [...sorted].sort((a, b) => a.A - b.A)
-  const totalWidth = sortedByA.length > 1
-    ? Math.round(sortedByA[sortedByA.length - 1].A - sortedByA[0].A) : 0
+  const rawWidth   = sortedByA.length > 1 ? sortedByA[sortedByA.length - 1].A - sortedByA[0].A : 0
+  const totalWidth = Math.round(rawWidth)
 
   switch (subtype) {
     case 'AZIMUTH': {
-      result.dimensionStr = `${totalWidth}`
+      result.dimensions = [{ nm: rawWidth, word: null }]
       const d = Math.abs(sorted[1].R - sorted[0].R)
       if (d > 5) {
         const [near, off] = sorted[1].R > sorted[0].R ? [sorted[0], sorted[1]] : [sorted[1], sorted[0]]
@@ -360,16 +368,16 @@ function _amplifiers(formation, declinationDeg, theatre) {
     }
 
     case 'RANGE': {
-      const d = Math.round(Math.abs(sorted[1].R - sorted[0].R))
+      const d = Math.abs(sorted[1].R - sorted[0].R)
       const w = Math.round(Math.abs(sorted[1].A - sorted[0].A))
-      result.dimensionStr    = `${d}`
+      result.dimensions      = [{ nm: d, word: null }]
       result.openingClosing  = _oc(sorted[0], sorted[1])
       if (w >= 3) result.echelon = _cardBetween(sorted[0].lat, sorted[0].lng, sorted[1].lat, sorted[1].lng, declinationDeg, theatre)
       break
     }
 
     case 'WALL': {
-      result.dimensionStr = `${totalWidth} WIDE`
+      result.dimensions = [{ nm: rawWidth, word: 'WIDE' }]
       if (sorted.length >= 3 && totalWidth > 0) {
         const first = sortedByA[0], last = sortedByA[sortedByA.length - 1]
         const midLat = (first.lat + last.lat) / 2, midLng = (first.lng + last.lng) / 2
@@ -387,8 +395,8 @@ function _amplifiers(formation, declinationDeg, theatre) {
 
     case 'VIC': {
       const [lead, t1, t2] = sorted
-      const trailW = Math.round(Math.abs(t2.A - t1.A))
-      result.dimensionStr   = `${totalDepth} DEEP ${trailW} WIDE`
+      const trailW = Math.abs(t2.A - t1.A)
+      result.dimensions     = [{ nm: rawDepth, word: 'DEEP' }, { nm: trailW, word: 'WIDE' }]
       result.openingClosing = _oc(lead, t1)
       const midA  = (t1.A + t2.A) / 2
       const tSpan = Math.abs(t2.A - t1.A)
@@ -401,8 +409,8 @@ function _amplifiers(formation, declinationDeg, theatre) {
 
     case 'CHAMPAGNE': {
       const [l1, l2, trail] = sorted
-      const leadW = Math.round(Math.abs(l2.A - l1.A))
-      result.dimensionStr   = `${leadW} WIDE ${totalDepth} DEEP`
+      const leadW = Math.abs(l2.A - l1.A)
+      result.dimensions     = [{ nm: leadW, word: 'WIDE' }, { nm: rawDepth, word: 'DEEP' }]
       result.openingClosing = _oc(l1, trail)
       const midA  = (l1.A + l2.A) / 2
       const lSpan = Math.abs(l2.A - l1.A)
@@ -414,15 +422,15 @@ function _amplifiers(formation, declinationDeg, theatre) {
     }
 
     case 'LADDER': {
-      result.dimensionStr   = `${totalDepth} DEEP`
+      result.dimensions     = [{ nm: rawDepth, word: 'DEEP' }]
       result.openingClosing = _oc(sorted[0], sorted[sorted.length - 1])
       break
     }
 
     case 'BOX': {
       const [g0, g1, g2, g3] = sorted
-      const boxW = Math.round(Math.max(Math.abs(g1.A - g0.A), Math.abs(g3.A - g2.A)))
-      result.dimensionStr = `${boxW} WIDE ${totalDepth} DEEP`
+      const boxW = Math.max(Math.abs(g1.A - g0.A), Math.abs(g3.A - g2.A))
+      result.dimensions = [{ nm: boxW, word: 'WIDE' }, { nm: rawDepth, word: 'DEEP' }]
       break
     }
 
@@ -432,7 +440,7 @@ function _amplifiers(formation, declinationDeg, theatre) {
       const leadSlice   = sorted.slice(0, Math.min(3, sorted.length))
       const followSlice = sorted.slice(Math.min(3, sorted.length))
       if (followSlice.length) {
-        result.followOnNm = Math.round(followSlice[0].R - leadSlice[leadSlice.length - 1].R)
+        result.followOnNm = followSlice[0].R - leadSlice[leadSlice.length - 1].R
       }
       break
     }

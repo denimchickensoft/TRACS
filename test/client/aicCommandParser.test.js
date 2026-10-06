@@ -5,7 +5,12 @@ const idOf = (buffer) => parseCommand(buffer)?.command.id ?? null
 
 describe('AIC parseCommand', () => {
   test('trims and lowercases the buffer', () => {
-    expect(parseCommand('  .RR 20 ')).toMatchObject({ command: { id: 'RR_SET' }, captures: { nm: '20' } })
+    expect(parseCommand('  .RR 20 ')).toMatchObject({ command: { id: 'RR_SET' }, captures: { dist: '20' } })
+  })
+
+  test('unit system commands', () => {
+    expect(idOf('.metric')).toBe('METRIC_UNITS')
+    expect(idOf('.imperial')).toBe('IMPERIAL_UNITS')
   })
 
   test('.center: bullseye, bearing/range, then fix as the catch-all', () => {

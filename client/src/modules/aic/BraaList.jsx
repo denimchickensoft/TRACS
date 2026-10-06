@@ -11,7 +11,8 @@ import { computeAicIntercept } from './aicGeometry.js'
 import { BRAA_SORT_KEYS, DEFAULT_BRAA_SORT, sortBraaRows } from './braaSort.js'
 import './BraaList.css'
 import { speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
-import { M_TO_FT } from '../../utils/units.js'
+import { altFromM, altUnit, formatDistance, METRIC } from '../../utils/units.js'
+import { useUnitSystem } from '../../store/unitSystem.js'
 
 const safeNum = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d
 
@@ -30,9 +31,6 @@ function computeBraa(fighter, bogey, declinationDeg, theatre) {
   const { gridBearingDeg, rangeNm } = gridBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng, theatre)
   const magBrgDeg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
 
-  const altFt      = Math.round((bp.alt ?? 0) * M_TO_FT)
-  const altRounded = Math.round(altFt / 100) * 100
-
   // Aspect: angle between bogey track and bearing back to fighter
   const { trueBearingDeg: trueBrgDeg } = trueBearingRangeNm(fp.lat, fp.lng, bp.lat, bp.lng)
   const bogeyTrackDeg     = ((safeNum(bogey.track) * 180 / Math.PI) + 360) % 360
@@ -47,9 +45,9 @@ function computeBraa(fighter, bogey, declinationDeg, theatre) {
 
   return {
     bearing: Math.round(magBrgDeg) || 360,
-    range:   Math.round(rangeNm),
-    altFt,
-    altRounded,
+    range:   Math.round(rangeNm), // sort key
+    rangeNm,
+    altM:    bp.alt ?? 0,
     aspect,
   }
 }
@@ -65,6 +63,12 @@ function computeIntercept(fighter, bogey, declinationDeg) {
     heading:    Math.round(interceptMagDeg) || 360,
     ttiSeconds: Math.round(result.ttiHours * 3600),
   }
+}
+
+// Nearest 100 ft, or nearest 10 m in metric.
+function fmtAlt(m, sys) {
+  const step = sys === METRIC ? 10 : 100
+  return `${Math.round(altFromM(m, sys) / step) * step} ${altUnit(sys)}`
 }
 
 function fmtTti(s) {
@@ -104,6 +108,7 @@ export const BRAA_NATURAL_WIDTH = 280
 export function BraaList({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir     = useWheelDirection()
   const units        = useUnitsStore(s => s.units)
+  const unitSystem   = useUnitSystem('aic')
   const coalition    = useSessionStore(s => s.coalition)
   const mission      = useSessionStore(s => s.mission)
   const braaList          = useAicStore(s => s.braaList)
@@ -220,8 +225,8 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
             </div>
             {row.braa ? (
               <div className="braa-data">
-                <span>{String(row.braa.bearing).padStart(3,'0')}°M / {row.braa.range}NM</span>
-                <span>{row.braa.altRounded} FT</span>
+                <span>{String(row.braa.bearing).padStart(3,'0')}°M / {formatDistance(row.braa.rangeNm, unitSystem)}</span>
+                <span>{fmtAlt(row.braa.altM, unitSystem)}</span>
                 <span className={`braa-aspect braa-aspect--${row.braa.aspect.toLowerCase()}`}>{row.braa.aspect}</span>
                 {row.bogeyFlags && <span className="braa-flags">{row.bogeyFlags}</span>}
               </div>

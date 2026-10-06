@@ -39,6 +39,8 @@ import { useMapsStore } from '../../../store/maps.js'
 import { useBrevityStore } from '../../../store/brevity.js'
 import { getIffStatus } from '../../../utils/transponder.js'
 import { toTrueFromMagnetic } from '../../../utils/bearing.js'
+import { getUnitSystem, setUnitSystem } from '../../../store/unitSystem.js'
+import { distToNm, distUnit, METRIC, IMPERIAL } from '../../../utils/units.js'
 import { sectorAxisBearing } from '../canvas/computePicture.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
@@ -62,6 +64,14 @@ function updateWin(patch) {
   useDisplayStore.getState().updateWindow(WINDOW_ID, patch)
 }
 
+// Typed distances are in the module's display unit (NM or km) and stored
+// as NM; feedback echoes the value as typed.
+function typedDist(raw) {
+  const sys = getUnitSystem('aic')
+  const value = parseFloat(raw)
+  return { nm: distToNm(value, sys), value, unit: distUnit(sys) }
+}
+
 export function CENTER_BULLSEYE() {
   updateWin({ centerOverridden: false })
   return 'CENTERED ON BULLSEYE'
@@ -69,7 +79,7 @@ export function CENTER_BULLSEYE() {
 
 export function CENTER_BRG_RNG({ captures, context }) {
   const brg = parseFloat(captures.brg)
-  const rng = parseFloat(captures.rng)
+  const { nm: rng, value: typedRng } = typedDist(captures.rng)
   const { bullseyeLat, bullseyeLng, declinationDeg } = context
   const nmPerDegLng = 60 * Math.cos(bullseyeLat * Math.PI / 180)
   // brg is a user-typed magnetic bearing; convert to true for the lat/lng walk.
@@ -77,7 +87,7 @@ export function CENTER_BRG_RNG({ captures, context }) {
   const newLat  = bullseyeLat + (rng * Math.cos(trueRad)) / 60
   const newLng  = bullseyeLng + (rng * Math.sin(trueRad)) / nmPerDegLng
   updateWin({ centerLat: newLat, centerLng: newLng, centerOverridden: true })
-  return `CENTER ${Math.round(brg)}/${Math.round(rng)}`
+  return `CENTER ${Math.round(brg)}/${Math.round(typedRng)}`
 }
 
 export function CENTER_FIX({ captures }) {
@@ -102,9 +112,9 @@ export function RR_TOGGLE() {
 }
 
 export function RR_SET({ captures }) {
-  const nm = parseFloat(captures.nm)
+  const { nm, value, unit } = typedDist(captures.dist)
   updateWin({ ringSpacingNm: nm })
-  return nm === 0 ? 'RANGE RINGS OFF' : `RR ${nm}NM`
+  return nm === 0 ? 'RANGE RINGS OFF' : `RR ${value}${unit}`
 }
 
 export function PTL({ captures }) {
@@ -133,9 +143,9 @@ export function THREAT_CLEAR() {
 }
 
 export function THREAT_RADIUS({ captures }) {
-  const nm = parseFloat(captures.nm)
+  const { nm, value, unit } = typedDist(captures.dist)
   updateWin({ threatRadius: nm })
-  return `THREAT RING ${nm}NM`
+  return `THREAT RING ${value}${unit}`
 }
 
 export function CLEAR_ALL() {
@@ -299,7 +309,7 @@ export function SECTOR_CLEAR() {
 export function SECTOR_SET({ captures, context }) {
   const fromMag = parseFloat(captures.fromMag) % 360
   const toMag   = parseFloat(captures.toMag) % 360
-  const rng     = parseFloat(captures.rng)
+  const { nm: rng, value: typedRng, unit } = typedDist(captures.rng)
   const { bullseyeLat, bullseyeLng, declinationDeg } = context
   const fromTrue = toTrueFromMagnetic(fromMag, declinationDeg)
   const toTrue   = toTrueFromMagnetic(toMag, declinationDeg)
@@ -312,7 +322,7 @@ export function SECTOR_SET({ captures, context }) {
     sectorVisible: true,
     sectorPreviewOrigin: null,
   })
-  return `SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(rng)}NM @BE`
+  return `SECTOR ${Math.round(fromMag)}/${Math.round(toMag)} ${Math.round(typedRng)}${unit} @BE`
 }
 
 // Bare form (Enter, no click) clears the override and reverts to the mission
@@ -349,7 +359,20 @@ export function DEFINE({ captures }) {
   return ''
 }
 
+// .metric / .imperial — AIC display units (scope + BraaList), see
+// store/unitSystem.js.
+export function METRIC_UNITS() {
+  setUnitSystem('aic', METRIC)
+  return 'METRIC'
+}
+
+export function IMPERIAL_UNITS() {
+  setUnitSystem('aic', IMPERIAL)
+  return 'IMPERIAL'
+}
+
 const ACTION_MAP = {
+  METRIC_UNITS, IMPERIAL_UNITS,
   CENTER_BULLSEYE, CENTER_BRG_RNG, CENTER_FIX, FIND, RR_TOGGLE, RR_SET, PTL, SYM, FADED,
   THREAT_CLEAR, THREAT_RADIUS, CLEAR_ALL, DECLARATION_RESET, DECLARATION_SET_BULK, AUTO_DECLARE, AUTO_DECLARE_IFF, AUTOTHREAT,
   ROE, ROE_TOGGLE, ASPCOLORS, GEO_TOGGLE, RELIEF_TOGGLE, CENTROID_TOGGLE, AXIS_TOGGLE, PICTURE_TOGGLE,
