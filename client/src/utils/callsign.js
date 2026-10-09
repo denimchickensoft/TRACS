@@ -22,6 +22,7 @@ export { parseUnitName }
 export function resolveOriginalCallsign(unit) {
   if (unit.customString) return stripAcid(unit.customString)
   if (useSessionStore.getState().useDcsNames) return callsignFromDcsName(unit)
+  // Can resolve to '' for a name with no A-Z or 0-9; see resolveCallsign.
   return stripAcid(unit.callsign || unit.unitName || String(unit.id))
 }
 
@@ -48,6 +49,10 @@ export function resolveCallsign(unit) {
 
   if (useSessionStore.getState().useDcsNames) return callsignFromDcsName(unit)
 
+  // The fallback picks the first non-empty field before stripping, so a
+  // name stripAcid empties out entirely (no A-Z or 0-9, e.g. a Cyrillic
+  // pilot name) resolves to '' here instead of reaching the unit ID. Under
+  // Tacview, which never sends `callsign`, that applies to every such name.
   return stripAcid(unit.callsign || unit.unitName || String(unit.id))
 }
 

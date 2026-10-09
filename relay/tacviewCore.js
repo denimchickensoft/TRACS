@@ -186,8 +186,14 @@ function createParser() {
   // Frag.jsx carrier correlation, STARS' formations.js tiebreaker); without
   // it, carrier/ATO correlation silently breaks for every Tacview-sourced
   // unit. Keep this field-for-field in step with Olympus's decoder.
+  //
+  // id: the unit's key in the units map, as on an Olympus unit. Client code
+  // looks per-track state up by unit.id (callsign overrides from .rename,
+  // the unit-ID callsign fallback). An ACMI object has only one ID, so id and
+  // unitID hold the same number here. id makes no claim that it matches
+  // DCS's own unit ID.
   function buildCanonicalUnit(obj, unitID) {
-    const unit = { unitID }
+    const unit = { id: unitID, unitID }
     const p = obj.props
     if (p.Name !== undefined) unit.name = p.Name
     if (p.Pilot !== undefined) unit.unitName = p.Pilot
