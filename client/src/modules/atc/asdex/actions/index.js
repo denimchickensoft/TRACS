@@ -16,6 +16,8 @@ import { useAsdexPreviewStore }    from '../../../../store/asdexPreview.js'
 import { useAsdexManualTagsStore } from '../../../../store/asdexManualTags.js'
 import { saveAsdexPrefs }          from '../../../../store/asdexPrefs.js'
 import { resolveCallsign }         from '../../../../utils/callsign.js'
+import { applyCallsignChange }     from '../../../../utils/callsignRename.js'
+import { sendWebrtcSessionEvent }  from '../../../../webrtc/client.js'
 import { ASDEX_WINDOW_ID }         from '../AsdexDcb.jsx'
 import { setUnitSystem }           from '../../../../store/unitSystem.js'
 import { METRIC, IMPERIAL }        from '../../../../utils/units.js'
@@ -89,9 +91,25 @@ function TAG_TARGET({ captures, slewTarget }) {
   }
 }
 
+// .RENAME <callsign> / .RENAME — same as STARS: one shared override, synced
+// to every controller and module.
+function RENAME_CALLSIGN({ captures, slewTarget }) {
+  const newCallsign = captures.newCallsign?.trim().toUpperCase()
+  if (!newCallsign) { preview().setResponse('NO CALLSIGN'); return }
+  const { oldCallsign } = applyCallsignChange(slewTarget.unitId, slewTarget.unit, newCallsign)
+  sendWebrtcSessionEvent('CALLSIGN_RENAME', { unitId: String(slewTarget.unitId), oldCallsign, newCallsign })
+  preview().clearAfterCommand()
+}
+
+function RESET_CALLSIGN({ slewTarget }) {
+  const { oldCallsign } = applyCallsignChange(slewTarget.unitId, slewTarget.unit, null)
+  sendWebrtcSessionEvent('CALLSIGN_RENAME', { unitId: String(slewTarget.unitId), oldCallsign, newCallsign: null })
+  preview().clearAfterCommand()
+}
+
 const ACTION_MAP = {
   OPEN_FPE, TOGGLE_CENTERLINE, TOGGLE_COORDS, METRIC_UNITS, IMPERIAL_UNITS, SET_COLORS,
-  SET_LEADER_SHORT, TAG_TARGET,
+  SET_LEADER_SHORT, TAG_TARGET, RENAME_CALLSIGN, RESET_CALLSIGN,
 }
 
 /**

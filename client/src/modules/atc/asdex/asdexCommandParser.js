@@ -9,6 +9,8 @@ const ASDEX_COMMANDS = [
   { id: 'SET_LEADER_SHORT',   pattern: /^([1-9])$/,          trigger: 'SLEW',  captures: ['dir'] },
   // Manual tag: type the aircraft ID, then click the unknown target.
   { id: 'TAG_TARGET',         pattern: /^\.TAG (.+)$/,       trigger: 'SLEW',  captures: ['aid'] },
+  { id: 'RENAME_CALLSIGN',    pattern: /^\.RENAME (.+)$/,    trigger: 'SLEW',  captures: ['newCallsign'] },
+  { id: 'RESET_CALLSIGN',     pattern: /^\.RENAME$/,         trigger: 'SLEW' },
 ]
 
 export function parseAsdexCommand(buffer, trigger) {

@@ -360,6 +360,8 @@ A ground-movement sub-scope showing surface traffic (aircraft/helicopters below 
 | `.COLORS <name>` + ENTER | Switch color profile (e.g. Day/Night) |
 | `<d>` (1–9) + SLEW | Set/clear a contact's leader-line direction (`5` clears) |
 | `.TAG <id>` + SLEW | Manually tag a target: type the aircraft ID, then click the target. The ID must match the callsign TRACS displays for that aircraft; a mismatch returns `ILL TRK` |
+| `.RENAME <newCallsign>` + SLEW | Rename the clicked aircraft's displayed callsign (shared with STARS) |
+| `.RENAME` + SLEW | Reset callsign to the DCS-assigned one |
 | `MF Y`, click target, `<text>` + ENTER | Set the aircraft's scratchpad 1 (up to 7 letters/digits; empty clears it) |
 | `MF H`, click target, `<text>` + ENTER | Set the aircraft's scratchpad 2 |
 | Left-click, empty buffer | Toggle that aircraft's datablock on/off |
