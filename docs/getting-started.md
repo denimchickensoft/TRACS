@@ -40,6 +40,8 @@ If a Relay Port is set, TRACS checks in parallel whether relay sync is available
 
 **Theatre** (Tacview and Relay modes): Tacview doesn't report which DCS theatre a mission runs on, so TRACS detects it from unit positions and shows "Theatre (detected: X)" on the sign-in screen. **▸ Override** lets you pick the theatre manually, and **⟲ Reset to auto-detect** undoes that.
 
+**Tacview session restarts** (Tacview and Relay modes): a Tacview session ends when the server restarts or changes its mission, or, if TRACS reads your own DCS client's Tacview, when you leave the server. When that happens every track clears, and TRACS reconnects on its own. It retries every few seconds at first, backing off to once a minute, so tracks can take up to a minute to reappear once the new session is running. In Tacview mode the top bar shows `NO RESPONSE: RECONNECTING (Tacview)` meanwhile. Aircraft that are still in the new session come back and keep their claims.
+
 ## 2. Sign in to a position
 
 Once connected, pick a **Module** — ATC, CATCC, AIC, or ABM — and fill in that module's position fields:
@@ -102,7 +104,11 @@ Reloading the window rejoins the same session automatically. Your peer identity 
 
 The **⚙** icon (top right, once signed in) opens the settings panel:
 
-- **Use DCS Multiplayer Names** — callsigns/labels use DCS multiplayer names instead of the in-mission unit names.
+- **Use DCS Multiplayer Names** — how a track's callsign is read from its name:
+  - **On** (default): picks the callsign out of a multiplayer name, so `COLT 1-1 | Pilotname` becomes `COLT11`. A name with no callsign in it uses the in-mission callsign if there is one, otherwise the text before the first `|` (or the whole name if there's no `|`).
+  - **Off**: uses the in-mission callsign, otherwise the whole name with spaces and symbols removed.
+  - In **Tacview** and **Relay** modes there's no in-mission callsign, so both settings read the player's multiplayer name; the setting only decides whether a callsign is picked out of it.
+  - A track only matches a flight plan filed under the callsign it resolves to. To match one that doesn't, use `.RENAME <callsign>` and click the track (see [ATC](atc.md)).
 - **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking it silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
 - **Navigation data** — the LittleNavMap database TRACS is using, and (desktop app) a **Change…** button. See [Navigation data](#navigation-data-littlenavmap).
 - **Version line** — the TRACS version (`TRACS (dev)` when running from source), plus the relay's version and protocol number when connected to one.
