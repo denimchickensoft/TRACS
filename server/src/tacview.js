@@ -254,6 +254,28 @@ function processIncoming(text) {
   }
 }
 
+// A closed Tacview connection means that Tacview session is over (mission
+// restart, or a DCS client leaving its server), and Tacview never sends
+// removals for it. Its units are dropped here, or they'd stay on every scope
+// as frozen ghosts. A new session also reuses object IDs, so the parser starts
+// fresh rather than merging a new aircraft into an old one's properties.
+// Flushed immediately so the removals go out before the next session's
+// updates can land on the same IDs.
+function dropSessionUnits() {
+  const unitIds = Object.keys(internalUnits)
+  const weaponIds = Object.keys(internalWeapons)
+  for (const id of unitIds) fogFilter?.forget(id)
+  for (const id of weaponIds) missileFogFilter?.forget(id)
+  internalUnits = {}
+  internalWeapons = {}
+  parser = tacviewCore.createParser()
+  lineBuffer = ''
+  if (unitIds.length) unitsBuffer.queue({}, unitIds)
+  if (weaponIds.length) weaponsBuffer.queue({}, weaponIds)
+  unitsBuffer.flush(onUnitsDelta)
+  weaponsBuffer.flush(onWeaponsDelta)
+}
+
 function connect() {
   const { host, port } = parseHostPort(config.olympusUrl)
   // The login's probe connection, already handshaken and streaming (see
@@ -310,6 +332,7 @@ function connect() {
     if (intentionalClose) return
 
     if (receivedTelemetry) {
+      dropSessionUnits()
       handshakeFailures = 0
       reconnectDelayMs = RECONNECT_MIN_MS
     } else if (handshakeSent && ++handshakeFailures >= MAX_HANDSHAKE_FAILURES) {

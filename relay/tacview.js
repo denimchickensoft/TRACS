@@ -128,6 +128,11 @@ function createTacviewRelay(wss, config) {
 
     localSocket.on('close', () => {
       if (localSocket !== socket) return
+      // The Tacview session is over and Tacview never sends removals for it,
+      // so tell connected backends to drop its units, or they'd stay as
+      // frozen ghosts (and a new session reuses the same object IDs).
+      const staleIds = Object.keys(snapshotUnits)
+      if (staleIds.length) broadcast({ updated: {}, removed: staleIds, bullseyes: null, positions: [] })
       parser = tacviewCore.createParser() // fresh per-connection delta state
       lineBuffer = ''
       snapshotUnits = {}
