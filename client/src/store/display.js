@@ -21,6 +21,7 @@ export const DEFAULT_LISTS = {
   vfr:     { visible: true,   xPct: 90, yPct: 80, lines: 5 },
   coast:   { visible: false,  xPct: 90, yPct: 90, lines: 5 },
   alert:   { visible: true,   xPct: 65, yPct: 90, lines: 5 },
+  mciSuppression: { visible: false, xPct: 75, yPct: 10, lines: 5 },
 }
 
 // Default scope settings — ODS profile defaults override these at session start

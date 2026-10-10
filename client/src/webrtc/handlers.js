@@ -121,7 +121,8 @@ function handleAtc(type, payload) {
 
   switch (type) {
     case 'CONFLICT_ACK':
-      useAtcStore.getState().ackConflict(payload.pairId)
+      // Conflict acknowledgement is per scope now; peers on older builds
+      // still send this, so it's deliberately ignored.
       break
     case 'FLIGHT_PLAN_CREATE':
       fps.add(payload)

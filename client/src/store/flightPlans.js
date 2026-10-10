@@ -57,6 +57,15 @@ export const useFlightPlansStore = create(
             unitId:      null,
             suspended:   false,
             suspendIndex: null,
+            // null = follow the flight rules (VFR is MSAW-inhibited); true/false
+            // = set explicitly by MULTI FUNC V.
+            msawDisabled: null,
+            // Controller-entered special condition (EM, HJ, RF, LL, MI), '' = none
+            spcOverride: '',
+            // CA K: conflict alerts inhibited for this flight
+            caDisabled: false,
+            // CA M: intruder beacon code whose MCI alerts are suppressed, '' = none
+            mciSuppressedCode: '',
             firstSeen:   Date.now(),
             ...plan,
             // AID always normalised; CID/BCN only overridden if explicitly provided
@@ -76,7 +85,12 @@ export const useFlightPlansStore = create(
       return {
         plans: {
           ...state.plans,
-          [key]: { ...state.plans[key], ...patch, amended: true },
+          [key]: {
+            ...state.plans[key], ...patch, amended: true,
+            // A flight-rules change re-derives MSAW inhibit from the new rules
+            // (see planMsawDisabled) unless the same change sets it explicitly.
+            ...('flightRules' in patch && !('msawDisabled' in patch) ? { msawDisabled: null } : {}),
+          },
         },
       }
     }),

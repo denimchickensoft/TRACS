@@ -2,6 +2,7 @@ import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }     from '../../../../store/ods.js'
 import { useUnitsStore }   from '../../../../store/units.js'
 import { useStcaStore }    from '../../../../store/stca.js'
+import { useStarsAlertsStore } from '../../../../store/starsAlerts.js'
 import { resolveCallsign } from '../../../../utils/callsign.js'
 import { ListPanel }       from './ListPanel.jsx'
 
@@ -9,14 +10,14 @@ const WINDOW_ID = 'atc-main'
 const PAIR_COL_WIDTH = 20 // chars — pads "CS1*CS2" before the CA/MCI type
 
 /**
- * CA/MCI/LA alert list.
- * LA (MSAW) is not implemented — no low-altitude alerting exists yet.
+ * CA/MCI/LA alert list, oldest alert first; an inhibited MSAW alert drops off.
  */
 export function AlertList() {
   const windowSettings = useDisplayStore((s) => s.windows[WINDOW_ID])
   const activeProfile  = useOdsStore((s) => s.activeProfile)
   const units          = useUnitsStore((s) => s.units)
   const conflicts       = useStcaStore((s) => s.conflicts)
+  const msaw            = useStarsAlertsStore((s) => s.msaw)
 
   if (!windowSettings || !activeProfile) return null
 
@@ -27,12 +28,19 @@ export function AlertList() {
   const brite = (briteLst ?? 80) / 100
   const color = activeProfile.visual?.colors?.pdbText ?? '#00cc00'
 
-  const rows = conflicts.map((c) => {
+  const fmt = (label, type) =>
+    label.length >= PAIR_COL_WIDTH ? `${label} ${type}` : label.padEnd(PAIR_COL_WIDTH) + type
+  const entries = conflicts.map((c) => {
     const csA = units[c.unitAId] ? resolveCallsign(units[c.unitAId]).toUpperCase() : c.unitAId
     const csB = units[c.unitBId] ? resolveCallsign(units[c.unitBId]).toUpperCase() : c.unitBId
-    const pair = `${csA}*${csB}`
-    return pair.length >= PAIR_COL_WIDTH ? `${pair} ${c.type}` : pair.padEnd(PAIR_COL_WIDTH) + c.type
+    return { start: c.start ?? 0, text: fmt(`${csA}*${csB}`, c.type) }
   })
+  for (const [uid, a] of Object.entries(msaw)) {
+    if (!a.active || a.inhibit || !units[uid]) continue
+    entries.push({ start: a.start, text: fmt(resolveCallsign(units[uid]).toUpperCase(), 'LA') })
+  }
+  // Oldest alert first
+  const rows = entries.sort((x, y) => x.start - y.start).map((e) => e.text)
 
   return (
     <ListPanel

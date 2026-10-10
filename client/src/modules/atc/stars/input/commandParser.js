@@ -49,6 +49,9 @@ const COMMANDS = [
   { id: 'RESIZE_VFR',           pattern: /^MF TV(\d+)$/,          trigger: 'ENTER', captures: ['lines'] },
   { id: 'TOGGLE_VFR',           pattern: /^MF TV$/,               trigger: 'ENTER' },
   { id: 'RELOCATE_VFR',         pattern: /^MF TV$/,               trigger: 'SLEW'  },
+  // MCI suppression list
+  { id: 'TOGGLE_MCI_SUPPRESSION',   pattern: /^MF TQ$/,           trigger: 'ENTER' },
+  { id: 'RELOCATE_MCI_SUPPRESSION', pattern: /^MF TQ$/,           trigger: 'SLEW'  },
 
   // ── Display manipulation ────────────────────────────────────────
   { id: 'RECENTER',             pattern: /^\.CENTER$/,            trigger: 'ENTER' },
@@ -71,7 +74,18 @@ const COMMANDS = [
   // MF D — flight plan readout in the preview area (D* / D+ left free)
   { id: 'SHOW_FP',              pattern: /^MF D$/,                trigger: 'SLEW'  },
   { id: 'SHOW_FP',              pattern: /^MF D([A-Z0-9]+)$/,     trigger: 'ENTER', captures: ['flid'] },
+  // Beacon code display on limited datablocks: per track (slew) or all
+  // LDBs (toggle / enable / inhibit)
   { id: 'TOGGLE_BEACON',        pattern: /^MF B$/,                trigger: 'SLEW'  },
+  { id: 'TOGGLE_LDB_BEACONS',   pattern: /^MF B$/,                trigger: 'ENTER' },
+  { id: 'ENABLE_LDB_BEACONS',   pattern: /^MF BE$/,               trigger: 'ENTER' },
+  { id: 'INHIBIT_LDB_BEACONS',  pattern: /^MF BI$/,               trigger: 'ENTER' },
+  // MSAW: inhibit the active alert on one owned track, toggle MSAW for one
+  // track, enable / inhibit MSAW on this scope
+  { id: 'INHIBIT_MSAW_ALERT',   pattern: /^MF Q$/,                trigger: 'SLEW'  },
+  { id: 'TOGGLE_MSAW_TRACK',    pattern: /^MF V$/,                trigger: 'SLEW'  },
+  { id: 'ENABLE_MSAW',          pattern: /^MF VME$/,              trigger: 'ENTER' },
+  { id: 'INHIBIT_MSAW',         pattern: /^MF VMI$/,              trigger: 'ENTER' },
   { id: 'TOGGLE_FDB_OVERFLIGHT',pattern: /^MF E$/,                trigger: 'ENTER' },
 
   // ── Altitude filters (Table 29) ───────────────────────────────────
@@ -192,10 +206,24 @@ const COMMANDS = [
   { id: 'QUICK_LOOK_TCP',       pattern: /^\*\*([A-Z0-9]+)$/,     trigger: 'SLEW',  captures: ['tcp'], contextFree: true },
   { id: 'QUICK_LOOK_ALL',       pattern: /^\*\*ALL$/,             trigger: 'SLEW',  contextFree: true },
 
+  // Selected beacon code display: ** + code + ENTER flashes that code on
+  // every track squawking it for 15 seconds
+  { id: 'SELECT_BEACON_DISPLAY', pattern: /^\*\*([0-7]{4})$/,  trigger: 'ENTER', captures: ['bcn'], contextFree: true },
+
+  // ── Special condition (SPC) ─────────────────────────────────────
+  // Force a track into a special condition, or out of it when it already
+  // has that one: SPC + SLEW
+  { id: 'SET_SPC_OVERRIDE',     pattern: /^(EM|HJ|RF|LL|MI)$/,    trigger: 'SLEW',  captures: ['spc'], contextFree: true },
+
   // ── Conflict alert (Table 27) ───────────────────────────────────
   // CA K — toggle CA warnings for one track
   { id: 'CA_INHIBIT',           pattern: /^CA ?K$/,               trigger: 'SLEW'  },
   { id: 'CA_INHIBIT',           pattern: /^CA ?K (.+)$/,          trigger: 'ENTER', captures: ['flid'] },
+  // CA M — suppress MCI against one intruder code (default 0477 if omitted)
+  { id: 'MCI_SUPPRESS',         pattern: /^CA ?M ?([0-7]{4})$/,   trigger: 'SLEW',  captures: ['bcn'] },
+  { id: 'MCI_SUPPRESS',         pattern: /^CA ?M$/,               trigger: 'SLEW'  },
+  { id: 'MCI_SUPPRESS',         pattern: /^CA ?M (\S+) ([0-7]{4})$/, trigger: 'ENTER', captures: ['flid', 'bcn'] },
+  { id: 'MCI_SUPPRESS',         pattern: /^CA ?M (\S+)$/,        trigger: 'ENTER', captures: ['flid'] },
 
   // ── Flight plan creation (Table 23) ─────────────────────────────
   // FLT DATA (F6): abbreviated plan, optional fields in any order.

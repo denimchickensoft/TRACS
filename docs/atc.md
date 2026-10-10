@@ -89,7 +89,29 @@ You must own a track to edit its scratchpads or temporary altitude.
 
 `F7` inserts the `MF ` prefix.
 
-A requested altitude amended with `++###` shows as `R###` on the right side of FDB line 2. That slot rotates groundspeed → aircraft type → groundspeed → `R###`, skipping any entry that's empty. Editing the altitude in the Flight Plan Editor removes the `R###`. The temporary assigned altitude stays on line 3, right-aligned and not time-shared, until it's cleared.
+A requested altitude amended with `++###` shows as `R###` on FDB line 2 in clock phase 3 (see Datablocks below). Editing the altitude in the Flight Plan Editor removes the `R###`. The temporary assigned altitude stays on the right of line 3 until it's cleared. On a beacon code mismatch it time-shares with the flashing assigned code.
+
+## Datablocks
+
+Datablock fields time-share on a clock. The ODS profile sets the sequence, which defaults to phases 1, 2, 1, 3.
+
+**FDB**
+
+| Line | Content |
+|---|---|
+| 0 | Safety alerts and special conditions in red, separated by `/`: `MCI`, the squawked SPC, `LA` (MSAW), a controller-entered SPC, `CA`. Unacknowledged alerts flash |
+| 1 | Aircraft ID, then `*` (MSAW inhibited), `+` (MSAW and CA inhibited) or `▲` (CA inhibited), then `PO`/`UN` |
+| 2 left | Phase 1: altitude + handoff letter. Phase 2: SP1, else SP2 + `+`, else altitude. Phase 3: the other position of a pending handoff, else SP2 + `+`, else SP1, else altitude. Phase 4: blank. An active `CA`/`MCI`/`LA` holds altitude in every phase |
+| 2 right | Phase 1: groundspeed + flight rules (`V` for VFR). Phases 2 and 4: aircraft type. Phase 3: `R###`, else aircraft type. An empty slot falls back to groundspeed. While IDENTing, a flashing `ID` replaces the flight-rules character in every phase |
+| 3 | Left: the reported code on a mismatch, or `DB` for a duplicate beacon code (see below). Right: `A###` temporary altitude, and/or the flashing assigned code on a mismatch |
+
+A **VFR** flight plan shows `V` after the groundspeed (e.g. `30V`) and `*` after the aircraft ID, because VFR plans are MSAW-inhibited automatically.
+
+**PDB:** altitude/scratchpad by phase, then groundspeed + flight rules (aircraft type in phase 2). An IDENTing PDB stays a PDB with a flashing `ID`. Any active safety alert or special condition turns it into an FDB.
+
+**Duplicate beacon (`DB`):** shown on an associated FDB when another visible track squawks the same code. 1200 and the SPC codes never count. Slewing the track acknowledges it for that code.
+
+**Selected beacon code:** `**####` + ENTER flashes that code in yellow on every track squawking it for 15 seconds: line 1 of an LDB, or line 3 of an FDB. `NO TRK` if no track squawks it.
 
 ## Leader lines
 
@@ -163,7 +185,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.RENAME <newCallsign>` + SLEW | — | Rename the clicked track's displayed callsign |
 | `.RENAME` + SLEW | — | Reset callsign to the DCS-assigned one |
 
-**Ctrl+Click** a contact opens its Flight Plan Editor (read-only if another controller owns it).
+**Ctrl+Click** a contact opens its Flight Plan Editor (read-only if another controller owns it). In the editor, BCN rejects the reserved codes 0000, 1200, 2000, 7400, 7500, 7600, 7601, 7700 and 7777. ALT takes a cruising altitude in hundreds of feet (`300`, which makes the plan IFR), `VFR`, `OTP` (VFR-on-top), or `VFR/###` (e.g. `VFR/055`). `VFR` and `OTP` make the plan VFR.
 
 ## Multi-function (MF) lists
 
@@ -178,6 +200,7 @@ These lists appear only if your ODS profile enables coordination lists. `+ ENTER
 | Coast/Suspend list | `MF TC` + ENTER | `MF TC` + SLEW | `MF TC<n>` + ENTER |
 | Alert list | `MF TM` + ENTER | `MF TM` + SLEW | — |
 | VFR list | `MF TV` + ENTER | `MF TV` + SLEW | `MF TV<n>` + ENTER |
+| MCI suppression list (hidden by default): every flight with a `CA M` code | `MF TQ` + ENTER | `MF TQ` + SLEW (also shows it) | — |
 
 ## Transponder/IFF correlation
 
@@ -187,11 +210,11 @@ When SRS transponder data reaches TRACS through a relay (in Tacview or Olympus s
 |---|---|
 | **Association** | An SRS-fielded track is *associated* when its squawk matches a filed flight plan's callsign and code, and *unassociated* otherwise. Once associated, it stays associated if the code later drifts (see the mismatch line). Unassociated tracks can't be claimed |
 | **Primary-only** | An SRS-fielded track with no live squawk draws as a primary target with no datablock |
-| **Unassociated LDB** | Line 1 shows the 4-digit beacon code, line 2 the altitude (altitude and groundspeed while slewed) |
+| **Unassociated LDB** | Altitude only. The beacon code shows on the line above it while IDENTing, squawking an SPC, under the beaconator, during a selected-code display, or when turned on with `MF B` (all LDBs: `MF B` / `MF BE` / `MF BI` + ENTER; one track: `MF B` + SLEW). Slewing the track opens a full LDB for 5 seconds: code, altitude and groundspeed, and its callsign |
 | **Position symbols** | An owned, associated track shows its owner's position letter. An unassociated track squawking 1200 shows `V`. Every other track shows `*` |
-| **FDB mismatch line** | If an associated track's live squawk differs from its flight plan's assigned code, FDB line 3 shows `<reported> <assigned>` |
-| **IDENT** | A pilot's IDENT press appends a blinking "ID" to the datablock (only the suffix blinks), latched until you acknowledge it with a slew on that track. A PDB that IDENTs displays as an LDB (beacon code + ID, then altitude) until acknowledged |
-| **Beaconator** | Press and hold `F1`. Every squawking SRS-fielded track shows its beacon code: PDBs switch to FDB layout with the callsign replaced by the code, and LDBs switch to the code-and-altitude layout. Tracks the altitude filter would hide are shown too. Release to return to normal |
+| **FDB mismatch line** | If an associated track's live squawk differs from its flight plan's assigned code, FDB line 3 shows the reported code and the flashing assigned code. SPC squawks don't count as a mismatch |
+| **IDENT** | A pilot's IDENT press appends a blinking "ID" to the datablock (only the suffix blinks), latched until you acknowledge it with a slew on that track |
+| **Beaconator** | Press and hold `F1`. Every squawking SRS-fielded associated track shows an FDB with its beacon code in place of the aircraft ID, including tracks you own. Every LDB shows its code, with the callsign underneath. The altitude filter still applies. Release to return to normal |
 
 ## Flight plan creation
 
@@ -216,18 +239,59 @@ Example: `N925RC 4304 ΔVFF C182 065`. After a plan is created or amended, the p
 
 In the implied form, a command word (`RG`, `HO`, `MIN` and so on) is never taken as an AID. An airport code like `KBTV` also looks like an aircraft type, so an ambiguous implied entry is read as FLT DATA; use `F9` to force the VFR PLAN reading.
 
-## Conflict Alert / MCI (STCA)
+## Conflict Alert / MCI
 
-`.CA` + ENTER toggles automated conflict detection (Short-Term Conflict Alert). When on:
+`.CA` + ENTER toggles automated conflict detection. It checks the airborne aircraft visible on your scope. Aircraft on the ground never alert, and neither does an SRS-fielded aircraft whose transponder is on standby or off. A track is *associated* when it has a flight plan or an owner.
 
-- A track in an unacknowledged conflict gets a blinking red `CA`/`MCI` line above line 1 of its FDB or PDB. LDBs don't show it.
-- A bare left-click on a track with an active, unacknowledged conflict acknowledges it, and the indicator turns solid red.
-- An alert tone plays while any unacknowledged conflict involves a track you own. Its volume follows the DCB's **VOL**, and the app-wide **Sounds** checkbox in Settings (see [Getting Started](getting-started.md)) mutes it.
-- Suppression zones along final approach courses prevent alerts between aircraft established on approach.
+| Alert | Pair | Triggers within |
+|---|---|---|
+| `CA` | Two associated tracks | 3 NM and 1,000 ft |
+| `MCI` | An associated track and an unassociated one | 1.5 NM and 500 ft |
+
+Separation is tested on current positions. A pair whose tracks are diverging (their paths cross behind at least one of them and differ by 15° or more) doesn't alert. Once an alert starts, it stays up until the pair diverges or separates to 3.5 NM / 1,100 ft (CA) or 1.75 NM / 600 ft (MCI). Suppression zones along final approach courses prevent alerts between aircraft established on approach.
+
+- The alert shows as a blinking red `CA` above line 1 of the datablock (MCI also shows as `CA` there), and a PDB in conflict becomes an FDB. The alert list labels each row `CA` or `MCI`, with the oldest alert first.
+- A bare left-click on a track with an active, unacknowledged conflict acknowledges it on your scope only, and the indicator turns solid red.
+- An alert tone plays for 5 seconds from the start of a new conflict, or until it's acknowledged, if you own one of the pair. Its volume follows the DCB's **VOL**, and the app-wide **Sounds** checkbox in Settings (see [Getting Started](getting-started.md)) mutes it.
 
 The DCB aux bar (SHIFT) has a **CA** toggle button next to **WNG**.
 
-`CA K` + SLEW, or `CA K <flid>` + ENTER (`F11` inserts `CA `), turns conflict alerts off or on for one track. The preview area shows `CA INHIBITED` or `CA ENABLED`. The setting is local to your client.
+| Command | Shortcut | Effect |
+|---|---|---|
+| `CA K` + SLEW / `CA K <flid>` + ENTER | `F11` | Turn conflict alerts off or on for one track (`CA INHIBITED` / `CA ENABLED`). With a flight plan it's stored on the plan, for every controller, and clears any MCI suppression. Without one it stays on your scope until the track gets a flight plan, then moves onto the plan. Shown as `▲` after the aircraft ID |
+| `CA M####` + SLEW / `CA M <flid> ####` + ENTER | `F11` | On a track you own, suppress MCI alerts against intruders squawking `####`. The same code again clears it. Setting a code turns CA back on for the track. Stored like `CA K`. Shown as `▲` |
+| `CA M` + SLEW / `CA M <flid>` + ENTER | `F11` | Toggle MCI suppression with the default code 0477 |
+
+AI aircraft don't squawk, so `CA M` only ever matches SRS-fielded intruders.
+
+## Special conditions (SPC)
+
+A track squawking 7400 (`LL`), 7500 (`HJ`), 7600 (`RF`), 7700 (`EM`) or 7777 (`MI`) shows that tag in red above its datablock, on LDBs and FDBs. An associated track becomes an FDB. The tag flashes and a tone sounds for 5 seconds until you acknowledge it with a slew on the track. After that the tag stays solid while the code is squawked. Acknowledging only affects your scope. Only SRS-fielded tracks report a squawk, so AI aircraft never raise an SPC.
+
+`EM`, `HJ`, `RF`, `LL` or `MI` + SLEW forces an associated track (one with a flight plan) into that special condition. The tag shows steady, with no tone, and makes the track an FDB on every scope. Entering the same code again removes it. `ILL FNCT` if the aircraft is already squawking an SPC.
+
+## Minimum safe altitude warning (MSAW)
+
+MSAW checks the tracks you own anywhere in the theatre, against the highest terrain in 2 NM square bins. A track alerts in three cases:
+- it's less than 500 ft above its current bin
+- it's projected to be less than 300 ft above the terrain within 30 seconds, along its current heading, groundspeed and climb or descent rate (averaged over about 10 seconds)
+- even a 5° climb started at the 30-second point wouldn't keep it 300 ft above the terrain over the following 30 seconds
+
+MSAW ignores tracks on the ground and within 3 NM of an airbase. Carriers aren't exempt. Helicopters are included; use `MF V` or `MF Q` for low-level traffic.
+
+An alerting track gets a flashing red `LA` above its FDB, an `LA` row in the alert list, and a 5-second tone. Altitude holds in every phase of line 2. A slew acknowledges it.
+
+| Command | Shortcut | Effect |
+|---|---|---|
+| `MF Q` + SLEW | `F7` | Inhibit the active MSAW alert on a track you own. It re-arms once the track is back above the MVA |
+| `MF V` + SLEW | `F7` | Turn MSAW off or on for one track. With a flight plan it's stored on the plan, for every controller. Without one it's kept on the track for your scope only, so a controller you hand off to won't have it, until the track gets a flight plan; then the setting moves onto the plan. Shown as `*` after the aircraft ID |
+| `MF VMI` / `MF VME` + ENTER | `F7` | Turn MSAW off / on for your scope |
+
+VFR flight plans are MSAW-inhibited automatically. Changing a plan's flight rules resets this, unless `MF V` sets it.
+
+## Acknowledging with a slew
+
+A bare left-click on a track handles one thing per click, in this order: an IDENT (always cleared alongside), then a conflict alert, an MSAW alert, an SPC alert, and a duplicate-beacon indicator. On an unassociated track it opens the full LDB. Otherwise it does the usual handoff, point-out or PDB toggle.
 
 ## Simulated wingmen
 
@@ -320,7 +384,7 @@ These keys insert text into the buffer; you still complete the command with a cl
 | `F6` | `DA ` | Flight Data — create an abbreviated flight plan |
 | `F7` | `MF ` | Multi-Function prefix — follow with a list/scratchpad/leader command |
 | `F9` | `VP ` | VFR Plan — create or amend a VFR flight plan |
-| `F11` | `CA ` | Conflict Alert — `CA K` inhibits alerts for one track |
+| `F11` | `CA ` | Conflict Alert — `CA K` inhibits alerts for one track, `CA M` suppresses MCI for one code |
 | `End` | `MIN` | Minimum-separation tool |
 | `` ` `` (backquote) | `Δ` | Inserts the delta glyph |
 
@@ -450,6 +514,6 @@ All of these settings are saved across reloads, and changes made in an undocked 
 These ATC commands are recognized but not functional:
 
 - `IC <flightid>`, `TC <flightid>` and `HO <tcp> <flightid>` + ENTER reply `NOT SUPPORTED`. Use the SLEW forms (type the command, then click the track).
-- `MF M` (Mode C toggle), `MF B` (beacon toggle), and `MF E` (FDB overflight toggle) reply `NOT SUPPORTED`.
+- `MF M` (Mode C toggle) and `MF E` (FDB overflight toggle) reply `NOT SUPPORTED`.
 - Quicklook (`**<tcp>`, `**ALL`) replies `NOT SUPPORTED`.
 - Ctrl+F2–F5, Ctrl+F7, Ctrl+F9, Ctrl+F10, and Insert have no effect.

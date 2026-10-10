@@ -15,7 +15,7 @@
 
 import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../../store/atc.js'
 import { usePreviewStore } from '../../../store/preview.js'
-import { useDisplayStore } from '../../../store/display.js'
+import { useDisplayStore, DEFAULT_LISTS } from '../../../store/display.js'
 import { useFlightPlansStore } from '../../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../../store/strips.js'
 import { useFpeStore } from '../../../store/fpe.js'
@@ -46,6 +46,10 @@ import { DIR_TO_ANGLE } from '../../../utils/scopeConstants.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { getMyControllerId, getKnownControllerIds } from '../../../utils/myControllerId.js'
 import { log } from '../../../utils/log.js'
+import { useStarsAlertsStore } from '../../../store/starsAlerts.js'
+import { spcForCode, isSpcString } from '../../../utils/spc.js'
+import { planMsawDisabled } from '../../../utils/msaw.js'
+import { planForUnit } from '../stars/alerts/useStarsAlerts.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -150,12 +154,11 @@ function autoAddStripOnHandoffAccept(unitId) {
   if (aid) strips.addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId })
 }
 
-// Acknowledge a conflict-alert pair — called directly from StarsScope.jsx's
-// bare-click handler (not command-parsed, same as INIT_CNTL's direct-call
-// usage from the Ctrl+Shift+click path).
+// Acknowledge a conflict-alert pair on this scope only — called directly
+// from StarsScope.jsx's bare-click handler (not command-parsed, same as
+// INIT_CNTL's direct-call usage from the Ctrl+Shift+click path).
 export function ackConflict(pairId) {
   getAtc().ackConflict(pairId)
-  sendWebrtcEvent('CONFLICT_ACK', { pairId })
 }
 
 export function OPEN_FPE({ captures, slewTarget }) {
@@ -492,12 +495,134 @@ export function SHOW_FP({ captures, slewTarget }) {
 }
 
 // CA K + SLEW / CA K <FLID> + ENTER — toggle conflict alerts for one track.
+// Stored on the flight plan (system-wide) when the track has one, which also
+// clears any MCI suppression; otherwise on the track for this scope only.
 export function CA_INHIBIT({ captures, slewTarget }) {
   const target = targetOf({ slewTarget, captures })
   if (!target) return err(captures?.flid ? 'ILL FLID' : 'NO TARGET')
-  getAtc().toggleCaInhibit(target.unitId)
-  const inhibited = !!getAtc().caInhibited[target.unitId]
+  const plan = planOfTarget(target)
+  let inhibited
+  if (plan) {
+    inhibited = !plan.caDisabled
+    amendAndBroadcast(plan.aid, { caDisabled: inhibited, mciSuppressedCode: '' })
+  } else {
+    getAtc().toggleCaInhibit(target.unitId)
+    inhibited = !!getAtc().caInhibited[target.unitId]
+  }
   usePreviewStore.getState().showInfo(inhibited ? 'CA INHIBITED' : 'CA ENABLED')
+}
+
+// MCI suppression code used when CA M is entered without one
+const DEFAULT_MCI_SUPPRESS_CODE = '0477'
+
+// CA M[code] + SLEW / CA M <FLID> [code] + ENTER — suppress MCI alerts on an
+// owned track against intruders squawking one code. Entering the code that's
+// already suppressed clears it; with no code, toggles between cleared and
+// the default code. Setting a code turns CA back on for the track.
+export function MCI_SUPPRESS({ captures, slewTarget }) {
+  const target = targetOf({ slewTarget, captures })
+  if (!target) return err(captures?.flid ? 'ILL FLID' : 'NO TARGET')
+  if (getAtc().ownership[target.unitId] !== getMyControllerId()) return err('ILL TRK')
+  const uid  = String(target.unitId)
+  const plan = planOfTarget(target)
+  const alerts  = useStarsAlertsStore.getState()
+  const current = plan ? (plan.mciSuppressedCode || '') : (alerts.trackMciSuppressed[uid] || '')
+  const code    = captures?.bcn
+    ? (current === captures.bcn ? '' : captures.bcn)
+    : (current ? '' : DEFAULT_MCI_SUPPRESS_CODE)
+  if (plan) {
+    amendAndBroadcast(plan.aid, { mciSuppressedCode: code, ...(code ? { caDisabled: false } : {}) })
+  } else {
+    alerts.setTrackMciSuppressed(uid, code)
+    if (code && getAtc().caInhibited[uid]) getAtc().toggleCaInhibit(uid)
+  }
+  usePreviewStore.getState().showInfo(code ? `MCI SUPPRESSED ${code}` : 'MCI ENABLED')
+}
+
+// ── Special conditions / MSAW ─────────────────────────────────────────────────
+
+function planOfTarget(target) {
+  return planForUnit(String(target.unitId), useFlightPlansStore.getState().plans,
+    useAssociationStore.getState().associated)
+}
+
+function amendAndBroadcast(aid, patch) {
+  useFlightPlansStore.getState().amend(aid, patch)
+  sendWebrtcEvent('FLIGHT_PLAN_AMEND', useFlightPlansStore.getState().plans[aid])
+}
+
+// SPC + SLEW — force an associated track into a special condition (EM, HJ,
+// RF, LL, MI); entering the one it already has takes it out again. Not
+// allowed while the aircraft is squawking an SPC itself.
+export function SET_SPC_OVERRIDE({ captures, slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  const spc  = captures.spc
+  const plan = planOfTarget(slewTarget)
+  if (!plan || !isSpcString(spc)) return err('FORMAT')
+  const unit = slewTarget.unit
+  if (unit?.srsCapable && hasLiveSquawk(unit) && spcForCode(unit.transponder.mode3)) return err('ILL FNCT')
+  amendAndBroadcast(plan.aid, { spcOverride: plan.spcOverride === spc ? '' : spc })
+  clearBuffer()
+}
+
+// MULTI FUNC Q + SLEW — inhibit the active MSAW alert on an owned track.
+// The inhibit lapses once the track is back above the MVA.
+export function INHIBIT_MSAW_ALERT({ slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  const uid = String(slewTarget.unitId)
+  if (getAtc().ownership[uid] !== getMyControllerId()) return err('ILL TRK')
+  if (!useStarsAlertsStore.getState().msaw[uid]) return err('ILL TRK')
+  useStarsAlertsStore.getState().inhibitMsaw(uid)
+  clearBuffer()
+}
+
+// MULTI FUNC V + SLEW — enable / inhibit MSAW for one track. Stored on the
+// flight plan (system-wide) when the track has one, otherwise on the track
+// for this scope only.
+export function TOGGLE_MSAW_TRACK({ slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  const plan = planOfTarget(slewTarget)
+  let disabled
+  if (plan) {
+    disabled = planMsawDisabled(plan)
+    amendAndBroadcast(plan.aid, { msawDisabled: !disabled })
+  } else {
+    const uid = String(slewTarget.unitId)
+    disabled = !!useStarsAlertsStore.getState().trackMsawDisabled[uid]
+    useStarsAlertsStore.getState().toggleTrackMsaw(uid)
+  }
+  usePreviewStore.getState().showInfo(disabled ? 'MSAW ENABLED' : 'MSAW INHIBITED')
+}
+
+// MULTI FUNC VME / VMI — enable / inhibit MSAW on this scope.
+export function ENABLE_MSAW()  { useStarsAlertsStore.getState().setMsawDisabled(false); usePreviewStore.getState().showInfo('MSAW ENABLED') }
+export function INHIBIT_MSAW() { useStarsAlertsStore.getState().setMsawDisabled(true);  usePreviewStore.getState().showInfo('MSAW INHIBITED') }
+
+// MULTI FUNC B + SLEW — toggle beacon code display on one unassociated LDB.
+export function TOGGLE_BEACON({ slewTarget }) {
+  if (!slewTarget) return err('NO TARGET')
+  useStarsAlertsStore.getState().toggleLdbBeacon(String(slewTarget.unitId))
+  clearBuffer()
+}
+
+// MULTI FUNC B / BE / BI — beacon code display on every LDB.
+export function TOGGLE_LDB_BEACONS() {
+  const s = useStarsAlertsStore.getState()
+  s.setLdbBeacons(!s.ldbBeacons)
+  clearBuffer()
+}
+export function ENABLE_LDB_BEACONS()  { useStarsAlertsStore.getState().setLdbBeacons(true);  clearBuffer() }
+export function INHIBIT_LDB_BEACONS() { useStarsAlertsStore.getState().setLdbBeacons(false); clearBuffer() }
+
+// ** + code + ENTER — flash that code on every visible track squawking it.
+export function SELECT_BEACON_DISPLAY({ captures }) {
+  const code  = captures.bcn
+  const units = useUnitsStore.getState().units
+  const found = Object.values(units).some((u) =>
+    u?.srsCapable && hasLiveSquawk(u) && normalizeCode(u.transponder.mode3) === code)
+  if (!found) return err('NO TRK')
+  useStarsAlertsStore.getState().selectBeacon(code)
+  clearBuffer()
 }
 
 // Create a flight plan, or amend it if the AID already exists — same
@@ -822,7 +947,7 @@ export function RESET_CALLSIGN({ slewTarget }) {
 
 function toggleList(listId) {
   const win = getDisplay().windows[WINDOW_ID]
-  const current = win?.lists?.[listId]?.visible ?? true
+  const current = win?.lists?.[listId]?.visible ?? DEFAULT_LISTS[listId]?.visible ?? true
   getDisplay().updateList(WINDOW_ID, listId, { visible: !current })
   ok()
 }
@@ -878,6 +1003,13 @@ export function RELOCATE_ALERT({ canvasPos, canvasSize }) { relocateList('alert'
 export function TOGGLE_VFR()                             { toggleList('vfr') }
 export function RELOCATE_VFR({ canvasPos, canvasSize })  { relocateList('vfr', canvasPos, canvasSize) }
 export function RESIZE_VFR({ captures })                 { resizeList('vfr', captures.lines) }
+
+export function TOGGLE_MCI_SUPPRESSION()                            { toggleList('mciSuppression') }
+// Moving the MCI suppression list also shows it
+export function RELOCATE_MCI_SUPPRESSION({ canvasPos, canvasSize }) {
+  if (canvasPos && canvasSize?.w) getDisplay().updateList(WINDOW_ID, 'mciSuppression', { visible: true })
+  relocateList('mciSuppression', canvasPos, canvasSize)
+}
 
 // ── Airspace color palette ────────────────────────────────────────────────────
 
@@ -1223,6 +1355,17 @@ const ACTION_MAP = {
   SET_BEACON,
   SHOW_FP,
   CA_INHIBIT,
+  MCI_SUPPRESS,
+  SET_SPC_OVERRIDE,
+  INHIBIT_MSAW_ALERT,
+  TOGGLE_MSAW_TRACK,
+  ENABLE_MSAW,
+  INHIBIT_MSAW,
+  TOGGLE_BEACON,
+  TOGGLE_LDB_BEACONS,
+  ENABLE_LDB_BEACONS,
+  INHIBIT_LDB_BEACONS,
+  SELECT_BEACON_DISPLAY,
   CREATE_FP_ABBREV,
   CREATE_VFR_FP,
   CREATE_FP_IMPLIED,
@@ -1270,6 +1413,7 @@ const ACTION_MAP = {
   TOGGLE_COAST,  RELOCATE_COAST,  RESIZE_COAST,
   TOGGLE_ALERT,  RELOCATE_ALERT,
   TOGGLE_VFR,    RELOCATE_VFR,    RESIZE_VFR,
+  TOGGLE_MCI_SUPPRESSION, RELOCATE_MCI_SUPPRESSION,
 }
 
 /**

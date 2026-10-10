@@ -95,6 +95,7 @@ export const useRunwaysStore = create((set, get) => ({
   cltrVisible:      {},
   satBuckets:       [],   // [{ label: 'NW', ids: [...] }, { label: 'SE', ids: [...] }]
   airportPositions: {},   // ICAO → {lat, lon} — all theatre airports, no distance filter
+  airbasePositions: [],   // [{lat, lon}] — every airbase with runway coords, ICAO or not
   // The circle the centerlines were filtered to, for other layers that should
   // cover the same area: { lat, lng, radiusNm }, or null when there's no
   // facility position and the whole theatre is in range.
@@ -274,7 +275,15 @@ export const useRunwaysStore = create((set, get) => ({
       // independent of the distance filter.  Used by lookupFix so that route
       // drawing can connect to distant DEP/DEST airports (e.g. OMAA from OMDB).
       const airportPositions = {}
+      const airbasePositions = []
       for (const ab of airbases ?? []) {
+        const pts = (ab.runways ?? []).filter((r) => r.lat != null && r.lon != null)
+        if (pts.length) {
+          airbasePositions.push({
+            lat: pts.reduce((a, r) => a + r.lat, 0) / pts.length,
+            lon: pts.reduce((a, r) => a + r.lon, 0) / pts.length,
+          })
+        }
         const icaoCode = theatreIcao[ab.airbase]
         if (!icaoCode) continue
         let latSum = 0, lonSum = 0, count = 0
@@ -340,7 +349,7 @@ export const useRunwaysStore = create((set, get) => ({
 
       const filterCenter = hasPos ? { lat: facilityLat, lng: facilityLng, radiusNm: threshold } : null
 
-      set({ centerlines, cltrVisible, satBuckets, theatre, facilityAirbase: facilityAirbase || null, airportPositions, filterCenter, _lastLoadKey: loadKey })
+      set({ centerlines, cltrVisible, satBuckets, theatre, facilityAirbase: facilityAirbase || null, airportPositions, airbasePositions, filterCenter, _lastLoadKey: loadKey })
       log.info(`[runways] ${theatre}: ${centerlines.length} centerlines, ${satBuckets.map(b => `${b.label}:${b.ids.length}`).join(' ')} sat`)
     } catch (err) {
       console.error('[runways] load error:', err.message)
@@ -358,5 +367,5 @@ export const useRunwaysStore = create((set, get) => ({
     return { cltrVisible: { ...s.cltrVisible, ...updates } }
   }),
 
-  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], theatre: null, facilityAirbase: null, airportPositions: {}, filterCenter: null }),
+  reset: () => set({ centerlines: [], cltrVisible: {}, satBuckets: [], theatre: null, facilityAirbase: null, airportPositions: {}, airbasePositions: [], filterCenter: null }),
 }))

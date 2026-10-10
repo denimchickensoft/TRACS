@@ -12,6 +12,10 @@ import { useStarsAtcData, useStarsFacilityData, useStarsNavdataLayers } from './
 import { computeStarsSymbolMap, computeStarsFilteredUnits, findPlanForUid, deriveDisplaySettings } from './starsScopeHelpers.js'
 import { useStarsNavdataLoading } from './starsNavdataLoading.js'
 import { useStcaTracker } from './stca/useStcaCompute.js'
+import { useStarsAlerts } from './alerts/useStarsAlerts.js'
+import { useStarsAlertsStore } from '../../../store/starsAlerts.js'
+import { spcForCode } from '../../../utils/spc.js'
+import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
 import { useHistoryCapture } from '../../../utils/useHistoryCapture.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../../utils/projection.js'
 import { drawRangeRings }       from './canvas/drawRangeRings.js'
@@ -45,6 +49,7 @@ import { TowerLists }           from './lists/TowerList.jsx'
 import { CoastList }            from './lists/CoastList.jsx'
 import { AlertList }            from './lists/AlertList.jsx'
 import { VFRList }              from './lists/VFRList.jsx'
+import { MciSuppressionList }   from './lists/MciSuppressionList.jsx'
 import { resolveSlew }          from '../../../utils/slewResolver.js'
 import { parseCommand, looksLikeKnownCommand } from './input/commandParser.js'
 import { dispatch as dispatchAction, INIT_CNTL, ackConflict, recenterScope } from '../actions/index.js'
@@ -127,13 +132,6 @@ export default function StarsScope() {
     return resolvePrimaryOnlyIds(units, ownership, windowSettings?.manualWingmen, !!windowSettings?.simWingmenStandby)
   }, [units, ownership, windowSettings?.simWingmenStandby, windowSettings?.manualWingmen])
 
-  // ── STCA compute loop + alert tone — see stca/useStcaCompute.js ───────
-  useStcaTracker({
-    centerlines, conflicts, conflictAcks, ownership, myControllerId,
-    vol: windowSettings?.vol, stcaEnabled: windowSettings?.stcaEnabled,
-    simWingmenStandby: windowSettings?.simWingmenStandby,
-  })
-
   // Ctrl+F → open blank FPE
   useEffect(() => {
     function onKeyDown(e) {
@@ -175,6 +173,16 @@ export default function StarsScope() {
   const visibleUnitsRef = useRef(visibleUnits)
   useEffect(() => { visibleUnitsRef.current = visibleUnits }, [visibleUnits])
 
+  // ── SPC / MSAW / duplicate beacon detection + tones — see alerts/useStarsAlerts.js
+  useStarsAlerts({ visibleUnitsRef, myControllerId, vol: windowSettings?.vol })
+
+  // ── Conflict alert compute loop + alert tone — see stca/useStcaCompute.js
+  useStcaTracker({
+    visibleUnitsRef, centerlines, conflicts, conflictAcks, ownership, myControllerId,
+    vol: windowSettings?.vol, stcaEnabled: windowSettings?.stcaEnabled,
+    simWingmenStandby: windowSettings?.simWingmenStandby,
+  })
+
 
   // ── Contact symbol map — see starsScopeHelpers.js's computeStarsSymbolMap ──
   const associated = useAssociationStore((s) => s.associated)
@@ -183,11 +191,10 @@ export default function StarsScope() {
     [visibleUnits, ownership, displayFdb, myControllerId, associated]
   )
 
-  // ── Beacon code readout ("Beaconator") — press-and-hold F1 ──────────
-  // Momentary: forces every beacon track (real, active squawk) to appear
-  // regardless of the altitude filter, forces PDB->FDB, and swaps the
-  // callsign for the beacon code — see DatablockOverlay.jsx for the
-  // datablock-content half of this.
+  // ── Beacon code readout for all tracks ("Beaconator") — hold F1 ────
+  // Momentary: every associated beacon track shows an FDB with its code in
+  // place of the callsign, and every LDB shows its code with the callsign
+  // underneath — see DatablockOverlay.jsx. The altitude filter still applies.
   const [beaconReadout, setBeaconReadout] = useState(false)
   useEffect(() => {
     function onKeyDown(e) {
@@ -211,12 +218,12 @@ export default function StarsScope() {
 
   // ── Altitude filter (MULTI FUNC F / FC) — see starsScopeHelpers.js's
   // computeStarsFilteredUnits ─────────────────────────────────────────
-  const filteredUnits = useMemo(() => computeStarsFilteredUnits(visibleUnits, symbolMap, beaconReadout, {
+  const filteredUnits = useMemo(() => computeStarsFilteredUnits(visibleUnits, symbolMap, {
     loU: windowSettings?.altFilterLowU  ?? 1,
     hiU: windowSettings?.altFilterHighU ?? 600,
     loA: windowSettings?.altFilterLowA  ?? 1,
     hiA: windowSettings?.altFilterHighA ?? 600,
-  }), [visibleUnits, symbolMap, beaconReadout,
+  }), [visibleUnits, symbolMap,
       windowSettings?.altFilterLowU, windowSettings?.altFilterHighU,
       windowSettings?.altFilterLowA, windowSettings?.altFilterHighA])
 
@@ -1045,6 +1052,33 @@ export default function StarsScope() {
             return
           }
 
+          // Then, one per click and in this order: MSAW, special condition,
+          // duplicate beacon indicator. Acknowledging only affects this scope.
+          const alerts = useStarsAlertsStore.getState()
+          if (alerts.msaw[uid] && !alerts.msaw[uid].acked) {
+            alerts.ackMsaw(uid)
+            return
+          }
+          if (alerts.spc[uid] && !alerts.spc[uid].acked) {
+            alerts.ackSpc(uid)
+            return
+          }
+          const unit = target.unit
+          const live = !!unit?.srsCapable && hasLiveSquawk(unit)
+          const code = live ? normalizeCode(unit.transponder.mode3) : null
+          const isAssoc = !unit?.srsCapable || !!useAssociationStore.getState().associated[uid]
+          if (isAssoc && code && alerts.duplicates[code] && alerts.dupAck[uid] !== code && !spcForCode(code)) {
+            alerts.ackDuplicate(uid, code)
+            return
+          }
+
+          // Unassociated track: beacon readout — a full LDB (code, altitude
+          // and speed, callsign) for a few seconds.
+          if (!isAssoc) {
+            alerts.openFullLdb(uid)
+            return
+          }
+
           const ho       = atcState.handoffs[uid]
           const po       = atcState.pointOuts[uid]
 
@@ -1156,6 +1190,7 @@ export default function StarsScope() {
           <CoastList />
           <AlertList />
           <VFRList />
+          <MciSuppressionList />
         </>}
 
         {previewEnabled && <PreviewArea />}

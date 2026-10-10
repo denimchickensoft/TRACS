@@ -1,4 +1,3 @@
-import { hasLiveSquawk } from '../../../utils/transponder.js'
 import { M_TO_FT as METERS_TO_FEET } from '../../../utils/units.js'
 import { findFlightPlanAid } from '../../../utils/callsign.js'
 
@@ -30,9 +29,8 @@ export function computeStarsSymbolMap(visibleUnits, ownership, displayFdb, myCon
 // Altitude filter (MULTI FUNC F / FC) — suppresses tracks whose altitude
 // falls outside the filter range for their association status (symbolMap
 // sym === '*' means unassociated). Units with no altitude data (elevation
-// unavailable) are never filtered. Beacon readout forces beacon tracks
-// through regardless.
-export function computeStarsFilteredUnits(visibleUnits, symbolMap, beaconReadout, altFilter) {
+// unavailable) are never filtered.
+export function computeStarsFilteredUnits(visibleUnits, symbolMap, altFilter) {
   const { loU, hiU, loA, hiA } = altFilter
   const out = {}
   for (const [id, unit] of Object.entries(visibleUnits)) {
@@ -42,8 +40,7 @@ export function computeStarsFilteredUnits(visibleUnits, symbolMap, beaconReadout
     const sym        = symbolMap[id]?.sym
     const associated = sym !== '*' && sym !== 'V'
     const [lo, hi]   = associated ? [loA, hiA] : [loU, hiU]
-    if (hundreds >= lo && hundreds <= hi) { out[id] = unit; continue }
-    if (beaconReadout && hasLiveSquawk(unit)) out[id] = unit
+    if (hundreds >= lo && hundreds <= hi) out[id] = unit
   }
   return out
 }
