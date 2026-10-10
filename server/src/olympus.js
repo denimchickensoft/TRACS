@@ -158,6 +158,7 @@ async function pollUnits() {
       const agl = elevation.getAgl(unit.position.lat, unit.position.lng, unit.position.alt)
       if (agl !== null) unit.agl = Math.max(0, Math.round(agl))
     }
+    elevation.enrichTerrainAhead(updatedMap, state.getUnit)
 
     const delta = { updated: updatedMap, removed: removedIds, time: updateTime }
     state.applyDelta(delta)

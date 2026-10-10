@@ -78,4 +78,71 @@ function getAgl(lat, lon, altMeters) {
   return altMeters - terrain
 }
 
-module.exports = { init, getElevation, getAgl }
+const EARTH_RADIUS_M     = 6371000
+// Low-altitude warning terrain: the highest terrain in fixed 2 NM square
+// bins, sampled at the aircraft's position and every 10 s along its current
+// track out to 60 s (30 s look-ahead plus the 5-degree climb check beyond it).
+const BIN_DEG     = 1 / 30          // 2 NM of latitude
+const MAX_BINS    = 50_000
+const SAMPLE_S    = [0, 10, 20, 30, 40, 50, 60]
+let binCache      = new Map()       // "i,j" -> metres MSL | null
+
+// Highest terrain (metres MSL) in the 2 NM bin containing the point: the max
+// over every elevation grid node (0.01 deg) inside it. Bins are latitude
+// bands 1/30 deg tall, split into longitude steps that are 2 NM wide at the
+// band's centre. null if none of its nodes have data.
+function binMaxElevation(lat, lon) {
+  const i      = Math.floor(lat / BIN_DEG)
+  const latC   = (i + 0.5) * BIN_DEG
+  const lonDeg = BIN_DEG / Math.cos(latC * Math.PI / 180)
+  const j      = Math.floor(lon / lonDeg)
+  const key    = `${i},${j}`
+  if (binCache.has(key)) return cacheGet(binCache, key)
+
+  let max = null
+  const lat0 = i * BIN_DEG, lon0 = j * lonDeg
+  for (let la = Math.ceil(lat0 * 100); la < (lat0 + BIN_DEG) * 100; la++) {
+    for (let lo = Math.ceil(lon0 * 100); lo < (lon0 + lonDeg) * 100; lo++) {
+      const e = getElevation(la / 100, lo / 100)
+      if (e !== null && (max === null || e > max)) max = e
+    }
+  }
+  cacheSet(binCache, key, max, MAX_BINS)
+  return max
+}
+
+// Bin terrain at the current position and every 10 s ahead to 60 s on the
+// current heading (radians true) and ground speed (m/s). null if any bin
+// has no elevation data.
+function terrainBins(lat, lon, headingRad, speedMps) {
+  const cosLat = Math.cos(lat * Math.PI / 180)
+  const out = []
+  for (const t of SAMPLE_S) {
+    const d    = speedMps * t
+    const pLat = lat + (d * Math.cos(headingRad) / EARTH_RADIUS_M) * 180 / Math.PI
+    const pLon = lon + (d * Math.sin(headingRad) / (EARTH_RADIUS_M * cosLat)) * 180 / Math.PI
+    const elev = binMaxElevation(pLat, pLon)
+    if (elev === null) return null
+    out.push(elev)
+  }
+  return out
+}
+
+// Adds terrainBinsM to every aircraft/helicopter in a units delta that
+// moved. Deltas only carry changed fields, so heading/speed/category fall
+// back to the stored unit.
+function enrichTerrainAhead(updated, getUnit) {
+  for (const [id, unit] of Object.entries(updated)) {
+    if (!unit.position) continue
+    const prev     = getUnit(id) ?? {}
+    const category = unit.category ?? prev.category
+    if (category !== 'Aircraft' && category !== 'Helicopter') continue
+    const heading = unit.heading ?? prev.heading
+    const speed   = unit.speed   ?? prev.speed
+    if (heading == null || speed == null) continue
+    const bins = terrainBins(unit.position.lat, unit.position.lng, heading, speed)
+    if (bins) unit.terrainBinsM = bins
+  }
+}
+
+module.exports = { init, getElevation, getAgl, enrichTerrainAhead }

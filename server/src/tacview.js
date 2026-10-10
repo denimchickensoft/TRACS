@@ -9,6 +9,7 @@
 
 const net = require('net')
 const state = require('./state')
+const elevation = require('./elevation')
 const navdata = require('../navdata')
 const tacviewCore = require('./tacviewCore')
 const tacviewDetection = require('./tacviewDetection')
@@ -104,7 +105,12 @@ let reconnectDelayMs = RECONNECT_MIN_MS
 // runDetectionPass write here instead of calling state.applyDelta directly.
 // merge:true — see tacviewShared.js's createDeltaBuffer for why (processIncoming's
 // full unit vs. runDetectionPass's partial {contacts:[...]} race).
-const unitsBuffer = createDeltaBuffer({ applyFn: state.applyDelta, merge: true })
+// Terrain look-ahead is added here, on this backend, before the delta is
+// applied and broadcast (the shared parser never has terrain data).
+const unitsBuffer = createDeltaBuffer({
+  applyFn: (d) => { elevation.enrichTerrainAhead(d.updated, state.getUnit); state.applyDelta(d) },
+  merge: true,
+})
 // Mirrors unitsBuffer, for the separate weapons delta stream (own state.js
 // store, own onWeaponsDelta callback, own message type) — not reusing the
 // units buffer since a weapon and a unit sharing the same numeric id space

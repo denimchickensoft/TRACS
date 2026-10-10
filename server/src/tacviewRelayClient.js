@@ -18,6 +18,7 @@
 const WebSocket = require('ws')
 const { PROTOCOL_VERSION } = require('./protocolVersion')
 const state = require('./state')
+const elevation = require('./elevation')
 const navdata = require('../navdata')
 const tacviewDetection = require('./tacviewDetection')
 const weaponDatabase = require('./weaponDatabase')
@@ -89,7 +90,12 @@ let friendlyCoalitionId = null
 // state/broadcast at rateConfig.unitUpdateMs by unitsBuffer.flush(). Mirrors
 // tacview.js's identical mechanism for direct mode — see tacviewShared.js's
 // createDeltaBuffer for the merge-vs-overwrite semantics.
-const unitsBuffer = createDeltaBuffer({ applyFn: state.applyDelta, merge: true })
+// Terrain look-ahead is added here, on this backend, before the delta is
+// applied and broadcast (the shared parser never has terrain data).
+const unitsBuffer = createDeltaBuffer({
+  applyFn: (d) => { elevation.enrichTerrainAhead(d.updated, state.getUnit); state.applyDelta(d) },
+  merge: true,
+})
 // Mirrors unitsBuffer, for the separate weapons delta stream — a weapon and
 // a unit sharing the same numeric id space would otherwise collide in one map.
 const weaponsBuffer = createDeltaBuffer({ applyFn: state.applyWeaponsDelta, merge: false })
