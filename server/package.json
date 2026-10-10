@@ -19,14 +19,14 @@
   "dependencies": {
     "better-sqlite3": "^12.11.1",
     "express": "^4.19.2",
-    "marked": "^18.0.14",
-    "sql.js": "^1.12.0",
-    "ws": "^8.18.0"
+    "marked": "^18.1.0",
+    "sql.js": "^1.14.2",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "d3-contour": "^4.0.2",
-    "esbuild": "^0.21.5",
-    "polylabel": "^2.0.1",
+    "esbuild": "^0.28.2",
+    "polylabel": "^2.1.0",
     "postject": "^1.0.0-alpha.6",
     "shapefile": "^0.6.6",
     "stream-json": "^1.9.1",
