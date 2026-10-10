@@ -208,6 +208,21 @@ register('.DBSIZE', (parts) => {
   return []
 })
 
+// .VOL [0-10] — alert tone volume, 0 mutes (omit to query current)
+register('.VOL', (parts) => {
+  const val = parts[1]
+  if (!val) {
+    const ws = useDisplayStore.getState().windows[WINDOW_ID]
+    return [`VOL: ${ws?.alertVol ?? 10}`]
+  }
+  if (!/^\d+$/.test(val)) return ['ILL VAL']
+  const n = parseInt(val, 10)
+  if (n > 10) return ['ILL VAL']
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { alertVol: n })
+  saveCatccPrefs({ alertVol: n })
+  return [`VOL ${n}`]
+})
+
 // .LD [N|NE|E|SE|S|SW|W|NW|1-9|OFF] — set global default leader direction (OFF to reset)
 const DIR_MAP = { N: '8', NE: '9', E: '6', SE: '3', S: '2', SW: '1', W: '4', NW: '7' }
 const NUMPAD_DIRS = new Set(['1','2','3','4','6','7','8','9'])

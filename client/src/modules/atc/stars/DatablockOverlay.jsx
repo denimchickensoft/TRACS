@@ -15,7 +15,7 @@ import { spcForCode }          from '../../../utils/spc.js'
 import { msawDisabledFor }     from '../../../utils/msaw.js'
 import { caDisabledFor, mciSuppressedFor } from '../../../utils/conflictInhibit.js'
 import { planAltDigits }       from './input/flightPlanFields.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL } from '../../../utils/scopeConstants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, ALERT_BRIGHT, ALERT_DIM } from '../../../utils/scopeConstants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { altHundreds, speedFromMs, speedTens, METRIC } from '../../../utils/units.js'
 
@@ -27,10 +27,6 @@ const MONO_CHAR_RATIO  = 0.6
 const DEFAULT_SEQUENCE  = [1, 2, 1, 3]
 const DEFAULT_INTERVALS = [3, 2, 3, 2]
 
-// Safety alert (line 0) colors — blinks bright/dim red while
-// unacknowledged, solid red once acked.
-const ALERT_BRIGHT = '#FF3333'
-const ALERT_DIM    = '#7A1A1A'
 // Selected beacon code display (** + code) flashes yellow
 const WARN_BRIGHT  = '#FFFF00'
 const WARN_DIM     = '#808000'

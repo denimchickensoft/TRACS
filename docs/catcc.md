@@ -20,6 +20,10 @@ A track's side number comes from the Status Board. TRACS matches each Status Boa
 
 Line 2 is altitude and groundspeed. Only a track that shows a side number (a *correlated* track) can be taken under control with `IT`, `IC`, or Ctrl+Shift+Click. For SRS-fielded aircraft, that means entering the assigned code in the Status Board's BCN column. There's no command to assign a side number to a track directly.
 
+## Emergency squawks
+
+A track squawking 7400 (`LL`), 7500 (`HJ`), 7600 (`RF`), 7700 (`EM`) or 7777 (`MI`) shows that tag in red above its datablock. The tag flashes and a tone sounds for 5 seconds until you click the track (with an empty command line) to acknowledge it. After that the tag stays solid while the code is squawked. Line 1 is unchanged, so the tag never reveals a side number. Only SRS-fielded aircraft report a squawk, so AI aircraft never raise one. `.VOL` sets the tone's volume.
+
 ## Scope commands
 
 Type into the command line, then press **Enter**, or click a target to complete a slew command (see below). Commands are case-insensitive; the scope uppercases as you type. Aircraft are addressed by side number or callsign.
@@ -38,6 +42,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.LD [N\|NE\|E\|SE\|S\|SW\|W\|NW\|1-9\|OFF]` | Set the default leader-line direction; bare `.LD` or `.LD OFF` returns to NE |
 | `.LABELSIZE [0-5]` | Set airspace/fix label size; bare `.LABELSIZE` queries the current value |
 | `.DBSIZE [0-5]` | Set aircraft datablock size; bare `.DBSIZE` queries the current value |
+| `.VOL [0-10]` | Set the alert tone volume (0 = mute); bare `.VOL` queries the current value |
 | `.DBCA` | Toggle datablock collision avoidance (on by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction, and off the marshal radial |
 | `.METRIC` / `.IMPERIAL` | Set display units for the scope, status board and PAR (default imperial). Metric shows datablock altitude in hundreds of m, speeds in km/h and ranges in km |
 | `.ASP` | Bulk-toggle all airspace categories |
@@ -75,6 +80,7 @@ Errors appear in the ODS response area:
 | **Ctrl+Shift+Click** a contact | Initiate Control |
 | **Shift+Click** a contact | Terminate Control |
 | **Ctrl+Click** a contact | Add it to the Status Board |
+| **Click** a contact with a flashing emergency tag | Acknowledge it (empty command line only) |
 | **Mouse wheel** over the scope | Zoom range, 1 NM per step (3 NM with Ctrl), 6–256 NM |
 | Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
 | **Ctrl+T** / **Alt+T** | Toggle top-down mode: also shows aircraft on the ground, such as aircraft on deck. Ctrl+T works in the desktop app only |

@@ -21,7 +21,6 @@ import { create } from 'zustand'
 //   trackMciSuppressed  beacon code — CA M on a track with no flight plan
 //   msawDisabled  MULTI FUNC VMI/VME for the whole scope
 //   ldbBeacons    MULTI FUNC B/BE/BI for every LDB on the scope
-export const ALERT_AUDIO_MS = 5000
 const FULL_LDB_MS    = 5000
 const SELECTED_BEACON_MS = 15000
 

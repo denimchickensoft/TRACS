@@ -3,10 +3,10 @@ import { useAtcStore }        from '../../../../store/atc.js'
 import { useFlightPlansStore } from '../../../../store/flightPlans.js'
 import { useAssociationStore } from '../../../../store/association.js'
 import { useRunwaysStore, nmBetween } from '../../../../store/runways.js'
-import { useStarsAlertsStore, ALERT_AUDIO_MS } from '../../../../store/starsAlerts.js'
+import { useStarsAlertsStore } from '../../../../store/starsAlerts.js'
 import { startAlertTone, stopAlertTone } from '../../../../audio/alertTone.js'
 import { hasLiveSquawk, normalizeCode } from '../../../../utils/transponder.js'
-import { spcForCode } from '../../../../utils/spc.js'
+import { spcForCode, trackSpcAlerts, spcSounding, ALERT_AUDIO_MS } from '../../../../utils/spc.js'
 import { msawDisabledFor, unitAltFt } from '../../../../utils/msaw.js'
 import { M_TO_FT, MS_TO_KT } from '../../../../utils/units.js'
 import { sendWebrtcEvent } from '../../../../webrtc/client.js'
@@ -152,7 +152,8 @@ export function useStarsAlerts({ visibleUnitsRef, myControllerId, vol }) {
       const planOf    = plansByUnit(plans, associated)
       const airbases  = useRunwaysStore.getState().airbasePositions
 
-      const spc  = {}
+      // SPC: armed the first time the track squawks one
+      const spc  = trackSpcAlerts(store.spc, units, now)
       const msaw = {}
       const codeCount = {}
 
@@ -161,15 +162,6 @@ export function useStarsAlerts({ visibleUnitsRef, myControllerId, vol }) {
         const live = !!unit?.srsCapable && hasLiveSquawk(unit)
         const code = live ? normalizeCode(unit.transponder.mode3) : null
         const spcCode = code ? spcForCode(code) : null
-
-        // ── SPC: armed the first time the track squawks one ──
-        const prevSpc = store.spc[uid]
-        if (prevSpc) spc[uid] = prevSpc
-        else if (spcCode) spc[uid] = { code: spcCode, acked: false, soundEnd: now + ALERT_AUDIO_MS }
-        // The tag follows the code currently squawked (7600 -> 7700)
-        if (spc[uid] && spcCode && spc[uid].code !== spcCode) {
-          spc[uid] = { code: spcCode, acked: false, soundEnd: now + ALERT_AUDIO_MS }
-        }
 
         // ── Duplicate beacon: VFR and SPC codes never count ──
         if (code && code !== '1200' && !spcCode) codeCount[code] = (codeCount[code] ?? 0) + 1
@@ -220,9 +212,9 @@ export function useStarsAlerts({ visibleUnitsRef, myControllerId, vol }) {
   useEffect(() => {
     const now = Date.now()
     const getVolume = () => (vol ?? 10) / 10
-    const spcSounding  = Object.values(spc).some((a) => !a.acked && now < a.soundEnd)
+    const spcOn        = spcSounding(spc, now)
     const msawSounding = Object.values(msaw).some((a) => !a.acked && !a.inhibit && now < a.soundEnd)
-    if (spcSounding)  startAlertTone('stars-spc',  { frequency: 1250, onMs: 300, offMs: 200, getVolume })
+    if (spcOn)        startAlertTone('stars-spc',  { frequency: 1250, onMs: 300, offMs: 200, getVolume })
     else              stopAlertTone('stars-spc')
     if (msawSounding) startAlertTone('stars-msaw', { frequency: 650,  onMs: 500, offMs: 250, getVolume })
     else              stopAlertTone('stars-msaw')

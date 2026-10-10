@@ -25,3 +25,8 @@ export const HIGHLIGHT_TEAL = '#00FFFF'
 // is HOSTILE/BOGEY uses purple instead of teal (FRIENDLY/NEUTRAL stay teal).
 // STARS has no declaration concept, so it always uses HIGHLIGHT_TEAL.
 export const HIGHLIGHT_PURPLE = '#C000FF'
+
+// Safety alert / special condition tag colors — blinks bright/dim red while
+// unacknowledged, solid red once acked (STARS, ABM, CATCC).
+export const ALERT_BRIGHT = '#FF3333'
+export const ALERT_DIM    = '#7A1A1A'

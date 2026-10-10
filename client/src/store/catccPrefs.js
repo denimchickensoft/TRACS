@@ -23,6 +23,7 @@ const DEFAULTS = {
   showHistory:   true,  // history trails on/off — .history toggles
   ldrLength:     2,     // leader line length 0-7 (10 px per step) — .ll sets
   globalLeaderDir: null, // default leader direction — .ld sets (null = OFF)
+  alertVol:      10,    // alert tone volume 0-10 — .vol sets
 }
 
 const { load: loadCatccPrefs, save: saveCatccPrefs } = makePrefsStore(KEY, DEFAULTS)

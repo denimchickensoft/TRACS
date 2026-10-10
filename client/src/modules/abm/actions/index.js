@@ -751,9 +751,8 @@ export const BEDB_TOGGLE = makeWinToggle('bedbVisible', false, 'BULLSEYE DATABLO
 // gates whether the alert is computed at all, .vol only scales its tone.
 export const MALERT_TOGGLE = makeWinToggle('missileAlertEnabled', true, 'MISSILE ALERT ON', 'MISSILE ALERT OFF')
 
-// .vol [0-10] — master volume for ABM alert tones (0 = mute). Shared knob
-// for any alert channel, not just missile-launch (currently its only
-// consumer) — same role as STARS' windowSettings.vol.
+// .vol [0-10] — master volume for ABM alert tones (0 = mute): missile
+// launch and emergency squawks. Same role as STARS' windowSettings.vol.
 export function VOL_SHOW({ context }) {
   return `VOL: ${getWin(context.windowId)?.alertVol ?? 10}`
 }

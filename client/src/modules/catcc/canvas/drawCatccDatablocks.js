@@ -1,5 +1,5 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
-import { DIR_TO_ANGLE }   from '../../../utils/scopeConstants.js'
+import { DIR_TO_ANGLE, ALERT_BRIGHT, ALERT_DIM } from '../../../utils/scopeConstants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { altHundreds, speedFromMs } from '../../../utils/units.js'
 
@@ -41,8 +41,9 @@ function fmtGs(mps, sys) {
  * @param {number|null} marshalBearing  magnetic bearing of the marshal/approach radial (degrees)
  * @param {boolean} dbca           datablock collision avoidance on/off
  * @param {number}  dbSize         0–5 char size index (see .dbsize)
+ * @param {object}  spcAlerts      { [unitId]: { code, acked } } — emergency squawk tag shown above line 1
  */
-export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes = {}, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true, dbSize = 2) {
+export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes = {}, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true, dbSize = 2, spcAlerts = {}) {
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
 
@@ -70,9 +71,12 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     if (x < -100 || x > width + 100 || y < -100 || y > height + 100) continue
     const line1 = correlations[String(id)] ?? pendingCodes[String(id)] ?? 'XXX'
     const line2 = `${fmtAlt(pos.alt, view.unitSystem)} ${fmtGs(unit.speed, view.unitSystem)}`
+    // Emergency squawk: an extra line above, measured so placement keeps it clear
+    const spc   = spcAlerts[String(id)] ?? null
+    const lines = spc ? [spc.code, line1, line2] : [line1, line2]
     contacts.push({
-      id, x, y, line1, line2,
-      lineWidths: [ctx.measureText(line1).width, ctx.measureText(line2).width],
+      id, x, y, lines, spc,
+      lineWidths: lines.map((t) => ctx.measureText(t).width),
       unitAngleDeg: DIR_TO_ANGLE[leaderDirs[String(id)]] ?? null,
       generalAngleDeg,
     })
@@ -121,7 +125,7 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
   }
 
   // ── Pass 3: draw leaders and text ─────────────────────────────────────────
-  for (const { id, line1, line2 } of contacts) {
+  for (const { id, lines, spc } of contacts) {
     const placement = placements[id]
     if (!placement) continue
     const { bbox, leaderStart, leaderEnd } = placement
@@ -140,10 +144,14 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     ctx.lineTo(leaderEnd.x, leaderEnd.y)
     ctx.stroke()
 
-    ctx.fillStyle = gold
     ctx.textAlign = bbox.align
-    ctx.fillText(line1, bbox.textX, bbox.ly1)
-    ctx.fillText(line2, bbox.textX, bbox.ly1 + lineHeight)
+    for (let i = 0; i < lines.length; i++) {
+      // The tag is red, blinking until acknowledged
+      ctx.fillStyle = spc && i === 0
+        ? (spc.acked || blinkPhase ? ALERT_BRIGHT : ALERT_DIM)
+        : gold
+      ctx.fillText(lines[i], bbox.textX, bbox.ly1 + i * lineHeight)
+    }
   }
 
   ctx.restore()

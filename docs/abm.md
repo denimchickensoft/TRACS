@@ -132,6 +132,10 @@ ABM does not display SID/STAR/approach procedures.
 | `.ld <1-9>` | Set leader line direction (numpad layout); `5` returns to the default direction |
 | `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
+### Emergency squawks
+
+A contact squawking 7400 (`LL`), 7500 (`HJ`), 7600 (`RF`), 7700 (`EM`) or 7777 (`MI`) shows that tag in red above its datablock, whichever side it's on. The tag flashes and a tone sounds for 5 seconds until you click the contact to acknowledge it. After that the tag stays solid while the code is squawked. The tag doesn't reveal anything else: a contact that isn't correlated as friendly keeps cycling its codes instead of showing its callsign. The datablock shows even when `.db` is off, the contact's own `.db` override hides it, or `.dbs` would fold it into its flight lead's. Only SRS-fielded aircraft report a squawk, so AI aircraft never raise one. Acknowledging only affects your own ABM windows, and `.vol` sets the tone's volume.
+
 ### Missile tracking & launch alert
 
 In-flight missiles show as a small heading-oriented triangle, colored by the missile's actual coalition. Your own side's and neutral missiles always show. An enemy missile shows only once a friendly AWACS/EWR unit detects it. Only medium/large missiles (cruise missiles, anti-ship missiles, SAMs) can be detected; typical fighter-launched air-to-air missiles never appear. `.ptl` and `.history` (see Contacts above) apply to missiles too.
@@ -142,7 +146,7 @@ A newly detected hostile missile triggers an alert: a repeating tone, plus a bli
 |---|---|
 | `.malert` | Toggle the missile-launch alert on/off entirely |
 | `.vol` | Show current master alert volume |
-| `.vol <0-10>` | Set master alert volume (0 = mute) — shared by any ABM alert tone |
+| `.vol <0-10>` | Set master alert volume (0 = mute) — shared by the missile-launch and emergency squawk tones |
 
 The app-wide **Sounds** checkbox in Settings (see [Getting Started](getting-started.md)) is a master mute that overrides `.vol`.
 
@@ -265,6 +269,7 @@ Display toggles (`.coords`, `.db`, `.geo`, etc.) apply to the window you type th
 | **Digit 1–9, then click** | Set that contact's leader-line direction (`5` returns it to the global direction) |
 | **Double-click** a contact, runway or point | Open a Focus window on it |
 | **Click** a blinking missile symbol | Cancel its launch alert |
+| **Click** a contact with a flashing emergency tag | Acknowledge it |
 | **Click** a contact with a blinking datablock | Stop the blink (FRAG roster, `.where` or IDENT) |
 | **Mouse wheel** | Zoom, 1–600 NM: 1 NM per step inside 10 NM, 10 NM per step beyond (25 NM with Ctrl) |
 

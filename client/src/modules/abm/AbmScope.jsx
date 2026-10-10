@@ -45,6 +45,9 @@ import { drawAbmContacts, computeSuppressedIds, parseFlightElement } from './can
 import { drawAbmMissiles } from '../../utils/declarationSymbols.js'
 import { useMissileAlertTracker } from './missileAlert/useMissileAlertTracker.js'
 import { useAbmMissileAlertStore } from '../../store/abmMissileAlert.js'
+import { useAbmSpcStore } from '../../store/spcAlerts.js'
+import { useSpcAlerts } from '../../utils/useSpcAlerts.js'
+import { shownSpcAlerts } from '../../utils/spc.js'
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
 import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
@@ -326,6 +329,21 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   }, [missileAlertActiveIds, visibleMissiles])
   const activeAlertMissilesRef = useRef(activeAlertMissiles)
   useEffect(() => { activeAlertMissilesRef.current = activeAlertMissiles }, [activeAlertMissiles])
+
+  // Emergency squawks (EM/HJ/RF/LL/MI) — same one-owner split as the missile
+  // alert: the main window detects and sounds, every window shows the tag
+  // and can acknowledge it (store/spcAlerts.js).
+  useSpcAlerts({
+    store:    useAbmSpcStore,
+    unitsRef: visibleUnitsRef,
+    channel:  'abm-spc',
+    vol:      windowSettings?.alertVol ?? 10,
+    isOwner:  windowId === DEFAULT_windowId,
+  })
+  const spcAlertState = useAbmSpcStore(s => s.spc)
+  const spcAlerts = useMemo(() => shownSpcAlerts(spcAlertState, visibleUnits), [spcAlertState, visibleUnits])
+  const spcAlertsRef = useRef(spcAlerts)
+  useEffect(() => { spcAlertsRef.current = spcAlerts }, [spcAlerts])
 
   // Transponder correlation — continuous, unconditional reveal gate: binds an srsCapable unit to a
   // FRAG-assigned aircraft via correlationEngine.js's double gate. Not
@@ -1204,6 +1222,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       view.declinationDeg,
       windowSettings?.dbSize ?? 2,
       (unit) => isOwnSide(unit, coalition),
+      spcAlerts,
     )
     drawAbmGroundContacts(ctx, view, pinnedGroundUnits, getDecl, groundUnitDb, acqHidden, engHidden, highlightedIds)
     drawAbmMissiles(
@@ -1234,7 +1253,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     // of everything, same as RBL.
     drawPendingDraw(ctx, view, pendingDraw, drawCursor, windowSettings?.csMap ?? 2)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef/missileHistoryRef are stable refs returned by useHistoryCapture
-  }, [view, visibleUnits, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, coalition, getDecl, altToggle,
+  }, [view, visibleUnits, spcAlerts, visibleMissiles, pinnedGroundUnits, allVisibleUnits, groundUnitDb, declarations, myCoalitionNum, coalition, getDecl, altToggle,
       windowSettings?.ptlMinutes, windowSettings?.dbVisible, windowSettings?.dbSuppress,
       windowSettings?.ldrLength, windowSettings?.ldrAngleDeg, windowSettings?.leaderDirs, fadedTick,
       windowSettings?.historyVisible, windowSettings?.historyLength, windowSettings?.dbca,
@@ -1720,6 +1739,20 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
         setCmdFeedback('MISSILE ALERT CANCELLED')
         return
       }
+
+      // Same for an unacknowledged emergency squawk: hit-tested against just
+      // the alerting contacts so a neighbour can't take the click.
+      const unacked = {}
+      for (const [uid, a] of Object.entries(spcAlertsRef.current)) {
+        if (!a.acked && visibleUnitsRef.current[uid]) unacked[uid] = visibleUnitsRef.current[uid]
+      }
+      const spcHit = resolveSlew(pos, unacked, viewRef.current)
+      if (spcHit) {
+        const uid = String(spcHit.unitId)
+        setCmdFeedback(`${spcAlertsRef.current[uid].code} ACKNOWLEDGED`)
+        useAbmSpcStore.getState().ack(uid)
+        return
+      }
     }
 
     if (e.button === 1) {
@@ -1903,7 +1936,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     const liveBlinkIds = useAbmMissionStore.getState().blinkIds ?? []
     if (liveBlinkIds.length) {
       const dbSuppressOn = useDisplayStore.getState().windows[windowId]?.dbSuppress ?? true
-      const { leaderOf } = dbSuppressOn ? computeSuppressedIds(visibleUnitsRef.current) : { leaderOf: new Map() }
+      const { leaderOf } = dbSuppressOn ? computeSuppressedIds(visibleUnitsRef.current, spcAlertsRef.current) : { leaderOf: new Map() }
       const candidateIds = new Set(liveBlinkIds)
       for (const id of liveBlinkIds) {
         const lead = leaderOf.get(id)

@@ -35,6 +35,9 @@ import { formatDistance } from '../../utils/units.js'
 import { getCatccBookmark, saveCatccBookmark } from '../../store/catccBookmarks.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
+import { useSpcAlerts } from '../../utils/useSpcAlerts.js'
+import { useCatccSpcStore } from '../../store/spcAlerts.js'
+import { shownSpcAlerts } from '../../utils/spc.js'
 import './CatccScope.css'
 
 const WINDOW_ID    = 'catcc-main'
@@ -173,6 +176,20 @@ export default function CatccScope() {
   const correlationsRef = useRef(correlations)
   useEffect(() => { correlationsRef.current = correlations }, [correlations])
 
+  // Emergency squawks (EM/HJ/RF/LL/MI) — tag above the datablock, tone for
+  // 5 s, acknowledged by a click on the contact (store/spcAlerts.js).
+  useSpcAlerts({
+    store:    useCatccSpcStore,
+    unitsRef: visibleUnitsRef,
+    channel:  'catcc-spc',
+    vol:      windowSettings?.alertVol ?? 10,
+    isOwner:  true,
+  })
+  const spcAlertState = useCatccSpcStore((s) => s.spc)
+  const spcAlerts = useMemo(() => shownSpcAlerts(spcAlertState, visibleUnits), [spcAlertState, visibleUnits])
+  const spcAlertsRef = useRef(spcAlerts)
+  useEffect(() => { spcAlertsRef.current = spcAlerts }, [spcAlerts])
+
   // Tracked contacts: unitId → position letter (M/A/D/T). Absent = untracked.
   // ownership[unitId] is a controllerId like "1M" — extract the letter directly.
   const trackMap = useMemo(() => {
@@ -203,6 +220,7 @@ export default function CatccScope() {
         pinnedFixes: catccPrefs.pinnedFixes,
         csMap: catccPrefs.csMap, dbSize: catccPrefs.dbSize,
         ldrLength: catccPrefs.ldrLength, globalLeaderDir: catccPrefs.globalLeaderDir,
+        alertVol: catccPrefs.alertVol,
       })
     }
   }, []) // eslint-disable-line
@@ -366,9 +384,10 @@ export default function CatccScope() {
       (windowSettings?.ldrLength ?? 2) * 10,
       windowSettings?.dbca ?? true,
       windowSettings?.dbSize ?? 2,
+      spcAlerts,
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef is a stable ref returned by useHistoryCapture
-  }, [visibleUnits, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
+  }, [visibleUnits, spcAlerts, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
       myControllerId, marshalBearing, windowSettings?.britePos, windowSettings?.csPos, windowSettings?.dbSize,
       windowSettings?.globalLeaderDir, windowSettings?.ldrLength, windowSettings?.dbca,
       windowSettings?.showHistory, windowSettings?.historyLength, windowSettings?.briteHst, windowSettings?.leaderDirs])
@@ -492,6 +511,18 @@ export default function CatccScope() {
         useStatusBoardStore.getState().addEntry(callsign, target.unitId)
       }
       return
+    }
+
+    // Plain click on a contact with an unacknowledged emergency squawk
+    // acknowledges it (empty ODS buffer only, so slew commands still work)
+    if (target && !usePreviewStore.getState().buffer) {
+      const uid = String(target.unitId)
+      const spc = spcAlertsRef.current[uid]
+      if (spc && !spc.acked) {
+        useCatccSpcStore.getState().ack(uid)
+        setOdsLines((prev) => [...prev, `${spc.code} ACK`].slice(-ODS_MAX_LINES))
+        return
+      }
     }
 
     // Slew commands — parse ODS buffer against CATCC's own local slew table

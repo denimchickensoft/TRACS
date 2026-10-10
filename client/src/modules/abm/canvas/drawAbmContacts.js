@@ -11,7 +11,7 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { destinationPoint, gridBearingRangeNm, toMagneticFromTrue } from '../../../utils/bearing.js'
 import { drawPtl, DECL_COLOR, drawHistoryTrail } from '../../../utils/declarationSymbols.js'
-import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE } from '../../../utils/scopeConstants.js'
+import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE, ALERT_BRIGHT, ALERT_DIM } from '../../../utils/scopeConstants.js'
 import { DECLARATION } from '../../../store/abm.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
@@ -22,6 +22,7 @@ const CULL_MARGIN  = 60
 const EMPTY_SET    = new Set()
 const EMPTY_MAP    = new Map()
 const EMPTY_ARRAY  = []
+const EMPTY_OBJ    = {}
 const BLINK_DIM    = '#C0C0C0'  // same dim gray STARS blinks a handoff datablock down to
 
 // Same truncation AIC's readout uses: strip suffix after _/space, then
@@ -103,7 +104,9 @@ function withinFormationBox(lead, other) {
 // follower -> lead mapping used here, letting a click on the lead (the only
 // datablock actually on screen for a suppressed formation) stop a blink
 // that's really targeting one of its covered wingmen.
-export function computeSuppressedIds(units) {
+// `exempt` ({ [id]: truthy }) — never suppressed, e.g. a wingman squawking
+// an emergency code keeps its own datablock.
+export function computeSuppressedIds(units, exempt = EMPTY_OBJ) {
   const groups = new Map()
   for (const [id, unit] of Object.entries(units)) {
     if (!unit.position) continue
@@ -124,7 +127,7 @@ export function computeSuppressedIds(units) {
       if (claimed.has(lead.id)) continue
       for (let j = i + 1; j < members.length; j++) {
         const follower = members[j]
-        if (claimed.has(follower.id)) continue
+        if (claimed.has(follower.id) || exempt[follower.id]) continue
         if (withinFormationBox(lead.unit, follower.unit)) {
           claimed.add(follower.id)
           suppressed.add(follower.id)
@@ -188,6 +191,7 @@ export function drawAbmContacts(
   declinationDeg = 0,
   dbSize = 2,
   isOwnSide = () => true,
+  spcAlerts = EMPTY_OBJ,
 ) {
   const { width, height } = view
   const fontPx     = 8 + dbSize * 2
@@ -198,7 +202,7 @@ export function drawAbmContacts(
   ctx.font = `${fontPx}px "Roboto Mono", monospace`
 
   const { suppressed: suppressedIds, leaderOf } = dbSuppress
-    ? computeSuppressedIds(units)
+    ? computeSuppressedIds(units, spcAlerts)
     : { suppressed: EMPTY_SET, leaderOf: EMPTY_MAP }
 
   // A blinking wingman whose datablock is currently suppressed (.dbs) never
@@ -245,9 +249,14 @@ export function drawAbmContacts(
     ctx.lineWidth   = 1.5
     ctx.strokeRect(x - SYM_HALF, y - SYM_HALF, SYM_HALF * 2, SYM_HALF * 2)
 
-    if (!dbVisible) continue
+    // An emergency squawk (EM/HJ/RF/LL/MI) always shows its datablock, with
+    // the tag above it: red, blinking until acknowledged by a click. It adds
+    // a line only — what the rest of the block reveals is unchanged.
+    const spc = spcAlerts[String(id)]
+    if (!dbVisible && !spc) continue
     if (suppressedIds.has(id)) continue  // formation lead's datablock covers this wingman
-    if (dbHiddenIds.has(id)) continue    // .db + click per-contact override
+    if (dbHiddenIds.has(id) && !spc) continue    // .db + click per-contact override
+    const tagColor = spc && (spc.acked || blinkOn) ? ALERT_BRIGHT : ALERT_DIM
 
     // Datablock — friendly (or correlated to a FRAG-assigned aircraft, see
     // correlationEngine.js) gets callsign + alt/speed-or-type; an
@@ -298,7 +307,9 @@ export function drawAbmContacts(
 
     if (dbca) {
       dbCandidates.push({
-        id, x, y, color: dbColor, textColor, lines,
+        id, x, y, color: dbColor, textColor, tagColor,
+        lines: spc ? [spc.code, ...lines] : lines,
+        hasTag: !!spc,
         unitAngleDeg: DIR_TO_ANGLE[unitDir] ?? null,
       })
       continue
@@ -338,6 +349,10 @@ export function drawAbmContacts(
     } else {
       ctx.fillText(lines[0], tx, ly1)
     }
+    if (spc) {
+      ctx.fillStyle = tagColor
+      ctx.fillText(spc.code, tx, (showsBlock ? ly1 - halfLine : ly1) - lineHeight)
+    }
   }
 
   // ── Collision-avoided datablocks (dbca on) — placed once against every
@@ -374,9 +389,9 @@ export function drawAbmContacts(
       ctx.lineTo(leaderEnd.x, leaderEnd.y)
       ctx.stroke()
 
-      ctx.fillStyle = c.textColor
       ctx.textAlign = bbox.align
       for (let i = 0; i < c.lines.length; i++) {
+        ctx.fillStyle = c.hasTag && i === 0 ? c.tagColor : c.textColor
         ctx.fillText(c.lines[i], bbox.textX, bbox.ly1 + i * lineHeight)
       }
     }
