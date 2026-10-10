@@ -1,4 +1,6 @@
-const RESERVED = new Set(['0000', '1200', '2000', '7400', '7500', '7600', '7700', '7777'])
+// Codes never handed out to a flight plan: VFR (1200), the emergency/special
+// condition codes, and the other codes reserved for specific uses.
+export const RESERVED_BCNS = new Set(['0000', '1200', '2000', '7400', '7500', '7600', '7601', '7700', '7777'])
 
 /**
  * Generate a random compliant beacon code.
@@ -15,13 +17,13 @@ export function generateBcn(usedCodes = []) {
 
   for (let i = 0; i < 2000; i++) {
     const code = Array.from({ length: 4 }, () => Math.floor(Math.random() * 8)).join('')
-    if (!RESERVED.has(code) && !used.has(code)) return code
+    if (!RESERVED_BCNS.has(code) && !used.has(code)) return code
   }
 
   // Exhaustive fallback — find first available sequentially
   for (let n = 0; n <= 7777; n++) {
     const digits = n.toString(8).padStart(4, '0')
-    if (!RESERVED.has(digits) && !used.has(digits)) return digits
+    if (!RESERVED_BCNS.has(digits) && !used.has(digits)) return digits
   }
   return '0001'
 }

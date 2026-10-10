@@ -91,3 +91,43 @@ export function parseVfrFields(tokens) {
 
   return t.length ? null : out
 }
+
+/**
+ * FPE ALT entry. Accepts a cruising altitude in hundreds of feet MSL ("300"),
+ * "VFR", "OTP" (VFR-on-top), or "VFR/" followed by an altitude ("VFR/055").
+ * VFR and OTP make the plan VFR; a bare altitude makes it IFR. Returns
+ * { alt, flightRules } with alt normalized to the text that's stored on the
+ * plan, '' -> { alt: '', flightRules: null } (rules left unchanged), or null
+ * when the entry doesn't fit any form.
+ */
+export function parseFpeAlt(text) {
+  const t = (text ?? '').trim().toUpperCase()
+  if (t === '') return { alt: '', flightRules: null }
+  if (t === 'VFR' || t === 'OTP') return { alt: t, flightRules: 'VFR' }
+  let m
+  if ((m = t.match(/^VFR\/(\d{1,3})$/))) return { alt: 'VFR/' + m[1].padStart(3, '0'), flightRules: 'VFR' }
+  if ((m = t.match(/^(\d{1,3})$/)))      return { alt: m[1].padStart(3, '0'), flightRules: 'IFR' }
+  return null
+}
+
+/**
+ * The FPE's ALT text for a stored plan. A VFR plan whose altitude came in as
+ * a bare number (VFR PLAN, .V, or a scope altitude amendment) shows with its
+ * VFR/ prefix, so saving it again keeps it VFR.
+ */
+export function fpeAltText(plan) {
+  const alt = plan?.alt ?? ''
+  if (plan?.flightRules !== 'VFR') return alt
+  if (alt === '') return 'VFR'
+  if (/^\d{1,3}$/.test(alt)) return 'VFR/' + alt
+  return alt
+}
+
+/**
+ * The numeric part of a plan's altitude ("VFR/055" -> "055"), or '' when it
+ * has none ("VFR", "OTP").
+ */
+export function planAltDigits(alt) {
+  const m = String(alt ?? '').match(/(\d{1,3})$/)
+  return m ? m[1] : ''
+}

@@ -4,11 +4,20 @@ import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../store/strips.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import { AID_MAX_LEN }          from '../../utils/callsign.js'
+import { RESERVED_BCNS }        from '../../utils/bcn.js'
+import { parseFpeAlt, fpeAltText } from '../../modules/atc/stars/input/flightPlanFields.js'
 import './FPE.css'
 
 // 4 octal digits (0-7) — matches utils/bcn.js's generateBcn() output shape.
 // A partial code (e.g. "634") or one containing 8/9 is never a valid squawk.
 const BCN_RE = /^[0-7]{4}$/
+
+// Empty is fine (auto-generates on create, leaves it unchanged on amend) --
+// anything else must be a complete code that isn't reserved (VFR, the
+// emergency codes, etc.), which are never assigned to a flight plan.
+function bcnValid(bcn) {
+  return !bcn || (BCN_RE.test(bcn) && !RESERVED_BCNS.has(bcn))
+}
 
 // Aircraft type designators are plain alphanumeric (e.g. F16, FA18, A10) --
 // strip hyphens/slashes/etc a controller might type from the in-sim name
@@ -100,7 +109,7 @@ export function FPE({ scope = null }) {
       setDep(plan.dep   ?? '')
       setDest(plan.dest ?? '')
       setSpd(plan.spd   ?? '')
-      setAlt(plan.alt   ?? '')
+      setAlt(fpeAltText(plan))
       setRte(plan.rte   ?? '')
       setRmk(plan.rmk   ?? '')
     } else {
@@ -139,7 +148,7 @@ export function FPE({ scope = null }) {
     setDep(plan.dep   ?? '')
     setDest(plan.dest ?? '')
     setSpd(plan.spd   ?? '')
-    setAlt(plan.alt   ?? '')
+    setAlt(fpeAltText(plan))
     setRte(plan.rte   ?? '')
     setRmk(plan.rmk   ?? '')
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -173,9 +182,8 @@ export function FPE({ scope = null }) {
   }
 
   function handleAltBlur() {
-    if (!alt) return
-    const num = parseInt(alt, 10)
-    if (!isNaN(num)) setAlt(String(num).padStart(3, '0'))
+    const parsed = parseFpeAlt(alt)
+    if (parsed) setAlt(parsed.alt)
   }
 
   function handleRteBlur() {
@@ -197,11 +205,12 @@ export function FPE({ scope = null }) {
     e.preventDefault()
     const normalizedAid = aid.trim().toUpperCase()
     if (!normalizedAid) return
-    // Empty is fine (auto-generates on create, leaves it unchanged on
-    // amend) — anything else must be a complete, valid code. A partial
-    // digit count or an 8/9 sneaking in some other way (e.g. a synced
-    // value) must never be saved.
-    if (bcn && !BCN_RE.test(bcn)) return
+    // A partial digit count, a reserved code, or an 8/9 sneaking in some
+    // other way (e.g. a synced value) must never be saved.
+    if (!bcnValid(bcn)) return
+    const altParsed = parseFpeAlt(alt)
+    if (!altParsed) return
+    const altFields = { alt: altParsed.alt, ...(altParsed.flightRules ? { flightRules: altParsed.flightRules } : {}) }
 
     const cleanRte = rte.replace(/\s+DCT\s+/g, ' ').trim()
 
@@ -212,8 +221,14 @@ export function FPE({ scope = null }) {
       // controller later ctrl-clicking the matching target into an amend.
       // A hand-edited ALT supersedes a ++### scope amendment, so the
       // datablock's R### readout goes away with it.
-      const altChanged = alt !== (plans[normalizedAid].alt ?? '')
-      amend(normalizedAid, { typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk, bcn,
+      const altChanged = altParsed.alt !== fpeAltText(plans[normalizedAid])
+      // Rules only count as changed when they differ, so re-saving a plan
+      // keeps an explicit MSAW inhibit/enable.
+      if (altFields.flightRules === plans[normalizedAid].flightRules) delete altFields.flightRules
+      // An unchanged ALT keeps the stored text (e.g. a bare "065" on a VFR
+      // plan rather than the "VFR/065" the field displays).
+      if (!altChanged) delete altFields.alt
+      amend(normalizedAid, { typ, eq, dep, dest, spd, ...altFields, rte: cleanRte, rmk, bcn,
              ...(altChanged ? { altAmended: false } : {}),
              ...(unitId ? { unitId } : {}) })
       setHighlight(normalizedAid, STRIP_HIGHLIGHT.AMENDED)
@@ -223,7 +238,7 @@ export function FPE({ scope = null }) {
     } else {
       // bcn included so a controller's typed code on a brand-new plan isn't
       // silently discarded in favor of add()'s auto-generated one.
-      add({ aid: normalizedAid, typ, eq, dep, dest, spd, alt, rte: cleanRte, rmk,
+      add({ aid: normalizedAid, typ, eq, dep, dest, spd, ...altFields, rte: cleanRte, rmk,
             ...(bcn ? { bcn } : {}),
             ...(unitId ? { unitId } : {}) })
       addStrip(normalizedAid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: unitId ?? null })
@@ -282,7 +297,8 @@ export function FPE({ scope = null }) {
               <label className="fpe-label">BCN</label>
               <div className="fpe-bcn-wrap">
                 <input
-                  className="fpe-input"
+                  className={'fpe-input' + (bcnValid(bcn) ? '' : ' fpe-input-invalid')}
+                  title={RESERVED_BCNS.has(bcn) ? 'RESERVED CODE' : undefined}
                   value={bcn}
                   onChange={(e) => setBcn(e.target.value.replace(/[^0-7]/g, '').slice(0, 4))}
                   onKeyDown={inputKeyDown(setBcn)}
@@ -360,7 +376,7 @@ export function FPE({ scope = null }) {
                 onChange={(e) => setSpd(e.target.value.toUpperCase())}
                 onKeyDown={inputKeyDown(setSpd)}
                 readOnly={disabled}
-                placeholder="280"
+                placeholder="450"
                 maxLength={3}
               />
             </div>
@@ -368,14 +384,14 @@ export function FPE({ scope = null }) {
             <div className="fpe-f fpe-f-alt">
               <label className="fpe-label">ALT</label>
               <input
-                className="fpe-input"
+                className={'fpe-input' + (parseFpeAlt(alt) ? '' : ' fpe-input-invalid')}
                 value={alt}
                 onChange={(e) => setAlt(e.target.value.toUpperCase())}
                 onKeyDown={inputKeyDown(setAlt)}
                 onBlur={handleAltBlur}
                 readOnly={disabled}
-                placeholder="350"
-                maxLength={3}
+                placeholder="300"
+                maxLength={7}
               />
             </div>
 
@@ -421,7 +437,7 @@ export function FPE({ scope = null }) {
             ) : (
               <>
                 <button type="button" className="fpe-btn-cancel" onClick={closeFpe}>Cancel</button>
-                <button type="submit" className="fpe-btn-amend" disabled={disabled || !aid.trim() || (bcn && !BCN_RE.test(bcn))}>
+                <button type="submit" className="fpe-btn-amend" disabled={disabled || !aid.trim() || !bcnValid(bcn) || !parseFpeAlt(alt)}>
                   {isExisting ? 'Amend' : 'Create'}
                 </button>
                 {isExisting && !disabled && (

@@ -89,7 +89,7 @@
 .fpe-f-dep  { width: 50px;  }
 .fpe-f-dest { width: 50px;  }
 .fpe-f-spd  { width: 40px;  }
-.fpe-f-alt  { width: 40px;  }
+.fpe-f-alt  { width: 72px;  }
 
 .fpe-label {
   font-size: 0.58rem;
@@ -116,6 +116,7 @@
 .fpe-input:focus       { border-color: #005f73; }
 .fpe-input[readonly]   { color: #555; background: #0f0f0f; border-color: #1a1a1a; cursor: default; }
 .fpe-input::placeholder { color: #333; }
+.fpe-input-invalid     { border-color: #8a2a2a; }
 
 /* ── BCN: input + recycle button at same height ─────────────────── */
 .fpe-bcn-wrap {
