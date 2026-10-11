@@ -30,7 +30,7 @@
     "@electron/rebuild": "^4.2.1",
     "@eslint/js": "^10.0.1",
     "@xmldom/xmldom": "^0.9.12",
-    "concurrently": "^10.0.5",
+    "concurrently": "^10.0.6",
     "cross-env": "^7.0.3",
     "d3-contour": "^4.0.2",
     "electron": "^44.7.0",
