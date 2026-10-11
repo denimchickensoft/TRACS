@@ -17,7 +17,7 @@
     "seed-manifest": "node scripts/terrainDataExe/seedManifest.js"
   },
   "dependencies": {
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "express": "^4.19.2",
     "marked": "^18.0.14",
     "sql.js": "^1.12.0",
