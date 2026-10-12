@@ -4,7 +4,7 @@
 #
 #   docker build -t tracs-relay relay
 #   docker run -p 8765:8765 -p 10712:10712/udp -v ./relay-data:/data tracs-relay
-FROM node:22-slim
+FROM node:26-slim
 
 WORKDIR /app
 
