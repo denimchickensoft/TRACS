@@ -288,6 +288,8 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     onDoubleClick={col.id === 'side2' ? () => assignNextMarshal(entry.id) : undefined}
                     cellIdx={col.readOnly ? undefined : rowIdx * EDITABLE_COLS.length + EDIT_COL_IDX_MAP[col.id]}
                     entryId={col.readOnly ? undefined : entry.id}
+                    rowStride={col.readOnly ? undefined : EDITABLE_COLS.length}
+                    colIdx={col.readOnly ? undefined : EDIT_COL_IDX_MAP[col.id]}
                     onInsertBelow={col.readOnly ? undefined : () => {
                       const newId = useStatusBoardStore.getState().nextId
                       insertEntryAfter(entry.id)
