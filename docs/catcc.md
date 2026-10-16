@@ -115,7 +115,8 @@ An event/recovery board shared by every CATCC position over the session's sync t
 **Editing:**
 - Click a cell to edit it.
 - `Tab`/`Shift+Tab` moves between fields, `Enter` commits, `Shift+Enter` commits and inserts a new blank row directly below, and `Escape` cancels without saving.
-- Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted red.
+- Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted orange.
+- STATE turns red when it's at or below BINGO.
 - **Marshal slots (Case 2/3):** when Case Recovery is `2` or `3` and at least one row has both EAT and Angels, double-click a row's green (read-only) side number to give it the next free slot: EAT +1 minute and Angels +1, counted up from the row with the lowest Angels. A slot freed by a removed row is reused first. Rows that already have an EAT or Angels are left alone.
 - Click a column header to sort. This changes the display only and doesn't reorder the underlying data.
 

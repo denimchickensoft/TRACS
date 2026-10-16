@@ -12,7 +12,7 @@ import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
 import { useMissionClock }      from '../../utils/useMissionClock.js'
 import { toUtcDateTime, getTheatreUtcOffset } from '../../utils/theatreTime.js'
-import { COLUMNS, EDITABLE_COLS, EDIT_COL_IDX_MAP } from './statusBoardColumns.js'
+import { COLUMNS, EDITABLE_COLS, EDIT_COL_IDX_MAP, isValidDecimal } from './statusBoardColumns.js'
 import { computeCatccCorrelations } from './correlationEngine.js'
 import { EditableCell } from './EditableCell.jsx'
 import { useStabilityAlert } from './useStabilityAlert.js'
@@ -21,6 +21,13 @@ import { CaseField } from './CaseField.jsx'
 import './StatusBoard.css'
 import { MS_TO_KT, speedFromMs } from '../../utils/units.js'
 import { useUnitSystem } from '../../store/unitSystem.js'
+
+// STATE shows red once fuel is at or below BINGO (both must be valid X.X).
+function isFuelAtBingo(entry) {
+  const { state, bingo } = entry
+  if (!state || !bingo || !isValidDecimal(state) || !isValidDecimal(bingo)) return false
+  return parseFloat(state) <= parseFloat(bingo)
+}
 
 const SB_SCALE_KEY  = 'tracs.sb.scale'
 const SCALE_MIN     = 0.5
@@ -277,6 +284,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     timeValidate={col.timeValidate}
                     decimalValidate={col.decimalValidate}
                     radialFmt={col.radialFmt}
+                    alert={col.id === 'state' && isFuelAtBingo(entry)}
                     onDoubleClick={col.id === 'side2' ? () => assignNextMarshal(entry.id) : undefined}
                     cellIdx={col.readOnly ? undefined : rowIdx * EDITABLE_COLS.length + EDIT_COL_IDX_MAP[col.id]}
                     entryId={col.readOnly ? undefined : entry.id}

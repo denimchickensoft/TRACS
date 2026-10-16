@@ -7,7 +7,7 @@ export const EditableCell = memo(function EditableCell({
   digitsOnly = false, padZero = 0, decimalFmt = false, timeValidate = false, decimalValidate = false,
   radialFmt = false,
   cellIdx, entryId, onInsertBelow,
-  onDoubleClick,
+  alert = false, onDoubleClick,
 }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
@@ -70,7 +70,7 @@ export const EditableCell = memo(function EditableCell({
   const invalid = (timeValidate && !isValidTime(value)) || (decimalValidate && !isValidDecimal(value))
   const cls = [
     'sb-cell', readOnly ? 'readonly' : '', !value ? 'empty' : '',
-    invalid ? 'invalid' : '', onDoubleClick ? 'dblclick' : '',
+    invalid ? 'invalid' : alert ? 'alert' : '', onDoubleClick ? 'dblclick' : '',
   ].join(' ').replace(/\s+/g, ' ').trim()
   return (
     <span
