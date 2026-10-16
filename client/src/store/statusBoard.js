@@ -83,6 +83,14 @@ export const useStatusBoardStore = create((set) => ({
       return { entries: s.entries.map((e) => e.id === id ? { ...e, [field]: value } : e) }
     }),
 
+  // Autofill stamps (see modules/catcc/StatusBoardAutofill.jsx). A new
+  // launch starts a new cycle, so it blanks the previous ATA in the same set.
+  stampDeparture: (id, hhmm) =>
+    set((s) => ({ entries: s.entries.map((e) => e.id === id ? { ...e, atd: hhmm, ata: '' } : e) })),
+
+  stampArrival: (id, hhmm) =>
+    set((s) => ({ entries: s.entries.map((e) => e.id === id ? { ...e, ata: hhmm } : e) })),
+
   insertEntryAfter: (afterId) =>
     set((s) => {
       const newEntry = { id: s.nextId, fromMission: false, evt: '', callsign: '', unitId: null, sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', eat: '', angels: '', state: '', ata: '' }

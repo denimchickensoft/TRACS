@@ -43,6 +43,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.LABELSIZE [0-5]` | Set airspace/fix label size; bare `.LABELSIZE` queries the current value |
 | `.DBSIZE [0-5]` | Set aircraft datablock size; bare `.DBSIZE` queries the current value |
 | `.VOL [0-10]` | Set the alert tone volume (0 = mute); bare `.VOL` queries the current value |
+| `.SBAUTOFILL` | Toggle Status Board ATD/ATA autofill for your position (off by default, remembered); see [Autofill](#status-board) |
 | `.DBCA` | Toggle datablock collision avoidance (on by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction, and off the marshal radial |
 | `.METRIC` / `.IMPERIAL` | Set display units for the scope, status board and PAR (default imperial). Metric shows datablock altitude in hundreds of m, speeds in km/h and ranges in km |
 | `.ASP` | Bulk-toggle all airspace categories |
@@ -116,6 +117,8 @@ An event/recovery board shared by every CATCC position over the session's sync t
 - `Tab`/`Shift+Tab` moves between fields, `Enter` commits, `Shift+Enter` commits and inserts a new blank row directly below, and `Escape` cancels without saving.
 - Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted red.
 - Click a column header to sort. This changes the display only and doesn't reorder the underlying data.
+
+**Autofill (`.SBAUTOFILL`):** while on, ATD is stamped (Zulu) when an aircraft launches from your carrier and ATA when it traps. A trap counts once the aircraft has settled on deck at carrier speed for a few seconds, so a bolter or touch-and-go stamps nothing. A new launch overwrites ATD and clears the previous ATA. Aircraft first seen already parked on deck or already airborne aren't stamped, and going down an elevator to the hangar isn't a launch. The row is found the same way as for correlation: the row's own unit, or a matching callsign. The setting is per position, but the stamped times sync to everyone.
 
 **Row controls:** ▲/▼ reorder, × deletes.
 

@@ -262,6 +262,16 @@ register('.DBCA', () => {
   return [`DBCA ${next ? 'ON' : 'OFF'}`]
 })
 
+// .SBAUTOFILL — toggle status board ATD/ATA auto-stamping (off by default),
+// see StatusBoardAutofill.jsx. Per controller; the stamps themselves sync.
+register('.SBAUTOFILL', () => {
+  const ws = useDisplayStore.getState().windows[WINDOW_ID]
+  const next = !(ws?.sbAutofill ?? false)
+  useDisplayStore.getState().updateWindow(WINDOW_ID, { sbAutofill: next })
+  saveCatccPrefs({ sbAutofill: next })
+  return [`SBAUTOFILL ${next ? 'ON' : 'OFF'}`]
+})
+
 // ── Airspace / navdata layers — same categories + bulk/.labels convention as
 // ABM (modules/abm/AbmScope.jsx AIRSPACE_CATEGORIES/AIRSPACE_CMD_CATEGORY),
 // reimplemented against window settings (CatccScope reads windowSettings for

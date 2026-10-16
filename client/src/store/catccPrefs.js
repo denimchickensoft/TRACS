@@ -24,6 +24,7 @@ const DEFAULTS = {
   ldrLength:     2,     // leader line length 0-7 (10 px per step) — .ll sets
   globalLeaderDir: null, // default leader direction — .ld sets (null = OFF)
   alertVol:      10,    // alert tone volume 0-10 — .vol sets
+  sbAutofill:    false, // status board ATD/ATA auto-stamping — .sbautofill toggles
 }
 
 const { load: loadCatccPrefs, save: saveCatccPrefs } = makePrefsStore(KEY, DEFAULTS)

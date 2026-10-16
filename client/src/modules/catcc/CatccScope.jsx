@@ -34,6 +34,7 @@ import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
 import { formatDistance } from '../../utils/units.js'
 import { getCatccBookmark, saveCatccBookmark } from '../../store/catccBookmarks.js'
 import { CatccStatusText }       from './CatccStatusText.jsx'
+import { StatusBoardAutofill }   from './StatusBoardAutofill.jsx'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import { useSpcAlerts } from '../../utils/useSpcAlerts.js'
 import { useCatccSpcStore } from '../../store/spcAlerts.js'
@@ -221,6 +222,7 @@ export default function CatccScope() {
         csMap: catccPrefs.csMap, dbSize: catccPrefs.dbSize,
         ldrLength: catccPrefs.ldrLength, globalLeaderDir: catccPrefs.globalLeaderDir,
         alertVol: catccPrefs.alertVol,
+        sbAutofill: catccPrefs.sbAutofill,
       })
     }
   }, []) // eslint-disable-line
@@ -575,6 +577,7 @@ export default function CatccScope() {
           onKeyDown={handleKeyDown}
           onContextMenu={(e) => e.preventDefault()}
         />
+        <StatusBoardAutofill enabled={windowSettings?.sbAutofill ?? false} />
         <CatccStatusText
           xPct={windowSettings?.statusTextXPct ?? 50}
           yPct={windowSettings?.statusTextYPct ?? 2}
