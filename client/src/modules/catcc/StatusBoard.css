@@ -231,6 +231,11 @@
   cursor: default;
 }
 
+/* Read-only SIDE mirror: double-click assigns the next marshal slot */
+.sb-cell.readonly.dblclick {
+  cursor: pointer;
+}
+
 .sb-cell-input {
   display: block;
   width: 100%;

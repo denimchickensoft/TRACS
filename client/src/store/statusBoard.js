@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 import { generateBcn } from '../utils/bcn.js'
 import { shallowEqual } from '../utils/storeSync.js'
+import { isValidTime } from '../modules/catcc/statusBoardColumns.js'
 
 const SB_KEY = 'tracs.catcc.sb'
 
@@ -21,6 +22,30 @@ function loadSaved() {
 }
 
 const saved = loadSaved() ?? {}
+
+// Marshal slots step EAT by 1 minute and ANGELS by 1 from the lowest-ANGELS
+// filled row; the first slot whose EAT and ANGELS are both unused wins, so a
+// gap left by a removed row is reused. Anchored on ANGELS rather than EAT
+// because ANGELS never wraps, where EAT can roll past 2359. Null when no row
+// has both values yet, or the next slot would pass ANGELS 99.
+function nextMarshalSlot(entries) {
+  const filled = entries.filter((e) => isValidTime(e.eat) && /^\d{4}$/.test(e.eat) && /^\d+$/.test(e.angels))
+  if (!filled.length) return null
+  const toMin = (hhmm) => (parseInt(hhmm.slice(0, 2), 10) * 60 + parseInt(hhmm.slice(2), 10)) % 1440
+  const usedEat    = new Set(filled.map((e) => toMin(e.eat)))
+  const usedAngels = new Set(filled.map((e) => parseInt(e.angels, 10)))
+  const anchor = filled.reduce((a, b) => parseInt(b.angels, 10) < parseInt(a.angels, 10) ? b : a)
+  const baseMin    = toMin(anchor.eat)
+  const baseAngels = parseInt(anchor.angels, 10)
+  for (let k = 1; baseAngels + k <= 99; k++) {
+    const min = (baseMin + k) % 1440
+    const angels = baseAngels + k
+    if (usedEat.has(min) || usedAngels.has(angels)) continue
+    const eat = `${String(Math.floor(min / 60)).padStart(2, '0')}${String(min % 60).padStart(2, '0')}`
+    return { eat, angels: String(angels) }
+  }
+  return null
+}
 
 export const useStatusBoardStore = create((set) => ({
   event:        saved.event        ?? '',
@@ -90,6 +115,17 @@ export const useStatusBoardStore = create((set) => ({
 
   stampArrival: (id, hhmm) =>
     set((s) => ({ entries: s.entries.map((e) => e.id === id ? { ...e, ata: hhmm } : e) })),
+
+  // CASE 2/3 marshal: give the row the first free EAT/ANGELS slot (see nextMarshalSlot).
+  assignNextMarshal: (id) =>
+    set((s) => {
+      if (s.caseRecovery !== '2' && s.caseRecovery !== '3') return s
+      const entry = s.entries.find((e) => e.id === id)
+      if (!entry || entry.eat || entry.angels) return s
+      const slot = nextMarshalSlot(s.entries)
+      if (!slot) return s
+      return { entries: s.entries.map((e) => e.id === id ? { ...e, ...slot } : e) }
+    }),
 
   insertEntryAfter: (afterId) =>
     set((s) => {

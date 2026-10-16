@@ -116,6 +116,7 @@ An event/recovery board shared by every CATCC position over the session's sync t
 - Click a cell to edit it.
 - `Tab`/`Shift+Tab` moves between fields, `Enter` commits, `Shift+Enter` commits and inserts a new blank row directly below, and `Escape` cancels without saving.
 - Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted red.
+- **Marshal slots (Case 2/3):** when Case Recovery is `2` or `3` and at least one row has both EAT and Angels, double-click a row's green (read-only) side number to give it the next free slot: EAT +1 minute and Angels +1, counted up from the row with the lowest Angels. A slot freed by a removed row is reused first. Rows that already have an EAT or Angels are left alone.
 - Click a column header to sort. This changes the display only and doesn't reorder the underlying data.
 
 **Autofill (`.SBAUTOFILL`):** while on, ATD is stamped (Zulu) when an aircraft launches from your carrier and ATA when it traps. A trap counts once the aircraft has settled on deck at carrier speed for a few seconds, so a bolter or touch-and-go stamps nothing. A new launch overwrites ATD and clears the previous ATA. Aircraft first seen already parked on deck or already airborne aren't stamped, and going down an elevator to the hangar isn't a launch. The row is found the same way as for correlation: the row's own unit, or a matching callsign. The setting is per position, but the stamped times sync to everyone.

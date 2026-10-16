@@ -40,7 +40,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     event, launch, recovery, clg, vis, qnh,
     caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn, rad,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
-    clearMissionData, clearAll, recycleBcn,
+    clearMissionData, clearAll, recycleBcn, assignNextMarshal,
   } = useStatusBoardStore()
 
   const [importOpen,       setImportOpen]       = useState(false)
@@ -277,6 +277,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     timeValidate={col.timeValidate}
                     decimalValidate={col.decimalValidate}
                     radialFmt={col.radialFmt}
+                    onDoubleClick={col.id === 'side2' ? () => assignNextMarshal(entry.id) : undefined}
                     cellIdx={col.readOnly ? undefined : rowIdx * EDITABLE_COLS.length + EDIT_COL_IDX_MAP[col.id]}
                     entryId={col.readOnly ? undefined : entry.id}
                     onInsertBelow={col.readOnly ? undefined : () => {
