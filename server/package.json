@@ -20,7 +20,7 @@
   "dependencies": {
     "better-sqlite3": "^12.11.1",
     "express": "^4.19.2",
-    "marked": "^18.1.0",
+    "marked": "^18.1.1",
     "sql.js": "^1.14.2",
     "ws": "^8.22.0"
   },
