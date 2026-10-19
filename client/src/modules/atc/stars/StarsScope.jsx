@@ -164,6 +164,7 @@ export default function StarsScope() {
   const panAccumRef  = useRef({ dx: 0, dy: 0 })  // pixel delta accumulated since last rAF flush
   const panRafRef    = useRef(null)              // pending rAF id for the coalesced pan flush
   const rblCursorRef = useRef(null)    // canvas-pixel cursor pos during RBL_P2 preview
+  const leaderAngleRef = useRef(null)  // uid => datablock leader angle, set by DatablockOverlay
   const coordsRef    = useRef(null)    // debug coords display div
   const elevRef            = useRef(null)  // last-fetched elevation (m) at cursor, .coords
   const lastElevFetchRef   = useRef(null)  // throttle key so we don't re-fetch every pixel
@@ -688,7 +689,7 @@ export default function StarsScope() {
         const canvas = rblCanvasRef.current
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         if (view && hasContent) {
-          drawRbls(ctx, view, rbls, rblWip, rblCursorRef.current, visibleUnitsRef.current, csTools)
+          drawRbls(ctx, view, rbls, rblWip, rblCursorRef.current, visibleUnitsRef.current, csTools, leaderAngleRef.current)
           drawMinSep(ctx, view, minSep, minWip, rblCursorRef.current, visibleUnitsRef.current, csTools)
         }
       }
@@ -1196,6 +1197,7 @@ export default function StarsScope() {
           highlightedUids={highlightedUids}
           wingmanIds={wingmanIds}
           beaconReadout={beaconReadout}
+          leaderAngleRef={leaderAngleRef}
         />
 
         <div

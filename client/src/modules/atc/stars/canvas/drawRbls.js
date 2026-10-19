@@ -12,6 +12,23 @@ function resolveEndpoint(ep, units) {
   return { lat: ep.lat, lng: ep.lng, speed: null }
 }
 
+// The readout sits on the opposite side of the endpoint from that track's
+// datablock leader, so the two don't overlap (LDR DIR N puts it at about 5
+// o'clock). A map point or the WIP cursor has no datablock and is placed as
+// if its leader pointed N.
+const LABEL_GAP = 8
+const NO_LEADER_ANGLE_DEG = 270
+
+function drawLabel(ctx, text, x, y, leaderAngleDeg) {
+  const a  = ((leaderAngleDeg ?? NO_LEADER_ANGLE_DEG) + 180) * Math.PI / 180
+  const nx = Math.cos(a)
+  const ny = Math.sin(a)
+  const vertical = Math.abs(nx) <= 0.1
+  ctx.textAlign    = nx < -0.1 ? 'right' : 'left'
+  ctx.textBaseline = ny > 0.1 ? 'top' : ny < -0.1 ? 'alphabetic' : 'middle'
+  ctx.fillText(text, x + nx * LABEL_GAP + (vertical ? 4 : 0), y + ny * LABEL_GAP)
+}
+
 /**
  * Draw all completed RBLs and the WIP preview on the contacts canvas.
  *
@@ -21,9 +38,11 @@ function resolveEndpoint(ep, units) {
  * @param {object|null} rblWip { p0 } awaiting second click
  * @param {object|null} rblCursor { x, y } canvas-pixel cursor for WIP preview
  * @param {object}  units      visible units keyed by id
- * @param {string}  color      CSS color for lines and labels
+ * @param {number}  csTools
+ * @param {Function|null} getLeaderAngleDeg (unitId) => the datablock leader's
+ *   resolved canvas angle in degrees, or null when the track has none
  */
-export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3) {
+export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3, getLeaderAngleDeg = null) {
   if (!rbls?.length && !rblWip) return
 
   const declinationDeg = view.declinationDeg ?? 0
@@ -76,7 +95,8 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
 
     label += `-${i + 1}`
 
-    ctx.fillText(label, c1.x + 4, c1.y - 4)
+    const leaderAngleDeg = rbl.p1.unitId != null ? getLeaderAngleDeg?.(String(rbl.p1.unitId)) : null
+    drawLabel(ctx, label, c1.x, c1.y, leaderAngleDeg)
   }
 
   // WIP preview — solid gray line from P0 to cursor with live label
@@ -101,7 +121,7 @@ export function drawRbls(ctx, view, rbls, rblWip, rblCursor, units, csTools = 3)
       const { gridBearingDeg, rangeNm: dist } = gridBearingRangeNm(ep0.lat, ep0.lng, curLat, curLng, view.theatre)
       const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
       const label  = `${String(Math.round(magBrg) || 360).padStart(3, '0')}/${distFromNm(dist, view.unitSystem).toFixed(2)}`
-      ctx.fillText(label, rblCursor.x + 4, rblCursor.y - 4)
+      drawLabel(ctx, label, rblCursor.x, rblCursor.y, null)
     }
   }
 

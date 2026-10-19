@@ -402,7 +402,7 @@ const Datablock = memo(function Datablock({
 
 // ── Overlay ──────────────────────────────────────────────────────────────────
 
-export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn, highlightedUids, wingmanIds, beaconReadout }) {
+export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, briteFdb, briteLdb, csDatablocks, slewedPdbs, blinkOn, highlightedUids, wingmanIds, beaconReadout, leaderAngleRef }) {
   const ownership   = useAtcStore((s) => s.ownership)
   const handoffs    = useAtcStore((s) => s.handoffs)
   const pointOuts   = useAtcStore((s) => s.pointOuts)
@@ -560,6 +560,16 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
   // layoutKey stands in for contentsRef: rerun only when a block's line widths change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbca, view, entries, layoutKey, leaderDirs, ldrAngleDeg, ldrLength, csDatablocks, visual])
+
+  // Lets the RBL layer place its readout opposite each track's leader,
+  // including where dbca moved it.
+  if (leaderAngleRef) {
+    leaderAngleRef.current = (uid) => {
+      if (!contents[uid] || wingmanIds?.has(uid)) return null
+      return placements?.[uid]?.angleDeg
+        ?? DIR_TO_ANGLE[leaderDirs[uid]] ?? ldrAngleDeg ?? visual.dataBlock.leaderAngleDeg ?? -45
+    }
+  }
 
   if (!view) return null
 
