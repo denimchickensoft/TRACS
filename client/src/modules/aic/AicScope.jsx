@@ -37,6 +37,7 @@ import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardin
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
 import { speedFromMs, formatAltThousands, distFromNm } from '../../utils/units.js'
 import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
+import { isTextEntry, isInModal } from '../../utils/keyTarget.js'
 import { fetchJson } from '../../utils/fetchJson.js'
 
 const WINDOW_ID = 'aic-main'
@@ -689,6 +690,20 @@ export default function AicScope() {
     }
   }, [cmdBuffer, cmdFeedback, pendingDeclaration, pendingBraaFighter, findMarker, clearPendingBraa, defineEntry]) // eslint-disable-line
 
+  // Listen on the document rather than the scope div, so clicking a readout,
+  // the BRAA panel or the margins doesn't stop typing reaching the command
+  // line. Real text fields and modal dialogs keep their own keys.
+  const handleKeyDownRef = useRef(handleKeyDown)
+  handleKeyDownRef.current = handleKeyDown
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (isTextEntry(e.target) || isInModal(e.target)) return
+      handleKeyDownRef.current(e)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   const handleMouseUp = useCallback((e) => {
     if (e.button !== 0) return
     if (rblDragActiveRef.current) return // this mouseup is finishing an RBL drag, not a click
@@ -959,7 +974,6 @@ export default function AicScope() {
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
           onMouseLeave={() => { setHoveredUnit(null); setCursorLatLng(null); setCursorPixelPos(null) }}
-          onKeyDown={handleKeyDown}
           onContextMenu={e => e.preventDefault()}
         >
           {becVisible && cursorBullseye && cursorPixelPos && (

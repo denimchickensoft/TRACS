@@ -577,7 +577,7 @@ export function UserNavdataManager({ theatre: activeTheatre, onClose }) {
 
   return (
     <div className="unm-overlay">
-      <div className="unm-modal">
+      <div className="unm-modal" role="dialog" aria-modal="true">
         <div className="unm-header">
           <span className="unm-title">USER NAVDATA</span>
           <select className="unm-select" value={theatre ?? ''} onChange={(e) => { setTheatre(e.target.value); setStatus(null) }}>

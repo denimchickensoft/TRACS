@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isTextEntry } from '../utils/keyTarget.js'
 
 // The thin vertical tab strip on the right edge of each module's layout.
 // Clicking a tab toggles its docked panel; while a panel is popped out into
@@ -16,10 +17,6 @@ import { useEffect, useRef } from 'react'
 // Last-used tab per module for this session, keyed by the module's tab
 // names so it survives switching modules (which remounts the strip).
 const lastUsedByStrip = new Map()
-
-function isTextEntry(el) {
-  return !!el?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
-}
 
 export function RightTabStrip({ tabs, active, setActive, background = '#0a0a0a' }) {
   const stripId = tabs.map((t) => t.name).join('|')

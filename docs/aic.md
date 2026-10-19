@@ -22,7 +22,7 @@ The BRAA panel and bogey dope use each contact's declaration only. Mode 4 has no
 
 ## Command line
 
-Click the scope to focus it, type, then press **Enter** to run most commands. A few commands work differently: type them, then **click a contact on the scope**. Pressing Enter on those does nothing useful, and each one is marked below.
+Type anywhere in the AIC window (outside a text field), then press **Enter** to run most commands. A few commands work differently: type them, then **click a contact on the scope**. Pressing Enter on those does nothing useful, and each one is marked below.
 
 `ArrowUp`/`ArrowDown` cycle through your last 50 commands. While a `.define` readout is open, they step alphabetically through the brevity glossary instead. `Backspace` deletes a character. `Escape` cancels pending state (see Keyboard, below).
 
