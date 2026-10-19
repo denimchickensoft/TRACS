@@ -1,6 +1,5 @@
 const STORAGE_KEY       = 'tracs.serverProfiles'
 const LAST_CONN_KEY     = 'tracs.lastConnection'
-const MAX_RECENTS  = 5
 
 // Splits a stored "http://host:port/path"-shaped string (or a bare host) back
 // into its host, port, path and protocol, for editing as separate fields.
@@ -36,16 +35,6 @@ function saveServerProfiles(profiles) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles)) } catch {}
 }
 
-// Favorites are never evicted; non-favorites beyond MAX_RECENTS (by lastUsed) are dropped.
-function trim(profiles) {
-  const favorites = profiles.filter((p) => p.favorite)
-  const recents   = profiles
-    .filter((p) => !p.favorite)
-    .sort((a, b) => b.lastUsed - a.lastUsed)
-    .slice(0, MAX_RECENTS)
-  return [...favorites, ...recents]
-}
-
 export function findProfileByName(profiles, name) {
   const key = name.trim().toLowerCase()
   if (!key) return null
@@ -53,7 +42,7 @@ export function findProfileByName(profiles, name) {
 }
 
 // Upserts by case-insensitive name match: overwrites url, bumps lastUsed and
-// lastCoalition, preserves favorite. Persists and returns the new (trimmed) list.
+// lastCoalition, preserves favorite. Persists and returns the new list.
 // relayUrl is optional and not coalition-scoped (unlike password) — it's a property of
 // the DCS-side deployment, not the controller's role on it.
 //
@@ -104,9 +93,8 @@ export function upsertServerProfile(profiles, { name, url, coalition, password, 
     ? [...profiles, record]
     : [...profiles.slice(0, idx), record, ...profiles.slice(idx + 1)]
 
-  const trimmed = trim(next)
-  saveServerProfiles(trimmed)
-  return trimmed
+  saveServerProfiles(next)
+  return next
 }
 
 export function toggleFavoriteProfile(profiles, name) {
@@ -145,14 +133,14 @@ export function saveLastConnection({ name, url, coalition, password, relayUrl, s
   } catch {}
 }
 
-// Favorites first, then up to MAX_RECENTS non-favorites (most-recently-used ones kept),
-// both groups alphabetical by name; filtered by a case-insensitive substring match against the query.
+// Favorites first, then non-favorites, both groups alphabetical by name; filtered
+// by a case-insensitive substring match against the query.
 export function filterServerProfiles(profiles, query) {
   const q = query.trim().toLowerCase()
   const matches = q ? profiles.filter((p) => p.name.toLowerCase().includes(q)) : profiles
 
   const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
   const favorites = matches.filter((p) => p.favorite).sort(byName)
-  const recents   = matches.filter((p) => !p.favorite).sort((a, b) => b.lastUsed - a.lastUsed).slice(0, MAX_RECENTS).sort(byName)
-  return [...favorites, ...recents]
+  const others    = matches.filter((p) => !p.favorite).sort(byName)
+  return [...favorites, ...others]
 }
