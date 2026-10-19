@@ -388,7 +388,7 @@ These keys insert text into the buffer; you still complete the command with a cl
 | `End` | `MIN` | Minimum-separation tool |
 | `` ` `` (backquote) | `Δ` | Inserts the delta glyph |
 
-`F2` (TRK RPOS) and `F13` insert `RP ` and `F13 `. No command uses these prefixes yet.
+`F2` (TRK RPOS) inserts `RP `. No command uses this prefix yet.
 
 These act immediately, without the buffer:
 

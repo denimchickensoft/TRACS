@@ -20,7 +20,6 @@ export const STARS_KEY_MAP = [
   { code: 'F7',                ctrl: false, token: 'MF ' },   // MULTI FUNC
   { code: 'F9',                ctrl: false, token: 'VP ' },   // VFR PLAN
   { code: 'F11',               ctrl: false, token: 'CA ' },   // CA
-  { code: 'F13',               ctrl: false, token: 'F13 '},   // F13
   { code: 'End',               ctrl: false, token: 'MIN' },   // MIN
 
   // Δ key — backtick
@@ -64,7 +63,7 @@ export function matchStarsKey(e) {
   return null
 }
 
-// A function key (F1-F13) enters its command token once: pressing it again,
+// A function key (F1-F11) enters its command token once: pressing it again,
 // or holding it down, doesn't repeat the token. Other token keys (Δ, MIN)
 // can appear more than once in an entry.
 export function shouldAppendToken(code, token, buffer, isRepeat) {
