@@ -741,7 +741,7 @@ export const COORDS_TOGGLE = makeWinToggle('coordsVisible', false, 'COORDS ON', 
 
 export const BEC_TOGGLE = makeWinToggle('becVisible', false, 'BULLSEYE-ON-CURSOR ON', 'BULLSEYE-ON-CURSOR OFF')
 
-// .bedb — adds a 3rd datablock line per contact: bearing/range from
+// .bedb — adds a last datablock line to every contact: bearing/range from
 // bullseye (e.g. "090/20"), same magnetic-bearing convention as .bec/.coords'
 // bullseye readout (drawAbmContacts.js). Off by default.
 export const BEDB_TOGGLE = makeWinToggle('bedbVisible', false, 'BULLSEYE DATABLOCK ON', 'BULLSEYE DATABLOCK OFF')

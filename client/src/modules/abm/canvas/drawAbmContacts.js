@@ -303,10 +303,11 @@ export function drawAbmContacts(
     const line1      = isFriendly ? resolveCallsign(unit).toUpperCase() : iffFrames[iffCycleIndex % iffFrames.length]
     const lines      = showsBlock ? [line1, line2] : [line2]
 
-    // .bedb — 3rd datablock line: magnetic bearing/range from bullseye, same
-    // convention as the .bec/.coords bullseye readout (never shows "000",
-    // shown as "360" instead — see AbmScope.jsx's becReadout/coordsReadout).
-    if (showsBlock && bedbVisible && hasBullseye) {
+    // .bedb — last datablock line, for every contact: magnetic bearing/range
+    // from bullseye, same convention as the .bec/.coords bullseye readout
+    // (never shows "000", shown as "360" instead — see AbmScope.jsx's
+    // becReadout/coordsReadout).
+    if (bedbVisible && hasBullseye) {
       const { gridBearingDeg, rangeNm } = gridBearingRangeNm(bullseyeLat, bullseyeLng, unit.position.lat, unit.position.lng, theatre)
       const magBrg = toMagneticFromTrue(gridBearingDeg, declinationDeg)
       lines.push(`${String(Math.round(magBrg) || 360).padStart(3, '0')}/${Math.round(distFromNm(rangeNm, view.unitSystem))}`)
@@ -354,7 +355,8 @@ export function drawAbmContacts(
       ctx.fillText(lines[1], tx, ly1 + halfLine)
       for (let i = 2; i < lines.length; i++) ctx.fillText(lines[i], tx, ly1 + halfLine + (i - 1) * lineHeight)
     } else {
-      ctx.fillText(lines[0], tx, ly1)
+      // One-line block stays on the leader tip; a .bedb line extends downward.
+      for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], tx, ly1 + i * lineHeight)
     }
     if (spc) {
       ctx.fillStyle = tagColor

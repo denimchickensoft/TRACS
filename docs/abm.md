@@ -133,7 +133,7 @@ ABM does not display SID/STAR/approach procedures.
 | `.ld <1-9>` | Set leader line direction (numpad layout); `5` returns to the default direction |
 | `++###` + click | Assign/request a hard altitude for the clicked aircraft's whole flight, in hundreds of feet (3 digits, so 3,000 ft is `++030`). Every aircraft in the flight shows `R###` on datablock line 2, cycling with speed and type. `++000` clears it. An aircraft not in any flight gets one created first, the same way as Ctrl+Shift+Click |
 | `++######` + click | Block altitude, lower first: `++200220` shows `R200-220`. Out-of-order or equal blocks (`++220200`, `++200200`) and wrong-length entries are rejected with `ILL ALT` |
-| `.bedb` | Toggle bullseye-on-datablock: adds a 3rd datablock line with each contact's magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
+| `.bedb` | Toggle bullseye-on-datablock: adds a last datablock line to every contact, friendly or not, with its magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
 ### Emergency squawks
 
