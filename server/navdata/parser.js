@@ -4,7 +4,7 @@ const fs         = require('fs')
 const path       = require('path')
 const crypto     = require('crypto')
 const stateFiles = require('../src/stateFiles')
-const { runExtract } = require('./tools/extract-navdata')
+const { runExtract, ICAO_MAPPING_PATH } = require('./tools/extract-navdata')
 const { CONFIG_DIR: USER_CONFIG_DIR } = require('../src/configDir')
 
 const CONFIG_DIR = path.join(__dirname, 'config')
@@ -65,6 +65,10 @@ async function buildCache() {
   const bboxHash    = crypto.createHash('sha256').update(theatresRaw).digest('hex').slice(0, 16)
   const firIdentsHash = crypto.createHash('sha256')
     .update(fs.readFileSync(path.join(CONFIG_DIR, 'fir_idents.json'), 'utf8')).digest('hex').slice(0, 16)
+  // icaoMapping.json picks which airports get procedures and sector frequencies,
+  // so a shipped mapping change has to trigger a re-extract like a config change.
+  const icaoMappingHash = crypto.createHash('sha256')
+    .update(fs.readFileSync(ICAO_MAPPING_PATH, 'utf8')).digest('hex').slice(0, 16)
   const lnmStat     = fs.statSync(LNM_DB_PATH)
   const lnmMtime    = lnmStat.mtime.toISOString()
   const lnmSize     = lnmStat.size
@@ -74,7 +78,7 @@ async function buildCache() {
   if (fs.existsSync(manifestPath)) {
     try {
       const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-      if (m.lnmMtime === lnmMtime && m.lnmSize === lnmSize && m.bboxHash === bboxHash && m.firIdentsHash === firIdentsHash) {
+      if (m.lnmMtime === lnmMtime && m.lnmSize === lnmSize && m.bboxHash === bboxHash && m.firIdentsHash === firIdentsHash && m.icaoMappingHash === icaoMappingHash) {
         const allPresent = Object.values(theatres).every((tConf) =>
           REQUIRED_THEATRE_FILES.every((f) => fs.existsSync(path.join(CACHE_DIR, tConf.folder, f)))
         )

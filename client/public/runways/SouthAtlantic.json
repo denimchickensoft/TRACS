@@ -53,7 +53,8 @@
           },
           "lat": -51.820283,
           "course_true_deg": 125.92917,
-          "name": 28,
+          "name": 23,
+          "name_dcs": 28,
           "length_ft": 6763.221,
           "lon": -58.440389,
           "end1": {
@@ -209,7 +210,8 @@
           },
           "lat": -53.000902,
           "course_true_deg": 102.37148,
-          "name": 12,
+          "name": 25,
+          "name_dcs": 12,
           "length_ft": 6834.9189,
           "lon": -70.853874,
           "end1": {
@@ -227,7 +229,8 @@
           },
           "lat": -53.001343,
           "course_true_deg": 162.37907,
-          "name": 25,
+          "name": 19,
+          "name_dcs": 25,
           "length_ft": 8978.7972,
           "lon": -70.848677,
           "end1": {
@@ -452,7 +455,8 @@
           },
           "lat": -53.247969,
           "course_true_deg": 144.00196,
-          "name": 27,
+          "name": 21,
+          "name_dcs": 27,
           "length_ft": 7820.9683,
           "lon": -70.32748,
           "end1": {
@@ -493,7 +497,8 @@
           },
           "lat": -53.613079,
           "course_true_deg": 138.73495,
-          "name": 30,
+          "name": 21,
+          "name_dcs": 30,
           "length_ft": 4628.248,
           "lon": -70.475218,
           "end1": {
@@ -718,7 +723,8 @@
           },
           "lat": -52.180178,
           "course_true_deg": 143.53275,
-          "name": 15,
+          "name": 21,
+          "name_dcs": 15,
           "length_ft": 1352.5016,
           "lon": -58.857069,
           "end1": {

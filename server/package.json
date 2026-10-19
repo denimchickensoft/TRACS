@@ -12,6 +12,7 @@
     "build:basemap": "node scripts/buildAbmBasemap.js",
     "build:osmland": "node scripts/buildOsmLand.js",
     "build:mva": "node scripts/buildMvaMap.js",
+    "fix:runways": "node scripts/fixRunwayNames.js",
     "build:twylabels": "python scripts/buildTaxiwayLabels.py",
     "package:extract": "node --experimental-sea-config navdata/tools/sea-config.json",
     "build:terrain-exe": "node scripts/terrainDataExe/build.js",

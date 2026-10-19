@@ -744,10 +744,12 @@ async function runExtract(lnmDbPath) {
 
   const theatresRaw = fs.readFileSync(path.join(CONFIG_DIR, 'theatres.json'), 'utf8')
   const theatres    = JSON.parse(theatresRaw)
-  const icaoMapping = JSON.parse(fs.readFileSync(ICAO_MAPPING_PATH, 'utf8'))
+  const icaoMappingRaw = fs.readFileSync(ICAO_MAPPING_PATH, 'utf8')
+  const icaoMapping  = JSON.parse(icaoMappingRaw)
   const bboxHash     = crypto.createHash('sha256').update(theatresRaw).digest('hex').slice(0, 16)
   const firIdentsRaw = fs.readFileSync(FIR_IDENTS_PATH, 'utf8')
   const firIdentsHash = crypto.createHash('sha256').update(firIdentsRaw).digest('hex').slice(0, 16)
+  const icaoMappingHash = crypto.createHash('sha256').update(icaoMappingRaw).digest('hex').slice(0, 16)
   const lnmStat      = fs.statSync(lnmDbPath)
   const lnmMtime     = lnmStat.mtime.toISOString()
   const lnmSize      = lnmStat.size
@@ -844,6 +846,7 @@ async function runExtract(lnmDbPath) {
     lnmSize,
     bboxHash,
     firIdentsHash,
+    icaoMappingHash,
     builtAt:         new Date().toISOString(),
     proceduresBuilt: true,
   }
@@ -862,7 +865,7 @@ async function main() {
   await runExtract(args[dpIdx + 1])
 }
 
-module.exports = { runExtract, validateLnmDb }
+module.exports = { runExtract, validateLnmDb, ICAO_MAPPING_PATH }
 
 if (require.main === module) {
   main().catch(err => { console.error('[extract] fatal:', err); process.exit(1) })

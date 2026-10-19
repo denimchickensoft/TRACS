@@ -127,7 +127,8 @@
           },
           "lat": 44.572901,
           "course_true_deg": -40.021784,
-          "name": 1,
+          "name": 4,
+          "name_dcs": 1,
           "length_ft": 5452.197,
           "lon": 38.011614,
           "end1": {

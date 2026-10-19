@@ -30,7 +30,8 @@
           },
           "lat": 36.590697,
           "course_true_deg": -145.13981,
-          "name": 26,
+          "name": 13,
+          "name_dcs": 26,
           "length_ft": 6100.1168,
           "lon": -115.67297,
           "end1": {
@@ -199,7 +200,8 @@
           },
           "lat": 35.946359,
           "course_true_deg": 81.519407,
-          "name": 15,
+          "name": 26,
+          "name_dcs": 15,
           "length_ft": 3702.4488,
           "lon": -114.8611,
           "end1": {
@@ -437,7 +439,8 @@
           },
           "lat": 36.210076,
           "course_true_deg": 46.656213,
-          "name": 7,
+          "name": 30,
+          "name_dcs": 7,
           "length_ft": 4734.1724,
           "lon": -115.19685,
           "end1": {
@@ -519,7 +522,8 @@
           },
           "lat": 38.057952,
           "course_true_deg": 14.971512,
-          "name": 11,
+          "name": 33,
+          "name_dcs": 11,
           "length_ft": 5314.5559,
           "lon": -117.08957,
           "end1": {

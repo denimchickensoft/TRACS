@@ -2,42 +2,48 @@
 
 These files are extracted directly from the DCS World game engine via a custom extraction script.
 All geometry (endpoints, headings, lengths, elevations) reflects Eagle Dynamics' source data.
-There are various errors in each of the theatres.
-This file is utilized to track that data.
 
-## Manual Corrections
+## Runway designator corrections
 
-Occasionally DCS exports contain incorrect runway designator (`name`) fields.
-The geometry is correct; only the runway number labels are wrong.
-These are Eagle Dynamics bugs, corrected here manually.
+The geometry is correct. DCS's runway designators (`name`) are often wrong, and the errors come from DCS itself: `Airbase:getRunways()` returns them that way.
 
-| File | Airbase | Runway | Issue | Corrected `name` |
-|------|---------|--------|-------|-----------------|
-| Syria.json | Ben Gurion | heading ~207° (03/21) | exported as `30` | `21` |
-| Syria.json | Ben Gurion | heading ~258° (08/26) | exported as `21` | `26` |
-| SinaiMap.json | Hatzor | heading ~112°/292° (11/29, parallel pair) | one entry exported as `23` | `11` |
-| Syria.json | Hatzor | heading ~112°/292° (11/29, parallel pair) | one entry exported as `5` | `29` |
+### The DCS bug
 
-### Notes on the Ben Gurion correction (Syria)
+DCS appears to build `Name` from a flattened list of runway ends, `[r0.endA, r0.endB, r1.endA, r1.endB, ...]`, but indexes that list by runway number instead of by twice the runway number. As a result:
 
-Ben Gurion (LLBG) has three runways: 03/21, 08/26, and 12/30.
-DCS exported the 03/21 runway with `name: 30` and the 08/26 runway with `name: 21`.
-The 12/30 runway (`name: 12`) was correct.
-Headings were verified by computing magnetic bearing from `course_true_deg` using
-Syria's TM central meridian (39°E) and WMM magvar for the region.
+- Runway 0 always gets a correct designator.
+- Every later runway `i` gets one of the end designators of runway `floor(i/2)`. For example, Muwaffaq Salti exports `[26, 8]` for a 08/26 strip and a 13/31 strip.
 
-### Notes on the Hatzor correction (SinaiMap and Syria)
+The bug is only visible at airbases whose runways point in different directions. For single-runway and parallel-only airbases, every end they could be handed lies on the same axis, so the names come out right.
 
-Hatzor (LLHS) has three runways: 11L/29R, 11R/29L, and 5/23.
-Each theatre file exports one of the parallel 11/29 strips under the wrong designator:
-- SinaiMap.json exported one 11/29 strip as `23` (the true 5/23 strip is the separate entry already named `5`).
-- Syria.json exported one 11/29 strip as `5` (the true 5/23 strip is the separate entry already named `23`).
+DCS also occasionally exports a wrong runway 0, for example Gelendzhik `1` on a 04/22 strip.
 
-In both files the geometry and `course_true_deg` for the mislabeled entry are correct — only
-the `name` integer was wrong. Verified by computing the true bearing from each entry's `end1`/`end2`
-coordinates (great-circle initial bearing) and confirming it matches `-course_true_deg`, then
-checking which of the airbase's two physical headings (~054°/234° for 5/23 vs ~112°/292° for
-11/29) that bearing actually falls on. The parallel 11/29 pair is auto-suffixed L/R by
-`computeAirbaseLabels`/the suffix grouping in `runways.js` based on perpendicular offset, so
-both mislabeled entries just needed their `name` changed to a valid designator for their true
-heading (`11`, since `29` was already taken by the other correctly-labeled parallel entry).
+### The fix
+
+`npm run fix:runways --workspace=server` (`server/scripts/fixRunwayNames.js`) rewrites `name` in place. Re-run it after every fresh DCS export. Running it on already-corrected files changes nothing.
+
+**Runway 1 and later.** A runway is renamed when all of these hold:
+- its name is not on its own axis
+- its name is on the axis of runway `floor(i/2)`
+- the two runways point in different directions
+
+The new designator is computed from the runway's own geometry plus runway 0's offset (designator minus true axis). That offset carries the airbase's magnetic variation, and whatever era DCS numbered it for.
+
+**Runway 0.** Each theatre gets an era year fitted from its own runway 0s:
+1. For each year from 1900 to 2030, count the runway 0s that fall within 5° of (true axis minus IGRF magnetic variation for that year).
+2. Take the middle of the years tied for the best count.
+3. Exclude runway 0s more than 20° off at that year, and refit until the year settles.
+
+Any runway 0 still more than 20° off is renamed from its true axis minus the magnetic variation at the era year.
+
+**Recording changes.** Renamed runways keep DCS's original value in `name_dcs`. The script prints each change and the era year for each theatre.
+
+L/R/C suffixes for parallel runways are not stored here. The client derives them from the perpendicular offset between parallel strips.
+
+### Earlier hand corrections
+
+These were made before the script existed and have no `name_dcs`. They are the same DCS bug, and the script leaves them unchanged:
+
+- **Syria Ben Gurion:** 03/21 was exported as `30` and 08/26 as `21`.
+- **Syria Hatzor:** one 11/29 strip was exported as `5`.
+- **SinaiMap Hatzor:** one 11/29 strip was exported as `23`.
