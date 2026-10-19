@@ -7,6 +7,15 @@ export function isValidTime(v) {
   return (h === 24 && m === 0) || (h <= 23 && m <= 59)
 }
 
+// ── RAD: blank means auto, the reciprocal of FB ─────────────────────────────
+// Follows FB as the carrier turns. Every peer derives it from the same carrier
+// heading, so only a typed RAD needs storing. '' while FB is unknown.
+export function effectiveRad(rad, fb) {
+  if (rad) return rad
+  if (fb == null || isNaN(fb)) return ''
+  return String(((Math.round(fb) + 180) % 360) || 360).padStart(3, '0')
+}
+
 // ── Fuel/state validation: 1–2 digits, decimal point, 1 digit (e.g. 1.0, 12.3) ─
 export function isValidDecimal(v) {
   if (!v) return true

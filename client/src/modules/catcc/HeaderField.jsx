@@ -14,7 +14,9 @@ export function HeaderField({ label, value, onChange, inputW = 40, readOnly = fa
   const commit = () => {
     let v = draft
     if (padZero && v.length > 0) v = v.padStart(padZero, '0')
-    onChange(v)
+    // An unchanged commit isn't stored: confirming an auto value (RAD) must
+    // leave it auto rather than fix it at the number it showed.
+    if (v !== value) onChange(v)
     setEditing(false)
   }
 

@@ -1,6 +1,7 @@
 import { useSessionStore }     from '../../store/session.js'
 import { useStatusBoardStore } from '../../store/statusBoard.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
+import { effectiveRad }        from './statusBoardColumns.js'
 
 const SEP = ' - '
 
@@ -48,7 +49,7 @@ export function CatccStatusText({ xPct, yPct, brc, fb, tacticalName }) {
   if (!isNaN(recCase)) {
     const brcStr = brc != null ? String(Math.round(brc)).padStart(3, '0') : '---'
     const fbStr  = fb  != null ? String(Math.round(fb)).padStart(3, '0')  : '---'
-    const radStr = rad || '---'
+    const radStr = effectiveRad(rad, fb) || '---'
 
     const suffix = positionSuffix?.toUpperCase()
     let freqLabel = null

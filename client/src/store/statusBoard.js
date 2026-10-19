@@ -173,11 +173,11 @@ export const useStatusBoardStore = create((set) => ({
     entries: [], nextId: 1,
   }),
 
-  clearAll: (rad = '') => set({
+  clearAll: () => set({
     event: '', launch: '', recovery: '',
     clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
-    rad,
+    rad: '',
     entries: [], nextId: 1,
   }),
 }))

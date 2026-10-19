@@ -95,7 +95,7 @@ Errors appear in the ODS response area:
 An event/recovery board shared by every CATCC position over the session's sync transport. Anyone can view and edit it.
 
 **Header fields:**
-- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial).
+- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial). RAD left blank is automatic: it shows the reciprocal of FB, follows it as the carrier turns, and is used by the status overlay and the scope's radial line too. Type a different number to fix it, or clear the field to go back to automatic.
 - **Computed and read-only:** sunrise/sunset, magnetic variation, timezone, BRC, FB, and speed.
 
 **Status overlay on the scope:** shows the case lines. When Case Recovery is a number, it adds a line with BRC, or with RAD and FB when Case Recovery is `3`. That same line also shows the next handoff's button number (`<label> BTN <n>`), based on your position: Marshal sees Approach's button, Approach sees Tower's, Tower sees Departure's. Departure gets no handoff entry.
@@ -127,7 +127,7 @@ An event/recovery board shared by every CATCC position over the session's sync t
 
 **Clearing:**
 - **✕ Clear Mission** removes only rows imported from a mission file and blanks the weather fields. It's shown once mission data exists.
-- **✕ Clear ALL** (two-step confirm) wipes everything and resets RAD to the reciprocal of FB.
+- **✕ Clear ALL** (two-step confirm) wipes everything and sets RAD back to automatic.
 
 **Board scale:** mouse wheel over the title bar zooms the whole board 50–200%. Click the title-bar clock to toggle Zulu/Local time.
 

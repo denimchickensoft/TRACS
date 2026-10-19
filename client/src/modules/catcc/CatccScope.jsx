@@ -13,6 +13,7 @@ import { rangeToPixelsPerNm }    from '../../utils/projection.js'
 import { resolveSlew }           from '../../utils/slewResolver.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
+import { effectiveRad }          from './statusBoardColumns.js'
 import { useGeoStore }           from '../../store/geo.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useAbmAirspaceStore }   from '../../store/abmAirspace.js'
@@ -137,7 +138,7 @@ export default function CatccScope() {
   const marshalBearing = (fb + 180) % 360
 
   const sbRad = useStatusBoardStore((s) => s.rad)
-  const radNum = sbRad ? parseInt(sbRad, 10) : NaN
+  const radNum = parseInt(effectiveRad(sbRad, fb), 10)
   // RAD is a radial (bearing FROM the carrier) — use directly, no +180.
   // Snap to the exact float when RAD is within 3° of marshalBearing so the two
   // line segments visually continue. The 3° window covers any map convergence

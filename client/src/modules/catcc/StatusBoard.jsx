@@ -12,7 +12,7 @@ import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
 import { useMissionClock }      from '../../utils/useMissionClock.js'
 import { toUtcDateTime, getTheatreUtcOffset } from '../../utils/theatreTime.js'
-import { COLUMNS, EDITABLE_COLS, EDIT_COL_IDX_MAP, isValidDecimal } from './statusBoardColumns.js'
+import { COLUMNS, EDITABLE_COLS, EDIT_COL_IDX_MAP, isValidDecimal, effectiveRad } from './statusBoardColumns.js'
 import { computeCatccCorrelations } from './correlationEngine.js'
 import { EditableCell } from './EditableCell.jsx'
 import { useStabilityAlert } from './useStabilityAlert.js'
@@ -238,7 +238,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <HeaderField label="DEP BTN" value={depBtn}       onChange={(v) => setHeader('depBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={12} />
         </div>
         <div className="sb-group">
-          <HeaderField label="RAD"     value={rad || String((((fb + 180) % 360) || 360)).padStart(3, '0')}  onChange={(v) => setHeader('rad', v)} inputW={28} maxLen={3} digitsOnly padZero={3} hdrIdx={13} />
+          <HeaderField label="RAD"     value={effectiveRad(rad, fb)}  onChange={(v) => setHeader('rad', v)} inputW={28} maxLen={3} digitsOnly padZero={3} hdrIdx={13} />
           <HeaderField label="BRC"     value={String(brc).padStart(3, '0')} onChange={() => {}} readOnly inputW={28} flash={brcAlert} />
           <HeaderField label="FB"      value={String(fb).padStart(3, '0')}  onChange={() => {}} readOnly inputW={28} flash={fbAlert} />
           <HeaderField label="SPD"     value={String(spd)}                  onChange={() => {}} readOnly inputW={24} flash={spdAlert} />
@@ -344,8 +344,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
             <button
               className="sb-add-btn sb-confirm-btn"
               onClick={() => {
-                const reciprocal = String((((fb + 180) % 360) || 360)).padStart(3, '0')
-                clearAll(reciprocal)
+                clearAll()
                 setConfirmingClear(false)
               }}
             >Confirm</button>
