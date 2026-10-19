@@ -21,8 +21,7 @@ import { resolveSlew, resolveDeclareTargets } from '../../utils/slewResolver.js'
 import { computeMagvar } from '../../utils/magvar.js'
 import { toMagneticFromTrue, toTrueFromMagnetic } from '../../utils/bearing.js'
 import { drawAicLayers, drawSector } from './canvas/drawAicLayers.js'
-import { drawAicContacts }     from './canvas/drawAicContacts.js'
-import { drawAbmMissiles }     from '../../utils/declarationSymbols.js'
+import { drawAicContacts, drawAicMissiles } from './canvas/drawAicContacts.js'
 import { drawGeo }             from '../../canvas/drawGeo.js'
 import { drawRelief }          from '../../canvas/drawRelief.js'
 import { computePicture, sectorAxisBearing } from './canvas/computePicture.js'
@@ -521,7 +520,7 @@ export default function AicScope() {
       mergedThreatRings, threatRadius, fadedRef.current, Date.now(), findMarker,
       showCentroid ? picture?.centroid : null,
       showAxis && picture?.axisOrigin ? { origin: picture.axisOrigin, axisBearing: picture.axisBearing } : null)
-    drawAbmMissiles(ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum), ptlSeconds)
+    drawAicMissiles(ctx, view, visibleMissiles, (id, weapon) => trueDeclaration(weapon, myCoalitionNum), ptlSeconds, rangeNm)
     if (pendingSector && sectorPreviewOrigin) {
       drawSector(ctx, view, { ...pendingSector, origin: sectorPreviewOrigin }, true)
     }

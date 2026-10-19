@@ -58,9 +58,9 @@ export function drawHistoryTrail(ctx, view, trail, historyLimit, color, symHalf 
 // (server/src/missileDetection.js), own-coalition/neutral missiles are
 // unconditionally visible — see abmScopeHelpers.js's getAbmVisibleMissiles.
 //
-// ptlSeconds/history/historyLimit default off so AIC's call site (which
-// passes neither) keeps its current minimal treatment (triangle + PTL, no
-// trail) without needing any changes there beyond ptlSeconds.
+// ptlSeconds/history/historyLimit default off. AIC's drawAicMissiles passes
+// none of them (triangles only) and draws its own PTLs clipped to the inner
+// dugout ring.
 //
 // blinkingIds/blinkOn drive the missile-launch alert cue (see
 // abm/missileAlert/useMissileAlertTracker.js): while a missile's id is in

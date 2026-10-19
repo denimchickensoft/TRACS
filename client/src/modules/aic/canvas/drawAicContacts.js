@@ -2,6 +2,7 @@
  * AIC contact rendering:
  *   - HAFU symbols (HOSTILE/BOGEY/NEUTRAL/FRIENDLY)
  *   - Predicted Track Lines (PTL)
+ *   - Missiles (inside the inner ring only)
  *   - Dugout diamonds on the gold band for out-of-range hostiles
  *   - BRAA intercept overlay lines
  */
@@ -9,7 +10,7 @@
 import { latLngToCanvas } from '../../../utils/projection.js'
 import { gridBearingRangeNm, toMagneticFromTrue, destinationPoint } from '../../../utils/bearing.js'
 import { DECLARATION } from '../../../store/aic.js'
-import { DECL_COLOR, drawPtl } from '../../../utils/declarationSymbols.js'
+import { DECL_COLOR, drawPtl, drawAbmMissiles } from '../../../utils/declarationSymbols.js'
 import { computeAicIntercept } from '../aicGeometry.js'
 import { formatRangeFine } from '../../../utils/units.js'
 
@@ -99,6 +100,15 @@ function drawDugout(ctx, view, units, getDecl, rangeNm, symSize) {
   }
 }
 
+// Lines (PTLs, BRAA) are clipped to the inner ring so they stop at the
+// dugout band. Symbols are culled by their centre instead, so one sitting
+// right on the ring isn't cut in half.
+function clipToInnerRing(ctx, cx, cy, clipR) {
+  ctx.beginPath()
+  ctx.arc(cx, cy, clipR, 0, Math.PI * 2)
+  ctx.clip()
+}
+
 function computeMergePt(fighter, bogey) {
   const result = computeAicIntercept(fighter, bogey)
   if (!result) return null
@@ -110,6 +120,8 @@ function drawBraaOverlays(ctx, view, braaList, units, rangeNm) {
   const cy    = view.height / 2
   const clipR = Math.max(0, (rangeNm - 10) * view.pixelsPerNm)
 
+  ctx.save()
+  clipToInnerRing(ctx, cx, cy, clipR)
   for (const pair of braaList) {
     const fighter = units[pair.fighterId]
     const bogey   = units[pair.bogeyId]
@@ -140,6 +152,7 @@ function drawBraaOverlays(ctx, view, braaList, units, rangeNm) {
       }
     }
   }
+  ctx.restore()
 }
 
 function drawRbl(ctx, view, rbl, declinationDeg) {
@@ -218,9 +231,7 @@ function drawThreatRings(ctx, view, units, threatRings, threatRadius, getDecl, c
 
 function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize, ptlSeconds) {
   const S = symRadius(symSize)
-  ctx.save()
-  ctx.globalAlpha = 0.5
-
+  const coasting = []
   for (const [, entry] of Object.entries(fadedContacts)) {
     const { unit, disappearedAt, decl } = entry
     if (!unit.position) continue
@@ -230,15 +241,48 @@ function drawFadedContacts(ctx, view, fadedContacts, now, clipR, cx, cy, symSize
     const { lat: coastLat, lng: coastLng } = destinationPoint(unit.position.lat, unit.position.lng, track * 180 / Math.PI, distNm)
     const { x, y }   = latLngToCanvas(coastLat, coastLng, view)
     if (Math.hypot(x - cx, y - cy) > clipR) continue
-
-    // PTL along coast track (gray)
-    drawPtl(ctx, x, y, unit, view, ptlSeconds, '#888')
-
-    // Same HAFU symbol, gray
-    drawSymbol(ctx, x, y, decl ?? DECLARATION.BOGEY, S, '#888')
+    coasting.push({ x, y, unit, decl })
   }
 
+  ctx.save()
+  ctx.globalAlpha = 0.5
+
+  // PTL along coast track (gray)
+  ctx.save()
+  clipToInnerRing(ctx, cx, cy, clipR)
+  for (const { x, y, unit } of coasting) drawPtl(ctx, x, y, unit, view, ptlSeconds, '#888')
   ctx.restore()
+
+  // Same HAFU symbol, gray
+  for (const { x, y, decl } of coasting) drawSymbol(ctx, x, y, decl ?? DECLARATION.BOGEY, S, '#888')
+
+  ctx.restore()
+}
+
+// Missiles beyond the inner ring are hidden like other contacts out there;
+// PTLs of the ones inside stop at the ring. Triangles are drawn by the shared
+// drawAbmMissiles with ptlSeconds 0 so the clip only applies to the PTLs.
+export function drawAicMissiles(ctx, view, missiles, getDecl, ptlSeconds, rangeNm) {
+  const cx    = view.width  / 2
+  const cy    = view.height / 2
+  const clipR = Math.max(0, (rangeNm - 10) * view.pixelsPerNm)
+
+  const inner = {}
+  ctx.save()
+  clipToInnerRing(ctx, cx, cy, clipR)
+  for (const [id, weapon] of Object.entries(missiles)) {
+    if (!weapon.position) continue
+    const { x, y } = latLngToCanvas(weapon.position.lat, weapon.position.lng, view)
+    if (Math.hypot(x - cx, y - cy) > clipR) continue
+    inner[id] = weapon
+    if (ptlSeconds > 0) {
+      const color = DECL_COLOR[getDecl(id, weapon)] ?? DECL_COLOR[DECLARATION.BOGEY]
+      drawPtl(ctx, x, y, { ...weapon, track: weapon.heading }, view, ptlSeconds, color)
+    }
+  }
+  ctx.restore()
+
+  drawAbmMissiles(ctx, view, inner, getDecl)
 }
 
 export function drawAicContacts(
@@ -269,19 +313,23 @@ export function drawAicContacts(
   // Dugout diamonds on the band
   drawDugout(ctx, view, units, getDecl, rangeNm, symSize)
 
-  // Contacts: PTL then symbol — only within the inner dugout ring
-
+  // Contacts: PTLs then symbols — only within the inner dugout ring
+  const onScope = []
   for (const [id, unit] of Object.entries(units)) {
     if (!unit.position) continue
     const { x, y } = latLngToCanvas(unit.position.lat, unit.position.lng, view)
     if (Math.hypot(x - cx, y - cy) > clipR) continue  // beyond inner ring — dugout only
-
-    const decl  = getDecl(id, unit)
-    const color = DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY]
-
-    drawPtl(ctx, x, y, unit, view, ptlSeconds, color)
-    drawSymbol(ctx, x, y, decl, S)
+    onScope.push({ x, y, unit, decl: getDecl(id, unit) })
   }
+
+  ctx.save()
+  clipToInnerRing(ctx, cx, cy, clipR)
+  for (const { x, y, unit, decl } of onScope) {
+    drawPtl(ctx, x, y, unit, view, ptlSeconds, DECL_COLOR[decl] ?? DECL_COLOR[DECLARATION.BOGEY])
+  }
+  ctx.restore()
+
+  for (const { x, y, decl } of onScope) drawSymbol(ctx, x, y, decl, S)
 
   // Faded / coasting contacts
   drawFadedContacts(ctx, view, fadedContacts, fadedNow, clipR, cx, cy, symSize, ptlSeconds)
