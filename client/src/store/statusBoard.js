@@ -3,6 +3,7 @@ import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 import { generateBcn } from '../utils/bcn.js'
 import { shallowEqual } from '../utils/storeSync.js'
 import { isValidTime } from '../modules/catcc/statusBoardColumns.js'
+import { useSessionStore } from './session.js'
 
 const SB_KEY = 'tracs.catcc.sb'
 
@@ -182,14 +183,21 @@ export const useStatusBoardStore = create((set) => ({
 }))
 
 // ── Persistence + cross-window sync ──────────────────────────────────────────
-// _syncing suppresses re-broadcast in all three cases: BroadcastChannel apply,
-// WebRTC apply (applyStatusBoardUpdate), and callsign rename (renameStatusBoardEntry).
+// A popped-out board has no WebRTC client: its main window carries its edits
+// to the network and carries remote edits back to it. _applying records where
+// the change being applied came from, so the subscriber forwards it everywhere
+// except back to its source:
+//   null      a local edit: localStorage, WebRTC and the channel
+//   'remote'  another controller (WebRTC apply or callsign rename): localStorage + channel
+//   'popup'   this position's pop-out: localStorage + WebRTC
+//   'window'  another main window of this position: localStorage only (it sent it itself)
 // Deliberately NOT utils/storeSync.js's syncStore — that helper's isSyncing flag
 // is private to its own subscribe/onmessage closure, with no way for external
-// callers to suppress a re-broadcast. This store needs one shared flag settable
-// from three places (the channel handler plus the two functions below), which
-// syncStore's API doesn't support without a broader API change of its own.
-let _syncing = false
+// callers to mark an apply's source.
+let _applying = null
+
+const _params  = new URLSearchParams(window.location.search)
+const _isPopup = !!_params.get('window')
 
 // WebRTC broadcast hook — registered by the WebRTC client after sign-in.
 const { register: registerStatusBoardBroadcast, broadcast: _webrtcBroadcast } = createBroadcastHook()
@@ -212,44 +220,94 @@ export function buildStatusBoardPayload(s) {
   }
 }
 
-const _sbCh = new BroadcastChannel('tracs-statusboard')
+// Rows from other controllers come from their own counters, and the wire
+// payload carries no nextId, so a new local row must start past every id
+// already on the board. Never moves backwards.
+function nextFreeId(entries, nextId) {
+  return entries.reduce((n, e) => (Number.isFinite(e.id) && e.id >= n ? e.id + 1 : n), nextId)
+}
 
-useStatusBoardStore.subscribe((state, prev) => {
-  if (_syncing || shallowEqual(serialize(state), serialize(prev))) return
-  try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
-  _webrtcBroadcast?.(buildStatusBoardPayload(state))
-  _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
-})
-
-_sbCh.onmessage = (e) => {
-  if (e.data?.type === 'STATE_UPDATE') {
-    _syncing = true
-    useStatusBoardStore.setState(e.data.state)
-    _syncing = false
-  } else if (e.data?.type === 'REQUEST_STATE') {
-    _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(useStatusBoardStore.getState()) })
+function applyFrom(source, patch) {
+  _applying = source
+  try {
+    useStatusBoardStore.setState(patch)
+  } finally {
+    _applying = null
   }
 }
-_sbCh.postMessage({ type: 'REQUEST_STATE' })
 
-// Update a status board entry's callsign by unitId without triggering re-broadcast.
+// Scoped to this position's own windows, like store/strips.js: two positions
+// signed in from one app instance (Electron's New Window) each keep their own board.
+let _sbCh = null
+const _channelName = (facilityId, positionName) => `tracs-statusboard-${facilityId}-${positionName}`
+
+function _setupChannel(facilityId, positionName) {
+  _sbCh?.close()
+  _sbCh = new BroadcastChannel(_channelName(facilityId, positionName))
+  _sbCh.onmessage = (e) => {
+    if (e.data?.type === 'STATE_UPDATE') {
+      const { state } = e.data
+      const entries = state.entries ?? useStatusBoardStore.getState().entries
+      applyFrom(e.data.relay ? 'popup' : 'window', {
+        ...state,
+        nextId: nextFreeId(entries, Math.max(state.nextId ?? 1, useStatusBoardStore.getState().nextId)),
+      })
+    } else if (e.data?.type === 'REQUEST_STATE') {
+      // A reply is never a relay request: opening a second pop-out mustn't
+      // make the main window resend the board to everyone.
+      _sbCh.postMessage({ type: 'STATE_UPDATE', state: serialize(useStatusBoardStore.getState()) })
+    }
+  }
+  _sbCh.postMessage({ type: 'REQUEST_STATE' })
+}
+
+useStatusBoardStore.subscribe((state, prev) => {
+  if (shallowEqual(serialize(state), serialize(prev))) return
+  try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
+  if (_applying === 'window') return
+  if (_applying !== 'remote') _webrtcBroadcast?.(buildStatusBoardPayload(state))
+  if (_applying === 'popup') return
+  _sbCh?.postMessage({ type: 'STATE_UPDATE', state: serialize(state), relay: _isPopup })
+})
+
+if (_isPopup) {
+  // A pop-out knows its owning position from the URL it was opened with
+  // (App.jsx's undock handlers).
+  _setupChannel(_params.get('facilityId') ?? '', _params.get('positionName') ?? '')
+} else {
+  // A main window only knows its position after login, and may sign into a
+  // different one later without restarting.
+  let _lastKey = null
+  const _trySetup = () => {
+    const { facilityId, positionName } = useSessionStore.getState()
+    if (!facilityId || !positionName) return
+    const key = _channelName(facilityId, positionName)
+    if (key === _lastKey) return
+    _lastKey = key
+    _setupChannel(facilityId, positionName)
+  }
+  useSessionStore.subscribe(_trySetup)
+  _trySetup()
+}
+
+// Update a status board entry's callsign by unitId without sending it over
+// WebRTC: every peer applies the same CALLSIGN_RENAME itself.
 export function renameStatusBoardEntry(unitId, newCallsign) {
-  _syncing = true
+  _applying = 'remote'
   try {
     useStatusBoardStore.getState().renameEntry(unitId, newCallsign)
   } finally {
-    _syncing = false
+    _applying = null
   }
 }
 
-// Apply an incoming STATUS_BOARD_UPDATE payload without triggering re-broadcast.
+// Apply an incoming STATUS_BOARD_UPDATE payload without sending it back out
+// over WebRTC. One setState, so a pop-out never sees a new header with old rows.
 export function applyStatusBoardUpdate(payload) {
-  _syncing = true
-  try {
-    const flat = { ...(payload.eventHeader ?? {}), ...(payload.recoveryStatus ?? {}) }
-    if (Object.keys(flat).length > 0)  useStatusBoardStore.setState(flat)
-    if (payload.entries != null)        useStatusBoardStore.setState({ entries: payload.entries })
-  } finally {
-    _syncing = false
+  const patch = { ...(payload.eventHeader ?? {}), ...(payload.recoveryStatus ?? {}) }
+  if (payload.entries != null) {
+    patch.entries = payload.entries
+    patch.nextId  = nextFreeId(payload.entries, useStatusBoardStore.getState().nextId)
   }
+  if (Object.keys(patch).length > 0) applyFrom('remote', patch)
 }
