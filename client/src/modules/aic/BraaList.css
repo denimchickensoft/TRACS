@@ -174,3 +174,21 @@
   border-color: #555;
   color: #888;
 }
+
+.braa-confirm-label {
+  color:          #886644;
+  font-size:      0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right:   4px;
+}
+
+.braa-confirm-btn {
+  border-color: #664422;
+  color:        #CC6633;
+  margin-right: 4px;
+}
+.braa-confirm-btn:hover {
+  border-color: #AA5533;
+  color:        #FF7744;
+}

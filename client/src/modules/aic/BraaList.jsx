@@ -136,6 +136,8 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
     return isNaN(saved) ? 1.0 : Math.min(BRAA_SCALE_MAX, Math.max(BRAA_SCALE_MIN, saved))
   })
   const [scaleHint, setScaleHint] = useState(false)
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  useEffect(() => { if (!braaList.length) setConfirmingClear(false) }, [braaList.length])
   const scaleHintRef = useRef(null)
 
   useEffect(() => { onScaleChange?.(scale) }, [scale]) // eslint-disable-line
@@ -247,12 +249,20 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
 
       {braaList.length > 0 && (
         <div className="braa-footer">
-          <button
-            className="braa-clear-btn"
-            onClick={() => { if (window.confirm('Clear all BRAA pairs?')) braaList.forEach(p => removeBraaPair(p.id)) }}
-          >
-            Clear All
-          </button>
+          {confirmingClear ? (
+            <>
+              <span className="braa-confirm-label">Clear ALL BRAA pairs?</span>
+              <button
+                className="braa-clear-btn braa-confirm-btn"
+                onClick={() => { braaList.forEach(p => removeBraaPair(p.id)); setConfirmingClear(false) }}
+              >Confirm</button>
+              <button className="braa-clear-btn" onClick={() => setConfirmingClear(false)}>Cancel</button>
+            </>
+          ) : (
+            <button className="braa-clear-btn" onClick={() => setConfirmingClear(true)}>
+              Clear All
+            </button>
+          )}
         </div>
       )}
     </div>
