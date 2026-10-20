@@ -185,6 +185,22 @@ export const useStatusBoardStore = create((set) => ({
       ),
     })),
 
+  // Clear one column on these rows, as Delete would in each cell: a linked
+  // DME/ANG pair clears together, and RAD/BTN fall back to the header.
+  clearColumn: (ids, field) =>
+    set((s) => {
+      const clear = new Set(ids)
+      return {
+        entries: s.entries.map((e) => {
+          if (!clear.has(e.id)) return e
+          const fields = (field === 'dme' || field === 'angels') ? stackFieldsFor(e, field, '')
+                       : field === 'appRad' ? { appRad: '', radMode: '' }
+                       : { [field]: '' }
+          return { ...e, ...fields, auto: withoutAuto(e.auto, field) }
+        }),
+      }
+    }),
+
   removeEntries: (ids) =>
     set((s) => {
       const gone = new Set(ids)

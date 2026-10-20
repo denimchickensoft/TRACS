@@ -48,13 +48,14 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     event, launch, recovery, clg, vis, qnh,
     caseLaunch, caseRecovery, cvApp, marBtn, app, twrBtn, depBtn, rad, radAuto,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
-    clearMissionData, clearAll, recycleBcn, assignNextMarshal, setStackValue, toggleFocus, setRad, setAppRad, clearApproach, removeEntries,
+    clearMissionData, clearAll, recycleBcn, assignNextMarshal, setStackValue, toggleFocus, setRad, setAppRad, clearApproach, removeEntries, clearColumn,
   } = useStatusBoardStore()
 
   const [importOpen,       setImportOpen]       = useState(false)
   const [confirmingClear,  setConfirmingClear]  = useState(false)
   // Right-click menu on a SIDE: { kind, entryId, x, y, confirming }. kind 'clear'
-  // (green, approach side) clears the approach fields; 'delete' (departure side) removes rows.
+  // (green, approach side) clears the approach fields; 'delete' (departure side) removes rows;
+  // 'column' (any other cell) clears that cell's column, with field set.
   const [rowMenu,          setRowMenu]          = useState(null)
 
   const hasMissionData = clg || vis || qnh || entries.some(e => e.fromMission)
@@ -208,9 +209,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   }, [rowMenu])
 
   // The menu renders outside the CSS-zoomed board, fixed at the click point
-  const openRowMenu = (kind, entryId) => (e) => {
+  const openRowMenu = (kind, entryId, field = null) => (e) => {
     e.preventDefault()
-    setRowMenu({ kind, entryId, x: e.clientX, y: e.clientY, confirming: null })
+    setRowMenu({ kind, entryId, field, x: e.clientX, y: e.clientY, confirming: null })
   }
   // Keep the menu inside the window near the right/bottom edges
   const fitRowMenu = (el) => {
@@ -228,8 +229,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                : which === 'above' ? sortedEntries.slice(0, Math.max(idx, 0))
                : sortedEntries
     const ids = rows.map((e) => e.id)
-    if (rowMenu.kind === 'delete') removeEntries(ids)
-    else clearApproach(ids)
+    if (rowMenu.kind === 'delete')      removeEntries(ids)
+    else if (rowMenu.kind === 'column') clearColumn(ids, rowMenu.field)
+    else                                clearApproach(ids)
     setRowMenu(null)
   }
 
@@ -352,7 +354,10 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     // An emergency radial (E) turns the aircraft's whole row red
                     alert={entry.radMode === 'E' || (col.id === 'state' && isFuelAtBingo(entry)) || !!dups?.[col.field]?.has(entry.id)}
                     auto={col.stackFmt ? !entry.unlinked : col.id === 'appRad' ? (!entry.appRad || entry.radMode === 'H' || !!entry.auto?.appRad) : col.id === 'btn' ? !entry.btn : !!entry.auto?.[col.field]}
-                    onContextMenu={col.id === 'side2' ? openRowMenu('clear', entry.id) : col.id === 'side1' ? openRowMenu('delete', entry.id) : undefined}
+                    onContextMenu={col.id === 'side2' ? openRowMenu('clear', entry.id)
+                      : col.id === 'side1' ? openRowMenu('delete', entry.id)
+                      : col.readOnly ? undefined
+                      : openRowMenu('column', entry.id, col.field)}
                     onDoubleClick={col.id === 'side2' ? () => { assignNextMarshal(entry.id, boardRad); toggleFocus(entry.id) } : undefined}
                     cellIdx={col.readOnly ? undefined : rowIdx * layout.editable.length + layout.idxMap[col.id]}
                     entryId={col.readOnly ? undefined : entry.id}
@@ -410,8 +415,8 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
 
       {rowMenu && createPortal(
         <div ref={fitRowMenu} className="sb-ctx-menu" style={{ left: rowMenu.x, top: rowMenu.y }}>
-          {(rowMenu.kind === 'delete'
-            ? [['below', 'Delete rows below'], ['above', 'Delete rows above'], ['all', 'Delete all rows']]
+          {(rowMenu.kind === 'delete' ? [['below', 'Delete rows below'], ['above', 'Delete rows above'], ['all', 'Delete all rows']]
+            : rowMenu.kind === 'column' ? [['below', 'Clear column below'], ['above', 'Clear column above']]
             : [['below', 'Clear below this row'], ['above', 'Clear above this row'], ['all', 'Clear all']]
           ).map(([which, label]) => (
             <button
