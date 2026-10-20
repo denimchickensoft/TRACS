@@ -13,7 +13,7 @@ function serialize(s) {
     clg: s.clg, vis: s.vis, qnh: s.qnh,
     caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, cvApp: s.cvApp,
     marBtn: s.marBtn, app: s.app, twrBtn: s.twrBtn, depBtn: s.depBtn,
-    rad: s.rad,
+    rad: s.rad, radAuto: s.radAuto,
     entries: s.entries, nextId: s.nextId,
   }
 }
@@ -47,6 +47,7 @@ export const useStatusBoardStore = create((set) => ({
   twrBtn:       saved.twrBtn       ?? '',
   depBtn:       saved.depBtn       ?? '',
   rad:          saved.rad          ?? '',
+  radAuto:      saved.radAuto      ?? false,
   entries:      saved.entries      ?? [],
   nextId:       saved.nextId       ?? 1,
   // The row whose DME/ANGELS the scope status text shows. This window's own
@@ -55,13 +56,24 @@ export const useStatusBoardStore = create((set) => ({
 
   setHeader: (field, value) => set({ [field]: value }),
 
+  // RAD as typed (auto false), or as worked out by the board (auto true, green).
+  setRad: (rad, auto = false) => set({ rad, radAuto: auto && !!rad }),
+
+  // An approach radial as typed, or an E/H radial worked out at entry (mode 'E'/'H').
+  setAppRad: (id, appRad, mode = '') =>
+    set((s) => ({
+      entries: s.entries.map((e) => e.id === id
+        ? { ...e, appRad, radMode: appRad ? mode : '', auto: withoutAuto(e.auto, 'appRad') }
+        : e),
+    })),
+
   addEntry: (callsign = '', unitId = null) =>
     set((s) => {
       if (callsign && s.entries.some((e) => e.callsign === callsign)) return s
       return {
         entries: [...s.entries, {
           id: s.nextId, evt: '', callsign, unitId,
-          sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', eat: '', dme: '', angels: '', state: '', ata: '',
+          sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', appRad: '', eat: '', btn: '', dme: '', angels: '', state: '', ata: '',
         }],
         nextId: s.nextId + 1,
       }
@@ -78,7 +90,7 @@ export const useStatusBoardStore = create((set) => ({
           id, fromMission: true,
           evt: '', callsign: e.callsign, unitId: null,
           sideNumber: e.modex, bcn: '', pilot: '', type: e.type, msn: e.task,
-          atd: '', radial: '', bingo: '', eat: '', dme: '', angels: '', state: '', ata: '',
+          atd: '', radial: '', bingo: '', appRad: '', eat: '', btn: '', dme: '', angels: '', state: '', ata: '',
         })
         id++
       }
@@ -112,7 +124,7 @@ export const useStatusBoardStore = create((set) => ({
 
   // CASE 2/3 marshal: the next EAT after the latest in the stack, and the lowest
   // free altitude that keeps the stack climbing (see fitStackAngels).
-  assignNextMarshal: (id) =>
+  assignNextMarshal: (id, defaultRad) =>
     set((s) => {
       if (s.caseRecovery !== '2' && s.caseRecovery !== '3') return s
       const entry = s.entries.find((e) => e.id === id)
@@ -121,18 +133,37 @@ export const useStatusBoardStore = create((set) => ({
       // stack climbing; with none free between its neighbours the row is left
       // for the controller (the board shows it red).
       const eat    = entry.eat || nextStackEat(s.entries, id)
-      const angels = eat ? fitStackAngels(s.entries, id, eat) : null
+      const angels = eat ? fitStackAngels(s.entries, id, eat, defaultRad) : null
       if (angels == null) return s
+      // The row keeps the radial it was given now, even if the header RAD changes later
+      const radial = !entry.appRad && defaultRad ? { appRad: defaultRad, radMode: '' } : {}
+      const auto = { ...entry.auto, ...(entry.eat ? {} : { eat: true }), ...(radial.appRad ? { appRad: true } : {}) }
       return {
         entries: s.entries.map((e) => e.id === id
-          ? { ...e, ...stackFieldsFor(e, 'angels', String(angels)), ...(entry.eat ? {} : { eat, auto: { ...e.auto, eat: true } }) }
+          ? { ...e, ...stackFieldsFor(e, 'angels', String(angels)), ...(entry.eat ? {} : { eat }), ...radial, auto }
+          : e),
+      }
+    }),
+
+  // Clear the approach side of these rows (the green SIDE's right-click
+  // menu). Blank RAD and BTN fall back to the header values.
+  clearApproach: (ids) =>
+    set((s) => {
+      const clear = new Set(ids)
+      return {
+        entries: s.entries.map((e) => clear.has(e.id)
+          ? {
+              ...e, appRad: '', radMode: '', dme: '', angels: '', unlinked: false,
+              eat: '', btn: '', state: '', ata: '',
+              auto: withoutAuto(withoutAuto(e.auto, 'eat'), 'appRad'),
+            }
           : e),
       }
     }),
 
   insertEntryAfter: (afterId) =>
     set((s) => {
-      const newEntry = { id: s.nextId, fromMission: false, evt: '', callsign: '', unitId: null, sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', eat: '', dme: '', angels: '', state: '', ata: '' }
+      const newEntry = { id: s.nextId, fromMission: false, evt: '', callsign: '', unitId: null, sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', appRad: '', eat: '', btn: '', dme: '', angels: '', state: '', ata: '' }
       const idx = s.entries.findIndex((e) => e.id === afterId)
       const entries = idx === -1
         ? [...s.entries, newEntry]
@@ -154,6 +185,12 @@ export const useStatusBoardStore = create((set) => ({
       ),
     })),
 
+  removeEntries: (ids) =>
+    set((s) => {
+      const gone = new Set(ids)
+      return { entries: s.entries.filter((e) => !gone.has(e.id)), focusId: gone.has(s.focusId) ? null : s.focusId }
+    }),
+
   removeEntry: (id) =>
     set((s) => ({ entries: s.entries.filter((e) => e.id !== id), focusId: s.focusId === id ? null : s.focusId })),
 
@@ -174,7 +211,7 @@ export const useStatusBoardStore = create((set) => ({
     event: '', launch: '', recovery: '',
     clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', cvApp: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
-    rad: '',
+    rad: '', radAuto: false,
     entries: [], nextId: 1,
   }),
 
@@ -182,7 +219,7 @@ export const useStatusBoardStore = create((set) => ({
     event: '', launch: '', recovery: '',
     clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', cvApp: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
-    rad: '',
+    rad: '', radAuto: false,
     entries: [], nextId: 1,
   }),
 }))
@@ -219,7 +256,7 @@ export function buildStatusBoardPayload(s) {
     recoveryStatus: {
       caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, cvApp: s.cvApp,
       app: s.app, marBtn: s.marBtn, twrBtn: s.twrBtn, depBtn: s.depBtn,
-      rad: s.rad,
+      rad: s.rad, radAuto: s.radAuto,
     },
     entries: s.entries,
   }
@@ -244,11 +281,11 @@ function applyFrom(source, patch) {
 // Scoped to this position's own windows, like store/strips.js: two positions
 // signed in from one app instance (Electron's New Window) each keep their own board.
 let _sbCh = null
-const _channelName = (facilityId, positionName) => `tracs-statusboard-${facilityId}-${positionName}`
+const _sbChannelName = (facilityId, positionName) => `tracs-statusboard-${facilityId}-${positionName}`
 
-function _setupChannel(facilityId, positionName) {
+function _setupSbChannel(facilityId, positionName) {
   _sbCh?.close()
-  _sbCh = new BroadcastChannel(_channelName(facilityId, positionName))
+  _sbCh = new BroadcastChannel(_sbChannelName(facilityId, positionName))
   _sbCh.onmessage = (e) => {
     if (e.data?.type === 'STATE_UPDATE') {
       const { state } = e.data
@@ -285,7 +322,7 @@ useStatusBoardStore.subscribe((state, prev) => {
 if (_isPopup) {
   // A pop-out knows its owning position from the URL it was opened with
   // (App.jsx's undock handlers).
-  _setupChannel(_params.get('facilityId') ?? '', _params.get('positionName') ?? '')
+  _setupSbChannel(_params.get('facilityId') ?? '', _params.get('positionName') ?? '')
 } else {
   // A main window only knows its position after login, and may sign into a
   // different one later without restarting.
@@ -293,10 +330,10 @@ if (_isPopup) {
   const _trySetup = () => {
     const { facilityId, positionName } = useSessionStore.getState()
     if (!facilityId || !positionName) return
-    const key = _channelName(facilityId, positionName)
+    const key = _sbChannelName(facilityId, positionName)
     if (key === _lastKey) return
     _lastKey = key
-    _setupChannel(facilityId, positionName)
+    _setupSbChannel(facilityId, positionName)
   }
   useSessionStore.subscribe(_trySetup)
   _trySetup()

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
+import { createPortal } from 'react-dom'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useStatusBoardStore }  from '../../store/statusBoard.js'
 import { MissionImport } from './MissionImport.jsx'
@@ -12,7 +13,7 @@ import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
 import { useMissionClock }      from '../../utils/useMissionClock.js'
 import { toUtcDateTime, getTheatreUtcOffset } from '../../utils/theatreTime.js'
-import { LAYOUTS, isMarshalCase, findStackConflicts, isValidDecimal, isValidTime, effectiveRad, resolveEat, formatEat, eatSortKey } from './statusBoardColumns.js'
+import { LAYOUTS, isMarshalCase, findStackConflicts, appRadOf, radialFromFb, btnOf, caseBtn, isValidDecimal, isValidTime, effectiveRad, resolveEat, formatEat, eatSortKey } from './statusBoardColumns.js'
 import { computeCatccCorrelations } from './correlationEngine.js'
 import { EditableCell } from './EditableCell.jsx'
 import { useStabilityAlert } from './useStabilityAlert.js'
@@ -45,13 +46,16 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const wheelDir = useWheelDirection()
   const {
     event, launch, recovery, clg, vis, qnh,
-    caseLaunch, caseRecovery, cvApp, marBtn, app, twrBtn, depBtn, rad,
+    caseLaunch, caseRecovery, cvApp, marBtn, app, twrBtn, depBtn, rad, radAuto,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
-    clearMissionData, clearAll, recycleBcn, assignNextMarshal, setStackValue, toggleFocus,
+    clearMissionData, clearAll, recycleBcn, assignNextMarshal, setStackValue, toggleFocus, setRad, setAppRad, clearApproach, removeEntries,
   } = useStatusBoardStore()
 
   const [importOpen,       setImportOpen]       = useState(false)
   const [confirmingClear,  setConfirmingClear]  = useState(false)
+  // Right-click menu on a SIDE: { kind, entryId, x, y, confirming }. kind 'clear'
+  // (green, approach side) clears the approach fields; 'delete' (departure side) removes rows.
+  const [rowMenu,          setRowMenu]          = useState(null)
 
   const hasMissionData = clg || vis || qnh || entries.some(e => e.fromMission)
 
@@ -142,7 +146,10 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   // ── Sorted view of entries (does not mutate store order) ──────────
   const marshal = isMarshalCase(caseRecovery)
   const layout  = marshal ? LAYOUTS.marshal : LAYOUTS.base
-  const dups    = useMemo(() => (marshal ? findStackConflicts(entries) : null), [marshal, entries])
+  // A blank approach RAD follows the header RAD (itself automatic from FB)
+  const boardRad = effectiveRad(rad, fb)
+  const boardBtn = caseBtn(caseRecovery, twrBtn, app)
+  const dups    = useMemo(() => (marshal ? findStackConflicts(entries, boardRad) : null), [marshal, entries, boardRad])
 
   const nowMin = utcSeconds == null ? null : Math.floor(utcSeconds / 60)
   const sortedEntries = useMemo(() => {
@@ -187,6 +194,44 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
       if (pilotName) useStatusBoardStore.getState().updateEntry(entry.id, 'pilot', pilotName)
     }
   }, [entries, units])
+
+  useEffect(() => {
+    if (!rowMenu) return
+    const close = (e) => { if (!e.target.closest?.('.sb-ctx-menu')) setRowMenu(null) }
+    const onKey = (e) => { if (e.key === 'Escape') setRowMenu(null) }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [rowMenu])
+
+  // The menu renders outside the CSS-zoomed board, fixed at the click point
+  const openRowMenu = (kind, entryId) => (e) => {
+    e.preventDefault()
+    setRowMenu({ kind, entryId, x: e.clientX, y: e.clientY, confirming: null })
+  }
+  // Keep the menu inside the window near the right/bottom edges
+  const fitRowMenu = (el) => {
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (r.right > window.innerWidth)   el.style.left = `${Math.max(0, window.innerWidth - r.width - 4)}px`
+    if (r.bottom > window.innerHeight) el.style.top  = `${Math.max(0, window.innerHeight - r.height - 4)}px`
+  }
+
+  // "Above"/"below" follow the rows as displayed (any column sort included),
+  // and leave the clicked row as it is.
+  const runRowClear = (which) => {
+    const idx = sortedEntries.findIndex((e) => e.id === rowMenu.entryId)
+    const rows = which === 'below' ? sortedEntries.slice(idx + 1)
+               : which === 'above' ? sortedEntries.slice(0, Math.max(idx, 0))
+               : sortedEntries
+    const ids = rows.map((e) => e.id)
+    if (rowMenu.kind === 'delete') removeEntries(ids)
+    else clearApproach(ids)
+    setRowMenu(null)
+  }
 
   const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
 
@@ -237,7 +282,11 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
       <div className="sb-section">
         <div className="sb-group">
           <CaseField suffix="LAUNCH"   value={caseLaunch}   onChange={(v) => setHeader('caseLaunch',   v)} hdrIdx={7} />
-          <CaseField suffix="RECOVERY" value={caseRecovery} onChange={(v) => setHeader('caseRecovery', v)} hdrIdx={8} />
+          <CaseField suffix="RECOVERY" value={caseRecovery} onChange={(v) => {
+            setHeader('caseRecovery', v)
+            // The marshal radial is fixed when a stack recovery starts, not followed as the carrier turns
+            if (isMarshalCase(v) && !useStatusBoardStore.getState().rad) setRad(radialFromFb(fb), true)
+          }} hdrIdx={8} />
           {isMarshalCase(caseRecovery) && (
             <CaseField label="CV" suffix="APP" value={cvApp} onChange={(v) => setHeader('cvApp', v)} hdrIdx={8.5} />
           )}
@@ -249,7 +298,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <HeaderField label="DEP BTN" value={depBtn}       onChange={(v) => setHeader('depBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={12} />
         </div>
         <div className="sb-group">
-          <HeaderField label="RAD"     value={effectiveRad(rad, fb)} auto={!rad} onChange={(v) => setHeader('rad', v)} inputW={28} maxLen={3} digitsOnly padZero={3} hdrIdx={13} />
+          <HeaderField label="RAD"     value={effectiveRad(rad, fb)} auto={!rad || radAuto}
+            // Clearing RAD works it out again from the current FB (CASE 2/3), or leaves it live
+            onChange={(v) => (v ? setRad(v) : setRad(isMarshalCase(caseRecovery) ? radialFromFb(fb) : '', true))} inputW={28} maxLen={3} digitsOnly padZero={3} hdrIdx={13} />
           <HeaderField label="BRC"     value={String(brc).padStart(3, '0')} onChange={() => {}} readOnly inputW={28} flash={brcAlert} />
           <HeaderField label="FB"      value={String(fb).padStart(3, '0')}  onChange={() => {}} readOnly inputW={28} flash={fbAlert} />
           <HeaderField label="SPD"     value={String(spd)}                  onChange={() => {}} readOnly inputW={24} flash={spdAlert} />
@@ -285,11 +336,12 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
               {layout.cols.map((col) => (
                 <div key={col.id} className={col.id === 'bcn' ? 'sb-td sb-td-bcn' : 'sb-td'}>
                   <EditableCell
-                    value={entry[col.field] ?? ''}
+                    value={col.id === 'appRad' ? appRadOf(entry, boardRad) : col.id === 'btn' ? btnOf(entry, boardBtn) : entry[col.field] ?? ''}
                     readOnly={col.readOnly}
                     maxLen={col.maxLen}
                     inputW={col.id === 'bcn' ? col.w - 24 : col.w - 6}
                     digitsOnly={col.digitsOnly}
+                    radialModes={col.radialModes}
                     padZero={col.padZero}
                     decimalFmt={col.decimalFmt}
                     timeValidate={col.timeValidate}
@@ -297,9 +349,11 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     radialFmt={col.radialFmt}
                     stackFmt={col.stackFmt}
                     format={col.eatFmt ? formatEat : undefined}
-                    alert={(col.id === 'state' && isFuelAtBingo(entry)) || !!dups?.[col.field]?.has(entry.id)}
-                    auto={col.stackFmt ? !entry.unlinked : !!entry.auto?.[col.field]}
-                    onDoubleClick={col.id === 'side2' ? () => { assignNextMarshal(entry.id); toggleFocus(entry.id) } : undefined}
+                    // An emergency radial (E) turns the aircraft's whole row red
+                    alert={entry.radMode === 'E' || (col.id === 'state' && isFuelAtBingo(entry)) || !!dups?.[col.field]?.has(entry.id)}
+                    auto={col.stackFmt ? !entry.unlinked : col.id === 'appRad' ? (!entry.appRad || entry.radMode === 'H' || !!entry.auto?.appRad) : col.id === 'btn' ? !entry.btn : !!entry.auto?.[col.field]}
+                    onContextMenu={col.id === 'side2' ? openRowMenu('clear', entry.id) : col.id === 'side1' ? openRowMenu('delete', entry.id) : undefined}
+                    onDoubleClick={col.id === 'side2' ? () => { assignNextMarshal(entry.id, boardRad); toggleFocus(entry.id) } : undefined}
                     cellIdx={col.readOnly ? undefined : rowIdx * layout.editable.length + layout.idxMap[col.id]}
                     entryId={col.readOnly ? undefined : entry.id}
                     rowStride={col.readOnly ? undefined : layout.editable.length}
@@ -316,6 +370,8 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     onCommit={(v) => {
                       if (col.readOnly) return
                       if (col.stackFmt) setStackValue(entry.id, col.field, v)
+                      // E/H give the emergency/helicopter radial from FB as it is now
+                      else if (col.id === 'appRad') setAppRad(entry.id, v === 'E' || v === 'H' ? radialFromFb(fb, v) : v, v === 'E' || v === 'H' ? v : '')
                       else updateEntry(entry.id, col.field, col.eatFmt ? resolveEat(v, utcSeconds) : v)
                     }}
                   />
@@ -350,6 +406,25 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           activeCarrierType={carrier?.name}
           onClose={() => setImportOpen(false)}
         />
+      )}
+
+      {rowMenu && createPortal(
+        <div ref={fitRowMenu} className="sb-ctx-menu" style={{ left: rowMenu.x, top: rowMenu.y }}>
+          {(rowMenu.kind === 'delete'
+            ? [['below', 'Delete rows below'], ['above', 'Delete rows above'], ['all', 'Delete all rows']]
+            : [['below', 'Clear below this row'], ['above', 'Clear above this row'], ['all', 'Clear all']]
+          ).map(([which, label]) => (
+            <button
+              key={which}
+              type="button"
+              className={rowMenu.confirming === which ? 'sb-ctx-item confirming' : 'sb-ctx-item'}
+              onClick={() => (rowMenu.confirming === which ? runRowClear(which) : setRowMenu({ ...rowMenu, confirming: which }))}
+            >
+              {rowMenu.confirming === which ? 'Confirm?' : label}
+            </button>
+          ))}
+        </div>,
+        document.body,
       )}
 
       {/* ── Footer ──────────────────────────────────────────────────── */}

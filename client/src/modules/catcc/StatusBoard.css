@@ -456,3 +456,38 @@
 .sb-dock-btn:hover {
   color: #FFD700;
 }
+
+/* Right-click menu on the approach-side SIDE */
+.sb-ctx-menu {
+  position: fixed;
+  z-index: 1000;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  border: 1px solid #333;
+  padding: 2px 0;
+}
+
+.sb-ctx-item {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.sb-ctx-item:hover {
+  background: #1A1A1A;
+  color: #CCC;
+}
+
+.sb-ctx-item.confirming {
+  color: #CC6633;
+}

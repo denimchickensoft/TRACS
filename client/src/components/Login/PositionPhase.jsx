@@ -472,7 +472,7 @@ export function PositionPhase({ onSignedIn }) {
       // RAD is meant to default to the reciprocal of FB each session; without this
       // it keeps whatever was left in localStorage from the last time the tab was
       // closed without a clean Disconnect, which can be stale for the current mission.
-      useStatusBoardStore.getState().setHeader('rad', '')
+      useStatusBoardStore.getState().setRad('')
       localStorage.setItem('tracs.catcc.lastCarrierId', selectedCarrierId)
       localStorage.setItem('tracs.catcc.lastSuffix',    catccSuffix)
       localStorage.setItem('tracs.catcc.lastFrequency', catccFrequency)

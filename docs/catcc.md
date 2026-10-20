@@ -96,7 +96,7 @@ Errors appear in the ODS response area:
 An event/recovery board shared by every CATCC position over the session's sync transport. Anyone can view and edit it.
 
 **Header fields:**
-- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), CV APP (a one-character approach field shown after Case Recovery in Case 2/3 only), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial). RAD left blank is automatic, shown green: it shows the reciprocal of FB, follows it as the carrier turns, and is used by the status overlay and the scope's radial line too. A typed RAD shows yellow. Type a different number to fix it, or clear the field to go back to automatic.
+- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), CV APP (a one-character approach field shown after Case Recovery in Case 2/3 only), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial). RAD is the marshal radial, used by the status overlay and the scope's radial line too. When Case Recovery is set to 2 or 3 and no RAD is set, it's fixed at the reciprocal of FB at that moment (green) and doesn't move as the carrier turns. Before that it shows the live reciprocal of FB. A typed RAD shows yellow; clearing it works it out again from the current FB.
 - **Computed and read-only:** sunrise/sunset, magnetic variation, timezone, BRC, FB, and speed.
 
 **Status overlay on the scope:** shows the time, your position, and recovery information that depends on the Case Recovery in effect. Double-click a row's green side number, or a correlated contact on the scope, to add that aircraft's details; double-click it again to drop them.
@@ -116,12 +116,14 @@ In any open board field, **Delete** clears the whole field. A cleared RAD goes b
 | PILOT | Auto-filled from the unit name if left blank |
 | TYPE, MISSION | |
 | ATD | Actual departure time |
-| RADIAL | |
+| RAD | Departure radial |
 | BINGO | Bingo fuel |
 | SIDE (green) | Read-only copy of the side number; double-click it for a marshal slot (see below) |
-| EAT | Expected approach time |
+| RAD | Approach radial, Case 2/3 only. Left blank it shows the header RAD (green); the marshal-slot double-click fixes it to the header RAD at that moment (green), so later header changes don't move the aircraft. A typed radial shows yellow. Type `E` for the emergency radial (FB + 150°), which turns the aircraft's whole row red, or `H` for the helicopter radial (FB + 110°, green); both are worked out once, when typed |
 | DME | Case 2/3 only |
-| ANGELS | Altitude in thousands |
+| ANG | Angels: altitude in thousands |
+| EAT | Expected approach time |
+| BTN | Radio button the aircraft is sent to. Left blank it follows the header TWR BTN (Case 1/2) or APP BTN (Case 3), shown green; a typed button shows yellow |
 | STATE | Fuel state |
 | ATA | Actual arrival time |
 
@@ -129,14 +131,14 @@ BCN and callsign together drive side-number correlation for SRS-fielded aircraft
 
 **EAT entry:** the cell shows only the minutes. Type two digits for the next such minute at or after the current Zulu time (at 2055, `57` means 2057 and `01` means 2101), or four digits for an exact time. Sorting by EAT follows the full time, including across midnight.
 
-**DME and ANGELS** are a linked pair, DME = ANGELS + 15. Typing either one fills in the other, for DME 21 / ANGELS 6 up to ANGELS 99. To set a nonstandard pair, prefix the value with `X` (for example `X21` in DME): the pair unlinks and keeps what you type. A value outside the linked range also unlinks it.
+**DME and ANG** are a linked pair, DME = ANG + 15. Typing either one fills in the other, for DME 21 / ANGELS 6 up to ANGELS 99. To set a nonstandard pair, prefix the value with `X` (for example `X21` in DME): the pair unlinks and keeps what you type. A value outside the linked range also unlinks it.
 
 **Colours (Case 2/3):**
 - **Green:** a linked DME/ANGELS pair, or an EAT filled in by the marshal-slot double-click.
 - **Yellow:** an unlinked pair, or an EAT typed by hand.
 - **Red:** a marshal-stack conflict. Aircraft that have landed (with an ATA) don't count. A conflict is any of:
-  - two aircraft with the same EAT, DME or ANGELS
-  - two aircraft out of order, where the earlier EAT holds the higher altitude (both rows' EAT, DME and ANGELS turn red)
+  - two aircraft with the same EAT, or the same DME or ANG on one approach radial
+  - two aircraft on one approach radial out of order, where the earlier EAT holds the higher altitude (both rows' EAT, DME and ANG turn red)
   - an EAT with no altitude where none fits between its neighbours
   
   Red overrides green and yellow.
@@ -155,7 +157,9 @@ BCN and callsign together drive side-number correlation for SRS-fielded aircraft
 - Arrow keys move between table cells: Up/Down keep the column, and Left/Right move the text cursor and only jump to the neighbouring cell from the start or end of the text. A cell reached by arrow opens with its text selected, so typing replaces it. Arrows stop at the table's edges.
 - Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted orange.
 - STATE turns red when it's at or below BINGO.
-- **Marshal slots (Case 2/3):** double-click a row's green (read-only) side number to give it the next EAT (one minute after the latest EAT in the stack) and an altitude. The altitude is the lowest free one (from Angels 6 / DME 21 up) that keeps the stack climbing: above every aircraft with an earlier EAT and below every aircraft with a later one. A row that already has an EAT keeps it and gets just the altitude; if no altitude fits between its neighbours it gets none, and its EAT shows red. Rows that already have DME or Angels are left alone. Aircraft with an ATA don't count. The first slot needs at least one EAT on the board to follow.
+- **Marshal slots (Case 2/3):** double-click a row's green (read-only) side number to give it the next EAT (one minute after the latest EAT in the stack) and an altitude. The altitude is the lowest free one on the row's approach radial (from Angels 6 / DME 21 up) that keeps that stack climbing: above every aircraft with an earlier EAT and below every aircraft with a later one. A row that already has an EAT keeps it and gets just the altitude; if no altitude fits between its neighbours it gets none, and its EAT shows red. Rows that already have DME or Angels are left alone. Aircraft with an ATA don't count. The first slot needs at least one EAT on the board to follow.
+- **Right-click** a row's green side number for **Clear below this row**, **Clear above this row** or **Clear all** (as displayed, including any sort; the clicked row is kept). Each asks to confirm, then clears the approach side of those rows: approach RAD, DME, ANG, EAT, BTN, STATE and ATA. RAD and BTN fall back to the header values.
+- **Right-click** a row's departure (yellow) side number for **Delete rows below**, **Delete rows above** or **Delete all rows**, with the same ordering and confirm. These remove the rows entirely.
 - Click a column header to sort. This changes the display only and doesn't reorder the underlying data.
 
 **Autofill (`.SBAUTOFILL`):** while on, ATD is stamped (Zulu) when an aircraft launches from your carrier and ATA when it traps. A trap counts once the aircraft has settled on deck at carrier speed for a few seconds, so a bolter or touch-and-go stamps nothing. A new launch overwrites ATD and clears the previous ATA. Aircraft first seen already parked on deck or already airborne aren't stamped, and going down an elevator to the hangar isn't a launch. The row is found the same way as for correlation: the row's own unit, or a matching callsign. The setting is per position, but the stamped times sync to everyone.

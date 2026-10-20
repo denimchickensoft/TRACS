@@ -10,9 +10,9 @@ let arrivedByArrow = false
 export const EditableCell = memo(function EditableCell({
   value, onCommit, maxLen, readOnly, inputW,
   digitsOnly = false, padZero = 0, decimalFmt = false, timeValidate = false, decimalValidate = false,
-  radialFmt = false, stackFmt = false, format,
+  radialFmt = false, radialModes = false, stackFmt = false, format,
   cellIdx, entryId, onInsertBelow, rowStride, colIdx,
-  alert = false, auto = false, onDoubleClick,
+  alert = false, auto = false, onDoubleClick, onContextMenu,
 }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
@@ -27,7 +27,7 @@ export const EditableCell = memo(function EditableCell({
   }
   const commit = () => {
     let v = draft
-    if (padZero && v.length > 0) v = v.padStart(padZero, '0')
+    if (padZero && /^\d+$/.test(v)) v = v.padStart(padZero, '0')
     if (decimalFmt && v.length > 0) {
       if (!v.includes('.')) v = v + '.0'
       if (v.startsWith('.')) v = '0' + v
@@ -45,6 +45,8 @@ export const EditableCell = memo(function EditableCell({
     let v = e.target.value.toUpperCase()
     if (digitsOnly)  v = v.replace(/\D/g, '')
     if (decimalFmt)  v = v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1')
+    // Approach RAD: digits, or a single E (emergency) or H (helicopter) radial
+    if (radialModes) v = /^[EH]/.test(v) ? v[0] : v.replace(/\D/g, '')
     // DME/ANGELS: digits, optionally led by X to unlink the pair
     if (stackFmt)    v = v.replace(/[^\dX]/g, '').replace(/(?!^)X/g, '')
     setDraft(v)
@@ -132,6 +134,7 @@ export const EditableCell = memo(function EditableCell({
       data-sbentryid={readOnly ? undefined : entryId}
       onClick={start}
       onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
     >
       {(format ? format(value) : value) || ' '}
     </span>

@@ -7,13 +7,21 @@ export function isValidTime(v) {
   return (h === 24 && m === 0) || (h <= 23 && m <= 59)
 }
 
-// ── RAD: blank means auto, the reciprocal of FB ─────────────────────────────
-// Follows FB as the carrier turns. Every peer derives it from the same carrier
-// heading, so only a typed RAD needs storing. '' while FB is unknown.
-export function effectiveRad(rad, fb) {
-  if (rad) return rad
+// ── RAD: the marshal radial ──────────────────────────────────────────────────
+// A radial an aircraft is given doesn't move when the carrier turns, so the
+// automatic values are worked out once and stored (see setRad/setAppRad):
+// the reciprocal of FB, and the emergency (FB + 150) and helicopter
+// (FB + 110) radials. '' while FB is unknown.
+const RADIAL_OFFSET = { RAD: 180, E: 150, H: 110 }
+
+export function radialFromFb(fb, kind = 'RAD') {
   if (fb == null || isNaN(fb)) return ''
-  return String(((Math.round(fb) + 180) % 360) || 360).padStart(3, '0')
+  return String(((Math.round(fb) + RADIAL_OFFSET[kind]) % 360) || 360).padStart(3, '0')
+}
+
+// The stored RAD, or before one is set (CASE 1, or no case yet) the live reciprocal of FB.
+export function effectiveRad(rad, fb) {
+  return rad || radialFromFb(fb)
 }
 
 // ── EAT: stored as HHMM Zulu, shown as its minutes only ──────────────────────
@@ -65,12 +73,14 @@ export const COLUMNS = [
   { id: 'type',   label: 'TYPE',     field: 'type',       w: 38,  maxLen: 4 },
   { id: 'msn',    label: 'MISSION',  field: 'msn',        w: 60,  maxLen: 6 },
   { id: 'atd',    label: 'ATD',      field: 'atd',        w: 36,  maxLen: 4, digitsOnly: true, padZero: 4, timeValidate: true },
-  { id: 'radial', label: 'RADIAL',   field: 'radial',     w: 42,  maxLen: 3, digitsOnly: true, padZero: 3, radialFmt: true },
+  { id: 'radial', label: 'RAD',      field: 'radial',     w: 36,  maxLen: 3, digitsOnly: true, padZero: 3, radialFmt: true },
   { id: 'bingo',  label: 'BINGO',    field: 'bingo',      w: 44,  maxLen: 4, decimalFmt: true, decimalValidate: true },
   { id: 'side2',  label: 'SIDE',     field: 'sideNumber', w: 36,  maxLen: 3, readOnly: true },
-  { id: 'eat',    label: 'EAT',      field: 'eat',        w: 36,  maxLen: 4, digitsOnly: true, timeValidate: true, eatFmt: true },
+  { id: 'appRad', label: 'RAD',      field: 'appRad',     w: 36,  maxLen: 3, padZero: 3, radialFmt: true, radialModes: true, marshalOnly: true },
   { id: 'dme',    label: 'DME',      field: 'dme',        w: 36,  maxLen: 4, stackFmt: true, marshalOnly: true },
-  { id: 'angels', label: 'ANGELS',   field: 'angels',     w: 42,  maxLen: 3, stackFmt: true },
+  { id: 'angels', label: 'ANG',      field: 'angels',     w: 36,  maxLen: 3, stackFmt: true },
+  { id: 'eat',    label: 'EAT',      field: 'eat',        w: 36,  maxLen: 4, digitsOnly: true, timeValidate: true, eatFmt: true },
+  { id: 'btn',    label: 'BTN',      field: 'btn',        w: 28,  maxLen: 2, digitsOnly: true },
   { id: 'state',  label: 'STATE',    field: 'state',      w: 44,  maxLen: 4, decimalFmt: true, decimalValidate: true },
   { id: 'ata',    label: 'ATA',      field: 'ata',        w: 36,  maxLen: 4, digitsOnly: true, padZero: 4, timeValidate: true },
 ]
@@ -128,6 +138,19 @@ const eatMin = (e) => (/^\d{4}$/.test(e.eat ?? '') && isValidTime(e.eat)
   : null)
 const angelsOf = (e) => (/^\d+$/.test(e.angels ?? '') ? parseInt(e.angels, 10) : null)
 const dmeOf    = (e) => (/^\d+$/.test(e.dme ?? '') ? parseInt(e.dme, 10) : null)
+// The approach radial a row marshals on: its own, or the board's header RAD
+// when left blank. Altitudes only conflict between aircraft on one radial.
+// e.radMode records an E or H radial: the stored number is kept, and E turns
+// the row red.
+export const appRadOf = (e, defaultRad) => e.appRad || defaultRad || ''
+
+// The radio button an aircraft is sent to: its own, or when left blank the
+// header's TWR button (CASE 1/2) or APP button (CASE 3).
+export function caseBtn(caseRecovery, twrBtn, appBtn) {
+  const c = parseInt(caseRecovery, 10)
+  return c === 3 ? (appBtn || '') : (c === 1 || c === 2) ? (twrBtn || '') : ''
+}
+export const btnOf = (e, defaultBtn) => e.btn || defaultBtn || ''
 const toHhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}${String(min % 60).padStart(2, '0')}`
 
 // EATs can wrap past 2359. The stack is a short run of minutes with the rest
@@ -155,12 +178,14 @@ export function nextStackEat(entries, id) {
 }
 
 // The lowest free ANGELS (from 6 up) that keeps the stack climbing for a row
-// at EAT `eat`: above every earlier aircraft, below every later one. Null when
-// no altitude fits.
-export function fitStackAngels(entries, id, eat) {
+// at EAT `eat`: above every earlier aircraft on its approach radial, below
+// every later one. Null when no altitude fits.
+export function fitStackAngels(entries, id, eat, defaultRad) {
   const target = eatMin({ eat })
   if (target == null) return null
-  const others = stackRows(entries).filter((e) => e.id !== id)
+  const self   = entries.find((e) => e.id === id)
+  const radial = self ? appRadOf(self, defaultRad) : (defaultRad || '')
+  const others = stackRows(entries).filter((e) => e.id !== id && appRadOf(e, defaultRad) === radial)
   const start  = stackStart([target, ...others.map(eatMin).filter((m) => m != null)])
   const key    = orderKey(target, start)
   let lower = STACK_MIN.angels - 1
@@ -182,15 +207,16 @@ export function fitStackAngels(entries, id, eat) {
 
 // Marshal-stack conflicts among rows still holding (no ATA). Returns { eat, dme, angels }, each a
 // Set of the row ids to show red:
-// - two aircraft sharing an EAT, DME or ANGELS
-// - a crossing: an earlier EAT holding a higher DME or ANGELS than a later
-//   one (EAT, DME and ANGELS all red on both rows)
+// - two aircraft sharing an EAT (any radial), or a DME or ANGELS on one approach radial
+// - a crossing on one approach radial: an earlier EAT holding a higher DME or
+//   ANGELS than a later one (EAT, DME and ANGELS all red on both rows)
 // - an EAT with no altitude yet where none fits between its neighbours
-export function findStackConflicts(entries) {
+export function findStackConflicts(entries, defaultRad) {
   const rows = stackRows(entries)
   const out = { eat: new Set(), dme: new Set(), angels: new Set() }
+  const onRadial = (key) => (e) => { const k = key(e); return k == null ? null : `${appRadOf(e, defaultRad)}|${k}` }
 
-  const keys = { eat: eatMin, dme: dmeOf, angels: angelsOf }
+  const keys = { eat: eatMin, dme: onRadial(dmeOf), angels: onRadial(angelsOf) }
   for (const [field, key] of Object.entries(keys)) {
     const byValue = new Map()
     for (const e of rows) {
@@ -212,13 +238,14 @@ export function findStackConflicts(entries) {
   for (let i = 0; i < timed.length; i++) {
     for (let j = i + 1; j < timed.length; j++) {
       const [a, b] = [timed[i], timed[j]]
+      if (appRadOf(a, defaultRad) !== appRadOf(b, defaultRad)) continue
       if (!crossed(a, b, angelsOf) && !crossed(a, b, dmeOf)) continue
       for (const f of ['eat', 'dme', 'angels']) { out[f].add(a.id); out[f].add(b.id) }
     }
   }
 
   for (const e of timed) {
-    if (angelsOf(e) == null && dmeOf(e) == null && fitStackAngels(entries, e.id, e.eat) == null) out.eat.add(e.id)
+    if (angelsOf(e) == null && dmeOf(e) == null && fitStackAngels(entries, e.id, e.eat, defaultRad) == null) out.eat.add(e.id)
   }
   return out
 }
