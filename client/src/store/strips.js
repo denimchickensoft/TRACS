@@ -274,7 +274,7 @@ if (typeof window !== 'undefined') {
 
   const _channelName = (facilityId, positionName) => `tracs-strips-${facilityId}-${positionName}`
 
-  function _setupChannel(facilityId, positionName) {
+  const _setupChannel = (facilityId, positionName) => {
     _ch?.close()
     _ch = new BroadcastChannel(_channelName(facilityId, positionName))
     _ch.onmessage = (e) => {
