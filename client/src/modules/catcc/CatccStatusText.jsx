@@ -1,7 +1,7 @@
 import { useSessionStore }     from '../../store/session.js'
 import { useStatusBoardStore } from '../../store/statusBoard.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
-import { effectiveRad, formatEat, isMarshalCase } from './statusBoardColumns.js'
+import { effectiveRad, formatEat, isMarshalCase, appRadOf, btnOf, caseBtn } from './statusBoardColumns.js'
 
 const SEP = ' - '
 
@@ -15,6 +15,7 @@ export function CatccStatusText({ xPct, yPct, brc, fb, tacticalName }) {
   const cvApp        = useStatusBoardStore((s) => s.cvApp)
   const rad          = useStatusBoardStore((s) => s.rad)
   const appBtn       = useStatusBoardStore((s) => s.app)
+  const twrBtn       = useStatusBoardStore((s) => s.twrBtn)
   const focused      = useStatusBoardStore((s) => (s.focusId == null ? null : s.entries.find((e) => e.id === s.focusId) ?? null))
 
   const lines = []
@@ -23,7 +24,7 @@ export function CatccStatusText({ xPct, yPct, brc, fb, tacticalName }) {
   // Line 1: time + date, plus the side number of the row whose green SIDE was
   // double-clicked, so the DME/ANG/EAT lines below say whose they are
   const timePart = timeStr ?? '----Z'
-  lines.push([timePart, dateStr, focused?.sideNumber && `SIDE ${focused.sideNumber}`].filter(Boolean).join(SEP))
+  lines.push([timePart, dateStr, focused?.sideNumber].filter(Boolean).join(SEP))
 
   // Line 2: position callsign (tactical carrier name + position type)
   const callsign = [tacticalName, positionTypeName].filter(Boolean).join(' ')
@@ -45,18 +46,21 @@ export function CatccStatusText({ xPct, yPct, brc, fb, tacticalName }) {
   if (qnh) courseParts.push(`ALT ${qnh}`)
   if (courseParts.length) lines.push(courseParts.join(SEP))
 
-  // Lines 5-6 (CASE 2/3): the marshal radial, then the APP button (CASE 3).
-  // DME, ANGELS and EAT belong to the row whose green SIDE was last
-  // double-clicked on the board.
+  // Lines 5-6 (CASE 2/3): the marshal radial, then the radio button (CASE 3).
+  // With an aircraft selected (its green SIDE or its contact double-clicked),
+  // RAD and BTN are that aircraft's, and DME, ANGELS and EAT are added.
   if (marshal) {
-    const navParts = [`RAD ${effectiveRad(rad, fb) || '---'}`]
+    const boardRad = effectiveRad(rad, fb)
+    const navParts = [`RAD ${(focused ? appRadOf(focused, boardRad) : boardRad) || '---'}`]
     if (focused?.dme)    navParts.push(`DME ${focused.dme}`)
     if (focused?.angels) navParts.push(`ANG ${focused.angels}`)
     lines.push(navParts.join(SEP))
 
     const eatParts = []
     if (focused?.eat)            eatParts.push(`EAT ${formatEat(focused.eat)}`)
-    if (recCase === 3 && appBtn) eatParts.push(`APP BTN ${appBtn}`)
+    const boardBtn = caseBtn(caseRecovery, twrBtn, appBtn)
+    const btn      = focused ? btnOf(focused, boardBtn) : boardBtn
+    if (recCase === 3 && btn) eatParts.push(`BTN ${btn}`)
     if (eatParts.length) lines.push(eatParts.join(SEP))
   }
 
