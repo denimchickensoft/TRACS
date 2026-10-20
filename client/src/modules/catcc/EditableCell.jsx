@@ -10,9 +10,9 @@ let arrivedByArrow = false
 export const EditableCell = memo(function EditableCell({
   value, onCommit, maxLen, readOnly, inputW,
   digitsOnly = false, padZero = 0, decimalFmt = false, timeValidate = false, decimalValidate = false,
-  radialFmt = false,
+  radialFmt = false, stackFmt = false, format,
   cellIdx, entryId, onInsertBelow, rowStride, colIdx,
-  alert = false, onDoubleClick,
+  alert = false, auto = false, onDoubleClick,
 }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
@@ -22,7 +22,7 @@ export const EditableCell = memo(function EditableCell({
     if (readOnly) return
     selectOnOpenRef.current = arrivedByArrow
     arrivedByArrow = false
-    setDraft(value)
+    setDraft(format ? format(value) : value)
     setEditing(true)
   }
   const commit = () => {
@@ -34,14 +34,19 @@ export const EditableCell = memo(function EditableCell({
     }
     if (radialFmt && v === '000') v = '360'
     // Unchanged values aren't committed: every commit re-saves and re-broadcasts
-    // the whole board, which moving through cells would otherwise spam.
-    if (v !== value) onCommit(v)
+    // the whole board, which moving through cells would otherwise spam. A
+    // formatted cell whose stored value didn't shorten (EAT typed with no
+    // clock) is still committed, so re-entering it can resolve it.
+    const shown = format ? format(value) : value
+    if (v !== shown || (format && v && shown === value)) onCommit(v)
     setEditing(false)
   }
   const handleChange = (e) => {
     let v = e.target.value.toUpperCase()
     if (digitsOnly)  v = v.replace(/\D/g, '')
     if (decimalFmt)  v = v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1')
+    // DME/ANGELS: digits, optionally led by X to unlink the pair
+    if (stackFmt)    v = v.replace(/[^\dX]/g, '').replace(/(?!^)X/g, '')
     setDraft(v)
   }
 
@@ -107,6 +112,8 @@ export const EditableCell = memo(function EditableCell({
           if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); commit(); onInsertBelow?.(); return }
           if (e.key === 'Enter')               { commit(); return }
           if (e.key === 'Escape')              { setEditing(false); return }
+          // Delete clears the whole cell, like a spreadsheet
+          if (e.key === 'Delete')              { e.preventDefault(); if (value) onCommit(''); setEditing(false); return }
           if (rowStride && e.key.startsWith('Arrow')) handleArrow(e)
         }}
       />
@@ -116,7 +123,7 @@ export const EditableCell = memo(function EditableCell({
   const invalid = (timeValidate && !isValidTime(value)) || (decimalValidate && !isValidDecimal(value))
   const cls = [
     'sb-cell', readOnly ? 'readonly' : '', !value ? 'empty' : '',
-    invalid ? 'invalid' : alert ? 'alert' : '', onDoubleClick ? 'dblclick' : '',
+    invalid ? 'invalid' : alert ? 'alert' : auto ? 'auto' : '', onDoubleClick ? 'dblclick' : '',
   ].join(' ').replace(/\s+/g, ' ').trim()
   return (
     <span
@@ -126,7 +133,7 @@ export const EditableCell = memo(function EditableCell({
       onClick={start}
       onDoubleClick={onDoubleClick}
     >
-      {value || ' '}
+      {(format ? format(value) : value) || ' '}
     </span>
   )
 })

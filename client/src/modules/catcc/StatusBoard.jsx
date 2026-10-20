@@ -12,7 +12,7 @@ import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { sunTimes }             from '../../utils/sunTimes.js'
 import { useMissionClock }      from '../../utils/useMissionClock.js'
 import { toUtcDateTime, getTheatreUtcOffset } from '../../utils/theatreTime.js'
-import { COLUMNS, EDITABLE_COLS, EDIT_COL_IDX_MAP, isValidDecimal, effectiveRad } from './statusBoardColumns.js'
+import { LAYOUTS, isMarshalCase, findStackConflicts, isValidDecimal, isValidTime, effectiveRad, resolveEat, formatEat, eatSortKey } from './statusBoardColumns.js'
 import { computeCatccCorrelations } from './correlationEngine.js'
 import { EditableCell } from './EditableCell.jsx'
 import { useStabilityAlert } from './useStabilityAlert.js'
@@ -45,9 +45,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   const wheelDir = useWheelDirection()
   const {
     event, launch, recovery, clg, vis, qnh,
-    caseLaunch, caseRecovery, marBtn, app, twrBtn, depBtn, rad,
+    caseLaunch, caseRecovery, cvApp, marBtn, app, twrBtn, depBtn, rad,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
-    clearMissionData, clearAll, recycleBcn, assignNextMarshal,
+    clearMissionData, clearAll, recycleBcn, assignNextMarshal, setStackValue, toggleFocus,
   } = useStatusBoardStore()
 
   const [importOpen,       setImportOpen]       = useState(false)
@@ -130,7 +130,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   }, [utcDate, carrierPos])
 
   // ── Mission clock ──────────────────────────────────────────────────
-  const { timeStr, dateStr, localTimeStr, localDateStr } = useMissionClock()
+  const { timeStr, dateStr, localTimeStr, localDateStr, utcSeconds } = useMissionClock()
   const [showLocalTime, setShowLocalTime] = useState(false)
   const missionTime     = showLocalTime ? localTimeStr : timeStr
   const missionDateStr  = showLocalTime ? localDateStr : dateStr
@@ -140,17 +140,25 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     : `${magvar.toFixed(1)}`
 
   // ── Sorted view of entries (does not mutate store order) ──────────
+  const marshal = isMarshalCase(caseRecovery)
+  const layout  = marshal ? LAYOUTS.marshal : LAYOUTS.base
+  const dups    = useMemo(() => (marshal ? findStackConflicts(entries) : null), [marshal, entries])
+
+  const nowMin = utcSeconds == null ? null : Math.floor(utcSeconds / 60)
   const sortedEntries = useMemo(() => {
     if (!sortField) return entries
+    const sortNum = (v) => (sortField === 'eat' && nowMin != null && /^\d{4}$/.test(v) && isValidTime(v))
+      ? eatSortKey(v, nowMin * 60)
+      : parseFloat(v)
     return [...entries].sort((a, b) => {
       const av = a[sortField] ?? ''
       const bv = b[sortField] ?? ''
-      const an = parseFloat(av)
-      const bn = parseFloat(bv)
+      const an = sortNum(av)
+      const bn = sortNum(bv)
       const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : av.localeCompare(bv)
       return sortDir === 'asc' ? cmp : -cmp
     })
-  }, [entries, sortField, sortDir])
+  }, [entries, sortField, sortDir, nowMin])
 
   // ── Correlation sync — see correlationEngine.js's computeCatccCorrelations ──
   // Rebuild correlationStore from entries whenever entries or visible units change.
@@ -230,6 +238,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
         <div className="sb-group">
           <CaseField suffix="LAUNCH"   value={caseLaunch}   onChange={(v) => setHeader('caseLaunch',   v)} hdrIdx={7} />
           <CaseField suffix="RECOVERY" value={caseRecovery} onChange={(v) => setHeader('caseRecovery', v)} hdrIdx={8} />
+          {isMarshalCase(caseRecovery) && (
+            <CaseField label="CV" suffix="APP" value={cvApp} onChange={(v) => setHeader('cvApp', v)} hdrIdx={8.5} />
+          )}
         </div>
         <div className="sb-group">
           <HeaderField label="MAR BTN" value={marBtn}       onChange={(v) => setHeader('marBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={9} />
@@ -238,7 +249,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <HeaderField label="DEP BTN" value={depBtn}       onChange={(v) => setHeader('depBtn',       v)} inputW={22} maxLen={2} digitsOnly hdrIdx={12} />
         </div>
         <div className="sb-group">
-          <HeaderField label="RAD"     value={effectiveRad(rad, fb)}  onChange={(v) => setHeader('rad', v)} inputW={28} maxLen={3} digitsOnly padZero={3} hdrIdx={13} />
+          <HeaderField label="RAD"     value={effectiveRad(rad, fb)} auto={!rad} onChange={(v) => setHeader('rad', v)} inputW={28} maxLen={3} digitsOnly padZero={3} hdrIdx={13} />
           <HeaderField label="BRC"     value={String(brc).padStart(3, '0')} onChange={() => {}} readOnly inputW={28} flash={brcAlert} />
           <HeaderField label="FB"      value={String(fb).padStart(3, '0')}  onChange={() => {}} readOnly inputW={28} flash={fbAlert} />
           <HeaderField label="SPD"     value={String(spd)}                  onChange={() => {}} readOnly inputW={24} flash={spdAlert} />
@@ -249,10 +260,10 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
       <div className="sb-table-wrap">
         <div
           className="sb-table"
-          style={{ gridTemplateColumns: [...COLUMNS.map(c => `${c.w}px`), '28px', '20px'].join(' ') }}
+          style={{ gridTemplateColumns: [...layout.cols.map(c => `${c.w}px`), '28px', '20px'].join(' ') }}
         >
           {/* Header */}
-          {COLUMNS.map((col) => (
+          {layout.cols.map((col) => (
             <div
               key={col.id}
               className="sb-th sb-th-sort"
@@ -271,7 +282,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           {/* Rows */}
           {sortedEntries.map((entry, rowIdx) => (
             <Fragment key={entry.id}>
-              {COLUMNS.map((col) => (
+              {layout.cols.map((col) => (
                 <div key={col.id} className={col.id === 'bcn' ? 'sb-td sb-td-bcn' : 'sb-td'}>
                   <EditableCell
                     value={entry[col.field] ?? ''}
@@ -284,12 +295,15 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                     timeValidate={col.timeValidate}
                     decimalValidate={col.decimalValidate}
                     radialFmt={col.radialFmt}
-                    alert={col.id === 'state' && isFuelAtBingo(entry)}
-                    onDoubleClick={col.id === 'side2' ? () => assignNextMarshal(entry.id) : undefined}
-                    cellIdx={col.readOnly ? undefined : rowIdx * EDITABLE_COLS.length + EDIT_COL_IDX_MAP[col.id]}
+                    stackFmt={col.stackFmt}
+                    format={col.eatFmt ? formatEat : undefined}
+                    alert={(col.id === 'state' && isFuelAtBingo(entry)) || !!dups?.[col.field]?.has(entry.id)}
+                    auto={col.stackFmt ? !entry.unlinked : !!entry.auto?.[col.field]}
+                    onDoubleClick={col.id === 'side2' ? () => { assignNextMarshal(entry.id); toggleFocus(entry.id) } : undefined}
+                    cellIdx={col.readOnly ? undefined : rowIdx * layout.editable.length + layout.idxMap[col.id]}
                     entryId={col.readOnly ? undefined : entry.id}
-                    rowStride={col.readOnly ? undefined : EDITABLE_COLS.length}
-                    colIdx={col.readOnly ? undefined : EDIT_COL_IDX_MAP[col.id]}
+                    rowStride={col.readOnly ? undefined : layout.editable.length}
+                    colIdx={col.readOnly ? undefined : layout.idxMap[col.id]}
                     onInsertBelow={col.readOnly ? undefined : () => {
                       const newId = useStatusBoardStore.getState().nextId
                       insertEntryAfter(entry.id)
@@ -300,7 +314,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
                       }, 0)
                     }}
                     onCommit={(v) => {
-                      if (!col.readOnly) updateEntry(entry.id, col.field, v)
+                      if (col.readOnly) return
+                      if (col.stackFmt) setStackValue(entry.id, col.field, v)
+                      else updateEntry(entry.id, col.field, col.eatFmt ? resolveEat(v, utcSeconds) : v)
                     }}
                   />
                   {col.id === 'bcn' && (

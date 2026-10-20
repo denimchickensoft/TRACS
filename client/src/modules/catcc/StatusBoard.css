@@ -87,6 +87,11 @@
   color: #2A2A2A;
 }
 
+/* A derived value the user hasn't typed (auto RAD): the read-only green. */
+.sb-value.auto {
+  color: #5A8A5A;
+}
+
 .sb-value.readonly {
   color: #5A8A5A;
   cursor: default;
@@ -231,7 +236,12 @@
   cursor: default;
 }
 
-/* STATE at or below BINGO */
+/* A value the board generated (linked DME, autofilled EAT/ANGELS): the read-only green. */
+.sb-cell.auto {
+  color: #5A8A5A;
+}
+
+/* STATE at or below BINGO, a DME that disagrees with ANGELS, or a marshal-stack duplicate */
 .sb-cell.alert {
   color: #FF3030;
 }

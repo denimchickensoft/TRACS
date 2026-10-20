@@ -460,7 +460,13 @@ export default function CatccScope() {
       if (starsKey.token && shouldAppendToken(starsKey.code, starsKey.token, preview.buffer, e.repeat)) preview.appendToken(starsKey.token)
       return
     }
-    if (e.key === 'Escape')    { e.preventDefault(); usePreviewStore.getState().clear(); setOdsLines([]); return }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      usePreviewStore.getState().clear()
+      setOdsLines([])
+      useStatusBoardStore.getState().clearFocus()
+      return
+    }
     if (e.key === 'Backspace') { e.preventDefault(); usePreviewStore.getState().backspace(); return }
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -487,6 +493,21 @@ export default function CatccScope() {
   }, [positionName, displayStore])
 
   // ── Mouse interactions ─────────────────────────────────────────────
+  // Double-click a correlated contact to show its status board row in the
+  // status text, like double-clicking the row's green SIDE (without the
+  // marshal-slot fill). Again on the same contact drops it.
+  const handleDoubleClick = useCallback((e) => {
+    if (e.button !== 0 || e.ctrlKey || e.shiftKey) return
+    const rect = interactiveRef.current?.getBoundingClientRect()
+    if (!rect || !viewRef.current) return
+    const target = resolveSlew({ x: e.clientX - rect.left, y: e.clientY - rect.top }, visibleUnitsRef.current, viewRef.current)
+    const side = target && correlationsRef.current[String(target.unitId)]
+    if (!side) return
+    const sb = useStatusBoardStore.getState()
+    const entry = sb.entries.find((en) => en.sideNumber === side)
+    if (entry) sb.toggleFocus(entry.id)
+  }, [])
+
   const handleMouseUp = useCallback((e) => {
     if (e.button !== 0) return
     const rect = interactiveRef.current?.getBoundingClientRect()
@@ -573,6 +594,7 @@ export default function CatccScope() {
           className="catcc-layer catcc-interactive"
           tabIndex={0}
           onMouseUp={handleMouseUp}
+          onDoubleClick={handleDoubleClick}
           onMouseMove={handleMouseMove}
           onMouseLeave={() => setMomsReadout('')}
           onKeyDown={handleKeyDown}

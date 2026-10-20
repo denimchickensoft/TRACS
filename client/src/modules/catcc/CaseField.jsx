@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
-// ── CASE L / CASE R field: renders "CASE [1-char] LAUNCH/RECOVERY" ────────────
-export function CaseField({ suffix, value, onChange, hdrIdx }) {
+// ── One-character field: "CASE [1-char] LAUNCH/RECOVERY", or "CV [1-char] APP" ──
+export function CaseField({ label = 'CASE', suffix, value, onChange, hdrIdx }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
 
@@ -21,7 +21,7 @@ export function CaseField({ suffix, value, onChange, hdrIdx }) {
 
   return (
     <div className="sb-field">
-      <span className="sb-label">CASE</span>
+      <span className="sb-label">{label}</span>
       {editing ? (
         <input
           autoFocus
@@ -34,6 +34,8 @@ export function CaseField({ suffix, value, onChange, hdrIdx }) {
             if (e.key === 'Tab')    { e.preventDefault(); commit(); navigateHdrTab(e.shiftKey); return }
             if (e.key === 'Enter')  { commit(); return }
             if (e.key === 'Escape') { setEditing(false) }
+            // Delete clears the whole field
+            if (e.key === 'Delete') { e.preventDefault(); if (value) onChange(''); setEditing(false) }
           }}
         />
       ) : (

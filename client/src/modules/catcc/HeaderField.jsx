@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { isValidTime } from './statusBoardColumns.js'
 
 // ── Inline-editable header field ──────────────────────────────────────────────
-export function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, padZero = 0, timeValidate = false, flash = false, hdrIdx }) {
+export function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, padZero = 0, timeValidate = false, flash = false, auto = false, hdrIdx }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
 
@@ -53,11 +53,13 @@ export function HeaderField({ label, value, onChange, inputW = 40, readOnly = fa
             if (e.key === 'Tab')    { e.preventDefault(); commit(); navigateHdrTab(e.shiftKey); return }
             if (e.key === 'Enter')  { commit(); return }
             if (e.key === 'Escape') { setEditing(false) }
+            // Delete clears the whole field (a cleared RAD goes back to automatic)
+            if (e.key === 'Delete') { e.preventDefault(); if (value) onChange(''); setEditing(false) }
           }}
         />
       ) : (
         <span
-          className={['sb-value', readOnly ? 'readonly' : '', !value ? 'empty' : '', (timeValidate && !isValidTime(value)) ? 'invalid' : '', flash ? 'alert' : ''].join(' ').trim()}
+          className={['sb-value', readOnly ? 'readonly' : '', auto ? 'auto' : '', !value ? 'empty' : '', (timeValidate && !isValidTime(value)) ? 'invalid' : '', flash ? 'alert' : ''].join(' ').trim()}
           data-sbhdridx={readOnly ? undefined : hdrIdx}
           onClick={start}
         >

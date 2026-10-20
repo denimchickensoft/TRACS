@@ -1,7 +1,7 @@
 import { useSessionStore }     from '../../store/session.js'
 import { useStatusBoardStore } from '../../store/statusBoard.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
-import { effectiveRad }        from './statusBoardColumns.js'
+import { effectiveRad, formatEat, isMarshalCase } from './statusBoardColumns.js'
 
 const SEP = ' - '
 
@@ -9,60 +9,55 @@ export function CatccStatusText({ xPct, yPct, brc, fb, tacticalName }) {
   const { timeStr, dateStr } = useMissionClock()
 
   const positionTypeName = useSessionStore((s) => s.positionTypeName)
-  const positionSuffix   = useSessionStore((s) => s.positionSuffix)
 
-  const clg          = useStatusBoardStore((s) => s.clg)
-  const vis          = useStatusBoardStore((s) => s.vis)
   const qnh          = useStatusBoardStore((s) => s.qnh)
-  const caseLaunch   = useStatusBoardStore((s) => s.caseLaunch)
   const caseRecovery = useStatusBoardStore((s) => s.caseRecovery)
-  const app          = useStatusBoardStore((s) => s.app)
-  const twrBtn       = useStatusBoardStore((s) => s.twrBtn)
-  const depBtn       = useStatusBoardStore((s) => s.depBtn)
+  const cvApp        = useStatusBoardStore((s) => s.cvApp)
   const rad          = useStatusBoardStore((s) => s.rad)
+  const appBtn       = useStatusBoardStore((s) => s.app)
+  const focused      = useStatusBoardStore((s) => (s.focusId == null ? null : s.entries.find((e) => e.id === s.focusId) ?? null))
 
   const lines = []
+  const deg3 = (v) => (v != null ? String(Math.round(v)).padStart(3, '0') : '---')
 
-  // Line 1: time + date
+  // Line 1: time + date, plus the side number of the row whose green SIDE was
+  // double-clicked, so the DME/ANG/EAT lines below say whose they are
   const timePart = timeStr ?? '----Z'
-  lines.push([timePart, dateStr].filter(Boolean).join(SEP))
+  lines.push([timePart, dateStr, focused?.sideNumber && `SIDE ${focused.sideNumber}`].filter(Boolean).join(SEP))
 
   // Line 2: position callsign (tactical carrier name + position type)
   const callsign = [tacticalName, positionTypeName].filter(Boolean).join(' ')
   if (callsign) lines.push(callsign)
 
-  // Line 3: weather
-  const wx = []
-  if (clg) wx.push(`CLG ${clg}`)
-  if (vis) wx.push(`VIS ${vis}`)
-  if (qnh) wx.push(`ALT ${qnh}`)
-  if (wx.length) lines.push(wx.join(SEP))
-
-  // Line 4: case recovery + departure
-  const cases = []
-  if (caseRecovery) cases.push(`CASE ${caseRecovery} REC`)
-  if (caseLaunch)   cases.push(`CASE ${caseLaunch} DEP`)
-  if (cases.length) lines.push(cases.join(SEP))
-
-  // Line 5: recovery-dependent fields + position-based frequency
   const recCase = parseInt(caseRecovery, 10)
+  const marshal = isMarshalCase(caseRecovery)
   if (!isNaN(recCase)) {
-    const brcStr = brc != null ? String(Math.round(brc)).padStart(3, '0') : '---'
-    const fbStr  = fb  != null ? String(Math.round(fb)).padStart(3, '0')  : '---'
-    const radStr = effectiveRad(rad, fb) || '---'
+    // Line 3: recovery case, plus the CV approach once aircraft use the marshal stack
+    const caseParts = [`CASE ${caseRecovery} REC`]
+    if (marshal && cvApp) caseParts.push(`CV ${cvApp} APP`)
+    lines.push(caseParts.join(SEP))
+  }
 
-    const suffix = positionSuffix?.toUpperCase()
-    let freqLabel = null
-    let freqVal   = null
-    if (suffix === 'MAR') { freqLabel = 'APP'; freqVal = app    }
-    if (suffix === 'APP') { freqLabel = 'TWR'; freqVal = twrBtn }
-    if (suffix === 'TWR') { freqLabel = 'DEP'; freqVal = depBtn }
+  // Line 4: the course aircraft fly, BRC visually (CASE 1/2) or FB on
+  // instruments (CASE 3), and the altimeter
+  const courseParts = []
+  if (!isNaN(recCase)) courseParts.push(recCase === 3 ? `FB ${deg3(fb)}` : `BRC ${deg3(brc)}`)
+  if (qnh) courseParts.push(`ALT ${qnh}`)
+  if (courseParts.length) lines.push(courseParts.join(SEP))
 
-    const navParts = recCase === 3
-      ? [`RAD ${radStr}`, `FB ${fbStr}`]
-      : [`BRC ${brcStr}`]
-    if (freqLabel && freqVal) navParts.push(`${freqLabel} BTN ${freqVal}`)
+  // Lines 5-6 (CASE 2/3): the marshal radial, then the APP button (CASE 3).
+  // DME, ANGELS and EAT belong to the row whose green SIDE was last
+  // double-clicked on the board.
+  if (marshal) {
+    const navParts = [`RAD ${effectiveRad(rad, fb) || '---'}`]
+    if (focused?.dme)    navParts.push(`DME ${focused.dme}`)
+    if (focused?.angels) navParts.push(`ANG ${focused.angels}`)
     lines.push(navParts.join(SEP))
+
+    const eatParts = []
+    if (focused?.eat)            eatParts.push(`EAT ${formatEat(focused.eat)}`)
+    if (recCase === 3 && appBtn) eatParts.push(`APP BTN ${appBtn}`)
+    if (eatParts.length) lines.push(eatParts.join(SEP))
   }
 
   return (

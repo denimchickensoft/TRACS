@@ -81,6 +81,7 @@ Errors appear in the ODS response area:
 | **Ctrl+Shift+Click** a contact | Initiate Control |
 | **Shift+Click** a contact | Terminate Control |
 | **Ctrl+Click** a contact | Add it to the Status Board |
+| **Double-click** a contact | Show its Status Board details in the status overlay (correlated contacts only); again to drop them |
 | **Click** a contact with a flashing emergency tag | Acknowledge it (empty command line only) |
 | **Mouse wheel** over the scope | Zoom range, 1 NM per step (3 NM with Ctrl), 6–256 NM |
 | Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
@@ -88,21 +89,57 @@ Errors appear in the ODS response area:
 | **Ctrl+Alt+0**–**9** | Save current range to bookmark slot 0–9 |
 | **Ctrl+0**–**9** | Load range bookmark 0–9 |
 | `F3` / `F4` / `F5` / `F7` | Insert `IC` / `TC` / `HO ` / `MF ` into the command line. `F2`, `F6`, `F9`, and `F11` insert `TR `, `FD `, `FP `, and `CA `, which CATCC has no commands for |
-| `Escape` / `Backspace` | Clears the command line / deletes the last character |
+| `Escape` / `Backspace` | Clears the command line (and drops the aircraft selected in the status overlay) / deletes the last character |
 
 ## Status Board
 
 An event/recovery board shared by every CATCC position over the session's sync transport. Anyone can view and edit it.
 
 **Header fields:**
-- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial). RAD left blank is automatic: it shows the reciprocal of FB, follows it as the carrier turns, and is used by the status overlay and the scope's radial line too. Type a different number to fix it, or clear the field to go back to automatic.
+- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), CV APP (a one-character approach field shown after Case Recovery in Case 2/3 only), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial). RAD left blank is automatic, shown green: it shows the reciprocal of FB, follows it as the carrier turns, and is used by the status overlay and the scope's radial line too. A typed RAD shows yellow. Type a different number to fix it, or clear the field to go back to automatic.
 - **Computed and read-only:** sunrise/sunset, magnetic variation, timezone, BRC, FB, and speed.
 
-**Status overlay on the scope:** shows the case lines. When Case Recovery is a number, it adds a line with BRC, or with RAD and FB when Case Recovery is `3`. That same line also shows the next handoff's button number (`<label> BTN <n>`), based on your position: Marshal sees Approach's button, Approach sees Tower's, Tower sees Departure's. Departure gets no handoff entry.
+**Status overlay on the scope:** shows the time, your position, and recovery information that depends on the Case Recovery in effect. Double-click a row's green side number, or a correlated contact on the scope, to add that aircraft's details; double-click it again to drop them.
 
 **Drift flash:** BRC and FB flash when they drift more than 5° from their baseline, and speed flashes when it drifts more than 5 kt. The flash stops once the value has held steady for 20 seconds.
 
-**Aircraft table** — 15 columns: EVT, side number, BCN (beacon/squawk code, with a ↻ button per row to recycle it), callsign, pilot (auto-filled from the unit name if left blank), type, mission, ATD (actual departure time), radial, bingo fuel, a read-only side-number mirror, EAT (estimated arrival), Angels (altitude in thousands), fuel state, ATA (actual arrival time). BCN and callsign together drive side-number correlation for SRS-fielded aircraft (see above).
+In any open board field, **Delete** clears the whole field. A cleared RAD goes back to automatic; clearing DME or Angels clears the linked pair (or just that field, if the pair is unlinked).
+
+**Aircraft table:** one row per aircraft.
+
+| Column | Notes |
+|---|---|
+| EVT | Event |
+| SIDE | Side number |
+| BCN | Beacon/squawk code; ↻ recycles it |
+| CALLSIGN | |
+| PILOT | Auto-filled from the unit name if left blank |
+| TYPE, MISSION | |
+| ATD | Actual departure time |
+| RADIAL | |
+| BINGO | Bingo fuel |
+| SIDE (green) | Read-only copy of the side number; double-click it for a marshal slot (see below) |
+| EAT | Expected approach time |
+| DME | Case 2/3 only |
+| ANGELS | Altitude in thousands |
+| STATE | Fuel state |
+| ATA | Actual arrival time |
+
+BCN and callsign together drive side-number correlation for SRS-fielded aircraft (see above).
+
+**EAT entry:** the cell shows only the minutes. Type two digits for the next such minute at or after the current Zulu time (at 2055, `57` means 2057 and `01` means 2101), or four digits for an exact time. Sorting by EAT follows the full time, including across midnight.
+
+**DME and ANGELS** are a linked pair, DME = ANGELS + 15. Typing either one fills in the other, for DME 21 / ANGELS 6 up to ANGELS 99. To set a nonstandard pair, prefix the value with `X` (for example `X21` in DME): the pair unlinks and keeps what you type. A value outside the linked range also unlinks it.
+
+**Colours (Case 2/3):**
+- **Green:** a linked DME/ANGELS pair, or an EAT filled in by the marshal-slot double-click.
+- **Yellow:** an unlinked pair, or an EAT typed by hand.
+- **Red:** a marshal-stack conflict. Aircraft that have landed (with an ATA) don't count. A conflict is any of:
+  - two aircraft with the same EAT, DME or ANGELS
+  - two aircraft out of order, where the earlier EAT holds the higher altitude (both rows' EAT, DME and ANGELS turn red)
+  - an EAT with no altitude where none fits between its neighbours
+  
+  Red overrides green and yellow.
 
 **Adding entries:**
 
@@ -118,7 +155,7 @@ An event/recovery board shared by every CATCC position over the session's sync t
 - Arrow keys move between table cells: Up/Down keep the column, and Left/Right move the text cursor and only jump to the neighbouring cell from the start or end of the text. A cell reached by arrow opens with its text selected, so typing replaces it. Arrows stop at the table's edges.
 - Invalid time (`HHMM`, 0000–2359 or 2400) or fuel (`X.X`/`XX.X`) values are highlighted orange.
 - STATE turns red when it's at or below BINGO.
-- **Marshal slots (Case 2/3):** when Case Recovery is `2` or `3` and at least one row has both EAT and Angels, double-click a row's green (read-only) side number to give it the next free slot: EAT +1 minute and Angels +1, counted up from the row with the lowest Angels. A slot freed by a removed row is reused first. Rows that already have an EAT or Angels are left alone.
+- **Marshal slots (Case 2/3):** double-click a row's green (read-only) side number to give it the next EAT (one minute after the latest EAT in the stack) and an altitude. The altitude is the lowest free one (from Angels 6 / DME 21 up) that keeps the stack climbing: above every aircraft with an earlier EAT and below every aircraft with a later one. A row that already has an EAT keeps it and gets just the altitude; if no altitude fits between its neighbours it gets none, and its EAT shows red. Rows that already have DME or Angels are left alone. Aircraft with an ATA don't count. The first slot needs at least one EAT on the board to follow.
 - Click a column header to sort. This changes the display only and doesn't reorder the underlying data.
 
 **Autofill (`.SBAUTOFILL`):** while on, ATD is stamped (Zulu) when an aircraft launches from your carrier and ATA when it traps. A trap counts once the aircraft has settled on deck at carrier speed for a few seconds, so a bolter or touch-and-go stamps nothing. A new launch overwrites ATD and clears the previous ATA. Aircraft first seen already parked on deck or already airborne aren't stamped, and going down an elevator to the hangar isn't a launch. The row is found the same way as for correlation: the row's own unit, or a matching callsign. The setting is per position, but the stamped times sync to everyone.
