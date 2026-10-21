@@ -21,6 +21,23 @@ const CACHE_DIR          = process.env.TRACS_NAVDATA_CACHE_DIR
   : path.join(NAVDATA_DIR, 'cache')
 const ICAO_MAPPING_PATH  = path.join(PROJECT_DIR, 'client', 'public', 'icaoMapping.json')
 const FIR_IDENTS_PATH    = path.join(CONFIG_DIR, 'fir_idents.json')
+// DCS airbase runway data: client/public in a source checkout; an installed
+// copy only has the built client's copy.
+const RUNWAYS_DIRS       = [
+  path.join(PROJECT_DIR, 'client', 'public', 'runways'),
+  path.join(PROJECT_DIR, 'client', 'dist', 'runways'),
+]
+
+// An ident whose LNM airport is further than this from the DCS airbase it's
+// mapped to is a different airport (e.g. a historical DCS code LNM now gives
+// to another field), so none of LNM's data for it is used.
+const MAX_AIRPORT_OFFSET_KM = 5
+const KM_PER_NM = 1.852
+
+// Bumped when the extract's output changes in a way an existing cache
+// doesn't have, so parser.js re-extracts once (it compares the manifest's).
+// 2: procedures/ is rebuilt from scratch each run.
+const EXTRACT_VERSION = 2
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -737,6 +754,67 @@ async function validateLnmDb(lnmDbPath) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+// ── DCS airbase positions ─────────────────────────────────────────────────────
+
+function runwaysDir() {
+  return RUNWAYS_DIRS.find((d) => fs.existsSync(d)) ?? null
+}
+
+function runwayFiles(dir) {
+  try { return fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort() } catch { return [] }
+}
+
+// Fingerprint of the runway data and the offset limit, so a change to either
+// re-runs the extract (parser.js compares it with the manifest's).
+function airbaseCheckHash() {
+  const hash = crypto.createHash('sha256').update(String(MAX_AIRPORT_OFFSET_KM))
+  const dir = runwaysDir()
+  if (dir) for (const f of runwayFiles(dir)) hash.update(f).update(fs.readFileSync(path.join(dir, f)))
+  return hash.digest('hex').slice(0, 16)
+}
+
+// DCS airbase name -> { lat, lon }: the mean of its runways' reference points
+function loadAirbasePositions() {
+  const idx = {}
+  const dir = runwaysDir()
+  if (!dir) return idx
+  for (const f of runwayFiles(dir)) {
+    let j
+    try { j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) } catch { continue }
+    for (const ab of j.airbases ?? []) {
+      let sumLat = 0, sumLon = 0, n = 0
+      for (const rw of Array.isArray(ab.runways) ? ab.runways : []) {
+        let lat = rw.lat, lon = rw.lon
+        if (lat == null && rw.end1 && rw.end2) { lat = (rw.end1.lat + rw.end2.lat) / 2; lon = (rw.end1.lon + rw.end2.lon) / 2 }
+        if (lat == null || lon == null) continue
+        sumLat += lat; sumLon += lon; n++
+      }
+      if (n && !(ab.airbase in idx)) idx[ab.airbase] = { lat: sumLat / n, lon: sumLon / n }
+    }
+  }
+  return idx
+}
+
+// The theatre's mapped idents whose LNM airport is where DCS puts the
+// airbase. An ident that can't be checked (no DCS runway data, or not in
+// LNM) is kept. Skipped ones are logged with the distance.
+function checkedIdents(db, tName, mapping, airbases) {
+  const ok = new Set()
+  const bad = new Map()   // ident -> "<DCS name> <km>"
+  for (const [dcsName, ident] of Object.entries(mapping)) {
+    const dcs = airbases[dcsName]
+    const lnm = dcs ? queryOne(db, 'SELECT laty, lonx FROM airport WHERE ident = ?', [ident]) : null
+    const km = lnm ? nmBetween(dcs.lat, dcs.lon, lnm.laty, lnm.lonx) * KM_PER_NM : null
+    if (km === null || km <= MAX_AIRPORT_OFFSET_KM) ok.add(ident)
+    else bad.set(ident, `${dcsName}, ${km.toFixed(1)} km`)
+  }
+  for (const [ident, why] of bad) {
+    if (ok.has(ident)) continue
+    console.log(`[extract] ${tName}: no LNM data for ${ident} - LNM's ${ident} isn't at the DCS airbase (${why} away)`)
+  }
+  return ok
+}
+
 async function runExtract(lnmDbPath) {
   if (!fs.existsSync(lnmDbPath)) {
     throw new Error(`LNM database not found: ${lnmDbPath}`)
@@ -750,6 +828,7 @@ async function runExtract(lnmDbPath) {
   const firIdentsRaw = fs.readFileSync(FIR_IDENTS_PATH, 'utf8')
   const firIdentsHash = crypto.createHash('sha256').update(firIdentsRaw).digest('hex').slice(0, 16)
   const icaoMappingHash = crypto.createHash('sha256').update(icaoMappingRaw).digest('hex').slice(0, 16)
+  const airbaseHash  = airbaseCheckHash()
   const lnmStat      = fs.statSync(lnmDbPath)
   const lnmMtime     = lnmStat.mtime.toISOString()
   const lnmSize      = lnmStat.size
@@ -762,23 +841,29 @@ async function runExtract(lnmDbPath) {
 
   await fsp.mkdir(CACHE_DIR, { recursive: true })
 
-  // Collect all ICAOs across all theatres for sector extraction
+  // Mapped idents that pass the airbase position check, per theatre. Sector
+  // frequencies are global, so an ident keeps them if it passes in any
+  // theatre that maps it.
+  const airbases = loadAirbasePositions()
+  const okByTheatre = {}
   const allIcaos = new Set()
   for (const tName of Object.keys(theatres)) {
-    for (const icao of Object.values(icaoMapping[tName.toLowerCase()] ?? {})) {
-      allIcaos.add(icao)
-    }
+    okByTheatre[tName] = checkedIdents(db, tName, icaoMapping[tName.toLowerCase()] ?? {}, airbases)
+    for (const icao of okByTheatre[tName]) allIcaos.add(icao)
   }
 
   // ── Per-theatre extraction ────────────────────────────────────────────────
 
   for (const [tName, tConf] of Object.entries(theatres)) {
     const folder  = path.join(CACHE_DIR, tConf.folder)
+    // Rebuilt from scratch so an airport that no longer gets procedures
+    // (unmapped, or failing the airbase check) doesn't keep a stale file.
+    await fsp.rm(path.join(folder, 'procedures'), { recursive: true, force: true })
     await fsp.mkdir(path.join(folder, 'procedures'), { recursive: true })
 
     const bbox        = tConf.bbox
     const theatreKey  = tName.toLowerCase()
-    const theatreIcaos = Object.values(icaoMapping[theatreKey] ?? {})
+    const theatreIcaos = [...new Set(Object.values(icaoMapping[theatreKey] ?? {}))].filter((i) => okByTheatre[tName].has(i))
 
     console.log(`[extract] ${tName}: fixes, navaids, airspace, holdings, airways, MSA, MORA...`)
 
@@ -842,11 +927,13 @@ async function runExtract(lnmDbPath) {
   db.close()
 
   const manifest = {
+    extractVersion:  EXTRACT_VERSION,
     lnmMtime,
     lnmSize,
     bboxHash,
     firIdentsHash,
     icaoMappingHash,
+    airbaseHash,
     builtAt:         new Date().toISOString(),
     proceduresBuilt: true,
   }
@@ -865,7 +952,7 @@ async function main() {
   await runExtract(args[dpIdx + 1])
 }
 
-module.exports = { runExtract, validateLnmDb, ICAO_MAPPING_PATH }
+module.exports = { runExtract, validateLnmDb, airbaseCheckHash, EXTRACT_VERSION, ICAO_MAPPING_PATH }
 
 if (require.main === module) {
   main().catch(err => { console.error('[extract] fatal:', err); process.exit(1) })

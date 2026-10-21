@@ -143,6 +143,7 @@ Everything else (theatre geography, terrain, airports and runways) is bundled wi
 - **First launch (desktop app):** if no database is set, TRACS explains this and offers **Choose file…**, **Not now**, or **Don't ask again**. After you choose a file, TRACS extracts the data; this can take a minute, and any error is shown in the dialog.
 - **Changing it later:** open **⚙ → Navigation data → Change…**. The new data takes effect the next time you sign in to a position.
 - **Updates:** at each launch, TRACS re-extracts automatically if the database file has changed (e.g. after a new AIRAC cycle).
+- **Airports LittleNavMap places elsewhere:** if a DCS airbase's ICAO code belongs to a different airport in LittleNavMap (more than 5 km from where DCS puts the airbase, e.g. Gatow and Northeim in Germany), TRACS uses none of LittleNavMap's procedures or frequencies for it. The extract log names each one.
 - **Without a database:** those layers are empty, and commands that look up a fix or procedure reply `NO NAVDATA`. Everything else works normally.
 - **Running from source:** you can set the `LNM_DB_PATH` environment variable instead.
 
