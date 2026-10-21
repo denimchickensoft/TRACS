@@ -358,3 +358,8 @@
   border-color: #AA5533;
   color: #FF7744;
 }
+
+/* ── Popped out: title fixed, the list scrolls both ways under its column header ── */
+.dr.popup-fill > * { flex-shrink: 0; }
+.dr.popup-fill > .dr-body { flex: 1 1 0; min-height: 0; overflow: auto; }
+.dr.popup-fill .dr-row-header { position: sticky; top: 0; z-index: 1; background: #0a0a0a; }

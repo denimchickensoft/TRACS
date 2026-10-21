@@ -484,7 +484,7 @@ export function ControllerList({ visible, onClose, onUndock, onOpenDm, rightInse
   return (
     <div
       ref={windowRef}
-      className={`cl-window${standalone ? ' cl-window--standalone' : ''}`}
+      className={`cl-window${standalone ? ' cl-window--standalone popup-fill' : ''}`}
       style={overlayStyle}
     >
       {/* Resize handles — floating mode only */}

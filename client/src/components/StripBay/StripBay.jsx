@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { usePopupFill } from '../../utils/usePopupFill.js'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useStripsStore, CONFLICT_RESOLUTION } from '../../store/strips.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
@@ -534,10 +535,12 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
     setDragOverId(null)
   }
 
-  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : {}) }
+  // Popped out: fill the window, with the strips scrolling under the header
+  const fill  = usePopupFill(scale, standalone)
+  const style = { zoom: scale, ...(fill ?? (docked && width ? { width, minWidth: width } : {})) }
 
   return (
-    <div className={`sb-panel${standalone ? ' sb-panel--standalone' : ''}`} style={style}>
+    <div className={`sb-panel${standalone ? ' sb-panel--standalone popup-fill' : ''}`} style={style}>
       {docked && <div className="sb-resize-handle" onMouseDown={onResize} />}
 
       {/* Header */}

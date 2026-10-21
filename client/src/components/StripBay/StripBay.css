@@ -461,3 +461,10 @@
   background: #222;
   margin: 2px 0;
 }
+
+/* ── Popped out: header fixed, the strips scroll both ways ── */
+.sb-panel.popup-fill > * { flex-shrink: 0; }
+.sb-panel.popup-fill > .sb-list { flex: 1 1 0; min-height: 0; overflow: auto; }
+/* Strips never narrower than their fixed columns, so their border and
+   background run the full width when the list scrolls sideways */
+.sb-panel.popup-fill .sb-strip { min-width: min-content; }

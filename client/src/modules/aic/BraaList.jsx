@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from 'react'
+import { usePopupFill } from '../../utils/usePopupFill.js'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useAicStore, getAicEffectiveDeclaration } from '../../store/aic.js'
 import { useUnitsStore } from '../../store/units.js'
@@ -155,7 +156,9 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
     })
   }, [wheelDir])
 
-  const style = docked ? { zoom: scale, width, minWidth: width } : { zoom: scale }
+  // Popped out: fill the window, with the rows scrolling under the title
+  const fill  = usePopupFill(scale, !docked)
+  const style = { zoom: scale, ...(fill ?? { width, minWidth: width }) }
 
   const rows = useMemo(() => braaList.map(pair => {
     const fighter = units[pair.fighterId]
@@ -180,7 +183,7 @@ export function BraaList({ docked = true, width, onResize, onUndock, onDock, onH
   const sortedRows = useMemo(() => sortBraaRows(rows, sort), [rows, sort])
 
   return (
-    <div className="braa" style={style}>
+    <div className={`braa${fill ? ' popup-fill' : ''}`} style={style}>
       {docked && <div className="braa-resize" onMouseDown={onResize} />}
 
       {/* Title bar */}

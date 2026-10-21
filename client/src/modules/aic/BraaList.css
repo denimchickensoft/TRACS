@@ -192,3 +192,7 @@
   border-color: #AA5533;
   color:        #FF7744;
 }
+
+/* ── Popped out: title fixed, the pairs scroll both ways ── */
+.braa.popup-fill > * { flex-shrink: 0; }
+.braa.popup-fill > .braa-body { flex: 1 1 0; min-height: 0; overflow: auto; }

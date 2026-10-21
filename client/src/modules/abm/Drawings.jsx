@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { usePopupFill } from '../../utils/usePopupFill.js'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useSessionStore } from '../../store/session.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
@@ -315,7 +316,9 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
     })
   }
 
-  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
+  // Popped out: fill the window, with the rows scrolling under the header
+  const fill  = usePopupFill(scale, !docked)
+  const style = { zoom: scale, ...(fill ?? (width ? { width, minWidth: width } : { flex: 1, minWidth: 0 })) }
 
   // Dropping a file anywhere on the panel skips straight to the import
   // modal's parse/preview step — same AbmDrawingImport flow the "Load
@@ -332,7 +335,7 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
 
   return (
     <div
-      className={['dr', dragging ? 'dr-dragging' : ''].join(' ')}
+      className={['dr', dragging ? 'dr-dragging' : '', fill ? 'popup-fill' : ''].join(' ')}
       style={style}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}

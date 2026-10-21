@@ -188,3 +188,11 @@
   border-color: #AA5533;
   color: #FF7744;
 }
+
+/* ── Popped out: title fixed, the list scrolls both ways under its column header ── */
+.ato.popup-fill > * { flex-shrink: 0; }
+.ato.popup-fill > .ato-body { flex: 1 1 0; min-height: 0; overflow: auto; }
+.ato.popup-fill .ato-row-header { position: sticky; top: 0; z-index: 1; background: #0a0a0a; }
+/* Rows never narrower than their fixed columns, so a narrow window scrolls
+   sideways instead of each row clipping them */
+.ato.popup-fill .ato-row { min-width: min-content; }

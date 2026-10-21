@@ -491,3 +491,9 @@
 .sb-ctx-item.confirming {
   color: #CC6633;
 }
+
+/* ── Popped out: header sections fixed, the table scrolls both ways ── */
+.sb.popup-fill { display: flex; }
+.sb.popup-fill > * { flex-shrink: 0; }
+.sb.popup-fill > .sb-table-wrap { flex: 1 1 0; min-height: 0; overflow: auto; }
+.sb.popup-fill .sb-th { position: sticky; top: 0; z-index: 1; background: #0A0A0A; }

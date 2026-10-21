@@ -19,3 +19,10 @@ body {
 .no-select {
   user-select: none;
 }
+
+/* Thin dark scrollbars in the side panels (status board, strip bay, BRAA,
+   ATO, FRAG, Drawings), docked or popped out (.popup-fill) */
+:is(.popup-fill, .sb, .sb-panel, .braa, .ato, .frag, .dr) ::-webkit-scrollbar        { width: 6px; height: 6px; }
+:is(.popup-fill, .sb, .sb-panel, .braa, .ato, .frag, .dr) ::-webkit-scrollbar-track  { background: #0d0d0d; }
+:is(.popup-fill, .sb, .sb-panel, .braa, .ato, .frag, .dr) ::-webkit-scrollbar-thumb  { background: #2a2a2a; border-radius: 3px; }
+:is(.popup-fill, .sb, .sb-panel, .braa, .ato, .frag, .dr) ::-webkit-scrollbar-corner { background: #0d0d0d; }

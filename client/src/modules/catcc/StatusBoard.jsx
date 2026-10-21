@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
+import { usePopupFill } from '../../utils/usePopupFill.js'
 import { createPortal } from 'react-dom'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useStatusBoardStore }  from '../../store/statusBoard.js'
@@ -235,10 +236,12 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
     setRowMenu(null)
   }
 
-  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
+  // Popped out: fill the window, with the rows scrolling under the header
+  const fill  = usePopupFill(scale, !docked)
+  const style = { zoom: scale, ...(fill ?? (width ? { width, minWidth: width } : { flex: 1, minWidth: 0 })) }
 
   return (
-    <div className="sb" style={style}>
+    <div className={`sb${fill ? ' popup-fill' : ''}`} style={style}>
       {docked && <div className="sb-resize-handle" onMouseDown={onResize} />}
       <div className="sb-title" onWheel={handleTitleWheel}>
         <span

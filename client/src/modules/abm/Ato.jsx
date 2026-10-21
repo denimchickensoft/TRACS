@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { usePopupFill } from '../../utils/usePopupFill.js'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
@@ -248,10 +249,12 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
     })
   }, [rows, sortKey, sortDir])
 
-  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
+  // Popped out: fill the window, with the rows scrolling under the header
+  const fill  = usePopupFill(scale, !docked)
+  const style = { zoom: scale, ...(fill ?? (width ? { width, minWidth: width } : { flex: 1, minWidth: 0 })) }
 
   return (
-    <div className="ato" style={style}>
+    <div className={`ato${fill ? ' popup-fill' : ''}`} style={style}>
       {docked && <div className="ato-resize" onMouseDown={onResize} />}
 
       <div className="ato-title" onWheel={handleTitleWheel}>

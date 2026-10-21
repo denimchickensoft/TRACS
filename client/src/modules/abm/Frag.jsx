@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
+import { usePopupFill } from '../../utils/usePopupFill.js'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { validateAltPair } from './flightAlt.js'
@@ -322,10 +323,12 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   // callsign starts with the entered prefix is a match.
   const flightLiveMatches = flight?.manual ? matchLiveByPrefix(flight.callsignPrefix, liveUnits) : []
 
-  const style = { zoom: scale, ...(docked && width ? { width, minWidth: width } : { flex: 1, minWidth: 0 }) }
+  // Popped out: fill the window, with the rows scrolling under the header
+  const fill  = usePopupFill(scale, !docked)
+  const style = { zoom: scale, ...(fill ?? (width ? { width, minWidth: width } : { flex: 1, minWidth: 0 })) }
 
   return (
-    <div className="frag" style={style}>
+    <div className={`frag${fill ? ' popup-fill' : ''}`} style={style}>
       {docked && <div className="frag-resize" onMouseDown={onResize} />}
 
       <div className="frag-title" onWheel={handleTitleWheel}>
