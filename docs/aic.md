@@ -39,6 +39,7 @@ Type anywhere in the AIC window (outside a text field), then press **Enter** to 
 | `.be` | Reset bullseye to the mission bullseye (clears any override) |
 | `.be` + click | Type `.be`, then click the map to override bullseye at that point |
 | `.be <fixname>` | Override bullseye to a named fix/navaid/runway |
+| `.note <text>` / `.note* <text>` + click, `.note` + click, `.notes` | Put a note on the scope, remove one, or remove all (see [Notes](getting-started.md#notes)) |
 | `.be <lat> <lon>` | Override bullseye to explicit decimal-degree coordinates |
 | `.rr` | Toggle range rings |
 | `.rr <dist>` | Set range ring spacing in NM, or km under `.metric` (`0` = off) |

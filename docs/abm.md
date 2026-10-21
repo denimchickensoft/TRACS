@@ -127,6 +127,7 @@ ABM does not display SID/STAR/approach procedures.
 | `.db` | Toggle global datablock visibility; typed (no Enter) + click a contact toggles just that one |
 | `.dbreset` | Clear all per-contact `.db` overrides |
 | `.dbca` | Datablock collision-avoidance placement (off by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction (`.ld`) unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction |
+| `.note <text>` / `.note* <text>` + click, `.note` + click, `.notes` | Put a note on the scope, remove one, or remove all (see [Notes](getting-started.md#notes)) |
 | `.dbsize [0-5]` | Set aircraft datablock size; bare form reports the current value |
 | `.dbs` | Formation datablock suppression (on by default). Among aircraft whose callsigns end in two or more digits (e.g. `ENFIELD11`, `ENFIELD12`), only the flight lead shows a datablock while the others are inside a 6×6 NM box around it. The box extends ±3 NM along and across the lead's heading |
 | `.ll [0-7]` | Set leader line length (10 px per step); bare `.ll` reports the current value |
@@ -214,8 +215,10 @@ Typed sizes (radius, leg, turn radius) are in NM, or km under `.metric`. While p
 
 Clearing:
 - `.dclear` (bare), then click a drawing — removes one shape.
+- DEL, then click — removes the note under the click, or else the drawing, one per DEL.
 - `.dclear all` — removes every hand-drawn shape after a `y`/`n` confirmation.
 - `.dclear <name>` — removes shapes by name.
+- Shift+right-drag a drawn shape's outline to move it. The shape keeps its exact size and bearings. Imported drawings don't move, and plain right-drag still pans.
 
 Hand-drawn shapes appear in the Drawings panel alongside imported layers. The drawings store is shared by every ABM window, so drawing or clearing in one window affects all of them.
 

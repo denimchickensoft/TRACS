@@ -40,6 +40,8 @@ import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
 import { snapshotLayerVisibility, applyLayerVisibility } from './layerVisibility.js'
 import { DatablockOverlay }     from './DatablockOverlay.jsx'
+import { ScopeNotes } from '../../../components/ScopeNotes/ScopeNotes.jsx'
+import { noteClick, noteEnter } from '../../../components/ScopeNotes/noteCommands.js'
 import { AutotrackDetector }    from '../AutotrackDetector.jsx'
 import { InputHandler }         from './input/InputHandler.jsx'
 import { PreviewArea }          from './PreviewArea.jsx'
@@ -705,6 +707,18 @@ export default function StarsScope() {
   // ── Command evaluation helper ─────────────────────────────────────
   const evaluateCommand = useCallback((trigger, canvasPos = null) => {
     const { buffer, hasToken, leadToken } = usePreviewStore.getState()
+    const noteScope = { module: 'STARS', theatre, windowId: WINDOW_ID }
+    const note = trigger === 'SLEW' && canvasPos
+      ? noteClick(buffer, noteScope, { ...canvasPos, view: viewRef.current, el: interactiveRef.current }, leadToken === 'DEL')
+      : noteEnter(buffer, noteScope)
+    if (note) {
+      if (note.ok) usePreviewStore.getState().clearAfterCommand()
+      else {
+        if (note.oneShot) usePreviewStore.getState().clear()
+        usePreviewStore.getState().setResponse(note.msg)
+      }
+      return
+    }
     const parsed  = parseCommand(buffer, trigger, hasToken, leadToken)
     if (!parsed) {
       if (trigger === 'ENTER') {
@@ -736,7 +750,7 @@ export default function StarsScope() {
       : null
 
     dispatchAction(parsed, slewTarget, { positionName, canvasPos, canvasSize, canvasLatLng, windowId: WINDOW_ID })
-  }, [positionName])
+  }, [positionName, theatre])
 
   // ── ENTER key handler (from InputHandler) ─────────────────────────
   const handleEnter = useCallback(() => {
@@ -1211,6 +1225,9 @@ export default function StarsScope() {
           onMouseLeave={() => { panRef.current.dragging = false }}
           onContextMenu={(e) => e.preventDefault()}
         />
+
+        <ScopeNotes module="STARS" theatre={theatre} windowId={WINDOW_ID} view={view}
+                    color={activeProfile?.visual?.colors?.pdbText ?? '#00cc00'} />
 
         {activeProfile?.features?.coordinationLists && <>
           <SSA />

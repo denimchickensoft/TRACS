@@ -47,6 +47,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.VOL [0-10]` | Set the alert tone volume (0 = mute); bare `.VOL` queries the current value |
 | `.SBAUTOFILL` | Toggle Status Board ATD/ATA autofill for your position (off by default, remembered); see [Autofill](#status-board) |
 | `.DBCA` | Toggle datablock collision avoidance (on by default): a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction, and off the marshal radial |
+| `.NOTE <text>` / `.NOTE* <text>` + click, `.NOTE` + click, `.NOTES` | Put a note on the scope, remove one, or remove all (see [Notes](getting-started.md#notes)) |
 | `.METRIC` / `.IMPERIAL` | Set display units for the scope, status board and PAR (default imperial). Metric shows datablock altitude in hundreds of m, speeds in km/h and ranges in km |
 | `.ASP` | Bulk-toggle all airspace categories |
 | `.TMA` `.CTR` `.CTA` `.FIR` `.UIR` `.SUA` `.MIL` `.TRSA` `.CLASSA`–`.CLASSG` | Toggle one airspace category |

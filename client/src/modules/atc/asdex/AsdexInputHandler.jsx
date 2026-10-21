@@ -24,6 +24,13 @@ export function AsdexInputHandler({ onEnter, onEsc }) {
         return
       }
 
+      // DEL + click removes a note (components/ScopeNotes)
+      if (e.code === 'Delete' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        if (!preview.buffer.trim()) preview.armDel()
+        return
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault()
         onEsc?.()

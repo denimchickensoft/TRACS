@@ -72,6 +72,8 @@ import {
   getAbmVisibleUnits, getAbmVisibleGroundUnits, buildReadoutFields, buildFriendlyAirFields, distToSegment, airbaseCenterFromStrips, buildAirportFields, flightRouteGroupLabel, buildAirportStrips, groupReadoutHits,
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
+import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
+import { noteClick, noteEnter, removeNoteAt } from '../../components/ScopeNotes/noteCommands.js'
 import { dispatch, openAbmFocusPanel, RCLEAR, TDM_TOGGLE } from './actions/index.js'
 import { isOnGround } from '../../utils/visibleUnits.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
@@ -104,6 +106,22 @@ const BASEMAP_SEA_COLOR = 'rgb(26, 38, 48)'
 // and ++alt + click on an aircraft not yet in any flight. Own side only (true
 // coalition, not the declaration); GM/Admin can file either side's aircraft
 // under that aircraft's own coalition. Returns the flight's groupId, or null.
+// A command-drawn shape's params moved by a screen-pixel offset: every
+// { lat, lng } point in them (anchor, center, vertices, fix, ...) is shifted
+// on the scope and the shape is rebuilt from them, so radii, legs and
+// bearings stay exactly as typed.
+function shiftShapeParams(params, dx, dy, view) {
+  const shift = (v) => {
+    if (Array.isArray(v)) return v.map(shift)
+    if (v && typeof v.lat === 'number' && typeof v.lng === 'number') {
+      const p = latLngToCanvas(v.lat, v.lng, view)
+      return { ...v, ...canvasToLatLng(p.x + dx, p.y + dy, view) }
+    }
+    return v
+  }
+  return Object.fromEntries(Object.entries(params).map(([k, v]) => [k, shift(v)]))
+}
+
 function ensureFlightForUnit(unit, { isGmOrAdmin, myCoalitionNum, coalition }) {
   const unitSide = unit?.coalition === 2 ? 'blue' : unit?.coalition === 1 ? 'red' : null
   if (!unit || !(isGmOrAdmin ? unitSide != null : unit.coalition === myCoalitionNum)) return null
@@ -1301,6 +1319,36 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {
     if (e.button === 2) {
+      // Shift+right-drag on a command-drawn shape's outline moves it (notes
+      // take this gesture first, see components/ScopeNotes). Imported
+      // layers don't move. Anywhere else, Shift+right-drag pans as usual.
+      const rect = interactiveRef.current?.getBoundingClientRect()
+      const th   = theatreRef.current
+      const hit  = e.shiftKey && !e.ctrlKey && !e.altKey && rect && viewRef.current && th
+        ? hitTestDrawingLayer(viewRef.current,
+            (useAbmDrawingsStore.getState().byTheatre[th] ?? []).filter(l => l.shapeType),
+            e.clientX - rect.left, e.clientY - rect.top)
+        : null
+      if (hit) {
+        e.preventDefault()
+        const startX = e.clientX, startY = e.clientY, startParams = hit.params
+        const onMove = (ev) => {
+          const v = viewRef.current
+          if (!v) return
+          useAbmDrawingsStore.getState().updateShapeParams(th, hit.id,
+            shiftShapeParams(startParams, ev.clientX - startX, ev.clientY - startY, v))
+        }
+        const onUp = (ev) => {
+          if (ev.button !== 2) return
+          window.removeEventListener('mousemove', onMove)
+          window.removeEventListener('mouseup', onUp, true)
+          ev.stopPropagation()
+          setCmdFeedback(`MOVED ${hit.name}`)
+        }
+        window.addEventListener('mousemove', onMove)
+        window.addEventListener('mouseup', onUp, true)
+        return
+      }
       // Ctrl+right-click — toggle that contact's route on the scope without
       // opening FRAG (same target/coalition resolution as Ctrl+Shift+click's
       // FRAG-open, but writes to routeGroupIds instead of selectGroup, since
@@ -1466,6 +1514,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
 
   // ── Command preview area (bottom-left, same pattern as AIC) ─────────────────
   const [cmdBuffer,   setCmdBuffer]   = useState('')
+  // The command line holds the DEL key's token rather than typed "DEL"
+  const delArmedRef = useRef(false)
+  useEffect(() => { if (cmdBuffer !== 'DEL') delArmedRef.current = false }, [cmdBuffer])
   const [cmdFeedback, setCmdFeedback] = useState('')
   // .define readout — kept separate from cmdFeedback (see AbmScope.css) since
   // cmdFeedback gets overwritten by every incidental click/command ack and a
@@ -1510,6 +1561,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       return
     }
 
+    const note = noteEnter(raw, { module: 'ABM', theatre, windowId })
+    if (note) { setCmdFeedback(note.msg); return }
     const parsed = parseCommand(raw)
     if (!parsed) { setCmdFeedback('UNKNOWN COMMAND'); return }
     const context = {
@@ -1539,6 +1592,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   }, [])
 
   const handleKeyDown = useCallback((e) => {
+    // DEL (empty command line) + click removes a note or drawing — components/ScopeNotes
+    if (e.key === 'Delete' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault()
+      if (!cmdBuffer.trim()) { setCmdBuffer('DEL'); setCmdFeedback(''); delArmedRef.current = true }
+      return
+    }
+
     const fDecl = F_KEY_DECL[e.key]
     if (fDecl) {
       e.preventDefault()
@@ -1696,6 +1756,36 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
+
+    // DEL + click — removes the note under the click, else the drawing (any
+    // layer, the same hit-test as .dclear + click). One click either way.
+    if (e.button === 0 && delArmedRef.current && cmdBuffer === 'DEL') {
+      delArmedRef.current = false
+      clearCmd()
+      if (removeNoteAt(interactiveRef.current, pos.x, pos.y)) {
+        setCmdFeedback('NOTE CLEARED')
+      } else {
+        const hit = hitTestDrawingLayer(viewRef.current, drawingLayers, pos.x, pos.y)
+        if (hit) {
+          removeDrawingLayer(theatre, hit.id)
+          setCmdFeedback(`CLEARED ${hit.name}`)
+        } else {
+          setCmdFeedback('NOTHING THERE')
+        }
+      }
+      return
+    }
+
+    // .note / .note* + click — see components/ScopeNotes
+    if (e.button === 0) {
+      const note = noteClick(cmdBuffer, { module: 'ABM', theatre, windowId },
+        { ...pos, view: viewRef.current, el: interactiveRef.current })
+      if (note) {
+        if (note.ok) clearCmd()
+        setCmdFeedback(note.msg)
+        return
+      }
+    }
 
     // .be + click — places the bullseye override at the clicked point.
     // Armed live while cmdBuffer is exactly ".be" (see pendingBe above);
@@ -2080,6 +2170,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
         <canvas ref={layersRef}   className="abm-layer" />
         <canvas ref={compassRef}  className="abm-layer" />
         <canvas ref={contactsRef} className="abm-layer" />
+        <ScopeNotes module="ABM" theatre={theatre} windowId={windowId} view={view} color={'#ccc'} />
         <div
           ref={interactiveRef}
           className="abm-layer abm-interactive"

@@ -30,6 +30,8 @@ import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../utils/star
 import { processOdsCommand } from './odsCommands.js'
 import { initCntl, termCntl, bareSlew, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
+import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
+import { noteClick, noteEnter } from '../../components/ScopeNotes/noteCommands.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
 import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
 import { formatDistance } from '../../utils/units.js'
@@ -91,6 +93,8 @@ export default function CatccScope() {
   const windowSettings = displayStore.windows[WINDOW_ID]
 
   const theatre     = mission?.mission?.theatre
+  const theatreRef  = useRef(theatre)
+  useEffect(() => { theatreRef.current = theatre }, [theatre])
   const missionDate = mission?.mission?.dateAndTime?.date ?? null
 
   // ── Navdata layers (.asp/.sua/.classc/etc, .fixes, .geo) — reused directly
@@ -481,6 +485,12 @@ export default function CatccScope() {
     if (e.key === 'Enter') {
       e.preventDefault()
       const { buffer: buf, leadToken } = usePreviewStore.getState()
+      const note = noteEnter(buf, { module: 'CATCC', theatre: theatreRef.current, windowId: WINDOW_ID })
+      if (note) {
+        if (note.ok) { usePreviewStore.getState().clear(); setOdsLines([note.msg]) }
+        else usePreviewStore.getState().setResponse(note.msg)
+        return
+      }
       // Every ENTER-triggered CATCC command is local (odsCommands.js) — no
       // shared STARS parser/dispatcher involved. processOdsCommand always
       // returns a Promise (some handlers, e.g. .ASPCOLORS/.REFRESH, hit the
@@ -526,6 +536,20 @@ export default function CatccScope() {
     const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     if (!viewRef.current) return
     const target = resolveSlew(canvasPos, visibleUnitsRef.current, viewRef.current)
+
+    // .note / .note* + click — see components/ScopeNotes
+    const { buffer: noteBuf, leadToken: noteLead } = usePreviewStore.getState()
+    const note = noteClick(noteBuf,
+      { module: 'CATCC', theatre: theatreRef.current, windowId: WINDOW_ID },
+      { ...canvasPos, view: viewRef.current, el: interactiveRef.current }, noteLead === 'DEL')
+    if (note) {
+      if (note.ok) { usePreviewStore.getState().clear(); setOdsLines([note.msg]) }
+      else {
+        if (note.oneShot) usePreviewStore.getState().clear()
+        usePreviewStore.getState().setResponse(note.msg)
+      }
+      return
+    }
 
     // Ctrl+Shift+Click — initiate track (mirrors F3/IC + slew)
     if (e.ctrlKey && e.shiftKey) {
@@ -605,6 +629,7 @@ export default function CatccScope() {
         <canvas ref={layersCanvasRef}   className="catcc-layer" />
         <canvas ref={compassCanvasRef}  className="catcc-layer" />
         <canvas ref={contactsCanvasRef} className="catcc-layer" />
+        <ScopeNotes module="CATCC" theatre={theatre} windowId={WINDOW_ID} view={view} color={'#00dc50'} />
         <div
           ref={interactiveRef}
           className="catcc-layer catcc-interactive"

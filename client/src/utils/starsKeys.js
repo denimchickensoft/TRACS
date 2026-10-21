@@ -21,6 +21,8 @@ export const STARS_KEY_MAP = [
   { code: 'F9',                ctrl: false, token: 'VP ' },   // VFR PLAN
   { code: 'F11',               ctrl: false, token: 'CA ' },   // CA
   { code: 'End',               ctrl: false, token: 'MIN' },   // MIN
+  // DEL + click removes a note (and in ABM a drawing) - components/ScopeNotes
+  { code: 'Delete',            ctrl: false, alt: false, shift: false, token: 'DEL' },
 
   // Δ key — backtick
   { code: 'Backquote',         ctrl: false, token: 'Δ'   },
@@ -79,6 +81,7 @@ export function matchStarsKey(e) {
 // or holding it down, doesn't repeat the token. Other token keys (Δ, MIN)
 // can appear more than once in an entry.
 export function shouldAppendToken(code, token, buffer, isRepeat) {
+  if (code === 'Delete') return !buffer.trim()
   if (!/^F\d+$/.test(code)) return true
   return !isRepeat && !buffer.startsWith(token)
 }

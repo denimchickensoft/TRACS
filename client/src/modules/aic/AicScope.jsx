@@ -31,6 +31,8 @@ import { useMapsStore }        from '../../store/maps.js'
 import { useBrevityStore }     from '../../store/brevity.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
+import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
+import { noteClick, noteEnter } from '../../components/ScopeNotes/noteCommands.js'
 import { dispatch }            from './actions/index.js'
 import './AicScope.css'
 import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye, formatPictureDimensions } from './aicScopeHelpers.js'
@@ -387,6 +389,9 @@ export default function AicScope() {
 
   // Command buffer — must be declared before pendingSector useMemo
   const [cmdBuffer, setCmdBuffer] = useState('')
+  // The command line holds the DEL key's token rather than typed "DEL"
+  const delArmedRef = useRef(false)
+  useEffect(() => { if (cmdBuffer !== 'DEL') delArmedRef.current = false }, [cmdBuffer])
   const [cmdFeedback, setCmdFeedback] = useState('')
   // .define readout — kept separate from cmdFeedback since cmdFeedback gets
   // overwritten by every incidental click/command ack and a brevity
@@ -590,6 +595,8 @@ export default function AicScope() {
   // feedback string; this wrapper just supplies the render-derived context
   // values actions have no independent store to read from.
   async function execCommand(raw) {
+    const note = noteEnter(raw, { module: 'AIC', theatre, windowId: WINDOW_ID })
+    if (note) { setCmdFeedback(note.msg); return }
     const parsed = parseCommand(raw)
     if (!parsed) { setCmdFeedback('UNKNOWN COMMAND'); return }
     const context = {
@@ -603,6 +610,13 @@ export default function AicScope() {
   }
 
   const handleKeyDown = useCallback((e) => {
+    // DEL (empty command line) + click removes a note — components/ScopeNotes
+    if (e.key === 'Delete' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault()
+      if (!cmdBuffer.trim()) { setCmdBuffer('DEL'); setCmdFeedback(''); delArmedRef.current = true }
+      return
+    }
+
     const fDecl = F_KEY_DECL[e.key]
     if (fDecl) {
       e.preventDefault()
@@ -711,6 +725,15 @@ export default function AicScope() {
     if (!rect || !viewRef.current) return
     const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     const target = resolveSlew(pos, visibleUnitsRef.current, viewRef.current)
+
+    // .note / .note* + click — see components/ScopeNotes
+    const note = noteClick(cmdBuffer, { module: 'AIC', theatre, windowId: WINDOW_ID },
+      { ...pos, view: viewRef.current, el: interactiveRef.current }, delArmedRef.current)
+    if (note) {
+      if (note.ok || note.oneShot) clearCmd()
+      setCmdFeedback(note.msg)
+      return
+    }
 
     // .sector + click: place sector origin at cursor
     if (pendingSectorRef.current) {
@@ -822,7 +845,7 @@ export default function AicScope() {
         setPendingDeclaration(null)
       }
     }
-  }, [pendingDeclaration, cmdBuffer, myCoalitionNum, setDeclaration, addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa, toggleThreatRing, displayStore])
+  }, [pendingDeclaration, cmdBuffer, theatre, myCoalitionNum, setDeclaration, addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa, toggleThreatRing, displayStore])
 
   const wheelHandlerRef = useRef(null)
   wheelHandlerRef.current = (e) => {
@@ -958,6 +981,7 @@ export default function AicScope() {
         <canvas ref={mapCanvasRef}  className="aic-layer" />
         <canvas ref={layersRef}     className="aic-layer" />
         <canvas ref={contactsRef}   className="aic-layer" />
+        <ScopeNotes module="AIC" theatre={theatre} windowId={WINDOW_ID} view={view} color={'#ccc'} />
         <div
           ref={interactiveRef}
           className="aic-layer aic-interactive"

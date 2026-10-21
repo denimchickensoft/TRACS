@@ -187,6 +187,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.FP` + ENTER | `Ctrl+F` | Open a blank Flight Plan Editor |
 | `.RENAME <newCallsign>` + SLEW | — | Rename the clicked track's displayed callsign |
 | `.RENAME` + SLEW | — | Reset callsign to the DCS-assigned one |
+| `.NOTE <text>` / `.NOTE* <text>` + SLEW, `.NOTE` + SLEW, `.NOTES` + ENTER | — | Put a note on the scope, remove one, or remove all (see [Notes](getting-started.md#notes)) |
 
 **Ctrl+Click** a contact opens its Flight Plan Editor (read-only if another controller owns it). In the editor, BCN rejects the reserved codes 0000, 1200, 2000, 7400, 7500, 7600, 7601, 7700 and 7777. ALT takes a cruising altitude in hundreds of feet (`300`, which makes the plan IFR), `VFR`, `OTP` (VFR-on-top), or `VFR/###` (e.g. `VFR/055`). `VFR` and `OTP` make the plan VFR.
 
@@ -431,6 +432,7 @@ A ground-movement sub-scope showing surface traffic (aircraft/helicopters below 
 | `.TAG <id>` + SLEW | Manually tag a target: type the aircraft ID, then click the target. The ID must match the callsign TRACS displays for that aircraft; a mismatch returns `ILL TRK` |
 | `.RENAME <newCallsign>` + SLEW | Rename the clicked aircraft's displayed callsign (shared with STARS) |
 | `.RENAME` + SLEW | Reset callsign to the DCS-assigned one |
+| `.NOTE <text>` / `.NOTE* <text>` + SLEW, `.NOTE` + SLEW, `.NOTES` + ENTER | Put a note on the scope, remove one, or remove all (see [Notes](getting-started.md#notes)) |
 | `MF Y`, click target, `<text>` + ENTER | Set the aircraft's scratchpad 1 (up to 7 letters/digits; empty clears it) |
 | `MF H`, click target, `<text>` + ENTER | Set the aircraft's scratchpad 2 |
 | Left-click, empty buffer | Toggle that aircraft's datablock on/off |

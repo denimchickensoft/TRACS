@@ -97,6 +97,19 @@ Click **Sign In**. This establishes your position, registers you with other cont
 - While a panel is popped out, its tab shows **↗** (e.g. `STRIPS ↗`). Clicking the tab brings that window to the front.
 - A popped-out list or table fills its window. When the window is smaller than its contents, the rows scroll under a fixed title bar and column header.
 
+## Notes
+
+Every scope (STARS, ASDE-X, CATCC, AIC and ABM) can hold boxed text notes. Only you see them, and they stay until you remove them, including across reloads.
+
+| Command | Effect |
+|---|---|
+| `.note <text>` + click | Pin a note to the map where you click. It moves with pan and zoom. Map notes are kept per module and per theatre |
+| `.note* <text>` + click | Pin a note to that spot on the screen. It stays put whatever the map does. Screen notes are kept per scope window |
+| `.note` + click on a note | Remove that note |
+| DEL, then click a note | Remove that note (DEL works on an empty command line; in ABM it also removes a drawing, like `.dclear` + click) |
+| `.notes` + Enter | Remove every note on that scope |
+| Shift+right-drag a note | Move it |
+
 ## Reconnecting / refreshing
 
 Reloading the window rejoins the same session automatically. Your peer identity is stored locally, so other controllers see you reconnect rather than drop. **Disconnect** (bottom of the position sign-in screen) clears this and returns you to the connect screen.

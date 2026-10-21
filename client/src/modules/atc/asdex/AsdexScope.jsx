@@ -22,6 +22,8 @@ import { computeMagvar }       from '../../../utils/magvar.js'
 import { AsdexDcb, ASDEX_WINDOW_ID } from './AsdexDcb.jsx'
 import { AsdexInputHandler }   from './AsdexInputHandler.jsx'
 import { AsdexPreviewArea }    from './AsdexPreviewArea.jsx'
+import { ScopeNotes } from '../../../components/ScopeNotes/ScopeNotes.jsx'
+import { noteClick, noteEnter } from '../../../components/ScopeNotes/noteCommands.js'
 import { parseAsdexCommand }   from './asdexCommandParser.js'
 import { dispatch }            from './actions/index.js'
 import { resolveSlew }         from '../../../utils/slewResolver.js'
@@ -126,6 +128,8 @@ export default function AsdexScope() {
 
   // ── Derived values ───────────────────────────────────────────────────────────
   const theatre  = mission?.mission?.theatre
+  const theatreRef = useRef(theatre)
+  useEffect(() => { theatreRef.current = theatre }, [theatre])
   const colorIdx = windowSettings?.colorIdx ?? 0
   const colors   = profiles[colorIdx]?.colors ?? profiles[0]?.colors ?? DEFAULT_PROFILES[0].colors
   useEffect(() => { colorsRef.current = colors }, [colors])
@@ -420,6 +424,12 @@ export default function AsdexScope() {
   // ── Command handling ─────────────────────────────────────────────────────────
   const handleEnter = useCallback(() => {
     const { buffer, pending } = useAsdexPreviewStore.getState()
+    const note = !pending && noteEnter(buffer, { module: 'ASDEX', theatre: theatreRef.current, windowId: ASDEX_WINDOW_ID })
+    if (note) {
+      if (note.ok) useAsdexPreviewStore.getState().clearAfterCommand()
+      else useAsdexPreviewStore.getState().setResponse(note.msg)
+      return
+    }
     // MF Y / MF H, target already clicked: commit the typed scratchpad.
     if (pending) {
       const m = buffer.match(/^MF [YH]\s*(.*)$/)
@@ -558,6 +568,18 @@ export default function AsdexScope() {
 
     const { buffer, pending } = useAsdexPreviewStore.getState()
 
+    // .note / .note* + click — see components/ScopeNotes
+    const note = !pending && noteClick(buffer, { module: 'ASDEX', theatre: theatreRef.current, windowId: ASDEX_WINDOW_ID },
+      { x: cx, y: cy, view: viewRef.current, el: interactiveRef.current }, useAsdexPreviewStore.getState().delKey)
+    if (note) {
+      if (note.ok) useAsdexPreviewStore.getState().clearAfterCommand()
+      else {
+        if (note.oneShot) useAsdexPreviewStore.getState().clear()
+        useAsdexPreviewStore.getState().setResponse(note.msg)
+      }
+      return
+    }
+
     // Empty buffer: toggle this aircraft's Data Block (relative to global DB ON/OFF)
     if (!buffer.trim()) {
       const nearest = findNearest()
@@ -643,6 +665,7 @@ export default function AsdexScope() {
         <AsdexPreviewArea />
         <canvas ref={surfaceRef}  className="asdex-layer" />
         <canvas ref={contactsRef} className="asdex-layer" />
+        <ScopeNotes module="ASDEX" theatre={theatre} windowId={ASDEX_WINDOW_ID} view={view} color={'#00cc00'} />
         <div
           ref={interactiveRef}
           className="asdex-layer asdex-interactive"
