@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { isTextEntry } from '../utils/keyTarget.js'
+import { focusPopup } from '../utils/focusPopup.js'
 
 // The thin vertical tab strip on the right edge of each module's layout.
 // Clicking a tab toggles its docked panel; while a panel is popped out into
@@ -23,7 +24,7 @@ export function RightTabStrip({ tabs, active, setActive, background = '#0a0a0a' 
   if (active != null) lastUsedByStrip.set(stripId, active)
 
   const activate = ({ key, docked, popupRef }) => {
-    if (!docked && popupRef.current) popupRef.current.focus()
+    if (!docked && popupRef.current) focusPopup(popupRef.current)
     else setActive((p) => (p === key ? null : key))
   }
 
@@ -35,7 +36,7 @@ export function RightTabStrip({ tabs, active, setActive, background = '#0a0a0a' 
     if (key === 'ArrowRight') { setActive(null); return }
     if (key === 'ArrowLeft') {
       const last = lastUsed() ?? tabs[0]
-      if (!last.docked && last.popupRef.current) last.popupRef.current.focus()
+      if (!last.docked && last.popupRef.current) focusPopup(last.popupRef.current)
       else setActive(last.key)
       return
     }

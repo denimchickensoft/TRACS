@@ -32,6 +32,7 @@ import { LnmSetupDialog } from './components/LnmSetup/LnmSetupDialog'
 import { UserNavdataManager } from './components/UserNavdataManager/UserNavdataManager'
 import { RightTabStrip } from './components/RightTabStrip'
 import { AssociationOwner } from './components/AssociationOwner'
+import { focusPopup } from './utils/focusPopup.js'
 
 const CL_VISIBLE_KEY  = 'tracs.cl.visible'
 const MSG_VISIBLE_KEY = 'tracs.msg.visible'
@@ -673,7 +674,7 @@ export function App() {
               onClick={(e) => {
                 if (e.shiftKey) {
                   if (!asdexDocked && asdexPopupRef.current && !asdexPopupRef.current.closed) {
-                    asdexPopupRef.current.focus()
+                    focusPopup(asdexPopupRef.current)
                   } else {
                     handleAsdexUndock()
                   }
@@ -1023,7 +1024,7 @@ export function App() {
         {!clDocked && (
           <div
             title="Controller list is in a separate window"
-            onClick={() => { if (clPopupRef.current && !clPopupRef.current.closed) clPopupRef.current.focus() }}
+            onClick={() => { focusPopup(clPopupRef.current) }}
             style={{ position: 'absolute', top: 8, right: 8, zIndex: 900, background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '2px', cursor: 'pointer', padding: '3px 7px', fontFamily: 'Roboto Mono, monospace', fontSize: '8px', letterSpacing: '0.1em', color: '#444', textTransform: 'uppercase', userSelect: 'none' }}
           >
             Controllers ↗

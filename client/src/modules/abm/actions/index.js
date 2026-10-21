@@ -77,6 +77,7 @@ import { drawCmdTokens } from '../abmScopeHelpers.js'
 import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
 import { parseDrawCommand, resolvePoint } from '../draw/drawCommands.js'
 import { navdataNotFound } from '../../../store/lnm.js'
+import { focusPopup } from '../../../utils/focusPopup.js'
 
 const WINDOW_ID = 'abm-main'
 const MAX_HISTORY = 10 // absolute cap on captured trail points, same as AbmScope.jsx's own constant
@@ -639,7 +640,7 @@ export function popOutAbmFocusPanel(key, rangeNm, center = null) {
   const params = new URLSearchParams({ window: 'abm-focus', key, range: String(rangeNm), facilityId, positionName })
   if (center) { params.set('lat', String(center.lat)); params.set('lng', String(center.lng)) }
   const popup = window.open(`/?${params}`, `abm-focus-${token}`, 'width=520,height=580,resizable=yes')
-  popup?.focus()
+  focusPopup(popup)
 }
 
 // Bare `.focus <range>` (digits only — see commandParser.js's ordering

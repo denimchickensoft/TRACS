@@ -5,6 +5,8 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('electronAPI', {
   getVersion:       () => ipcRenderer.invoke('app:getVersion'),
   pickLnmDatabase:  () => ipcRenderer.invoke('lnm:pickDatabase'),
+  // Bring a popup this page opened forward, by its window name.
+  focusPopup:       (name) => ipcRenderer.invoke('popup:focus', name),
 
   // The docs pages' Ctrl+F box (server/src/docsFind.js, electron/findBar.html).
   openFind:         () => ipcRenderer.invoke('find:open'),

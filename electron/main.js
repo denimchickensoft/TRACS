@@ -87,7 +87,22 @@ function openExternally(url) {
   } catch { /* not a URL - ignore */ }
 }
 
+// The popups each page opened, by opener webContents id and then window
+// name, so popup:focus can bring one forward (see client/src/utils/focusPopup.js).
+// Keyed by opener so two positions in one app instance (New Window) can't
+// focus each other's popups.
+const popupsByOpener = new Map()
+
 app.on('web-contents-created', (_event, contents) => {
+  const openerId = contents.id
+  contents.on('did-create-window', (win, { frameName }) => {
+    if (!frameName) return
+    let popups = popupsByOpener.get(openerId)
+    if (!popups) popupsByOpener.set(openerId, popups = new Map())
+    popups.set(frameName, win)
+    win.on('closed', () => { if (popups.get(frameName) === win) popups.delete(frameName) })
+  })
+  contents.once('destroyed', () => popupsByOpener.delete(openerId))
   contents.setWindowOpenHandler(({ url }) => {
     if (isAppUrl(url) && new URL(url).pathname.startsWith('/docs/')) {
       return { action: 'allow', overrideBrowserWindowOptions: { webPreferences: WINDOW_OPTS.webPreferences } }
@@ -446,6 +461,17 @@ function buildMenu(port) {
 // ── IPC ───────────────────────────────────────────────────────────────────
 
 handleFromApp('app:getVersion', () => app.getVersion())
+
+// Bring one of this page's own popups forward, restoring it if minimized.
+handleFromApp('popup:focus', (event, name) => {
+  if (typeof name !== 'string') return false
+  const win = popupsByOpener.get(event.sender.id)?.get(name)
+  if (!win || win.isDestroyed()) return false
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+  return true
+})
 
 handleFromApp('lnm:pickDatabase', async (event) => {
   // Start in LittleNavMap's usual database folder when it exists.
