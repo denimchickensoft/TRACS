@@ -439,6 +439,8 @@ node mock-olympus/server.js
 
 Connect TRACS to `http://localhost:4001` in Olympus mode, with any password.
 
+It can also load a `.miz`: `node mock-olympus/server.js mission.miz` (see docs/getting-started.md).
+
 ---
 
 ## Releasing (maintainers)

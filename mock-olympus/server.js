@@ -9,8 +9,19 @@
  * /olympus/airbases — JSON
  *
  * Usage:
- *   node mock-olympus/server.js
+ *   node mock-olympus/server.js [mission.miz]
  * Then connect TRACS to: http://localhost:4001  (any password accepted)
+ *
+ * Loading a .miz (at startup, or with "miz <path>") replaces the built-in units
+ * with the mission's planes, helicopters, vehicles and ships (statics are
+ * skipped) and takes its theatre, date, start time and bullseyes. Aircraft
+ * and ships fly their routes; at the last waypoint aircraft circle it and
+ * ships stop. Ground units stay put. Late-activation groups stay hidden until
+ * "activate <group>"; parked, ground-start and uncontrolled flights sit on the
+ * ground until "<n> takeoff". Any manual turn/climb/speed command (or land/par)
+ * takes that aircraft off its route. Contacts come from the TRACS server's
+ * Tacview detection model (server/src/tacviewDetection.js: sensor ranges,
+ * radar cones, terrain line of sight, RWR), recomputed about once a second.
  *
  * Console commands:
  *   list              — print current unit list
@@ -29,6 +40,9 @@
  *   stby <n>                — transponder to STANDBY/OFF (blanks the squawk code, same as real SRS)
  *   norm <n>                — transponder to NORMAL (restores the unit's assigned squawk code)
  *   squawk <code> <n>       — set unit <n>'s squawk code (4 octal digits, e.g. "squawk 2000 1")
+ *   miz <path>              — load a .miz (see above)
+ *   activate [<group>]      — spawn a loaded mission's late-activation group (name or part of it);
+ *                             with no group, list the ones still waiting
  *
  * Airfield surface traffic (for ASDE-X — current theatre's client/public/runways/<Theatre>.json):
  *   ground <cs> <airbase> [rwy <nn>] [<type>] [<coal>] [D<m>] [O<m>] [S<spd>] [H<hdg>]
@@ -55,6 +69,7 @@ const fs       = require('fs')
 const path     = require('path')
 const { DI }   = require('../server/src/decoder.js')
 const { WebSocketServer } = require('ws')
+const { loadMiz } = require('./miz.js')
 
 const PORT = 4001
 
@@ -322,8 +337,22 @@ const THEATRE_DEFAULTS = {
   Iraq:           { lat: 33.26,  lng: 44.23,  hdg: Math.PI / 2, bullseyeLat: 33.50,  bullseyeLng: 44.40  },
 }
 
-const serverStartWallMs = Date.now()
-const SESSION_HASH = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+const newSessionHash = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+let SESSION_HASH = newSessionHash()
+
+// Mission clock and bullseyes — the built-in scenario's until a .miz is loaded
+let missionStartWallMs = Date.now()
+let missionStartS      = 10 * 3600
+let missionDate        = { Day: 1, Month: 6, Year: 2025 }
+let missionBullseyes   = null   // [{ coalition: 'blue'|'red', lat, lng }] from a .miz
+
+// Loaded .miz: its file name, and late-activation groups not yet activated
+let missionFile = null
+const pendingGroups = new Map()
+
+function nextUnitId() {
+  return units.size ? Math.max(...units.keys()) + 1 : 1
+}
 
 // ─── Geometry helpers ─────────────────────────────────────────────────────────
 
@@ -499,8 +528,11 @@ function moveUnits() {
     }
 
     if (unit.category === 'NavyUnit') {
-      // Carrier: steady course unless a heading has been commanded
+      // Carrier: steady course unless a heading has been commanded (or it's
+      // following a .miz route)
+      if (unit.route) steerRoute(unit)
       if (unit.targetHdg !== null) applyTurn(unit, dt)
+      applySpeed(unit, dt)
     } else if (unit.parApproach) {
       const onDeck = stepParApproach(unit, dt)
       if (onDeck && unit.parApproach.rollout) touchdown(unit)
@@ -511,6 +543,12 @@ function moveUnits() {
       applySpeed(unit, dt)
       unit.alt = unit.groundElevM
       if (unit.takeoffRoll && unit.spd >= unit.takeoffRoll.rotateKts) liftoff(unit)
+    } else if (unit.route || unit.orbit) {
+      // .miz route (or the circle at its end)
+      steerRoute(unit)
+      applyTurn(unit, dt)
+      applyClimb(unit, dt)
+      applySpeed(unit, dt)
     } else if (unit.targetHdg !== null) {
       // Under positive heading control — execute commanded turn, no drift
       applyTurn(unit, dt)
@@ -537,6 +575,220 @@ function moveUnits() {
   moveWeapons(dt)
 
   serverTime = BigInt(now)
+}
+
+// ─── .miz routes ──────────────────────────────────────────────────────────────
+
+const ROUTE_CAPTURE_NM      = 1.5   // aircraft: next waypoint once this close
+const SHIP_ROUTE_CAPTURE_NM = 0.3
+const ORBIT_RADIUS_NM       = 5     // aircraft circle the last waypoint at this radius
+const MAX_ORBIT_CORRECTION  = 60 * DEG_TO_RAD
+
+// Shortest turn toward a true heading (radians)
+function steerTo(unit, hdg) {
+  const right = normalizeAngle(hdg - unit.hdg)
+  const left  = normalizeAngle(unit.hdg - hdg)
+  if (Math.min(right, left) < 0.5 * DEG_TO_RAD) { unit.targetHdg = null; unit.turnDir = null; return }
+  unit.targetHdg = normalizeAngle(hdg)
+  unit.turnDir   = right <= left ? 'r' : 'l'
+}
+
+// A waypoint shifted by this unit's place in its group's formation, so
+// wingmen fly beside the lead rather than on top of it.
+function formationPoint(unit, wp) {
+  const f = unit.formation
+  if (!f) return wp
+  return { lat: wp.lat + f.dLat, lng: wp.lng + f.dLng }
+}
+
+// Waypoint altitude as MSL metres (RADIO = above the terrain, when known)
+function waypointAltM(wp) {
+  if (wp.altM == null) return null
+  if (wp.altType !== 'RADIO') return wp.altM
+  return wp.altM + (terrainElevM(wp.lat, wp.lng) ?? 0)
+}
+
+function steerRoute(unit) {
+  const isShip = unit.category === 'NavyUnit'
+  if (unit.orbit) {
+    // Clockwise circle: fly the tangent, leaning in or out to hold the radius
+    const c = unit.orbit
+    const r = distNm(c.lat, c.lng, unit.lat, unit.lng)
+    const corr = Math.max(-MAX_ORBIT_CORRECTION, Math.min(MAX_ORBIT_CORRECTION, (r - ORBIT_RADIUS_NM) * 30 * DEG_TO_RAD))
+    steerTo(unit, bearingRad(c.lat, c.lng, unit.lat, unit.lng) + Math.PI / 2 + corr)
+    return
+  }
+  const wp = unit.route[unit.wpIdx]
+  if (!wp) {
+    const last = formationPoint(unit, unit.route[unit.route.length - 1])
+    unit.route = null
+    if (isShip) unit.targetSpd = 0
+    else unit.orbit = last
+    return
+  }
+  const p = formationPoint(unit, wp)
+  if (distNm(unit.lat, unit.lng, p.lat, p.lng) < (isShip ? SHIP_ROUTE_CAPTURE_NM : ROUTE_CAPTURE_NM)) {
+    unit.wpIdx++
+    steerRoute(unit)
+    return
+  }
+  steerTo(unit, bearingRad(unit.lat, unit.lng, p.lat, p.lng))
+  const altM = isShip ? null : waypointAltM(wp)
+  if (altM != null && Math.abs(altM - unit.alt) > 1) unit.targetAlt = altM
+  if (wp.spdKts) unit.targetSpd = wp.spdKts
+}
+
+// Manual control (console turn/climb/speed, land, par) ends route following
+function leaveRoute(unit) {
+  if (!unit.route && !unit.orbit) return
+  unit.route = null
+  unit.orbit = null
+  console.log(`  ${unit.unitName}: off its mission route`)
+}
+
+// ─── .miz detection (TRACS server's Tacview model) ────────────────────────────
+// Loaded on the first .miz, so the built-in scenario never touches the server
+// code or its terrain database.
+
+let detection = null
+let elevation = null
+let lastContactsAt = 0
+const CONTACTS_INTERVAL_MS = 1000
+
+function loadDetection() {
+  if (detection) return
+  elevation = require('../server/src/elevation.js')
+  elevation.init()
+  detection = require('../server/src/tacviewDetection.js')
+}
+
+function terrainElevM(lat, lng) {
+  return elevation ? elevation.getElevation(lat, lng) : null
+}
+
+function updateContacts() {
+  if (!detection) return
+  const now = Date.now()
+  if (now - lastContactsAt < CONTACTS_INTERVAL_MS) return
+  lastContactsAt = now
+
+  const view = {}
+  for (const u of units.values()) {
+    view[u.id] = {
+      position:  { lat: u.lat, lng: u.lng, alt: u.alt },
+      coalition: u.coalition,
+      category:  u.category,
+      name:      u.name,
+      heading:   u.hdg,
+      pitch:     0,
+      agl:       u.onGround ? 0 : u.alt - (terrainElevM(u.lat, u.lng) ?? 0),
+      alive:     true,
+    }
+  }
+  const merged = {}
+  for (const coalition of [1, 2]) {
+    for (const part of [detection.computeContacts(view, coalition), detection.computeRwrContacts(view, coalition)]) {
+      for (const [id, { contacts }] of Object.entries(part)) (merged[id] ??= []).push(...contacts)
+    }
+  }
+  for (const u of units.values()) u.contacts = merged[u.id] ?? []
+}
+
+// ─── .miz loading ─────────────────────────────────────────────────────────────
+
+function spawnGroup(g) {
+  const lead = g.units[0]
+  const isAir = g.category === 'Aircraft' || g.category === 'Helicopter'
+  const moves = (isAir || g.category === 'NavyUnit') && g.route.length > 1
+  for (const u of g.units) {
+    const id = nextUnitId()
+    const terrain = terrainElevM(u.lat, u.lng)
+    let alt = u.altM ?? terrain ?? 0
+    if (g.category === 'NavyUnit') alt = 0
+    if (g.category === 'GroundUnit') alt = terrain ?? u.altM ?? 0
+    const firstLeg = moves ? g.route[1] : null
+    const spd = g.groundStart ? 0
+      : g.category === 'GroundUnit' ? 0
+      : (firstLeg?.spdKts ?? u.spdKts ?? (isAir ? 250 : 0))
+    const unit = {
+      id,
+      unitName:  u.name,
+      name:      u.type,
+      category:  g.category,
+      coalition: g.coalition,
+      lat: u.lat, lng: u.lng, alt,
+      hdg:       normalizeAngle(firstLeg && !g.groundStart ? bearingRad(u.lat, u.lng, firstLeg.lat, firstLeg.lng) : u.hdgRad),
+      spd,
+      contacts:  [],
+      turnDir:   null, targetHdg: null, targetAlt: null, targetSpd: null,
+      unitID:    u.unitId,
+      groupID:   g.groupId,
+      groupName: g.name,
+      route:     moves ? g.route : null,
+      wpIdx:     1,
+      orbit:     null,
+      formation: u === lead ? null : { dLat: u.lat - lead.lat, dLng: u.lng - lead.lng },
+      ...(isAir ? { squawk: randomSquawk(), iffStatus: IFF_STATUS.NORMAL, identTimer: null } : {}),
+      ...(g.groundStart ? { onGround: true, groundElevM: alt, homeBase: g.homeBase, takeoffRoll: null } : {}),
+    }
+    units.set(id, unit)
+  }
+}
+
+async function loadMission(file) {
+  const m = await loadMiz(file)
+  loadDetection()
+
+  for (const u of units.values()) clearTimeout(u.identTimer)
+  units.clear()
+  weapons.clear()
+  pendingGroups.clear()
+
+  theatre            = m.theatre
+  missionDate        = m.date ?? missionDate
+  missionStartS      = m.startTimeS
+  missionStartWallMs = Date.now()
+  missionBullseyes   = m.bullseyes
+  missionFile        = path.basename(file)
+  SESSION_HASH       = newSessionHash()
+  lastContactsAt     = 0
+
+  let spawned = 0
+  for (const g of m.groups) {
+    if (g.lateActivation) pendingGroups.set(g.name, g)
+    else { spawnGroup(g); spawned++ }
+  }
+  console.log(`  Loaded ${missionFile}: ${theatre}, ${spawned} groups (${units.size} units), ${pendingGroups.size} late-activation group(s) waiting`)
+  printList()
+  broadcastTransponders()
+}
+
+function cmdMiz(line) {
+  const file = line.trim().replace(/^miz\s+/i, '').replace(/^["']|["']$/g, '')
+  if (!file || /^miz$/i.test(file)) {
+    console.log(missionFile ? `  Mission: ${missionFile}` : '  Usage: miz <path to .miz>')
+    return
+  }
+  loadMission(path.resolve(file))
+    .catch((err) => console.log(`  Could not load ${file}: ${err.message}`))
+    .finally(() => rl?.prompt())
+}
+
+function cmdActivate(parts) {
+  const q = parts.slice(1).join(' ').toLowerCase()
+  if (!q) {
+    if (!pendingGroups.size) { console.log('  No late-activation groups waiting'); return }
+    for (const name of pendingGroups.keys()) console.log(`  ${name}`)
+    return
+  }
+  const names = [...pendingGroups.keys()]
+  const name = names.find(n => n.toLowerCase() === q) ?? names.find(n => n.toLowerCase().includes(q))
+  if (!name) { console.log(`  No waiting group matches "${q}"`); return }
+  spawnGroup(pendingGroups.get(name))
+  pendingGroups.delete(name)
+  console.log(`  Activated: ${name}`)
+  printList()
+  broadcastTransponders()
 }
 
 // ─── Binary encoder ───────────────────────────────────────────────────────────
@@ -593,6 +845,10 @@ function encodeUnitsBuffer() {
     w.uint8(DI.coalition); w.uint8(unit.coalition)
     w.uint8(DI.name);      w.string(unit.name)
     w.uint8(DI.unitName);  w.string(unit.unitName)
+    // A .miz unit's mission IDs, which ATO/FRAG match live aircraft by
+    if (unit.unitID != null)  { w.uint8(DI.unitID);    w.uint32(unit.unitID) }
+    if (unit.groupID != null) { w.uint8(DI.groupID);   w.uint32(unit.groupID) }
+    if (unit.groupName)       { w.uint8(DI.groupName); w.string(unit.groupName) }
     w.uint8(DI.position);  w.coords(unit.lat, unit.lng, unit.alt)
     w.uint8(DI.speed);     w.float64(unit.spd * KNOTS_TO_MS)
     w.uint8(DI.heading);   w.float64(unit.hdg)
@@ -657,6 +913,7 @@ function json(res, data, status = 200) {
 
 function handleUnits(req, res) {
   moveUnits()
+  updateContacts()
   const body = encodeUnitsBuffer()
   res.writeHead(200, {
     'Content-Type': 'application/octet-stream',
@@ -680,13 +937,9 @@ function handleWeapons(req, res) {
   res.end(body)
 }
 
-const MISSION_START_H = 10
-const MISSION_START_M = 0
-const MISSION_START_S = 0
-
 function handleMission(req, res) {
-  const elapsedS = Math.floor((Date.now() - serverStartWallMs) / 1000)
-  const totalS   = MISSION_START_H * 3600 + MISSION_START_M * 60 + MISSION_START_S + elapsedS
+  const elapsedS = Math.floor((Date.now() - missionStartWallMs) / 1000)
+  const totalS   = missionStartS + elapsedS
   const h = Math.floor(totalS / 3600) % 24
   const m = Math.floor((totalS % 3600) / 60)
   const s = totalS % 60
@@ -695,7 +948,7 @@ function handleMission(req, res) {
     mission: {
       theatre: theatre,
       dateAndTime: {
-        date: { Day: 1, Month: 6, Year: 2025 },
+        date: missionDate,
         time: { h, m, s },
       },
       commandModeOptions: { commandMode: 'Game master' },
@@ -709,10 +962,11 @@ function handleMission(req, res) {
 
 function handleBullseyes(req, res) {
   const td = THEATRE_DEFAULTS[theatre] ?? THEATRE_DEFAULTS.Caucasus
+  const bullseyes = missionBullseyes?.length
+    ? Object.fromEntries(missionBullseyes.map((b, i) => [String(i), { latitude: b.lat, longitude: b.lng, coalition: b.coalition }]))
+    : { BULLSEYE: { latitude: td.bullseyeLat, longitude: td.bullseyeLng, coalition: 'blue' } }
   json(res, {
-    bullseyes: {
-      BULLSEYE: { latitude: td.bullseyeLat, longitude: td.bullseyeLng, coalition: 'blue' },
-    },
+    bullseyes,
     sessionHash: SESSION_HASH,
     time: Number(serverTime),
     load: 5,
@@ -771,6 +1025,8 @@ function unitStatus(unit) {
   if (unit.takeoffRoll)          parts.push('T/O ROLL')
   else if (unit.onGround)        parts.push('GND')
   if (unit.parApproach?.rollout) parts.push(`FINAL ${unit.parApproach.airbase}`)
+  if (unit.route)                parts.push(`WP${unit.wpIdx}`)
+  else if (unit.orbit)           parts.push('ORBIT')
   if (unit.targetHdg !== null) {
     const dir = unit.turnDir === 'r' ? '→' : '←'
     const tgt = Math.round(unit.targetHdg * RAD_TO_DEG).toString().padStart(3, '0')
@@ -824,6 +1080,7 @@ function printList() {
     const sqk  = sqkStr(u).padEnd(9)
     console.log(`  ${num}  ${name}  ${type}  ${coal}  ${sqk} HDG ${hdg}  SPD ${spd}kt  ALT ${alt}ft${unitStatus(u)}`)
   })
+  if (pendingGroups.size) console.log(`\n  ${pendingGroups.size} late-activation group(s) waiting - "activate" lists them`)
   console.log('')
 }
 
@@ -843,6 +1100,7 @@ function cmdControl(parts) {
   if (tokens.length < 3) { console.log('  Usage: <n> tr|tl|h|m|c|d|s <value> [...]'); return }
 
   const unit = units.get(ids[idx])
+  leaveRoute(unit)
 
   let i = 1
   while (i < tokens.length) {
@@ -957,7 +1215,7 @@ function cmdCreate(parts) {
     if (p.startsWith('A')) altHundreds = parseInt(p.slice(1), 10)
   }
 
-  const newId   = Math.max(...units.keys()) + 1
+  const newId   = nextUnitId()
   const coalStr = coalition === 2 ? 'BLU' : coalition === 1 ? 'RED' : 'NEU'
 
   units.set(newId, {
@@ -1243,6 +1501,7 @@ function startApproach(unit, opts) {
   unit.targetSpd   = null
   unit.onGround    = false
   unit.takeoffRoll = null
+  leaveRoute(unit)
 
   unit.parApproach = {
     threshLat, threshLng, inboundHdgRad, gsAngleDeg, deckHeightFt, approachSpd,
@@ -1352,7 +1611,7 @@ function offsetPoint(lat, lng, hdgRad, alongM, rightM) {
 }
 
 function spawnGroundUnit({ callsign, typeName, coalition, lat, lng, elevFt, hdgRad, spd, airbase }) {
-  const id = Math.max(...units.keys()) + 1
+  const id = nextUnitId()
   const groundElevM = elevFt * FT_TO_M
   const unit = {
     id,
@@ -1646,6 +1905,8 @@ function parseCommand(line) {
   if (first === 'magvar')  { cmdMagvar(parts);  return }
   if (first === 'ground')  { cmdGround(parts);  return }
   if (first === 'asdex')   { cmdAsdex(parts);   return }
+  if (first === 'miz')     { cmdMiz(line);      return }
+  if (first === 'activate') { cmdActivate(parts); return }
   if (second === 'par')    { cmdPar(parts);     return }
   if (second === 'takeoff') { cmdTakeoff(parts); return }
   if (second === 'land')   { cmdLand(parts);    return }
@@ -1684,6 +1945,8 @@ function startConsole() {
   console.log('  brc <hdg°mag>               turn carrier to BRC (shortest direction)')
   console.log('  fb  <hdg°mag>               turn carrier to FB  (shortest direction)')
   console.log('  magvar [degrees]            show or set magnetic variation')
+  console.log('  miz <path>                  load a .miz (replaces all units; routes, detection, late activation)')
+  console.log('  activate [<group>]          spawn a waiting late-activation group, or list them')
   console.log('  list / refresh              reprint unit list')
   rl.setPrompt('> ')
   rl.prompt()
@@ -1762,5 +2025,9 @@ server.listen(PORT, () => {
   console.log(`Mock Olympus running on http://localhost:${PORT}`)
   console.log(`Any password accepted`)
   console.log(`Transponder relay (for correlation testing) at ws://localhost:${PORT}/transponders\n`)
-  startConsole()
+  const startupMiz = process.argv[2]
+  if (!startupMiz) { startConsole(); return }
+  loadMission(path.resolve(startupMiz))
+    .catch((err) => console.log(`Could not load ${startupMiz}: ${err.message} - using the built-in units`))
+    .finally(startConsole)
 })

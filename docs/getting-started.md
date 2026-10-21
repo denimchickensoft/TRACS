@@ -190,3 +190,17 @@ node mock-olympus/server.js
 ```
 
 Connect TRACS to `http://localhost:4001` in Olympus mode, with any password.
+
+To load a mission instead of the built-in test units, pass a `.miz` (or type `miz <path>` at the mock's console):
+
+```bash
+node mock-olympus/server.js "path/to/mission.miz"
+```
+
+The mock takes the mission's theatre, date, start time and bullseyes, and spawns its planes, helicopters, vehicles and ships. Statics are not spawned.
+- Aircraft and ships fly their routes. At the last waypoint, aircraft circle it and ships stop. Ground units stay put.
+- Late-activation groups wait for `activate <group>`. `activate` alone lists them.
+- Parked, ground-start and uncontrolled flights wait on the ground for `<n> takeoff`.
+- A manual turn, climb, speed, `land` or `par` command takes that aircraft off its route.
+- Contacts come from the same detection model TRACS uses for Tacview: sensor ranges, radar cones, terrain line of sight and RWR.
+- Aircraft carry their mission unit IDs, so imported ATO/FRAG flights show as live.
