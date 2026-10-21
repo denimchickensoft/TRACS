@@ -50,6 +50,7 @@ import { useStarsAlertsStore } from '../../../store/starsAlerts.js'
 import { spcForCode, isSpcString } from '../../../utils/spc.js'
 import { planMsawDisabled } from '../../../utils/msaw.js'
 import { planForUnit } from '../stars/alerts/useStarsAlerts.js'
+import { toggleAutotrack } from '../autotrack.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -114,32 +115,40 @@ function targetOf({ slewTarget, captures }) {
 
 export function INIT_CNTL({ slewTarget }) {
   if (!slewTarget) return err('NO TARGET')
+  const error = initControl(slewTarget.unitId, slewTarget.unit)
+  if (error) return err(error)
+  ok()
+}
+
+// Put a track under this position's control (INIT CNTL, and .autotrack's
+// departures). Returns an error response, or null once claimed.
+export function initControl(unitId, unit) {
   const controllerId = getMyControllerId()
-  if (!controllerId) return err('NO POSITION')
+  if (!controllerId) return 'NO POSITION'
   const { ownership, claimTrack } = getAtc()
-  if (ownership[slewTarget.unitId] !== undefined) return err('ILL TRK')
+  if (ownership[unitId] !== undefined) return 'ILL TRK'
   // Simulated squawk-standby wingmen can't be initiated on control — a
   // primary-only contact has no reported Mode C, so there's nothing to
   // associate. See modules/atc/stars/stca/formations.js.
   const win = getDisplay().windows[WINDOW_ID]
   if (win?.simWingmenStandby) {
     const wingmen = computeWingmanIds(useUnitsStore.getState().units, ownership, win?.manualWingmen)
-    if (wingmen.has(String(slewTarget.unitId))) return err('ILL TRK')
+    if (wingmen.has(String(unitId))) return 'ILL TRK'
   }
   // Unassociated tracks can't be put under control either — real STARS:
   // "All unassociated tracks are unowned tracks." Only meaningful for
   // srsCapable units; unchanged for everything else.
-  const targetUnit = useUnitsStore.getState().units[slewTarget.unitId]
-  if (targetUnit?.srsCapable && !useAssociationStore.getState().associated[String(slewTarget.unitId)]) {
-    return err('ILL TRK')
+  const targetUnit = useUnitsStore.getState().units[unitId]
+  if (targetUnit?.srsCapable && !useAssociationStore.getState().associated[String(unitId)]) {
+    return 'ILL TRK'
   }
-  claimTrack(slewTarget.unitId, controllerId)
-  sendWebrtcEvent('TRACK_CLAIMED', { unitId: slewTarget.unitId, controllerId })
+  claimTrack(unitId, controllerId)
+  sendWebrtcEvent('TRACK_CLAIMED', { unitId, controllerId })
   if (useSessionStore.getState().activeModule === 'ATC' && useStripsStore.getState().autoAddOnTrack) {
-    const aid = findFlightPlanAid(slewTarget.unit, useFlightPlansStore.getState().plans)
-    useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId: slewTarget.unitId })
+    const aid = findFlightPlanAid(unit, useFlightPlansStore.getState().plans)
+    useStripsStore.getState().addStrip(aid, { highlight: STRIP_HIGHLIGHT.AUTO_ADDED, unitId })
   }
-  ok()
+  return null
 }
 
 // Strip Bay "On handoff acceptance" trigger — called from every path that
@@ -1250,6 +1259,14 @@ export function TOGGLE_MSA() {
   ok()
 }
 
+// .autotrack [ICAO ...] — see ../autotrack.js
+export function AUTOTRACK({ captures }) {
+  const icaos = (captures?.icaos ?? '').split(/\s+/).filter(Boolean)
+  const { ok: done, msg } = toggleAutotrack(icaos)
+  if (done) usePreviewStore.getState().showInfo(msg)
+  else err(msg)
+}
+
 export function TOGGLE_HOLDS() {
   useHoldingsStore.getState().toggleVisible()
   ok()
@@ -1313,6 +1330,7 @@ const ACTION_MAP = {
   METRIC_UNITS,
   IMPERIAL_UNITS,
   TOGGLE_DBCA,
+  AUTOTRACK,
   TOGGLE_LABELS,
   TOGGLE_FIXES,
   TOGGLE_ASP,

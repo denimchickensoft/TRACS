@@ -163,6 +163,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
 | `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement: a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction |
+| `.AUTOTRACK [ICAO ...]` + ENTER | — | APP, DEP, RDR and CTR only. Auto-claims every aircraft that takes off within 3 nm of the airport, unless it's already owned (an SRS pilot that isn't associated yet isn't claimed). Bare: toggles your own airport (APP/DEP/RDR), or turns everything off when any airport is on. With ICAOs (`.AUTOTRACK EDDF EHAM`): toggles each. One position per airport; a taken airport answers e.g. `AUTOTRACK EDDF: 1D`. Not remembered: off after a reload |
 | `.LABELSIZE <0-5>` + ENTER | — | Set map/airspace label size (same as the DCB's CHAR SIZE > MAP); bare `.LABELSIZE` reports the current value |
 | `.LABELS` (or `.LBL` / `.LABEL`) + ENTER | — | Toggle the LBL map button (map/airspace name labels) |
 | `.FIXES` + ENTER | — | Toggle the FIXES map button (theatre fix points) |

@@ -115,6 +115,8 @@ const COMMANDS = [
   { id: 'SET_ASP_COLORS',       pattern: /^\.ASPCOLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
   { id: 'REFRESH_ASP_COLORS',  pattern: /^\.REFRESH$/,           trigger: 'ENTER' },
   { id: 'TOGGLE_DBCA',          pattern: /^\.DBCA$/,              trigger: 'ENTER' },
+  // .AUTOTRACK [ICAO ...] — auto-claim departures (modules/atc/autotrack.js)
+  { id: 'AUTOTRACK',            pattern: /^\.AUTOTRACK((?: [A-Z0-9]{3,4})*)$/, trigger: 'ENTER', captures: ['icaos'] },
   { id: 'TOGGLE_LABELS',        pattern: /^\.(?:LABELS|LBL|LABEL)$/, trigger: 'ENTER' },
   { id: 'TOGGLE_FIXES',         pattern: /^\.FIXES$/,             trigger: 'ENTER' },
   { id: 'SET_FILL',             pattern: /^\.FILL (\d{1,3})$/,    trigger: 'ENTER', captures: ['pct'] },

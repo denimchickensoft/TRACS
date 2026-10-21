@@ -40,6 +40,7 @@ import { resolveRoute }              from './canvas/routeResolver.js'
 import { drawRoute }                 from './canvas/drawRoute.js'
 import { snapshotLayerVisibility, applyLayerVisibility } from './layerVisibility.js'
 import { DatablockOverlay }     from './DatablockOverlay.jsx'
+import { AutotrackDetector }    from '../AutotrackDetector.jsx'
 import { InputHandler }         from './input/InputHandler.jsx'
 import { PreviewArea }          from './PreviewArea.jsx'
 import { Dcb }                  from './dcb/Dcb.jsx'
@@ -1178,6 +1179,7 @@ export default function StarsScope() {
   return (
     <div className="atc-scope" data-dcb-pos={dcbVisible && activeProfile.dcb ? dcbPos : undefined} style={{ background: bgColor }}>
       {dcbVisible && activeProfile.dcb && <Dcb profile={activeProfile} briteDcb={briteDcb} csDcb={csDcb} />}
+      <AutotrackDetector />
 
       <div ref={canvasAreaRef} className="atc-canvas-area">
         <canvas ref={mapCanvasRef}     className="atc-layer" />

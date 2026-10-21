@@ -10,6 +10,7 @@ import { applyAicDeclaration, applyAicDeclarationsReset, applyAicAutoDeclareMode
 import { applyAbmDeclaration, applyAbmDeclarationsReset, applyAbmAutoDeclareMode } from '../store/abm.js'
 import { applyAbmMissionIffSet, applyAbmMissionManualFlightSet, applyAbmMissionFlightAlt } from '../store/abmMission.js'
 import { getMyControllerId } from '../utils/myControllerId.js'
+import { handleAutotrackState } from '../modules/atc/autotrack.js'
 
 export function handleModuleMessage(msg) {
   const { type, payload, module, fromPosition, timestamp } = msg
@@ -39,6 +40,9 @@ function handleTrackAndHandoff(type, payload) {
   switch (type) {
     case 'TRACK_CLAIMED':
       atc.claimTrack(payload.unitId, payload.controllerId)
+      break
+    case 'AUTOTRACK_STATE':
+      handleAutotrackState(payload)
       break
     case 'TRACK_DROPPED':
       atc.dropTrack(payload.unitId)
