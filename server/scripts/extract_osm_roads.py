@@ -7,7 +7,7 @@ motorway/trunk/primary/secondary/tertiary highways + rail.
 This replaces live Overpass API queries for roads/rail with a one-time bulk static-file download - gentler on shared infrastructure,
 no rate limiting, no query timeouts.
 
-Output: resources/osm-build/roads_rail_raw/<country>.json - one file per
+Output: <osm-build-dir>/roads_rail_raw/<country>.json - one file per
 country, each a flat list of
   {coords: [[lon,lat], ...], class: "<highway tag>" | null, railway: bool, name}
 unclipped. The Node build script (buildRoadsWaterData.js) reads every file
@@ -18,15 +18,18 @@ Node's V8 max string length once enough countries pile up (a single combined
 file did, at 568MB/977K features).
 
 Raw country .pbf downloads and the per-country filtered output are cached in
-resources/osm-build/ (gitignored, like the rest of resources/) rather than
-server/data/ - this is exploratory build tooling, not committed source, and
-the cache is keyed by country so it's naturally reused across theatres that
+the --osm-build-dir folder (the caller's own, outside the project) rather
+than server/data/ - this is exploratory build tooling, not committed source,
+and the cache is keyed by country so it's naturally reused across theatres that
 share territory (e.g. Israel-and-Palestine is needed by both Syria and
 Sinai; Iraq likely by both Syria and a future Iraq theatre).
 
 Usage:
     pip install osmium requests
-    python server/scripts/extract_osm_roads.py
+    python server/scripts/extract_osm_roads.py --osm-build-dir <path>
+
+--osm-build-dir is required (no default location can be assumed); pass the
+same folder to buildRoadsWaterData.js.
 
 Data (c) OpenStreetMap contributors, ODbL.
 """
@@ -37,8 +40,7 @@ import time
 import requests
 import osmium
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OSM_DIR = os.path.join(SCRIPT_DIR, '..', '..', 'resources', 'osm-build')
+OSM_DIR = None   # set from --osm-build-dir in main()
 # One raw-features file per country (not one combined blob) - a combined
 # file across enough theatres' countries eventually exceeds Node's V8 max
 # string length (~536MB) when buildRoadsWaterData.js reads it back as a
@@ -46,7 +48,7 @@ OSM_DIR = os.path.join(SCRIPT_DIR, '..', '..', 'resources', 'osm-build')
 # Per-country files also mean re-running this script only re-filters
 # countries that aren't already cached, instead of re-filtering every
 # previously-added country (incl. Turkey's 600MB+ extract) on every run.
-RAW_DIR = os.path.join(OSM_DIR, 'roads_rail_raw')
+RAW_DIR = None   # <OSM_DIR>/roads_rail_raw
 
 # Country/region extracts needed to cover each ABM theatre's bbox. Geofabrik
 # has no single combined regional file, so it's per-country (or, for huge
@@ -220,6 +222,14 @@ class RoadRailHandler(osmium.SimpleHandler):
 
 
 def main():
+    global OSM_DIR, RAW_DIR
+    args = sys.argv[1:]
+    if '--osm-build-dir' not in args or args.index('--osm-build-dir') + 1 >= len(args):
+        print('error: --osm-build-dir <path> is required (no default location can be assumed)', file=sys.stderr)
+        print('usage: python server/scripts/extract_osm_roads.py --osm-build-dir <path>', file=sys.stderr)
+        sys.exit(1)
+    OSM_DIR = os.path.abspath(args[args.index('--osm-build-dir') + 1])
+    RAW_DIR = os.path.join(OSM_DIR, 'roads_rail_raw')
     os.makedirs(OSM_DIR, exist_ok=True)
     os.makedirs(RAW_DIR, exist_ok=True)
     print('Downloading Geofabrik extracts:')

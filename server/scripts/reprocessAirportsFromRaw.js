@@ -3,15 +3,18 @@
 // One-off repair tool: regenerates airports_polygons.json for theatres whose
 // rn5 data tripped the near-origin sentinel bug fixed in
 // server/scripts/lib/airportPolygonsCore.js (extractRn5/stripLeadingSentinel),
-// using the already-persisted raw pre-projection dump in
-// resources/airports/raw/ instead of needing DCS reinstalled.
+// using an already-persisted raw pre-projection dump (the --raw-dir folder)
+// instead of needing DCS reinstalled.
 //
 // Only reprocesses theatres named on the command line. For a theatre the bug
 // never touched, this would reproduce the exact same output anyway, so
 // there's no reason to churn its cache file.
 //
 // Usage:
-//   node server/scripts/reprocessAirportsFromRaw.js Germany SouthAtlantic
+//   node server/scripts/reprocessAirportsFromRaw.js --raw-dir <path> Germany SouthAtlantic
+//
+// --raw-dir is required: the folder holding <theatre folder>.json raw dumps.
+// It isn't part of this project, so there's no default.
 
 const fs   = require('fs')
 const path = require('path')
@@ -19,7 +22,15 @@ const core = require('./lib/airportPolygonsCore')
 
 const ROOT        = path.join(__dirname, '../..')
 const CACHE_DIR   = path.join(__dirname, '../navdata/cache')
-const RAW_DIR     = path.join(ROOT, 'resources/airports/raw')
+const cliArgs     = process.argv.slice(2)
+const rawIdx      = cliArgs.indexOf('--raw-dir')
+if (rawIdx === -1 || !cliArgs[rawIdx + 1]) {
+  console.error('error: --raw-dir <path> is required (no default location can be assumed)')
+  console.error('usage: node server/scripts/reprocessAirportsFromRaw.js --raw-dir <path> <theatre> [...]')
+  process.exit(1)
+}
+const RAW_DIR     = path.resolve(cliArgs[rawIdx + 1])
+cliArgs.splice(rawIdx, 2)
 const RUNWAYS_DIR = path.join(ROOT, 'client/public/runways')
 const TM_PARAMS   = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/projection_params.json'), 'utf8'))
 const NAME_MAP    = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/airport_name_map.json'), 'utf8'))
@@ -124,7 +135,7 @@ function reprocessTheatre(theatre, tmInverse) {
 }
 
 async function main() {
-  const theatreArgs = process.argv.slice(2)
+  const theatreArgs = cliArgs
   if (!theatreArgs.length) {
     console.error('Usage: node server/scripts/reprocessAirportsFromRaw.js <Theatre> [<Theatre> ...]')
     process.exit(1)

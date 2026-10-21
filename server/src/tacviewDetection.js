@@ -435,9 +435,9 @@ function isValidTargetCategory(category) {
 // detection outright).
 //
 // heading/pitch are populated for every unit including AI aircraft never
-// connected as the exporting client — confirmed against a real capture
-// (resources/tacview-stream.txt shows distinct pitch/roll values across many
-// simultaneous AI flights), unlike cockpit-instrument fields (IAS/AoA/wind/
+// connected as the exporting client — confirmed against a real stream
+// capture (distinct pitch/roll values across many simultaneous AI
+// flights), unlike cockpit-instrument fields (IAS/AoA/wind/
 // fuel) that turned out restricted to the connecting client's own aircraft.
 //
 // rangeNm is the already-computed detector-target distance, passed in to

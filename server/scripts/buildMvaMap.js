@@ -26,10 +26,9 @@
 //   node server/scripts/buildMvaMap.js [filter] [--lnm-path <path>]
 //
 // --lnm-path (optional) points at a local LittleNavMap navigraph sqlite DB,
-// used only as a supplementary airbase-coordinate source. resources/ is
-// gitignored and not part of the committed project, so this never assumes a
-// specific resources/ subfolder — the caller says where their own copy
-// lives, and the enrichment is simply skipped (not an error) if omitted.
+// used only as a supplementary airbase-coordinate source. There's no
+// default location — the caller says where their own copy lives, and the
+// enrichment is simply skipped (not an error) if omitted.
 //
 // Outputs:
 //   server/navdata/cache/<folder>/mva/<ICAO>.json   sector polygons

@@ -36,8 +36,14 @@ const { simplifyAndRound } = require('./lib/simplify.js')
 const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const CACHE_DIR      = path.join(__dirname, '../navdata/cache')
 const GEO_DIR         = path.join(__dirname, '../data/geo') // shared with buildGeoData.js
-const OSM_BUILD_DIR   = path.join(__dirname, '../../resources/osm-build')
-const ROADS_RAIL_RAW_DIR = path.join(OSM_BUILD_DIR, 'roads_rail_raw')
+// --osm-build-dir: the same folder given to extract_osm_roads.py, whose
+// roads_rail_raw/ it reads. Required unless --water-only (Natural Earth
+// only). It isn't part of this project, so there's no default.
+const cliArgs   = process.argv.slice(2)
+const osmDirIdx = cliArgs.indexOf('--osm-build-dir')
+const OSM_BUILD_DIR = osmDirIdx !== -1 && cliArgs[osmDirIdx + 1] ? path.resolve(cliArgs[osmDirIdx + 1]) : null
+if (osmDirIdx !== -1) cliArgs.splice(osmDirIdx, 2)
+const ROADS_RAIL_RAW_DIR = OSM_BUILD_DIR ? path.join(OSM_BUILD_DIR, 'roads_rail_raw') : null
 const TOWNS_DIR       = path.join(__dirname, '../../client/public/towns')
 
 // theatres.json bboxes are padded generously for relief/geo (sea, distant
@@ -182,7 +188,7 @@ function clipWaterFeatures(features, theatreBbox, type) {
 function clipRoadsRail(theatreBbox) {
   if (!fs.existsSync(ROADS_RAIL_RAW_DIR)) {
     throw new Error(
-      `${ROADS_RAIL_RAW_DIR} not found. Run "python server/scripts/extract_osm_roads.py" first.`
+      `${ROADS_RAIL_RAW_DIR} not found. Run "python server/scripts/extract_osm_roads.py --osm-build-dir <same path>" first.`
     )
   }
   const padded = paddedBbox(theatreBbox)
@@ -271,9 +277,14 @@ async function buildTheatre(name, conf, opts) {
 
 async function main() {
   const theatres = JSON.parse(fs.readFileSync(THEATRES_PATH, 'utf8'))
-  const args = process.argv.slice(2)
+  const args = cliArgs
   const waterOnly = args.includes('--water-only')
   const only = args.find((a) => !a.startsWith('--'))
+  if (!waterOnly && !OSM_BUILD_DIR) {
+    console.error('error: --osm-build-dir <path> is required unless --water-only (no default location can be assumed)')
+    console.error('usage: node server/scripts/buildRoadsWaterData.js --osm-build-dir <path> [theatre] | --water-only [theatre]')
+    process.exit(1)
+  }
 
   if (only && !theatres[only]) {
     console.error(`Unknown theatre "${only}". Options: ${Object.keys(theatres).join(', ')}`)

@@ -70,8 +70,8 @@
 //
 // ~880MB zipped per variant — two big static files, same one-time-bulk-
 // download pattern as Geofabrik roads/rail (extract_osm_roads.py) and
-// Natural Earth (buildGeoData.js), cached in resources/osm-build/ like the
-// former.
+// Natural Earth (buildGeoData.js), cached in the --osm-build-dir folder like
+// the former.
 //
 // Each variant gets its own streaming pass over its own shapefile: every
 // ring is tested against every theatre's own clip bbox and, if it
@@ -85,8 +85,13 @@
 // unfiltered.
 //
 // Usage:
-//   node server/scripts/buildOsmLand.js            # all theatres
-//   node server/scripts/buildOsmLand.js Syria       # one theatre
+//   node server/scripts/buildOsmLand.js --osm-build-dir <path>          # all theatres
+//   node server/scripts/buildOsmLand.js --osm-build-dir <path> Syria    # one theatre
+//
+// --osm-build-dir is required: the caller's own download/cache folder for
+// the OSM source data (shared by extract_osm_roads.py, buildOsmLand.js and
+// buildRoadsWaterData.js). It isn't part of this project, so there's no
+// default.
 
 const https      = require('https')
 const fs         = require('fs')
@@ -132,7 +137,15 @@ function bboxDiagMeters(bbox) {
 
 const THEATRES_PATH = path.join(__dirname, '../navdata/config/theatres.json')
 const CACHE_DIR     = path.join(__dirname, '../navdata/cache')
-const OSM_BUILD_DIR = path.join(__dirname, '../../resources/osm-build')
+const cliArgs   = process.argv.slice(2)
+const osmDirIdx = cliArgs.indexOf('--osm-build-dir')
+if (osmDirIdx === -1 || !cliArgs[osmDirIdx + 1]) {
+  console.error('error: --osm-build-dir <path> is required (no default location can be assumed)')
+  console.error('usage: node server/scripts/buildOsmLand.js --osm-build-dir <path> [theatre]')
+  process.exit(1)
+}
+const OSM_BUILD_DIR = path.resolve(cliArgs[osmDirIdx + 1])
+cliArgs.splice(osmDirIdx, 2)
 
 const SPLIT_SOURCE = {
   url:     'https://osmdata.openstreetmap.de/download/land-polygons-split-4326.zip',
@@ -264,7 +277,7 @@ async function scanShapefile(shpPath, clips, getBbox, onRing) {
 
 async function main() {
   const theatres = JSON.parse(fs.readFileSync(THEATRES_PATH, 'utf8'))
-  const only = process.argv[2]
+  const only = cliArgs[0]
   if (only && !theatres[only]) {
     console.error(`Unknown theatre "${only}". Options: ${Object.keys(theatres).join(', ')}`)
     process.exit(1)

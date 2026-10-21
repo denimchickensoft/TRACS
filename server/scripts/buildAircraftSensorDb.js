@@ -26,14 +26,11 @@
 // Usage:
 //   node server/scripts/buildAircraftSensorDb.js --datamine-path <path>
 //
-// --datamine-path is required, not defaulted — it points at a local copy of
-// the datamine (e.g. resources/Lua Datamine, gitignored — a local reference
-// dataset, same role resources/pydcs-master plays for buildAirdromeIds.js).
-// resources/ is gitignored and not part of the committed project, so unlike
-// DEFAULT_DCS_PATH-style scripts (which default to a well-known *external*
-// system install location), this script must never assume any specific
-// resources/ subfolder name/location exists — the caller always says where
-// their own local copy lives.
+// --datamine-path is required, not defaulted — it points at the caller's own
+// local copy of the datamine, which isn't part of this project. Unlike
+// DEFAULT_DCS_PATH-style scripts (which default to a well-known external
+// system install location), there's no standard place for it, so the caller
+// always says where it lives.
 //
 // Walks every *.lua file directly under <path>/db/Units/Planes/Plane/ and
 // <path>/db/Units/Helicopters/Helicopter/ — the filename (minus .lua) IS the
@@ -153,7 +150,7 @@ function main() {
   const args = process.argv.slice(2)
   const dpIdx = args.indexOf('--datamine-path')
   if (dpIdx === -1) {
-    console.error('error: --datamine-path <path> is required (resources/ is gitignored - no default location can be assumed)')
+    console.error('error: --datamine-path <path> is required (no default location can be assumed)')
     console.error('usage: node server/scripts/buildAircraftSensorDb.js --datamine-path <path>')
     process.exit(1)
   }

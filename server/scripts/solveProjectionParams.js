@@ -2,11 +2,11 @@
 
 // Solves TM projection params (central_meridian/false_easting/false_northing)
 // for theatres missing from server/navdata/config/projection_params.json,
-// from a ProjectionExports dump captured by resources/runway_and_projection_export.lua
-// (in-game: writes Saved Games/DCS/ProjectionExports/<theatre>.json on mission
+// from a ProjectionExports dump captured in DCS by a mission script
+// (writes Saved Games/DCS/ProjectionExports/<theatre>.json on mission
 // load — zero point {x:0,y:0,z:0} plus every airbase's raw {x,y,z} paired with
-// coord.LOtoLL's lat/lon). Drop that file at resources/<Theatre>.json and run
-// this against it.
+// coord.LOtoLL's lat/lon). Put those files in a folder and pass it as
+// --dump-dir.
 //
 // Method matches pydcs's tools/export_map_projection.py: scale_factor is
 // 0.9996 for every DCS theatre; central_meridian is one of the 60 UTM zone
@@ -28,9 +28,7 @@
 //   node server/scripts/solveProjectionParams.js --dump-dir <path> Iraq        # one theatre
 //
 // --dump-dir is required, not defaulted — it's wherever the caller has
-// dropped their own captured <Theatre>.json dumps (e.g. resources/,
-// gitignored — not part of the committed project, so this never assumes
-// that or any other specific resources/ location exists).
+// put their own captured <Theatre>.json dumps.
 
 const fs   = require('fs')
 const path = require('path')
@@ -38,11 +36,11 @@ const path = require('path')
 const args     = process.argv.slice(2)
 const ddIdx    = args.indexOf('--dump-dir')
 if (ddIdx === -1) {
-  console.error('error: --dump-dir <path> is required (resources/ is gitignored - no default location can be assumed)')
+  console.error('error: --dump-dir <path> is required (no default location can be assumed)')
   console.error('usage: node server/scripts/solveProjectionParams.js --dump-dir <path> [theatre]')
   process.exit(1)
 }
-const RESOURCES_DIR = args[ddIdx + 1]
+const DUMP_DIR = args[ddIdx + 1]
 args.splice(ddIdx, 2)
 
 const PARAMS_PATH    = path.join(__dirname, '../navdata/config/projection_params.json')
@@ -57,7 +55,7 @@ for (let m = -177; m <= 177; m += 6) UTM_MERIDIANS.push(m)
 const TOLERANCE_M = 10
 
 function loadDump(theatre) {
-  const p = path.join(RESOURCES_DIR, `${theatre}.json`)
+  const p = path.join(DUMP_DIR, `${theatre}.json`)
   if (!fs.existsSync(p)) return null
   const data = JSON.parse(fs.readFileSync(p, 'utf8'))
   if (!data.zero || !Array.isArray(data.points)) return null
@@ -108,13 +106,13 @@ async function main() {
 
   const candidates = only
     ? [only]
-    : fs.readdirSync(RESOURCES_DIR)
+    : fs.readdirSync(DUMP_DIR)
         .filter((f) => f.endsWith('.json'))
         .map((f) => f.slice(0, -5))
         .filter((t) => !(t in existing))
 
   if (!candidates.length) {
-    console.log(`Nothing to solve - no ${RESOURCES_DIR}/<Theatre>.json without an existing projection_params.json entry.`)
+    console.log(`Nothing to solve - no ${DUMP_DIR}/<Theatre>.json without an existing projection_params.json entry.`)
     return
   }
 
@@ -125,7 +123,7 @@ async function main() {
   for (const theatre of candidates) {
     const dump = loadDump(theatre)
     if (!dump) {
-      console.log(`${theatre.padEnd(16)}  skipped - ${RESOURCES_DIR}/${theatre}.json missing or not a projection dump`)
+      console.log(`${theatre.padEnd(16)}  skipped - ${DUMP_DIR}/${theatre}.json missing or not a projection dump`)
       continue
     }
 

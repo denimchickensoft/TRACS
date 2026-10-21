@@ -7,16 +7,14 @@
 // pydcs project (github.com/pydcs/dcs) transcribes it per-theatre in
 // dcs/terrain/<folder>/airports.py as `class X(Airport): id = N; name = "..."`.
 // Verified against a real mission: PersianGulf id=4 -> "Al Dhafra AFB" matches
-// an actual airdromeId=4 waypoint in resources/Operation Hormuz M05.miz.
+// an actual airdromeId=4 waypoint in a real PersianGulf mission.
 //
 // Usage: node server/scripts/buildAirdromeIds.js --pydcs-path <path>
 // Writes: client/public/airdromes/<Theatre>.json  ({ "<id>": "<name>", ... })
 //
-// --pydcs-path is required, not defaulted — it points at a local checkout of
-// pydcs (e.g. resources/pydcs-master, gitignored). resources/ isn't part of
-// the committed project, so this script never assumes any specific
-// resources/ subfolder name/location exists — the caller always says where
-// their own local copy lives.
+// --pydcs-path is required, not defaulted — it points at the caller's own
+// local checkout of pydcs, which isn't part of this project, so the caller
+// always says where it lives.
 
 const fs   = require('fs')
 const path = require('path')
@@ -24,7 +22,7 @@ const path = require('path')
 const args  = process.argv.slice(2)
 const ppIdx = args.indexOf('--pydcs-path')
 if (ppIdx === -1) {
-  console.error('error: --pydcs-path <path> is required (resources/ is gitignored - no default location can be assumed)')
+  console.error('error: --pydcs-path <path> is required (no default location can be assumed)')
   console.error('usage: node server/scripts/buildAirdromeIds.js --pydcs-path <path>')
   process.exit(1)
 }

@@ -251,7 +251,7 @@ function createParser() {
     // own aircraft), pitch/roll are part of the object transform every ACMI
     // recording must carry for every object to render correctly in replay —
     // confirmed populated for many distinct AI aircraft simultaneously in a
-    // real capture (resources/tacview-stream.txt), not just one.
+    // real stream capture, not just one.
     if (t?.[4] !== undefined && t[4] !== null) unit.pitch = t[4]
 
     return unit

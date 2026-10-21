@@ -3,15 +3,18 @@
 // Renders a proof-sheet PNG per theatre from airports_polygons.json — one
 // tile per airport (taxiway centerlines + runway footprint), labeled with
 // display name, ICAO code, and runway designator pair(s). Documentation
-// output only (resources/airports/), not consumed by the app.
+// output only (written to --out-dir), not consumed by the app.
 //
 // Same "no image-library deps for build tooling" approach as
 // buildAbmBasemap.js: hand-rolled rasterizer (rasterCore.js) + hand-rolled
 // PNG encoder (pngEncoder.js) + hand-rolled 5x7 font (pixelFont.js).
 //
 // Usage:
-//   node server/scripts/buildAirportPreviews.js            # all theatres
-//   node server/scripts/buildAirportPreviews.js Caucasus   # one theatre
+//   node server/scripts/buildAirportPreviews.js --out-dir <path>             # all theatres
+//   node server/scripts/buildAirportPreviews.js --out-dir <path> Caucasus    # one theatre
+//
+// --out-dir is required: the previews aren't part of this project, so the
+// caller says where to write them.
 
 const fs   = require('fs')
 const path = require('path')
@@ -22,7 +25,15 @@ const { drawText, measureText } = require('./lib/pixelFont.js')
 const ROOT         = path.join(__dirname, '../..')
 const CACHE_DIR    = path.join(__dirname, '../navdata/cache')
 const RUNWAYS_DIR  = path.join(ROOT, 'client/public/runways')
-const OUT_DIR       = path.join(ROOT, 'resources/airports')
+const cliArgs       = process.argv.slice(2)
+const outIdx        = cliArgs.indexOf('--out-dir')
+if (outIdx === -1 || !cliArgs[outIdx + 1]) {
+  console.error('error: --out-dir <path> is required (no default location can be assumed)')
+  console.error('usage: node server/scripts/buildAirportPreviews.js --out-dir <path> [theatre]')
+  process.exit(1)
+}
+const OUT_DIR       = path.resolve(cliArgs[outIdx + 1])
+cliArgs.splice(outIdx, 2)
 const THEATRES     = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/theatres.json'), 'utf8'))
 const NAME_MAP     = JSON.parse(fs.readFileSync(path.join(__dirname, '../navdata/config/airport_name_map.json'), 'utf8'))
 const ICAO_MAP     = JSON.parse(fs.readFileSync(path.join(ROOT, 'client/public/icaoMapping.json'), 'utf8'))
@@ -301,7 +312,7 @@ function buildTheatre(theatreKey) {
 }
 
 function main() {
-  const only = process.argv[2]
+  const only = cliArgs[0]
   if (only && !THEATRES[only]) {
     console.error(`Unknown theatre "${only}". Options: ${Object.keys(THEATRES).join(', ')}`)
     process.exit(1)
