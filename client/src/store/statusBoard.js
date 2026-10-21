@@ -110,6 +110,34 @@ export const useStatusBoardStore = create((set) => ({
       return { entries: s.entries.map((e) => e.id === id ? { ...e, [field]: value, auto: withoutAuto(e.auto, field) } : e) }
     }),
 
+  // A command-line row entry (modules/catcc/boardLine.js): row id, or a new
+  // row starting from init, with every given field applied in one update.
+  // DME and ANG typed together stay linked if they agree, and are kept as
+  // typed (unlinked) if not.
+  applyEntryLine: (id, init, fields) =>
+    set((s) => {
+      const { appRad, dme, angels, ...plain } = fields
+      let { entries, nextId } = s
+      let entry = id != null ? entries.find((e) => e.id === id) : null
+      if (!entry) {
+        entry = { id: nextId, fromMission: false, evt: '', callsign: '', unitId: null, sideNumber: '', bcn: '', pilot: '', type: '', msn: '', atd: '', radial: '', bingo: '', appRad: '', eat: '', btn: '', dme: '', angels: '', state: '', ata: '', ...init }
+        entries = [...entries, entry]
+        nextId++
+      }
+      let next = { ...entry, ...plain }
+      for (const field of Object.keys(plain)) next.auto = withoutAuto(next.auto, field)
+      if (appRad !== undefined) next = { ...next, appRad, radMode: '', auto: withoutAuto(next.auto, 'appRad') }
+      if (dme !== undefined && angels !== undefined) {
+        const linked = stackFieldsFor(next, 'dme', dme)
+        next = { ...next, ...(dme && !linked.unlinked && linked.angels === angels ? linked : { dme, angels, unlinked: !!(dme || angels) }) }
+      } else if (dme !== undefined) {
+        next = { ...next, ...stackFieldsFor(next, 'dme', dme) }
+      } else if (angels !== undefined) {
+        next = { ...next, ...stackFieldsFor(next, 'angels', angels) }
+      }
+      return { entries: entries.map((e) => e.id === entry.id ? next : e), nextId }
+    }),
+
   // DME and ANGELS are one linked pair (see stackFieldsFor).
   setStackValue: (id, field, typed) =>
     set((s) => ({ entries: s.entries.map((e) => e.id === id ? { ...e, ...stackFieldsFor(e, field, typed) } : e) })),

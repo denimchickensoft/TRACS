@@ -4,6 +4,15 @@ import { toUtcDateTime, getTheatreUtcOffset } from './theatreTime.js'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 
+// The latest mission time sync from any mounted useMissionClock, for code
+// outside React (e.g. command handlers) that needs the time once.
+let _sync = null
+
+export function getMissionUtcSeconds() {
+  if (!_sync) return null
+  return Math.floor(_sync.missionSecondsUtc + (Date.now() - _sync.wallMs) / 1000) % 86400
+}
+
 function fmtDate(date) {
   return `${String(date.Day).padStart(2,'0')} ${MONTHS[date.Month - 1]} ${date.Year}`
 }
@@ -24,6 +33,7 @@ export function useMissionClock() {
     const theatre = mission?.mission?.theatre
     if (!t || !d) {
       syncRef.current = null
+      _sync = null
       setDateStr(null)
       setLocalDateStr(null)
       return
@@ -34,6 +44,7 @@ export function useMissionClock() {
       offsetSeconds: getTheatreUtcOffset(theatre) * 3600,
       wallMs: Date.now(),
     }
+    _sync = syncRef.current
     setDateStr(fmtDate(utc.date))
     setLocalDateStr(fmtDate(d))
   }, [mission])

@@ -28,6 +28,8 @@ A track squawking 7400 (`LL`), 7500 (`HJ`), 7600 (`RF`), 7700 (`EM`) or 7777 (`M
 
 Type into the command line, then press **Enter**, or click a target to complete a slew command (see below). Commands are case-insensitive; the scope uppercases as you type. Aircraft are addressed by side number or callsign.
 
+`IC`, `TC`, `HO` and `MF` are entered with their keys (F3, F4, F5 and F7). Typing those letters doesn't enter the command, so `TC` + click sets a type of C (see [Status Board entry](#status-board-entry-from-the-command-line)).
+
 | Command | Effect |
 |---|---|
 | `IT <callsign\|side>` | Initiate Track — claim ownership of a correlated, unowned contact |
@@ -35,6 +37,7 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.DROPALL` | Drop every track you own |
 | `HO` | Accept the first incoming handoff |
 | `HO <callsign\|side> <tcp>` | Hand off to another controller position (`tcp` = their position id, e.g. `1D`) |
+| `<side> <fields>` | Fill in the Status Board row with this side number, adding the row if there isn't one (see [Status Board entry](#status-board-entry-from-the-command-line)) |
 | `RN <callsign\|side> [newCallsign]` | Rename a track's callsign, or omit the second argument to reset to default |
 | `.HISTORY` / `.HIST` | Toggle history-trail display |
 | `.LL [0-7]` | Set leader-line length (10 px per step); bare `.LL` queries the current value |
@@ -68,9 +71,29 @@ Errors appear in the ODS response area:
 | `IC` | Initiate control on the clicked contact (must be correlated and unowned) |
 | `TC` | Terminate control |
 | `HO <tcp>` / `<tcp>` (e.g. `1D`) | Hand off the clicked track to a position; on your own track with a handoff already pending, recall it instead. While your handoff is pending, the receiving position's letter replaces the space between altitude and groundspeed (`050A220` for a handoff to `1A`) |
-| `<text>` (3–4 characters) | Set scratchpad 1 on a track you own; `+<text>` (1–4 characters) sets scratchpad 2; `.` / `+` clear them. Scratchpads are stored but not drawn on CATCC datablocks |
 | `MF L<n><n>` (e.g. `MF L33`) | Set leader-line direction globally; `MF L<n>` sets it for the clicked track |
 | `MF S`, then click anywhere on the scope | Relocate the status-text overlay |
+| `<fields>` (anything that isn't one of the commands above) | Fill in the clicked aircraft's Status Board row (see [Status Board entry](#status-board-entry-from-the-command-line)) |
+
+### Status Board entry from the command line
+
+Fill in several Status Board fields at once, for example `101 7224 CHORNET21 PDENIM TF18C MSTRIKE B4.0 R150 D21 A6 E52 S5.5`.
+
+- **`<side> <fields>` + Enter** updates the row with that side number, or adds one.
+- **`<fields>` + click an aircraft** updates its row: the row for its correlated side number, else the row already linked to it (such as one added with Ctrl+Click), else a new row linked to it with its callsign. This form also takes a bare side number (`101 B4.0`) to set the row's side number.
+- A side number is always 3 digits: type side 12 as `012`.
+
+| Field | Sets |
+|---|---|
+| `<4 digits>` | BCN, including leading zeros (`0400`) |
+| `C<callsign>` | Callsign (`CHORNET21` is `HORNET21`) |
+| `P<pilot>` / `T<type>` / `M<mission>` | Pilot / type / mission |
+| `B<bingo>` / `S<state>` | Bingo / state. A whole number is whole thousands: `B4` is 4.0 |
+| `R<radial>` | Approach RAD |
+| `D<dme>` / `A<angels>` | DME / Angels. One fills in the other like on the board. Both together stay linked if they agree, and are kept unlinked (yellow) if not |
+| `E<eat>` | EAT: two digits for the next such minute, or four for an exact time |
+
+Only the fields you type change, and a letter on its own clears its field (`101 E` clears the EAT). Fields can't contain spaces. If any field is invalid the whole line is rejected (`FORMAT: <field>`), as is a callsign or side number already on another row.
 
 ## Mouse & keyboard
 
@@ -83,7 +106,7 @@ Errors appear in the ODS response area:
 | **Click** a contact with a flashing emergency tag | Acknowledge it (empty command line only) |
 | **Click** a contact with a pending handoff | Accept an incoming handoff, recall your own outgoing one, or stop the flash on a track the other position just accepted (empty command line only) |
 | **Mouse wheel** over the scope | Zoom range, 1 NM per step (3 NM with Ctrl), 6–256 NM |
-| Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
+| Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor. Over an aircraft correlated to a side number it adds that row's SIDE, callsign, TYPE, approach RAD (`R`, falling back to the header RAD), DME (`D`), ANG (`A`), EAT (`E`) and STATE (`S`), leaving out blank fields, and RAD and DME in CASE 1: `350/35 101 HORNET21 F18C R164 D21 A6 E52 S5.5` |
 | **Ctrl+T** / **Alt+T** | Toggle top-down mode: also shows aircraft on the ground, such as aircraft on deck. Ctrl+T works in the desktop app only |
 | **Ctrl+Alt+0**–**9** | Save current range to bookmark slot 0–9 |
 | **Ctrl+0**–**9** | Load range bookmark 0–9 |

@@ -144,6 +144,22 @@ const dmeOf    = (e) => (/^\d+$/.test(e.dme ?? '') ? parseInt(e.dme, 10) : null)
 // the row red.
 export const appRadOf = (e, defaultRad) => e.appRad || defaultRad || ''
 
+// Scope hover readout for a board row: SIDE CALLSIGN TYPE R D A E S, with
+// blank fields left out. R falls back to the header RAD like the board does;
+// R and D are marshal-stack fields, so CASE 1 leaves them out.
+export function hoverReadout(e, boardRad, caseRecovery) {
+  const marshal = isMarshalCase(caseRecovery)
+  const radial  = marshal ? appRadOf(e, boardRad) : ''
+  return [
+    e.sideNumber, e.callsign, e.type,
+    radial && `R${radial}`,
+    marshal && e.dme && `D${e.dme}`,
+    e.angels && `A${e.angels}`,
+    e.eat && `E${formatEat(e.eat)}`,
+    e.state && `S${e.state}`,
+  ].filter(Boolean).join(' ')
+}
+
 // The radio button an aircraft is sent to: its own, or when left blank the
 // header's TWR button (CASE 1/2) or APP button (CASE 3).
 export function caseBtn(caseRecovery, twrBtn, appBtn) {

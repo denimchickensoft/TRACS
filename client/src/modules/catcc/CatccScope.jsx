@@ -13,7 +13,7 @@ import { rangeToPixelsPerNm }    from '../../utils/projection.js'
 import { resolveSlew }           from '../../utils/slewResolver.js'
 import { resolveCallsign }       from '../../utils/callsign.js'
 import { useStatusBoardStore }   from '../../store/statusBoard.js'
-import { effectiveRad }          from './statusBoardColumns.js'
+import { effectiveRad, hoverReadout } from './statusBoardColumns.js'
 import { useGeoStore }           from '../../store/geo.js'
 import { useNavdataStore }       from '../../store/navdata.js'
 import { useAbmAirspaceStore }   from '../../store/abmAirspace.js'
@@ -396,8 +396,15 @@ export default function CatccScope() {
       windowSettings?.globalLeaderDir, windowSettings?.ldrLength, windowSettings?.dbca,
       windowSettings?.showHistory, windowSettings?.historyLength, windowSettings?.briteHst, windowSettings?.leaderDirs])
 
-  // ── Marking MOMS — bullseye readout from carrier to cursor ───────
+  // ── Marking MOMS — bullseye readout from carrier to cursor, plus the
+  // hovered aircraft's board row when it's correlated to a side number ──
   const [momsReadout, setMomsReadout] = useState('')
+  const [hoverUid,    setHoverUid]    = useState(null)
+  const sbEntries      = useStatusBoardStore((s) => s.entries)
+  const sbCaseRecovery = useStatusBoardStore((s) => s.caseRecovery)
+  const hoverSide  = hoverUid != null ? correlations[hoverUid] : null
+  const hoverEntry = hoverSide ? sbEntries.find((en) => en.sideNumber === hoverSide) : null
+  const aircraftReadout = hoverEntry ? hoverReadout(hoverEntry, effectiveRad(sbRad, fb), sbCaseRecovery) : ''
 
   const handleMouseMove = useCallback((e) => {
     const rect = interactiveRef.current?.getBoundingClientRect()
@@ -410,6 +417,8 @@ export default function CatccScope() {
     const brg  = Math.round(bearDeg) || 360
     const dist = Math.round(distNm)
     setMomsReadout(`${String(brg).padStart(3, '0')}/${dist}`)
+    const target = resolveSlew({ x: e.clientX - rect.left, y: e.clientY - rect.top }, visibleUnitsRef.current, viewRef.current)
+    setHoverUid(target ? String(target.unitId) : null)
   }, [])
 
   // ── ODS (preview area) — shares STARS buffer + key map ───────────
@@ -471,7 +480,7 @@ export default function CatccScope() {
     if (e.key === 'Backspace') { e.preventDefault(); usePreviewStore.getState().backspace(); return }
     if (e.key === 'Enter') {
       e.preventDefault()
-      const buf = usePreviewStore.getState().buffer
+      const { buffer: buf, leadToken } = usePreviewStore.getState()
       // Every ENTER-triggered CATCC command is local (odsCommands.js) — no
       // shared STARS parser/dispatcher involved. processOdsCommand always
       // returns a Promise (some handlers, e.g. .ASPCOLORS/.REFRESH, hit the
@@ -481,6 +490,7 @@ export default function CatccScope() {
         visibleUnits: visibleUnitsRef.current,
         correlations: correlationsRef.current,
         positionName,
+        leadToken,
       }).then((output) => {
         setOdsLines((prev) => (output.length ? [...prev, ...output].slice(-ODS_MAX_LINES) : []))
       })
@@ -555,8 +565,9 @@ export default function CatccScope() {
     }
 
     // Slew commands — parse ODS buffer against CATCC's own local slew table
-    // (IC/TC/HO <tcp>/<tcp>/leader-line/scratchpad/MF S — see slewCommands.js)
-    const parsed = parseCatccSlew(usePreviewStore.getState().buffer)
+    // (IC/TC/HO <tcp>/<tcp>/leader-line/MF S, else status board fields — see slewCommands.js)
+    const { buffer, leadToken } = usePreviewStore.getState()
+    const parsed = parseCatccSlew(buffer, leadToken)
     if (parsed) {
       dispatchCatccSlew(parsed, target, correlationsRef.current, { canvasPos, view: viewRef.current })
       if (!usePreviewStore.getState().response) setOdsLines([])
@@ -601,7 +612,7 @@ export default function CatccScope() {
           onMouseUp={handleMouseUp}
           onDoubleClick={handleDoubleClick}
           onMouseMove={handleMouseMove}
-          onMouseLeave={() => setMomsReadout('')}
+          onMouseLeave={() => { setMomsReadout(''); setHoverUid(null) }}
           onKeyDown={handleKeyDown}
           onContextMenu={(e) => e.preventDefault()}
         />
@@ -614,7 +625,7 @@ export default function CatccScope() {
           tacticalName={CARRIER_TYPES[carrierUnit?.name]?.tacticalName ?? null}
         />
         <div className="catcc-ods-stack">
-          <div className="catcc-moms">{momsReadout || ' '}</div>
+          <div className="catcc-moms">{[momsReadout, aircraftReadout].filter(Boolean).join(' ') || ' '}</div>
           <div className="catcc-ods">
             {odsLines.map((line, i) => (
               <div key={i} className="catcc-ods-line">{line}</div>

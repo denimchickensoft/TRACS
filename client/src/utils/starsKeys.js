@@ -48,6 +48,18 @@ export const STARS_KEY_MAP = [
   ...Array.from({ length: 10 }, (_, i) => ({ code: `Digit${i}`, ctrl: true, alt: false, shift: false, action: `LOAD_BOOKMARK_${i}` })),
 ]
 
+// The command words the keys above enter (HO, MF, MIN, ...). A command that
+// starts with one only works when its key entered it at the start of the
+// buffer (leadToken in store/preview.js); typing the same letters is plain
+// text, so it can't be mistaken for the command.
+export const KEY_VERBS = [...new Set(STARS_KEY_MAP.filter((k) => k.token && k.token !== 'Δ').map((k) => k.token.trim()))]
+
+// The key verb a command pattern starts with, or null.
+export function patternKeyVerb(pattern) {
+  const m = pattern.source.match(/^\^([A-Z]+)/)
+  return m && KEY_VERBS.includes(m[1]) ? m[1] : null
+}
+
 /**
  * Given a KeyboardEvent, return the matching STARS key entry or null.
  * @param {KeyboardEvent} e

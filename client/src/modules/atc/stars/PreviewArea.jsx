@@ -43,7 +43,7 @@ function splitCommand(buffer) {
  *                    rest of the entry below; MF includes its selector: "FS")
  */
 export function PreviewArea() {
-  const { buffer, response, hasToken } = usePreviewStore()
+  const { buffer, response, leadToken } = usePreviewStore()
   const windowSettings = useDisplayStore((s) => s.windows[WINDOW_ID])
   const activeProfile  = useOdsStore((s) => s.activeProfile)
 
@@ -55,7 +55,7 @@ export function PreviewArea() {
 
   // Only split when a function key actually started the entry, not when
   // the same letters were typed by hand.
-  const split = hasToken ? splitCommand(buffer) : null
+  const split = leadToken ? splitCommand(buffer) : null
 
   return (
     <div style={{

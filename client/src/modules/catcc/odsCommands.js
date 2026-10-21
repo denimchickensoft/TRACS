@@ -6,13 +6,18 @@
  * (.ASPCOLORS/.REFRESH). An empty array means success (no output, like STARS).
  *
  * context: { visibleUnits, correlations, view, fb, marshalBearing,
- *             windowSettings, positionName }
+ *             windowSettings, positionName, leadToken }
+ *
+ * A command whose verb is a key's (HO) only runs when that key entered it:
+ * context.leadToken is the key token the buffer started with.
  *
  * Aircraft are identified by correlated side number OR callsign.
  */
 
 import { useAtcStore, HANDOFF_STATE } from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
+import { boardLineBySide }     from './boardLine.js'
+import { KEY_VERBS }           from '../../utils/starsKeys.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { saveCatccPrefs }      from '../../store/catccPrefs.js'
 import { setUnitSystem }       from '../../store/unitSystem.js'
@@ -421,8 +426,10 @@ export async function processOdsCommand(raw, context) {
   const parts = raw.trim().toUpperCase().split(/\s+/)
   const verb  = parts[0]
   if (!verb) return []
+  // <side> <fields> — fill in a status board row (see boardLine.js)
+  if (/^\d{3}$/.test(verb)) return boardLineBySide(parts)
   const handler = COMMANDS[verb]
-  if (!handler) return [`INVALID: ${verb}`]
+  if (!handler || (KEY_VERBS.includes(verb) && verb !== context?.leadToken)) return [`INVALID: ${verb}`]
   try {
     const result = await handler(parts, context)
     return result ?? []

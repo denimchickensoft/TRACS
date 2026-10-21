@@ -15,6 +15,8 @@ Commands are typed into the preview buffer, then resolved one of two ways:
 
 Each command below reads as `COMMAND + ENTER` or `COMMAND + SLEW`.
 
+Commands that start with a key's command word (`IC` F3, `TC` F4, `HO` F5, `DA` F6, `MF` F7, `VP` F9, `CA` F11, `RP` F2, `MIN` End) only work when you press that key; typing the letters doesn't enter the command.
+
 When a command starts with a function key, the preview area shows the key's label on its own line and the rest of the entry below it. For `MF`, the label includes the next key: F7 then `S` shows `FS`, with the rest of the entry on the next line.
 
 A **FLID** (flight ID) in an ENTER form can be a flight plan's AID, a 4-digit beacon code, or a live callsign.

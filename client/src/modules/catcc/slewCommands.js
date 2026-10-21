@@ -11,7 +11,7 @@
  * directly, with no windowId ambiguity possible.
  *
  * Deliberately NOT ported (not documented for CATCC, no CATCC UI renders
- * them): point-outs, RBL, procedures, flight-plan editor, TAB/tower/coast/alert/VFR
+ * them): point-outs, scratchpads, RBL, procedures, flight-plan editor, TAB/tower/coast/alert/VFR
  * lists, min-sep, quicklook, .coords, .find, reported/assigned altitude
  * scratchpad (STARS never actually implemented these two either — they're
  * absent from actions/index.js's ACTION_MAP, so porting them would invent
@@ -27,6 +27,8 @@ import { useDisplayStore }     from '../../store/display.js'
 import { usePreviewStore }     from '../../store/preview.js'
 import { sendWebrtcEvent }     from '../../webrtc/client.js'
 import { getMyControllerId, getKnownControllerIds } from '../../utils/myControllerId.js'
+import { boardLineByTarget }   from './boardLine.js'
+import { patternKeyVerb }      from '../../utils/starsKeys.js'
 
 const WINDOW_ID = 'catcc-main'
 
@@ -146,15 +148,6 @@ function relocateStatusText(canvasPos, view) {
   ok()
 }
 
-// ── 3-4 char alphanumeric + slew — scratchpad 1; +prefixed — scratchpad 2 ────
-// Bare "." / "+" + slew clears the respective field.
-function setScratchpad(field, value, target) {
-  if (!target) return err('NO TARGET')
-  if (useAtcStore.getState().ownership[target.unitId] !== getMyControllerId()) return err('ILL TRK')
-  useAtcStore.getState().setScratchpad(target.unitId, field, value)
-  ok()
-}
-
 // ── Pattern table — SLEW-triggered only. Order matters: longer/more specific
 // patterns before shorter ones that could otherwise shadow them (mirrors
 // commandParser.js's own ordering convention). ─────────────────────────────
@@ -166,22 +159,26 @@ const SLEW_COMMANDS = [
   { id: 'SET_LEADER_GLOBAL', pattern: /^MF L([1-9])\1$/,       captures: ['dir'] },
   { id: 'SET_LEADER',        pattern: /^MF L([1-9])$/,         captures: ['dir'] },
   { id: 'MF_S',              pattern: /^MF S$/ },
-  { id: 'SET_SP1',           pattern: /^([A-Z0-9/]{3,4})$/,    captures: ['sp'] },
-  { id: 'SET_SP2',           pattern: /^\+([A-Z0-9/]{1,4})$/,  captures: ['sp'] },
-  { id: 'CLEAR_SP1',         pattern: /^\.$/ },
-  { id: 'CLEAR_SP2',         pattern: /^\+$/ },
 ]
 
-export function parseCatccSlew(buffer) {
+// The key verb each command starts with: it only matches when that key
+// entered it (leadToken), never when the letters are typed.
+const KEY_VERB_OF = new Map(SLEW_COMMANDS.map((cmd) => [cmd, patternKeyVerb(cmd.pattern)]))
+
+export function parseCatccSlew(buffer, leadToken = '') {
   const trimmed = buffer.trim().toUpperCase()
   for (const cmd of SLEW_COMMANDS) {
+    const verb = KEY_VERB_OF.get(cmd)
+    if (verb && verb !== leadToken) continue
     const match = trimmed.match(cmd.pattern)
     if (!match) continue
     const captures = {}
     cmd.captures?.forEach((name, i) => { captures[name] = match[i + 1] })
     return { id: cmd.id, captures }
   }
-  return null
+  // Anything else typed is status board fields for the clicked aircraft
+  // (boardLine.js); an entry started by a key that matched nothing isn't.
+  return trimmed && !leadToken ? { id: 'BOARD_LINE', captures: { rest: trimmed } } : null
 }
 
 export function dispatchCatccSlew(parsed, target, correlations, extra) {
@@ -194,9 +191,9 @@ export function dispatchCatccSlew(parsed, target, correlations, extra) {
     case 'SET_LEADER_GLOBAL': return setLeaderGlobal(captures.dir)
     case 'SET_LEADER':        return setLeader(captures.dir, target)
     case 'MF_S':              return relocateStatusText(extra?.canvasPos, extra?.view)
-    case 'SET_SP1':           return setScratchpad('sp1', captures.sp, target)
-    case 'SET_SP2':           return setScratchpad('sp2', captures.sp, target)
-    case 'CLEAR_SP1':         return setScratchpad('sp1', '', target)
-    case 'CLEAR_SP2':         return setScratchpad('sp2', '', target)
+    case 'BOARD_LINE': {
+      const msg = boardLineByTarget(captures.rest, target, correlations)
+      return msg ? err(msg) : ok()
+    }
   }
 }

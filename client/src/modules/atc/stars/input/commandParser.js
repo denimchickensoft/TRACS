@@ -1,3 +1,5 @@
+import { KEY_VERBS, patternKeyVerb } from '../../../../utils/starsKeys.js'
+
 /**
  * STARS command parser.
  *
@@ -296,15 +298,20 @@ const DOT_VERBS = [
  *
  * @param {string} trimmed  trimmed, uppercased buffer
  */
-export function looksLikeKnownCommand(trimmed) {
+export function looksLikeKnownCommand(trimmed, leadToken = '') {
   if (trimmed.startsWith('*T')) return true
   if (trimmed.startsWith('.')) {
     const m = trimmed.match(/^\.([A-Z]+)/)
     return !!m && DOT_VERBS.includes(m[1])
   }
   const m = trimmed.match(/^([A-Z]+)(?: |$)/)
+  // Typed letters spelling a key verb are plain text, not that command
+  if (m && KEY_VERBS.includes(m[1]) && m[1] !== leadToken) return false
   return !!m && WORD_VERBS.includes(m[1])
 }
+
+// The key verb each command starts with (see patternKeyVerb), or null.
+const KEY_VERB_OF = new Map(COMMANDS.map((cmd) => [cmd, patternKeyVerb(cmd.pattern)]))
 
 /**
  * Match the current buffer against the command table.
@@ -314,14 +321,18 @@ export function looksLikeKnownCommand(trimmed) {
  * @param {boolean} hasToken  true if a function-key token entered the buffer
  *   since it was last cleared — disables the context-free shorthand patterns,
  *   which are only valid for buffers built purely from typed characters.
+ * @param {string}  leadToken the key token the buffer starts with ('HO', 'MF',
+ *   ...), '' if typed. A command starting with a key verb needs its key.
  * @returns {{ command, captures } | null}
  */
-export function parseCommand(buffer, trigger, hasToken = false) {
+export function parseCommand(buffer, trigger, hasToken = false, leadToken = '') {
   const trimmed = buffer.trim().toUpperCase()
 
   for (const cmd of COMMANDS) {
     if (cmd.trigger !== trigger && cmd.trigger !== 'EITHER') continue
     if (cmd.contextFree && hasToken) continue
+    const verb = KEY_VERB_OF.get(cmd)
+    if (verb && verb !== leadToken) continue
     const match = trimmed.match(cmd.pattern)
     if (!match) continue
 
