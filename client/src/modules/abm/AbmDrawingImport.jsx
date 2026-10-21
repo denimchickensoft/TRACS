@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { unzipSync } from 'fflate'
 import { parseGeojson } from '../../utils/parseGeojson.js'
 import { parseMiz } from '../../utils/parseMiz.js'
+import { isLotatcEnv, isLotatcLayer, lotatcDrawingLayers } from '../../utils/parseLotatc.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
 import './AbmMissionImport.css'
 
@@ -42,6 +43,23 @@ async function expandMiz(file, theatre) {
   return parseMiz(missionText, theatre).map(g => ({ name: `${base} ${g.name}`, features: g.features }))
 }
 
+// A LotATC .env (or a single-layer LotATC .json) expands into one row per
+// shape, named after the shape, so each imports as its own layer with its
+// own LotATC colour. Anything else that's JSON comes back as plain text for
+// the GeoJSON parser, the same as before.
+async function expandLotatc(file) {
+  const text = await readFileText(file)
+  let json = null
+  try { json = JSON.parse(text) } catch { /* not JSON: let parseGeojson report it */ }
+  if (!json || !(isLotatcEnv(json) || isLotatcLayer(json))) return [{ name: file.name, text }]
+  const base = file.name.replace(/\.(env|json)$/i, '')
+  const rows = lotatcDrawingLayers(json, base).flatMap(l => l.features.map((f, i) => ({
+    name:     f.properties?.name || `${l.name} ${i + 1}`,
+    features: [f],
+  })))
+  return rows.length ? rows : [{ name: file.name, error: 'No drawable shapes' }]
+}
+
 function geometrySummary(features) {
   const counts = {}
   for (const f of features) counts[f.geometry.type] = (counts[f.geometry.type] ?? 0) + 1
@@ -74,6 +92,12 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
           items.push(...await expandMiz(file, theatre))
         } catch (e) {
           items.push({ name: file.name, error: e.message ?? 'Bad .miz file' })
+        }
+      } else if (/\.(env|json)$/i.test(file.name)) {
+        try {
+          items.push(...await expandLotatc(file))
+        } catch (e) {
+          items.push({ name: file.name, error: e.message ?? 'Bad file' })
         }
       } else if (/\.zip$/i.test(file.name)) {
         try {
@@ -176,12 +200,12 @@ export function AbmDrawingImport({ theatre, onClose, initialFiles = null }) {
             onClick={() => fileRef.current?.click()}
           >
             <span className="mi-drop-icon">⬆</span>
-            <span className="mi-drop-label">Drop .geojson/.json/.ndgeojson, a .zip bundle, or a .miz mission</span>
+            <span className="mi-drop-label">Drop .geojson/.json/.ndgeojson, a .zip bundle, a .miz mission, or a LotATC .env</span>
             <span className="mi-drop-sub">or click to browse — multiple files supported</span>
             <input
               ref={fileRef}
               type="file"
-              accept=".geojson,.json,.ndgeojson,.ndjson,.zip,.miz,*"
+              accept=".geojson,.json,.ndgeojson,.ndjson,.zip,.miz,.env,*"
               multiple
               style={{ display: 'none' }}
               onChange={onFileChange}

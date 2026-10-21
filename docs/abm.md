@@ -375,6 +375,7 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
   - `.geojson`, `.json`, `.ndgeojson`, and `.ndjson`, several at once. Newline-delimited GeoJSON is supported, and bad lines in an ndjson file are skipped.
   - A `.zip` bundle, such as one exported from the Drawings panel.
   - A **`.miz` mission file** — imports its F10-map trigger zones and Drawing layers.
+  - A **LotATC `.env`** drawing file — one preview row per shape, named after it, so each shape imports as its own layer with its own LotATC color, line width, fill and transparency. A single exported LotATC layer (`.json`) works too. The shape's name is its label. Everything imports visible, whatever the file says.
 - A preview row with more than one feature has a **Split** button that turns each feature into its own layer, keeping each feature's own color.
 - The preview lets you rename each layer (defaults to the filename) before importing. A failed file shows its error inline without blocking the others.
 - **Layer color:** a layer whose features carry a GeoJSON `stroke` color takes that color, with Override turned on. Other layers use the current airspace palette's CUSTOM color.
