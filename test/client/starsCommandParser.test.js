@@ -3,6 +3,11 @@ import { parseCommand, looksLikeKnownCommand } from '../../client/src/modules/at
 
 const idOf = (buffer, trigger, hasToken) => parseCommand(buffer, trigger, hasToken)?.command.id ?? null
 
+// A buffer whose first word was entered by its function key (HO, MF, ...),
+// as the preview store records it.
+const keyed = (buffer, trigger) => parseCommand(buffer, trigger, true, buffer.trim().split(' ')[0].toUpperCase())
+const keyedId = (buffer, trigger) => keyed(buffer, trigger)?.command.id ?? null
+
 describe('STARS parseCommand', () => {
   test('trims and uppercases the buffer', () => {
     expect(idOf('  rg 40 ', 'ENTER')).toBe('SET_RANGE')
@@ -15,42 +20,42 @@ describe('STARS parseCommand', () => {
   })
 
   test('trigger decides between commands that share a pattern', () => {
-    expect(idOf('MF TS', 'ENTER')).toBe('TOGGLE_SIGNON')
-    expect(idOf('MF TS', 'SLEW')).toBe('RELOCATE_SIGNON')
-    expect(idOf('MIN', 'SLEW')).toBe('MIN_INIT')
-    expect(idOf('MIN', 'ENTER')).toBe('MIN_CLEAR')
+    expect(keyedId('MF TS', 'ENTER')).toBe('TOGGLE_SIGNON')
+    expect(keyedId('MF TS', 'SLEW')).toBe('RELOCATE_SIGNON')
+    expect(keyedId('MIN', 'SLEW')).toBe('MIN_INIT')
+    expect(keyedId('MIN', 'ENTER')).toBe('MIN_CLEAR')
   })
 
   test('resize patterns win over the bare toggles they extend', () => {
-    expect(parseCommand('MF T5', 'ENTER')).toMatchObject({ command: { id: 'RESIZE_TAB' }, captures: { lines: '5' } })
-    expect(idOf('MF T', 'ENTER')).toBe('TOGGLE_TAB')
-    expect(parseCommand('MF TC12', 'ENTER').captures).toEqual({ lines: '12' })
+    expect(keyed('MF T5', 'ENTER')).toMatchObject({ command: { id: 'RESIZE_TAB' }, captures: { lines: '5' } })
+    expect(keyedId('MF T', 'ENTER')).toBe('TOGGLE_TAB')
+    expect(keyed('MF TC12', 'ENTER').captures).toEqual({ lines: '12' })
   })
 
   test('SSA ATIS/GI variants resolve in the documented order', () => {
-    expect(parseCommand('MF S2 RWY 27 CLOSED', 'ENTER')).toMatchObject({ command: { id: 'SET_GI_AUX' }, captures: { line: '2', text: 'RWY 27 CLOSED' } })
-    expect(idOf('MF S2', 'ENTER')).toBe('CLEAR_GI_AUX')
-    expect(idOf('MF S*', 'ENTER')).toBe('CLEAR_ATIS')
-    expect(idOf('MF SA*', 'ENTER')).toBe('SET_ATIS_CLEAR_GI')
-    expect(parseCommand('MF SB WIND 270', 'ENTER').captures).toEqual({ atis: 'B', giText: 'WIND 270' })
-    expect(idOf('MF SC', 'ENTER')).toBe('SET_ATIS')
+    expect(keyed('MF S2 RWY 27 CLOSED', 'ENTER')).toMatchObject({ command: { id: 'SET_GI_AUX' }, captures: { line: '2', text: 'RWY 27 CLOSED' } })
+    expect(keyedId('MF S2', 'ENTER')).toBe('CLEAR_GI_AUX')
+    expect(keyedId('MF S*', 'ENTER')).toBe('CLEAR_ATIS')
+    expect(keyedId('MF SA*', 'ENTER')).toBe('SET_ATIS_CLEAR_GI')
+    expect(keyed('MF SB WIND 270', 'ENTER').captures).toEqual({ atis: 'B', giText: 'WIND 270' })
+    expect(keyedId('MF SC', 'ENTER')).toBe('SET_ATIS')
   })
 
   test('MF M: temp altitude, scratchpads, beacon and requested altitude', () => {
-    expect(parseCommand('MF MΔ120', 'SLEW')).toMatchObject({ command: { id: 'MF_M_TEMP_ALT' }, captures: { alt: '120' } })
-    expect(parseCommand('MF MΔAB', 'SLEW')).toMatchObject({ command: { id: 'MF_M_SP1' }, captures: { sp: 'AB' } })
-    expect(parseCommand('MF M+XY', 'SLEW')).toMatchObject({ command: { id: 'MF_M_SP2' }, captures: { sp: 'XY' } })
-    expect(parseCommand('MF M1234', 'SLEW')).toMatchObject({ command: { id: 'SET_BEACON' }, captures: { bcn: '1234' } })
+    expect(keyed('MF MΔ120', 'SLEW')).toMatchObject({ command: { id: 'MF_M_TEMP_ALT' }, captures: { alt: '120' } })
+    expect(keyed('MF MΔAB', 'SLEW')).toMatchObject({ command: { id: 'MF_M_SP1' }, captures: { sp: 'AB' } })
+    expect(keyed('MF M+XY', 'SLEW')).toMatchObject({ command: { id: 'MF_M_SP2' }, captures: { sp: 'XY' } })
+    expect(keyed('MF M1234', 'SLEW')).toMatchObject({ command: { id: 'SET_BEACON' }, captures: { bcn: '1234' } })
     // 8 isn't an octal digit, so a 4-digit code with an 8 isn't a beacon.
-    expect(idOf('MF M1238', 'SLEW')).toBe(null)
-    expect(parseCommand('MF M120', 'SLEW')).toMatchObject({ command: { id: 'MF_M_REQ_ALT' }, captures: { alt: '120' } })
-    expect(parseCommand('MF MAAL1 4321', 'ENTER').captures).toEqual({ flid: 'AAL1', bcn: '4321' })
+    expect(keyedId('MF M1238', 'SLEW')).toBe(null)
+    expect(keyed('MF M120', 'SLEW')).toMatchObject({ command: { id: 'MF_M_REQ_ALT' }, captures: { alt: '120' } })
+    expect(keyed('MF MAAL1 4321', 'ENTER').captures).toEqual({ flid: 'AAL1', bcn: '4321' })
   })
 
   test('leader direction: global, MF and context-free shorthand', () => {
-    expect(parseCommand('MF L33', 'SLEW')).toMatchObject({ command: { id: 'SET_LEADER_GLOBAL' }, captures: { dir: '3' } })
-    expect(idOf('MF L3', 'SLEW')).toBe('SET_LEADER_MF')
-    expect(idOf('MF L34', 'SLEW')).toBe(null)
+    expect(keyed('MF L33', 'SLEW')).toMatchObject({ command: { id: 'SET_LEADER_GLOBAL' }, captures: { dir: '3' } })
+    expect(keyedId('MF L3', 'SLEW')).toBe('SET_LEADER_MF')
+    expect(keyedId('MF L34', 'SLEW')).toBe(null)
     expect(idOf('7', 'SLEW')).toBe('SET_LEADER_SHORT')
     expect(idOf('LD 3', 'ENTER')).toBe('SET_LEADER_LEN')
     // A known verb with a bad argument falls through to the implied flight
@@ -59,10 +64,10 @@ describe('STARS parseCommand', () => {
   })
 
   test('handoffs', () => {
-    expect(idOf('HO', 'ENTER')).toBe('HND_OFF_ACCEPT_NEAR')
-    expect(idOf('HO', 'SLEW')).toBe('HND_OFF_BARE')
-    expect(parseCommand('HO 2A', 'SLEW').captures).toEqual({ tcp: '2A' })
-    expect(parseCommand('HO 2A AAL1', 'ENTER')).toMatchObject({ command: { id: 'HND_OFF_BY_ID' }, captures: { tcp: '2A', flid: 'AAL1' } })
+    expect(keyedId('HO', 'ENTER')).toBe('HND_OFF_ACCEPT_NEAR')
+    expect(keyedId('HO', 'SLEW')).toBe('HND_OFF_BARE')
+    expect(keyed('HO 2A', 'SLEW').captures).toEqual({ tcp: '2A' })
+    expect(keyed('HO 2A AAL1', 'ENTER')).toMatchObject({ command: { id: 'HND_OFF_BY_ID' }, captures: { tcp: '2A', flid: 'AAL1' } })
     expect(idOf('2A', 'SLEW')).toBe('HND_OFF_SHORT')
   })
 
@@ -71,7 +76,7 @@ describe('STARS parseCommand', () => {
     expect(idOf('7', 'SLEW', true)).toBe(null)
     expect(idOf('AAL1 B738', 'ENTER', true)).toBe(null)
     // Non-shorthand commands are unaffected.
-    expect(idOf('HO 2A', 'SLEW', true)).toBe('HND_OFF')
+    expect(keyedId('HO 2A', 'SLEW')).toBe('HND_OFF')
   })
 
   test('point-outs and quick look', () => {
@@ -82,12 +87,12 @@ describe('STARS parseCommand', () => {
   })
 
   test('track control', () => {
-    expect(idOf('IC', 'SLEW')).toBe('INIT_CNTL')
-    expect(parseCommand('IC AAL1', 'ENTER').captures).toEqual({ flid: 'AAL1' })
-    expect(idOf('TC ALL', 'ENTER')).toBe('TERM_CNTL_ALL')
+    expect(keyedId('IC', 'SLEW')).toBe('INIT_CNTL')
+    expect(keyed('IC AAL1', 'ENTER').captures).toEqual({ flid: 'AAL1' })
+    expect(keyedId('TC ALL', 'ENTER')).toBe('TERM_CNTL_ALL')
     expect(idOf('.DROPALL', 'ENTER')).toBe('TERM_CNTL_ALL')
-    expect(idOf('TC AAL1', 'ENTER')).toBe('TERM_CNTL_BY_ID')
-    expect(idOf('TC', 'SLEW')).toBe('TERM_CNTL')
+    expect(keyedId('TC AAL1', 'ENTER')).toBe('TERM_CNTL_BY_ID')
+    expect(keyedId('TC', 'SLEW')).toBe('TERM_CNTL')
     expect(idOf('.FORCEDROP', 'SLEW')).toBe('FORCE_DROP')
     expect(idOf('.FORCEDROP ALL', 'ENTER')).toBe('FORCE_DROP_ALL')
   })
@@ -126,9 +131,16 @@ describe('STARS parseCommand', () => {
   })
 
   test('flight plan creation', () => {
-    expect(parseCommand('DA AAL1 B738', 'ENTER')).toMatchObject({ command: { id: 'CREATE_FP_ABBREV' }, captures: { aid: 'AAL1', rest: 'B738' } })
-    expect(parseCommand('VP N123 C172', 'ENTER')).toMatchObject({ command: { id: 'CREATE_VFR_FP' }, captures: { aid: 'N123', rest: 'C172' } })
+    expect(keyed('DA AAL1 B738', 'ENTER')).toMatchObject({ command: { id: 'CREATE_FP_ABBREV' }, captures: { aid: 'AAL1', rest: 'B738' } })
+    expect(keyed('VP N123 C172', 'ENTER')).toMatchObject({ command: { id: 'CREATE_VFR_FP' }, captures: { aid: 'N123', rest: 'C172' } })
     expect(parseCommand('AAL1 B738', 'ENTER')).toMatchObject({ command: { id: 'CREATE_FP_IMPLIED' }, captures: { aid: 'AAL1', rest: 'B738' } })
+  })
+
+  test('key verb commands need their key at the start of the buffer', () => {
+    for (const [buffer, trigger, id] of [['HO 2A', 'SLEW', 'HND_OFF'], ['IC', 'SLEW', 'INIT_CNTL'], ['MF TS', 'ENTER', 'TOGGLE_SIGNON'], ['MIN', 'ENTER', 'MIN_CLEAR']]) {
+      expect(idOf(buffer, trigger)).not.toBe(id)
+      expect(parseCommand(buffer, trigger, true, 'TC')?.command.id ?? null).not.toBe(id)
+    }
   })
 
   test('an empty slew is a bare slew; an empty enter matches nothing', () => {
@@ -139,8 +151,8 @@ describe('STARS parseCommand', () => {
 
 describe('STARS looksLikeKnownCommand', () => {
   test('recognizes word verbs, dot verbs and *T', () => {
-    expect(looksLikeKnownCommand('MF X')).toBe(true)
-    expect(looksLikeKnownCommand('HO')).toBe(true)
+    expect(looksLikeKnownCommand('MF X', 'MF')).toBe(true)
+    expect(looksLikeKnownCommand('HO', 'HO')).toBe(true)
     expect(looksLikeKnownCommand('.FILL ABC')).toBe(true)
     expect(looksLikeKnownCommand('*TXYZ')).toBe(true)
   })
@@ -151,5 +163,11 @@ describe('STARS looksLikeKnownCommand', () => {
     expect(looksLikeKnownCommand('123')).toBe(false)
     // The verb must be a whole word.
     expect(looksLikeKnownCommand('HOX')).toBe(false)
+  })
+
+  test('typed key verbs are plain text', () => {
+    expect(looksLikeKnownCommand('MF X')).toBe(false)
+    expect(looksLikeKnownCommand('HO')).toBe(false)
+    expect(looksLikeKnownCommand('HO', 'MF')).toBe(false)
   })
 })
