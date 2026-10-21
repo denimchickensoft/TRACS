@@ -855,8 +855,8 @@ export function App() {
               active={atcPanel}
               setActive={setAtcPanel}
               tabs={[
-                { key: 'main', name: 'STRIPS', docked: stripsDocked, popupRef: stripsPopupRef },
-                { key: 'par',  name: 'PAR',    docked: parDocked,    popupRef: parPopupRef },
+                { key: 'main', name: 'STRIPS', docked: stripsDocked, popupRef: stripsPopupRef, onUndock: handleStripsUndock },
+                { key: 'par',  name: 'PAR',    docked: parDocked,    popupRef: parPopupRef,    onUndock: handleParUndock },
               ]}
             />
           </div>
@@ -903,9 +903,9 @@ export function App() {
               active={catccPanel}
               setActive={setCatccPanel}
               tabs={[
-                { key: 'main', name: 'STATUS', docked: sbDocked,   popupRef: sbPopupRef },
-                { key: 'par',  name: 'PAR',    docked: parDocked,  popupRef: parPopupRef },
-                { key: 'deck', name: 'DECK',   docked: deckDocked, popupRef: deckPopupRef },
+                { key: 'main', name: 'STATUS', docked: sbDocked,   popupRef: sbPopupRef,   onUndock: handleSbUndock },
+                { key: 'par',  name: 'PAR',    docked: parDocked,  popupRef: parPopupRef,  onUndock: handleParUndock },
+                { key: 'deck', name: 'DECK',   docked: deckDocked, popupRef: deckPopupRef, onUndock: handleDeckUndock },
               ]}
             />
           </div>
@@ -933,7 +933,7 @@ export function App() {
               active={aicPanel}
               setActive={setAicPanel}
               tabs={[
-                { key: 'main', name: 'BRAA', docked: aicDocked, popupRef: braaPopupRef },
+                { key: 'main', name: 'BRAA', docked: aicDocked, popupRef: braaPopupRef, onUndock: handleBraaUndock },
               ]}
             />
           </div>
@@ -981,9 +981,9 @@ export function App() {
               active={abmPanel}
               setActive={setAbmPanel}
               tabs={[
-                { key: 'ato',      name: 'ATO',  docked: atoDocked,      popupRef: atoPopupRef },
-                { key: 'frag',     name: 'FRAG', docked: fragDocked,     popupRef: fragPopupRef },
-                { key: 'drawings', name: 'DRAW', docked: drawingsDocked, popupRef: drawingsPopupRef },
+                { key: 'ato',      name: 'ATO',  docked: atoDocked,      popupRef: atoPopupRef,      onUndock: handleAtoUndock },
+                { key: 'frag',     name: 'FRAG', docked: fragDocked,     popupRef: fragPopupRef,     onUndock: handleFragUndock },
+                { key: 'drawings', name: 'DRAW', docked: drawingsDocked, popupRef: drawingsPopupRef, onUndock: handleDrawingsUndock },
               ]}
             />
           </div>

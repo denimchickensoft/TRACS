@@ -5,6 +5,7 @@ import { focusPopup } from '../utils/focusPopup.js'
 // The thin vertical tab strip on the right edge of each module's layout.
 // Clicking a tab toggles its docked panel; while a panel is popped out into
 // its own window, its label gains " ↗" and clicking it focuses that window.
+// Shift+click pops a docked panel out (or focuses its window if it's out).
 //
 // Keyboard (ignored while typing in a text box):
 //   Ctrl+Left   reopen the last-used panel, or bring its window to the front
@@ -13,7 +14,7 @@ import { focusPopup } from '../utils/focusPopup.js'
 //   Ctrl+Up/Down  switch to the previous/next docked panel, wrapping at the
 //               ends; with no panel open, reopen the last-used one
 //
-// tabs: [{ key, name, docked, popupRef }]
+// tabs: [{ key, name, docked, popupRef, onUndock }]
 
 // Last-used tab per module for this session, keyed by the module's tab
 // names so it survives switching modules (which remounts the strip).
@@ -23,8 +24,9 @@ export function RightTabStrip({ tabs, active, setActive, background = '#0a0a0a' 
   const stripId = tabs.map((t) => t.name).join('|')
   if (active != null) lastUsedByStrip.set(stripId, active)
 
-  const activate = ({ key, docked, popupRef }) => {
+  const activate = ({ key, docked, popupRef, onUndock }, shift = false) => {
     if (!docked && popupRef.current) focusPopup(popupRef.current)
+    else if (shift && onUndock) onUndock()
     else setActive((p) => (p === key ? null : key))
   }
 
@@ -80,8 +82,8 @@ export function RightTabStrip({ tabs, active, setActive, background = '#0a0a0a' 
         return (
           <div
             key={key}
-            title={`${label} (Ctrl+↑/↓ to cycle)`}
-            onClick={() => activate(tab)}
+            title={`${label} (Ctrl+↑/↓ to cycle${tab.onUndock && docked ? ', Shift+click to pop out' : ''})`}
+            onClick={(e) => activate(tab, e.shiftKey)}
             style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #1a1a1a', background: active === key ? '#141414' : 'transparent' }}
           >
             <span style={{ writingMode: 'vertical-rl', fontSize: '10px', letterSpacing: '0.1em', color: active === key ? '#ccc' : '#777', textTransform: 'uppercase', userSelect: 'none' }}>{label}</span>

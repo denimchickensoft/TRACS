@@ -93,8 +93,9 @@ Click **Sign In**. This establishes your position, registers you with other cont
   - `Ctrl+Right` closes the open panel.
   - `Ctrl+Up` / `Ctrl+Down` switch to the panel above / below, wrapping around at the ends and skipping popped-out panels. With no panel open, they reopen the last-used one.
   - On macOS, the system uses Ctrl+arrow keys for Mission Control and switching desktops, so these shortcuts only work if you turn those off in System Settings > Keyboard > Keyboard Shortcuts.
-- A panel's **⬡** button pops it out into its own window. You can move that window to another monitor.
+- A panel's **⬡** button, or **Shift+click** on its tab, pops it out into its own window. You can move that window to another monitor. Shift+click on a popped-out panel's tab brings its window to the front.
 - While a panel is popped out, its tab shows **↗** (e.g. `STRIPS ↗`). Clicking the tab brings that window to the front.
+- A popped-out list or table fills its window. When the window is smaller than its contents, the rows scroll under a fixed title bar and column header.
 
 ## Reconnecting / refreshing
 
