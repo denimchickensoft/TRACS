@@ -3,6 +3,7 @@ import { usePopupFill } from '../../utils/usePopupFill.js'
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useSessionStore } from '../../store/session.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
+import { useAbmMarksStore, marksAsLayers, updateMark, removeMark, toggleMarkHidden } from '../../store/abmMarks.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { useAbmDeclination } from './useAbmDeclination.js'
@@ -104,7 +105,7 @@ const SORT_ACCESSORS = {
   visible: l => l.visible ? 1 : 0,
   color:   l => l.color ?? '',
   name:    l => l.name ?? '',
-  label:   l => (l.shapeType === 'text' || l.labelOverride) ? 1 : 0,
+  label:   l => (l.shapeType === 'text' || l.shapeType === 'mark' || l.labelOverride) ? 1 : 0,
 }
 
 // Swatch + popover — the swatch itself always shows the actually-rendered
@@ -171,13 +172,34 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const declinationDeg = useAbmDeclination()
   const unitSystem = useUnitSystem('abm')
 
-  const layers              = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? EMPTY_ARRAY : EMPTY_ARRAY))
-  const toggleVisible       = useAbmDrawingsStore(s => s.toggleVisible)
+  const localLayers         = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? EMPTY_ARRAY : EMPTY_ARRAY))
+  const toggleLocalVisible  = useAbmDrawingsStore(s => s.toggleVisible)
   const toggleLabelOverride = useAbmDrawingsStore(s => s.toggleLabelOverride)
-  const setLayerColor       = useAbmDrawingsStore(s => s.setLayerColor)
-  const setLayerColorOverride = useAbmDrawingsStore(s => s.setLayerColorOverride)
-  const removeLayer       = useAbmDrawingsStore(s => s.removeLayer)
-  const renameLayer       = useAbmDrawingsStore(s => s.renameLayer)
+  const setLocalColor       = useAbmDrawingsStore(s => s.setLayerColor)
+  const setLocalColorOverride = useAbmDrawingsStore(s => s.setLayerColorOverride)
+  const removeLocalLayer  = useAbmDrawingsStore(s => s.removeLayer)
+  const renameLocalLayer  = useAbmDrawingsStore(s => s.renameLayer)
+
+  // Shared marks (store/abmMarks.js) are listed after the local drawings.
+  // Their rows route to the marks store: rename/color/remove are shared,
+  // the visibility box hides it on this scope only, and they can't be
+  // reordered (marks always draw above the local drawings).
+  const marks       = useAbmMarksStore(s => s.marks)
+  const hiddenMarks = useAbmMarksStore(s => s.hidden)
+  const layers = useMemo(
+    () => (theatre ? [...localLayers, ...marksAsLayers(marks, hiddenMarks)] : localLayers),
+    [theatre, localLayers, marks, hiddenMarks],
+  )
+  const markIdOf = (id) => layers.find(l => l.id === id)?.markId ?? null
+  const toggleVisible = (th, id) => { const m = markIdOf(id); if (m) toggleMarkHidden(m); else toggleLocalVisible(th, id) }
+  const setLayerColor = (th, id, color) => { const m = markIdOf(id); if (m) updateMark(m, { color }); else setLocalColor(th, id, color) }
+  const setLayerColorOverride = (th, id, enabled) => {
+    const m = markIdOf(id)
+    if (!m) return setLocalColorOverride(th, id, enabled)
+    if (!enabled) updateMark(m, { color: null })
+  }
+  const removeLayer = (th, id) => { const m = markIdOf(id); if (m) removeMark(m); else removeLocalLayer(th, id) }
+  const renameLayer = (th, id, name) => { const m = markIdOf(id); if (m) updateMark(m, { name }); else renameLocalLayer(th, id, name) }
   const updateShapeParams = useAbmDrawingsStore(s => s.updateShapeParams)
   const clearTheatre      = useAbmDrawingsStore(s => s.clearTheatre)
   const persistError      = useAbmDrawingsStore(s => s.persistError)
@@ -254,6 +276,7 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
   const [dragOverLayerId, setDragOverLayerId] = useState(null)
 
   const onGripDragStart = (e, id) => {
+    if (markIdOf(id)) { e.preventDefault(); return }
     setDragLayerId(id)
     e.dataTransfer.effectAllowed = 'move'
   }
@@ -263,7 +286,7 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
     if (dragOverLayerId !== id) setDragOverLayerId(id)
   }
   const onRowDrop = (e, id) => {
-    if (!dragLayerId || dragLayerId === id) return
+    if (!dragLayerId || dragLayerId === id || markIdOf(id)) return
     e.preventDefault()
     reorderLayer(theatre, dragLayerId, id)
     setDragLayerId(null)
@@ -435,12 +458,12 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
                 <input
                   type="checkbox"
                   className="dr-label-override"
-                  checked={layer.shapeType === 'text' ? true : !!layer.labelOverride}
+                  checked={layer.shapeType === 'text' || layer.markId ? true : !!layer.labelOverride}
                   onChange={() => toggleLabelOverride(theatre, layer.id)}
-                  title={layer.shapeType === 'text'
-                    ? 'Text labels always show, regardless of .labels'
+                  title={layer.shapeType === 'text' || layer.markId
+                    ? 'Text and mark labels always show, regardless of .labels'
                     : "Always show this drawing's label, regardless of .labels"}
-                  disabled={layer.shapeType === 'text'}
+                  disabled={layer.shapeType === 'text' || !!layer.markId}
                 />
                 {fields ? (
                   <button
@@ -449,7 +472,9 @@ export function Drawings({ docked = true, width, onResize, onUndock, onDock, onH
                     title="Edit parameters"
                   >{expanded ? '▾' : '▸'}</button>
                 ) : (
-                  <span className="dr-count">{layer.features.length}</span>
+                  <span className="dr-count" title={layer.markId ? 'Mark, shared with every ABM controller' : undefined}>
+                    {layer.markId ? 'MK' : layer.features.length}
+                  </span>
                 )}
                 <button
                   className="dr-row-delete"

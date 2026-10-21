@@ -64,6 +64,7 @@ const COMMANDS = [
   { id: 'RACE',             pattern: /^\.race(?:\s.*)?$/ },
   { id: 'TEXT',             pattern: /^\.text(?:\s.*)?$/ },
   { id: 'DCLEAR_BARE',      pattern: /^\.dclear$/ },
+  { id: 'MARK',             pattern: /^\.mark(?:\s.*)?$/ },
   { id: 'DCLEAR_ALL',       pattern: /^\.dclear\s+all$/ },
   { id: 'DCLEAR_NAME',      pattern: /^\.dclear\s+(.+)$/, captures: ['name'] },
   { id: 'FIXES_TOGGLE',     pattern: /^\.fixes$/ },

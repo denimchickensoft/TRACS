@@ -8,6 +8,7 @@ import { useStatusBoardStore, applyStatusBoardUpdate, registerStatusBoardBroadca
 import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/aic.js'
 import { useAbmStore, registerAbmBroadcast, applyAbmStateDump } from '../store/abm.js'
 import { registerAbmMissionBroadcast } from '../store/abmMission.js'
+import { registerAbmMarksBroadcast, getMarksDump, applyMarksDump } from '../store/abmMarks.js'
 import { useRoeStore, registerRoeBroadcast, applyRoe } from '../store/roe.js'
 import {
   registerDeclarationBroadcast, applySharedDeclaration, applySharedDeclarationsReset,
@@ -373,7 +374,7 @@ function buildDump(mod) {
     return { ...base, autoDeclareMode: useAicStore.getState().autoDeclareMode }
   }
   if (mod === 'ABM') {
-    return { ...base, autoDeclareMode: useAbmStore.getState().autoDeclareMode }
+    return { ...base, autoDeclareMode: useAbmStore.getState().autoDeclareMode, abmMarks: getMarksDump() }
   }
   if (mod === 'ATC') {
     const fps = useFlightPlansStore.getState()
@@ -515,6 +516,9 @@ function applyDump(mod, payload) {
     if (mod === 'CATCC') applyCatccDump(payload)
     if (mod === 'AIC')   applyAicStateDump(payload)
     if (mod === 'ABM')   applyAbmStateDump(payload)
+    // Marks merge one by one, newest copy wins, tombstones included - a
+    // stale dump can't revive or roll back a mark (store/abmMarks.js).
+    if (mod === 'ABM' && payload.abmMarks) applyMarksDump(payload.abmMarks)
     // Applied after the per-module dump above, since applyAtcDump/applyCatccDump
     // apply their own (unrelated) state via applyStateDump() before this point.
     if (payload.callsignOverrides) {
@@ -915,6 +919,7 @@ if (IS_POPUP) {
   registerAicBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   registerAbmBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   registerAbmMissionBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+  registerAbmMarksBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   registerRoeBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
   registerDeclarationBroadcast((type, payload) => sendWebrtcSessionEvent(type, payload))
 } else {
@@ -1099,6 +1104,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   if (mod === 'ABM') {
     registerAbmBroadcast((type, payload) => sendWebrtcEvent(type, payload))
     registerAbmMissionBroadcast((type, payload) => sendWebrtcEvent(type, payload))
+    registerAbmMarksBroadcast((type, payload) => sendWebrtcEvent(type, payload))
   }
   // ROE and declarations are cross-module (session-room) state, registered
   // regardless of active module — see store/roe.js and createDeclarationStore.js.

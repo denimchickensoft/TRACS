@@ -21,6 +21,7 @@ import { useMoraStore }     from '../../store/mora.js'
 import { useAirwaysStore }  from '../../store/airways.js'
 import { useAbmAirspaceStore } from '../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../store/abmDrawings.js'
+import { useAbmMarksStore, marksAsLayers, addMark, updateMark, moveMarkLocally, removeMark } from '../../store/abmMarks.js'
 import { loadAbmPrefs } from '../../store/abmPrefs.js'
 import { getAbmBookmark, saveAbmBookmark } from '../../store/abmBookmarks.js'
 import { rangeToPixelsPerNm, canvasToLatLng, latLngToCanvas } from '../../utils/projection.js'
@@ -74,7 +75,7 @@ import {
 import { parseCommand } from './input/commandParser.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
 import { noteClick, noteEnter, removeNoteAt } from '../../components/ScopeNotes/noteCommands.js'
-import { dispatch, openAbmFocusPanel, RCLEAR, TDM_TOGGLE } from './actions/index.js'
+import { dispatch, dispatchClickEntered, CLICK_ENTERED, openAbmFocusPanel, RCLEAR, TDM_TOGGLE } from './actions/index.js'
 import { isOnGround } from '../../utils/visibleUnits.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
@@ -619,7 +620,15 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   const labelsVisible   = windowSettings?.labelsVisible ?? false
   const fillVisible     = windowSettings?.fillVisible ?? false
   const fillPct         = windowSettings?.fillPct ?? 30
-  const drawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? EMPTY_ARRAY : EMPTY_ARRAY))
+  const localDrawingLayers = useAbmDrawingsStore(s => (theatre ? s.byTheatre[theatre] ?? EMPTY_ARRAY : EMPTY_ARRAY))
+  // Shared marks ride along as drawing layers (store/abmMarks.js); anything
+  // that removes or moves a hit layer checks `markId` to route it.
+  const marks       = useAbmMarksStore(s => s.marks)
+  const hiddenMarks = useAbmMarksStore(s => s.hidden)
+  const drawingLayers = useMemo(
+    () => [...localDrawingLayers, ...marksAsLayers(marks, hiddenMarks)],
+    [localDrawingLayers, marks, hiddenMarks],
+  )
   const addDrawnShape = useAbmDrawingsStore(s => s.addDrawnShape)
   const removeDrawingLayer = useAbmDrawingsStore(s => s.removeLayer)
   const clearAllDrawings = useAbmDrawingsStore(s => s.clearTheatre)
@@ -1218,6 +1227,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // on the NEXT submitted line as a bare yes/no answer (not a new command).
   // Both live in displayStore's windows[windowId], same as pendingDraw above.
   const pendingClearClick = windowSettings?.pendingClearClick ?? false
+  const pendingMark       = windowSettings?.pendingMark ?? null
   const pendingClearAllConfirm = windowSettings?.pendingClearAllConfirm ?? false
 
   useEffect(() => {
@@ -1319,30 +1329,50 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // ── Pan (right-click drag) / RBL start (left-click drag) ────────────────────
   const handleMouseDown = useCallback((e) => {
     if (e.button === 2) {
-      // Shift+right-drag on a command-drawn shape's outline moves it (notes
-      // take this gesture first, see components/ScopeNotes). Imported
-      // layers don't move. Anywhere else, Shift+right-drag pans as usual.
+      // Alt+right-click places an unlabeled mark (store/abmMarks.js)
       const rect = interactiveRef.current?.getBoundingClientRect()
+      if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+        if (rect && viewRef.current) {
+          const at = canvasToLatLng(e.clientX - rect.left, e.clientY - rect.top, viewRef.current)
+          setCmdFeedback(`${addMark(at).name} PLACED`)
+        }
+        return
+      }
+
+      // Shift+right-drag on a command-drawn shape's outline (or a mark) moves
+      // it (notes take this gesture first, see components/ScopeNotes).
+      // Imported layers don't move. Anywhere else, Shift+right-drag pans as
+      // usual. A mark moves on this scope during the drag and is sent once,
+      // on release.
       const th   = theatreRef.current
+      const { marks: liveMarks, hidden: liveHidden } = useAbmMarksStore.getState()
       const hit  = e.shiftKey && !e.ctrlKey && !e.altKey && rect && viewRef.current && th
         ? hitTestDrawingLayer(viewRef.current,
-            (useAbmDrawingsStore.getState().byTheatre[th] ?? []).filter(l => l.shapeType),
+            [...(useAbmDrawingsStore.getState().byTheatre[th] ?? []).filter(l => l.shapeType),
+             ...marksAsLayers(liveMarks, liveHidden)],
             e.clientX - rect.left, e.clientY - rect.top)
         : null
       if (hit) {
         e.preventDefault()
         const startX = e.clientX, startY = e.clientY, startParams = hit.params
+        let lastAt = null
         const onMove = (ev) => {
           const v = viewRef.current
           if (!v) return
-          useAbmDrawingsStore.getState().updateShapeParams(th, hit.id,
-            shiftShapeParams(startParams, ev.clientX - startX, ev.clientY - startY, v))
+          const moved = shiftShapeParams(startParams, ev.clientX - startX, ev.clientY - startY, v)
+          if (hit.markId) {
+            lastAt = moved.at
+            moveMarkLocally(hit.markId, moved.at.lat, moved.at.lng)
+          } else {
+            useAbmDrawingsStore.getState().updateShapeParams(th, hit.id, moved)
+          }
         }
         const onUp = (ev) => {
           if (ev.button !== 2) return
           window.removeEventListener('mousemove', onMove)
           window.removeEventListener('mouseup', onUp, true)
           ev.stopPropagation()
+          if (hit.markId && lastAt) updateMark(hit.markId, { lat: lastAt.lat, lng: lastAt.lng })
           setCmdFeedback(`MOVED ${hit.name}`)
         }
         window.addEventListener('mousemove', onMove)
@@ -1517,6 +1547,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // The command line holds the DEL key's token rather than typed "DEL"
   const delArmedRef = useRef(false)
   useEffect(() => { if (cmdBuffer !== 'DEL') delArmedRef.current = false }, [cmdBuffer])
+  // ...or the INS key's MARK (INS [label] + click places a mark)
+  const insArmedRef = useRef(false)
+  useEffect(() => { if (!cmdBuffer.startsWith('MARK')) insArmedRef.current = false }, [cmdBuffer])
   const [cmdFeedback, setCmdFeedback] = useState('')
   // .define readout — kept separate from cmdFeedback (see AbmScope.css) since
   // cmdFeedback gets overwritten by every incidental click/command ack and a
@@ -1565,18 +1598,20 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     if (note) { setCmdFeedback(note.msg); return }
     const parsed = parseCommand(raw)
     if (!parsed) { setCmdFeedback('UNKNOWN COMMAND'); return }
-    const context = {
-      raw,
-      windowId,
-      theatre,
-      declinationDeg: viewRef.current?.declinationDeg ?? 0,
-      myCoalitionNum,
-      allVisibleUnits: allVisibleUnitsRef.current,
-      correlatedUnitIds: correlatedUnitIdsRef.current,
-    }
-    const feedback = await dispatch(parsed, context)
+    const feedback = await dispatch(parsed, commandContext(raw))
     setCmdFeedback(feedback)
   }
+
+  const commandContext = useCallback((raw) => ({
+    raw,
+    windowId,
+    theatre,
+    declinationDeg: viewRef.current?.declinationDeg ?? 0,
+    myCoalitionNum,
+    allVisibleUnits: allVisibleUnitsRef.current,
+    correlatedUnitIds: correlatedUnitIdsRef.current,
+    bullseye: bullseyeRef.current,
+  }), [windowId, theatre, myCoalitionNum])
 
   // Ctrl+V into the command line — interactiveRef is a plain div (not a
   // text input), so pasting only works if something actually listens for
@@ -1596,6 +1631,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     if (e.key === 'Delete' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault()
       if (!cmdBuffer.trim()) { setCmdBuffer('DEL'); setCmdFeedback(''); delArmedRef.current = true }
+      return
+    }
+
+    // INS (empty command line) [label] + click places a mark
+    if (e.key === 'Insert' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault()
+      if (!cmdBuffer.trim()) { setCmdBuffer('MARK '); setCmdFeedback(''); insArmedRef.current = true }
       return
     }
 
@@ -1655,6 +1697,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       if (pendingClearClick) { displayStore.updateWindow(windowId, { pendingClearClick: false }); return }
       if (pendingClearAllConfirm) { displayStore.updateWindow(windowId, { pendingClearAllConfirm: false }); setCmdFeedback('CLEAR ALL CANCELLED'); return }
       if (pendingDraw) { displayStore.updateWindow(windowId, { pendingDraw: null }); return }
+      if (pendingMark) { displayStore.updateWindow(windowId, { pendingMark: null }); setCmdFeedback('MARK CANCELLED'); return }
       if (findMarker) { displayStore.updateWindow(windowId, { findMarker: null }); useAbmMissionStore.getState().clearFind(); return }
       if (pendingDeclaration) { setPendingDeclaration(null); return }
       if (pendingBraaFighter) { clearPendingBraa(); return }
@@ -1767,12 +1810,22 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       } else {
         const hit = hitTestDrawingLayer(viewRef.current, drawingLayers, pos.x, pos.y)
         if (hit) {
-          removeDrawingLayer(theatre, hit.id)
+          removeHitLayer(hit)
           setCmdFeedback(`CLEARED ${hit.name}`)
         } else {
           setCmdFeedback('NOTHING THERE')
         }
       }
+      return
+    }
+
+    // INS + click — places a mark (store/abmMarks.js); INS enters MARK, and
+    // text typed after it is the label. One click.
+    if (e.button === 0 && insArmedRef.current && cmdBuffer.startsWith('MARK')) {
+      insArmedRef.current = false
+      const label = cmdBuffer.slice(4).trim()
+      clearCmd()
+      setCmdFeedback(`${addMark(canvasToLatLng(pos.x, pos.y, viewRef.current), label).name} PLACED`)
       return
     }
 
@@ -1802,16 +1855,37 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
 
     // .dclear + click — one-shot: disarms on this click regardless of
     // whether anything was actually under it.
-    if (pendingClearClick) {
-      if (e.button === 1) return
+    const clearClick = () => {
       displayStore.updateWindow(windowId, { pendingClearClick: false })
       const hit = hitTestDrawingLayer(viewRef.current, drawingLayers, pos.x, pos.y)
       if (hit) {
-        removeDrawingLayer(theatre, hit.id)
+        removeHitLayer(hit)
         setCmdFeedback(`CLEARED ${hit.name}`)
       } else {
         setCmdFeedback('NOTHING THERE')
       }
+    }
+
+    // A draw command or bare .dclear typed but not yet entered: the click
+    // enters it, and if it then waits for a click, this is that click.
+    if (e.button === 0 && !pendingDraw && !pendingClearClick) {
+      const typed = parseCommand(cmdBuffer)
+      if (typed && CLICK_ENTERED.has(typed.command.id)) {
+        const raw = cmdBuffer.trim()
+        clearCmd()
+        const feedback = dispatchClickEntered(typed, commandContext(raw))
+        const win = useDisplayStore.getState().windows[windowId]
+        if (win?.pendingClearClick) clearClick()
+        else if (win?.pendingDraw) drawClick(win.pendingDraw)
+        else if (win?.pendingMark) markClick(win.pendingMark)
+        else setCmdFeedback(feedback)
+        return
+      }
+    }
+
+    if (pendingClearClick) {
+      if (e.button === 1) return
+      clearClick()
       return
     }
 
@@ -1823,7 +1897,28 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     // wheel (see the wheel listener below), not the middle-click.
     if (pendingDraw) {
       if (e.button === 1) return
+      drawClick(pendingDraw)
+      return
+    }
 
+    // .mark [label] + click
+    if (pendingMark) {
+      if (e.button === 1) return
+      markClick(pendingMark)
+      return
+    }
+
+    function markClick({ label }) {
+      displayStore.updateWindow(windowId, { pendingMark: null })
+      setCmdFeedback(`${addMark(canvasToLatLng(pos.x, pos.y, viewRef.current), label).name} PLACED`)
+    }
+
+    function removeHitLayer(hit) {
+      if (hit.markId) removeMark(hit.markId)
+      else removeDrawingLayer(theatre, hit.id)
+    }
+
+    function drawClick(pendingDraw) {
       // .poly closes when a click lands near its first vertex (screen-pixel
       // distance, so it feels the same at any zoom level) — checked here,
       // not in advancePendingDraw, since that needs the view/projection to
@@ -1851,7 +1946,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       } else {
         displayStore.updateWindow(windowId, { pendingDraw: result.pending })
       }
-      return
     }
 
     // Click a blinking missile symbol to cancel its alert (sound + blink) —
@@ -2102,7 +2196,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
         }
       }
     }
-  }, [cmdBuffer, pendingDeclaration, displayStore, myCoalitionNum, isGmOrAdmin, getDecl,
+  }, [cmdBuffer, commandContext, pendingMark, pendingDeclaration, displayStore, myCoalitionNum, isGmOrAdmin, getDecl,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
       pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId, unitSystem])

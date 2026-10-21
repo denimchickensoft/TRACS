@@ -170,6 +170,11 @@ export function buildRaceFeature({ fix, radialDeg, turnDir = 'R', legNm, turnRad
  * Point-label rotation. Unlike other shapes, the label IS the command's
  * payload (not the drawer row's name), so it's set directly here rather
  * than patched in by the store on rename. */
+// .mark: a point drawn as a small X, its label beside it.
+export function buildMarkFeature({ at, label = '' }) {
+  return feature({ type: 'Point', coordinates: [at.lng, at.lat] }, {}, label ? [label] : null)
+}
+
 export function buildTextFeature({ anchor, text, rotationDeg = 0 }) {
   const geometry = { type: 'Point', coordinates: [anchor.lng, anchor.lat] }
   return feature(geometry, { title: text, labelRotationDeg: rotationDeg }, [text])

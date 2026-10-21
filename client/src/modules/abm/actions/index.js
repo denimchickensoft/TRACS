@@ -76,6 +76,8 @@ import { DIR_TO_ANGLE } from '../../../utils/scopeConstants.js'
 import { drawCmdTokens } from '../abmScopeHelpers.js'
 import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
 import { parseDrawCommand, resolvePoint } from '../draw/drawCommands.js'
+import { addMark, removeMarksByName, useAbmMarksStore } from '../../../store/abmMarks.js'
+import { gridDestinationPoint, toTrueFromMagnetic } from '../../../utils/bearing.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { focusPopup } from '../../../utils/focusPopup.js'
 
@@ -410,7 +412,7 @@ function handleDrawCommand(type, { context }) {
     useAbmDrawingsStore.getState().addDrawnShape(theatre, type, result.immediate)
     return DRAW_DONE_FEEDBACK[type]
   }
-  updateWin(windowId, { pendingDraw: result.pending })
+  updateWin(windowId, { pendingDraw: result.pending, pendingMark: null })
   return DRAW_PENDING_FEEDBACK[type]
 }
 
@@ -434,7 +436,7 @@ export function TEXT({ context }) { return handleDrawCommand('text', { context }
 export function DCLEAR_BARE({ context }) {
   const { theatre, windowId } = context
   if (!theatre) return 'NO THEATRE'
-  updateWin(windowId, { pendingDraw: null, pendingClearClick: true })
+  updateWin(windowId, { pendingDraw: null, pendingMark: null, pendingClearClick: true })
   return 'CLEAR: CLICK A DRAWING'
 }
 
@@ -454,10 +456,41 @@ export function DCLEAR_NAME({ captures, context }) {
   // rejoin (drawCmdTokens(str, raw).join(' ')) rather than a raw capture.
   const arg = captures.name.trim().split(/\s+/).join(' ')
   const drawingLayers = useAbmDrawingsStore.getState().byTheatre[theatre] ?? []
-  const matches = drawingLayers.filter(l => l.name.toUpperCase() === arg.toUpperCase())
+  const marks = Object.values(useAbmMarksStore.getState().marks).filter(m => !m.deleted)
+  const matches = [...drawingLayers, ...marks].filter(l => (l.name ?? '').toUpperCase() === arg.toUpperCase())
   if (!matches.length) return 'NOT FOUND'
   useAbmDrawingsStore.getState().removeLayersByName(theatre, arg)
+  removeMarksByName(arg)
   return matches.length > 1 ? `CLEARED ${matches.length} ${arg.toUpperCase()}` : `CLEARED ${matches[0].name}`
+}
+
+// ── Marks (store/abmMarks.js) ───────────────────────────────────────────────
+// .mark [position] [label]. The position is a bullseye magnetic bearing/range
+// (090/25, range in the .metric/.imperial unit), a coordinate (N36E035) or a
+// fix; the rest of the line is the label. With no position the next click
+// places it (AbmScope.jsx handleMouseUp, pendingMark).
+const BULLSEYE_POS_RE = /^(\d{1,3})\/(\d+(?:\.\d+)?)$/
+
+export function MARK({ context }) {
+  const { raw, theatre, declinationDeg, windowId, bullseye } = context
+  if (!theatre) return 'NO THEATRE'
+  const words = raw.trim().replace(/^\.mark\b/i, '').trim().split(/\s+/).filter(Boolean)
+  const first = words[0] ?? ''
+  let at = null
+  const be = BULLSEYE_POS_RE.exec(first)
+  if (be) {
+    if (!bullseye?.hasBullseye) return 'NO BULLSEYE'
+    const brg = parseInt(be[1], 10)
+    if (brg > 360) return 'BAD BEARING'
+    const rangeNm = distToNm(parseFloat(be[2]), getUnitSystem('abm'))
+    at = gridDestinationPoint(bullseye.lat, bullseye.lng, toTrueFromMagnetic(brg % 360, declinationDeg), rangeNm, theatre)
+  } else if (first) {
+    at = resolvePoint(first, useNavdataStore.getState().lookupFix)
+  }
+  const label = (at ? words.slice(1) : words).join(' ')
+  if (at) return `${addMark(at, label).name} PLACED`
+  updateWin(windowId, { pendingDraw: null, pendingClearClick: false, pendingMark: { label } })
+  return 'MARK: CLICK TO PLACE'
 }
 
 // ── Fixes / navaids ──────────────────────────────────────────────────────────
@@ -1028,6 +1061,7 @@ export function ENG_TOGGLE({ context }) {
 }
 
 const ACTION_MAP = {
+  MARK,
   RR_TOGGLE, RR_SET, RR_SET_ANCHOR,
   LABELSIZE_SHOW, LABELSIZE_SET, DBSIZE_SHOW, DBSIZE_SET,
   BE_RESET, BE_LATLNG, BE_FIX,
@@ -1053,6 +1087,15 @@ const ACTION_MAP = {
  * @param {object} context  { raw, windowId, theatre, declinationDeg, myCoalitionNum, allVisibleUnits }
  * @returns {Promise<string>} feedback message for cmdFeedback
  */
+// The commands a click can enter as well as Enter (AbmScope.jsx's
+// handleMouseUp): the draw commands, bare .dclear and .mark. Their handlers are
+// synchronous, so the click can act on the pendingDraw/pendingClearClick
+// they arm straight away.
+export const CLICK_ENTERED = new Set(['LINE', 'RECT', 'CIRC', 'POLY', 'SECT', 'RACE', 'TEXT', 'DCLEAR_BARE', 'MARK'])
+export function dispatchClickEntered(parsed, context) {
+  return ACTION_MAP[parsed.command.id]({ captures: parsed.captures, context })
+}
+
 export async function dispatch(parsed, context) {
   const handler = ACTION_MAP[parsed.command.id]
   if (!handler) return `UNIMPLEMENTED: ${parsed.command.id}`

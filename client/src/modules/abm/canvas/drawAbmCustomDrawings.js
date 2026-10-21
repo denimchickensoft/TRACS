@@ -71,7 +71,7 @@ export function drawAbmCustomDrawings(ctx, view, layers, customColors = null, la
 
     for (const f of visibleFeatures) drawFeature(ctx, view, f, overrideColor, customColors, layer.shapeType, fillPct)
 
-    const showLabels = labelsVisible || layer.shapeType === 'text' || layer.labelOverride
+    const showLabels = labelsVisible || layer.shapeType === 'text' || layer.shapeType === 'mark' || layer.labelOverride
     if (!showLabels) continue
     ctx.font         = `${fontSize}px "Roboto Mono", monospace`
     ctx.textAlign    = 'center'
@@ -110,7 +110,8 @@ function drawFeature(ctx, view, f, overrideColor, customColors, shapeType, fillP
     // .text-command shapes (shapeType === 'text') are the label itself —
     // no marker dot, just the text centered on the point (see drawLabel).
     case 'Point':
-      if (shapeType !== 'text') drawPoint(ctx, view, f.geometry.coordinates, p['marker-color'] ?? stroke, strokeOpacity)
+      if (shapeType === 'mark') drawMarkX(ctx, view, f.geometry.coordinates, stroke)
+      else if (shapeType !== 'text') drawPoint(ctx, view, f.geometry.coordinates, p['marker-color'] ?? stroke, strokeOpacity)
       break
     case 'MultiPoint':
       if (shapeType !== 'text') {
@@ -133,6 +134,20 @@ function drawFeature(ctx, view, f, overrideColor, customColors, shapeType, fillP
       // Unrecognized geometry type — silently skipped rather than thrown,
       // per the "flexible, cross that bridge later" scope decision.
   }
+}
+
+// .mark's symbol: an X MARK_HALF px each side of the point.
+const MARK_HALF = 5
+function drawMarkX(ctx, view, [lng, lat], color) {
+  const { x, y } = latLngToCanvas(lat, lng, view)
+  ctx.globalAlpha = 1
+  ctx.strokeStyle = color
+  ctx.lineWidth   = 1.5
+  ctx.setLineDash([])
+  ctx.beginPath()
+  ctx.moveTo(x - MARK_HALF, y - MARK_HALF); ctx.lineTo(x + MARK_HALF, y + MARK_HALF)
+  ctx.moveTo(x + MARK_HALF, y - MARK_HALF); ctx.lineTo(x - MARK_HALF, y + MARK_HALF)
+  ctx.stroke()
 }
 
 export function drawPoint(ctx, view, [lng, lat], color, opacity) {
@@ -208,7 +223,7 @@ function drawLabel(ctx, view, f, overrideColor, customColors, fontSize, lineH, s
     ctx.translate(x, y)
     ctx.rotate(rotationRad)
     ctx.textAlign = isTextShape ? 'center' : 'left'
-    const xOffset = isTextShape ? 0 : MARKER_RADIUS + 4
+    const xOffset = isTextShape ? 0 : (shapeType === 'mark' ? MARK_HALF : MARKER_RADIUS) + 4
     lines.forEach((line, idx) => {
       ctx.fillText(line, xOffset, (idx - (lines.length - 1) / 2) * lineH)
     })

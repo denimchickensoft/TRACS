@@ -211,16 +211,32 @@ Each command runs on Enter. Arguments you type are used directly; anything missi
 | `.race [fix] [radial] [leg] [L\|R] [turnRadius]` | Racetrack. Typing fix, radial (magnetic), leg length and turn direction draws it immediately (turn radius defaults to 1 NM); otherwise click the fix, then click to set the leg |
 | `.text [anchor] <text>` | Text label: click to place it (if no anchor was typed), then click again to commit |
 
+A drawing command can also be finished with a click instead of Enter: type it, then click the map, and the click places its first point (or, for `.dclear`, picks the drawing).
+
 Typed sizes (radius, leg, turn radius) are in NM, or km under `.metric`. While placing a shape, headings snap to whole magnetic degrees and distances to whole NM (whole km under `.metric`). The scroll wheel rotates `.rect`, `.race`, and `.text` before you commit them. Escape discards an in-progress shape.
 
 Clearing:
 - `.dclear` (bare), then click a drawing — removes one shape.
 - DEL, then click — removes the note under the click, or else the drawing, one per DEL.
 - `.dclear all` — removes every hand-drawn shape after a `y`/`n` confirmation.
-- `.dclear <name>` — removes shapes by name.
+- `.dclear <name>` — removes shapes (and marks) by name.
 - Shift+right-drag a drawn shape's outline to move it. The shape keeps its exact size and bearings. Imported drawings don't move, and plain right-drag still pans.
 
 Hand-drawn shapes appear in the Drawings panel alongside imported layers. The drawings store is shared by every ABM window, so drawing or clearing in one window affects all of them.
+
+### Marks
+
+A mark is a small X with an optional label, shared with every ABM controller. Anyone in ABM can move, rename, recolor or remove any mark, and everyone sees the change. Marks last while anyone is in ABM: a controller who joins later gets them, but they aren't saved, so they're gone once the last ABM controller leaves.
+
+| Command | Effect |
+|---|---|
+| `.mark 090/25 [label]` | Mark at that magnetic bearing and range from bullseye (range in NM, or km under `.metric`) |
+| `.mark <coordinate or fix> [label]` | Mark at a coordinate (e.g. `N36E035`) or a fix/navaid/airport |
+| `.mark [label]` + click | Mark where you click (Enter first, or just click) |
+| INS `[label]` + click | Same, from the Insert key: INS puts `MARK` in the command line, type an optional label, then click |
+| Alt+right-click | Unlabeled mark at the cursor |
+
+Marks are named MARK1, MARK2 and so on, and appear in the Drawings panel (marked `MK`). There, renaming, recoloring and removing are shared, while the visibility box hides a mark on your own scope only. Shift+right-drag moves a mark; DEL + click, `.dclear` + click and `.dclear <name>` remove it. `.dclear all` and the panel's Clear All leave marks alone.
 
 ### Callsign/route lookup by name
 
