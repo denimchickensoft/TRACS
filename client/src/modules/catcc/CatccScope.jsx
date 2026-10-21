@@ -28,7 +28,7 @@ import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../utils/starsKeys.js'
 import { processOdsCommand } from './odsCommands.js'
-import { initCntl, termCntl, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
+import { initCntl, termCntl, bareSlew, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
 import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
@@ -388,6 +388,7 @@ export default function CatccScope() {
       windowSettings?.dbca ?? true,
       windowSettings?.dbSize ?? 2,
       spcAlerts,
+      handoffs,
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps -- historyRef is a stable ref returned by useHistoryCapture
   }, [visibleUnits, spcAlerts, view, trackMap, correlations, pendingCodes, ownership, handoffs, blinkTracks, blinkTick, blinkOn,
@@ -547,10 +548,14 @@ export default function CatccScope() {
         setOdsLines((prev) => [...prev, `${spc.code} ACK`].slice(-ODS_MAX_LINES))
         return
       }
+
+      // Plain click on a contact with a pending handoff accepts or recalls it,
+      // or stops the flash on one you just handed off
+      if (bareSlew(target)) return
     }
 
     // Slew commands — parse ODS buffer against CATCC's own local slew table
-    // (IC/TC/HO <tcp>/point-outs/leader-line/scratchpad/MF S — see slewCommands.js)
+    // (IC/TC/HO <tcp>/<tcp>/leader-line/scratchpad/MF S — see slewCommands.js)
     const parsed = parseCatccSlew(usePreviewStore.getState().buffer)
     if (parsed) {
       dispatchCatccSlew(parsed, target, correlationsRef.current, { canvasPos, view: viewRef.current })

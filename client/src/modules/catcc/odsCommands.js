@@ -11,7 +11,7 @@
  * Aircraft are identified by correlated side number OR callsign.
  */
 
-import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
+import { useAtcStore, HANDOFF_STATE } from '../../store/atc.js'
 import { useSessionStore }     from '../../store/session.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { saveCatccPrefs }      from '../../store/catccPrefs.js'
@@ -125,21 +125,6 @@ register('HO', (parts, ctx) => {
   if (!getKnownControllerIds().has(tcp)) return [`ILL POS: ${tcp}`]
   setHandoff(target.unitId, { state: HANDOFF_STATE.INITIATED, from: controllerId, to: tcp })
   sendWebrtcEvent('HANDOFF_INITIATED', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
-  return []
-})
-
-// PO <callsign|side> <tcp> — point out to controller
-register('PO', (parts, ctx) => {
-  const id  = parts[1]
-  const tcp = parts[2]
-  if (!id || !tcp) return ['PO <callsign|side> <tcp>']
-  const target = findUnit(id, ctx)
-  if (!target) return [`NO TRACK: ${id}`]
-  const controllerId = getMyControllerId()
-  if (tcp === controllerId) return ['ILL POS']
-  if (!getKnownControllerIds().has(tcp)) return [`ILL POS: ${tcp}`]
-  useAtcStore.getState().setPointOut(target.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
-  sendWebrtcEvent('POINT_OUT_SENT', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
   return []
 })
 

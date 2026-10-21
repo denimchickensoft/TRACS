@@ -35,7 +35,6 @@ Type into the command line, then press **Enter**, or click a target to complete 
 | `.DROPALL` | Drop every track you own |
 | `HO` | Accept the first incoming handoff |
 | `HO <callsign\|side> <tcp>` | Hand off to another controller position (`tcp` = their position id, e.g. `1D`) |
-| `PO <callsign\|side> <tcp>` | Point out a track to another controller |
 | `RN <callsign\|side> [newCallsign]` | Rename a track's callsign, or omit the second argument to reset to default |
 | `.HISTORY` / `.HIST` | Toggle history-trail display |
 | `.LL [0-7]` | Set leader-line length (10 px per step); bare `.LL` queries the current value |
@@ -68,8 +67,7 @@ Errors appear in the ODS response area:
 |---|---|
 | `IC` | Initiate control on the clicked contact (must be correlated and unowned) |
 | `TC` | Terminate control |
-| `HO <tcp>` | Hand off the clicked track to a position |
-| `<tcp>*` / `**` / `UN` | Point out / accept an incoming point-out as a handoff / reject a point-out |
+| `HO <tcp>` / `<tcp>` (e.g. `1D`) | Hand off the clicked track to a position; on your own track with a handoff already pending, recall it instead. While your handoff is pending, the receiving position's letter replaces the space between altitude and groundspeed (`050A220` for a handoff to `1A`) |
 | `<text>` (3–4 characters) | Set scratchpad 1 on a track you own; `+<text>` (1–4 characters) sets scratchpad 2; `.` / `+` clear them. Scratchpads are stored but not drawn on CATCC datablocks |
 | `MF L<n><n>` (e.g. `MF L33`) | Set leader-line direction globally; `MF L<n>` sets it for the clicked track |
 | `MF S`, then click anywhere on the scope | Relocate the status-text overlay |
@@ -83,6 +81,7 @@ Errors appear in the ODS response area:
 | **Ctrl+Click** a contact | Add it to the Status Board |
 | **Double-click** a contact | Show its Status Board details in the status overlay (correlated contacts only); again to drop them |
 | **Click** a contact with a flashing emergency tag | Acknowledge it (empty command line only) |
+| **Click** a contact with a pending handoff | Accept an incoming handoff, recall your own outgoing one, or stop the flash on a track the other position just accepted (empty command line only) |
 | **Mouse wheel** over the scope | Zoom range, 1 NM per step (3 NM with Ctrl), 6–256 NM |
 | Moving the mouse | Shows a live bearing/range readout from the carrier to the cursor |
 | **Ctrl+T** / **Alt+T** | Toggle top-down mode: also shows aircraft on the ground, such as aircraft on deck. Ctrl+T works in the desktop app only |

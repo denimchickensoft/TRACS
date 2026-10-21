@@ -2,6 +2,7 @@ import { latLngToCanvas } from '../../../utils/projection.js'
 import { DIR_TO_ANGLE, ALERT_BRIGHT, ALERT_DIM } from '../../../utils/scopeConstants.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { altHundreds, speedFromMs } from '../../../utils/units.js'
+import { HANDOFF_STATE } from '../../../store/atc.js'
 
 
 const SYMBOL_RADIUS  = 5     // px — matches circle radius in drawCatccContacts
@@ -42,8 +43,10 @@ function fmtGs(mps, sys) {
  * @param {boolean} dbca           datablock collision avoidance on/off
  * @param {number}  dbSize         0–5 char size index (see .dbsize)
  * @param {object}  spcAlerts      { [unitId]: { code, acked } } — emergency squawk tag shown above line 1
+ * @param {object}  handoffs       { [unitId]: { state, from, to } } — your outgoing handoff puts the
+ *                                 receiving position's letter between altitude and groundspeed
  */
-export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes = {}, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true, dbSize = 2, spcAlerts = {}) {
+export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes = {}, brite = 80, marshalBearing = null, leaderDirs = {}, globalLeaderDir = null, blinkingUids = new Set(), blinkPhase = false, ownership = {}, myControllerId = null, leaderLen = LEADER_LEN, dbca = true, dbSize = 2, spcAlerts = {}, handoffs = {}) {
   const alpha = Math.max(0, Math.min(1, brite / 100))
   if (alpha <= 0) return
 
@@ -70,7 +73,9 @@ export function drawCatccDatablocks(ctx, view, units, correlations, pendingCodes
     const { x, y } = latLngToCanvas(pos.lat, pos.lng, view)
     if (x < -100 || x > width + 100 || y < -100 || y > height + 100) continue
     const line1 = correlations[String(id)] ?? pendingCodes[String(id)] ?? 'XXX'
-    const line2 = `${fmtAlt(pos.alt, view.unitSystem)} ${fmtGs(unit.speed, view.unitSystem)}`
+    const ho    = handoffs[id]
+    const sep   = (ho?.state === HANDOFF_STATE.INITIATED && ho.from === myControllerId) ? ho.to.slice(-1) : ' '
+    const line2 = `${fmtAlt(pos.alt, view.unitSystem)}${sep}${fmtGs(unit.speed, view.unitSystem)}`
     // Emergency squawk: an extra line above, measured so placement keeps it clear
     const spc   = spcAlerts[String(id)] ?? null
     const lines = spc ? [spc.code, line1, line2] : [line1, line2]

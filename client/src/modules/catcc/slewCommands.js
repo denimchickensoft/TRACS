@@ -11,7 +11,7 @@
  * directly, with no windowId ambiguity possible.
  *
  * Deliberately NOT ported (not documented for CATCC, no CATCC UI renders
- * them): RBL, procedures, flight-plan editor, TAB/tower/coast/alert/VFR
+ * them): point-outs, RBL, procedures, flight-plan editor, TAB/tower/coast/alert/VFR
  * lists, min-sep, quicklook, .coords, .find, reported/assigned altitude
  * scratchpad (STARS never actually implemented these two either — they're
  * absent from actions/index.js's ACTION_MAP, so porting them would invent
@@ -22,7 +22,7 @@
  * that were previously dispatched inline via actions/index.js.
  */
 
-import { useAtcStore, HANDOFF_STATE, POINTOUT_STATE } from '../../store/atc.js'
+import { useAtcStore, HANDOFF_STATE } from '../../store/atc.js'
 import { useDisplayStore }     from '../../store/display.js'
 import { usePreviewStore }     from '../../store/preview.js'
 import { sendWebrtcEvent }     from '../../webrtc/client.js'
@@ -58,8 +58,9 @@ export function termCntl(target) {
   ok()
 }
 
-// ── HO <tcp> + slew — initiate handoff; recalls own outgoing handoff on the
-// clicked target instead if one is already pending (same nuance as STARS' HND_OFF).
+// ── HO <tcp> / <tcp> + slew — initiate handoff; recalls own outgoing handoff
+// on the clicked target instead if one is already pending (same nuance as
+// STARS' HND_OFF).
 function handOff(tcp, target) {
   if (!target) return err('NO TARGET')
   const { ownership, handoffs, setHandoff, clearHandoff } = useAtcStore.getState()
@@ -68,6 +69,7 @@ function handOff(tcp, target) {
   const existing = handoffs[target.unitId]
   if (existing?.state === HANDOFF_STATE.INITIATED && existing.from === controllerId) {
     clearHandoff(target.unitId)
+    sendWebrtcEvent('HANDOFF_RECALLED', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: existing.to })
     return ok()
   }
 
@@ -79,40 +81,35 @@ function handOff(tcp, target) {
   ok()
 }
 
-// ── <tcp>* + slew — point out ────────────────────────────────────────────────
-function pointOut(tcp, target) {
-  if (!target) return err('NO TARGET')
-  if (!tcp) return err('ILL POS')
+// ── Plain click (empty buffer) — accept an incoming handoff, recall your own
+// outgoing one, or stop the flash on a track you just handed off. Returns true if the click was consumed, so the caller can
+// leave everything else (ODS lines, double-click focus) alone otherwise.
+export function bareSlew(target) {
+  if (!target) return false
+  const { handoffs, blinkTracks, claimTrack, clearHandoff, clearBlinkTrack } = useAtcStore.getState()
   const controllerId = getMyControllerId()
-  if (tcp === controllerId) return err('ILL POS')
-  if (!getKnownControllerIds().has(tcp)) return err('ILL POS')
-  useAtcStore.getState().setPointOut(target.unitId, { state: POINTOUT_STATE.SENT, from: controllerId, to: tcp })
-  sendWebrtcEvent('POINT_OUT_SENT', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: tcp })
-  ok()
-}
+  const ho = handoffs[target.unitId]
 
-// ── ** + slew — accept incoming point-out as a handoff ───────────────────────
-function convertPointOut(target) {
-  if (!target) return err('NO TARGET')
-  const { pointOuts, clearPointOut, claimTrack } = useAtcStore.getState()
-  const controllerId = getMyControllerId()
-  const po = pointOuts[target.unitId]
-  if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== controllerId) return err('ILL TRK')
-  clearPointOut(target.unitId)
-  claimTrack(target.unitId, controllerId)
-  sendWebrtcEvent('POINT_OUT_CONVERTED', { unitId: target.unitId, fromControllerId: po.from, toControllerId: controllerId })
-  ok()
-}
+  if (ho?.state === HANDOFF_STATE.RECEIVING && ho.to === controllerId) {
+    claimTrack(target.unitId, controllerId)
+    clearHandoff(target.unitId)
+    sendWebrtcEvent('HANDOFF_ACCEPTED', { unitId: target.unitId, fromControllerId: ho.from, toControllerId: controllerId })
+    return true
+  }
 
-// ── UN + slew — reject an incoming point-out ──────────────────────────────────
-function rejectPointOut(target) {
-  if (!target) return err('NO TARGET')
-  const controllerId = getMyControllerId()
-  const po = useAtcStore.getState().pointOuts[target.unitId]
-  if (po?.state !== POINTOUT_STATE.RECEIVING || po.to !== controllerId) return err('ILL TRK')
-  useAtcStore.getState().clearPointOut(target.unitId)
-  sendWebrtcEvent('POINT_OUT_REJECTED', { unitId: target.unitId, fromControllerId: po.from, toControllerId: controllerId })
-  ok()
+  if (ho?.state === HANDOFF_STATE.INITIATED && ho.from === controllerId) {
+    clearHandoff(target.unitId)
+    sendWebrtcEvent('HANDOFF_RECALLED', { unitId: target.unitId, fromControllerId: controllerId, toControllerId: ho.to })
+    return true
+  }
+
+  // Sender side of an accepted handoff — local only, nothing to broadcast
+  if (blinkTracks[target.unitId] > Date.now()) {
+    clearBlinkTrack(target.unitId)
+    return true
+  }
+
+  return false
 }
 
 // ── MF L<n><n> + slew — global leader direction; MF L<n> + slew — per-track ──
@@ -165,9 +162,7 @@ const SLEW_COMMANDS = [
   { id: 'IC',                pattern: /^IC$/ },
   { id: 'TC',                pattern: /^TC$/ },
   { id: 'HND_OFF',           pattern: /^HO ([^ ]+)$/,          captures: ['tcp'] },
-  { id: 'POINT_OUT',         pattern: /^([^ *]+)\*$/,          captures: ['tcp'] },
-  { id: 'CONVERT_PO',        pattern: /^\*\*$/ },
-  { id: 'REJECT_PO',         pattern: /^UN$/ },
+  { id: 'HND_OFF_SHORT',     pattern: /^([1-9][A-Z0-9])$/,     captures: ['tcp'] },
   { id: 'SET_LEADER_GLOBAL', pattern: /^MF L([1-9])\1$/,       captures: ['dir'] },
   { id: 'SET_LEADER',        pattern: /^MF L([1-9])$/,         captures: ['dir'] },
   { id: 'MF_S',              pattern: /^MF S$/ },
@@ -195,9 +190,7 @@ export function dispatchCatccSlew(parsed, target, correlations, extra) {
     case 'IC':                return initCntl(target, correlations)
     case 'TC':                return termCntl(target)
     case 'HND_OFF':           return handOff(captures.tcp, target)
-    case 'POINT_OUT':         return pointOut(captures.tcp, target)
-    case 'CONVERT_PO':        return convertPointOut(target)
-    case 'REJECT_PO':         return rejectPointOut(target)
+    case 'HND_OFF_SHORT':     return handOff(captures.tcp, target)
     case 'SET_LEADER_GLOBAL': return setLeaderGlobal(captures.dir)
     case 'SET_LEADER':        return setLeader(captures.dir, target)
     case 'MF_S':              return relocateStatusText(extra?.canvasPos, extra?.view)
