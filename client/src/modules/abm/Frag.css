@@ -343,6 +343,7 @@
 .frag-wp-findable:hover .frag-wp-name { color: #00e000; }
 .frag-wp.frag-find-active .frag-wp-name { color: #00e000 !important; }
 .frag-wp-speed { color: #888; text-align: right; }
+.frag-wp-tacan { color: #888; }
 
 /* ── Popped out: title fixed, the body scrolls both ways ── */
 .frag.popup-fill > * { flex-shrink: 0; }

@@ -318,8 +318,32 @@ function buildRoute(group, theatre) {
       alt:    p.alt ?? null,
       speed:  p.speed ?? null,
       action: p.action ?? null,
+      beacon: waypointBeacon(p),
     }
   })
+}
+
+// A TACAN the waypoint switches on: an "Activate Beacon" action, which the
+// mission editor writes as a WrappedAction inside the waypoint's task list
+// (usually a ComboTask). { channel, mode, callsign } e.g. 31 / 'Y' / 'TKR',
+// or null.
+function waypointBeacon(point) {
+  const task = point.task
+  const tasks = task?.id === 'ComboTask' ? toArray(task.params?.tasks) : (task ? [task] : [])
+  for (const t of tasks) {
+    const action = t?.id === 'WrappedAction' ? t.params?.action : null
+    const p = action?.id === 'ActivateBeacon' ? action.params : null
+    if (p?.channel == null) continue
+    return { channel: p.channel, mode: p.modeChannel ?? 'X', callsign: p.callsign ?? '' }
+  }
+  return null
+}
+
+// "31Y TKR" / "31Y"
+export function formatTacan(beacon, withCallsign = true) {
+  if (!beacon) return ''
+  const chan = `${beacon.channel}${beacon.mode}`
+  return withCallsign && beacon.callsign ? `${chan} ${beacon.callsign}` : chan
 }
 
 // A waypoint referencing a carrier or airbase — resolved to a name
@@ -417,6 +441,7 @@ export function findAtoFlights(mission) {
 
         const points = toArray(group.route?.points)
         const wp1 = firstWP(group)
+        const route = buildRoute(group, theatre)
 
         flights.push({
           groupId:        group.groupId ?? null,
@@ -429,7 +454,10 @@ export function findAtoFlights(mission) {
           uncontrolled:   group.uncontrolled === true,
           launch:         buildLaunch(wp1, carriersById, theatre),
           recovery:       buildRecovery(points, carriersById, theatre),
-          route:          buildRoute(group, theatre),
+          route,
+          // The first TACAN the route switches on (tankers, mostly); FRAG's
+          // route list shows any later change at its waypoint.
+          tacan:          route.find((wp) => wp.beacon)?.beacon ?? null,
           units:          buildUnits(group),
         })
       }

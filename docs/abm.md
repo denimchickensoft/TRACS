@@ -309,6 +309,7 @@ A sortable table of every tasked flight, with these columns:
 - **TASKUNIT** — airfield ICAO, carrier hull abbreviation, or "Air Start". FRAG's Tasking view labels this "Base".
 - **ALT** — the flight's assigned altitude (`200` or `200-220`), set with `++` or FRAG's Alt row
 - Frequency
+- **TACAN** — the first TACAN the flight's route switches on (an Activate Beacon waypoint action), e.g. `31Y`; hover for the callsign. Any flight, not just tankers.
 - Status — **RESERVE** / **ACTIVE** / **AIR** / **TAXI** / **GROUND**. This is the most advanced state across all live-matched aircraft in the flight. RESERVE means none of the flight's aircraft has spawned yet.
 
 Taskunit uses the flight's recorded departure. Air-start flights use their recorded recovery/landing point instead, if the mission has one.
@@ -328,14 +329,14 @@ Click a column header to sort (click again to reverse). Click a row to select th
 
 Detail view for the flight selected in ATO, or opened with Ctrl+Shift+Click on the scope.
 
-- **Tasking** — editable Task field, Alt (`[___] to [___]`), full Base name, and Status (same rollup as ATO). Alt takes the same 3-digit values as `++`: fill only the first box for a hard altitude, both for a block (lower first). Empty, or `000` alone, clears it. Both boxes are applied together when you leave the row or press Enter; an invalid pair flashes red and reverts. Click an airbase or carrier Base to drop a scope marker.
+- **Tasking** — editable Task field, Alt (`[___] to [___]`), TACAN (e.g. `31Y TKR`, when the route switches one on), full Base name, and Status (same rollup as ATO). Alt takes the same 3-digit values as `++`: fill only the first box for a hard altitude, both for a block (lower first). Empty, or `000` alone, clears it. Both boxes are applied together when you leave the row or press Enter; an invalid pair flashes red and reverts. Click an airbase or carrier Base to drop a scope marker.
 - **Roster** — one row per aircraft.
   - Imported flights: callsign, type, live-resolved callsign, onboard number, skill, air/ground state, ordnance summary (grouped by weapon with counts), a collapsible comms/radio list, and Link16 station if present.
   - Manually-added flights: callsign, type, and state, matched live against aircraft flying that callsign prefix.
   - A manual flight's roster ends with a **+ Add Aircraft** field. A typed callsign shows as **PENDING** until a matching aircraft goes live.
   - A **×** on a manually-added row removes its roster/IFF entry. A row matched live by callsign prefix stays listed after that.
 - **IFF** — Mode 1 (2 digits), Mode 2 and Mode 3 (4 digits) fields under each roster row, for imported and manual flights alike. These are the assigned codes used for IFF correlation (see SRS transponder data above).
-- **Route** — each waypoint's name, altitude, and speed; click one to drop a marker on the scope. Click the ROUTE header (yellow, green when active) to toggle the flight's route as a dashed line on the scope. The route line is hidden each time a flight is selected.
+- **Route** — each waypoint's name, altitude, and speed, plus `TCN 31Y TKR` on any waypoint that switches a TACAN on; click one to drop a marker on the scope. Click the ROUTE header (yellow, green when active) to toggle the flight's route as a dashed line on the scope. The route line is hidden each time a flight is selected.
 
 Mouse wheel over the title bar zooms the panel independently of ATO.
 

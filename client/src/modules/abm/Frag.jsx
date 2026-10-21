@@ -11,7 +11,7 @@ import { getOrdnanceName, preloadOrdnanceDb } from '../../utils/ordnance.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
 import { computeAirbaseLabels } from '../../store/runways.js'
 import { groundState } from '../../utils/carriers.js'
-import { ZERO_INDEXED_WAYPOINT_TYPES } from '../../utils/parseMission.js'
+import { ZERO_INDEXED_WAYPOINT_TYPES, formatTacan } from '../../utils/parseMission.js'
 import './Frag.css'
 import { altFromM, altUnit, speedFromMs, speedUnit } from '../../utils/units.js'
 import { useUnitSystem } from '../../store/unitSystem.js'
@@ -390,6 +390,12 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                   />
                 </span>
               </div>
+              {flight.tacan && (
+                <div className="frag-kv">
+                  <span>TACAN</span>
+                  <span>{formatTacan(flight.tacan)}</span>
+                </div>
+              )}
               <div className="frag-kv">
                 <span>Base</span>
                 {(() => {
@@ -634,7 +640,10 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                         title={findable ? 'Highlight on scope' : undefined}
                       >
                         <span className="frag-wp-idx">{i + wpLabelOffset}</span>
-                        <span className="frag-wp-name">{wpName}</span>
+                        <span className="frag-wp-name">
+                          {wpName}
+                          {wp.beacon && <span className="frag-wp-tacan"> TCN {formatTacan(wp.beacon)}</span>}
+                        </span>
                         <span className="frag-wp-alt">{fmtAlt(wp.alt, unitSystem)}</span>
                         <span className="frag-wp-speed">{fmtSpeed(wp.speed, unitSystem)}</span>
                       </div>

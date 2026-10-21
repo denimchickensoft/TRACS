@@ -15,6 +15,7 @@ import './Ato.css'
 import { getIcaoMapping } from '../../utils/icaoMapping.js'
 import { useUnitSystem } from '../../store/unitSystem.js'
 import { formatAltRange } from './flightAlt.js'
+import { formatTacan } from '../../utils/parseMission.js'
 
 export const ATO_NATURAL_WIDTH = 508
 
@@ -33,6 +34,7 @@ const COLUMNS = [
   { key: 'taskunit', label: 'TASKUNIT',  width: 50  },
   { key: 'alt',      label: 'ALT',       width: 48  },
   { key: 'freq',     label: 'FREQ',      width: 58  },
+  { key: 'tacan',    label: 'TACAN',     width: 40  },
   { key: 'status',   label: 'STATUS',    width: 1   },   // flex remainder
 ]
 
@@ -79,6 +81,7 @@ const SORT_ACCESSORS = {
   taskunit: r => r.taskunitLabel ?? '',
   alt:      r => (r.alt?.lo ? Number(r.alt.lo) : -1),
   freq:     r => r.frequency ?? -1,
+  tacan:    r => r.tacan?.channel ?? -1,
   // RESERVE is its own group, separate from the "active" states (ACTIVE/
   // AIR/GROUND/TAXI) — plain alphabetical would interleave RESERVE between
   // GROUND and TAXI, splitting the reserve flights across the sorted list.
@@ -234,6 +237,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       taskunitLabel: airfieldAbbrev(resolveBase(f), icaoMap),
       altLabel: formatAltRange(f.alt, unitSystem) || '—',
       freqLabel: f.frequency != null ? f.frequency.toFixed(3) : '—',
+      tacanLabel: formatTacan(f.tacan, false) || '—',
       isReserve: f.lateActivation && !isLive,
       statusLabel,
     }
@@ -297,6 +301,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
                 <span className="ato-taskunit">{row.taskunitLabel}</span>
                 <span>{row.altLabel}</span>
                 <span>{row.freqLabel}</span>
+                <span title={formatTacan(row.tacan) || undefined}>{row.tacanLabel}</span>
                 <span className={row.isReserve ? 'ato-reserve' : 'ato-active'}>{row.statusLabel}</span>
                 <span className="ato-row-actions">
                   {row.manual && (
