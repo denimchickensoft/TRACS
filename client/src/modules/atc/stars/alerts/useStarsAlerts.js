@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useAtcStore }        from '../../../../store/atc.js'
 import { useFlightPlansStore } from '../../../../store/flightPlans.js'
 import { useAssociationStore } from '../../../../store/association.js'
@@ -15,59 +15,37 @@ const TICK_MS = 1000
 
 // No MSAW processing within this distance of an airbase: traffic in the
 // airport area is low by design. Carriers aren't exempt.
-const AIRPORT_EXEMPT_NM = 3
+const AIRPORT_EXEMPT_NM = 5
 
 // Low altitude warning (general terrain monitoring), against the highest
 // terrain in each 2 NM bin (unit.terrainBinsM, metres MSL, at 0/10/.../60 s
 // along the track):
 //   - below MSAW_CLEARANCE_FT above the current bin, or
-//   - projected below MSAW_LOOKAHEAD_CLEARANCE_FT at 10/20/30 s on the
-//     current heading, speed and climb/descent rate, or
 //   - unable to stay MSAW_LOOKAHEAD_CLEARANCE_FT clear at 40/50/60 s even
-//     by starting a 5 degree climb at the 30 s point.
+//     by starting a 5 degree climb at the 30 s point, from level flight on
+//     the current heading and speed.
+// The climb/descent rate isn't projected: it's measured from altitude
+// updates that can be several seconds apart, and a descent that's about to
+// level off would alert long before it got close to the terrain.
 const MSAW_CLEARANCE_FT           = 500
 const MSAW_LOOKAHEAD_CLEARANCE_FT = 300
-const MSAW_LOOKAHEAD_S            = [10, 20, 30]
 const MSAW_CLIMB_S                = [40, 50, 60]
 const CLIMB_FT_PER_NM             = Math.tan(5 * Math.PI / 180) * 6076.12   // ~531.6
 
-// The climb/descent rate is averaged over this window rather than taken
-// between consecutive samples: position updates and this tick both run at
-// about 1 Hz without being in step, so a single interval can see no change
-// and the next two updates' worth. Below VS_MIN_SPAN_MS of history the rate
-// is taken as level.
-const VS_WINDOW_MS   = 10000
-const VS_MIN_SPAN_MS = 5000
-
-function smoothedVs(history, uid, altFt, now) {
-  const samples = history.get(uid) ?? []
-  samples.push({ t: now, altFt })
-  while (samples.length > 1 && now - samples[0].t > VS_WINDOW_MS) samples.shift()
-  history.set(uid, samples)
-  const oldest = samples[0]
-  const spanMs = now - oldest.t
-  return spanMs >= VS_MIN_SPAN_MS ? (altFt - oldest.altFt) / (spanMs / 1000) : 0
-}
-
-// Without bin data (no elevation database), the terrain under the track
-// (altitude minus AGL) stands in for every sample and the climb check is
-// skipped.
-function msawWarning(unit, altFt, vsFps) {
+// Without bin data (no elevation database), only the terrain under the track
+// (altitude minus AGL) is checked.
+function msawWarning(unit, altFt) {
   const bins = unit.terrainBinsM
   const binFt = (i) => (bins?.[i] != null ? bins[i] * M_TO_FT : null)
   const terrainNowFt = binFt(0) ?? altFt - unit.agl * M_TO_FT
   if (altFt - terrainNowFt < MSAW_CLEARANCE_FT) return true
+  if (!bins) return false
 
-  const ahead = MSAW_LOOKAHEAD_S.some((t, i) =>
-    altFt + vsFps * t - (binFt(i + 1) ?? terrainNowFt) < MSAW_LOOKAHEAD_CLEARANCE_FT)
-  if (ahead || !bins) return ahead
-
-  const alt30Ft = altFt + vsFps * 30
-  const gsKt    = (unit.speed ?? 0) * MS_TO_KT
+  const gsKt = (unit.speed ?? 0) * MS_TO_KT
   return MSAW_CLIMB_S.some((t, i) => {
     const terrainFt = binFt(i + 4)
     if (terrainFt == null) return false
-    const climbFt = alt30Ft + CLIMB_FT_PER_NM * gsKt * (t - 30) / 3600
+    const climbFt = altFt + CLIMB_FT_PER_NM * gsKt * (t - 30) / 3600
     return climbFt - terrainFt < MSAW_LOOKAHEAD_CLEARANCE_FT
   })
 }
@@ -139,7 +117,6 @@ function nearAirbase(lat, lng, airbases) {
  * @param {{ current: object }} visibleUnitsRef  this scope's visible units
  */
 export function useStarsAlerts({ visibleUnitsRef, myControllerId, vol }) {
-  const altHistoryRef = useRef(new Map())
   useEffect(() => {
     const tick = () => {
       const now       = Date.now()
@@ -170,15 +147,12 @@ export function useStarsAlerts({ visibleUnitsRef, myControllerId, vol }) {
         const prev = store.msaw[uid]
         let warn = false
         const altFt = unitAltFt(unit)
-        // Climb/descent rate is tracked for every visible unit so it's
-        // already settled when a track is taken under control.
-        const vsFps = altFt != null ? smoothedVs(altHistoryRef.current, uid, altFt, now) : 0
         if (!store.msawDisabled && myControllerId && ownership[uid] === myControllerId &&
             unit.airborne !== false && altFt != null && unit.agl != null) {
           const plan = planOf[uid] ?? null
           if (!msawDisabledFor(plan, store.trackMsawDisabled[uid]) &&
               !nearAirbase(unit.position.lat, unit.position.lng, airbases)) {
-            warn = msawWarning(unit, altFt, vsFps)
+            warn = msawWarning(unit, altFt)
           }
         }
         if (warn) {
@@ -196,8 +170,6 @@ export function useStarsAlerts({ visibleUnitsRef, myControllerId, vol }) {
       const fullLdbUntil = {}
       for (const [uid, until] of Object.entries(store.fullLdbUntil)) if (until > now && units[uid]) fullLdbUntil[uid] = until
       const selectedBeacon = store.selectedBeacon && store.selectedBeacon.until > now ? store.selectedBeacon : null
-
-      for (const id of altHistoryRef.current.keys()) if (!units[id]) altHistoryRef.current.delete(id)
 
       store.setComputed({ spc, msaw, duplicates, fullLdbUntil, selectedBeacon })
     }

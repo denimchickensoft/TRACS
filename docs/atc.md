@@ -275,12 +275,13 @@ A track squawking 7400 (`LL`), 7500 (`HJ`), 7600 (`RF`), 7700 (`EM`) or 7777 (`M
 
 ## Minimum safe altitude warning (MSAW)
 
-MSAW checks the tracks you own anywhere in the theatre, against the highest terrain in 2 NM square bins. A track alerts in three cases:
+MSAW checks the tracks you own anywhere in the theatre, against the highest terrain in 2 NM square bins. A track alerts in two cases:
 - it's less than 500 ft above its current bin
-- it's projected to be less than 300 ft above the terrain within 30 seconds, along its current heading, groundspeed and climb or descent rate (averaged over about 10 seconds)
-- even a 5° climb started at the 30-second point wouldn't keep it 300 ft above the terrain over the following 30 seconds
+- flying on at its current altitude, heading and groundspeed, even a 5° climb started 30 seconds from now wouldn't keep it 300 ft above the terrain over the following 30 seconds
 
-MSAW ignores tracks on the ground and within 3 NM of an airbase. Carriers aren't exempt. Helicopters are included; use `MF V` or `MF Q` for low-level traffic.
+A climb or descent isn't projected ahead, so a descent alerts only once the track is within 500 ft of the terrain.
+
+MSAW ignores tracks on the ground and within 5 NM of an airbase. Carriers aren't exempt. Helicopters are included; use `MF V` or `MF Q` for low-level traffic.
 
 An alerting track gets a flashing red `LA` above its FDB, an `LA` row in the alert list, and a 5-second tone. Altitude holds in every phase of line 2. A slew acknowledges it.
 
