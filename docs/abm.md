@@ -77,12 +77,14 @@ The drawing commands (`.line`, `.rect`, `.circ`, `.poly`, `.sect`, `.race`, `.te
 | `.holds` | Toggle holding patterns |
 | `.mora` | Toggle the MORA/grid overlay |
 | `.airways` | Toggle all airways; `.airways v`/`j`/`b` toggles just one class |
+| `.airway <name...>` | Force-show one or more airways (e.g. `.airway V66`) regardless of `.airways`; each name toggles independently. `v`/`j`/`b` toggle that whole class, same as `.airways v`/`j`/`b` |
+| `.airway` (no argument) | Clear every pinned airway for the current theatre |
 | `.asp` | Bulk-toggle every airspace category |
 | `.tma` `.ctr` `.cta` `.fir` `.uir` `.sua` `.mil` `.trsa` `.classa`–`.classg` | Toggle one airspace category |
 | `.aspcolors <name>` | Select an airspace color palette |
 | `.refresh` | Reload airspace color palettes from the server |
-| `.labels` (or `.lbl` / `.label`) | Toggle name labels for airspace, custom drawings, fixes/navaids, and taxiways (taxiway labels need `.taxiways` on and show inside about 5 NM range) |
-| `.labelsize [0-5]` | Set airspace/fix/drawing label size; bare form reports the current value |
+| `.labels` (or `.lbl` / `.label`) | Toggle name labels for airspace, custom drawings, fixes/navaids, airways (one per segment long enough to fit the name), and taxiways (taxiway labels need `.taxiways` on and show inside about 5 NM range) |
+| `.labelsize [0-5]` | Set airspace/fix/airway/drawing label size; bare form reports the current value |
 | `.fill` | Toggle polygon fill for airspace *and* custom drawings; `.fill <1-100>` sets transparency % and turns it on |
 | `.custom` / `.cust` | Toggle all custom drawing layers |
 | `.custom <name>` / `.cust <name>` | Toggle just the drawing(s) with that name |

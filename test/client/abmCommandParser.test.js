@@ -67,6 +67,10 @@ describe('ABM parseCommand', () => {
     expect(parseCommand('.classd').captures).toEqual({ cat: 'classd' })
     expect(idOf('.classh')).toBe(null)
     expect(parseCommand('.airways j').captures).toEqual({ type: 'j' })
+    expect(idOf('.airways')).toBe('AIRWAYS_TOGGLE')
+    expect(idOf('.airway')).toBe('AIRWAY_CLEAR')
+    expect(parseCommand('.airway V66 J70')).toMatchObject({ command: { id: 'AIRWAY_PIN' }, captures: { names: 'v66 j70' } })
+    expect(idOf('.airway j')).toBe('AIRWAY_PIN')
   })
 
   test('.ll takes a length 0-7, .ld a direction 1-9', () => {

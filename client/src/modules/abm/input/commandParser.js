@@ -41,6 +41,9 @@ const COMMANDS = [
   { id: 'MORA_TOGGLE',      pattern: /^\.mora$/ },
   { id: 'AIRWAYS_TOGGLE',   pattern: /^\.airways$/ },
   { id: 'AIRWAYS_TYPE',     pattern: /^\.airways\s+([vjb])$/, captures: ['type'] },
+  // .airway [V|J|B|<name>...] — no arg clears pinned airways; V/J/B toggle a class, names pin
+  { id: 'AIRWAY_CLEAR',     pattern: /^\.airway$/ },
+  { id: 'AIRWAY_PIN',       pattern: /^\.airway\s+(.+)$/, captures: ['names'] },
   { id: 'ASP_TOGGLE',       pattern: /^\.asp$/ },
   { id: 'ASP_CATEGORY',     pattern: /^\.(tma|ctr|cta|fir|uir|sua|mil|trsa|class[a-g])$/, captures: ['cat'] },
   { id: 'ASPCOLORS',        pattern: /^\.aspcolors\s+(.+)$/, captures: ['name'] },

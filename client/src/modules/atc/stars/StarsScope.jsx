@@ -274,6 +274,7 @@ export default function StarsScope() {
         fillVisible: starsPrefs.fillVisible,
         fillPct: starsPrefs.fillPct,
         pinnedFixes: starsPrefs.pinnedFixes,
+        pinnedAirways: starsPrefs.pinnedAirways,
         stcaEnabled: starsPrefs.stcaEnabled,
         simWingmenStandby: starsPrefs.simWingmenStandby,
         manualWingmen: starsPrefs.manualWingmen,
@@ -511,7 +512,8 @@ export default function StarsScope() {
       windowSettings?.fillVisible ? (windowSettings?.fillPct ?? 30) : 0)
     drawExtendedCenterlines(ctx, view, centerlines, cltrVisible, briteB, { allRwys: allRwysVisible, allCltr: allCltrVisible })
     drawHoldings(ctx, view, holdings, holdsVisible, briteB, csMap, activeColors)
-    drawAirways(ctx, view, airways, airwaysVisible, briteB, activeColors, mapVisible.lbl, csMap)
+    drawAirways(ctx, view, airways, airwaysVisible, briteB, activeColors, mapVisible.lbl, csMap,
+      new Set(windowSettings?.pinnedAirways?.[theatre] ?? []))
     drawMsa(ctx, view, msa.filter(r => r.ident === facilityId), msaVisible, briteB, csMap, activeColors)
     drawMora(ctx, view, mora, moraVisible, briteB, activeColors)
     drawRelief(ctx, view, relief, reliefVisible, briteB, activeColors)
@@ -528,7 +530,7 @@ export default function StarsScope() {
   }, [view, maps, mapPalettes, mapVisible, userMaps, centerlines, cltrVisible, allRwysVisible, allCltrVisible, tdmMode, nearbySurfaces,
       holdings, holdsVisible, airways, airwaysVisible, msa, msaVisible, mora, moraVisible, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible, mva, mvaVisible, facilityId,
       procRaw, procSidGroups, procStarGroups, procAppchGroups, procVisible, procCommandVisible,
-      fixes, fixesVisible, windowSettings?.pinnedFixes, theatre,
+      fixes, fixesVisible, windowSettings?.pinnedFixes, windowSettings?.pinnedAirways, theatre,
       windowSettings?.briteMapA, windowSettings?.briteMapB, windowSettings?.csMap, windowSettings?.aspColorIdx,
       windowSettings?.fillVisible, windowSettings?.fillPct])
 

@@ -23,6 +23,7 @@ import { useSessionStore } from '../../../store/session.js'
 import { useNavdataStore }    from '../../../store/navdata.js'
 import { useMapsStore }        from '../../../store/maps.js'
 import { useFixesStore }       from '../../../store/fixes.js'
+import { useAirwaysStore, airwayNameSet, splitAirwayArgs } from '../../../store/airways.js'
 import { useMsaStore }         from '../../../store/msa.js'
 import { useHoldingsStore }    from '../../../store/holdings.js'
 import { useReliefStore }      from '../../../store/relief.js'
@@ -1179,6 +1180,61 @@ export function CLEAR_FIX() {
   ok()
 }
 
+// .AIRWAYS — every airway class at once, same state as the V/J/B DCB
+// buttons: off if any class is on, otherwise all on (ABM's .airways rule).
+export function TOGGLE_AIRWAYS() {
+  const v = useAirwaysStore.getState().visible
+  const anyOn = v.V || v.J || v.B
+  useAirwaysStore.getState().setVisible({ V: !anyOn, J: !anyOn, B: !anyOn })
+  ok()
+}
+
+// .AIRWAYS V/J/B — one class, same as pressing its DCB button.
+export function TOGGLE_AIRWAYS_TYPE({ captures }) {
+  useAirwaysStore.getState().toggleVisible(captures.type)
+  ok()
+}
+
+// .AIRWAY <V|J|B|name...> — V/J/B flip that class in store/airways.js, the
+// same state the V/J/B DCB buttons toggle, so the buttons follow. Any other
+// token force-shows one airway regardless of its class toggle; each toggles
+// independently and is persisted per-theatre (store/starsPrefs.js).
+export function TOGGLE_AIRWAY({ captures }) {
+  const { types, names } = splitAirwayArgs(captures?.names)
+  if (!types.length && !names.length) return err('ILL VAL')
+  const theatre = useSessionStore.getState().mission?.mission?.theatre
+  if (names.length && !theatre) return err('NO THEATRE')
+  const known    = airwayNameSet(useAirwaysStore.getState().airways)
+  const notFound = names.filter(n => !known.has(n))
+  if (notFound.length) return err(navdataNotFound(`${notFound.join(' ')} NOT FOUND`))
+  for (const t of types) useAirwaysStore.getState().toggleVisible(t)
+  if (names.length) {
+    const win       = getDisplay().windows[WINDOW_ID]
+    const byTheatre = win?.pinnedAirways ?? {}
+    const current   = new Set(byTheatre[theatre] ?? [])
+    for (const name of names) {
+      if (current.has(name)) current.delete(name)
+      else current.add(name)
+    }
+    const merged = { ...byTheatre, [theatre]: [...current] }
+    getDisplay().updateWindow(WINDOW_ID, { pinnedAirways: merged })
+    saveStarsPrefs({ pinnedAirways: merged })
+  }
+  ok()
+}
+
+// .AIRWAY with no argument — clears all pinned airways for this theatre.
+export function CLEAR_AIRWAY() {
+  const theatre = useSessionStore.getState().mission?.mission?.theatre
+  if (!theatre) return err('NO THEATRE')
+  const win       = getDisplay().windows[WINDOW_ID]
+  const byTheatre = win?.pinnedAirways ?? {}
+  const merged = { ...byTheatre, [theatre]: [] }
+  getDisplay().updateWindow(WINDOW_ID, { pinnedAirways: merged })
+  saveStarsPrefs({ pinnedAirways: merged })
+  ok()
+}
+
 // .LABELS/.LBL/.LABEL — toggles the LBL DCB MAP button (store/maps.js
 // visible.lbl), same store-driven persistence useMapsStore.toggleMap already
 // gives every other map-category toggle.
@@ -1349,6 +1405,10 @@ const ACTION_MAP = {
   FIND_FIX,
   TOGGLE_FIX,
   CLEAR_FIX,
+  TOGGLE_AIRWAYS,
+  TOGGLE_AIRWAYS_TYPE,
+  TOGGLE_AIRWAY,
+  CLEAR_AIRWAY,
   RENAME_CALLSIGN,
   RESET_CALLSIGN,
   INIT_CNTL,

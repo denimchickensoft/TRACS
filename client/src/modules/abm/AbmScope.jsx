@@ -645,6 +645,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // .fix <name...> — per-theatre pinned fixes, always shown regardless of
   // fixesVisible (see .fix handler below and drawAbmFixSymbols call).
   const pinnedFixes    = windowSettings?.pinnedFixes ?? EMPTY_OBJECT
+  const pinnedAirways  = windowSettings?.pinnedAirways ?? EMPTY_OBJECT
   // Same useRunwaysStore.loadForTheatre(theatre) call as below (no facility
   // args) already yields theatre-wide unfiltered centerlines.
   const runwayCenterlines = useRunwaysStore(s => s.centerlines)
@@ -967,7 +968,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       asVisible: abmPrefs.asVisible, labelsVisible: abmPrefs.labelsVisible,
       fillVisible: abmPrefs.fillVisible, fillPct: abmPrefs.fillPct,
       fixesVisible: abmPrefs.fixesVisible, navaidsVisible: abmPrefs.navaidsVisible,
-      pinnedFixes: abmPrefs.pinnedFixes,
+      pinnedFixes: abmPrefs.pinnedFixes, pinnedAirways: abmPrefs.pinnedAirways,
       runwaysVisible: abmPrefs.runwaysVisible, polygonsVisible: abmPrefs.polygonsVisible,
       mgrsVisible: abmPrefs.mgrsVisible, townsVisible: abmPrefs.townsVisible,
       basemapVisible: abmPrefs.basemapVisible, terrainVisible: abmPrefs.terrainVisible,
@@ -1156,7 +1157,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       fillVisible ? fillPct : 0, windowSettings?.csMap ?? 2)
     drawAbmCustomDrawings(ctx, view, drawingLayers, airspaceColors?.CUSTOM ?? null, labelsVisible,
       fillVisible ? fillPct : 0, windowSettings?.csMap ?? 2)
-    drawAirways(ctx, view, airways, airwaysVisible, 50)
+    drawAirways(ctx, view, airways, airwaysVisible, 50, null, labelsVisible, windowSettings?.csMap ?? 2,
+      new Set(pinnedAirways[theatre] ?? []))
     drawMora(ctx, view, mora, moraVisible, 50)
     drawHoldings(ctx, view, holdings, holdingsVisible, 50, 0)
     drawAbmFixSymbols(ctx, view, navaids, navaidsVisible, '#FFCC44', 60, labelsVisible, windowSettings?.csMap ?? 2)
@@ -1176,7 +1178,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   }, [view, relief, reliefVisible, geoBoundaries, geoCoastlines, geoVisible,
       polygonFeatures, polygonsVisible, taxiwayLabels,
       asVisible, airspaceFeatures, airspaceColors, labelsVisible, fillVisible, fillPct, drawingLayers, airways, airwaysVisible, mora, moraVisible,
-      holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible, pinnedFixes, theatre,
+      holdings, holdingsVisible, navaids, navaidsVisible, fixes, fixesVisible, pinnedFixes, pinnedAirways, theatre,
       runwaysVisible, runwayCenterlines, mgrsVisible, towns, townsVisible,
       basemap, basemapVisible, terrain, terrainVisible, water, waterVisible, roads, roadsVisible, windowSettings?.csMap])
 

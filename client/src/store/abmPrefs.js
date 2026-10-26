@@ -65,6 +65,7 @@ const DEFAULTS = {
   fixesVisible:       false,
   navaidsVisible:     false,
   pinnedFixes:        {},
+  pinnedAirways:      {},
   runwaysVisible:     false,
   polygonsVisible:    false,
   mgrsVisible:        false,

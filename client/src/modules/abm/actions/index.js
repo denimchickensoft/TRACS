@@ -65,6 +65,7 @@ import { loadAbmPrefs, saveAbmPrefs } from '../../../store/abmPrefs.js'
 import { getUnitSystem, setUnitSystem } from '../../../store/unitSystem.js'
 import { distToNm, distUnit, formatDistance, METRIC, IMPERIAL } from '../../../utils/units.js'
 import { useNavdataStore } from '../../../store/navdata.js'
+import { useAirwaysStore, airwayNameSet, splitAirwayArgs } from '../../../store/airways.js'
 import { useRunwaysStore } from '../../../store/runways.js'
 import { useAbmAirspaceStore } from '../../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../../store/abmDrawings.js'
@@ -273,6 +274,49 @@ export function AIRWAYS_TYPE({ captures, context }) {
   updateWin(context.windowId, { airwaysVisible: next })
   saveAbmPrefs({ airwaysVisible: next })
   return `AIRWAYS ${type} ${next[type] ? 'ON' : 'OFF'}`
+}
+
+// .airway — with no argument, clears all pinned airways for this theatre.
+export function AIRWAY_CLEAR({ context }) {
+  const { theatre, windowId } = context
+  if (!theatre) return 'NO THEATRE'
+  const pinnedAirways = getWin(windowId)?.pinnedAirways ?? {}
+  const merged = { ...pinnedAirways, [theatre]: [] }
+  updateWin(windowId, { pinnedAirways: merged })
+  saveAbmPrefs({ pinnedAirways: merged })
+  return 'AIRWAY CLEARED'
+}
+
+// .airway <V|J|B|name...> — V/J/B toggle that whole class (same state as
+// .airways v/j/b); any other token pins one airway regardless of class
+// visibility. Each toggles independently; pins persist per-theatre.
+export function AIRWAY_PIN({ captures, context }) {
+  const { theatre, windowId } = context
+  const { types, names } = splitAirwayArgs(captures.names)
+  if (!types.length && !names.length) return 'ILL VAL'
+  if (names.length && !theatre) return 'NO THEATRE'
+  const known = airwayNameSet(useAirwaysStore.getState().airways)
+  const notFound = names.filter(n => !known.has(n))
+  if (notFound.length) return navdataNotFound(`${notFound.join(' ')} NOT FOUND`)
+  if (types.length) {
+    const v = getWin(windowId)?.airwaysVisible ?? { V: false, J: false, B: false }
+    const next = { ...v }
+    for (const t of types) next[t] = !next[t]
+    updateWin(windowId, { airwaysVisible: next })
+    saveAbmPrefs({ airwaysVisible: next })
+  }
+  if (names.length) {
+    const pinnedAirways = getWin(windowId)?.pinnedAirways ?? {}
+    const current = new Set(pinnedAirways[theatre] ?? [])
+    for (const name of names) {
+      if (current.has(name)) current.delete(name)
+      else current.add(name)
+    }
+    const merged = { ...pinnedAirways, [theatre]: [...current] }
+    updateWin(windowId, { pinnedAirways: merged })
+    saveAbmPrefs({ pinnedAirways: merged })
+  }
+  return `AIRWAY ${[...types, ...names].join(' ')}`
 }
 
 // .asp — bulk toggle: on if any category is
@@ -1066,7 +1110,7 @@ const ACTION_MAP = {
   LABELSIZE_SHOW, LABELSIZE_SET, DBSIZE_SHOW, DBSIZE_SET,
   BE_RESET, BE_LATLNG, BE_FIX,
   TIME_TOGGLE, UNITRO_TOGGLE, ROSE_TOGGLE, GEO_TOGGLE, RELIEF_TOGGLE, HOLDS_TOGGLE, MORA_TOGGLE,
-  AIRWAYS_TOGGLE, AIRWAYS_TYPE, ASP_TOGGLE, ASP_CATEGORY, ASPCOLORS, REFRESH,
+  AIRWAYS_TOGGLE, AIRWAYS_TYPE, AIRWAY_CLEAR, AIRWAY_PIN, ASP_TOGGLE, ASP_CATEGORY, ASPCOLORS, REFRESH,
   LABELS_TOGGLE, FILL_TOGGLE, FILL_SET, CUSTOM_TOGGLE, CUSTOM_NAME,
   LINE, RECT, CIRC, POLY, SECT, RACE, TEXT,
   DCLEAR_BARE, DCLEAR_ALL, DCLEAR_NAME,

@@ -165,7 +165,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement: a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction |
 | `.AUTOTRACK [ICAO ...]` + ENTER | — | APP, DEP, RDR and CTR only. Auto-claims every aircraft that takes off within 3 nm of the airport, unless it's already owned (an SRS pilot that isn't associated yet isn't claimed). Bare: toggles your own airport (APP/DEP/RDR), or turns everything off when any airport is on. With ICAOs (`.AUTOTRACK EDDF EHAM`): toggles each. One position per airport; a taken airport answers e.g. `AUTOTRACK EDDF: 1D`. Not remembered: off after a reload |
 | `.LABELSIZE <0-5>` + ENTER | — | Set map/airspace label size (same as the DCB's CHAR SIZE > MAP); bare `.LABELSIZE` reports the current value |
-| `.LABELS` (or `.LBL` / `.LABEL`) + ENTER | — | Toggle the LBL map button (map/airspace name labels) |
+| `.LABELS` (or `.LBL` / `.LABEL`) + ENTER | — | Toggle the LBL map button (map/airspace/airway name labels; airways are labelled once per segment long enough to fit the name) |
 | `.FIXES` + ENTER | — | Toggle the FIXES map button (theatre fix points) |
 | `.ASP` + ENTER | — | Bulk-toggle every airspace category map button |
 | `.TMA` `.CTR` `.CTA` `.FIR` `.UIR` `.SUA` `.MIL` `.TRSA` `.CLASSA`–`.CLASSG` + ENTER | — | Toggle every map button (main + overflow) for that airspace category |
@@ -180,6 +180,8 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.METRIC` / `.IMPERIAL` + ENTER | — | Set display units for STARS, ASDE-X and PAR (default imperial). Metric shows distances in km, datablock altitude in hundreds of m and speed in tens of km/h (3 digits above 999 km/h), and MVA/MSA and elevation in m; `RG <n>` is read in km. Typed altitudes, speeds and flight plans stay in ft/kt |
 | `.FIND <query>` + ENTER | — | Drop a marker at a named fix/navaid/airport |
 | `.FIX <name...>` + ENTER | — | Force-show one or more fixes regardless of the FIXES toggle; each name toggles independently. Bare `.FIX` clears them all |
+| `.AIRWAYS` + ENTER | — | Toggle every airway class: all off if any is on, otherwise all on. `.AIRWAYS V`/`J`/`B` toggles one class. Same as the V/J/B map buttons |
+| `.AIRWAY <name...>` + ENTER | — | Force-show one or more airways (e.g. `.AIRWAY V66`) regardless of the V/J/B map buttons; each name toggles independently. `V`/`J`/`B` toggle that whole class, the same as pressing its map button. Bare `.AIRWAY` clears the pinned airways |
 | `.PROC <name>` + ENTER | — | Toggle display of a named SID/STAR/approach procedure |
 | `.PROC` + ENTER | — | Clear all shown procedures |
 | `.RCLEAR` + ENTER | — | Clear every flight-plan route line currently displayed (see Ctrl+Right-click below) |

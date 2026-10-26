@@ -158,6 +158,15 @@ const COMMANDS = [
   { id: 'TOGGLE_FIX',           pattern: /^\.FIX (.+)$/,          trigger: 'ENTER', captures: ['names'] },
   // .FIX with no argument clears all pinned fixes for this theatre.
   { id: 'CLEAR_FIX',            pattern: /^\.FIX$/,               trigger: 'ENTER' },
+  // .AIRWAYS [V|J|B] — bare toggles every class (off if any is on), else one
+  // class; same state as the V/J/B DCB buttons.
+  { id: 'TOGGLE_AIRWAYS',       pattern: /^\.AIRWAYS$/,           trigger: 'ENTER' },
+  { id: 'TOGGLE_AIRWAYS_TYPE',  pattern: /^\.AIRWAYS ([VJB])$/,   trigger: 'ENTER', captures: ['type'] },
+  // .AIRWAY <V|J|B|name...> — V/J/B toggle that class (same state as its DCB
+  // button); other names force-show one airway (repeat to un-pin).
+  { id: 'TOGGLE_AIRWAY',        pattern: /^\.AIRWAY (.+)$/,       trigger: 'ENTER', captures: ['names'] },
+  // .AIRWAY with no argument clears all pinned airways for this theatre.
+  { id: 'CLEAR_AIRWAY',         pattern: /^\.AIRWAY$/,            trigger: 'ENTER' },
 
   // ── Procedure display ────────────────────────────────────────────
   { id: 'SHOW_PROC',            pattern: /^\.PROC (.+)$/,         trigger: 'ENTER', captures: ['name'] },
@@ -290,7 +299,7 @@ const DOT_VERBS = [
   'ALTIM', 'QNH', 'ASPCOLORS', 'REFRESH', 'DBCA', 'LABELS', 'LBL', 'LABEL', 'FIXES', 'FILL',
   'CA', 'WNG', 'ASP', 'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
   'CLASSA', 'CLASSB', 'CLASSC', 'CLASSD', 'CLASSE', 'CLASSF', 'CLASSG',
-  'MSA', 'HOLDS', 'RELIEF', 'MVA', 'SAT', 'COORDS', 'FIND', 'FIX', 'PROC',
+  'MSA', 'HOLDS', 'RELIEF', 'MVA', 'SAT', 'COORDS', 'FIND', 'FIX', 'AIRWAY', 'AIRWAYS', 'PROC',
   'FP', 'RENAME', 'LABELSIZE', 'DROPALL', 'FORCEDROP', 'CENTER',
 ]
 
