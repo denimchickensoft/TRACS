@@ -19,6 +19,15 @@ export function normalizeCode(code) {
   return String(code ?? '').padStart(4, '0')
 }
 
+// Assignable IFF code lengths — Mode 1 is 2 octal digits (Mark XII 6-bit,
+// 00-77), Mode 2/3 are 4 octal digits (0000-7777).
+export const IFF_CODE_LEN = { mode1: 2, mode2: 4, mode3: 4 }
+
+export function isValidIffCode(mode, code) {
+  const len = IFF_CODE_LEN[mode]
+  return len != null && new RegExp(`^[0-7]{${len}}$`).test(String(code ?? ''))
+}
+
 // AIC's Mode 4 IFF readout/gate. SRS's mode4 is a raw, unauthenticated
 // on/off toggle (not real crypto) — TRACS compares it against ground-truth
 // coalition internally to decide legitimacy, without ever exposing the

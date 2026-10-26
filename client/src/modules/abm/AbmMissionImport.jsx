@@ -157,6 +157,7 @@ export function AbmMissionImport({ onClose }) {
                     <span className="mi-flight-name">{r.callsign}</span>
                     <span className="mi-flight-task">
                       {[r.mode1 && `M1 ${r.mode1}`, r.mode2 && `M2 ${r.mode2}`, r.mode3 && `M3 ${r.mode3}`].filter(Boolean).join(' · ') || '—'}
+                      {r.dropped?.length > 0 && ` (dropped: ${r.dropped.join(', ')})`}
                     </span>
                   </div>
                 ))}

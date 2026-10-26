@@ -10,7 +10,8 @@ import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
-import { resolveCallsign, unitFocusKey, findFocusedUnit, airfieldFocusKey, pointFocusKey } from '../../utils/callsign.js'
+import { resolveCallsign, stripAcid, unitFocusKey, findFocusedUnit, airfieldFocusKey, pointFocusKey } from '../../utils/callsign.js'
+import { isValidIffCode } from '../../utils/transponder.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }  from '../../store/navdata.js'
 import { useRunwaysStore }  from '../../store/runways.js'
@@ -139,6 +140,10 @@ const F_KEY_DECL = {
   F3: DECLARATION.NEUTRAL,
   F4: DECLARATION.FRIENDLY,
 }
+
+// F5-F7 start an IFF code assignment — same as typing .m1/.m2/.m3, then
+// the code, then click the aircraft.
+const F_KEY_IFF = { F5: 'M1', F6: 'M2', F7: 'M3' }
 
 // ABM scope: canvas PPI with pan (right-click drag), zoom (scroll), range
 // rings (toggle + anchor via .rr), bullseye marker and command preview area.
@@ -1649,6 +1654,18 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       return
     }
 
+    // preventDefault also keeps F5 from reloading the page and F7 from
+    // toggling caret browsing. Pressing the same key again cancels.
+    const fIff = F_KEY_IFF[e.key]
+    if (fIff) {
+      e.preventDefault()
+      setCmdBuffer(cmdBuffer.trim().toUpperCase().startsWith(fIff) ? '' : `${fIff} `)
+      setCmdFeedback('')
+      setPendingDeclaration(null)
+      clearPendingBraa()
+      return
+    }
+
     // Top-down mode — same keys as STARS/CATCC. Ctrl+T only reaches the page
     // in the desktop app (a browser tab opens a new tab on it), so Alt+T is
     // the binding that works anywhere.
@@ -2100,6 +2117,32 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
         const alt = parsed === ALT_CLEAR ? null : parsed
         mission.setFlightAlt(flight.groupId, alt)
         setCmdFeedback(alt ? `ALT ${formatAlt(alt)}` : 'ALT CLEARED')
+      } else {
+        setCmdFeedback('NO FRAG')
+      }
+      setCmdBuffer('')
+      return
+    }
+
+    // .m1 ## / .m2 #### / .m3 #### + click (or F5-F7, which type "M1 " etc.)
+    // — assigns that IFF code to the clicked aircraft's own FRAG roster row;
+    // no code clears it. An aircraft not in any flight gets one created
+    // first, same as Ctrl+Shift+Click.
+    const iffMatch = buf.match(/^\.?m([123])(?:\s+(\S+))?$/)
+    if (iffMatch) {
+      if (!target) return
+      const mode = `mode${iffMatch[1]}`
+      const label = `M${iffMatch[1]}`
+      const code = iffMatch[2] ?? null
+      if (code != null && !isValidIffCode(mode, code)) { setCmdFeedback(`ILL ${label}`); setCmdBuffer(''); return }
+      const groupId = ensureFlightForUnit(target.unit, { isGmOrAdmin, myCoalitionNum, coalition })
+      const flight = groupId != null ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId) : null
+      const liveCallsign = resolveCallsign(target.unit)
+      const row = flight && (flight.manual ? flight.iffRoster : flight.units)
+        ?.find(u => stripAcid(u.callsign ?? '') === liveCallsign)
+      if (row) {
+        useAbmMissionStore.getState().setUnitIff(flight.groupId, row.callsign, { [mode]: code })
+        setCmdFeedback(code ? `${label} ${code}` : `${label} CLEARED`)
       } else {
         setCmdFeedback('NO FRAG')
       }

@@ -16,6 +16,7 @@ import './Frag.css'
 import { altFromM, altUnit, speedFromMs, speedUnit } from '../../utils/units.js'
 import { useUnitSystem } from '../../store/unitSystem.js'
 import { getIcaoMapping } from '../../utils/icaoMapping.js'
+import { IFF_CODE_LEN, isValidIffCode } from '../../utils/transponder.js'
 
 const FRAG_SCALE_KEY = 'tracs.frag.scale'
 const SCALE_MIN      = 0.5
@@ -45,28 +46,40 @@ function IffFields({ iff, onSetIff }) {
     setDraft({ mode1: iff?.mode1 ?? '', mode2: iff?.mode2 ?? '', mode3: iff?.mode3 ?? '' })
   }, [iff?.mode1, iff?.mode2, iff?.mode3])
 
-  // Mode 1 is a real 2-digit octal code (00-73); Mode 2/3 are 4-digit — same
-  // distinction drawAbmContacts.js's buildIffFrames() display already makes.
-  function commit(field, value, maxLen) {
-    const digits = value.replace(/\D/g, '').slice(0, maxLen)
+  // Octal only — Mode 1 is 2 digits (00-77), Mode 2/3 are 4. A partial code
+  // stays local to the field; only a complete code (or an emptied field) is
+  // committed, and leaving the field mid-entry reverts it to the saved code.
+  function change(field, value) {
+    const digits = value.replace(/[^0-7]/g, '').slice(0, IFF_CODE_LEN[field])
     setDraft((d) => ({ ...d, [field]: digits }))
-    onSetIff({ [field]: digits === '' ? null : digits })
+    if (digits === '') onSetIff({ [field]: null })
+    else if (isValidIffCode(field, digits)) onSetIff({ [field]: digits })
   }
+
+  function revertPartial(field) {
+    if (draft[field] !== '' && !isValidIffCode(field, draft[field])) {
+      setDraft((d) => ({ ...d, [field]: iff?.[field] ?? '' }))
+    }
+  }
+
+  const field = (mode, label, placeholder) => (
+    <label className="frag-iff-field">
+      <span>{label}</span>
+      <input
+        value={draft[mode]}
+        onChange={(e) => change(mode, e.target.value)}
+        onBlur={() => revertPartial(mode)}
+        maxLength={IFF_CODE_LEN[mode]}
+        placeholder={placeholder}
+      />
+    </label>
+  )
 
   return (
     <div className="frag-iff-row">
-      <label className="frag-iff-field">
-        <span>M1</span>
-        <input value={draft.mode1} onChange={(e) => commit('mode1', e.target.value, 2)} maxLength={2} placeholder="--" />
-      </label>
-      <label className="frag-iff-field">
-        <span>M2</span>
-        <input value={draft.mode2} onChange={(e) => commit('mode2', e.target.value, 4)} maxLength={4} placeholder="----" />
-      </label>
-      <label className="frag-iff-field">
-        <span>M3</span>
-        <input value={draft.mode3} onChange={(e) => commit('mode3', e.target.value, 4)} maxLength={4} placeholder="----" />
-      </label>
+      {field('mode1', 'M1', '--')}
+      {field('mode2', 'M2', '----')}
+      {field('mode3', 'M3', '----')}
     </div>
   )
 }

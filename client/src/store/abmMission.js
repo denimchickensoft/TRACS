@@ -337,7 +337,13 @@ export const useAbmMissionStore = create((set, get) => ({
       }
       if (!found) { skipped.push(row.callsign); continue }
       matched.push(row.callsign)
-      get().setUnitIff(found.flight.groupId, found.unit.callsign, { mode1: row.mode1, mode2: row.mode2, mode3: row.mode3 })
+      // An undefined mode is a code the parser dropped as invalid — that
+      // mode is left as-is rather than cleared.
+      const patch = {}
+      for (const mode of ['mode1', 'mode2', 'mode3']) {
+        if (row[mode] !== undefined) patch[mode] = row[mode]
+      }
+      if (Object.keys(patch).length) get().setUnitIff(found.flight.groupId, found.unit.callsign, patch)
     }
     return { matched, skipped }
   },

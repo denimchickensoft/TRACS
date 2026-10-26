@@ -29,6 +29,7 @@ Type into the buffer and press **Enter**.
 A few commands are completed by clicking instead of Enter: type the command, then click the map or a contact. These are:
 - `.be`, `.threat`, `.db`, `.dope`, `.rename`, `.frag`, and `.route`
 - `++###` / `++######` (flight altitude)
+- `.m1`, `.m2`, `.m3` (IFF codes; F5–F7 type `M1`/`M2`/`M3` for you)
 - a bare digit 1–9 (leader direction)
 
 The drawing commands (`.line`, `.rect`, `.circ`, `.poly`, `.sect`, `.race`, `.text`) run on **Enter**. After that, they wait for clicks on the scope to place any points you didn't type.
@@ -134,6 +135,7 @@ ABM does not display SID/STAR/approach procedures.
 | `.ld <1-9>` | Set leader line direction (numpad layout); `5` returns to the default direction |
 | `++###` + click | Assign/request a hard altitude for the clicked aircraft's whole flight, in hundreds of feet (3 digits, so 3,000 ft is `++030`). Every aircraft in the flight shows `R###` on datablock line 2, cycling with speed and type. `++000` clears it. An aircraft not in any flight gets one created first, the same way as Ctrl+Shift+Click |
 | `++######` + click | Block altitude, lower first: `++200220` shows `R200-220`. Out-of-order or equal blocks (`++220200`, `++200200`) and wrong-length entries are rejected with `ILL ALT` |
+| `.m1 ##` / `.m2 ####` / `.m3 ####` + click | Assign that Mode 1/2/3 IFF code to the clicked aircraft's FRAG roster row. Octal digits only: Mode 1 is 2 digits (`00`–`77`), Modes 2 and 3 are 4 digits (`0000`–`7777`); anything else is rejected with `ILL M1`/`ILL M2`/`ILL M3`. With no code (`.m3` + click) it clears that mode. An aircraft not in any flight gets one created first, the same way as Ctrl+Shift+Click. **F5**/**F6**/**F7** type `M1 `/`M2 `/`M3 ` into the command line, so F7, `7227`, click does the same as `.m3 7227` + click |
 | `.bedb` | Toggle bullseye-on-datablock: adds a last datablock line to every contact, friendly or not, with its magnetic bearing/range from bullseye, e.g. `090/20` (off by default) |
 
 ### Emergency squawks
@@ -297,6 +299,8 @@ Display toggles (`.coords`, `.db`, `.geo`, etc.) apply to the window you type th
 
 **F1–F4** arm a pending declaration (Hostile/Bogey/Neutral/Friendly). The next click declares every contact within 10 px of the click point. Pressing the same key again cancels.
 
+**F5–F7** start a Mode 1/2/3 IFF code assignment (see `.m1`/`.m2`/`.m3`). Pressing the same key again cancels.
+
 FRAG also drives the scope: clicking a flight's Base or a route waypoint in FRAG drops a marker on the scope, and clicking a roster row makes that contact's datablock blink.
 
 ## ATO drawer
@@ -335,7 +339,7 @@ Detail view for the flight selected in ATO, or opened with Ctrl+Shift+Click on t
   - Manually-added flights: callsign, type, and state, matched live against aircraft flying that callsign prefix.
   - A manual flight's roster ends with a **+ Add Aircraft** field. A typed callsign shows as **PENDING** until a matching aircraft goes live.
   - A **×** on a manually-added row removes its roster/IFF entry. A row matched live by callsign prefix stays listed after that.
-- **IFF** — Mode 1 (2 digits), Mode 2 and Mode 3 (4 digits) fields under each roster row, for imported and manual flights alike. These are the assigned codes used for IFF correlation (see SRS transponder data above).
+- **IFF** — Mode 1 (2 octal digits, `00`–`77`), Mode 2 and Mode 3 (4 octal digits) fields under each roster row, for imported and manual flights alike. A code is saved once it has all its digits; leaving a field with a partial code puts back the saved one. These are the assigned codes used for IFF correlation (see SRS transponder data above).
 - **Route** — each waypoint's name, altitude, and speed, plus `TCN 31Y TKR` on any waypoint that switches a TACAN on; click one to drop a marker on the scope. Click the ROUTE header (yellow, green when active) to toggle the flight's route as a dashed line on the scope. The route line is hidden each time a flight is selected.
 
 Mouse wheel over the title bar zooms the panel independently of ATO.
@@ -362,7 +366,7 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 - The preview shows a count-by-task summary and the list of flights found, with a RESERVE badge for late-activation flights. **Import** replaces the previously imported set and keeps manually-added flights.
 - ABM reads groups, units, routes, payloads, radios, and Link16 from the mission. It does not read triggers, trigger rules, or the mission's localization dictionary.
 - **Dropping a `.csv` here instead** bulk-assigns IFF codes:
-  - The header row must include a `callsign` column. `mode1`, `mode2`, and `mode3` columns are optional and can be in any order. Values are cut to 4 digits.
+  - The header row must include a `callsign` column. `mode1`, `mode2`, and `mode3` columns are optional and can be in any order. Codes must be octal: 2 digits for Mode 1, 4 for Modes 2 and 3. Shorter codes get leading zeros added (spreadsheets often strip them, so `400` becomes `0400`). A code that's still invalid, such as `8899` or `12345`, is dropped and listed in the preview; that mode is left unchanged and the row's other codes still apply. A blank cell clears that mode.
   - A preview lists what will be applied; **Apply** writes the codes.
   - It only fills in rows that already exist (from a mission import, Ctrl+Shift+Click, or manual entry), matched by callsign, and never creates flights. The first matching roster row wins.
   - Callsigns with no matching row are listed as skipped.
@@ -422,6 +426,7 @@ Fields:
 | Key | Effect |
 |---|---|
 | `F1`–`F4` | Arm a pending declaration (Hostile/Bogey/Neutral/Friendly); press again to cancel |
+| `F5`–`F7` | Start a Mode 1/2/3 IFF code assignment (`M1`/`M2`/`M3` + code + click); press again to cancel |
 | `Escape` | Clear pending state in the order listed under Command line |
 | `Enter` | Run the buffered command |
 | `ArrowUp`/`ArrowDown` | Cycle command history, or step through the glossary while a `.define` readout is open |
