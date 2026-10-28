@@ -79,6 +79,9 @@ let internalUnits = {}
 // easier.
 let internalWeapons = {}
 let fogFilter = null
+// GM/Admin only (friendlyCoalitionId null): contacts for every side, see
+// tacviewDetection.js's createAllSidesDetector.
+let allSidesDetector = null
 let missileFogFilter = null
 // Promoted to module scope (not just a local inside start()) so
 // runMissileDetectionPass() can read it — mirrors tacviewRelayClient.js's
@@ -168,7 +171,13 @@ function finalizeTheatre() {
 }
 
 function runDetectionPass() {
-  if (!connected || !fogFilter) return
+  if (!connected) return
+  if (allSidesDetector) {
+    const contactsUpdate = allSidesDetector.computeContacts(internalUnits)
+    if (Object.keys(contactsUpdate).length) unitsBuffer.queue(contactsUpdate, [])
+    return
+  }
+  if (!fogFilter) return
   const { contactsUpdate, revealed, hidden } = fogFilter.computeVisibility(internalUnits)
   const updated = { ...contactsUpdate, ...revealed }
   if (Object.keys(updated).length === 0 && hidden.length === 0) return
@@ -402,6 +411,7 @@ function start(cfg, callbacks = {}) {
   rateConfig.resetToLocalConfig()
   friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = friendlyCoalitionId !== null ? tacviewDetection.createFogFilter(friendlyCoalitionId) : null
+  allSidesDetector = friendlyCoalitionId === null ? tacviewDetection.createAllSidesDetector() : null
   missileFogFilter = friendlyCoalitionId !== null
     ? missileDetection.createMissileFogFilter(friendlyCoalitionId, { isOmniscient: () => !tacviewDetection.isFogOfWarEnabled() })
     : null
@@ -434,6 +444,7 @@ function stop() {
   internalUnits = {}
   internalWeapons = {}
   fogFilter = null
+  allSidesDetector = null
   missileFogFilter = null
   friendlyCoalitionId = null
   unitsBuffer.reset()

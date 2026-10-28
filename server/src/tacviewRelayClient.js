@@ -80,6 +80,9 @@ let internalUnits = {}
 // exposure tracking).
 let internalWeapons = {}
 let fogFilter = null
+// GM/Admin only (friendlyCoalitionId null): contacts for every side, see
+// tacviewDetection.js's createAllSidesDetector.
+let allSidesDetector = null
 let missileFogFilter = null
 // Promoted out of start() — connect()'s reconnect path and the
 // tacviewDetectionConfig message handler both need to read this, not just
@@ -134,7 +137,13 @@ function finalizeTheatre() {
 }
 
 function runDetectionPass() {
-  if (!isConnected() || !fogFilter) return
+  if (!isConnected()) return
+  if (allSidesDetector) {
+    const contactsUpdate = allSidesDetector.computeContacts(internalUnits)
+    if (Object.keys(contactsUpdate).length) unitsBuffer.queue(contactsUpdate, [])
+    return
+  }
+  if (!fogFilter) return
   const { contactsUpdate, revealed, hidden } = fogFilter.computeVisibility(internalUnits)
   const updated = { ...contactsUpdate, ...revealed }
   if (Object.keys(updated).length === 0 && hidden.length === 0) return
@@ -379,6 +388,7 @@ function start(cfg, callbacks = {}) {
   weaponsBuffer.reset()
   friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = null
+  allSidesDetector = friendlyCoalitionId === null ? tacviewDetection.createAllSidesDetector() : null
   // Unlike fogFilter (needs the relay's own detection config first, see the
   // tacviewDetectionConfig handler in connect() below), missileFogFilter has
   // no relay-provided config dependency — created synchronously here so
@@ -435,6 +445,7 @@ function stop() {
   internalUnits = {}
   internalWeapons = {}
   fogFilter = null
+  allSidesDetector = null
   missileFogFilter = null
   friendlyCoalitionId = null
   unitsBuffer.reset()

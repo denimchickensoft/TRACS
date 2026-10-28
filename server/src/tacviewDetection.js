@@ -796,8 +796,34 @@ function createFogFilter(friendlyCoalitionId) {
   }
 }
 
+// GM/Admin — every unit is already public, so nothing is redacted, but each
+// red and blue unit still gets the contacts its own side's sensors (radar
+// and RWR) would give it, the same as Olympus reports DCS's real detection
+// for every unit. Without this a GM's scope has no contacts at all, so
+// nothing that depends on them works (ABM's RWR-revealed enemy types, for
+// one). A unit whose contacts have all dropped gets an explicit empty list,
+// since a merged state update would otherwise keep its last ones.
+function createAllSidesDetector() {
+  let withContacts = new Set()
+
+  return {
+    computeContacts(internalUnits) {
+      const maps = []
+      for (const side of [coalitionId('red'), coalitionId('blue')]) {
+        maps.push(computeContacts(internalUnits, side), computeRwrContacts(internalUnits, side))
+      }
+      const contactsUpdate = mergeContactMaps(...maps)
+      for (const id of withContacts) {
+        if (!contactsUpdate[id] && internalUnits[id]) contactsUpdate[id] = { contacts: [] }
+      }
+      withContacts = new Set(Object.keys(contactsUpdate).filter((id) => contactsUpdate[id].contacts.length))
+      return contactsUpdate
+    },
+  }
+}
+
 module.exports = {
-  computeContacts, computeRwrContacts, coalitionId, createFogFilter, DETECTION_RADAR, DETECTION_RWR, DETECTION_VISUAL,
+  computeContacts, computeRwrContacts, coalitionId, createFogFilter, createAllSidesDetector, DETECTION_RADAR, DETECTION_RWR, DETECTION_VISUAL,
   resetToLocalConfig, resetToDefaults, applyRelayConfig, isFogOfWarEnabled, pickAnchorUnitId,
   // Reused by missileDetection.js — a separate, dedicated module (per
   // explicit direction) but no reason to re-derive these from scratch.
