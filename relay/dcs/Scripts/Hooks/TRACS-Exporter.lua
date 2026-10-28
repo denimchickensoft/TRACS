@@ -255,8 +255,20 @@ end
 -- environment has no net.lua2json), the server-side collector functions and
 -- an event ring buffer the hook drains.
 local SERVER_BOOTSTRAP = [==[
-TRACS_EXP_S = TRACS_EXP_S or {}
+-- Globals here outlive a mission change, so each mission starts from a clean
+-- table; the previous mission's event handler is removed first.
+if TRACS_EXP_S and TRACS_EXP_S.eventHandler then
+  pcall(world.removeEventHandler, TRACS_EXP_S.eventHandler)
+end
+TRACS_EXP_S = {}
 local S = TRACS_EXP_S
+
+-- Lua heap size in KB, for the hook's per-step diagnostics (-1 if
+-- collectgarbage isn't available here).
+local function heapKb()
+  if collectgarbage then return math.floor(collectgarbage('count')) end
+  return -1
+end
 
 local function encode(v)
   local t = type(v)
@@ -323,13 +335,15 @@ local function sameRecord(a, b)
   return true
 end
 
-S.prevUnits = S.prevUnits or {}
-S.lastUnitCount = S.lastUnitCount or 0
+S.prevUnits = {}
+S.lastUnitCount = 0
 
 -- start: begin a new cycle (full = encode every unit), spread over `slices`
--- calls. Returns '' while the cycle is still running, then
--- '<F|D>|units|changed|removed|' followed by the JSON object.
+-- calls. Every call reports the heap size before and after it (KB). Returns
+-- 'P|kbBefore|kbAfter' while the cycle is still running, then
+-- '<F|D>|kbBefore|kbAfter|units|changed|removed|' followed by the JSON object.
 function S.unitsStep(start, full, slices)
+  local kb0 = heapKb()
   if start or not S.uc then
     local groups = {}
     for side = 0, 2 do
@@ -374,7 +388,7 @@ function S.unitsStep(start, full, slices)
       end
     end
   end
-  if uc.groups[uc.gi] then return '' end
+  if uc.groups[uc.gi] then return 'P|' .. kb0 .. '|' .. heapKb() end
 
   local removed = 0
   if not uc.full then
@@ -386,7 +400,9 @@ function S.unitsStep(start, full, slices)
     end
   end
   S.prevUnits, S.lastUnitCount, S.uc = uc.out, uc.n, nil
-  return (uc.full and 'F' or 'D') .. '|' .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|{' .. table.concat(uc.parts, ',') .. '}'
+  local json = '{' .. table.concat(uc.parts, ',') .. '}'
+  return (uc.full and 'F' or 'D') .. '|' .. kb0 .. '|' .. heapKb() .. '|'
+    .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|' .. json
 end
 
 S.collectors = {
@@ -405,17 +421,15 @@ function S.collect(name)
 end
 
 -- Drained by the hook every second; sized for a heavy mission's spawn burst.
-S.events, S.eventCap = S.events or {}, S.eventCap or 5000
-if not S.eventHandler then
-  S.eventHandler = {}
-  function S.eventHandler:onEvent(e)
-    local rec = { id = e.id, time = e.time }
-    pcall(function() if e.initiator then rec.initiator = e.initiator:getName() end end)
-    S.events[#S.events + 1] = rec
-    while #S.events > S.eventCap do table.remove(S.events, 1) end
-  end
-  world.addEventHandler(S.eventHandler)
+S.events, S.eventCap = {}, 5000
+S.eventHandler = {}
+function S.eventHandler:onEvent(e)
+  local rec = { id = e.id, time = e.time }
+  pcall(function() if e.initiator then rec.initiator = e.initiator:getName() end end)
+  S.events[#S.events + 1] = rec
+  while #S.events > S.eventCap do table.remove(S.events, 1) end
 end
+world.addEventHandler(S.eventHandler)
 
 -- Hands the buffered events to the hook and clears them.
 function S.drainEvents()
@@ -453,17 +467,20 @@ local function inServer(code)
   return nil
 end
 
+-- Each step also returns the mission-side heap size (KB) before and after it,
+-- as a third value, for the per-step diagnostics in runCollectors.
 register('units', 'server', 1, function(start, full, slices)
   local r = inServer(string.format(
     'return TRACS_EXP_S and TRACS_EXP_S.unitsStep(%s, %s, %d) or "E"',
     tostring(start), tostring(full), slices))
   if r == nil or r == 'E' then error('units step failed (mission environment not bootstrapped?)') end
-  if r == '' then return nil end
-  local kind, n, changed, removed, json = r:match('^(%a)|(%d+)|(%d+)|(%d+)|(.*)$')
+  local p0, p1 = r:match('^P|(%-?%d+)|(%-?%d+)$')
+  if p0 then return nil, nil, nil, { tonumber(p0), tonumber(p1) } end
+  local kind, k0, k1, n, changed, removed, json = r:match('^(%a)|(%-?%d+)|(%-?%d+)|(%d+)|(%d+)|(%d+)|(.*)$')
   if not kind then error('unexpected units step result') end
   return json, kind == 'F' and 'full' or 'delta', {
     units = tonumber(n), changed = tonumber(changed), removed = tonumber(removed),
-  }
+  }, { tonumber(k0), tonumber(k1) }
 end, true)
 
 register('heartbeat', 'server', 5, function()
@@ -530,18 +547,31 @@ local function runCollectors()
         end
         -- One step short of the period, so a cycle finishes before the next is due.
         local slices = math.max(1, math.floor(c.rateS / TICK_INTERVAL_S) - 1)
+        local hook0 = math.floor(collectgarbage('count'))
         local t0 = now()
-        local ok, json, kind, extra = pcall(c.gather, start, c.full, slices)
+        local ok, json, kind, extra, heap = pcall(c.gather, start, c.full, slices)
         local ms = (now() - t0) * 1000
+        local hook1 = math.floor(collectgarbage('count'))
         c.cycleMs, c.steps = c.cycleMs + ms, c.steps + 1
-        if ms > c.maxStepMs then c.maxStepMs = ms end
+        -- Diagnostics for the worst step: which step it was and how both Lua
+        -- heaps moved during it. A large drop means a garbage collection ran
+        -- inside that step.
+        if ms > c.maxStepMs then
+          c.maxStepMs, c.maxStepIdx = ms, c.steps
+          c.maxStepHookKbDelta = hook1 - hook0
+          c.maxStepSrvKbDelta = (ok and type(heap) == 'table') and (heap[2] - heap[1]) or 0
+          c.srvKb = (ok and type(heap) == 'table') and heap[2] or -1
+          c.hookKb = hook1
+        end
         if not ok then
           c.active = false
           err('collector ' .. name .. ' failed: ' .. tostring(json))
         elseif json then
           c.active = false
           extra = type(extra) == 'table' and extra or {}
-          extra.maxStepMs, extra.steps = c.maxStepMs, c.steps
+          extra.maxStepMs, extra.steps, extra.maxStepIdx = c.maxStepMs, c.steps, c.maxStepIdx
+          extra.maxStepSrvKbDelta, extra.maxStepHookKbDelta = c.maxStepSrvKbDelta, c.maxStepHookKbDelta
+          extra.srvKb, extra.hookKb = c.srvKb, c.hookKb
           sendResult(c, json, kind, c.cycleMs, extra)
         end
       else
