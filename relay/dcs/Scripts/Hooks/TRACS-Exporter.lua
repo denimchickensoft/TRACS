@@ -305,10 +305,12 @@ S.encode = encode
 
 -- Units are gathered a slice at a time across several hook ticks (one
 -- S.unitsStep call per tick), so a big mission never costs one long frame.
--- Each unit is encoded in the same step it's gathered, and only units whose
--- rounded record changed since the last cycle are encoded at all; units gone
--- since then are sent as null. A full cycle (first one, or after a resync)
--- encodes every unit.
+-- Each unit's record is kept between cycles and updated in place, and only
+-- units whose rounded record changed since the last cycle are encoded; units
+-- gone since then (or no longer active) are sent as null. A full cycle (first
+-- one, or after a resync) encodes every unit. Keeping records, and reading
+-- fields that never change only once, keeps the garbage this state has to
+-- collect down.
 -- Records are keyed by unit id as a string (numeric keys would make the
 -- encoder treat a sparse table as an array). heading is atan2 of the unit's
 -- forward vector on the map grid, in radians; converting it to true north is
@@ -316,32 +318,55 @@ S.encode = encode
 
 local function round(x, step) return math.floor(x / step + 0.5) * step end
 
-local function unitRecord(u, ge)
-  if not u:isExist() then return nil end
-  local pos = u:getPosition()
-  local p = pos.p
-  local lat, lon, alt = coord.LOtoLL(p)
-  local v = u:getVelocity()
-  return tostring(u:getID()), {
-    name = u:getName(), type = u:getTypeName(), coalition = ge.side,
-    groupId = ge.gid, groupName = ge.gname, category = ge.gcat,
-    lat = round(lat, 1e-6), lon = round(lon, 1e-6), alt = round(alt, 0.1),
-    agl = round(alt - land.getHeight({ x = p.x, y = p.z }), 0.1),
-    heading = round(math.atan2(pos.x.z, pos.x.x), 1e-3),
-    vx = round(v.x, 0.01), vy = round(v.y, 0.01), vz = round(v.z, 0.01),
-    inAir = u:inAir(), life = u:getLife(), life0 = u:getLife0(),
-    player = u:getPlayerName(), callsign = u:getCallsign(),
-  }
-end
+-- Per unit, by numeric id: { id = string id, rec = record, seen = cycle }.
+S.units = {}
+S.cycle = 0
+S.lastUnitCount = 0
+local heightArg = { x = 0, y = 0 }
 
-local function sameRecord(a, b)
-  for k, v in pairs(a) do if b[k] ~= v then return false end end
-  for k in pairs(b) do if a[k] == nil then return false end end
+-- Sets rec[k] = v and reports whether that changed it.
+local function put(rec, k, v)
+  if rec[k] == v then return false end
+  rec[k] = v
   return true
 end
 
-S.prevUnits = {}
-S.lastUnitCount = 0
+-- Refreshes a unit's record in place. Returns its entry and whether the
+-- record changed, or nil if the unit is gone or not activated yet.
+local function updateUnit(u, ge)
+  if not u:isExist() or not u:isActive() then return nil end
+  local nid = u:getID()
+  local e = S.units[nid]
+  local changed = false
+  if not e then
+    e = { id = tostring(nid), rec = {
+      name = u:getName(), type = u:getTypeName(), coalition = ge.side,
+      groupId = ge.gid, groupName = ge.gname, category = ge.gcat,
+      life0 = u:getLife0(), callsign = u:getCallsign(),
+    } }
+    S.units[nid] = e
+    changed = true
+  end
+  local rec = e.rec
+  local pos = u:getPosition()
+  local p = pos.p
+  local lat, lon, alt = coord.LOtoLL(p)
+  heightArg.x, heightArg.y = p.x, p.z
+  local v = u:getVelocity()
+  -- put first, so every field is updated even once something has changed
+  changed = put(rec, 'lat', round(lat, 1e-6)) or changed
+  changed = put(rec, 'lon', round(lon, 1e-6)) or changed
+  changed = put(rec, 'alt', round(alt, 0.1)) or changed
+  changed = put(rec, 'agl', round(alt - land.getHeight(heightArg), 0.1)) or changed
+  changed = put(rec, 'heading', round(math.atan2(pos.x.z, pos.x.x), 1e-3)) or changed
+  changed = put(rec, 'vx', round(v.x, 0.01)) or changed
+  changed = put(rec, 'vy', round(v.y, 0.01)) or changed
+  changed = put(rec, 'vz', round(v.z, 0.01)) or changed
+  changed = put(rec, 'inAir', u:inAir()) or changed
+  changed = put(rec, 'life', u:getLife()) or changed
+  changed = put(rec, 'player', u:getPlayerName()) or changed
+  return e, changed
+end
 
 -- start: begin a new cycle (full = encode every unit), spread over `slices`
 -- calls. Every call reports the heap size before and after it (KB). Returns
@@ -350,6 +375,7 @@ S.lastUnitCount = 0
 function S.unitsStep(start, full, slices)
   local kb0 = heapKb()
   if start or not S.uc then
+    S.cycle = S.cycle + 1
     local groups = {}
     for side = 0, 2 do
       for _, g in ipairs(coalition.getGroups(side) or {}) do
@@ -357,7 +383,7 @@ function S.unitsStep(start, full, slices)
       end
     end
     S.uc = {
-      groups = groups, gi = 1, ui = 1, full = full, out = {}, parts = {},
+      groups = groups, gi = 1, ui = 1, full = full, parts = {},
       n = 0, changed = 0,
       perStep = math.max(50, math.ceil(S.lastUnitCount / math.max(1, slices))),
     }
@@ -381,13 +407,12 @@ function S.unitsStep(start, full, slices)
     else
       uc.ui = uc.ui + 1
       done = done + 1
-      local ok, id, rec = pcall(unitRecord, u, ge)
-      if ok and id then
-        uc.out[id] = rec
+      local ok, e, changed = pcall(updateUnit, u, ge)
+      if ok and e then
+        e.seen = S.cycle
         uc.n = uc.n + 1
-        local prev = S.prevUnits[id]
-        if uc.full or not prev or not sameRecord(prev, rec) then
-          uc.parts[#uc.parts + 1] = encode(id) .. ':' .. encode(rec)
+        if uc.full or changed then
+          uc.parts[#uc.parts + 1] = encode(e.id) .. ':' .. encode(e.rec)
           uc.changed = uc.changed + 1
         end
       end
@@ -395,16 +420,19 @@ function S.unitsStep(start, full, slices)
   end
   if uc.groups[uc.gi] then return 'P|' .. kb0 .. '|' .. heapKb() end
 
+  -- Units not seen this cycle are gone; a full cycle replaces everything, so
+  -- only a delta needs to name them.
   local removed = 0
-  if not uc.full then
-    for id in pairs(S.prevUnits) do
-      if not uc.out[id] then
-        uc.parts[#uc.parts + 1] = encode(id) .. ':null'
+  for nid, e in pairs(S.units) do
+    if e.seen ~= S.cycle then
+      if not uc.full then
+        uc.parts[#uc.parts + 1] = encode(e.id) .. ':null'
         removed = removed + 1
       end
+      S.units[nid] = nil
     end
   end
-  S.prevUnits, S.lastUnitCount, S.uc = uc.out, uc.n, nil
+  S.lastUnitCount, S.uc = uc.n, nil
   local json = '{' .. table.concat(uc.parts, ',') .. '}'
   return (uc.full and 'F' or 'D') .. '|' .. kb0 .. '|' .. heapKb() .. '|'
     .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|' .. json
