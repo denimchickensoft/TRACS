@@ -93,6 +93,9 @@ let theatreName = null
 // output reaches state. Same split as tacviewRelayClient.js.
 let internalUnits = {}
 let fogFilter = null
+// GM/Admin only (friendlyCoalitionId null): contacts for every side, see
+// tacviewDetection.js's createAllSidesDetector.
+let allSidesDetector = null
 let friendlyCoalitionId = null
 
 const unitsBuffer = createDeltaBuffer({
@@ -177,11 +180,18 @@ function clearUnits() {
   const removed = Object.keys(internalUnits)
   internalUnits = {}
   if (fogFilter) fogFilter = tacviewDetection.createFogFilter(friendlyCoalitionId)
+  if (allSidesDetector) allSidesDetector = tacviewDetection.createAllSidesDetector()
   if (removed.length) unitsBuffer.queue({}, removed)
 }
 
 function runDetectionPass() {
-  if (!isConnected() || !fogFilter) return
+  if (!isConnected()) return
+  if (allSidesDetector) {
+    const contactsUpdate = allSidesDetector.computeContacts(internalUnits)
+    if (Object.keys(contactsUpdate).length) unitsBuffer.queue(contactsUpdate, [])
+    return
+  }
+  if (!fogFilter) return
   const { contactsUpdate, revealed, hidden } = fogFilter.computeVisibility(internalUnits)
   const updated = { ...contactsUpdate, ...revealed }
   if (Object.keys(updated).length === 0 && hidden.length === 0) return
@@ -322,6 +332,7 @@ function start(cfg, callbacks = {}) {
   unitsBuffer.reset()
   friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = null
+  allSidesDetector = friendlyCoalitionId === null ? tacviewDetection.createAllSidesDetector() : null
   // The relay operator owns detection and rate tuning in this mode, as with
   // relay-hosted Tacview; defaults until the relay's exporterConfig arrives.
   tacviewDetection.resetToDefaults()
@@ -352,6 +363,7 @@ function stop() {
   onBullseyes = null
   internalUnits = {}
   fogFilter = null
+  allSidesDetector = null
   friendlyCoalitionId = null
   theatreName = null
   unitsBuffer.reset()
