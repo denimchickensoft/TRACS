@@ -212,7 +212,7 @@ const config = {
 // inside DCS whether or not anyone is subscribed, so keeping it open next to
 // the exporter would cost DCS for nothing.
 if (config.exporter.enabled && config.tacviewHost) {
-  console.warn('[relay] exporter is enabled - ignoring tacviewHost; the relay will not connect to Tacview')
+  console.warn('[relay] exporter is enabled - ignoring tacviewHost')
   config.tacviewHost = ''
 }
 const primarySource = config.exporter.enabled ? 'exporter' : (config.tacviewHost && config.tacviewPort ? 'tacview' : null)
