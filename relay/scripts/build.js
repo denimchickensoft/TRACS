@@ -121,6 +121,10 @@ async function main() {
     fs.copyFileSync(path.join(RELAY_DIR, 'config.example.json'), distConfigExample)
   }
 
+  // The exporter's DCS hook ships next to the exe, laid out the way it goes
+  // into Saved Games/DCS, so it's always the version this relay speaks.
+  fs.cpSync(path.join(RELAY_DIR, 'dcs'), path.join(DIST_DIR, 'dcs'), { recursive: true })
+
   console.log(`\nBuilt ${path.relative(process.cwd(), exePath)}\n`)
 }
 

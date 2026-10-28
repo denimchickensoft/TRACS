@@ -15,6 +15,7 @@ const { WebSocketServer } = require('ws')
 const { createTransponderRelay } = require('./transponders')
 const { createSyncRelay }        = require('./syncRelay')
 const { createTacviewRelay }     = require('./tacview')
+const { createExporter }         = require('./exporter')
 const { checkAndApplyUpdate }    = require('./update')
 const { isSeaBinary, RELAY_DIR } = require('./paths')
 
@@ -121,6 +122,48 @@ function autoUpdateConfig(raw) {
   return { mode, window }
 }
 
+// Exporter (TRACS's own DCS hook) settings. Off unless enabled; per-collector
+// settings are passed to the hook as-is, which keeps its own defaults for
+// anything left out.
+function exporterConfig(raw) {
+  const cfg = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+  const graceMs = Number(cfg.idleGraceMs ?? 10000)
+  const bufferSize = Number(cfg.eventBufferSize ?? 500)
+  return {
+    enabled:         cfg.enabled === true,
+    hookPort:        port('exporter.hookPort', cfg.hookPort, process.env.EXPORTER_HOOK_PORT, 8767),
+    idleGraceMs:     Number.isFinite(graceMs) && graceMs >= 0 && graceMs <= 300000 ? graceMs : 10000,
+    eventBufferSize: Number.isInteger(bufferSize) && bufferSize > 0 && bufferSize <= 100000 ? bufferSize : 500,
+    logTimings:      cfg.logTimings === true,
+    collectors:      exporterCollectors(cfg.collectors),
+  }
+}
+
+// Collector rates below 1 s are raised to 1 s (the fastest anything in TRACS
+// consumes); the hook enforces the same floor.
+function exporterCollectors(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out = {}
+  for (const [name, c] of Object.entries(raw)) {
+    if (!c || typeof c !== 'object') continue
+    const entry = { ...c }
+    if (entry.rateSec !== undefined) {
+      const rate = Number(entry.rateSec)
+      if (!Number.isFinite(rate) || rate <= 0) {
+        console.warn(`[relay] config exporter.collectors.${name}.rateSec=${JSON.stringify(c.rateSec)} is invalid - using the hook's default`)
+        delete entry.rateSec
+      } else if (rate < 1) {
+        console.warn(`[relay] config exporter.collectors.${name}.rateSec=${rate} is below the 1 s minimum - using 1`)
+        entry.rateSec = 1
+      } else {
+        entry.rateSec = rate
+      }
+    }
+    out[name] = entry
+  }
+  return out
+}
+
 const config = {
   srsLotatcPort: port('srsLotatcPort', fileConfig.srsLotatcPort, process.env.SRS_LOTATC_PORT, 10712),
   wsPort:        port('wsPort', fileConfig.wsPort, process.env.RELAY_WS_PORT, 8765),
@@ -159,6 +202,7 @@ const config = {
   // "window" (default) gates that swap+exit to a daily maintenance window so
   // an unannounced restart doesn't drop every live connection.
   autoUpdate: autoUpdateConfig(fileConfig.autoUpdate),
+  exporter: exporterConfig(fileConfig.exporter),
 }
 
 // No passwords means anyone who can reach wsPort can join any coalition's
@@ -195,6 +239,7 @@ const server = http.createServer((req, res) => {
         transponders: true,
         sync:         true,
         tacview:      !!(config.tacviewHost && config.tacviewPort),
+        exporter:     config.exporter.enabled,
       },
     }))
     return
@@ -204,6 +249,7 @@ const server = http.createServer((req, res) => {
 const transpondersWss = new WebSocketServer({ noServer: true, maxPayload: AUTH_ONLY_MAX_PAYLOAD })
 const syncWss          = new WebSocketServer({ noServer: true, maxPayload: SYNC_MAX_PAYLOAD })
 const tacviewWss       = new WebSocketServer({ noServer: true, maxPayload: AUTH_ONLY_MAX_PAYLOAD })
+const dataWss          = new WebSocketServer({ noServer: true, maxPayload: AUTH_ONLY_MAX_PAYLOAD })
 
 server.on('upgrade', (req, socket, head) => {
   const { pathname } = new URL(req.url, 'http://localhost')
@@ -213,6 +259,8 @@ server.on('upgrade', (req, socket, head) => {
     syncWss.handleUpgrade(req, socket, head, (ws) => syncWss.emit('connection', ws, req))
   } else if (pathname === '/tacview') {
     tacviewWss.handleUpgrade(req, socket, head, (ws) => tacviewWss.emit('connection', ws, req))
+  } else if (pathname === '/data') {
+    dataWss.handleUpgrade(req, socket, head, (ws) => dataWss.emit('connection', ws, req))
   } else {
     socket.destroy()
   }
@@ -221,6 +269,7 @@ server.on('upgrade', (req, socket, head) => {
 createTransponderRelay(transpondersWss, config)
 const syncRelay    = createSyncRelay(syncWss, config)
 const tacviewRelay = createTacviewRelay(tacviewWss, config)
+const exporter     = createExporter(dataWss, config)
 
 // Graceful shutdown (Ctrl+C, a service manager's SIGTERM, or an auto-update
 // restart): flush the debounced sessions.json write so a restart doesn't lose
@@ -235,7 +284,8 @@ function shutdown(reason, exitCode = 0) {
   setTimeout(() => process.exit(exitCode), 3000).unref()
   syncRelay.flush()
   tacviewRelay.stop()
-  for (const wss of [transpondersWss, syncWss, tacviewWss]) {
+  exporter.stop()
+  for (const wss of [transpondersWss, syncWss, tacviewWss, dataWss]) {
     for (const ws of wss.clients) ws.close(1001, 'relay shutting down')
   }
   server.close(() => process.exit(exitCode))
@@ -253,7 +303,7 @@ server.on('error', (err) => {
 })
 
 server.listen(config.wsPort, () => {
-  console.log(`[relay] listening on :${config.wsPort} (/transponders, /sync, /tacview)`)
+  console.log(`[relay] listening on :${config.wsPort} (/transponders, /sync, /tacview, /data)`)
 })
 
 // Auto-update only applies to the packaged SEA binary — a dev running

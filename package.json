@@ -19,11 +19,12 @@
     "stage-navdata": "node electron/scripts/stage-navdata.js",
     "stage-better-sqlite3": "node electron/scripts/stage-better-sqlite3.js",
     "dist:electron": "npm run build && npm run stage-navdata && npm run stage-better-sqlite3 && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
-    "lint": "eslint . && npm run check:tacview-core",
+    "lint": "eslint . && npm run check:tacview-core && npm run check:lua",
     "test": "vitest run",
     "knip": "knip",
     "sync:tacview-core": "node scripts/sync-tacview-core.js",
     "check:tacview-core": "node scripts/sync-tacview-core.js --check",
+    "check:lua": "node scripts/check-lua.js",
     "postinstall": "git config core.hooksPath .githooks || exit 0"
   },
   "devDependencies": {
@@ -41,6 +42,7 @@
     "fake-indexeddb": "^6.2.6",
     "globals": "^17.13.0",
     "knip": "^6.42.1",
+    "luaparse": "^0.3.1",
     "polylabel": "^2.1.0",
     "shapefile": "^0.6.6",
     "stream-json": "^1.9.1",
@@ -70,7 +72,9 @@
       "grantFileProtocolExtraPrivileges": false,
       "resetAdHocDarwinSignature": true
     },
-    "electronLanguages": ["en-US"],
+    "electronLanguages": [
+      "en-US"
+    ],
     "directories": {
       "output": "dist-electron"
     },
@@ -135,8 +139,18 @@
     },
     "mac": {
       "target": [
-        { "target": "dmg", "arch": ["universal"] },
-        { "target": "zip", "arch": ["universal"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
       ],
       "x64ArchFiles": "**/better_sqlite3.node",
       "icon": "electron/icons/icon.png"

@@ -11,5 +11,16 @@
   "autoUpdate": {
     "mode": "window",
     "window": { "start": "04:00", "end": "05:00", "timezone": "America/New_York" }
+  },
+  "exporter": {
+    "enabled": false,
+    "hookPort": 8767,
+    "idleGraceMs": 10000,
+    "eventBufferSize": 500,
+    "logTimings": false,
+    "collectors": {
+      "heartbeat": { "enabled": true, "rateSec": 5 },
+      "heartbeat_client": { "enabled": true, "rateSec": 5 }
+    }
   }
 }
