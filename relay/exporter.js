@@ -136,7 +136,7 @@ function createExporter(wss, config) {
     socket.setEncoding('utf8')
     socket.setNoDelay(true)
 
-    sendToHook({ type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize })
+    sendToHook({ type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize, gcStepKb: cfg.gcStepKb })
     if (subscribers.size > 0) setAwake(true)
 
     socket.on('data', (chunk) => {

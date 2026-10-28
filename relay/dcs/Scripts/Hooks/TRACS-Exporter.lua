@@ -28,6 +28,10 @@ local DEFAULT_PORT    = 8767
 -- (and large sends drain promptly); no collector runs more often than once a
 -- second, the fastest rate anything in TRACS consumes.
 local TICK_INTERVAL_S = 0.1
+-- Default size of the mission-side incremental GC step per tick (KB of
+-- allocation's worth of work; 0 = off). The relay's exporter.gcStepKb
+-- overrides it.
+local DEFAULT_GC_STEP_KB = 200
 local MIN_RATE_S      = 1
 local CONNECT_TIMEOUT_S = 2
 local BACKOFF_MIN_S   = 2
@@ -431,6 +435,16 @@ function S.eventHandler:onEvent(e)
 end
 world.addEventHandler(S.eventHandler)
 
+-- One incremental garbage-collection step of this Lua state, doing the work
+-- Lua would do for `kb` KB of allocation. Called every hook tick while
+-- collecting, so collection keeps pace in small steps instead of piling up
+-- into one long pause. Returns '<1 if a cycle finished|0>|kbBefore|kbAfter'.
+function S.gcStep(kb)
+  local before = heapKb()
+  local finished = collectgarbage('step', kb)
+  return (finished and '1' or '0') .. '|' .. before .. '|' .. heapKb()
+end
+
 -- Hands the buffered events to the hook and clears them.
 function S.drainEvents()
   if #S.events == 0 then return '[]' end
@@ -491,9 +505,13 @@ register('heartbeat_client', 'client', 5, function()
   return toJson({ modelTime = DCS.getModelTime() })
 end)
 
+C.gcStepKb = DEFAULT_GC_STEP_KB
+C.gc = { ms = 0, maxMs = 0, steps = 0, cycles = 0, kb = -1, reportAt = 0 }
+
 -- Applies the relay's per-collector settings; collectors the relay doesn't
 -- mention keep their defaults.
 T.onConfig(function(cfg)
+  if type(cfg.gcStepKb) == 'number' and cfg.gcStepKb >= 0 then C.gcStepKb = math.floor(cfg.gcStepKb) end
   if type(cfg.collectors) ~= 'table' then return end
   for name, c in pairs(C.registry) do
     local s = cfg.collectors[name]
@@ -517,6 +535,7 @@ end)
 
 local function resetCollectors()
   C.seq = 0
+  if C.gc then C.gc.reportAt = 0 end
   for _, c in pairs(C.registry) do c.dueAt, c.full, c.active = 0, true, false end
 end
 
@@ -589,6 +608,32 @@ local function runCollectors()
   end
 end
 
+-- Runs one mission-side GC step per tick while collecting, and reports its
+-- cost once a second as a 'gc' timing: total and worst step ms, steps, and
+-- how many collection cycles finished.
+local GC_REPORT_INTERVAL_S = 1
+local function runGcStep()
+  if C.side ~= 'server' or C.gcStepKb <= 0 then return end
+  local g = C.gc
+  local t0 = now()
+  local r = inServer('return TRACS_EXP_S and TRACS_EXP_S.gcStep(' .. C.gcStepKb .. ') or "E"')
+  local ms = (now() - t0) * 1000
+  local done, _, after = (r or ''):match('^(%d)|(%-?%d+)|(%-?%d+)$')
+  if not done then return end
+  g.ms, g.steps = g.ms + ms, g.steps + 1
+  if ms > g.maxMs then g.maxMs = ms end
+  if done == '1' then g.cycles = g.cycles + 1 end
+  g.kb = tonumber(after)
+  local t = now()
+  if t >= g.reportAt then
+    if g.reportAt > 0 then
+      T.sendRaw({ type = 'timing', group = 'gc', kind = 'server', ms = g.ms, maxStepMs = g.maxMs,
+        steps = g.steps, cycles = g.cycles, srvKb = g.kb, stepKb = C.gcStepKb })
+    end
+    g.ms, g.maxMs, g.steps, g.cycles, g.reportAt = 0, 0, 0, 0, t + GC_REPORT_INTERVAL_S
+  end
+end
+
 -- Moves events buffered in the mission environment into the transport's
 -- buffer. Runs while idle too, so events from before the first subscriber
 -- aren't lost.
@@ -642,7 +687,10 @@ function callbacks.onSimulationFrame()
   local ok, e = pcall(function()
     T.tick()
     drainServerEvents()
-    if T.isAwake() then runCollectors() end
+    if T.isAwake() then
+      runCollectors()
+      runGcStep()
+    end
   end)
   if not ok then err('onSimulationFrame: ' .. tostring(e)) end
 end
