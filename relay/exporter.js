@@ -19,6 +19,7 @@
 
 const net = require('net')
 const { gateConnection } = require('./auth')
+const { getDetectionConfig } = require('./tacview')
 
 const HOOK_PROTOCOL = 1
 // One collector's output for a large mission can be big; anything past this
@@ -201,6 +202,18 @@ function createExporter(wss, config) {
       onAuthenticated: (authMsg) => {
         subscribers.add(ws)
         console.log(`[relay:exporter] client authenticated coalition=${authMsg.coalition} (total: ${subscribers.size})`)
+        // The relay operator's detection and rate tuning, as /tacview sends
+        // it; the backend's modelled fog of war uses it until real DCS
+        // contacts arrive.
+        ws.send(JSON.stringify({
+          type: 'exporterConfig',
+          detection: getDetectionConfig(),
+          rates: {
+            unitUpdateMs: config.unitUpdateMs,
+            detectionMs: config.detectionMs,
+            missileDetectionMs: config.missileDetectionMs,
+          },
+        }))
         ws.send(JSON.stringify({ type: 'exporterSnapshot', hook: hookInfo, groups }))
         subscribersChanged()
       },

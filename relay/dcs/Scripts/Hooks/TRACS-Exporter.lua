@@ -320,7 +320,7 @@ S.encode = encode
 -- Records are keyed by unit id as a string (numeric keys would make the
 -- encoder treat a sparse table as an array). heading is atan2 of the unit's
 -- forward vector on the map grid, in radians; converting it to true north is
--- the consumer's job.
+-- the consumer's job. pitch is the nose's angle above the horizon, radians.
 
 local RELIST_CYCLES = 30
 local FULL_READ_CYCLES = 10
@@ -391,6 +391,7 @@ local function updateUnit(e)
   changed = put(rec, 'alt', round(alt, 0.1)) or changed
   changed = put(rec, 'agl', round(alt - land.getHeight(heightArg), 0.1)) or changed
   changed = put(rec, 'heading', round(math.atan2(pos.x.z, pos.x.x), 1e-3)) or changed
+  changed = put(rec, 'pitch', round(math.asin(math.max(-1, math.min(1, pos.x.y))), 1e-3)) or changed
   changed = put(rec, 'vx', round(v.x, 0.01)) or changed
   changed = put(rec, 'vy', round(v.y, 0.01)) or changed
   changed = put(rec, 'vz', round(v.z, 0.01)) or changed

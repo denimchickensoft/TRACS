@@ -235,4 +235,4 @@ function createTacviewRelay(wss, config) {
   return { stop }
 }
 
-module.exports = { createTacviewRelay }
+module.exports = { createTacviewRelay, getDetectionConfig: () => detectionConfig }

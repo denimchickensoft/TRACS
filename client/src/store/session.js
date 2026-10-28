@@ -43,12 +43,12 @@ export const useSessionStore = create((set) => ({
   // The source is still selected but has stopped responding and is being
   // retried: the top bar shows NO RESPONSE: RECONNECTING.
   connectionRetrying: false,
-  // 'olympus' | 'tacview' — set optimistically by ConnectPhase's setConnection
-  // (matching the source-selector's mode, collapsing 'tacview-direct'/'relay'
-  // both to 'tacview' here since that's the dispatch-level distinction this
-  // field represents), then confirmed authoritatively moments later by the WS
-  // status broadcast (see ws/client.js). Not the same enum as the selector's
-  // 3-way sourceMode — this only ever needs the 2-way dispatch distinction.
+  // 'olympus' | 'tacview' | 'exporter' — set optimistically by
+  // ConnectPhase's setConnection (matching the source-selector's mode,
+  // collapsing 'tacview-direct'/'relay' both to 'tacview'), then confirmed
+  // authoritatively moments later by the WS status broadcast (see
+  // ws/client.js) — which is where a relay serving TRACS's DCS exporter
+  // turns it into 'exporter'. Not the same enum as the selector's sourceMode.
   sourceType: null,
 
   // Position identity

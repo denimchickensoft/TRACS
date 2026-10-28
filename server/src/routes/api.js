@@ -10,7 +10,7 @@ const ABM_RASTER_LAYERS = new Set(['basemap', 'terrain', 'water', 'roads'])
 
 // Registers every boilerplate REST endpoint onto `app` — /api/connect and
 // its theatre-override/reset companions live in routes/sourceConnect.js.
-function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, stateFiles, navdata, elevation, getWsClientCount }) {
+function registerApiRoutes(app, { sourceRegistry, relaySource, state, stateFiles, navdata, elevation, getWsClientCount }) {
   // GET /api/debug/units — live unit snapshot (dev/debug)
   app.get('/api/debug/units', (req, res) => {
     const { updated } = state.getSnapshot()
@@ -139,7 +139,7 @@ function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, sta
   // GET /api/status
   app.get('/api/status', (req, res) => {
     const sourceType = state.getSourceType()
-    const polling = (sourceRegistry.get(sourceType)?.isPolling() ?? false) || tacviewRelayClient.isConnected()
+    const polling = (sourceRegistry.get(sourceType)?.isPolling() ?? false) || relaySource.isConnected()
     res.json({ polling, sourceType })
   })
 
@@ -150,7 +150,7 @@ function registerApiRoutes(app, { sourceRegistry, tacviewRelayClient, state, sta
     const weaponsSnapshot = state.getWeaponsSnapshot()
     const weaponList = Object.values(weaponsSnapshot.updated)
     res.json({
-      polling: (sourceRegistry.get(state.getSourceType())?.isPolling() ?? false) || tacviewRelayClient.isConnected(),
+      polling: (sourceRegistry.get(state.getSourceType())?.isPolling() ?? false) || relaySource.isConnected(),
       wsClients: getWsClientCount(),
       unitCount: unitList.length,
       lastUpdateTime: snapshot.time,

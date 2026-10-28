@@ -18,6 +18,7 @@ const CONNECTION_ISSUES = {
   olympus_no_response:     'Olympus',
   tacview_no_response:     'Tacview',
   relay_no_response:       'Relay',
+  exporter_no_hook:        'DCS',
   olympus_unreachable:     'Olympus not responding - retrying every 10 s',
   tacview_unreachable:     'Tacview rejected the RTT password - reconnect with the right one',
   relay_invalid_password:  'Relay rejected the password - reconnect with the right one',

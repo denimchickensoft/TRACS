@@ -207,6 +207,16 @@ const config = {
   exporter: exporterConfig(fileConfig.exporter),
 }
 
+// One primary unit source per relay: an enabled exporter wins, and the
+// relay then never connects to Tacview. A Tacview connection streams from
+// inside DCS whether or not anyone is subscribed, so keeping it open next to
+// the exporter would cost DCS for nothing.
+if (config.exporter.enabled && config.tacviewHost) {
+  console.warn('[relay] exporter is enabled - ignoring tacviewHost; the relay will not connect to Tacview')
+  config.tacviewHost = ''
+}
+const primarySource = config.exporter.enabled ? 'exporter' : (config.tacviewHost && config.tacviewPort ? 'tacview' : null)
+
 // No passwords means anyone who can reach wsPort can join any coalition's
 // sync and receive its full Tacview/transponder picture. Allowed (it's the
 // simplest setup on a trusted LAN), but never silently.
@@ -237,6 +247,9 @@ const server = http.createServer((req, res) => {
       version:         RELAY_VERSION,
       protocolVersion: PROTOCOL_VERSION,
       uptimeS:         Math.round(process.uptime()),
+      // Which unit source a backend in Relay mode should use: /data
+      // (exporter), /tacview, or none.
+      primary:         primarySource,
       capabilities: {
         transponders: true,
         sync:         true,

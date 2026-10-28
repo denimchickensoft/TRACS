@@ -59,17 +59,20 @@ export function resolveCallsign(unit) {
 /**
  * Whether the current session's live unit IDs can be trusted to match the
  * mission file's per-unit `unitId` (i.e. `dcsUnitId` on an imported flight
- * plan). True only for a direct Olympus connection: Olympus's `unitID`
- * reliably mirrors DCS's real internal ID. Tacview's live unit IDs do NOT
- * (its own internal enumeration counter, unrelated to DCS's engine state --
- * see buildLiveUnitLookup()'s comment below, an existing, un-gated exposure
- * to this same risk in ABM/AIC correlation). Under Tacview, matching on this
- * ID isn't just unhelpful, it risks a false-positive collision with an
- * unrelated plan's `dcsUnitId`, so this is excluded there -- and for
- * `relay`, since what backs a relay session isn't guaranteed to be Olympus.
+ * plan). True for a direct Olympus connection and for TRACS's own DCS
+ * exporter (relay-hosted): both report DCS's real internal unit ID.
+ * Tacview's live unit IDs do NOT (its own internal enumeration counter,
+ * unrelated to DCS's engine state -- see buildLiveUnitLookup()'s comment
+ * below, an existing, un-gated exposure to this same risk in ABM/AIC
+ * correlation). Under Tacview, direct or relay-hosted, matching on this ID
+ * isn't just unhelpful, it risks a false-positive collision with an
+ * unrelated plan's `dcsUnitId`, so this is excluded there. A relay session
+ * starts as 'tacview' until the server's status says which source the relay
+ * actually serves.
  */
 export function dcsUnitIdReliable() {
-  return useSessionStore.getState().sourceType === 'olympus'
+  const { sourceType } = useSessionStore.getState()
+  return sourceType === 'olympus' || sourceType === 'exporter'
 }
 
 /**

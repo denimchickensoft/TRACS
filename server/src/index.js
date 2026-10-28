@@ -8,7 +8,7 @@ const express = require('express')
 const { WebSocketServer } = require('ws')
 const sourceRegistry = require('./sourceRegistry')
 const srs        = require('./srs')
-const tacviewRelayClient = require('./tacviewRelayClient')
+const relaySource = require('./relaySource')
 const state      = require('./state')
 const stateFiles = require('./stateFiles')
 const navdata    = require('../navdata')
@@ -131,15 +131,15 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 const { broadcast, getWsClientCount } = createWsBroadcast(wss, {
-  state, stateFiles, sourceRegistry, tacviewRelayClient, srs, serverInstanceId: SERVER_INSTANCE_ID,
+  state, stateFiles, sourceRegistry, relaySource, srs, serverInstanceId: SERVER_INSTANCE_ID,
 })
 
 createSignalRelay(signalWss)
 
-registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state, broadcast })
+registerSourceConnectRoutes(app, { sourceRegistry, srs, relaySource, state, broadcast })
 
 registerApiRoutes(app, {
-  sourceRegistry, tacviewRelayClient, state, stateFiles, navdata, elevation, getWsClientCount,
+  sourceRegistry, relaySource, state, stateFiles, navdata, elevation, getWsClientCount,
 })
 
 // SRS transponder enrichment — orthogonal to whichever primary source is
@@ -212,7 +212,7 @@ function shutdown() {
       const source = sourceRegistry.get(type)
       if (source.isPolling()) source.stop()
     }
-    tacviewRelayClient.stop()
+    relaySource.stop()
     srs.stop()
     for (const ws of wss.clients) ws.close(1001, 'server shutting down')
     for (const ws of signalWss.clients) ws.close(1001, 'server shutting down')

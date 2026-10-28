@@ -11,7 +11,8 @@ const COALITION_NAMES = { blue: 'BLUE', red: 'RED', gm: 'GAME MASTER', admin: 'A
 // real business logic. Split out from api.js's boilerplate REST passthrough
 // (navdata/elevation/airports/etc.) — see registerApiRoutes's own comment
 // for why `broadcast` is threaded in from the app-WS layer.
-function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayClient, state, broadcast }) {
+function registerSourceConnectRoutes(app, { sourceRegistry, srs, relaySource, state, broadcast }) {
+  const tacviewRelayClient = relaySource.tacview
   // Races probe() across every registered source type, resolving to whichever
   // answers first. Only used when the request doesn't name a sourceType
   // (Login.jsx's source selector normally does). Each
@@ -53,7 +54,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
     for (const type of sourceRegistry.SOURCE_TYPES) {
       sourceRegistry.get(type).stop()
     }
-    tacviewRelayClient.stop()
+    relaySource.stop()
   }
 
   // Rapid repeated /api/connect calls each tear down and rebuild the live
@@ -150,11 +151,38 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, tacviewRelayCli
       }
     }
 
-    // Relay-hosted Tacview as the PRIMARY source — relayUrl set with no
-    // olympusUrl (a slot a future relay-hosted dataminer could share; a relay
-    // only ever runs one occupant of it). Distinct from the SRS-relay block above, which always runs
-    // whenever relayUrl is set, regardless of which primary source is active.
+    // The relay as the PRIMARY source — relayUrl set with no olympusUrl. A
+    // relay serves one unit source, named by its /health: TRACS's own DCS
+    // exporter (/data) or Tacview (/tacview). Distinct from the SRS-relay
+    // block above, which always runs whenever relayUrl is set, regardless of
+    // which primary source is active.
     const usingRelayAsPrimary = Boolean(relayUrl) && !sourceCfg.olympusUrl
+    if (usingRelayAsPrimary && await relaySource.fetchPrimary(relayUrl) === 'exporter') {
+      const exporterClient = relaySource.exporter
+      const relayCfg = { relayUrl, password: sourceCfg.password ?? '', coalition: sourceCfg.coalition ?? 'blue' }
+      const current = exporterClient.getConfig()
+      const alreadyOnSameRelay = exporterClient.isConnected()
+        && current?.relayUrl === relayUrl
+        && current?.password === relayCfg.password
+        && current?.coalition === relayCfg.coalition
+      if (!alreadyOnSameRelay) {
+        try {
+          await exporterClient.probe(relayCfg)
+        } catch (err) {
+          return res.status(502).json({ error: err.identified ? err.message : 'Cannot reach the relay for DCS exporter data — check the Relay Port and coalition password' })
+        }
+        stopAllSources(sourceRegistry)
+        state.setSourceType('exporter')
+        exporterClient.start(relayCfg, {
+          onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }),
+          onMission:    (data)  => broadcast({ type: 'mission', data }),
+          onLinkIssue:  (issue) => broadcast({ type: 'status', data: statusPayload('exporter', issue) }),
+        })
+        broadcast({ type: 'units_clear' })
+      }
+      broadcast({ type: 'status', data: statusPayload('exporter', exporterClient.getLinkIssue()) })
+      return res.json({ ok: true })
+    }
     if (usingRelayAsPrimary) {
       const tvConfig = tacviewRelayClient.getConfig()
       const alreadyOnSameTvRelay = tacviewRelayClient.isConnected()
