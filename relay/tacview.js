@@ -169,9 +169,11 @@ function createTacviewRelay(wss, config) {
     socket?.destroy()
   }
 
+  // With the exporter enabled, relay/index.js has already said why Tacview
+  // isn't used.
   if (config.tacviewHost && config.tacviewPort) {
     connect()
-  } else {
+  } else if (!config.exporter?.enabled) {
     console.log('[relay:tacview] no tacviewHost/tacviewPort configured - capability idle')
   }
 
