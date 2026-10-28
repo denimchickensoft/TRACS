@@ -46,13 +46,14 @@ function applyGroupMessage(groups, msg) {
   return true
 }
 
-// One timing line: the group, then every other numeric field the hook sent
-// (ms and bytes always; per-step fields like gatherMs while profiling).
+// One timing line: the group and kind, then every numeric field the hook
+// sent (ms and bytes always; e.g. maxStepMs/steps/changed for sliced ones).
 function formatTiming(msg) {
   const fields = Object.entries(msg)
     .filter(([k, v]) => k !== 'type' && k !== 'group' && typeof v === 'number')
     .map(([k, v]) => `${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`)
-  return `${msg.group}: ${fields.join(' ')}`
+  const kind = typeof msg.kind === 'string' ? ` (${msg.kind})` : ''
+  return `${msg.group}${kind}: ${fields.join(' ')}`
 }
 
 // Splits a TCP stream into lines; returns the complete lines and the
@@ -135,9 +136,7 @@ function createExporter(wss, config) {
     socket.setEncoding('utf8')
     socket.setNoDelay(true)
 
-    // profile asks the hook for its per-step timing breakdown (extra
-    // mission-env calls), so it's tied to logTimings.
-    sendToHook({ type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize, profile: cfg.logTimings })
+    sendToHook({ type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize })
     if (subscribers.size > 0) setAwake(true)
 
     socket.on('data', (chunk) => {

@@ -16,7 +16,7 @@
     "enabled": false,
     "hookPort": 8767,
     "idleGraceMs": 10000,
-    "eventBufferSize": 500,
+    "eventBufferSize": 2000,
     "logTimings": false,
     "collectors": {
       "units": { "enabled": true, "rateSec": 1 },

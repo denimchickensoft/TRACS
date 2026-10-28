@@ -45,7 +45,7 @@ describe('splitLines', () => {
 
 describe('formatTiming', () => {
   test('lists numeric fields after the group', () => {
-    const line = exporter.formatTiming({ type: 'timing', group: 'units', ms: 12.345, bytes: 2048, gatherMs: 9.5, note: 'x' })
-    expect(line).toBe('units: ms=12.35 bytes=2048 gatherMs=9.50')
+    const line = exporter.formatTiming({ type: 'timing', group: 'units', kind: 'delta', ms: 12.345, bytes: 2048, maxStepMs: 9.5 })
+    expect(line).toBe('units (delta): ms=12.35 bytes=2048 maxStepMs=9.50')
   })
 })

@@ -87,7 +87,7 @@ local T = {
   awake       = false,
   config      = nil,
   events      = {},
-  eventCap    = 500,
+  eventCap    = 2000,
   droppedEvents = 0,
   configCbs   = {},
   resyncCbs   = {},
@@ -286,49 +286,110 @@ local function encode(v)
 end
 S.encode = encode
 
--- Every live unit, keyed by unit id as a string (numeric keys would make the
--- encoder treat a sparse table as an array). Kept in S.lastUnits so the hook
--- can time gathering, encoding and handing the string back separately.
--- heading is atan2 of the unit's forward vector on the map grid, in radians;
--- converting it to true north is the consumer's job.
-function S.gatherUnits()
-  local out, n = {}, 0
-  for side = 0, 2 do
-    for _, g in ipairs(coalition.getGroups(side) or {}) do
-      local gid, gname, gcat = g:getID(), g:getName(), g:getCategory()
-      for _, u in ipairs(g:getUnits() or {}) do
-        local ok, rec = pcall(function()
-          if not u:isExist() then return nil end
-          local pos = u:getPosition()
-          local p = pos.p
-          local lat, lon, alt = coord.LOtoLL(p)
-          local v = u:getVelocity()
-          return {
-            name = u:getName(), type = u:getTypeName(), coalition = side,
-            groupId = gid, groupName = gname, category = gcat,
-            lat = lat, lon = lon, alt = alt, agl = alt - land.getHeight({ x = p.x, y = p.z }),
-            heading = math.atan2(pos.x.z, pos.x.x),
-            vx = v.x, vy = v.y, vz = v.z,
-            inAir = u:inAir(), life = u:getLife(), life0 = u:getLife0(),
-            player = u:getPlayerName(), callsign = u:getCallsign(),
-          }
-        end)
-        if ok and rec then
-          out[tostring(u:getID())] = rec
-          n = n + 1
+-- Units are gathered a slice at a time across several hook ticks (one
+-- S.unitsStep call per tick), so a big mission never costs one long frame.
+-- Each unit is encoded in the same step it's gathered, and only units whose
+-- rounded record changed since the last cycle are encoded at all; units gone
+-- since then are sent as null. A full cycle (first one, or after a resync)
+-- encodes every unit.
+-- Records are keyed by unit id as a string (numeric keys would make the
+-- encoder treat a sparse table as an array). heading is atan2 of the unit's
+-- forward vector on the map grid, in radians; converting it to true north is
+-- the consumer's job.
+
+local function round(x, step) return math.floor(x / step + 0.5) * step end
+
+local function unitRecord(u, ge)
+  if not u:isExist() then return nil end
+  local pos = u:getPosition()
+  local p = pos.p
+  local lat, lon, alt = coord.LOtoLL(p)
+  local v = u:getVelocity()
+  return tostring(u:getID()), {
+    name = u:getName(), type = u:getTypeName(), coalition = ge.side,
+    groupId = ge.gid, groupName = ge.gname, category = ge.gcat,
+    lat = round(lat, 1e-6), lon = round(lon, 1e-6), alt = round(alt, 0.1),
+    agl = round(alt - land.getHeight({ x = p.x, y = p.z }), 0.1),
+    heading = round(math.atan2(pos.x.z, pos.x.x), 1e-3),
+    vx = round(v.x, 0.01), vy = round(v.y, 0.01), vz = round(v.z, 0.01),
+    inAir = u:inAir(), life = u:getLife(), life0 = u:getLife0(),
+    player = u:getPlayerName(), callsign = u:getCallsign(),
+  }
+end
+
+local function sameRecord(a, b)
+  for k, v in pairs(a) do if b[k] ~= v then return false end end
+  for k in pairs(b) do if a[k] == nil then return false end end
+  return true
+end
+
+S.prevUnits = S.prevUnits or {}
+S.lastUnitCount = S.lastUnitCount or 0
+
+-- start: begin a new cycle (full = encode every unit), spread over `slices`
+-- calls. Returns '' while the cycle is still running, then
+-- '<F|D>|units|changed|removed|' followed by the JSON object.
+function S.unitsStep(start, full, slices)
+  if start or not S.uc then
+    local groups = {}
+    for side = 0, 2 do
+      for _, g in ipairs(coalition.getGroups(side) or {}) do
+        groups[#groups + 1] = { g = g, side = side }
+      end
+    end
+    S.uc = {
+      groups = groups, gi = 1, ui = 1, full = full, out = {}, parts = {},
+      n = 0, changed = 0,
+      perStep = math.max(50, math.ceil(S.lastUnitCount / math.max(1, slices))),
+    }
+  end
+  local uc = S.uc
+  local done = 0
+  while done < uc.perStep do
+    local ge = uc.groups[uc.gi]
+    if not ge then break end
+    if not ge.units then
+      local ok = pcall(function()
+        if not ge.g:isExist() then return end
+        ge.gid, ge.gname, ge.gcat = ge.g:getID(), ge.g:getName(), ge.g:getCategory()
+        ge.units = ge.g:getUnits()
+      end)
+      if not ok or not ge.units then ge.units = {} end
+    end
+    local u = ge.units[uc.ui]
+    if not u then
+      uc.gi, uc.ui = uc.gi + 1, 1
+    else
+      uc.ui = uc.ui + 1
+      done = done + 1
+      local ok, id, rec = pcall(unitRecord, u, ge)
+      if ok and id then
+        uc.out[id] = rec
+        uc.n = uc.n + 1
+        local prev = S.prevUnits[id]
+        if uc.full or not prev or not sameRecord(prev, rec) then
+          uc.parts[#uc.parts + 1] = encode(id) .. ':' .. encode(rec)
+          uc.changed = uc.changed + 1
         end
       end
     end
   end
-  S.lastUnits = out
-  return n
+  if uc.groups[uc.gi] then return '' end
+
+  local removed = 0
+  if not uc.full then
+    for id in pairs(S.prevUnits) do
+      if not uc.out[id] then
+        uc.parts[#uc.parts + 1] = encode(id) .. ':null'
+        removed = removed + 1
+      end
+    end
+  end
+  S.prevUnits, S.lastUnitCount, S.uc = uc.out, uc.n, nil
+  return (uc.full and 'F' or 'D') .. '|' .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|{' .. table.concat(uc.parts, ',') .. '}'
 end
 
 S.collectors = {
-  units = function()
-    S.gatherUnits()
-    return S.lastUnits
-  end,
   heartbeat = function()
     return { modelTime = timer.getTime(), absTime = timer.getAbsTime(), theatre = env.mission and env.mission.theatre }
   end,
@@ -343,7 +404,8 @@ function S.collect(name)
   return encode(result)
 end
 
-S.events, S.eventCap = S.events or {}, S.eventCap or 500
+-- Drained by the hook every second; sized for a heavy mission's spawn burst.
+S.events, S.eventCap = S.events or {}, S.eventCap or 5000
 if not S.eventHandler then
   S.eventHandler = {}
   function S.eventHandler:onEvent(e)
@@ -373,10 +435,15 @@ local C = {
   seq      = 0,
 }
 
--- side: 'server' | 'client' | 'both'. gather() returns JSON text or nil, plus
--- an optional table of extra timing fields for the relay's log.
-local function register(name, side, defaultRateS, gather)
-  C.registry[name] = { name = name, side = side, rateS = defaultRateS, enabled = true, gather = gather, dueAt = 0, full = true }
+-- side: 'server' | 'client' | 'both'. gather() returns JSON text or nil.
+-- A sliced collector instead gets gather(start, full, slices) once per tick
+-- until it returns its result: json, kind ('full'|'delta') and an optional
+-- table of extra timing fields.
+local function register(name, side, defaultRateS, gather, sliced)
+  C.registry[name] = {
+    name = name, side = side, rateS = defaultRateS, enabled = true, gather = gather,
+    sliced = sliced == true, dueAt = 0, full = true, active = false,
+  }
   C.order[#C.order + 1] = name
 end
 
@@ -386,29 +453,18 @@ local function inServer(code)
   return nil
 end
 
-local function profiling() return T.config ~= nil and T.config.profile == true end
-
--- While profiling, units are fetched in three separate calls so the relay log
--- shows gather, encode and string hand-back (dostring_in marshal) apart. The
--- mission environment has no wall clock, so each step is timed from here.
-register('units', 'server', 1, function()
-  if not profiling() then
-    return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("units") or "null"')
-  end
-  local t0 = now()
-  local count = inServer('return TRACS_EXP_S and tostring(TRACS_EXP_S.gatherUnits()) or "0"')
-  local t1 = now()
-  inServer('TRACS_EXP_S.lastUnitsJson = TRACS_EXP_S.encode(TRACS_EXP_S.lastUnits) return "ok"')
-  local t2 = now()
-  local json = inServer('local s = TRACS_EXP_S.lastUnitsJson TRACS_EXP_S.lastUnitsJson = nil return s or "null"')
-  local t3 = now()
-  return json, {
-    units = tonumber(count) or 0,
-    gatherMs = (t1 - t0) * 1000,
-    encodeMs = (t2 - t1) * 1000,
-    marshalMs = (t3 - t2) * 1000,
+register('units', 'server', 1, function(start, full, slices)
+  local r = inServer(string.format(
+    'return TRACS_EXP_S and TRACS_EXP_S.unitsStep(%s, %s, %d) or "E"',
+    tostring(start), tostring(full), slices))
+  if r == nil or r == 'E' then error('units step failed (mission environment not bootstrapped?)') end
+  if r == '' then return nil end
+  local kind, n, changed, removed, json = r:match('^(%a)|(%d+)|(%d+)|(%d+)|(.*)$')
+  if not kind then error('unexpected units step result') end
+  return json, kind == 'F' and 'full' or 'delta', {
+    units = tonumber(n), changed = tonumber(changed), removed = tonumber(removed),
   }
-end)
+end, true)
 
 register('heartbeat', 'server', 5, function()
   return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("heartbeat") or "null"')
@@ -432,39 +488,73 @@ T.onConfig(function(cfg)
 end)
 
 -- Collectors start one tick apart so ones with the same rate don't all land
--- in the same frame.
+-- in the same frame. A sliced cycle in progress is abandoned and restarts as
+-- a full one.
 T.onResync(function()
   local t = now()
   for i, name in ipairs(C.order) do
     local c = C.registry[name]
-    c.dueAt, c.full = t + (i - 1) * TICK_INTERVAL_S, true
+    c.dueAt, c.full, c.active = t + (i - 1) * TICK_INTERVAL_S, true, false
   end
 end)
 
+local function resetCollectors()
+  C.seq = 0
+  for _, c in pairs(C.registry) do c.dueAt, c.full, c.active = 0, true, false end
+end
+
 local function sideMatches(c) return c.side == 'both' or c.side == C.side end
 
--- Runs every collector that's due. Each collector's own run time is reported
--- to the relay, which logs it - this is the measurement the gather-vs-
--- serialize question gets answered with.
+local function sendResult(c, json, kind, ms, extra)
+  C.seq = C.seq + 1
+  T.send(c.name, kind, C.seq, json)
+  local timing = { type = 'timing', group = c.name, kind = kind, ms = ms, bytes = #json }
+  if type(extra) == 'table' then for k, v in pairs(extra) do timing[k] = v end end
+  T.sendRaw(timing)
+  c.full = false
+end
+
+-- Runs every collector that's due, and one step of every sliced collector
+-- whose cycle is in progress. Timings go to the relay (logged with
+-- exporter.logTimings): for a sliced collector, ms is the whole cycle and
+-- maxStepMs the worst single frame, which is what a player feels.
 local function runCollectors()
   local t = now()
   for _, name in ipairs(C.order) do
     local c = C.registry[name]
-    if c.enabled and sideMatches(c) and t >= c.dueAt then
-      c.dueAt = t + c.rateS
-      local t0 = now()
-      local ok, json, extra = pcall(c.gather)
-      local ms = (now() - t0) * 1000
-      if ok and json then
-        C.seq = C.seq + 1
-        T.send(name, 'full', C.seq, json)
-        local timing = { type = 'timing', group = name, ms = ms, bytes = #json }
-        if type(extra) == 'table' then for k, v in pairs(extra) do timing[k] = v end end
-        T.sendRaw(timing)
-      elseif not ok then
-        err('collector ' .. name .. ' failed: ' .. tostring(json))
+    if c.enabled and sideMatches(c) and (c.active or t >= c.dueAt) then
+      if c.sliced then
+        local start = not c.active
+        if start then
+          c.active, c.dueAt, c.cycleMs, c.maxStepMs, c.steps = true, t + c.rateS, 0, 0, 0
+        end
+        -- One step short of the period, so a cycle finishes before the next is due.
+        local slices = math.max(1, math.floor(c.rateS / TICK_INTERVAL_S) - 1)
+        local t0 = now()
+        local ok, json, kind, extra = pcall(c.gather, start, c.full, slices)
+        local ms = (now() - t0) * 1000
+        c.cycleMs, c.steps = c.cycleMs + ms, c.steps + 1
+        if ms > c.maxStepMs then c.maxStepMs = ms end
+        if not ok then
+          c.active = false
+          err('collector ' .. name .. ' failed: ' .. tostring(json))
+        elseif json then
+          c.active = false
+          extra = type(extra) == 'table' and extra or {}
+          extra.maxStepMs, extra.steps = c.maxStepMs, c.steps
+          sendResult(c, json, kind, c.cycleMs, extra)
+        end
+      else
+        c.dueAt = t + c.rateS
+        local t0 = now()
+        local ok, json = pcall(c.gather)
+        local ms = (now() - t0) * 1000
+        if ok and json then
+          sendResult(c, json, 'full', ms)
+        elseif not ok then
+          err('collector ' .. name .. ' failed: ' .. tostring(json))
+        end
       end
-      c.full = false
     end
   end
 end
@@ -494,6 +584,7 @@ local callbacks = {}
 function callbacks.onMissionLoadEnd()
   local ok, e = pcall(function()
     C.side = DCS.isServer() and 'server' or 'client'
+    resetCollectors()
     T.port = tonumber(loadLocalConfig().port) or DEFAULT_PORT
     if C.side == 'server' then
       local r = inServer(SERVER_BOOTSTRAP)
@@ -528,6 +619,7 @@ end
 
 function callbacks.onSimulationStop()
   pcall(T.stop)
+  resetCollectors()
   C.side, nextEventDrain = nil, 0
   T.events, T.droppedEvents = {}, 0
 end
