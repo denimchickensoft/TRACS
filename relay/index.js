@@ -129,14 +129,14 @@ function exporterConfig(raw) {
   const cfg = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   const graceMs = Number(cfg.idleGraceMs ?? 10000)
   const bufferSize = Number(cfg.eventBufferSize ?? 2000)
-  const gcStepKb = Number(cfg.gcStepKb ?? 200)
+  const gcStepKb = Number(cfg.gcStepKb ?? 0)
   return {
     enabled:         cfg.enabled === true,
     hookPort:        port('exporter.hookPort', cfg.hookPort, process.env.EXPORTER_HOOK_PORT, 8767),
     idleGraceMs:     Number.isFinite(graceMs) && graceMs >= 0 && graceMs <= 300000 ? graceMs : 10000,
     eventBufferSize: Number.isInteger(bufferSize) && bufferSize > 0 && bufferSize <= 100000 ? bufferSize : 2000,
     logTimings:      cfg.logTimings === true,
-    gcStepKb:        Number.isInteger(gcStepKb) && gcStepKb >= 0 && gcStepKb <= 100000 ? gcStepKb : 200,
+    gcStepKb:        Number.isInteger(gcStepKb) && gcStepKb >= 0 && gcStepKb <= 100000 ? gcStepKb : 0,
     collectors:      exporterCollectors(cfg.collectors),
   }
 }

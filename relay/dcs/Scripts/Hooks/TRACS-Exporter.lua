@@ -29,9 +29,10 @@ local DEFAULT_PORT    = 8767
 -- second, the fastest rate anything in TRACS consumes.
 local TICK_INTERVAL_S = 0.1
 -- Default size of the mission-side incremental GC step per tick (KB of
--- allocation's worth of work; 0 = off). The relay's exporter.gcStepKb
--- overrides it.
-local DEFAULT_GC_STEP_KB = 200
+-- allocation's worth of work; 0 = off). Off by default: forcing the pace makes
+-- collections finish more often, and each one still ends in a pause that
+-- can't be split up. The relay's exporter.gcStepKb overrides it.
+local DEFAULT_GC_STEP_KB = 0
 local MIN_RATE_S      = 1
 local CONNECT_TIMEOUT_S = 2
 local BACKOFF_MIN_S   = 2
