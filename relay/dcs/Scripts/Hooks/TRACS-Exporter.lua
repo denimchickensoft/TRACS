@@ -492,9 +492,23 @@ function S.unitsStep(start, full, slices)
     .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|' .. births .. '|' .. relistAdded .. '|' .. json
 end
 
+local COALITION_NAMES = { [0] = 'neutral', [1] = 'red', [2] = 'blue' }
+
 S.collectors = {
   heartbeat = function()
     return { modelTime = timer.getTime(), absTime = timer.getAbsTime(), theatre = env.mission and env.mission.theatre }
+  end,
+  -- Each coalition's bullseye, keyed by coalition id as a string.
+  bullseyes = function()
+    local out = {}
+    for side = 0, 2 do
+      local p = coalition.getMainRefPoint(side)
+      if p then
+        local lat, lon = coord.LOtoLL(p)
+        out[tostring(side)] = { coalition = COALITION_NAMES[side], latitude = round(lat, 1e-6), longitude = round(lon, 1e-6) }
+      end
+    end
+    return out
   end,
 }
 
@@ -587,6 +601,11 @@ end, true)
 
 register('heartbeat', 'server', 5, function()
   return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("heartbeat") or "null"')
+end)
+
+-- Bullseyes rarely move (only when a script sets one), so a slow rate.
+register('bullseyes', 'server', 10, function()
+  return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("bullseyes") or "null"')
 end)
 
 register('heartbeat_client', 'client', 5, function()

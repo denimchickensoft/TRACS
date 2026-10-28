@@ -79,6 +79,7 @@ let linkIssue = null
 let onLinkIssue = null
 let onUnitsDelta = null
 let onMission = null
+let onBullseyes = null
 let relayUrl = null
 let password = null
 let coalition = null
@@ -140,8 +141,18 @@ function applyUnits(kind, data) {
   queueUnits(updated, removed)
 }
 
+// Bullseyes keyed by coalition id, in the shape Olympus sends:
+// { bullseyes: { '2': { coalition: 'blue', latitude, longitude }, ... } }.
+function applyBullseyes(kind, data) {
+  if (!data || typeof data !== 'object') return
+  const bullseyes = { bullseyes: data }
+  state.setBullseyes(bullseyes)
+  if (onBullseyes) onBullseyes(bullseyes)
+}
+
 const GROUP_HANDLERS = {
   units: applyUnits,
+  bullseyes: applyBullseyes,
 }
 
 function applyGroup(group, kind, data) {
@@ -300,6 +311,7 @@ function start(cfg, callbacks = {}) {
   coalition = cfg.coalition ?? null
   onUnitsDelta = callbacks.onUnitsDelta ?? null
   onMission = callbacks.onMission ?? null
+  onBullseyes = callbacks.onBullseyes ?? null
   onLinkIssue = callbacks.onLinkIssue ?? null
   linkIssue = null
   active = true
@@ -337,6 +349,7 @@ function stop() {
   }
   onUnitsDelta = null
   onMission = null
+  onBullseyes = null
   internalUnits = {}
   fogFilter = null
   friendlyCoalitionId = null
