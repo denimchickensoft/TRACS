@@ -286,7 +286,49 @@ local function encode(v)
 end
 S.encode = encode
 
+-- Every live unit, keyed by unit id as a string (numeric keys would make the
+-- encoder treat a sparse table as an array). Kept in S.lastUnits so the hook
+-- can time gathering, encoding and handing the string back separately.
+-- heading is atan2 of the unit's forward vector on the map grid, in radians;
+-- converting it to true north is the consumer's job.
+function S.gatherUnits()
+  local out, n = {}, 0
+  for side = 0, 2 do
+    for _, g in ipairs(coalition.getGroups(side) or {}) do
+      local gid, gname, gcat = g:getID(), g:getName(), g:getCategory()
+      for _, u in ipairs(g:getUnits() or {}) do
+        local ok, rec = pcall(function()
+          if not u:isExist() then return nil end
+          local pos = u:getPosition()
+          local p = pos.p
+          local lat, lon, alt = coord.LOtoLL(p)
+          local v = u:getVelocity()
+          return {
+            name = u:getName(), type = u:getTypeName(), coalition = side,
+            groupId = gid, groupName = gname, category = gcat,
+            lat = lat, lon = lon, alt = alt, agl = alt - land.getHeight({ x = p.x, y = p.z }),
+            heading = math.atan2(pos.x.z, pos.x.x),
+            vx = v.x, vy = v.y, vz = v.z,
+            inAir = u:inAir(), life = u:getLife(), life0 = u:getLife0(),
+            player = u:getPlayerName(), callsign = u:getCallsign(),
+          }
+        end)
+        if ok and rec then
+          out[tostring(u:getID())] = rec
+          n = n + 1
+        end
+      end
+    end
+  end
+  S.lastUnits = out
+  return n
+end
+
 S.collectors = {
+  units = function()
+    S.gatherUnits()
+    return S.lastUnits
+  end,
   heartbeat = function()
     return { modelTime = timer.getTime(), absTime = timer.getAbsTime(), theatre = env.mission and env.mission.theatre }
   end,
@@ -331,7 +373,8 @@ local C = {
   seq      = 0,
 }
 
--- side: 'server' | 'client' | 'both'. gather() returns JSON text or nil.
+-- side: 'server' | 'client' | 'both'. gather() returns JSON text or nil, plus
+-- an optional table of extra timing fields for the relay's log.
 local function register(name, side, defaultRateS, gather)
   C.registry[name] = { name = name, side = side, rateS = defaultRateS, enabled = true, gather = gather, dueAt = 0, full = true }
   C.order[#C.order + 1] = name
@@ -342,6 +385,30 @@ local function inServer(code)
   if ok then return result end
   return nil
 end
+
+local function profiling() return T.config ~= nil and T.config.profile == true end
+
+-- While profiling, units are fetched in three separate calls so the relay log
+-- shows gather, encode and string hand-back (dostring_in marshal) apart. The
+-- mission environment has no wall clock, so each step is timed from here.
+register('units', 'server', 1, function()
+  if not profiling() then
+    return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("units") or "null"')
+  end
+  local t0 = now()
+  local count = inServer('return TRACS_EXP_S and tostring(TRACS_EXP_S.gatherUnits()) or "0"')
+  local t1 = now()
+  inServer('TRACS_EXP_S.lastUnitsJson = TRACS_EXP_S.encode(TRACS_EXP_S.lastUnits) return "ok"')
+  local t2 = now()
+  local json = inServer('local s = TRACS_EXP_S.lastUnitsJson TRACS_EXP_S.lastUnitsJson = nil return s or "null"')
+  local t3 = now()
+  return json, {
+    units = tonumber(count) or 0,
+    gatherMs = (t1 - t0) * 1000,
+    encodeMs = (t2 - t1) * 1000,
+    marshalMs = (t3 - t2) * 1000,
+  }
+end)
 
 register('heartbeat', 'server', 5, function()
   return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("heartbeat") or "null"')
@@ -364,8 +431,14 @@ T.onConfig(function(cfg)
   end
 end)
 
+-- Collectors start one tick apart so ones with the same rate don't all land
+-- in the same frame.
 T.onResync(function()
-  for _, c in pairs(C.registry) do c.dueAt, c.full = 0, true end
+  local t = now()
+  for i, name in ipairs(C.order) do
+    local c = C.registry[name]
+    c.dueAt, c.full = t + (i - 1) * TICK_INTERVAL_S, true
+  end
 end)
 
 local function sideMatches(c) return c.side == 'both' or c.side == C.side end
@@ -380,12 +453,14 @@ local function runCollectors()
     if c.enabled and sideMatches(c) and t >= c.dueAt then
       c.dueAt = t + c.rateS
       local t0 = now()
-      local ok, json = pcall(c.gather)
+      local ok, json, extra = pcall(c.gather)
       local ms = (now() - t0) * 1000
       if ok and json then
         C.seq = C.seq + 1
         T.send(name, 'full', C.seq, json)
-        T.sendRaw({ type = 'timing', group = name, ms = ms, bytes = #json })
+        local timing = { type = 'timing', group = name, ms = ms, bytes = #json }
+        if type(extra) == 'table' then for k, v in pairs(extra) do timing[k] = v end end
+        T.sendRaw(timing)
       elseif not ok then
         err('collector ' .. name .. ' failed: ' .. tostring(json))
       end

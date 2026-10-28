@@ -42,3 +42,10 @@ describe('splitLines', () => {
     expect(splitLines('', '\n\n{"a":1}\n')).toEqual({ lines: ['{"a":1}'], rest: '' })
   })
 })
+
+describe('formatTiming', () => {
+  test('lists numeric fields after the group', () => {
+    const line = exporter.formatTiming({ type: 'timing', group: 'units', ms: 12.345, bytes: 2048, gatherMs: 9.5, note: 'x' })
+    expect(line).toBe('units: ms=12.35 bytes=2048 gatherMs=9.50')
+  })
+})

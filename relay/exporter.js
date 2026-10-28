@@ -46,6 +46,15 @@ function applyGroupMessage(groups, msg) {
   return true
 }
 
+// One timing line: the group, then every other numeric field the hook sent
+// (ms and bytes always; per-step fields like gatherMs while profiling).
+function formatTiming(msg) {
+  const fields = Object.entries(msg)
+    .filter(([k, v]) => k !== 'type' && k !== 'group' && typeof v === 'number')
+    .map(([k, v]) => `${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`)
+  return `${msg.group}: ${fields.join(' ')}`
+}
+
 // Splits a TCP stream into lines; returns the complete lines and the
 // unfinished remainder.
 function splitLines(buffer, chunk) {
@@ -112,7 +121,7 @@ function createExporter(wss, config) {
         broadcast({ type: 'exporterEvents', events: Array.isArray(msg.events) ? msg.events : [], dropped: msg.dropped ?? 0 })
         break
       case 'timing':
-        if (cfg.logTimings) console.log(`[relay:exporter] ${msg.group}: ${Number(msg.ms).toFixed(2)} ms, ${msg.bytes} bytes`)
+        if (cfg.logTimings) console.log(`[relay:exporter] timing ${formatTiming(msg)}`)
         break
     }
   }
@@ -126,7 +135,9 @@ function createExporter(wss, config) {
     socket.setEncoding('utf8')
     socket.setNoDelay(true)
 
-    sendToHook({ type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize })
+    // profile asks the hook for its per-step timing breakdown (extra
+    // mission-env calls), so it's tied to logTimings.
+    sendToHook({ type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize, profile: cfg.logTimings })
     if (subscribers.size > 0) setAwake(true)
 
     socket.on('data', (chunk) => {
@@ -209,4 +220,4 @@ function createExporter(wss, config) {
   return { stop }
 }
 
-module.exports = { createExporter, applyGroupMessage, splitLines, HOOK_PROTOCOL }
+module.exports = { createExporter, applyGroupMessage, splitLines, formatTiming, HOOK_PROTOCOL }
