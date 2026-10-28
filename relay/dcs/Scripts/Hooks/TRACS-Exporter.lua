@@ -308,21 +308,47 @@ S.encode = encode
 -- Each unit's record is kept between cycles and updated in place, and only
 -- units whose rounded record changed since the last cycle are encoded; units
 -- gone since then (or no longer active) are sent as null. A full cycle (first
--- one, or after a resync) encodes every unit. Keeping records, and reading
--- fields that never change only once, keeps the garbage this state has to
--- collect down.
+-- one, or after a resync) encodes every unit.
+-- Everything here is shaped by the garbage this state has to collect, which
+-- ends in a pause the player can feel:
+-- * The unit list comes from birth events, with the groups re-listed only
+--   every RELIST_CYCLES cycles (and on a full cycle) to catch anything missed.
+-- * Fields that never change are read once.
+-- * A unit that was on the ground and not moving only has its position
+--   checked (one getPoint); the full read happens when it has moved, and
+--   at least every FULL_READ_CYCLES cycles, which catches turning in place.
 -- Records are keyed by unit id as a string (numeric keys would make the
 -- encoder treat a sparse table as an array). heading is atan2 of the unit's
 -- forward vector on the map grid, in radians; converting it to true north is
 -- the consumer's job.
 
+local RELIST_CYCLES = 30
+local FULL_READ_CYCLES = 10
+
 local function round(x, step) return math.floor(x / step + 0.5) * step end
 
--- Per unit, by numeric id: { id = string id, rec = record, seen = cycle }.
+-- Every known unit, by numeric id: its object and group details, plus, once
+-- it's been active, its record (rec) and the cycle it was last seen in.
 S.units = {}
 S.cycle = 0
 S.lastUnitCount = 0
+S.births, S.relistAdded = 0, 0
 local heightArg = { x = 0, y = 0 }
+
+-- Adds a unit to the list if it isn't there yet. Returns the new entry.
+local function addUnit(u, side, g)
+  local nid = u:getID()
+  if S.units[nid] then return nil end
+  local e = { u = u, side = side, gid = g:getID(), gname = g:getName(), gcat = g:getCategory() }
+  S.units[nid] = e
+  return e
+end
+
+-- Birth events add units spawned after the mission started.
+function S.onBirth(u)
+  if Object.getCategory(u) ~= Object.Category.UNIT then return end
+  if addUnit(u, u:getCoalition(), u:getGroup()) then S.births = S.births + 1 end
+end
 
 -- Sets rec[k] = v and reports whether that changed it.
 local function put(rec, k, v)
@@ -331,23 +357,29 @@ local function put(rec, k, v)
   return true
 end
 
--- Refreshes a unit's record in place. Returns its entry and whether the
--- record changed, or nil if the unit is gone or not activated yet.
-local function updateUnit(u, ge)
-  if not u:isExist() or not u:isActive() then return nil end
-  local nid = u:getID()
-  local e = S.units[nid]
-  local changed = false
-  if not e then
-    e = { id = tostring(nid), rec = {
-      name = u:getName(), type = u:getTypeName(), coalition = ge.side,
-      groupId = ge.gid, groupName = ge.gname, category = ge.gcat,
+-- Refreshes a unit's record in place. Returns whether the record changed,
+-- or nil if the unit isn't active (e.gone set if it no longer exists).
+local function updateUnit(e)
+  local u = e.u
+  if not u:isExist() then e.gone = true return nil end
+  if not u:isActive() then return nil end
+  local rec, changed = e.rec, false
+  if not rec then
+    rec = {
+      name = u:getName(), type = u:getTypeName(), coalition = e.side,
+      groupId = e.gid, groupName = e.gname, category = e.gcat,
       life0 = u:getLife0(), callsign = u:getCallsign(),
-    } }
-    S.units[nid] = e
-    changed = true
+    }
+    e.rec, e.id, e.still, changed = rec, tostring(u:getID()), false, true
   end
-  local rec = e.rec
+  if e.still and S.cycle - e.fullAt < FULL_READ_CYCLES then
+    local p = u:getPoint()
+    if round(p.x, 0.1) == e.px and round(p.y, 0.1) == e.py and round(p.z, 0.1) == e.pz then
+      changed = put(rec, 'life', u:getLife()) or changed
+      changed = put(rec, 'player', u:getPlayerName()) or changed
+      return changed
+    end
+  end
   local pos = u:getPosition()
   local p = pos.p
   local lat, lon, alt = coord.LOtoLL(p)
@@ -365,77 +397,98 @@ local function updateUnit(u, ge)
   changed = put(rec, 'inAir', u:inAir()) or changed
   changed = put(rec, 'life', u:getLife()) or changed
   changed = put(rec, 'player', u:getPlayerName()) or changed
-  return e, changed
+  e.px, e.py, e.pz = round(p.x, 0.1), round(p.y, 0.1), round(p.z, 0.1)
+  e.still = not rec.inAir and rec.vx == 0 and rec.vy == 0 and rec.vz == 0
+  e.fullAt = S.cycle
+  return changed
 end
 
 -- start: begin a new cycle (full = encode every unit), spread over `slices`
 -- calls. Every call reports the heap size before and after it (KB). Returns
 -- 'P|kbBefore|kbAfter' while the cycle is still running, then
--- '<F|D>|kbBefore|kbAfter|units|changed|removed|' followed by the JSON object.
+-- '<F|D>|kbBefore|kbAfter|units|changed|removed|births|relistAdded|'
+-- followed by the JSON object.
 function S.unitsStep(start, full, slices)
   local kb0 = heapKb()
+  slices = math.max(1, slices)
   if start or not S.uc then
     S.cycle = S.cycle + 1
-    local groups = {}
-    for side = 0, 2 do
-      for _, g in ipairs(coalition.getGroups(side) or {}) do
-        groups[#groups + 1] = { g = g, side = side }
-      end
-    end
-    S.uc = {
-      groups = groups, gi = 1, ui = 1, full = full, parts = {},
-      n = 0, changed = 0,
-      perStep = math.max(50, math.ceil(S.lastUnitCount / math.max(1, slices))),
-    }
-  end
-  local uc = S.uc
-  local done = 0
-  while done < uc.perStep do
-    local ge = uc.groups[uc.gi]
-    if not ge then break end
-    if not ge.units then
-      local ok = pcall(function()
-        if not ge.g:isExist() then return end
-        ge.gid, ge.gname, ge.gcat = ge.g:getID(), ge.g:getName(), ge.g:getCategory()
-        ge.units = ge.g:getUnits()
-      end)
-      if not ok or not ge.units then ge.units = {} end
-    end
-    local u = ge.units[uc.ui]
-    if not u then
-      uc.gi, uc.ui = uc.gi + 1, 1
-    else
-      uc.ui = uc.ui + 1
-      done = done + 1
-      local ok, e, changed = pcall(updateUnit, u, ge)
-      if ok and e then
-        e.seen = S.cycle
-        uc.n = uc.n + 1
-        if uc.full or changed then
-          uc.parts[#uc.parts + 1] = encode(e.id) .. ':' .. encode(e.rec)
-          uc.changed = uc.changed + 1
+    local list = {}
+    for _, e in pairs(S.units) do list[#list + 1] = e end
+    local groups
+    if full or S.cycle % RELIST_CYCLES == 1 then
+      groups = {}
+      for side = 0, 2 do
+        for _, g in ipairs(coalition.getGroups(side) or {}) do
+          groups[#groups + 1] = { g = g, side = side }
         end
       end
     end
+    S.uc = {
+      list = list, li = 1, groups = groups, gi = 1, full = full, parts = {},
+      n = 0, changed = 0,
+      perStep = math.max(50, math.ceil(S.lastUnitCount / slices)),
+      groupsPerStep = groups and math.max(10, math.ceil(#groups / slices)) or 0,
+    }
   end
-  if uc.groups[uc.gi] then return 'P|' .. kb0 .. '|' .. heapKb() end
+  local uc = S.uc
 
-  -- Units not seen this cycle are gone; a full cycle replaces everything, so
-  -- only a delta needs to name them.
+  -- Re-listing, a slice of groups per step: units not known yet are added,
+  -- and appended to this cycle's list.
+  if uc.groups then
+    local last = math.min(#uc.groups, uc.gi + uc.groupsPerStep - 1)
+    for i = uc.gi, last do
+      local ge = uc.groups[i]
+      pcall(function()
+        if not ge.g:isExist() then return end
+        for _, u in ipairs(ge.g:getUnits() or {}) do
+          local e = addUnit(u, ge.side, ge.g)
+          if e then
+            uc.list[#uc.list + 1] = e
+            if S.cycle > 1 then S.relistAdded = S.relistAdded + 1 end
+          end
+        end
+      end)
+    end
+    uc.gi = last + 1
+    if uc.gi > #uc.groups then uc.groups = nil end
+  end
+
+  local done = 0
+  while done < uc.perStep and uc.list[uc.li] do
+    local e = uc.list[uc.li]
+    uc.li, done = uc.li + 1, done + 1
+    local ok, changed = pcall(updateUnit, e)
+    if ok and changed ~= nil then
+      e.seen = S.cycle
+      uc.n = uc.n + 1
+      if uc.full or changed then
+        uc.parts[#uc.parts + 1] = encode(e.id) .. ':' .. encode(e.rec)
+        uc.changed = uc.changed + 1
+      end
+    end
+  end
+  if uc.groups or uc.list[uc.li] then return 'P|' .. kb0 .. '|' .. heapKb() end
+
+  -- Records not seen this cycle are gone or inactive; a full cycle replaces
+  -- everything, so only a delta needs to name them. Units that no longer
+  -- exist leave the list.
   local removed = 0
   for nid, e in pairs(S.units) do
-    if e.seen ~= S.cycle then
+    if e.rec and e.seen ~= S.cycle then
       if not uc.full then
         uc.parts[#uc.parts + 1] = encode(e.id) .. ':null'
         removed = removed + 1
       end
-      S.units[nid] = nil
+      e.rec = nil
     end
+    if e.gone then S.units[nid] = nil end
   end
-  S.lastUnitCount, S.uc = uc.n, nil
+  local births, relistAdded = S.births, S.relistAdded
+  S.lastUnitCount, S.uc, S.births, S.relistAdded = uc.n, nil, 0, 0
   local json = '{' .. table.concat(uc.parts, ',') .. '}'
   return (uc.full and 'F' or 'D') .. '|' .. kb0 .. '|' .. heapKb() .. '|'
-    .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|' .. json
+    .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|' .. births .. '|' .. relistAdded .. '|' .. json
 end
 
 S.collectors = {
@@ -459,6 +512,7 @@ S.eventHandler = {}
 function S.eventHandler:onEvent(e)
   local rec = { id = e.id, time = e.time }
   pcall(function() if e.initiator then rec.initiator = e.initiator:getName() end end)
+  if e.id == world.event.S_EVENT_BIRTH and e.initiator then pcall(S.onBirth, e.initiator) end
   S.events[#S.events + 1] = rec
   while #S.events > S.eventCap do table.remove(S.events, 1) end
 end
@@ -519,10 +573,14 @@ register('units', 'server', 1, function(start, full, slices)
   if r == nil or r == 'E' then error('units step failed (mission environment not bootstrapped?)') end
   local p0, p1 = r:match('^P|(%-?%d+)|(%-?%d+)$')
   if p0 then return nil, nil, nil, { tonumber(p0), tonumber(p1) } end
-  local kind, k0, k1, n, changed, removed, json = r:match('^(%a)|(%-?%d+)|(%-?%d+)|(%d+)|(%d+)|(%d+)|(.*)$')
+  local kind, k0, k1, n, changed, removed, births, relistAdded, json =
+    r:match('^(%a)|(%-?%d+)|(%-?%d+)|(%d+)|(%d+)|(%d+)|(%d+)|(%d+)|(.*)$')
   if not kind then error('unexpected units step result') end
+  -- relistAdded: units the periodic re-list found that no birth event had
+  -- added, i.e. births the event handler missed.
   return json, kind == 'F' and 'full' or 'delta', {
     units = tonumber(n), changed = tonumber(changed), removed = tonumber(removed),
+    births = tonumber(births), relistAdded = tonumber(relistAdded),
   }, { tonumber(k0), tonumber(k1) }
 end, true)
 
