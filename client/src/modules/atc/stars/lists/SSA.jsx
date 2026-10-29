@@ -21,7 +21,7 @@ function formatMissionTime(totalSeconds) {
 
 // One SSA weather line's wind and altimeter: the manual entry where there
 // is one, else the DCS exporter's live weather; '' where neither exists.
-// Wind is magnetic at the field.
+// Wind is magnetic at the field, shown as 'DDDSS'.
 function fieldWeather(airfield, manualWind, missionDate, metric) {
   const declination = airfield ? computeMagvar(airfield.latitude ?? 0, airfield.longitude ?? 0, missionDate ?? undefined) : 0
   return {
@@ -66,7 +66,7 @@ export function SSA() {
   const wxLines = (wxFields ?? []).map((icao) => {
     const name = icaoToAirbaseName(icaoMapping, theatre, icao)
     const wx = fieldWeather(name ? findAirfieldWeather(weather, { callsign: name }) : null, windManual?.[icao], missionDate, metric)
-    return joinParts(icao, wx.wind, wx.alt)
+    return joinParts(icao, wx.alt, wx.wind)
   })
 
   const statusBase = connected ? 'OK/OK/NA' : 'NA/NA/NA'
@@ -88,7 +88,7 @@ export function SSA() {
     statusLine,
     `${formatDistance(rangeNm, unitSystem)} PTL: ${Number(ptlLength).toFixed(1)}`,
     altFilterLine,
-    joinParts(facilityId || '----', facilityWx.wind, qnhStr),
+    joinParts(facilityId || '----', qnhStr, facilityWx.wind),
     ...wxLines,
   ]
 

@@ -3,8 +3,8 @@ import { isValidTime } from './statusBoardColumns.js'
 import { normalizeWind } from '../../utils/liveWeather.js'
 
 // ── Inline-editable header field ──────────────────────────────────────────────
-// windFormat: typed as digits into a DDD/SS mask (slash added after the
-// direction); an entry that isn't a valid wind is dropped.
+// windFormat: a wind typed as DDDSS digits; an entry that isn't a valid wind
+// is dropped, a valid one is rounded to the nearest 10 degrees.
 export function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, padZero = 0, timeValidate = false, flash = false, auto = false, windFormat = false, hdrIdx }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
@@ -30,10 +30,7 @@ export function HeaderField({ label, value, onChange, inputW = 40, readOnly = fa
   const handleChange = (e) => {
     let v = e.target.value.toUpperCase()
     if (digitsOnly) v = v.replace(/\D/g, '')
-    if (windFormat) {
-      const digits = v.replace(/\D/g, '').slice(0, 5)
-      v = digits.length > 3 ? `${digits.slice(0, 3)}/${digits.slice(3)}` : digits
-    }
+    if (windFormat) v = v.replace(/\D/g, '').slice(0, 6)
     setDraft(v)
   }
 
@@ -74,7 +71,7 @@ export function HeaderField({ label, value, onChange, inputW = 40, readOnly = fa
           data-sbhdridx={readOnly ? undefined : hdrIdx}
           onClick={start}
         >
-          {value || (windFormat ? '---/--' : '——')}
+          {value || (windFormat ? '-----' : '——')}
         </span>
       )}
     </div>

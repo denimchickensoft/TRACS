@@ -38,23 +38,28 @@ describe('altimeter formats', () => {
 
 describe('winds', () => {
   test('formatWind: magnetic, nearest 10 degrees, knots, 360 for north, calm', () => {
-    expect(formatWind({ fromDeg: 245, speedMs: 6.17 }, 5)).toBe('240/12')
-    expect(formatWind({ fromDeg: 3, speedMs: 5 }, 0)).toBe('360/10')
-    expect(formatWind({ fromDeg: 90, speedMs: 0.1 }, 0)).toBe('000/00')
+    expect(formatWind({ fromDeg: 245, speedMs: 6.17 }, 5)).toBe('24012')
+    expect(formatWind({ fromDeg: 3, speedMs: 5 }, 0)).toBe('36010')
+    expect(formatWind({ fromDeg: 90, speedMs: 0.1 }, 0)).toBe('00000')
     expect(formatWind(null)).toBe('')
   })
 
   test('normalizeWind pads and validates typed winds', () => {
-    expect(normalizeWind('270/6')).toBe('270/06')
-    expect(normalizeWind('90/15')).toBe('090/15')
+    expect(normalizeWind('270/6')).toBe('27006')
+    expect(normalizeWind('90/15')).toBe('09015')
+    expect(normalizeWind('274/6')).toBe('27006')
+    expect(normalizeWind('3/5')).toBe('36005')
+    expect(normalizeWind('120/0')).toBe('00000')
+    expect(normalizeWind('27406')).toBe('27006')
+    expect(normalizeWind('2741')).toBeNull()
     expect(normalizeWind('361/10')).toBeNull()
     expect(normalizeWind('27')).toBeNull()
   })
 
   test('deckWindKt: carrier speed plus the headwind along the BRC', () => {
-    expect(deckWindKt('090/10', 90, 20)).toBeCloseTo(30)
-    expect(deckWindKt('270/10', 90, 20)).toBeCloseTo(10)
-    expect(deckWindKt('000/10', 90, 20)).toBeCloseTo(20)
+    expect(deckWindKt('09010', 90, 20)).toBeCloseTo(30)
+    expect(deckWindKt('27010', 90, 20)).toBeCloseTo(10)
+    expect(deckWindKt('00010', 90, 20)).toBeCloseTo(20)
     expect(deckWindKt('', 90, 20)).toBeNull()
   })
 

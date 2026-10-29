@@ -115,9 +115,9 @@ const COMMANDS = [
   { id: 'SET_ALTIM',            pattern: /^\.(?:ALTIM|QNH)(?: (\d+(?:\.\d+)?))?$/, trigger: 'ENTER', captures: ['value'] },
   // .WX ICAO adds a field's wind/altimeter line to the SSA; bare .WX clears them.
   { id: 'SET_WX',               pattern: /^\.WX(?: ([A-Z0-9]{3,4}))?$/, trigger: 'ENTER', captures: ['icao'] },
-  // .WIND [ICAO] DDD/SS sets a manual wind (the facility's without ICAO);
+  // .WIND [ICAO] DDD/SS or DDDSS sets a manual wind (the facility's without ICAO);
   // without a wind it deletes it.
-  { id: 'SET_WIND',             pattern: /^\.WIND(?: ([A-Z0-9]{3,4}))?(?: (\d{1,3}\/\d{1,3}))?$/, trigger: 'ENTER', captures: ['icao', 'wind'] },
+  { id: 'SET_WIND',             pattern: /^\.WIND(?: ([A-Z0-9]{3,4}))?(?: (\d{1,3}\/\d{1,3}|\d{5,6}))?$/, trigger: 'ENTER', captures: ['icao', 'wind'] },
   { id: 'SET_ASP_COLORS',       pattern: /^\.ASPCOLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
   { id: 'REFRESH_ASP_COLORS',  pattern: /^\.REFRESH$/,           trigger: 'ENTER' },
   { id: 'TOGGLE_DBCA',          pattern: /^\.DBCA$/,              trigger: 'ENTER' },

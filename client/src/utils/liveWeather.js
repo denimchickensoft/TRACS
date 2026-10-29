@@ -43,35 +43,40 @@ export function catccQnh(qnhHpa) {
 
 const pad = (n, len) => String(n).padStart(len, '0')
 
-// Controller wind text, 'DDD/SS': magnetic direction the wind blows from to
-// the nearest 10 degrees (360 for north), speed in knots; '000/00' when
-// calm. '' without a wind.
+// Controller wind text, 'DDDSS' ('36005'): magnetic direction the wind
+// blows from to the nearest 10 degrees (360 for north), speed in knots;
+// '00000' when calm. '' without a wind.
 export function formatWind(wind, declinationDeg = 0) {
   if (!wind || typeof wind.speedMs !== 'number' || typeof wind.fromDeg !== 'number') return ''
   const kt = Math.round(wind.speedMs * MS_TO_KT)
-  if (kt === 0) return '000/00'
+  if (kt === 0) return '00000'
   let dir = Math.round(toMagneticFromTrue(wind.fromDeg, declinationDeg) / 10) * 10
   if (dir === 0) dir = 360
-  return `${pad(dir, 3)}/${pad(kt, 2)}`
+  return `${pad(dir, 3)}${pad(kt, 2)}`
 }
 
-// A typed wind ('270/6', '270/06', '0/0') as 'DDD/SS', or null if it isn't
-// one: direction 0-360, speed 0-199 kt.
+// A typed wind ('270/6', '274/06', '27406') as 'DDDSS', or null if it
+// isn't one: direction 0-360, rounded to the nearest 10 degrees like a live
+// wind (360 for north, '00000' when calm), speed 0-199 kt.
 export function normalizeWind(text) {
-  const m = /^(\d{1,3})\/(\d{1,3})$/.exec(String(text ?? '').trim())
+  const t = String(text ?? '').trim()
+  const m = /^(\d{1,3})\/(\d{1,3})$/.exec(t) ?? /^(\d{3})(\d{2,3})$/.exec(t)
   if (!m) return null
-  const dir = Number(m[1])
   const kt = Number(m[2])
-  if (dir > 360 || kt > 199) return null
-  return `${pad(dir, 3)}/${pad(kt, 2)}`
+  if (Number(m[1]) > 360 || kt > 199) return null
+  if (kt === 0) return '00000'
+  let dir = Math.round(Number(m[1]) / 10) * 10
+  if (dir === 0) dir = 360
+  return `${pad(dir, 3)}${pad(kt, 2)}`
 }
 
 // Headwind along the carrier's BRC in knots: its own speed plus the wind's
 // component along the bow (negative for a tailwind). windText is the board's
-// 'DDD/SS' (magnetic, knots), brcDeg magnetic. null without a usable wind.
+// 'DDDSS' (magnetic, knots), brcDeg magnetic. null without a usable wind.
 export function deckWindKt(windText, brcDeg, carrierKt) {
   const wind = normalizeWind(windText)
   if (!wind || typeof brcDeg !== 'number' || typeof carrierKt !== 'number') return null
-  const [dir, kt] = wind.split('/').map(Number)
+  const dir = Number(wind.slice(0, 3))
+  const kt = Number(wind.slice(3))
   return carrierKt + kt * Math.cos((dir - brcDeg) * Math.PI / 180)
 }

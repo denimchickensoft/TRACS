@@ -113,6 +113,8 @@ describe('STARS parseCommand', () => {
     expect(parseCommand('.WX', 'ENTER')).toMatchObject({ command: { id: 'SET_WX' }, captures: { icao: undefined } })
     expect(parseCommand('.WIND 270/6', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: undefined, wind: '270/6' } })
     expect(parseCommand('.WIND UGKO 270/6', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: 'UGKO', wind: '270/6' } })
+    expect(parseCommand('.WIND UGKO 27006', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: 'UGKO', wind: '27006' } })
+    expect(parseCommand('.WIND 27006', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: undefined, wind: '27006' } })
     expect(parseCommand('.WIND UGKO', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: 'UGKO', wind: undefined } })
     expect(idOf('.LBL', 'ENTER')).toBe('TOGGLE_LABELS')
     expect(idOf('.FILL', 'ENTER')).toBe('TOGGLE_FILL')
