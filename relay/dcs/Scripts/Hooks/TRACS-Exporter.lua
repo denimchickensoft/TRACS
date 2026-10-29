@@ -494,10 +494,10 @@ end
 
 -- Contacts: which enemy units each coalition's units detect, from DCS itself,
 -- gathered a slice of the unit list per tick like units. Every red and blue
--- unit whose type has sensors (checked once per type) is asked for its
--- detected targets once per detection method, as Olympus does. Only enemy
--- units are kept (TRACS always shows friendlies and neutrals), merged per
--- coalition into one flat map: '<coalition>:<target unit id>' -> the sum of
+-- unit (or, with sensorUnitsOnly, only those whose type has sensors, checked
+-- once per type) is asked for its detected targets once per detection
+-- method, as Olympus does. Targets on the detector's own side are dropped;
+-- the rest are merged per coalition into one flat map: '<coalition>:<target unit id>' -> the sum of
 -- the method bits that found it (VISUAL 1, OPTIC 2, RADAR 4, IRST 8, RWR 16,
 -- DLINK 32, Olympus's values). Flat, so the relay's one-level delta merge
 -- works. Needs the units collector, whose records mark the active units.
@@ -532,7 +532,7 @@ local function detectInto(e, acc)
         local obj = tgt and tgt.visible and tgt.object
         if obj and Object.getCategory(obj) == Object.Category.UNIT then
           local side = obj:getCoalition()
-          if side ~= e.side and side ~= 0 then
+          if side ~= e.side then
             local key = e.side .. ':' .. obj:getID()
             local m = acc[key] or 0
             if not hasBit(m, bit) then acc[key] = m + bit end
@@ -546,7 +546,7 @@ end
 -- Same calling pattern as unitsStep. Returns 'P|kbBefore|kbAfter' while
 -- running, then '<F|D>|kbBefore|kbAfter|detectors|entries|changed|' and the
 -- JSON object (a delta names changed entries, and lost ones as null).
-function S.contactsStep(start, full, slices)
+function S.contactsStep(start, full, slices, sensorUnitsOnly)
   local kb0 = heapKb()
   slices = math.max(1, slices)
   if start or not S.cc then
@@ -562,7 +562,7 @@ function S.contactsStep(start, full, slices)
   while done < cc.perStep and cc.list[cc.li] do
     local e = cc.list[cc.li]
     cc.li, done = cc.li + 1, done + 1
-    if e.rec and not e.gone and hasSensors(e) then
+    if e.rec and not e.gone and (not sensorUnitsOnly or hasSensors(e)) then
       cc.detectors = cc.detectors + 1
       pcall(detectInto, e, cc.acc)
     end
@@ -723,8 +723,8 @@ end, true)
 
 register('contacts', 'server', 2, function(start, full, slices)
   local r = inServer(string.format(
-    'return TRACS_EXP_S and TRACS_EXP_S.contactsStep(%s, %s, %d) or "E"',
-    tostring(start), tostring(full), slices))
+    'return TRACS_EXP_S and TRACS_EXP_S.contactsStep(%s, %s, %d, %s) or "E"',
+    tostring(start), tostring(full), slices, tostring(C.registry.contacts.sensorUnitsOnly == true)))
   if r == nil or r == 'E' then error('contacts step failed (mission environment not bootstrapped?)') end
   local p0, p1 = r:match('^P|(%-?%d+)|(%-?%d+)$')
   if p0 then return nil, nil, nil, { tonumber(p0), tonumber(p1) } end
@@ -773,6 +773,7 @@ T.onConfig(function(cfg)
     if type(s) == 'table' then
       if s.enabled ~= nil then c.enabled = s.enabled and true or false end
       if type(s.rateSec) == 'number' and s.rateSec > 0 then c.rateS = math.max(s.rateSec, MIN_RATE_S) end
+      if s.sensorUnitsOnly ~= nil then c.sensorUnitsOnly = s.sensorUnitsOnly == true end
     end
   end
 end)

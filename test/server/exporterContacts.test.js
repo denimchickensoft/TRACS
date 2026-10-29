@@ -39,6 +39,14 @@ describe('createRealContactsFilter', () => {
     expect(filter.filterFrameUpdate({ '10': units['10'], '1': units['1'] })).toEqual({ '1': units['1'] })
   })
 
+  it('exposes a neutral aircraft on radar like an enemy', () => {
+    const withNeutral = { ...units, '20': { coalition: 0, category: 'Aircraft', position: { lat: 0, lng: 0 } } }
+    const filter = createRealContactsFilter(2)
+    const { contactsUpdate, revealed } = filter.computeVisibility(withNeutral, { '2:20': 4 })
+    expect(contactsUpdate['1'].contacts).toEqual([{ ID: 20, detectionMethod: 4 }])
+    expect(Object.keys(revealed)).toEqual(['20'])
+  })
+
   it('hides previously exposed enemies the contacts no longer show', () => {
     const filter = createRealContactsFilter(2, ['10', '11'])
     const { revealed, hidden } = filter.computeVisibility(units, { '2:11': 4 })

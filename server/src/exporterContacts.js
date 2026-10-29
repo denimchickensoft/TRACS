@@ -6,7 +6,8 @@
 //
 // The hook sends one flat map, '<coalition>:<target unit id>' -> the sum of
 // the detection method bits (Olympus's values) that coalition's units found
-// it by. The client only asks whether some friendly unit's contacts name a
+// it by, for every target not on that coalition's side (neutrals included:
+// they reach a coalition controller only once detected, as enemies do). The client only asks whether some friendly unit's contacts name a
 // target and by which method, not which unit saw it, so each coalition's
 // contacts all go on one friendly "anchor" unit, as the omniscient fog-of-war
 // mode does (tacviewDetection.js's pickAnchorUnitId).
