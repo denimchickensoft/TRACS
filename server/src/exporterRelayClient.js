@@ -21,6 +21,7 @@ const { PROTOCOL_VERSION } = require('./protocolVersion')
 const state = require('./state')
 const elevation = require('./elevation')
 const tacviewDetection = require('./tacviewDetection')
+const exporterContacts = require('./exporterContacts')
 const rateConfig = require('./rateConfig')
 const { identifiedError, createDeltaBuffer } = require('./tacviewShared')
 
@@ -115,6 +116,14 @@ let fogFilter = null
 // tacviewDetection.js's createAllSidesDetector.
 let allSidesDetector = null
 let friendlyCoalitionId = null
+// Real DCS contacts (a server-side hook's contacts group), see
+// exporterContacts.js. Until the first one arrives, contacts and exposure
+// come from the modelled detection above; after it, from these alone.
+let contactMasks = null
+let realFilter = null
+let realAllSides = null
+// Units whose modelled contacts the next pass clears after the switch.
+let staleContactIds = []
 
 const unitsBuffer = createDeltaBuffer({
   applyFn: (d) => { elevation.enrichTerrainAhead(d.updated, state.getUnit); state.applyDelta(d) },
@@ -126,10 +135,11 @@ const unitsBuffer = createDeltaBuffer({
 // a coalition controller sees nothing new until the relay's config has
 // created the filter, rather than the unfiltered feed.
 function queueUnits(updated, removed) {
+  const filter = realFilter ?? fogFilter
   const publicUpdated = friendlyCoalitionId === null
     ? updated
-    : fogFilter ? fogFilter.filterFrameUpdate(updated) : {}
-  for (const id of removed) fogFilter?.forget(id)
+    : filter ? filter.filterFrameUpdate(updated) : {}
+  for (const id of removed) filter?.forget(id)
   if (Object.keys(publicUpdated).length || removed.length) unitsBuffer.queue(publicUpdated, removed)
 }
 
@@ -196,11 +206,35 @@ function publishAirbases(airbases) {
   if (onAirbases) onAirbases(airbases)
 }
 
+// The first contacts message switches from modelled to real contacts: the
+// modelled lists are cleared, and every enemy the model had exposed is hidden
+// unless the real contacts show it.
+function switchToRealContacts() {
+  staleContactIds = Object.keys(internalUnits).filter((id) => {
+    const c = internalUnits[id].coalition
+    return friendlyCoalitionId === null ? c === 1 || c === 2 : c === friendlyCoalitionId
+  })
+  if (friendlyCoalitionId === null) {
+    realAllSides = exporterContacts.createRealAllSidesDetector()
+  } else {
+    const enemies = Object.keys(internalUnits).filter((id) => internalUnits[id].coalition !== friendlyCoalitionId)
+    realFilter = exporterContacts.createRealContactsFilter(friendlyCoalitionId, enemies)
+  }
+}
+
+function applyContacts(kind, data) {
+  const first = contactMasks === null
+  contactMasks = exporterContacts.applyContactsMessage(contactMasks, kind, data)
+  if (first) switchToRealContacts()
+  runDetectionPass()
+}
+
 const GROUP_HANDLERS = {
   units: applyUnits,
   bullseyes: applyBullseyes,
   clock: applyClock,
   airbases: applyAirbases,
+  contacts: applyContacts,
 }
 
 function applyGroup(group, kind, data) {
@@ -229,11 +263,40 @@ function clearUnits() {
   if (Object.keys(state.getAirbases()?.airbases ?? {}).length) publishAirbases({ airbases: {} })
   if (fogFilter) fogFilter = tacviewDetection.createFogFilter(friendlyCoalitionId)
   if (allSidesDetector) allSidesDetector = tacviewDetection.createAllSidesDetector()
+  resetRealContacts()
   if (removed.length) unitsBuffer.queue({}, removed)
+}
+
+// The next hook may be a client-side one, which sends no contacts.
+function resetRealContacts() {
+  contactMasks = null
+  realFilter = null
+  realAllSides = null
+  staleContactIds = []
+}
+
+function runRealContactsPass() {
+  const cleared = {}
+  for (const id of staleContactIds) if (internalUnits[id]) cleared[id] = { contacts: [] }
+  staleContactIds = []
+  if (realAllSides) {
+    const contactsUpdate = { ...cleared, ...realAllSides.computeContacts(internalUnits, contactMasks) }
+    if (Object.keys(contactsUpdate).length) unitsBuffer.queue(contactsUpdate, [])
+    return
+  }
+  if (!realFilter) return
+  const { contactsUpdate, revealed, hidden } = realFilter.computeVisibility(internalUnits, contactMasks)
+  const updated = { ...cleared, ...contactsUpdate, ...revealed }
+  if (Object.keys(updated).length === 0 && hidden.length === 0) return
+  unitsBuffer.queue(updated, hidden)
 }
 
 function runDetectionPass() {
   if (!isConnected()) return
+  if (contactMasks) {
+    runRealContactsPass()
+    return
+  }
   if (allSidesDetector) {
     const contactsUpdate = allSidesDetector.computeContacts(internalUnits)
     if (Object.keys(contactsUpdate).length) unitsBuffer.queue(contactsUpdate, [])
@@ -383,6 +446,7 @@ function start(cfg, callbacks = {}) {
   friendlyCoalitionId = tacviewDetection.coalitionId(cfg.coalition)
   fogFilter = null
   allSidesDetector = friendlyCoalitionId === null ? tacviewDetection.createAllSidesDetector() : null
+  resetRealContacts()
   // The relay operator owns detection and rate tuning in this mode, as with
   // relay-hosted Tacview; defaults until the relay's exporterConfig arrives.
   tacviewDetection.resetToDefaults()
@@ -415,6 +479,7 @@ function stop() {
   internalUnits = {}
   fogFilter = null
   allSidesDetector = null
+  resetRealContacts()
   friendlyCoalitionId = null
   theatreName = null
   dateAndTime = null

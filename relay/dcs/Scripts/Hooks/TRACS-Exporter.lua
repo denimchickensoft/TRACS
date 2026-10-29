@@ -492,6 +492,104 @@ function S.unitsStep(start, full, slices)
     .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|' .. births .. '|' .. relistAdded .. '|' .. json
 end
 
+-- Contacts: which enemy units each coalition's units detect, from DCS itself,
+-- gathered a slice of the unit list per tick like units. Every red and blue
+-- unit whose type has sensors (checked once per type) is asked for its
+-- detected targets once per detection method, as Olympus does. Only enemy
+-- units are kept (TRACS always shows friendlies and neutrals), merged per
+-- coalition into one flat map: '<coalition>:<target unit id>' -> the sum of
+-- the method bits that found it (VISUAL 1, OPTIC 2, RADAR 4, IRST 8, RWR 16,
+-- DLINK 32, Olympus's values). Flat, so the relay's one-level delta merge
+-- works. Needs the units collector, whose records mark the active units.
+local DETECTION_BITS = { VISUAL = 1, OPTIC = 2, RADAR = 4, IRST = 8, RWR = 16, DLINK = 32 }
+S.sensorTypes = {}
+S.contactsSent = {}
+
+-- A failed check counts as having sensors, so a unit is asked rather than
+-- silently skipped.
+local function hasSensors(e)
+  local t = e.rec.type
+  local v = S.sensorTypes[t]
+  if v == nil then
+    local ok, r = pcall(e.u.hasSensors, e.u)
+    v = (not ok) or r == true
+    S.sensorTypes[t] = v
+  end
+  return v
+end
+
+local function hasBit(mask, bit) return math.floor(mask / bit) % 2 == 1 end
+
+local function detectInto(e, acc)
+  local ctrl = e.u:getController()
+  if not ctrl then return end
+  for name, method in pairs(Controller.Detection) do
+    local bit = DETECTION_BITS[name]
+    if bit then
+      local targets = ctrl:getDetectedTargets(method) or {}
+      for i = 1, #targets do
+        local tgt = targets[i]
+        local obj = tgt and tgt.visible and tgt.object
+        if obj and Object.getCategory(obj) == Object.Category.UNIT then
+          local side = obj:getCoalition()
+          if side ~= e.side and side ~= 0 then
+            local key = e.side .. ':' .. obj:getID()
+            local m = acc[key] or 0
+            if not hasBit(m, bit) then acc[key] = m + bit end
+          end
+        end
+      end
+    end
+  end
+end
+
+-- Same calling pattern as unitsStep. Returns 'P|kbBefore|kbAfter' while
+-- running, then '<F|D>|kbBefore|kbAfter|detectors|entries|changed|' and the
+-- JSON object (a delta names changed entries, and lost ones as null).
+function S.contactsStep(start, full, slices)
+  local kb0 = heapKb()
+  slices = math.max(1, slices)
+  if start or not S.cc then
+    local list = {}
+    for _, e in pairs(S.units) do
+      if e.rec and (e.side == 1 or e.side == 2) then list[#list + 1] = e end
+    end
+    S.cc = { list = list, li = 1, full = full, acc = {}, detectors = 0,
+      perStep = math.max(20, math.ceil(#list / slices)) }
+  end
+  local cc = S.cc
+  local done = 0
+  while done < cc.perStep and cc.list[cc.li] do
+    local e = cc.list[cc.li]
+    cc.li, done = cc.li + 1, done + 1
+    if e.rec and not e.gone and hasSensors(e) then
+      cc.detectors = cc.detectors + 1
+      pcall(detectInto, e, cc.acc)
+    end
+  end
+  if cc.list[cc.li] then return 'P|' .. kb0 .. '|' .. heapKb() end
+
+  local parts, changed, entries, sent = {}, 0, 0, S.contactsSent
+  for key, m in pairs(cc.acc) do
+    entries = entries + 1
+    if cc.full or sent[key] ~= m then
+      parts[#parts + 1] = encode(key) .. ':' .. encode(m)
+      changed = changed + 1
+    end
+  end
+  if not cc.full then
+    for key in pairs(sent) do
+      if cc.acc[key] == nil then
+        parts[#parts + 1] = encode(key) .. ':null'
+        changed = changed + 1
+      end
+    end
+  end
+  S.contactsSent, S.cc = cc.acc, nil
+  return (cc.full and 'F' or 'D') .. '|' .. kb0 .. '|' .. heapKb() .. '|'
+    .. cc.detectors .. '|' .. entries .. '|' .. changed .. '|{' .. table.concat(parts, ',') .. '}'
+end
+
 local COALITION_NAMES = { [0] = 'neutral', [1] = 'red', [2] = 'blue' }
 
 S.collectors = {
@@ -620,6 +718,21 @@ register('units', 'server', 1, function(start, full, slices)
   return json, kind == 'F' and 'full' or 'delta', {
     units = tonumber(n), changed = tonumber(changed), removed = tonumber(removed),
     births = tonumber(births), relistAdded = tonumber(relistAdded),
+  }, { tonumber(k0), tonumber(k1) }
+end, true)
+
+register('contacts', 'server', 2, function(start, full, slices)
+  local r = inServer(string.format(
+    'return TRACS_EXP_S and TRACS_EXP_S.contactsStep(%s, %s, %d) or "E"',
+    tostring(start), tostring(full), slices))
+  if r == nil or r == 'E' then error('contacts step failed (mission environment not bootstrapped?)') end
+  local p0, p1 = r:match('^P|(%-?%d+)|(%-?%d+)$')
+  if p0 then return nil, nil, nil, { tonumber(p0), tonumber(p1) } end
+  local kind, k0, k1, detectors, entries, changed, json =
+    r:match('^(%a)|(%-?%d+)|(%-?%d+)|(%d+)|(%d+)|(%d+)|(.*)$')
+  if not kind then error('unexpected contacts step result') end
+  return json, kind == 'F' and 'full' or 'delta', {
+    detectors = tonumber(detectors), entries = tonumber(entries), changed = tonumber(changed),
   }, { tonumber(k0), tonumber(k1) }
 end, true)
 
