@@ -53,6 +53,16 @@ describe('toTracsUnit', () => {
     expect(u.alive).toBe(false)
     expect(u.health).toBeUndefined()
   })
+
+  test('a client-side record: no life is alive, human flag, no health or group id', () => {
+    const { life: _life, life0: _life0, groupId: _groupId, callsign: _callsign, ...client } = rec
+    const u = toTracsUnit('1', { ...client, human: true })
+    expect(u.alive).toBe(true)
+    expect(u.human).toBe(true)
+    expect(u.health).toBeUndefined()
+    expect(u.groupID).toBeUndefined()
+    expect(u.unitName).toBe('Aerial-1-1')
+  })
 })
 
 describe('toDateAndTime', () => {

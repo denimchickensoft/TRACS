@@ -23,6 +23,7 @@ const CONNECTION_ISSUES = {
   tacview_unreachable:     'Tacview rejected the RTT password - reconnect with the right one',
   relay_invalid_password:  'Relay rejected the password - reconnect with the right one',
   relay_protocol_mismatch: 'Relay and TRACS versions don’t match - update one of them',
+  exporter_object_export_denied: 'The DCS server doesn’t allow object export',
 }
 const RECONNECT_INTERVAL_MS = 3000
 

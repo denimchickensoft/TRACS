@@ -684,6 +684,8 @@ local C = {
 }
 
 -- side: 'server' | 'client' | 'both'. gather() returns JSON text or nil.
+-- Data goes out under the collector's name, or c.group when set (a client
+-- collector feeding the same group as its server counterpart).
 -- A sliced collector instead gets gather(start, full, slices) once per tick
 -- until it returns its result: json, kind ('full'|'delta') and an optional
 -- table of extra timing fields.
@@ -760,6 +762,107 @@ register('heartbeat_client', 'client', 5, function()
   return toJson({ modelTime = DCS.getModelTime() })
 end)
 
+-- Client side: units from the export API, the only unit source a DCS client
+-- has in someone else's multiplayer game. Sent as the same units group and
+-- record shape as the server side, minus what the export API doesn't give
+-- (health, group id). Velocity comes from the position change since the
+-- last cycle; an aircraft counts as airborne above AIRBORNE_AGL_M over the
+-- terrain or faster than any taxi. Only changed records are sent, as on the
+-- server side. A server can deny object export; exportStatus reports that.
+local AIRBORNE_AGL_M = 30
+local AIRBORNE_SPEED_MS = 40
+
+-- Export API Type.level1/level2 (Scripts/database/wsTypes.lua) -> the
+-- Group.Category numbers the server side sends.
+local function clientCategory(t)
+  if type(t) ~= 'table' then return nil end
+  if t.level1 == 1 then
+    if t.level2 == 1 then return 0 end
+    if t.level2 == 2 then return 1 end
+  elseif t.level1 == 2 then return 2
+  elseif t.level1 == 3 then return 3 end
+  return nil
+end
+
+local W = { recs = {}, pos = {} }
+
+local function roundTo(x, step) return math.floor(x / step + 0.5) * step end
+
+local function objectExportAllowed()
+  return Export and Export.LoIsObjectExportAllowed and Export.LoIsObjectExportAllowed() == true
+end
+
+local function putRec(rec, k, v)
+  if rec[k] == v then return false end
+  rec[k] = v
+  return true
+end
+
+register('units_client', 'client', 1, function(start, full)
+  local objects = objectExportAllowed() and Export.LoGetWorldObjects() or {}
+  local t = DCS.getModelTime()
+  local out, seen, gone, n, changed = {}, {}, {}, 0, 0
+  for id, o in pairs(objects) do
+    local category = clientCategory(o.Type)
+    local flags = o.Flags or {}
+    if category and not flags.Static and flags.Born ~= false and o.LatLongAlt and o.Position then
+      local key = tostring(id)
+      seen[key] = true
+      n = n + 1
+      local p, lla = o.Position, o.LatLongAlt
+      local prev = W.pos[key]
+      local vx, vy, vz = 0, 0, 0
+      if prev and t > prev.t then
+        local dt = t - prev.t
+        vx, vy, vz = (p.x - prev.x) / dt, (p.y - prev.y) / dt, (p.z - prev.z) / dt
+      end
+      W.pos[key] = { x = p.x, y = p.y, z = p.z, t = t }
+      local agl = lla.Alt - (Export.LoGetAltitude(p.x, p.z) or 0)
+      local speed = math.sqrt(vx * vx + vy * vy + vz * vz)
+      local rec, dirty = W.recs[key], false
+      if not rec then
+        rec = { name = o.UnitName, type = o.Name, groupName = o.GroupName, category = category }
+        W.recs[key], dirty = rec, true
+      end
+      dirty = putRec(rec, 'coalition', o.CoalitionID or 0) or dirty
+      dirty = putRec(rec, 'lat', roundTo(lla.Lat, 1e-6)) or dirty
+      dirty = putRec(rec, 'lon', roundTo(lla.Long, 1e-6)) or dirty
+      dirty = putRec(rec, 'alt', roundTo(lla.Alt, 0.1)) or dirty
+      dirty = putRec(rec, 'agl', roundTo(agl, 0.1)) or dirty
+      dirty = putRec(rec, 'heading', roundTo(o.Heading or 0, 1e-3)) or dirty
+      dirty = putRec(rec, 'pitch', roundTo(o.Pitch or 0, 1e-3)) or dirty
+      dirty = putRec(rec, 'vx', roundTo(vx, 0.01)) or dirty
+      dirty = putRec(rec, 'vy', roundTo(vy, 0.01)) or dirty
+      dirty = putRec(rec, 'vz', roundTo(vz, 0.01)) or dirty
+      dirty = putRec(rec, 'inAir', category <= 1 and (agl > AIRBORNE_AGL_M or speed > AIRBORNE_SPEED_MS)) or dirty
+      dirty = putRec(rec, 'human', flags.Human == true) or dirty
+      if full or dirty then
+        out[key] = rec
+        changed = changed + 1
+      end
+    end
+  end
+  for key in pairs(W.recs) do
+    if not seen[key] then
+      W.recs[key], W.pos[key] = nil, nil
+      if not full then gone[#gone + 1] = '"' .. key .. '":null' end
+    end
+  end
+  -- A Lua table can't hold a null, so removals are added to the JSON text.
+  local json = toJson(out) or '{}'
+  if json == '[]' then json = '{}' end
+  if #gone > 0 then
+    json = (json == '{}' and '{' or json:sub(1, -2) .. ',') .. table.concat(gone, ',') .. '}'
+  end
+  return json, full and 'full' or 'delta', { units = n, changed = changed, removed = #gone }
+end, true)
+
+C.registry.units_client.group = 'units'
+
+register('exportStatus', 'client', 5, function()
+  return toJson({ objects = objectExportAllowed() })
+end)
+
 C.gcStepKb = DEFAULT_GC_STEP_KB
 C.gc = { ms = 0, maxMs = 0, steps = 0, cycles = 0, kb = -1, reportAt = 0 }
 
@@ -799,8 +902,8 @@ local function sideMatches(c) return c.side == 'both' or c.side == C.side end
 
 local function sendResult(c, json, kind, ms, extra)
   C.seq = C.seq + 1
-  T.send(c.name, kind, C.seq, json)
-  local timing = { type = 'timing', group = c.name, kind = kind, ms = ms, bytes = #json }
+  T.send(c.group or c.name, kind, C.seq, json)
+  local timing = { type = 'timing', group = c.group or c.name, kind = kind, ms = ms, bytes = #json }
   if type(extra) == 'table' then for k, v in pairs(extra) do timing[k] = v end end
   T.sendRaw(timing)
   c.full = false

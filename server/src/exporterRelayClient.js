@@ -66,8 +66,9 @@ function toTracsUnit(id, rec) {
     horizontalVelocity: Math.hypot(vx, vz),
     verticalVelocity: vy,
     airborne: rec.inAir === true,
-    alive: (rec.life ?? 0) >= 1,
-    human: rec.player != null,
+    // A client-side hook's records carry no life (the export API has none).
+    alive: rec.life === undefined || rec.life >= 1,
+    human: rec.player != null || rec.human === true,
   }
   if (typeof rec.pitch === 'number') unit.pitch = rec.pitch * RAD_TO_DEG
   if (rec.life0 > 0) unit.health = Math.round(Math.min(100, Math.max(0, (rec.life ?? 0) / rec.life0 * 100)))
@@ -229,12 +230,24 @@ function applyContacts(kind, data) {
   runDetectionPass()
 }
 
+// A client-side hook's exportStatus: whether the DCS server allows object
+// export. Without it a client hook has no units to send, which the status bar
+// should explain.
+function applyExportStatus(kind, data) {
+  if (data?.objects === false) {
+    if (linkIssue?.reason !== 'exporter_object_export_denied') setLinkIssue({ retrying: false, reason: 'exporter_object_export_denied' })
+  } else if (linkIssue?.reason === 'exporter_object_export_denied') {
+    setLinkIssue(null)
+  }
+}
+
 const GROUP_HANDLERS = {
   units: applyUnits,
   bullseyes: applyBullseyes,
   clock: applyClock,
   airbases: applyAirbases,
   contacts: applyContacts,
+  exportStatus: applyExportStatus,
 }
 
 function applyGroup(group, kind, data) {
@@ -254,6 +267,7 @@ function applyHook(hook) {
 // The hook went away (DCS closed, or the mission is changing): everything
 // it sent is stale, the clock included.
 function clearUnits() {
+  if (linkIssue?.reason === 'exporter_object_export_denied') setLinkIssue(null)
   const removed = Object.keys(internalUnits)
   internalUnits = {}
   if (dateAndTime) {
