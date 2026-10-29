@@ -159,7 +159,9 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `MF S<1-9> <text>` + ENTER | — | Set an auxiliary general-info line, shown below line 1 in the SSA |
 | `MF S<1-9>` + ENTER | — | Clear an auxiliary general-info line |
 | `MF D` + SLEW / `MF D<flid>` + ENTER | `F7` | Show the flight plan (AID, type, beacon, altitude, route, flight rules) in the preview area |
-| `.ALTIM <val>` / `.QNH <val>` + ENTER | — | Set altimeter (inHg or hPa, auto-detected by range) |
+| `.ALTIM <val>` / `.QNH <val>` + ENTER | — | Set your airfield's altimeter (inHg or hPa, auto-detected by range). It stays until you delete it with a bare `.ALTIM`, and isn't saved past the session. Without one, the SSA shows the live altimeter when the DCS exporter is the data source, else 29.92 |
+| `.WX <ICAO>` + ENTER | — | Add an airfield's wind and altimeter line under your own in the SSA (`UGKO 240/12 29.92`). Bare `.WX` removes all but your own. Live values need the DCS exporter; anything missing is left blank |
+| `.WIND [ICAO] <DDD/SS>` + ENTER | — | Set a wind by hand (magnetic, knots): `.WIND 270/6` for your airfield, `.WIND UGKO 270/6` for another. It replaces the live wind until you delete it with `.WIND` or `.WIND <ICAO>`. Not saved past the session |
 | `.ASPCOLORS <name>` + ENTER | — | Switch the airspace color palette |
 | `.REFRESH` + ENTER | — | Reload airspace color palettes from the server |
 | `.DBCA` + ENTER | — | Toggle datablock collision-avoidance placement: a track's own leader direction is always kept; every other datablock sits at the default leader direction unless that would overlap another datablock, cross another leader, or cover another track, in which case it moves to the nearest clear direction |

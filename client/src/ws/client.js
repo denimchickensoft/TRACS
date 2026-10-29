@@ -77,6 +77,8 @@ function dispatch(message) {
 
     case 'units_clear':
       useUnitsStore.getState().clearUnits()
+      // A new source; only the DCS exporter sends weather, and it re-sends it.
+      useSessionStore.getState().setWeather(null)
       useWeaponsStore.getState().clearWeapons()
       useFlightPlansStore.getState().reset()
       useAtcStore.getState().reset()
@@ -101,6 +103,10 @@ function dispatch(message) {
 
     case 'bullseyes':
       useSessionStore.getState().setBullseyes(message.data)
+      break
+
+    case 'weather':
+      useSessionStore.getState().setWeather(message.data)
       break
 
     case 'srs_status':

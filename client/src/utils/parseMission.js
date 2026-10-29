@@ -176,7 +176,15 @@ export function extractWeather(mission) {
     }
   }
 
-  return { qnh, vis, clg, ceilingNote }
+  // Surface wind ("at 10 m" in the editor), as { fromDeg (true), speedMs }.
+  // The mission stores the direction the wind blows towards, per community
+  // ATIS tooling (not yet checked against DCS itself), so it's turned around.
+  const g = w.wind?.atGround
+  const wind = typeof g?.speed === 'number' && typeof g?.dir === 'number'
+    ? { fromDeg: ((g.dir + 180) % 360 + 360) % 360, speedMs: g.speed }
+    : null
+
+  return { qnh, vis, clg, ceilingNote, wind }
 }
 
 // ── Aircraft extraction ───────────────────────────────────────────────────────

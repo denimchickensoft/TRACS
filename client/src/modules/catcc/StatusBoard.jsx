@@ -23,6 +23,7 @@ import { CaseField } from './CaseField.jsx'
 import './StatusBoard.css'
 import { MS_TO_KT, speedFromMs } from '../../utils/units.js'
 import { useUnitSystem } from '../../store/unitSystem.js'
+import { deckWindKt } from '../../utils/liveWeather.js'
 
 // STATE shows red once fuel is at or below BINGO (both must be valid X.X).
 function isFuelAtBingo(entry) {
@@ -46,7 +47,7 @@ const _URL_CARRIER_UNITID = new URLSearchParams(window.location.search).get('car
 export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
   const {
-    event, launch, recovery, clg, vis, qnh,
+    event, launch, recovery, wnd, clg, vis, qnh,
     caseLaunch, caseRecovery, cvApp, marBtn, app, twrBtn, depBtn, rad, radAuto,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
     clearMissionData, clearAll, recycleBcn, assignNextMarshal, setStackValue, toggleFocus, setRad, setAppRad, clearApproach, removeEntries, clearColumn,
@@ -59,7 +60,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   // 'column' (any other cell) clears that cell's column, with field set.
   const [rowMenu,          setRowMenu]          = useState(null)
 
-  const hasMissionData = clg || vis || qnh || entries.some(e => e.fromMission)
+  const hasMissionData = wnd || clg || vis || qnh || entries.some(e => e.fromMission)
 
   const [sortField,  setSortField]  = useState(null)
   const [sortDir,    setSortDir]    = useState('asc')
@@ -117,6 +118,10 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
   // Alert compares knots whatever the display unit, so its threshold holds.
   const spdKt      = Math.round((carrier?.speed ?? 0) * MS_TO_KT)
   const spd        = Math.round(speedFromMs(carrier?.speed ?? 0, unitSystem))
+  // Headwind along the BRC from the WND box and the carrier's own speed, in
+  // the same display unit as SPD.
+  const dckKt      = carrier ? deckWindKt(wnd, brcF, (carrier.speed ?? 0) * MS_TO_KT) : null
+  const dckWnd     = dckKt == null ? '' : String(Math.round(speedFromMs(dckKt / MS_TO_KT, unitSystem)))
 
   const carrierPos   = carrier?.position
   const tzOffset      = theatre ? getTheatreUtcOffset(theatre) : null
@@ -277,8 +282,9 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <HeaderField label="TZ"       value={autoTzStr || '——'} onChange={() => {}} readOnly inputW={24} />
         </div>
         <div className="sb-group">
-          <HeaderField label="CLG"      value={clg}             onChange={(v) => setHeader('clg', v)} inputW={24} maxLen={3}  digitsOnly padZero={3} hdrIdx={4} />
-          <HeaderField label="VIS"      value={vis}             onChange={(v) => setHeader('vis', v)} inputW={18} maxLen={2}  digitsOnly hdrIdx={5} />
+          <HeaderField label="WND"      value={wnd}             onChange={(v) => setHeader('wnd', v)} inputW={44} maxLen={6}  windFormat hdrIdx={3} />
+          <HeaderField label="VIS"      value={vis}             onChange={(v) => setHeader('vis', v)} inputW={18} maxLen={2}  digitsOnly hdrIdx={4} />
+          <HeaderField label="CLG"      value={clg}             onChange={(v) => setHeader('clg', v)} inputW={24} maxLen={3}  digitsOnly padZero={3} hdrIdx={5} />
           <HeaderField label="QNH"      value={qnh}             onChange={(v) => setHeader('qnh', v)} inputW={32} maxLen={4}  digitsOnly hdrIdx={6} />
         </div>
       </div>
@@ -309,6 +315,7 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <HeaderField label="BRC"     value={String(brc).padStart(3, '0')} onChange={() => {}} readOnly inputW={28} flash={brcAlert} />
           <HeaderField label="FB"      value={String(fb).padStart(3, '0')}  onChange={() => {}} readOnly inputW={28} flash={fbAlert} />
           <HeaderField label="SPD"     value={String(spd)}                  onChange={() => {}} readOnly inputW={24} flash={spdAlert} />
+          <HeaderField label="DCK WND" value={dckWnd}                       onChange={() => {}} readOnly inputW={24} />
         </div>
       </div>
 

@@ -108,6 +108,12 @@ describe('STARS parseCommand', () => {
 
   test('dot commands', () => {
     expect(parseCommand('.qnh 29.92', 'ENTER')).toMatchObject({ command: { id: 'SET_ALTIM' }, captures: { value: '29.92' } })
+    expect(parseCommand('.ALTIM', 'ENTER')).toMatchObject({ command: { id: 'SET_ALTIM' }, captures: { value: undefined } })
+    expect(parseCommand('.WX UGKO', 'ENTER')).toMatchObject({ command: { id: 'SET_WX' }, captures: { icao: 'UGKO' } })
+    expect(parseCommand('.WX', 'ENTER')).toMatchObject({ command: { id: 'SET_WX' }, captures: { icao: undefined } })
+    expect(parseCommand('.WIND 270/6', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: undefined, wind: '270/6' } })
+    expect(parseCommand('.WIND UGKO 270/6', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: 'UGKO', wind: '270/6' } })
+    expect(parseCommand('.WIND UGKO', 'ENTER')).toMatchObject({ command: { id: 'SET_WIND' }, captures: { icao: 'UGKO', wind: undefined } })
     expect(idOf('.LBL', 'ENTER')).toBe('TOGGLE_LABELS')
     expect(idOf('.FILL', 'ENTER')).toBe('TOGGLE_FILL')
     expect(parseCommand('.FILL 40', 'ENTER').captures).toEqual({ pct: '40' })

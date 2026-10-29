@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { isValidTime } from './statusBoardColumns.js'
+import { normalizeWind } from '../../utils/liveWeather.js'
 
 // ── Inline-editable header field ──────────────────────────────────────────────
-export function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, padZero = 0, timeValidate = false, flash = false, auto = false, hdrIdx }) {
+// windFormat: typed as digits into a DDD/SS mask (slash added after the
+// direction); an entry that isn't a valid wind is dropped.
+export function HeaderField({ label, value, onChange, inputW = 40, readOnly = false, maxLen, digitsOnly = false, padZero = 0, timeValidate = false, flash = false, auto = false, windFormat = false, hdrIdx }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState('')
 
@@ -14,6 +17,10 @@ export function HeaderField({ label, value, onChange, inputW = 40, readOnly = fa
   const commit = () => {
     let v = draft
     if (padZero && v.length > 0) v = v.padStart(padZero, '0')
+    if (windFormat && v.length > 0) {
+      v = normalizeWind(v)
+      if (!v) { setEditing(false); return }
+    }
     // An unchanged commit isn't stored: confirming an auto value (RAD) must
     // leave it auto rather than fix it at the number it showed.
     if (v !== value) onChange(v)
@@ -23,6 +30,10 @@ export function HeaderField({ label, value, onChange, inputW = 40, readOnly = fa
   const handleChange = (e) => {
     let v = e.target.value.toUpperCase()
     if (digitsOnly) v = v.replace(/\D/g, '')
+    if (windFormat) {
+      const digits = v.replace(/\D/g, '').slice(0, 5)
+      v = digits.length > 3 ? `${digits.slice(0, 3)}/${digits.slice(3)}` : digits
+    }
     setDraft(v)
   }
 
@@ -63,7 +74,7 @@ export function HeaderField({ label, value, onChange, inputW = 40, readOnly = fa
           data-sbhdridx={readOnly ? undefined : hdrIdx}
           onClick={start}
         >
-          {value || '——'}
+          {value || (windFormat ? '---/--' : '——')}
         </span>
       )}
     </div>

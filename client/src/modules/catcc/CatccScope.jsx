@@ -28,6 +28,7 @@ import { computeMagvar } from '../../utils/magvar.js'
 import { CARRIER_TYPES, computeCarrierBrcFb } from '../../utils/carriers.js'
 import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../utils/starsKeys.js'
 import { processOdsCommand } from './odsCommands.js'
+import { useLiveBoardWeather } from './useLiveBoardWeather.js'
 import { initCntl, termCntl, bareSlew, parseCatccSlew, dispatchCatccSlew } from './slewCommands.js'
 import { usePreviewStore }       from '../../store/preview.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
@@ -80,6 +81,7 @@ export default function CatccScope() {
   const mission        = useSessionStore((s) => s.mission)
   const carrierUnitId  = useSessionStore((s) => s.carrierUnitId)
   const positionName   = useSessionStore((s) => s.positionName)
+  useLiveBoardWeather(carrierUnitId)
 
   const ownership         = useAtcStore((s) => s.ownership)
   const handoffs          = useAtcStore((s) => s.handoffs)

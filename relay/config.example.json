@@ -21,12 +21,13 @@
     "gcStepKb": 0,
     "collectors": {
       "units": { "enabled": true, "rateSec": 1 },
-      "heartbeat": { "enabled": true, "rateSec": 5 },
-      "bullseyes": { "enabled": true, "rateSec": 10 },
-      "clock": { "enabled": true, "rateSec": 5 },
+      "bullseyes": { "enabled": true, "rateSec": 30 },
+      "clock": { "enabled": true, "rateSec": 15 },
       "airbases": { "enabled": true, "rateSec": 30 },
-      "contacts": { "enabled": true, "rateSec": 2, "sensorUnitsOnly": false },
-      "heartbeat_client": { "enabled": true, "rateSec": 5 },
+      "contacts": { "enabled": true, "rateSec": 4, "sensorUnitsOnly": false },
+      "weather": { "enabled": true },
+      "fog": { "enabled": true, "rateSec": 60 },
+      "airfieldWeather": { "enabled": true, "rateSec": 600 },
       "units_client": { "enabled": true, "rateSec": 1 },
       "exportStatus": { "enabled": true, "rateSec": 5 }
     }

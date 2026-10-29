@@ -46,6 +46,13 @@ describe('extractWeather', () => {
     expect(extractWeather({ weather: { clouds: { density: 4, base: 1500 } } }).clg).toBe('')
   })
 
+  test('surface wind turned from blowing-to into blowing-from', () => {
+    expect(extractWeather({ weather: { wind: { atGround: { speed: 5, dir: 90 } } } }).wind)
+      .toEqual({ fromDeg: 270, speedMs: 5 })
+    expect(extractWeather({ weather: { wind: { atGround: { speed: 5, dir: 270 } } } }).wind.fromDeg).toBe(90)
+    expect(extractWeather({ weather: {} }).wind).toBeNull()
+  })
+
   test('unknown presets are flagged, not guessed', () => {
     const out = extractWeather({ weather: { clouds: { preset: 'Preset99', base: 1000 } } })
     expect(out.clg).toBe('')

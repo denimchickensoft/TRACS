@@ -76,7 +76,7 @@ Click **Sign In**. This establishes your position, registers you with other cont
 | Shortcut | Effect |
 |---|---|
 | `Ctrl+L` | Show or hide the Controller List (every signed-in controller and position) |
-| `Ctrl+M` | Show or hide Messages, a chat window shared across all modules. Type to message your own module's controllers; `.chat <POSITION>` sends a direct message; `/ <text>` broadcasts to everyone |
+| `Ctrl+M` | Show or hide Messages, a chat window shared across all modules. Type to message your own module's controllers; `.chat <POSITION>` sends a direct message; `/ <text>` broadcasts to everyone; `.metar <ICAO>` shows that airfield's METAR (DCS exporter only) without sending anything |
 
 **Side panels:** a thin tab strip runs down the right edge of the screen. Each module has its own tabs:
 

@@ -153,6 +153,6 @@ Rows are listed in the order they were added. Mouse wheel on the panel's title b
 | `Alt+P` | Toggle the picture (same as `.picture`) |
 | `Alt+B` | Toggle bullseye-on-cursor (same as `.bec`) |
 | `Ctrl+Left` / `Ctrl+Right` | Shows / hides the BRAA list (app-wide, see Getting Started) |
-| `Ctrl+M` | Opens Messages — a general chat window shared across all modules (DM another position with `.chat <POSITION>`, broadcast to everyone with `/ <text>`) |
+| `Ctrl+M` | Opens Messages — a general chat window shared across all modules (DM another position with `.chat <POSITION>`, broadcast to everyone with `/ <text>`, show an airfield's METAR with `.metar <ICAO>` (DCS exporter only, never sent)) |
 
 Typing into the command line cancels any pending F-key declaration and BRAA pairing.

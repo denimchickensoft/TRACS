@@ -111,7 +111,13 @@ const COMMANDS = [
   { id: 'SET_LEADER_LEN',       pattern: /^LD ([0-7])$/,          trigger: 'ENTER', captures: ['len'] },
 
   // ── Display settings ─────────────────────────────────────────────
-  { id: 'SET_ALTIM',            pattern: /^\.(?:ALTIM|QNH) (\d+(?:\.\d+)?)$/, trigger: 'ENTER', captures: ['value'] },
+  // Bare .ALTIM deletes the manual altimeter (back to live weather).
+  { id: 'SET_ALTIM',            pattern: /^\.(?:ALTIM|QNH)(?: (\d+(?:\.\d+)?))?$/, trigger: 'ENTER', captures: ['value'] },
+  // .WX ICAO adds a field's wind/altimeter line to the SSA; bare .WX clears them.
+  { id: 'SET_WX',               pattern: /^\.WX(?: ([A-Z0-9]{3,4}))?$/, trigger: 'ENTER', captures: ['icao'] },
+  // .WIND [ICAO] DDD/SS sets a manual wind (the facility's without ICAO);
+  // without a wind it deletes it.
+  { id: 'SET_WIND',             pattern: /^\.WIND(?: ([A-Z0-9]{3,4}))?(?: (\d{1,3}\/\d{1,3}))?$/, trigger: 'ENTER', captures: ['icao', 'wind'] },
   { id: 'SET_ASP_COLORS',       pattern: /^\.ASPCOLORS (.+)$/,    trigger: 'ENTER', captures: ['name'] },
   { id: 'REFRESH_ASP_COLORS',  pattern: /^\.REFRESH$/,           trigger: 'ENTER' },
   { id: 'TOGGLE_DBCA',          pattern: /^\.DBCA$/,              trigger: 'ENTER' },
@@ -296,7 +302,7 @@ const COMMANDS = [
 // no fixed verb and is excluded, so those fall back to INVALID INPUT.
 export const WORD_VERBS = ['MF', 'RG', 'RR', 'LD', 'IC', 'TC', 'HO', 'MIN', 'UN', 'DA', 'VP', 'CA', 'RP']
 const DOT_VERBS = [
-  'ALTIM', 'QNH', 'ASPCOLORS', 'REFRESH', 'DBCA', 'LABELS', 'LBL', 'LABEL', 'FIXES', 'FILL',
+  'ALTIM', 'QNH', 'WX', 'WIND', 'ASPCOLORS', 'REFRESH', 'DBCA', 'LABELS', 'LBL', 'LABEL', 'FIXES', 'FILL',
   'CA', 'WNG', 'ASP', 'TMA', 'CTR', 'CTA', 'FIR', 'UIR', 'SUA', 'MIL', 'TRSA',
   'CLASSA', 'CLASSB', 'CLASSC', 'CLASSD', 'CLASSE', 'CLASSF', 'CLASSG',
   'MSA', 'HOLDS', 'RELIEF', 'MVA', 'SAT', 'COORDS', 'FIND', 'FIX', 'AIRWAY', 'AIRWAYS', 'PROC',

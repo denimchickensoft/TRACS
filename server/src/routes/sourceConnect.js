@@ -178,6 +178,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, relaySource, st
           onMission:    (data)  => broadcast({ type: 'mission', data }),
           onAirbases:   (data)  => broadcast({ type: 'airbases', data }),
           onBullseyes:  (data)  => broadcast({ type: 'bullseyes', data }),
+          onWeather:    (data)  => broadcast({ type: 'weather', data }),
           onLinkIssue:  (issue) => broadcast({ type: 'status', data: statusPayload('exporter', issue) }),
         })
         broadcast({ type: 'units_clear' })

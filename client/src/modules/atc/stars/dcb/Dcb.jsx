@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react'
 import { useWheelDirection } from '../../../../utils/wheel.js'
 import { useDisplayStore }  from '../../../../store/display.js'
-import { usePresetsStore }  from '../../../../store/presets.js'
+import { usePresetsStore, extractSettings }  from '../../../../store/presets.js'
 import { usePreviewStore }  from '../../../../store/preview.js'
 import { useMapsStore }     from '../../../../store/maps.js'
 import { useRunwaysStore }  from '../../../../store/runways.js'
@@ -298,7 +298,7 @@ export function Dcb({ profile, briteDcb, csDcb }) {
           const slot = usePresetsStore.getState().slots[idx]
           if (slot) {
             updateWindow(WINDOW_ID, {
-              ...slot.settings,
+              ...extractSettings(slot.settings),
               offCntr:         false,
               rrCenterLat:     null,
               rrCenterLng:     null,

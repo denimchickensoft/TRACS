@@ -103,6 +103,9 @@ export const useSessionStore = create((set) => ({
   mission:   null,
   airbases:  null,
   bullseyes: null,
+  // DCS exporter only: { mission: <mission weather table> | null,
+  // airfields: { <key>: { callsign, unitId?, qnhHpa, tempC, wind, aloft } } }.
+  weather:   null,
 
   setConnection: ({ olympusUrl, coalition, password, relayUrl, relayPassword, sourceType }) =>
     set({
@@ -166,6 +169,7 @@ export const useSessionStore = create((set) => ({
   })),
   setAirbases:   (airbases)   => set({ airbases }),
   setBullseyes:  (bullseyes)  => set({ bullseyes }),
+  setWeather:    (weather)    => set({ weather }),
 
   setWebrtcStatus: (webrtcStatus) => set({ webrtcStatus }),
 
@@ -178,6 +182,8 @@ export const useSessionStore = create((set) => ({
     set((s) => {
       const id    = `${Date.now()}-${Math.random().toString(36).slice(2)}`
       const entry = { id, ...msg }
+      // A local reply (.metar) is answered in the tab it was asked from: no unread count.
+      if (msg.localTab) return { controllerMessages: [...s.controllerMessages, entry] }
       const isDm  = !!msg.toPosition
       if (isDm) {
         const dmPartner  = msg.fromPosition === s.positionName ? msg.toPosition : msg.fromPosition
@@ -287,6 +293,7 @@ export const useSessionStore = create((set) => ({
       mission:             null,
       airbases:            null,
       bullseyes:           null,
+      weather:             null,
     }),
 }))
 
@@ -312,6 +319,7 @@ if (typeof window !== 'undefined') {
   const _pick    = (s) => ({
     airbases:     s.airbases,
     bullseyes:    s.bullseyes,
+    weather:      s.weather,
     mission:      s.mission,
     peers:        s.peers,
     coalition:    s.coalition,

@@ -11,7 +11,6 @@ const PRESET_FIELDS = [
   'briteFdb', 'briteLst', 'britePos', 'briteLdb', 'briteRr', 'briteCmp', 'briteHst',
   'csDatablocks', 'csLists', 'csDcb', 'csTools', 'csPos', 'csMap',
   'altFilterLowU', 'altFilterHighU', 'altFilterLowA', 'altFilterHighA',
-  'qnh',
   'lists',
   'mapsVisible',
   'reliefVisible', 'geoVisible', 'mvaVisible', 'msaVisible', 'moraVisible', 'holdsVisible',
@@ -19,7 +18,9 @@ const PRESET_FIELDS = [
   'procVisible',
 ]
 
-function extractSettings(win) {
+// Also applied to a saved preset when it loads, so a field since dropped
+// from PRESET_FIELDS (e.g. qnh, now session-only) never comes back from it.
+export function extractSettings(win) {
   const out = {}
   for (const k of PRESET_FIELDS) {
     if (win[k] !== undefined) out[k] = win[k]

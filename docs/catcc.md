@@ -119,8 +119,9 @@ Only the fields you type change, and a letter on its own clears its field (`101 
 An event/recovery board shared by every CATCC position over the session's sync transport. Anyone can view and edit it.
 
 **Header fields:**
-- **Editable:** Event, Launch time and Recovery time (4-digit clocks), Ceiling, Visibility, QNH, Case (separate one-character Launch and Recovery fields), CV APP (a one-character approach field shown after Case Recovery in Case 2/3 only), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial). RAD is the marshal radial, used by the status overlay and the scope's radial line too. When Case Recovery is set to 2 or 3 and no RAD is set, it's fixed at the reciprocal of FB at that moment (green) and doesn't move as the carrier turns. Before that it shows the live reciprocal of FB. A typed RAD shows yellow; clearing it works it out again from the current FB.
-- **Computed and read-only:** sunrise/sunset, magnetic variation, timezone, BRC, FB, and speed.
+- **Editable:** Event, Launch time and Recovery time (4-digit clocks), WND (wind, magnetic `DDD/SS` in knots), Visibility, Ceiling, QNH, Case (separate one-character Launch and Recovery fields), CV APP (a one-character approach field shown after Case Recovery in Case 2/3 only), the MAR/APP/TWR/DEP 2-digit radio button numbers, and RAD (radial). RAD is the marshal radial, used by the status overlay and the scope's radial line too. When Case Recovery is set to 2 or 3 and no RAD is set, it's fixed at the reciprocal of FB at that moment (green) and doesn't move as the carrier turns. Before that it shows the live reciprocal of FB. A typed RAD shows yellow; clearing it works it out again from the current FB.
+- **Computed and read-only:** sunrise/sunset, magnetic variation, timezone, BRC, FB, speed, and DCK WND (the carrier's speed plus the wind's headwind part along the BRC, from the WND box).
+- **Live weather:** with the DCS exporter as the data source, WND, VIS, CLG and QNH fill in by themselves (wind and QNH at the carrier). A value someone types stays until the field is emptied; mission-import values are replaced by live ones.
 
 **Status overlay on the scope:** shows the time, your position, and recovery information that depends on the Case Recovery in effect. Double-click a row's green side number, or a correlated contact on the scope, to add that aircraft's details; double-click it again to drop them.
 
@@ -219,7 +220,7 @@ Opened from the Status Board's **⬆ Load Mission** button.
 
 - Drop a `.miz` file or a raw mission text file onto the dropzone, or click to browse.
 - The importer extracts:
-  - **Weather** — QNH, visibility, and ceiling, with a note describing how the cloud preset was mapped to a ceiling.
+  - **Weather** — surface wind, visibility, ceiling and QNH, with a note describing how the cloud preset was mapped to a ceiling.
   - **Carriers and their launching aircraft** — only aircraft whose first waypoint is a carrier departure (parking, hot start, or runway) count as launching from that carrier.
 - A mission with no carriers fails with "No carrier ships found in this mission."
 - If several carriers are found, pick one from the selector. The carrier matching your signed-in carrier is pre-selected. The list shows that carrier's launches, all pre-checked. Aircraft flown by a human (`Client` skill) are highlighted.

@@ -2,6 +2,11 @@ import { useState, useRef, useCallback } from 'react'
 import { unzipSync } from 'fflate'
 import { parseLua, extractWeather, findCarriersAndAircraft } from '../../utils/parseMission.js'
 import { useStatusBoardStore } from '../../store/statusBoard.js'
+import { useUnitsStore } from '../../store/units.js'
+import { useSessionStore } from '../../store/session.js'
+import { formatWind } from '../../utils/liveWeather.js'
+import { computeMagvar } from '../../utils/magvar.js'
+import { markBoardAutoFill } from './useLiveBoardWeather.js'
 import './MissionImport.css'
 
 function readFileText(file) {
@@ -34,6 +39,10 @@ export function MissionImport({ activeCarrierType, onClose }) {
   const [selection,   setSelection]   = useState(new Set())
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef()
+  // The board's wind is magnetic: declination at the carrier's live position
+  // when TRACS has it (true wind otherwise).
+  const carrierPos = useUnitsStore((s) => (s.units[carrierId] ?? s.units[useSessionStore.getState().carrierUnitId])?.position)
+  const missionDate = useSessionStore((s) => s.mission?.mission?.dateAndTime?.date ?? null)
 
   // ── Parse a dropped/selected file ───────────────────────────────────────────
   const processFile = useCallback(async (file) => {
@@ -105,13 +114,19 @@ export function MissionImport({ activeCarrierType, onClose }) {
   const visibleAircraft = () =>
     (preview?.aircraft ?? []).filter(a => a.carrierUnitId === carrierId)
 
+  const importWnd = preview?.weather?.wind
+    ? formatWind(preview.weather.wind, carrierPos ? computeMagvar(carrierPos.lat, carrierPos.lng, missionDate ?? undefined) : 0)
+    : ''
+
   // ── Import ────────────────────────────────────────────────────────────────────
   const doImport = () => {
     const { weather } = preview
     if (weather) {
-      if (weather.qnh) setHeader('qnh', weather.qnh)
-      if (weather.vis) setHeader('vis', weather.vis)
-      if (weather.clg) setHeader('clg', weather.clg)
+      const values = { wnd: importWnd, vis: weather.vis, clg: weather.clg, qnh: weather.qnh }
+      for (const [field, value] of Object.entries(values)) if (value) setHeader(field, value)
+      // Imported weather is a starting point: live DCS weather may replace it,
+      // as it never replaces a value someone typed.
+      markBoardAutoFill(values)
     }
     const toImport = visibleAircraft().filter(a => selection.has(a.callsign))
     if (toImport.length > 0) addMissionEntries(toImport)
@@ -173,13 +188,17 @@ export function MissionImport({ activeCarrierType, onClose }) {
             <div className="mi-section">
               <div className="mi-section-label">WEATHER</div>
               <div className="mi-weather-row">
-                {preview.weather?.clg
-                  ? <span className="mi-wx-field"><span className="mi-wx-lbl">CLG</span>{preview.weather.clg}</span>
-                  : <span className="mi-wx-field empty"><span className="mi-wx-lbl">CLG</span>——</span>
+                {importWnd
+                  ? <span className="mi-wx-field"><span className="mi-wx-lbl">WND</span>{importWnd}</span>
+                  : <span className="mi-wx-field empty"><span className="mi-wx-lbl">WND</span>——</span>
                 }
                 {preview.weather?.vis
                   ? <span className="mi-wx-field"><span className="mi-wx-lbl">VIS</span>{preview.weather.vis}</span>
                   : <span className="mi-wx-field empty"><span className="mi-wx-lbl">VIS</span>——</span>
+                }
+                {preview.weather?.clg
+                  ? <span className="mi-wx-field"><span className="mi-wx-lbl">CLG</span>{preview.weather.clg}</span>
+                  : <span className="mi-wx-field empty"><span className="mi-wx-lbl">CLG</span>——</span>
                 }
                 {preview.weather?.qnh
                   ? <span className="mi-wx-field"><span className="mi-wx-lbl">QNH</span>{preview.weather.qnh}</span>
@@ -254,7 +273,7 @@ export function MissionImport({ activeCarrierType, onClose }) {
             <button
               className="mi-btn mi-btn-primary"
               onClick={doImport}
-              disabled={selection.size === 0 && !preview.weather?.qnh && !preview.weather?.vis && !preview.weather?.clg}
+              disabled={selection.size === 0 && !preview.weather?.qnh && !preview.weather?.vis && !preview.weather?.clg && !importWnd}
             >
               Import
             </button>

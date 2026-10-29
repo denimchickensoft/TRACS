@@ -159,6 +159,7 @@ function registerApiRoutes(app, { sourceRegistry, relaySource, state, stateFiles
       mission: state.getMission(),
       airbases: state.getAirbases(),
       bullseyes: state.getBullseyes(),
+      weather: state.getWeather(),
       units: unitList,
       weapons: weaponList,
     })

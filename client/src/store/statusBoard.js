@@ -10,7 +10,7 @@ const SB_KEY = 'tracs.catcc.sb'
 function serialize(s) {
   return {
     event: s.event, launch: s.launch, recovery: s.recovery,
-    clg: s.clg, vis: s.vis, qnh: s.qnh,
+    wnd: s.wnd, clg: s.clg, vis: s.vis, qnh: s.qnh,
     caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, cvApp: s.cvApp,
     marBtn: s.marBtn, app: s.app, twrBtn: s.twrBtn, depBtn: s.depBtn,
     rad: s.rad, radAuto: s.radAuto,
@@ -36,6 +36,7 @@ export const useStatusBoardStore = create((set) => ({
   event:        saved.event        ?? '',
   launch:       saved.launch       ?? '',
   recovery:     saved.recovery     ?? '',
+  wnd:          saved.wnd          ?? '',
   clg:          saved.clg          ?? '',
   vis:          saved.vis          ?? '',
   qnh:          saved.qnh          ?? '',
@@ -99,7 +100,7 @@ export const useStatusBoardStore = create((set) => ({
 
   clearMissionData: () =>
     set((s) => ({
-      clg: '', vis: '', qnh: '',
+      wnd: '', clg: '', vis: '', qnh: '',
       entries: s.entries.filter(e => !e.fromMission),
     })),
 
@@ -257,7 +258,7 @@ export const useStatusBoardStore = create((set) => ({
 
   reset: () => set({
     event: '', launch: '', recovery: '',
-    clg: '', vis: '', qnh: '',
+    wnd: '', clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', cvApp: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad: '', radAuto: false,
     entries: [], nextId: 1,
@@ -265,7 +266,7 @@ export const useStatusBoardStore = create((set) => ({
 
   clearAll: () => set({
     event: '', launch: '', recovery: '',
-    clg: '', vis: '', qnh: '',
+    wnd: '', clg: '', vis: '', qnh: '',
     caseLaunch: '', caseRecovery: '', cvApp: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad: '', radAuto: false,
     entries: [], nextId: 1,
@@ -299,7 +300,7 @@ export function buildStatusBoardPayload(s) {
   return {
     eventHeader: {
       event: s.event, launch: s.launch, recovery: s.recovery,
-      clg: s.clg, vis: s.vis, qnh: s.qnh,
+      wnd: s.wnd, clg: s.clg, vis: s.vis, qnh: s.qnh,
     },
     recoveryStatus: {
       caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, cvApp: s.cvApp,

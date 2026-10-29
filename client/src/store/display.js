@@ -78,7 +78,12 @@ const SCOPE_DEFAULTS = {
   altFilterHighU: 600,
   altFilterLowA: 1,
   altFilterHighA: 600,
-  qnh: '29.92',
+  // STARS manual altimeter (.ALTIM) and winds (.WIND, keyed by ICAO, '' =
+  // the facility); null/absent = show live DCS exporter weather. Session-only:
+  // never saved in presets.
+  qnh: null,
+  windManual: {},
+  wxFields: [],             // .WX ICAOs listed under the facility in the SSA
   atis: null,
   giText: null,
   giAux: [],                // MF S1-9 auxiliary GI text lines (index 0 = line 1)

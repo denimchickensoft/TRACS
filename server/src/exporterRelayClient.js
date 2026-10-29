@@ -7,8 +7,8 @@
 // dispatched from routes/sourceConnect.js's Relay branch instead of
 // tacviewRelayClient.js, never alongside it.
 //
-// Data arrives as named groups (units, bullseyes, clock, airbases; contacts
-// and more as the hook gains collectors), each a full snapshot or a delta
+// Data arrives as named groups (units, bullseyes, clock, airbases, contacts,
+// weather; more as the hook gains collectors), each a full snapshot or a delta
 // where null means removed. GROUP_HANDLERS maps a group to what it does here,
 // so a new collector only needs a handler.
 //
@@ -22,6 +22,7 @@ const state = require('./state')
 const elevation = require('./elevation')
 const tacviewDetection = require('./tacviewDetection')
 const exporterContacts = require('./exporterContacts')
+const exporterWeather = require('./exporterWeather')
 const rateConfig = require('./rateConfig')
 const { identifiedError, createDeltaBuffer } = require('./tacviewShared')
 
@@ -99,6 +100,7 @@ let onUnitsDelta = null
 let onMission = null
 let onBullseyes = null
 let onAirbases = null
+let onWeather = null
 let relayUrl = null
 let password = null
 let coalition = null
@@ -108,6 +110,13 @@ let detectionTimer = null
 let broadcastTimer = null
 let theatreName = null
 let dateAndTime = null
+// The mission's weather table, its cloud preset's layers, live fog and live
+// per-airfield weather, published together as
+// { mission, cloudPreset, fog, airfields }.
+let missionWeather = null
+let cloudPreset = null
+let fog = null
+let airfieldsWeather = {}
 
 // Omniscient truth (all coalitions), keyed by unit id; only fogFilter's
 // output reaches state. Same split as tacviewRelayClient.js.
@@ -207,6 +216,35 @@ function publishAirbases(airbases) {
   if (onAirbases) onAirbases(airbases)
 }
 
+function resetWeather() {
+  missionWeather = null
+  cloudPreset = null
+  fog = null
+  airfieldsWeather = {}
+}
+
+function publishWeather() {
+  const weather = { mission: missionWeather, cloudPreset, fog, airfields: airfieldsWeather }
+  state.setWeather(weather)
+  if (onWeather) onWeather(weather)
+}
+
+function applyWeather(kind, data) {
+  missionWeather = data?.mission && typeof data.mission === 'object' ? data.mission : null
+  cloudPreset = data?.cloudPreset && typeof data.cloudPreset === 'object' ? data.cloudPreset : null
+  publishWeather()
+}
+
+function applyFog(kind, data) {
+  fog = data && typeof data === 'object' ? data : null
+  publishWeather()
+}
+
+function applyAirfieldWeather(kind, data) {
+  airfieldsWeather = exporterWeather.toAirfieldsWeather(data)
+  publishWeather()
+}
+
 // The first contacts message switches from modelled to real contacts: the
 // modelled lists are cleared, and every enemy the model had exposed is hidden
 // unless the real contacts show it.
@@ -248,6 +286,9 @@ const GROUP_HANDLERS = {
   airbases: applyAirbases,
   contacts: applyContacts,
   exportStatus: applyExportStatus,
+  weather: applyWeather,
+  fog: applyFog,
+  airfieldWeather: applyAirfieldWeather,
 }
 
 function applyGroup(group, kind, data) {
@@ -275,6 +316,10 @@ function clearUnits() {
     publishMission()
   }
   if (Object.keys(state.getAirbases()?.airbases ?? {}).length) publishAirbases({ airbases: {} })
+  if (missionWeather || fog || Object.keys(airfieldsWeather).length) {
+    resetWeather()
+    publishWeather()
+  }
   if (fogFilter) fogFilter = tacviewDetection.createFogFilter(friendlyCoalitionId)
   if (allSidesDetector) allSidesDetector = tacviewDetection.createAllSidesDetector()
   resetRealContacts()
@@ -448,12 +493,14 @@ function start(cfg, callbacks = {}) {
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
   onAirbases = callbacks.onAirbases ?? null
+  onWeather = callbacks.onWeather ?? null
   onLinkIssue = callbacks.onLinkIssue ?? null
   linkIssue = null
   active = true
   intentionalClose = false
   theatreName = null
   dateAndTime = null
+  resetWeather()
   state.resetForNewSource()
   internalUnits = {}
   unitsBuffer.reset()
@@ -490,6 +537,7 @@ function stop() {
   onMission = null
   onBullseyes = null
   onAirbases = null
+  onWeather = null
   internalUnits = {}
   fogFilter = null
   allSidesDetector = null
@@ -497,6 +545,7 @@ function stop() {
   friendlyCoalitionId = null
   theatreName = null
   dateAndTime = null
+  resetWeather()
   unitsBuffer.reset()
   if (relayUrl) console.log('[exporterRelayClient] stopped')
 }

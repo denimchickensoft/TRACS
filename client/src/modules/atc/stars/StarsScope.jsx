@@ -60,7 +60,7 @@ import { dispatch as dispatchAction, INIT_CNTL, ackConflict, recenterScope } fro
 import { useStcaStore }         from '../../../store/stca.js'
 import { resolvePrimaryOnlyIds } from './stca/formations.js'
 import { useAssociationStore }  from '../../../store/association.js'
-import { usePresetsStore }  from '../../../store/presets.js'
+import { usePresetsStore, extractSettings }  from '../../../store/presets.js'
 import { useFpeStore }      from '../../../store/fpe.js'
 import { useNavdataStore }      from '../../../store/navdata.js'
 import { useUserNavdataStore }  from '../../../store/userNavdata.js'
@@ -249,7 +249,7 @@ export default function StarsScope() {
       if (defaultSlot !== null && slots[defaultSlot]?.settings) {
         const settings = slots[defaultSlot].settings
         displayStore.updateWindow(WINDOW_ID, {
-          ...settings,
+          ...extractSettings(settings),
           offCntr:         false,
           rrCenterLat:     null,
           rrCenterLng:     null,

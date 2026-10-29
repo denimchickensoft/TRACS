@@ -2,6 +2,10 @@ import { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } fr
 import { useWheelDirection } from '../../utils/wheel.js'
 import { useSessionStore }   from '../../store/session.js'
 import { sendChatMessage }   from '../../webrtc/client.js'
+import { getIcaoMapping }    from '../../utils/icaoMapping.js'
+import { findAirfieldWeather, icaoToAirbaseName } from '../../utils/liveWeather.js'
+import { buildMetar }        from '../../utils/metar.js'
+import { toUtcDateTime }     from '../../utils/theatreTime.js'
 import './Messages.css'
 
 const DEFAULT_SIZE   = { w: 380, h: 460 }
@@ -70,6 +74,24 @@ function makeResizer(dir, posRef, sizeRef, setPos, setSize, windowRef, rightInse
   }
 }
 
+// The METAR for an ICAO in this theatre from the DCS exporter's live weather,
+// or a short reason there isn't one.
+async function metarText(icao) {
+  const { mission, weather } = useSessionStore.getState()
+  const theatre = mission?.mission?.theatre
+  const name = icaoToAirbaseName(await getIcaoMapping(), theatre, icao)
+  if (!name) return `${icao} NOT FOUND`
+  const airfield = findAirfieldWeather(weather, { callsign: name })
+  const dt = mission?.mission?.dateAndTime
+  const utc = dt?.date && dt?.time ? toUtcDateTime(dt.date, dt.time, theatre) : null
+  return buildMetar({
+    icao,
+    airfield,
+    weather,
+    utc: utc && { day: utc.date.Day, h: utc.time.h, m: utc.time.m },
+  }) ?? `NO WEATHER FOR ${icao} (needs the DCS exporter)`
+}
+
 function formatTime(ts) {
   const d = new Date(ts)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -86,6 +108,7 @@ export function Messages({ visible, onClose, rightInset = 0 }) {
   const positionName    = useSessionStore((s) => s.positionName)
   const markMessagesRead = useSessionStore((s) => s.markMessagesRead)
   const openDmTab       = useSessionStore((s) => s.openDmTab)
+  const addControllerMessage = useSessionStore((s) => s.addControllerMessage)
   const closeDmTab      = useSessionStore((s) => s.closeDmTab)
   const setActiveMsgTab = useSessionStore((s) => s.setActiveMsgTab)
 
@@ -215,9 +238,10 @@ export function Messages({ visible, onClose, rightInset = 0 }) {
     }
   }, [])
 
+  // A local reply (.metar) shows in the tab it was asked from.
   const visibleMessages = useMemo(() => {
-    if (activeMsgTab === 'main') return messages.filter((m) => !m.toPosition)
-    return messages.filter((m) =>
+    if (activeMsgTab === 'main') return messages.filter((m) => (m.localTab ? m.localTab === 'main' : !m.toPosition))
+    return messages.filter((m) => m.localTab ? m.localTab === activeMsgTab :
       m.toPosition && (m.fromPosition === activeMsgTab || m.toPosition === activeMsgTab)
     )
   }, [messages, activeMsgTab])
@@ -226,6 +250,15 @@ export function Messages({ visible, onClose, rightInset = 0 }) {
     const raw = input.trim()
     if (!raw) return
     setInput('')
+
+    // .metar ICAO: answered here, never sent to other controllers.
+    const metar = /^\.metar\s+([a-z0-9]{3,4})$/i.exec(raw)
+    if (metar) {
+      const tab = activeMsgTab
+      const icao = metar[1].toUpperCase()
+      metarText(icao).then((text) => addControllerMessage({ from: 'METAR', text, timestamp: Date.now(), localTab: tab }))
+      return
+    }
 
     if (activeMsgTab !== 'main') {
       sendChatMessage({ text: raw, toPosition: activeMsgTab })

@@ -43,6 +43,7 @@ import { sendWebrtcEvent, sendWebrtcSessionEvent } from '../../../webrtc/client.
 import { saveStarsPrefs } from '../../../store/starsPrefs.js'
 import { setUnitSystem, getUnitSystem } from '../../../store/unitSystem.js'
 import { METRIC, IMPERIAL, distToNm } from '../../../utils/units.js'
+import { normalizeWind } from '../../../utils/liveWeather.js'
 import { DIR_TO_ANGLE } from '../../../utils/scopeConstants.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { getMyControllerId, getKnownControllerIds } from '../../../utils/myControllerId.js'
@@ -757,6 +758,10 @@ export function RBL_CLEAR_N({ captures }) {
 
 export function SET_ALTIM({ captures }) {
   const raw = captures.value
+  if (!raw) {
+    getDisplay().updateWindow(WINDOW_ID, { qnh: null })
+    return ok()
+  }
   let display
   if (raw.includes('.')) {
     const val = parseFloat(raw)
@@ -774,6 +779,40 @@ export function SET_ALTIM({ captures }) {
     }
   }
   getDisplay().updateWindow(WINDOW_ID, { qnh: display })
+  ok()
+}
+
+// The facility's own ICAO counts as no ICAO: its line is always shown.
+function wxKey(icao) {
+  const facilityId = useSessionStore.getState().facilityId
+  return !icao || icao === facilityId ? '' : icao
+}
+
+export function SET_WX({ captures }) {
+  const win = getDisplay().windows[WINDOW_ID]
+  if (!captures.icao) {
+    getDisplay().updateWindow(WINDOW_ID, { wxFields: [] })
+    return ok()
+  }
+  const icao = wxKey(captures.icao)
+  if (!icao) return ok()
+  if (!useRunwaysStore.getState().airportPositions[icao]) return err('NOT FOUND')
+  const fields = win?.wxFields ?? []
+  if (!fields.includes(icao)) getDisplay().updateWindow(WINDOW_ID, { wxFields: [...fields, icao] })
+  ok()
+}
+
+export function SET_WIND({ captures }) {
+  const key = wxKey(captures.icao)
+  const windManual = { ...(getDisplay().windows[WINDOW_ID]?.windManual ?? {}) }
+  if (captures.wind) {
+    const wind = normalizeWind(captures.wind)
+    if (!wind) return err('FORMAT')
+    windManual[key] = wind
+  } else {
+    delete windManual[key]
+  }
+  getDisplay().updateWindow(WINDOW_ID, { windManual })
   ok()
 }
 
@@ -1456,6 +1495,8 @@ const ACTION_MAP = {
   SET_LEADER_GLOBAL,
   TOGGLE_PTL,
   SET_ALTIM,
+  SET_WX,
+  SET_WIND,
   SET_ATIS,
   SET_ATIS_GI,
   CLEAR_ATIS_GI,

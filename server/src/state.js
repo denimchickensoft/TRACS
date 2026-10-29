@@ -4,6 +4,8 @@ const units = new Map()   // unitId (string) → unit object
 const weapons = new Map() // weaponId (string) → weapon object — missiles only, see olympus.js's pollWeapons()/tacview.js
 let mission   = null
 let airbases  = []
+// Exporter only: { mission: <mission weather table> | null, airfields: {} }.
+let weather   = null
 let bullseyes = null
 let lastUpdateTime = 0
 let lastWeaponsUpdateTime = 0
@@ -81,6 +83,7 @@ function resetForNewSource() {
   mission = null
   airbases = []
   bullseyes = null
+  weather = null
 }
 
 module.exports = {
@@ -102,6 +105,8 @@ module.exports = {
   setAirbases:      (a)  => { airbases = a },
   getBullseyes:     ()   => bullseyes,
   setBullseyes:     (b)  => { bullseyes = b },
+  getWeather:       ()   => weather,
+  setWeather:       (w)  => { weather = w },
   getLastUpdateTime: ()  => sourceCursorTime,
   setSourceCursorTime: (t) => { sourceCursorTime = t },
   getSourceType:    ()   => sourceType,
