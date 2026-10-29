@@ -7,8 +7,8 @@
 // dispatched from routes/sourceConnect.js's Relay branch instead of
 // tacviewRelayClient.js, never alongside it.
 //
-// Data arrives as named groups (units now; airbases, bullseyes, mission
-// and contacts as the hook gains collectors), each a full snapshot or a delta
+// Data arrives as named groups (units, bullseyes, clock, airbases; contacts
+// and more as the hook gains collectors), each a full snapshot or a delta
 // where null means removed. GROUP_HANDLERS maps a group to what it does here,
 // so a new collector only needs a handler.
 //
@@ -96,6 +96,7 @@ let onLinkIssue = null
 let onUnitsDelta = null
 let onMission = null
 let onBullseyes = null
+let onAirbases = null
 let relayUrl = null
 let password = null
 let coalition = null
@@ -183,10 +184,23 @@ function applyClock(kind, data) {
   publishMission()
 }
 
+// Airbases (airfields, FARPs, carriers) in the shape Olympus sends:
+// { airbases: { '1': { callsign, coalition, latitude, longitude, unitId? } } }.
+function applyAirbases(kind, data) {
+  if (!data || typeof data !== 'object') return
+  publishAirbases({ airbases: data })
+}
+
+function publishAirbases(airbases) {
+  state.setAirbases(airbases)
+  if (onAirbases) onAirbases(airbases)
+}
+
 const GROUP_HANDLERS = {
   units: applyUnits,
   bullseyes: applyBullseyes,
   clock: applyClock,
+  airbases: applyAirbases,
 }
 
 function applyGroup(group, kind, data) {
@@ -212,6 +226,7 @@ function clearUnits() {
     dateAndTime = null
     publishMission()
   }
+  if (Object.keys(state.getAirbases()?.airbases ?? {}).length) publishAirbases({ airbases: {} })
   if (fogFilter) fogFilter = tacviewDetection.createFogFilter(friendlyCoalitionId)
   if (allSidesDetector) allSidesDetector = tacviewDetection.createAllSidesDetector()
   if (removed.length) unitsBuffer.queue({}, removed)
@@ -355,6 +370,7 @@ function start(cfg, callbacks = {}) {
   onUnitsDelta = callbacks.onUnitsDelta ?? null
   onMission = callbacks.onMission ?? null
   onBullseyes = callbacks.onBullseyes ?? null
+  onAirbases = callbacks.onAirbases ?? null
   onLinkIssue = callbacks.onLinkIssue ?? null
   linkIssue = null
   active = true
@@ -395,6 +411,7 @@ function stop() {
   onUnitsDelta = null
   onMission = null
   onBullseyes = null
+  onAirbases = null
   internalUnits = {}
   fogFilter = null
   allSidesDetector = null

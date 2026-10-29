@@ -24,6 +24,7 @@
       "heartbeat": { "enabled": true, "rateSec": 5 },
       "bullseyes": { "enabled": true, "rateSec": 10 },
       "clock": { "enabled": true, "rateSec": 5 },
+      "airbases": { "enabled": true, "rateSec": 30 },
       "heartbeat_client": { "enabled": true, "rateSec": 5 }
     }
   }

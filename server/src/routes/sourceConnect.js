@@ -176,6 +176,7 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, relaySource, st
         exporterClient.start(relayCfg, {
           onUnitsDelta: (delta) => broadcast({ type: 'units_delta', data: delta }),
           onMission:    (data)  => broadcast({ type: 'mission', data }),
+          onAirbases:   (data)  => broadcast({ type: 'airbases', data }),
           onBullseyes:  (data)  => broadcast({ type: 'bullseyes', data }),
           onLinkIssue:  (issue) => broadcast({ type: 'status', data: statusPayload('exporter', issue) }),
         })

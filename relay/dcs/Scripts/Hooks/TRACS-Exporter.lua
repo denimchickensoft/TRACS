@@ -510,6 +510,24 @@ S.collectors = {
     end
     return out
   end,
+  -- Every airfield, FARP and carrier with its current owner, in the fields
+  -- Olympus sends; unitId only for an airbase that is a unit (a ship).
+  airbases = function()
+    local out = {}
+    local bases = world.getAirbases() or {}
+    for i = 1, #bases do
+      local ab = bases[i]
+      local lat, lon = coord.LOtoLL(ab:getPoint())
+      local info = {
+        callsign = ab:getCallsign(), coalition = COALITION_NAMES[ab:getCoalition()] or 'neutral',
+        latitude = round(lat, 1e-6), longitude = round(lon, 1e-6),
+      }
+      local unit = ab:getUnit()
+      if unit then info.unitId = unit:getID() end
+      out[tostring(i)] = info
+    end
+    return out
+  end,
   -- Mission start date and the time of day, both theatre-local. absTime
   -- counts from midnight of the start date and passes 86400 after midnight,
   -- so the backend rolls the date forward from it.
@@ -612,6 +630,11 @@ end)
 -- Bullseyes rarely move (only when a script sets one), so a slow rate.
 register('bullseyes', 'server', 10, function()
   return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("bullseyes") or "null"')
+end)
+
+-- Ownership changes only on capture, so Olympus's 30 s rate.
+register('airbases', 'server', 30, function()
+  return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("airbases") or "null"')
 end)
 
 -- TRACS runs the clock locally between updates, so this only corrects drift,
