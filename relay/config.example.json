@@ -23,6 +23,7 @@
       "units": { "enabled": true, "rateSec": 1 },
       "heartbeat": { "enabled": true, "rateSec": 5 },
       "bullseyes": { "enabled": true, "rateSec": 10 },
+      "clock": { "enabled": true, "rateSec": 5 },
       "heartbeat_client": { "enabled": true, "rateSec": 5 }
     }
   }

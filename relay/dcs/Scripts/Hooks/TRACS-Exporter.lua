@@ -510,6 +510,12 @@ S.collectors = {
     end
     return out
   end,
+  -- Mission start date and the time of day, both theatre-local. absTime
+  -- counts from midnight of the start date and passes 86400 after midnight,
+  -- so the backend rolls the date forward from it.
+  clock = function()
+    return { date = env.mission and env.mission.date, absTime = timer.getAbsTime(), startTime = env.mission and env.mission.start_time }
+  end,
 }
 
 -- Returns the collector's result as JSON text, or an error object.
@@ -606,6 +612,12 @@ end)
 -- Bullseyes rarely move (only when a script sets one), so a slow rate.
 register('bullseyes', 'server', 10, function()
   return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("bullseyes") or "null"')
+end)
+
+-- TRACS runs the clock locally between updates, so this only corrects drift,
+-- e.g. after a pause.
+register('clock', 'server', 5, function()
+  return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("clock") or "null"')
 end)
 
 register('heartbeat_client', 'client', 5, function()

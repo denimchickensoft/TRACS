@@ -73,6 +73,22 @@ function toTracsUnit(id, rec) {
   return unit
 }
 
+// The hook's clock record -> mission.dateAndTime as Olympus sends it: date
+// and time both theatre-local. absTime counts seconds from midnight of the
+// mission's start date, so whole days past it move the date forward (Olympus
+// keeps the start date). Returns null for an unusable record.
+function toDateAndTime(rec) {
+  const d = rec?.date
+  const abs = rec?.absTime
+  if (!d || ![d.Year, d.Month, d.Day].every(Number.isInteger) || typeof abs !== 'number' || !(abs >= 0)) return null
+  const t = new Date(Date.UTC(d.Year, d.Month - 1, d.Day) + Math.floor(abs) * 1000)
+  return {
+    date: { Day: t.getUTCDate(), Month: t.getUTCMonth() + 1, Year: t.getUTCFullYear() },
+    time: { h: t.getUTCHours(), m: t.getUTCMinutes(), s: t.getUTCSeconds() },
+    startTime: rec.startTime,
+  }
+}
+
 let ws = null
 let active = false
 let linkIssue = null
@@ -88,6 +104,7 @@ let reconnectTimer = null
 let detectionTimer = null
 let broadcastTimer = null
 let theatreName = null
+let dateAndTime = null
 
 // Omniscient truth (all coalitions), keyed by unit id; only fogFilter's
 // output reaches state. Same split as tacviewRelayClient.js.
@@ -153,9 +170,23 @@ function applyBullseyes(kind, data) {
   if (onBullseyes) onBullseyes(bullseyes)
 }
 
+function publishMission() {
+  const mission = { mission: { theatre: theatreName ?? undefined, dateAndTime: dateAndTime ?? undefined } }
+  state.setMission(mission)
+  if (onMission) onMission(mission)
+}
+
+function applyClock(kind, data) {
+  const next = toDateAndTime(data)
+  if (!next) return
+  dateAndTime = next
+  publishMission()
+}
+
 const GROUP_HANDLERS = {
   units: applyUnits,
   bullseyes: applyBullseyes,
+  clock: applyClock,
 }
 
 function applyGroup(group, kind, data) {
@@ -169,16 +200,18 @@ function applyHook(hook) {
   const theatre = hook?.theatre
   if (!theatre || theatre === theatreName) return
   theatreName = theatre
-  const mission = { mission: { theatre } }
-  state.setMission(mission)
-  if (onMission) onMission(mission)
+  publishMission()
 }
 
 // The hook went away (DCS closed, or the mission is changing): everything
-// it sent is stale.
+// it sent is stale, the clock included.
 function clearUnits() {
   const removed = Object.keys(internalUnits)
   internalUnits = {}
+  if (dateAndTime) {
+    dateAndTime = null
+    publishMission()
+  }
   if (fogFilter) fogFilter = tacviewDetection.createFogFilter(friendlyCoalitionId)
   if (allSidesDetector) allSidesDetector = tacviewDetection.createAllSidesDetector()
   if (removed.length) unitsBuffer.queue({}, removed)
@@ -327,6 +360,7 @@ function start(cfg, callbacks = {}) {
   active = true
   intentionalClose = false
   theatreName = null
+  dateAndTime = null
   state.resetForNewSource()
   internalUnits = {}
   unitsBuffer.reset()
@@ -366,6 +400,7 @@ function stop() {
   allSidesDetector = null
   friendlyCoalitionId = null
   theatreName = null
+  dateAndTime = null
   unitsBuffer.reset()
   if (relayUrl) console.log('[exporterRelayClient] stopped')
 }
@@ -428,4 +463,4 @@ async function probe(cfg) {
   })
 }
 
-module.exports = { start, stop, isConnected, isActive, getLinkIssue, getConfig, probe, toTracsUnit }
+module.exports = { start, stop, isConnected, isActive, getLinkIssue, getConfig, probe, toTracsUnit, toDateAndTime }

@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import exporterRelayClient from '../../server/src/exporterRelayClient.js'
 
-const { toTracsUnit } = exporterRelayClient
+const { toTracsUnit, toDateAndTime } = exporterRelayClient
 
 const rec = {
   name: 'Aerial-1-1', type: 'F-16C_50', coalition: 2, groupId: 7, groupName: 'Aerial-1', category: 0,
@@ -52,5 +52,33 @@ describe('toTracsUnit', () => {
     const u = toTracsUnit('1', { ...rec, life: 0, life0: 0 })
     expect(u.alive).toBe(false)
     expect(u.health).toBeUndefined()
+  })
+})
+
+describe('toDateAndTime', () => {
+  const date = { Day: 15, Month: 6, Year: 2016 }
+
+  test('splits absTime into the time of day on the start date', () => {
+    expect(toDateAndTime({ date, absTime: 28800 + 1830 + 0.7, startTime: 28800 })).toEqual({
+      date: { Day: 15, Month: 6, Year: 2016 },
+      time: { h: 8, m: 30, s: 30 },
+      startTime: 28800,
+    })
+  })
+
+  test('rolls the date forward past midnight, across month and year ends', () => {
+    expect(toDateAndTime({ date, absTime: 86400 + 3600 })).toMatchObject({
+      date: { Day: 16, Month: 6, Year: 2016 }, time: { h: 1, m: 0, s: 0 },
+    })
+    expect(toDateAndTime({ date: { Day: 31, Month: 12, Year: 2016 }, absTime: 86400 * 2 + 59 })).toMatchObject({
+      date: { Day: 2, Month: 1, Year: 2017 }, time: { h: 0, m: 0, s: 59 },
+    })
+  })
+
+  test('null for a record it cannot use', () => {
+    expect(toDateAndTime(null)).toBeNull()
+    expect(toDateAndTime({ date, absTime: -1 })).toBeNull()
+    expect(toDateAndTime({ date: { Day: 1, Month: 1 }, absTime: 0 })).toBeNull()
+    expect(toDateAndTime({ absTime: 100 })).toBeNull()
   })
 })
