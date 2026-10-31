@@ -643,16 +643,25 @@ local function atmosphereType()
   return (w and w.atmosphere_type == 0) and 0 or 1
 end
 
--- 'P' while airfields are left, then '<atmosphereType>|<count>|{json}'.
+-- Airdromes and ships; FARPs and helipads aren't sampled.
+local function wxBaseKind(ab)
+  local cat = ab:getDesc().category
+  if cat == Airbase.Category.AIRDROME then return 'airdrome' end
+  if cat == Airbase.Category.SHIP then return 'ship' end
+  return nil
+end
+
+-- 'P' while airfields are left, then '<atmosphereType>|<count>|<ships>|{json}'.
 function S.airfieldWxStep(start)
   local w = S.wx
   if start or not w.list then
-    w.list, w.i, w.parts = {}, 0, {}
+    w.list, w.i, w.parts, w.ships = {}, 0, {}, 0
     local bases = world.getAirbases() or {}
     for i = 1, #bases do
-      local ok, cat = pcall(function() return bases[i]:getDesc().category end)
-      if ok and (cat == Airbase.Category.AIRDROME or cat == Airbase.Category.SHIP) then
+      local ok, kind = pcall(wxBaseKind, bases[i])
+      if ok and kind then
         w.list[#w.list + 1] = { ab = bases[i], key = tostring(i) }
+        if kind == 'ship' then w.ships = w.ships + 1 end
       end
     end
   end
@@ -660,7 +669,7 @@ function S.airfieldWxStep(start)
   for j = w.i + 1, last do pcall(sampleAirfield, w.list[j], w.parts) end
   w.i = last
   if w.i < #w.list then return 'P' end
-  local out = atmosphereType() .. '|' .. #w.parts .. '|{' .. table.concat(w.parts, ',') .. '}'
+  local out = atmosphereType() .. '|' .. #w.parts .. '|' .. w.ships .. '|{' .. table.concat(w.parts, ',') .. '}'
   w.list, w.parts = nil, nil
   return out
 end
@@ -894,10 +903,10 @@ register('airfieldWeather', 'server', 600, function(start)
   local r = inServer(string.format('return TRACS_EXP_S and TRACS_EXP_S.airfieldWxStep(%s) or "E"', tostring(start)))
   if r == nil or r == 'E' then error('airfieldWeather step failed (mission environment not bootstrapped?)') end
   if r == 'P' then return nil end
-  local atm, n, json = r:match('^(%d)|(%d+)|(.*)$')
+  local atm, n, ships, json = r:match('^(%d)|(%d+)|(%d+)|(.*)$')
   if not atm then error('unexpected airfieldWeather step result') end
   local static = atm == '0'
-  return json, 'full', { airfields = tonumber(n), static = static }, nil, static
+  return json, 'full', { airfields = tonumber(n), ships = tonumber(ships), static = static }, nil, static
 end, true)
 
 -- Client side: units from the export API, the only unit source a DCS client
@@ -937,7 +946,10 @@ local function putRec(rec, k, v)
 end
 
 register('units_client', 'client', 1, function(start, full)
+  -- The DCS call alone, timed apart from our processing of its result.
+  local r0, kb0 = now(), collectgarbage('count')
   local objects = objectExportAllowed() and Export.LoGetWorldObjects() or {}
+  local readMs, readKb = (now() - r0) * 1000, math.floor(collectgarbage('count') - kb0)
   local t = DCS.getModelTime()
   local out, seen, gone, n, changed = {}, {}, {}, 0, 0
   for id, o in pairs(objects) do
@@ -992,7 +1004,7 @@ register('units_client', 'client', 1, function(start, full)
   if #gone > 0 then
     json = (json == '{}' and '{' or json:sub(1, -2) .. ',') .. table.concat(gone, ',') .. '}'
   end
-  return json, full and 'full' or 'delta', { units = n, changed = changed, removed = #gone }
+  return json, full and 'full' or 'delta', { units = n, changed = changed, removed = #gone, readMs = readMs, readKb = readKb }
 end, true)
 
 C.registry.units_client.group = 'units'
@@ -1155,6 +1167,36 @@ end
 local lastTick = 0
 local callbacks = {}
 
+-- Frame-time diagnostics, while collecting: the time between simulation
+-- frames (all of DCS's work, not only ours) and how much of each frame was
+-- this hook's. Once a second a 'frames' timing (count, average and worst
+-- frame, our total and worst ms); right away a 'slow' one for any frame over
+-- FRAME_SLOW_MS, with our share of it, so a spike can be told apart as ours
+-- or not.
+local FRAME_SLOW_MS = 30
+local F = { last = nil, ourMs = 0, n = 0, sumMs = 0, maxMs = 0, ourSumMs = 0, ourMaxMs = 0, slow = 0, reportAt = 0 }
+
+local function trackFrame(t)
+  local frameMs = F.last and (t - F.last) * 1000 or nil
+  local ourMs = F.ourMs
+  F.last, F.ourMs = t, 0
+  if not frameMs or not T.isAwake() then return end
+  F.n, F.sumMs, F.ourSumMs = F.n + 1, F.sumMs + frameMs, F.ourSumMs + ourMs
+  if frameMs > F.maxMs then F.maxMs = frameMs end
+  if ourMs > F.ourMaxMs then F.ourMaxMs = ourMs end
+  if frameMs > FRAME_SLOW_MS then
+    F.slow = F.slow + 1
+    T.sendRaw({ type = 'timing', group = 'frames', kind = 'slow', ms = frameMs, ourMs = ourMs })
+  end
+  if t >= F.reportAt then
+    if F.reportAt > 0 then
+      T.sendRaw({ type = 'timing', group = 'frames', kind = 'second', ms = F.sumMs / F.n, frames = F.n,
+        maxMs = F.maxMs, ourMs = F.ourSumMs, ourMaxMs = F.ourMaxMs, slow = F.slow })
+    end
+    F.n, F.sumMs, F.maxMs, F.ourSumMs, F.ourMaxMs, F.slow, F.reportAt = 0, 0, 0, 0, 0, 0, t + 1
+  end
+end
+
 function callbacks.onMissionLoadEnd()
   local ok, e = pcall(function()
     C.side = DCS.isServer() and 'server' or 'client'
@@ -1181,6 +1223,8 @@ end
 function callbacks.onSimulationFrame()
   if not C.side then return end
   local t = now()
+  pcall(trackFrame, t)
+  F.ourMs = (now() - t) * 1000
   if t - lastTick < TICK_INTERVAL_S then return end
   lastTick = t
   local ok, e = pcall(function()
@@ -1191,6 +1235,7 @@ function callbacks.onSimulationFrame()
       runGcStep()
     end
   end)
+  F.ourMs = (now() - t) * 1000
   if not ok then err('onSimulationFrame: ' .. tostring(e)) end
 end
 
@@ -1199,6 +1244,7 @@ function callbacks.onSimulationStop()
   resetCollectors()
   C.side, nextEventDrain = nil, 0
   T.events, T.droppedEvents = {}, 0
+  F.last, F.reportAt = nil, 0
 end
 
 DCS.setUserCallbacks(callbacks)
