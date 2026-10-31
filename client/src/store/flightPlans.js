@@ -50,7 +50,7 @@ export const useFlightPlansStore = create(
             rte:         '',
             rmk:         '',
             flightRules: 'IFR',
-            // 'manual' (FPE/pilot page) vs 'miz'/'csv'/'dtc' (bulk import) --
+            // 'manual' (FPE/pilot page) vs 'miz'/'stm'/'csv'/'dtc' (bulk import) --
             // lets the Strip Bay's "Clear Mission" distinguish imported
             // plans from controller/pilot-filed ones.
             source:      'manual',

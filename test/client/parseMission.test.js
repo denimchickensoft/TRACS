@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { parseLua, extractWeather, findCarriersAndAircraft, findAtoFlights } from '../../client/src/utils/parseMission.js'
+import { parseLua, extractWeather, findCarriersAndAircraft, findAtoFlights, templateGroupId, isStaticTemplateText } from '../../client/src/utils/parseMission.js'
 
 describe('parseLua', () => {
   test('parses nested tables, strings, numbers, booleans and nil', () => {
@@ -115,5 +115,60 @@ describe('findAtoFlights', () => {
       task: 'NONE', rawTask: 'Nothing', lateActivation: true,
       launch: { type: 'airstart' }, recovery: { type: 'unknown' },
     })
+  })
+})
+
+// A Mission Editor static template: one squadron's flights, saved on their
+// own, with file-local group/unit IDs and the DCS callsign left at default.
+const template = {
+  name: 'EXERCISE_ALPHA_20260101',
+  theatre: 'NoSuchTheatre',
+  coalition: {
+    blue: { country: [{ plane: { group: [{
+      groupId: 1, name: 'VIPER 2', task: 'CAP',
+      route: { points: [{ action: 'From Parking Area', airdromeId: 47, x: 0, y: 0 }] },
+      units: [
+        { unitId: 1, name: 'Sqn-1 F-5E VIPER 2-1', type: 'F-5E-3', callsign: { name: 'Enfield11' } },
+        { unitId: 2, name: 'VIPER 2-2 | Pilot', type: 'F-5E-3', callsign: { name: 'Enfield12' } },
+      ],
+    }] } }] },
+    red: { country: [{ plane: { group: [{
+      groupId: 1, name: 'VIPER 2', task: 'CAP',
+      route: { points: [] },
+      units: [{ unitId: 1, name: 'Bandit', type: 'MiG-29A', callsign: { name: 'Dodge11' } }],
+    }] } }] },
+  },
+}
+
+describe('findAtoFlights on a static template', () => {
+  test('identifies flights by coalition + group name, not the file-local IDs', () => {
+    const [blue, red] = findAtoFlights(template, { template: true })
+    expect(blue).toMatchObject({ source: 'stm', templateName: 'EXERCISE_ALPHA_20260101', coalition: 'blue' })
+    expect(blue.groupId).toBe(templateGroupId('blue', 'VIPER 2'))
+    expect(blue.groupId).toBeGreaterThanOrEqual(1e9)
+    expect(blue.groupId).toBeLessThan(2e9)
+    expect(red.groupId).not.toBe(blue.groupId)
+    expect(templateGroupId('blue', 'VIPER 2')).toBe(blue.groupId)
+  })
+
+  test('callsigns come from the unit name, and unit IDs are dropped', () => {
+    const [blue, red] = findAtoFlights(template, { template: true })
+    expect(blue.units.map((u) => u.callsign)).toEqual(['VIPER21', 'VIPER22'])
+    expect(blue.units.every((u) => u.unitId === null)).toBe(true)
+    // No callsign-shaped part: keeps the name as written.
+    expect(red.units[0].callsign).toBe('BANDIT')
+  })
+
+  test('a mission is unchanged without the template option', () => {
+    const [blue] = findAtoFlights(template)
+    expect(blue).toMatchObject({ groupId: 1 })
+    expect(blue.source).toBeUndefined()
+    expect(blue.units[0]).toMatchObject({ unitId: 1, callsign: 'Enfield11' })
+  })
+
+  test('recognizes template text by its variable name', () => {
+    expect(isStaticTemplateText('staticTemplate = \n{ }')).toBe(true)
+    expect(isStaticTemplateText('﻿staticTemplate = { }')).toBe(true)
+    expect(isStaticTemplateText('mission = { }')).toBe(false)
   })
 })

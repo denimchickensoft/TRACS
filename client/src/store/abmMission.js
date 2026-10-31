@@ -129,14 +129,27 @@ export const useAbmMissionStore = create((set, get) => ({
   // reused even across a reload.
   nextManualId: saved.nextManualId ?? -1,
 
-  // Replaces the imported set but keeps any manually-added flights —
+  // Replaces the previous .miz's flights but keeps any manually-added ones —
   // loading a new mission shouldn't delete flights the controller typed in
-  // by hand (AddAtoFlight.jsx), only the previously-imported ones.
+  // by hand (AddAtoFlight.jsx) — and any stacked static-template flights.
   setFlights: (flights) => set((s) => ({
-    flights: [...flights, ...s.flights.filter(f => f.manual)],
+    flights: [...flights, ...s.flights.filter(f => f.manual || f.source === 'stm')],
     importedAt: Date.now(),
     selectedGroupId: null,
   })),
+
+  // Static-template (.stm) flights stack across loads: each squadron's file
+  // adds its own flights, and a flight already loaded under the same groupId
+  // (same coalition + group name, see parseMission.js's templateGroupId) is
+  // replaced, so a resent file updates its flights instead of duplicating.
+  mergeTemplateFlights: (flights) => set((s) => {
+    const incoming = new Set(flights.map(f => f.groupId))
+    return {
+      flights: [...s.flights.filter(f => !incoming.has(f.groupId)), ...flights],
+      importedAt: Date.now(),
+      selectedGroupId: null,
+    }
+  }),
 
   // Clear Mission — drops only the imported flights (and their task
   // overrides), leaving manually-added ones alone. Bare find/blink state is
@@ -233,12 +246,23 @@ export const useAbmMissionStore = create((set, get) => ({
   // for any unit that existed in the original mission file; a unit spawned
   // only at runtime (never in the .miz) has no match either way, same as it
   // would for Olympus.
+  //
+  // Static-template flights are the exception under Olympus: their groupId
+  // is synthetic (templateGroupId), so it never equals a live groupID and
+  // they fall back to the same callsign match. Limited to those flights so
+  // a .miz flight's numeric match behaves exactly as before.
   resolveGroupIdForUnit: (unit) => {
-    if (typeof unit?.groupID === 'number') return unit.groupID
-    const liveCallsign = resolveCallsign(unit)
-    if (!liveCallsign) return null
-    const match = get().flights.find((f) => f.units?.some((u) => stripAcid(u.callsign ?? '') === liveCallsign))
-    return match?.groupId ?? null
+    const flights = get().flights
+    const byCallsign = (candidates) => {
+      const liveCallsign = resolveCallsign(unit)
+      if (!liveCallsign) return null
+      return candidates.find((f) => f.units?.some((u) => stripAcid(u.callsign ?? '') === liveCallsign))?.groupId ?? null
+    }
+    if (typeof unit?.groupID === 'number') {
+      if (flights.some((f) => f.groupId === unit.groupID)) return unit.groupID
+      return byCallsign(flights.filter((f) => f.source === 'stm')) ?? unit.groupID
+    }
+    return byCallsign(flights)
   },
 
   // resolveGroupIdForUnit plus manual flights, which have no group ID to

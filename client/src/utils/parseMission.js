@@ -1,6 +1,7 @@
 import { CARRIER_TYPES } from './carriers.js'
 import { dcsPointToLatLng } from './dcsCoords.js'
 import { M_TO_FT } from './units.js'
+import { parseUnitName } from './callsignShape.js'
 
 // ── Lua parser ────────────────────────────────────────────────────────────────
 
@@ -386,10 +387,42 @@ function buildRecovery(points, carriersById, theatre) {
   return { type: 'unknown' }
 }
 
-function buildUnits(group) {
+// A Mission Editor static template (.stm) is one squadron's flight package,
+// saved on its own and pasted into the real mission later. Its group and
+// unit IDs are local to that file (every template restarts at 1) and get
+// renumbered on paste, so they can neither identify a flight across files
+// nor match a live unit. Its flights are identified by coalition + group
+// name instead, hashed into a range real DCS group IDs never reach (and
+// positive, unlike manual flights' negative IDs). Deterministic, so every
+// controller loading the same file gets the same ID and FRAG edits synced
+// by groupId still line up.
+const TEMPLATE_GROUP_ID_BASE = 1e9
+
+export function templateGroupId(coalition, groupName) {
+  const key = `${coalition}\u0000${groupName ?? ''}`
+  let h = 0x811c9dc5
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return TEMPLATE_GROUP_ID_BASE + (h % TEMPLATE_GROUP_ID_BASE)
+}
+
+// Text-level check, since parseLua discards the leading variable name.
+export function isStaticTemplateText(src) {
+  return /^\uFEFF?\s*staticTemplate\s*=/.test(src)
+}
+
+function buildUnits(group, template) {
   return toArray(group.units).map((unit) => ({
-    unitId:   unit.unitId ?? null,
-    callsign: unitCallsign(unit),
+    // A template's unitId is file-local (see templateGroupId), so it must
+    // never reach the live unitId match tier.
+    unitId:   template ? null : (unit.unitId ?? null),
+    // Squadrons leave a template's DCS callsign at the default (several
+    // files all say "Enfield11") and put the real one in the unit name,
+    // which is read the same way a live unit's name is ("vJG-3 MiG-21
+    // BLITZ 17-1" -> BLITZ17) so the two match.
+    callsign: template ? (parseUnitName(unit.name, unit.callsign?.name).acid || unitCallsign(unit)) : unitCallsign(unit),
     type:     TYPE_ABBREV[unit.type] ?? (unit.type ?? '').slice(0, 4).toUpperCase(),
     rawType:  unit.type ?? '',
     modex:    String(unit.onboard_num ?? ''),
@@ -419,7 +452,8 @@ function buildUnits(group) {
   }))
 }
 
-export function findAtoFlights(mission) {
+// `template`: the mission is a static template (.stm) -- see templateGroupId.
+export function findAtoFlights(mission, { template = false } = {}) {
   const theatre = mission?.theatre ?? null
   const carriers = collectCarriers(mission)
   const carriersById = new Map(carriers.map((c) => [c.unitId, c]))
@@ -444,7 +478,8 @@ export function findAtoFlights(mission) {
         const route = buildRoute(group, theatre)
 
         flights.push({
-          groupId:        group.groupId ?? null,
+          groupId:        template ? templateGroupId(coalition, group.name) : (group.groupId ?? null),
+          ...(template && { source: 'stm', templateName: mission.name ?? null }),
           coalition,
           name:           group.name ?? '',
           task:           TASK_ABBREV[task] ?? (task ?? '').slice(0, 6).toUpperCase(),
@@ -458,7 +493,7 @@ export function findAtoFlights(mission) {
           // The first TACAN the route switches on (tankers, mostly); FRAG's
           // route list shows any later change at its waypoint.
           tacan:          route.find((wp) => wp.beacon)?.beacon ?? null,
-          units:          buildUnits(group),
+          units:          buildUnits(group, template),
         })
       }
     }

@@ -87,13 +87,15 @@ export async function mapMizFlightPlans(flights, theatre) {
         rte,
         rmk,
         flightRules: 'IFR',
-        source: 'miz',
+        source: flight.source === 'stm' ? 'stm' : 'miz',
         // DCS's own internal unit ID (matches Olympus's live `unitID` field
         // reliably -- see utils/callsign.js findFlightPlanAid). Lets STARS
         // correlate a live track to this plan even when the mission's true
         // callsign.name ("Texaco21") doesn't survive into live telemetry for
         // single-ship groups, where Olympus's unitName/callsign both just
-        // report the bare unit name ("Texaco 2").
+        // report the bare unit name ("Texaco 2"). Always null for a static
+        // template, whose unit IDs are file-local (parseMission.js), so its
+        // plans correlate by AID only.
         dcsUnitId: unit.unitId ?? null,
         _groupId: flight.groupId,
       })

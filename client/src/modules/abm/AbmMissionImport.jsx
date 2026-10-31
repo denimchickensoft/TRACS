@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import { unzipSync } from 'fflate'
-import { parseLua, findAtoFlights } from '../../utils/parseMission.js'
+import { findAtoFlights } from '../../utils/parseMission.js'
+import { readMissionFile } from '../../utils/missionFile.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { preloadOrdnanceDb } from '../../utils/ordnance.js'
@@ -14,17 +14,6 @@ function readFileText(file) {
     reader.onerror = () => reject(new Error('File read failed'))
     reader.readAsText(file)
   })
-}
-
-async function loadMissionText(file) {
-  if (file.name.toLowerCase().endsWith('.miz')) {
-    const buf    = await file.arrayBuffer()
-    const zipped = new Uint8Array(buf)
-    const files  = unzipSync(zipped)
-    if (!files['mission']) throw new Error('No "mission" file found inside .miz')
-    return new TextDecoder().decode(files['mission'])
-  }
-  return readFileText(file)
 }
 
 function taskCounts(flights) {
@@ -42,6 +31,7 @@ export function AbmMissionImport({ onClose }) {
   const [flights, setLocalFlights] = useState([])
   const [csvRows,  setCsvRows]  = useState([])
   const [csvResult, setCsvResult] = useState(null)
+  const [notes,    setNotes]    = useState([])       // per-file errors/warnings shown in the preview
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef()
 
@@ -54,29 +44,60 @@ export function AbmMissionImport({ onClose }) {
   // this same Load Mission modal rather than a separate FRAG-panel importer
   // because ATO/FRAG already share one dataset (useAbmMissionStore().flights);
   // there's no second place for a CSV import to "trickle down" into.
-  const processFile = useCallback(async (file) => {
+  //
+  // Several files can be dropped at once: at most one .miz (or bare mission
+  // file), which replaces the previously loaded mission's flights, plus any
+  // number of static templates (.stm), which stack on top -- see the store's
+  // mergeTemplateFlights.
+  const processFiles = useCallback(async (fileList) => {
+    const files = [...fileList]
+    if (!files.length) return
     setPhase('loading')
     try {
-      if (file.name.toLowerCase().endsWith('.csv')) {
-        const text = await readFileText(file)
+      const csv = files.filter(f => f.name.toLowerCase().endsWith('.csv'))
+      if (csv.length) {
+        if (files.length > 1) throw new Error('Load an IFF .csv on its own, not together with other files.')
+        const text = await readFileText(csv[0])
         const rows = parseIffCsv(text)
         setCsvRows(rows)
         setPhase('csv-preview')
         return
       }
 
-      const text    = await loadMissionText(file)
-      const mission = parseLua(text)
-      let found     = findAtoFlights(mission)
-
-      if (sessionCoalition === 'blue' || sessionCoalition === 'red') {
-        found = found.filter(f => f.coalition === sessionCoalition)
+      const found = []
+      const fileNotes = []
+      let missionFile = null
+      for (const file of files) {
+        try {
+          const { kind, mission } = await readMissionFile(file)
+          const template = kind === 'stm'
+          if (!template) {
+            if (missionFile) throw new Error(`only one mission per load (already loading ${missionFile})`)
+            missionFile = file.name
+          }
+          let fileFlights = findAtoFlights(mission, { template })
+          if (sessionCoalition === 'blue' || sessionCoalition === 'red') {
+            fileFlights = fileFlights.filter(f => f.coalition === sessionCoalition)
+          }
+          if (fileFlights.length === 0) fileNotes.push(`${file.name}: no flights`)
+          for (const f of fileFlights) {
+            const dupe = found.findIndex(g => g.groupId === f.groupId)
+            if (dupe !== -1) {
+              fileNotes.push(`${f.name}: in more than one file, using ${file.name}`)
+              found.splice(dupe, 1)
+            }
+            found.push(f)
+          }
+        } catch (e) {
+          fileNotes.push(`${file.name}: ${e.message ?? 'could not be read'}`)
+        }
       }
 
-      if (found.length === 0) throw new Error('No tasked flights found in this mission.')
+      if (found.length === 0) throw new Error(fileNotes.join('\n') || 'No tasked flights found in this mission.')
 
       preloadOrdnanceDb()
       setLocalFlights(found)
+      setNotes(fileNotes)
       setPhase('preview')
     } catch (e) {
       setError(e.message ?? 'Unknown error')
@@ -88,16 +109,24 @@ export function AbmMissionImport({ onClose }) {
   const onDragLeave = e => { e.preventDefault(); setDragging(false) }
   const onDrop = e => {
     e.preventDefault(); setDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) processFile(file)
+    processFiles(e.dataTransfer.files)
   }
   const onFileChange = e => {
-    const file = e.target.files[0]
-    if (file) processFile(file)
+    processFiles(e.target.files)
   }
 
+  // Template flights already loaded under the same coalition + group name,
+  // which this import will replace.
+  const loadedTemplateIds = new Set(
+    useAbmMissionStore.getState().flights.filter(f => f.source === 'stm').map(f => f.groupId)
+  )
+
   const doImport = () => {
-    setFlights(flights)
+    const templates = flights.filter(f => f.source === 'stm')
+    const missionFlights = flights.filter(f => f.source !== 'stm')
+    // A batch of templates alone leaves the loaded mission's flights alone.
+    if (missionFlights.length) setFlights(missionFlights)
+    if (templates.length) useAbmMissionStore.getState().mergeTemplateFlights(templates)
     onClose()
   }
 
@@ -124,12 +153,13 @@ export function AbmMissionImport({ onClose }) {
             onClick={() => fileRef.current?.click()}
           >
             <span className="mi-drop-icon">⬆</span>
-            <span className="mi-drop-label">Drop .miz, mission, or IFF .csv file</span>
+            <span className="mi-drop-label">Drop .miz, mission, .stm templates, or IFF .csv file</span>
             <span className="mi-drop-sub">or click to browse</span>
             <input
               ref={fileRef}
               type="file"
-              accept=".miz,.csv,*"
+              accept=".miz,.stm,.csv,*"
+              multiple
               style={{ display: 'none' }}
               onChange={onFileChange}
             />
@@ -201,10 +231,16 @@ export function AbmMissionImport({ onClose }) {
                     <span className="mi-flight-task">{f.task || f.rawTask}</span>
                     <span className="mi-flight-units">{f.units.length}x</span>
                     {f.lateActivation && <span className="mi-flight-reserve">RESERVE</span>}
+                    {loadedTemplateIds.has(f.groupId) && <span className="mi-flight-reserve">REPLACES</span>}
                   </div>
                 ))}
               </div>
             </div>
+            {notes.length > 0 && (
+              <div className="mi-section mi-notes">
+                {notes.map((n, i) => <div key={i}>{n}</div>)}
+              </div>
+            )}
           </div>
         )}
 

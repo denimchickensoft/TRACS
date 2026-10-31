@@ -545,7 +545,9 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
               ) : (
                 <>
                   <div className="frag-section-label">ROSTER ({flight.units.length})</div>
-                  {flight.units.map(u => {
+                  {flight.units.map((u, ui) => {
+                    // Static-template units have no unitId (parseMission.js).
+                    const unitKey = u.unitId ?? `i${ui}`
                     const found = findLiveUnit(u)
                     const liveUnit = found?.unit ?? null
                     const liveKey = found?.key ?? null
@@ -556,7 +558,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                     // Status line above only shows the rolled-up worst/best case.
                     const state = liveUnit ? unitState(liveUnit, flightIsCarrierBase, flightCarrierUnit) : null
                     return (
-                    <div key={u.unitId} className="frag-unit">
+                    <div key={unitKey} className="frag-unit">
                       <div
                         className={['frag-unit-header', findable ? 'frag-unit-findable' : '', isBlinking ? 'frag-unit-blinking' : ''].join(' ').trim()}
                         onClick={findable ? () => toggleBlink(liveKey) : undefined}
@@ -584,10 +586,10 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                         </div>
                       ) })()}
                       {u.radios.some(r => radioPresets(r).length > 0) && (() => {
-                        const expanded = expandedRadios.has(u.unitId)
+                        const expanded = expandedRadios.has(unitKey)
                         return (
                           <div className="frag-radio-block">
-                            <div className="frag-radio-toggle" onClick={() => toggleRadio(u.unitId)}>
+                            <div className="frag-radio-toggle" onClick={() => toggleRadio(unitKey)}>
                               <span className="frag-radio-caret">{expanded ? '▾' : '▸'}</span>COMM
                             </div>
                             {expanded && (
