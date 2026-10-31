@@ -24,6 +24,16 @@ const CONNECTION_ISSUES = {
   relay_invalid_password:  'Relay rejected the password - reconnect with the right one',
   relay_protocol_mismatch: 'Relay and TRACS versions don’t match - update one of them',
   exporter_object_export_denied: 'The DCS server doesn’t allow object export',
+  exporter_dll_failed:     'Exporter unavailable',
+}
+// A free-text detail (e.g. why the exporter DLL failed) is cut to fit the top bar.
+const ISSUE_DETAIL_MAX = 120
+
+function issueText(reason, detail) {
+  const text = CONNECTION_ISSUES[reason]
+  if (!text || !detail) return text ?? null
+  const d = String(detail)
+  return `${text}: ${d.length > ISSUE_DETAIL_MAX ? `${d.slice(0, ISSUE_DETAIL_MAX - 3)}...` : d}`
 }
 const RECONNECT_INTERVAL_MS = 3000
 
@@ -119,7 +129,7 @@ function dispatch(message) {
       useSessionStore.getState().setConnected(polling)
       useSessionStore.getState().setConnectionRetrying(retrying)
       useSessionStore.getState().setConnectionIssue(
-        polling && !retrying ? null : (CONNECTION_ISSUES[message.data.reason] ?? null)
+        polling && !retrying ? null : issueText(message.data.reason, message.data.detail)
       )
       useSessionStore.getState().setSourceType(message.data.sourceType ?? null)
       const instanceId = message.data.instanceId

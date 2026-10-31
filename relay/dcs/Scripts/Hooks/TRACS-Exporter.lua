@@ -1,61 +1,30 @@
--- TRACS exporter - DCS-side half of the relay's exporter capability.
+-- TRACS exporter - the DCS-side Lua of the relay's exporter capability.
 --
--- Runs in the DCS hooks (GUI) environment on every DCS instance and works out
--- which side of the connection it is on:
+-- A thin shim around Mods/Services/TRACS/bin/tracs_exporter.dll (source in
+-- relay/native/), which does the work: the connection to a relay on this
+-- machine (on a thread of its own), scheduling, demand, events and timings.
+-- The DLL is loaded into this hook state on every DCS instance and, on a
+-- host, into the mission state too, where it calls DCS's functions in a
+-- private Lua state so their garbage never lands in a shared one.
+--
+-- Works out which side of the connection it is on:
 --   server: DCS.isServer() (dedicated server, hosted MP, single player). Data
---           is gathered inside the mission scripting environment by code this
---           hook injects with net.dostring_in('server', ...), which hands each
---           result back as a JSON string.
+--           is gathered inside the mission scripting environment.
 --   client: a multiplayer client. Only what the DCS Export API allows under
 --           the host's export permissions is available.
 --
--- Everything goes to a relay on this machine over one localhost TCP
--- connection, as newline-delimited JSON. The relay decides when anything is
--- gathered at all: collectors only run while it reports at least one
--- subscriber (a "demand" message), so an idle server pays only for an
--- occasional reconnect attempt.
---
--- Two layers, kept apart so a native DLL could later replace the transport
--- without touching the collectors:
---   Transport  - socket, send buffering, config/demand state, event buffer.
---   Collectors - the gathering itself, which must stay on the sim thread
---                because the DCS scripting API can only be called from it.
--- They meet only through T.isAwake/send/pushEvent/onConfig/onResync.
---
--- The native half, Mods/Services/TRACS/bin/tracs_exporter.dll (source in
--- relay/native/), is loaded into this state and, on a host, into the mission
--- state too. It calls DCS's functions in a private Lua state so their
--- garbage never lands in a shared one. There is no Lua fallback: without a
--- working DLL nothing is collected, and the hook only connects to the relay
--- to report why.
+-- The collectors below are still Lua for now, called by the DLL's
+-- scheduler. There is no Lua fallback: without a working DLL nothing is
+-- collected.
 
-local HOOK_PROTOCOL   = 1
--- Must match TRACS_EXPORTER_ABI in relay/native/tracs_exporter.c.
-local DLL_ABI         = 1
+-- Must match TRACS_EXPORTER_ABI in relay/native/common.h.
+local DLL_ABI         = 2
 local DEFAULT_PORT    = 8767
--- The tick is finer than any data rate so work can be spread across ticks
--- (and large sends drain promptly); no collector runs more often than once a
--- second, the fastest rate anything in TRACS consumes.
-local TICK_INTERVAL_S = 0.1
--- Default size of the mission-side incremental GC step per tick (KB of
--- allocation's worth of work; 0 = off). Off by default: forcing the pace makes
--- collections finish more often, and each one still ends in a pause that
--- can't be split up. The relay's exporter.gcStepKb overrides it.
-local DEFAULT_GC_STEP_KB = 0
-local MIN_RATE_S      = 1
-local CONNECT_TIMEOUT_S = 2
-local BACKOFF_MIN_S   = 2
-local BACKOFF_MAX_S   = 30
-local MAX_TX_BYTES    = 8 * 1024 * 1024
 local LOG_TAG         = 'TRACS.EXPORTER'
 
 local function info(msg)  log.write(LOG_TAG, log.INFO, msg) end
 local function warn(msg)  log.write(LOG_TAG, log.WARNING, msg) end
 local function err(msg)   log.write(LOG_TAG, log.ERROR, msg) end
-
-package.path  = package.path .. ';.\\LuaSocket\\?.lua;'
-package.cpath = package.cpath .. ';.\\LuaSocket\\?.dll;'
-local socket = require('socket')
 
 local DLL_DIR = lfs.writedir() .. [[Mods\Services\TRACS\bin\]]
 local dll, dllLoadError
@@ -97,182 +66,6 @@ local function fromJson(s)
   local ok, v = pcall(net.json2lua, s)
   if ok then return v end
   return nil
-end
-
----------------------------------------------------------------------------
--- Transport
----------------------------------------------------------------------------
-
-local T = {
-  port        = DEFAULT_PORT,
-  state       = 'idle',     -- idle | connecting | connected
-  tcp         = nil,
-  connectAt   = 0,
-  retryAt     = 0,
-  backoff     = BACKOFF_MIN_S,
-  rx          = '',
-  tx          = {},
-  txBytes     = 0,
-  awake       = false,
-  config      = nil,
-  events      = {},
-  eventCap    = 2000,
-  droppedEvents = 0,
-  configCbs   = {},
-  resyncCbs   = {},
-  helloFn     = nil,
-}
-
-function T.isAwake() return T.state == 'connected' and T.awake end
-
-function T.onConfig(cb) T.configCbs[#T.configCbs + 1] = cb end
-function T.onResync(cb) T.resyncCbs[#T.resyncCbs + 1] = cb end
-
--- Queues one already-encoded line. `line` must be a single JSON object with
--- no newlines.
-local function queueLine(line)
-  if T.txBytes + #line + 1 > MAX_TX_BYTES then
-    warn('send buffer full - dropping a message (relay not keeping up?)')
-    return false
-  end
-  T.tx[#T.tx + 1] = line .. '\n'
-  T.txBytes = T.txBytes + #line + 1
-  return true
-end
-
--- `json` is the payload already encoded as JSON text, so data gathered in the
--- mission environment is forwarded without a decode/re-encode round trip.
-function T.send(group, kind, seq, json)
-  if T.state ~= 'connected' then return false end
-  return queueLine('{"type":"data","v":' .. HOOK_PROTOCOL
-    .. ',"group":' .. toJson(group)
-    .. ',"kind":"' .. kind .. '"'
-    .. ',"seq":' .. seq
-    .. ',"t":' .. string.format('%.3f', DCS.getModelTime())
-    .. ',"data":' .. json .. '}')
-end
-
-function T.sendRaw(tbl)
-  if T.state ~= 'connected' then return false end
-  local s = toJson(tbl)
-  if not s then return false end
-  return queueLine(s)
-end
-
--- Events are kept while idle too (ring buffer, oldest dropped first) and
--- flushed once the relay wants data again.
-function T.pushEvent(e)
-  T.events[#T.events + 1] = e
-  while #T.events > T.eventCap do
-    table.remove(T.events, 1)
-    T.droppedEvents = T.droppedEvents + 1
-  end
-end
-
-local function flushEvents()
-  if #T.events == 0 or not T.isAwake() then return end
-  if T.sendRaw({ type = 'events', v = HOOK_PROTOCOL, events = T.events, dropped = T.droppedEvents }) then
-    T.events = {}
-    T.droppedEvents = 0
-  end
-end
-
-local function closeSocket(reason)
-  if T.tcp then pcall(function() T.tcp:close() end) end
-  T.tcp, T.rx, T.tx, T.txBytes, T.awake = nil, '', {}, 0, false
-  if T.state ~= 'idle' then info('disconnected from relay (' .. tostring(reason) .. ')') end
-  T.state = 'idle'
-  T.retryAt = now() + T.backoff
-  T.backoff = math.min(T.backoff * 2, BACKOFF_MAX_S)
-end
-
-local function startConnect()
-  local tcp = socket.tcp()
-  tcp:settimeout(0)
-  local ok, e = tcp:connect('127.0.0.1', T.port)
-  if ok or e == 'timeout' or e == 'Operation already in progress' then
-    T.tcp, T.state, T.connectAt = tcp, 'connecting', now()
-  else
-    pcall(function() tcp:close() end)
-    T.retryAt = now() + T.backoff
-    T.backoff = math.min(T.backoff * 2, BACKOFF_MAX_S)
-  end
-end
-
-local function handleMessage(msg)
-  if type(msg) ~= 'table' then return end
-  if msg.type == 'config' then
-    T.config = msg
-    if type(msg.eventBufferSize) == 'number' and msg.eventBufferSize > 0 then
-      T.eventCap = msg.eventBufferSize
-    end
-    for _, cb in ipairs(T.configCbs) do pcall(cb, msg) end
-  elseif msg.type == 'demand' then
-    local wasAwake = T.awake
-    T.awake = (tonumber(msg.subscribers) or 0) > 0
-    if T.awake ~= wasAwake then info(T.awake and 'relay has subscribers - collecting' or 'no subscribers - idle') end
-  elseif msg.type == 'resync' then
-    for _, cb in ipairs(T.resyncCbs) do pcall(cb) end
-  end
-end
-
-local function pumpConnected()
-  -- receive
-  while true do
-    local line, e, partial = T.tcp:receive('*l', T.rx)
-    if line then
-      T.rx = ''
-      handleMessage(fromJson(line))
-    elseif e == 'timeout' then
-      T.rx = partial or T.rx
-      break
-    else
-      closeSocket(e)
-      return
-    end
-  end
-  -- send
-  while #T.tx > 0 do
-    local chunk = T.tx[1]
-    local last, e, partialLast = T.tcp:send(chunk)
-    if last == #chunk then
-      table.remove(T.tx, 1)
-      T.txBytes = T.txBytes - #chunk
-    else
-      local sent = last or partialLast or 0
-      if sent > 0 then
-        T.tx[1] = chunk:sub(sent + 1)
-        T.txBytes = T.txBytes - sent
-      end
-      if e and e ~= 'timeout' then closeSocket(e) end
-      return
-    end
-  end
-end
-
-function T.tick()
-  if T.state == 'idle' then
-    if now() >= T.retryAt then startConnect() end
-  elseif T.state == 'connecting' then
-    local _, writable = socket.select(nil, { T.tcp }, 0)
-    if writable and #writable > 0 and T.tcp:getpeername() then
-      T.state, T.backoff = 'connected', BACKOFF_MIN_S
-      info('connected to relay on 127.0.0.1:' .. T.port)
-      if T.helloFn then T.sendRaw(T.helloFn()) end
-    elseif now() - T.connectAt > CONNECT_TIMEOUT_S then
-      closeSocket('connect timeout')
-    end
-  end
-  if T.state == 'connected' then
-    pumpConnected()
-    flushEvents()
-  end
-end
-
-function T.stop()
-  if T.tcp then pcall(function() T.tcp:close() end) end
-  T.tcp, T.state, T.rx, T.tx, T.txBytes, T.awake = nil, 'idle', '', {}, 0, false
-  T.retryAt, T.backoff = 0, BACKOFF_MIN_S
 end
 
 ---------------------------------------------------------------------------
@@ -769,16 +562,6 @@ function S.eventHandler:onEvent(e)
 end
 world.addEventHandler(S.eventHandler)
 
--- One incremental garbage-collection step of this Lua state, doing the work
--- Lua would do for `kb` KB of allocation. Called every hook tick while
--- collecting, so collection keeps pace in small steps instead of piling up
--- into one long pause. Returns '<1 if a cycle finished|0>|kbBefore|kbAfter'.
-function S.gcStep(kb)
-  local before = heapKb()
-  local finished = collectgarbage('step', kb)
-  return (finished and '1' or '0') .. '|' .. before .. '|' .. heapKb()
-end
-
 -- Hands the buffered events to the hook and clears them.
 function S.drainEvents()
   if #S.events == 0 then return '[]' end
@@ -791,25 +574,20 @@ return 'ok'
 ]==]
 
 local C = {
-  side     = nil,       -- 'server' | 'client'
-  registry = {},
-  order    = {},
-  seq      = 0,
+  side = nil,  -- 'server' | 'client'
+  dll  = nil,  -- this mission's DLL status, see initDll
 }
 
--- side: 'server' | 'client' | 'both'. gather() returns JSON text or nil.
--- Data goes out under the collector's name, or c.group when set (a client
--- collector feeding the same group as its server counterpart).
--- A sliced collector instead gets gather(start, full, slices) once per tick
--- until it returns its result: json, kind ('full'|'delta') and an optional
--- table of extra timing fields. Either kind can also return a final `once`
--- flag: true means don't run again until the next resync.
-local function register(name, side, defaultRateS, gather, sliced)
-  C.registry[name] = {
-    name = name, side = side, rateS = defaultRateS, enabled = true, gather = gather,
-    sliced = sliced == true, dueAt = 0, full = true, active = false,
-  }
-  C.order[#C.order + 1] = name
+-- Hands a collector to the DLL's scheduler. side: 'server' | 'client' |
+-- 'both'. A plain gather() returns JSON text or nil, and optionally `once`.
+-- A sliced one gets gather(start, full, slices, sensorUnitsOnly) once per
+-- tick until it returns its result: json, kind ('full'|'delta'), a table of
+-- extra timing fields, the mission state's {heapKbBefore, heapKbAfter}, and
+-- `once` (true: don't run again until the next resync). Data goes out under
+-- the collector's name, or `group` when given (a client collector feeding the
+-- same group as its server counterpart).
+local function register(name, side, rateS, gather, sliced, group)
+  if dll then dll.register(name, side, rateS, sliced == true, gather, group) end
 end
 
 local function inServer(code)
@@ -889,18 +667,19 @@ end
 local DLL_RETRY_S = 1
 local dllRetryAt = 0
 
-local function retryPendingDll(t)
+local function retryPendingDll()
+  local t = now()
   if not (C.dll and C.dll.pending) or t < dllRetryAt then return end
   dllRetryAt = t + DLL_RETRY_S
   C.dll = initDll()
   if not C.dll.pending then
     logDllStatus()
-    if T.state == 'connected' and T.helloFn then T.sendRaw(T.helloFn()) end
+    dll.setStatus(toJson(C.dll), dllReady())
   end
 end
 
 -- Each step also returns the mission-side heap size (KB) before and after it,
--- as a third value, for the per-step diagnostics in runCollectors.
+-- for the worst-step diagnostics in the DLL's timing lines.
 register('units', 'server', 1, function(start, full, slices)
   local r = inServer(string.format(
     'return TRACS_EXP_S and TRACS_EXP_S.unitsStep(%s, %s, %d) or "E"',
@@ -919,10 +698,10 @@ register('units', 'server', 1, function(start, full, slices)
   }, { tonumber(k0), tonumber(k1) }
 end, true)
 
-register('contacts', 'server', 4, function(start, full, slices)
+register('contacts', 'server', 4, function(start, full, slices, sensorUnitsOnly)
   local r = inServer(string.format(
     'return TRACS_EXP_S and TRACS_EXP_S.contactsStep(%s, %s, %d, %s) or "E"',
-    tostring(start), tostring(full), slices, tostring(C.registry.contacts.sensorUnitsOnly == true)))
+    tostring(start), tostring(full), slices, tostring(sensorUnitsOnly == true)))
   if r == nil or r == 'E' then error('contacts step failed (mission environment not bootstrapped?)') end
   local p0, p1 = r:match('^P|(%-?%d+)|(%-?%d+)$')
   if p0 then return nil, nil, nil, { tonumber(p0), tonumber(p1) } end
@@ -1110,203 +889,37 @@ register('units_client', 'client', 1, function(start, full)
     json = (json == '{}' and '{' or json:sub(1, -2) .. ',') .. table.concat(gone, ',') .. '}'
   end
   return json, full and 'full' or 'delta', { units = n, changed = changed, removed = #gone, readMs = readMs, readKb = readKb }
-end, true)
-
-C.registry.units_client.group = 'units'
+end, true, 'units')
 
 register('exportStatus', 'client', 5, function()
   return toJson({ objects = objectExportAllowed() })
 end)
 
-C.gcStepKb = DEFAULT_GC_STEP_KB
-C.gc = { ms = 0, maxMs = 0, steps = 0, cycles = 0, kb = -1, reportAt = 0 }
-
--- Applies the relay's per-collector settings; collectors the relay doesn't
--- mention keep their defaults.
-T.onConfig(function(cfg)
-  if type(cfg.gcStepKb) == 'number' and cfg.gcStepKb >= 0 then C.gcStepKb = math.floor(cfg.gcStepKb) end
-  if type(cfg.collectors) ~= 'table' then return end
-  for name, c in pairs(C.registry) do
-    local s = cfg.collectors[name]
-    if type(s) == 'table' then
-      if s.enabled ~= nil then c.enabled = s.enabled and true or false end
-      if type(s.rateSec) == 'number' and s.rateSec > 0 then c.rateS = math.max(s.rateSec, MIN_RATE_S) end
-      if s.sensorUnitsOnly ~= nil then c.sensorUnitsOnly = s.sensorUnitsOnly == true end
-    end
-  end
-end)
-
--- Collectors start one tick apart so ones with the same rate don't all land
--- in the same frame. A sliced cycle in progress is abandoned and restarts as
--- a full one.
-T.onResync(function()
-  local t = now()
-  for i, name in ipairs(C.order) do
-    local c = C.registry[name]
-    c.dueAt, c.full, c.active = t + (i - 1) * TICK_INTERVAL_S, true, false
-  end
-end)
-
-local function resetCollectors()
-  C.seq = 0
-  if C.gc then C.gc.reportAt = 0 end
-  for _, c in pairs(C.registry) do c.dueAt, c.full, c.active = 0, true, false end
-end
-
-local function sideMatches(c) return c.side == 'both' or c.side == C.side end
-
-local function sendResult(c, json, kind, ms, extra)
-  C.seq = C.seq + 1
-  T.send(c.group or c.name, kind, C.seq, json)
-  local timing = { type = 'timing', group = c.group or c.name, kind = kind, ms = ms, bytes = #json }
-  if type(extra) == 'table' then for k, v in pairs(extra) do timing[k] = v end end
-  T.sendRaw(timing)
-  c.full = false
-end
-
--- Runs every collector that's due, and one step of every sliced collector
--- whose cycle is in progress. Timings go to the relay (logged with
--- exporter.logTimings): for a sliced collector, ms is the whole cycle and
--- maxStepMs the worst single frame, which is what a player feels.
-local function runCollectors()
-  local t = now()
-  for _, name in ipairs(C.order) do
-    local c = C.registry[name]
-    if c.enabled and sideMatches(c) and (c.active or t >= c.dueAt) then
-      if c.sliced then
-        local start = not c.active
-        if start then
-          c.active, c.dueAt, c.cycleMs, c.maxStepMs, c.steps = true, t + c.rateS, 0, 0, 0
-        end
-        -- One step short of the period, so a cycle finishes before the next is due.
-        local slices = math.max(1, math.floor(c.rateS / TICK_INTERVAL_S) - 1)
-        local hook0 = math.floor(collectgarbage('count'))
-        local t0 = now()
-        local ok, json, kind, extra, heap, once = pcall(c.gather, start, c.full, slices)
-        local ms = (now() - t0) * 1000
-        local hook1 = math.floor(collectgarbage('count'))
-        c.cycleMs, c.steps = c.cycleMs + ms, c.steps + 1
-        -- Diagnostics for the worst step: which step it was and how both Lua
-        -- heaps moved during it. A large drop means a garbage collection ran
-        -- inside that step.
-        if ms > c.maxStepMs then
-          c.maxStepMs, c.maxStepIdx = ms, c.steps
-          c.maxStepHookKbDelta = hook1 - hook0
-          c.maxStepSrvKbDelta = (ok and type(heap) == 'table') and (heap[2] - heap[1]) or 0
-          c.srvKb = (ok and type(heap) == 'table') and heap[2] or -1
-          c.hookKb = hook1
-        end
-        if not ok then
-          c.active = false
-          err('collector ' .. name .. ' failed: ' .. tostring(json))
-        elseif json then
-          c.active = false
-          extra = type(extra) == 'table' and extra or {}
-          extra.maxStepMs, extra.steps, extra.maxStepIdx = c.maxStepMs, c.steps, c.maxStepIdx
-          extra.maxStepSrvKbDelta, extra.maxStepHookKbDelta = c.maxStepSrvKbDelta, c.maxStepHookKbDelta
-          extra.srvKb, extra.hookKb = c.srvKb, c.hookKb
-          sendResult(c, json, kind, c.cycleMs, extra)
-          if once then c.dueAt = math.huge end
-        end
-      else
-        c.dueAt = t + c.rateS
-        local t0 = now()
-        local ok, json, once = pcall(c.gather)
-        local ms = (now() - t0) * 1000
-        if ok and json then
-          sendResult(c, json, 'full', ms)
-          if once then c.dueAt = math.huge end
-        elseif not ok then
-          err('collector ' .. name .. ' failed: ' .. tostring(json))
-        end
-      end
-    end
-  end
-end
-
--- Runs one mission-side GC step per tick while collecting, and reports its
--- cost once a second as a 'gc' timing: total and worst step ms, steps, and
--- how many collection cycles finished.
-local GC_REPORT_INTERVAL_S = 1
-local function runGcStep()
-  if C.side ~= 'server' or C.gcStepKb <= 0 then return end
-  local g = C.gc
-  local t0 = now()
-  local r = inServer('return TRACS_EXP_S and TRACS_EXP_S.gcStep(' .. C.gcStepKb .. ') or "E"')
-  local ms = (now() - t0) * 1000
-  local done, _, after = (r or ''):match('^(%d)|(%-?%d+)|(%-?%d+)$')
-  if not done then return end
-  g.ms, g.steps = g.ms + ms, g.steps + 1
-  if ms > g.maxMs then g.maxMs = ms end
-  if done == '1' then g.cycles = g.cycles + 1 end
-  g.kb = tonumber(after)
-  local t = now()
-  if t >= g.reportAt then
-    if g.reportAt > 0 then
-      T.sendRaw({ type = 'timing', group = 'gc', kind = 'server', ms = g.ms, maxStepMs = g.maxMs,
-        steps = g.steps, cycles = g.cycles, srvKb = g.kb, stepKb = C.gcStepKb })
-    end
-    g.ms, g.maxMs, g.steps, g.cycles, g.reportAt = 0, 0, 0, 0, t + GC_REPORT_INTERVAL_S
-  end
-end
-
--- Moves events buffered in the mission environment into the transport's
--- buffer. Runs while idle too, so events from before the first subscriber
--- aren't lost.
-local EVENT_DRAIN_INTERVAL_S = 1
-local nextEventDrain = 0
-local function drainServerEvents()
-  if C.side ~= 'server' or now() < nextEventDrain then return end
-  nextEventDrain = now() + EVENT_DRAIN_INTERVAL_S
-  local events = inServer('return TRACS_EXP_S and TRACS_EXP_S.drainEvents() or "[]"')
-  if events and events ~= '[]' then
-    local list = fromJson(events)
-    if type(list) == 'table' then for _, e in ipairs(list) do T.pushEvent(e) end end
-  end
+-- Events buffered in the mission environment, for the DLL to collect (it
+-- asks once a second on a host, while idle too).
+if dll then
+  dll.setEventSource(function()
+    return inServer('return TRACS_EXP_S and TRACS_EXP_S.drainEvents() or "[]"')
+  end)
 end
 
 ---------------------------------------------------------------------------
 -- DCS callbacks
 ---------------------------------------------------------------------------
 
-local lastTick = 0
 local callbacks = {}
-
--- Frame-time diagnostics, while collecting: the time between simulation
--- frames (all of DCS's work, not only ours) and how much of each frame was
--- this hook's. Once a second a 'frames' timing (count, average and worst
--- frame, our total and worst ms); right away a 'slow' one for any frame over
--- FRAME_SLOW_MS, with our share of it, so a spike can be told apart as ours
--- or not.
-local FRAME_SLOW_MS = 30
-local F = { last = nil, ourMs = 0, n = 0, sumMs = 0, maxMs = 0, ourSumMs = 0, ourMaxMs = 0, slow = 0, reportAt = 0 }
-
-local function trackFrame(t)
-  local frameMs = F.last and (t - F.last) * 1000 or nil
-  local ourMs = F.ourMs
-  F.last, F.ourMs = t, 0
-  if not frameMs or not T.isAwake() then return end
-  F.n, F.sumMs, F.ourSumMs = F.n + 1, F.sumMs + frameMs, F.ourSumMs + ourMs
-  if frameMs > F.maxMs then F.maxMs = frameMs end
-  if ourMs > F.ourMaxMs then F.ourMaxMs = ourMs end
-  if frameMs > FRAME_SLOW_MS then
-    F.slow = F.slow + 1
-    T.sendRaw({ type = 'timing', group = 'frames', kind = 'slow', ms = frameMs, ourMs = ourMs })
-  end
-  if t >= F.reportAt then
-    if F.reportAt > 0 then
-      T.sendRaw({ type = 'timing', group = 'frames', kind = 'second', ms = F.sumMs / F.n, frames = F.n,
-        maxMs = F.maxMs, ourMs = F.ourSumMs, ourMaxMs = F.ourMaxMs, slow = F.slow })
-    end
-    F.n, F.sumMs, F.maxMs, F.ourSumMs, F.ourMaxMs, F.slow, F.reportAt = 0, 0, 0, 0, 0, 0, t + 1
-  end
-end
 
 function callbacks.onMissionLoadEnd()
   local ok, e = pcall(function()
     C.side = DCS.isServer() and 'server' or 'client'
-    resetCollectors()
-    T.port = tonumber(loadLocalConfig().port) or DEFAULT_PORT
+    local port = tonumber(loadLocalConfig().port) or DEFAULT_PORT
+    if not dll then
+      err('exporter not running: ' .. dllLoadError)
+      if C.side == 'server' then
+        inServer(string.format('trigger.action.outText(%q, 20)', 'TRACS Relay exporter failed to load: ' .. dllLoadError))
+      end
+      return
+    end
     C.dll = initDll()
     dllRetryAt = 0
     logDllStatus()
@@ -1314,50 +927,34 @@ function callbacks.onMissionLoadEnd()
       local r = inServer(SERVER_BOOTSTRAP)
       if r ~= 'ok' then err('mission environment bootstrap failed: ' .. tostring(r)) end
     end
-    T.helloFn = function()
-      local mission = DCS.getCurrentMission()
-      return {
-        type = 'hello', v = HOOK_PROTOCOL, side = C.side,
-        multiplayer = DCS.isMultiplayer(),
-        theatre = mission and mission.mission and mission.mission.theatre,
-        collectors = C.order,
-        dll = C.dll,
-      }
-    end
-    info('mission loaded - side=' .. C.side .. ', relay port ' .. T.port)
+    local mission = DCS.getCurrentMission()
+    dll.start({
+      port = port, side = C.side, multiplayer = DCS.isMultiplayer(),
+      theatre = mission and mission.mission and mission.mission.theatre,
+      status = toJson(C.dll), ready = dllReady(),
+    })
+    info('mission loaded - side=' .. C.side .. ', relay port ' .. port)
   end)
   if not ok then err('onMissionLoadEnd: ' .. tostring(e)) end
 end
 
+-- A failing frame is logged once until it works again, not every frame.
+local frameFailing = false
+
 function callbacks.onSimulationFrame()
-  if not C.side then return end
-  local t = now()
-  pcall(trackFrame, t)
-  F.ourMs = (now() - t) * 1000
-  if t - lastTick < TICK_INTERVAL_S then return end
-  lastTick = t
-  local ok, e = pcall(function()
-    T.tick()
-    retryPendingDll(t)
-    if not dllReady() then return end
-    drainServerEvents()
-    if T.isAwake() then
-      runCollectors()
-      runGcStep()
-    end
-  end)
-  F.ourMs = (now() - t) * 1000
-  if not ok then err('onSimulationFrame: ' .. tostring(e)) end
+  if not dll or not C.side then return end
+  if C.dll and C.dll.pending then
+    local ok, e = pcall(retryPendingDll)
+    if not ok then err('client self-test retry: ' .. tostring(e)) end
+  end
+  local ok, e = pcall(dll.frame)
+  if not ok and not frameFailing then err('frame: ' .. tostring(e)) end
+  frameFailing = not ok
 end
 
 function callbacks.onSimulationStop()
-  pcall(T.stop)
   if dll then pcall(dll.stop) end
-  C.dll = nil
-  resetCollectors()
-  C.side, nextEventDrain = nil, 0
-  T.events, T.droppedEvents = {}, 0
-  F.last, F.reportAt = nil, 0
+  C.side, C.dll = nil, nil
 end
 
 DCS.setUserCallbacks(callbacks)

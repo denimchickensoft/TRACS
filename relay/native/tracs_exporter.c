@@ -21,7 +21,9 @@
  * the exporter stops calling DCS until the next mission load, and the
  * private state is left alone (it may be inconsistent).
  *
- * The DCS scripting API is sim-thread only; everything here runs on it. */
+ * The DCS scripting API is sim-thread only; everything here runs on it,
+ * except the connection to the relay (net.c), which has its own thread and
+ * never touches Lua or DCS. Scheduling, events and timings: sched.c. */
 
 #define LUA_BUILD_AS_DLL
 #include <windows.h>
@@ -30,15 +32,9 @@
 #include <stdlib.h>
 #include "lua.h"
 #include "lauxlib.h"
-
-/* Bumped together with DLL_ABI in the hook whenever the Lua-facing
-   functions below change; the hook refuses a DLL with a different one. */
-#define TRACS_EXPORTER_ABI 1
-
-/* Set by the build from relay/package.json. */
-#ifndef TRACS_VERSION
-#define TRACS_VERSION "dev"
-#endif
+#include "common.h"
+#include "net.h"
+#include "sched.h"
 
 #define LOADED_MESSAGE_S 20
 
@@ -118,25 +114,11 @@ static int pcallPrivate(Side *s, int f, int nargs, int nresults, const char *con
   return r;
 }
 
-/* Pushes path's value from L's globals ("Unit.getPoint"); nil if missing. */
-static void pushPath(lua_State *L, const char *path) {
-  char ns[64];
-  const char *dot = strchr(path, '.');
-  size_t n = dot ? (size_t)(dot - path) : 0;
-  if (!dot || n >= sizeof ns) { lua_pushnil(L); return; }
-  memcpy(ns, path, n);
-  ns[n] = 0;
-  lua_getglobal(L, ns);
-  if (!lua_istable(L, -1)) return;
-  lua_getfield(L, -1, dot + 1);
-  lua_remove(L, -2);
-}
-
 /* Looks up every function this side needs, and checks each is a plain C
    function (no upvalues), the only kind that can be moved to another state. */
 static int resolveFns(lua_State *L, Side *s) {
   for (int i = 0; i < s->nFns; i++) {
-    pushPath(L, s->fns[i].path);
+    push_path(L, s->fns[i].path);
     s->fns[i].fn = lua_tocfunction(L, -1);
     const char *why = NULL;
     if (!s->fns[i].fn) why = lua_isnil(L, -1) ? "missing" : "not a C function";
@@ -297,7 +279,7 @@ static int runTest(lua_State *L, Side *s, const Test *t, const Subject *sub) {
   int nargs = (t->a1 != A_NONE) + (t->a2 != A_NONE);
 
   int top = lua_gettop(L);
-  pushPath(L, s->fns[t->fn].path);
+  push_path(L, s->fns[t->fn].path);
   if (t->a1 != A_NONE) pushArg(L, 0, t->a1, sub);
   if (t->a2 != A_NONE) pushArg(L, 0, t->a2, sub);
   if (lua_pcall(L, nargs, t->nresults, 0) != 0) {
@@ -329,7 +311,7 @@ static void findSubject(lua_State *L, Subject *sub) {
   memset(sub, 0, sizeof *sub);
   sub->side = 2;
   for (int side = 2; side >= 1 && !sub->haveUnit; side--) {
-    pushPath(L, "coalition.getGroups");
+    push_path(L, "coalition.getGroups");
     lua_pushnumber(L, side);
     if (lua_pcall(L, 1, 1, 0) != 0 || !lua_istable(L, -1)) { lua_pop(L, 1); continue; }
     int groups = lua_gettop(L);
@@ -337,7 +319,7 @@ static void findSubject(lua_State *L, Subject *sub) {
     for (int g = 1; g <= ng && !sub->haveUnit; g++) {
       lua_rawgeti(L, groups, g);
       int group = lua_gettop(L);
-      pushPath(L, "Group.getUnits");
+      push_path(L, "Group.getUnits");
       lua_pushvalue(L, group);
       if (lua_pcall(L, 1, 1, 0) == 0 && lua_istable(L, -1)) {
         int units = lua_gettop(L);
@@ -345,7 +327,7 @@ static void findSubject(lua_State *L, Subject *sub) {
         for (int u = 1; u <= nu; u++) {
           lua_rawgeti(L, units, u);
           int unit = lua_gettop(L);
-          pushPath(L, "Unit.isActive");
+          push_path(L, "Unit.isActive");
           lua_pushvalue(L, unit);
           int active = lua_pcall(L, 1, 1, 0) == 0 && lua_toboolean(L, -1);
           lua_pop(L, 1);
@@ -371,7 +353,7 @@ static void findSubject(lua_State *L, Subject *sub) {
   }
   if (!sub->haveUnit) return;
 
-  pushPath(L, "Unit.getPoint");
+  push_path(L, "Unit.getPoint");
   lua_pushvalue(L, sub->unitIdx);
   if (lua_pcall(L, 1, 1, 0) == 0 && lua_istable(L, -1)) {
     sub->x = numField(L, -1, "x"); sub->y = numField(L, -1, "y"); sub->z = numField(L, -1, "z");
@@ -379,21 +361,21 @@ static void findSubject(lua_State *L, Subject *sub) {
   lua_pop(L, 1);
 
   const char *typeName = "?";
-  pushPath(L, "Unit.getTypeName");
+  push_path(L, "Unit.getTypeName");
   lua_pushvalue(L, sub->unitIdx);
   if (lua_pcall(L, 1, 1, 0) == 0 && lua_isstring(L, -1)) typeName = lua_tostring(L, -1);
   _snprintf_s(sub->context, sizeof sub->context, _TRUNCATE, "(unit %.0f %s)",
               sub->unit.type == LUA_TNUMBER ? sub->unit.num : 0.0, typeName);
   lua_pop(L, 1);
 
-  pushPath(L, "Unit.getController");
+  push_path(L, "Unit.getController");
   lua_pushvalue(L, sub->unitIdx);
   if (lua_pcall(L, 1, 1, 0) == 0 && lua_istable(L, -1) && readId(L, -1, &sub->ctrl)) {
     sub->ctrlIdx = lua_gettop(L);
     sub->haveCtrl = 1;
   } else lua_pop(L, 1);
 
-  pushPath(L, "Controller.Detection");
+  push_path(L, "Controller.Detection");
   sub->method = lua_istable(L, -1) ? numField(L, -1, "RADAR") : 0;
   lua_pop(L, 1);
 }
@@ -410,7 +392,7 @@ static int failInit(lua_State *L, Side *s) {
 }
 
 static void outText(lua_State *L, const char *text) {
-  pushPath(L, "trigger.action");
+  push_path(L, "trigger.action");
   if (lua_istable(L, -1)) {
     lua_getfield(L, -1, "outText");
     lua_pushstring(L, text);
@@ -499,7 +481,7 @@ static int l_initClient(lua_State *L) {
   resetSide(s);
   if (!resolveFns(L, s) || !openPrivate(s)) return failInit(L, s);
 
-  pushPath(L, s->fns[C_GET_WORLD_OBJECTS].path);
+  push_path(L, s->fns[C_GET_WORLD_OBJECTS].path);
   if (lua_pcall(L, 0, 1, 0) != 0) _snprintf_s(a, sizeof a, _TRUNCATE, "error '%s'", lua_tostring(L, -1));
   else worldFingerprint(L, -1, a, sizeof a);
   lua_pop(L, 1);
@@ -533,9 +515,11 @@ static int l_take(lua_State *L) {
   return 1;
 }
 
-/* stop() on mission end: closes the private states. */
+/* stop() on mission end: disconnects from the relay and closes the private
+   states. */
 static int l_stop(lua_State *L) {
   (void)L;
+  sched_stop();
   resetSide(&g_server);
   resetSide(&g_client);
   return 0;
@@ -549,9 +533,17 @@ static const luaL_Reg FUNCTIONS[] = {
   { NULL, NULL },
 };
 
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+  (void)instance;
+  (void)reserved;
+  if (reason == DLL_PROCESS_ATTACH) net_init();
+  return TRUE;
+}
+
 __declspec(dllexport) int luaopen_tracs_exporter(lua_State *L) {
   lua_newtable(L);
   luaL_register(L, NULL, FUNCTIONS);
+  sched_open(L);
   lua_pushnumber(L, TRACS_EXPORTER_ABI);
   lua_setfield(L, -2, "abi");
   lua_pushstring(L, TRACS_VERSION);

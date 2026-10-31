@@ -7,11 +7,13 @@
 //                                                         -> NO RESPONSE: RECONNECTING
 //   { retrying: false, reason } failed, or only retried slowly
 //                                                         -> DISCONNECTED (reason)
-// `reason` is a key the client maps to text (client/src/ws/client.js).
+// `reason` is a key the client maps to text (client/src/ws/client.js); an
+// optional `detail` is free text the client appends to it.
 function statusPayload(sourceType, issue) {
   if (!issue) return { polling: true, sourceType }
-  if (issue.retrying) return { polling: true, retrying: true, reason: issue.reason, sourceType }
-  return { polling: false, reason: issue.reason, sourceType }
+  const detail = issue.detail ? { detail: issue.detail } : {}
+  if (issue.retrying) return { polling: true, retrying: true, reason: issue.reason, sourceType, ...detail }
+  return { polling: false, reason: issue.reason, sourceType, ...detail }
 }
 
 // The 'srs_status' message for the SRS transponder feed (srs.js), shown next

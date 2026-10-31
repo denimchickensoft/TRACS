@@ -55,8 +55,16 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build tracs_exporter.dll
-        run: node relay/native/build.js
+      - name: Build tracs_exporter.dll and its Lua test harness
+        run: node relay/native/build.js --harness
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - name: Run the DLL against a fake relay
+        run: npx vitest run test/relay/exporterDll.test.js
 
   # Builds the relay image (amd64, not pushed) so a broken Dockerfile shows up
   # here rather than on a relay-v* tag.

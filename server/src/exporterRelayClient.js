@@ -383,14 +383,27 @@ function setLinkIssue(issue) {
   if (onLinkIssue) onLinkIssue(issue)
 }
 
-// No hook connected to the relay means DCS isn't running the exporter (or
-// is between missions): retrying, not failed.
-function applyHookPresence(hook) {
-  if (hook) {
-    if (linkIssue?.reason === 'exporter_no_hook') setLinkIssue(null)
-  } else if (!linkIssue) {
-    setLinkIssue({ retrying: true, reason: 'exporter_no_hook' })
+// The link issue the hook's presence implies, given the current one;
+// undefined leaves it as it is. No hook connected to the relay means DCS
+// isn't running the exporter (or is between missions): retrying, not failed.
+// A hook whose DLL failed to load or failed its self-test sends nothing until
+// the next mission, with the reason in its hello.
+function hookPresenceIssue(hook, current) {
+  if (hook?.dll && hook.dll.ok === false) {
+    const detail = String(hook.dll.error ?? 'unknown error')
+    if (current?.reason === 'exporter_dll_failed' && current.detail === detail) return undefined
+    return { retrying: false, reason: 'exporter_dll_failed', detail }
   }
+  if (hook) {
+    return current?.reason === 'exporter_no_hook' || current?.reason === 'exporter_dll_failed' ? null : undefined
+  }
+  if (!current || current.reason === 'exporter_dll_failed') return { retrying: true, reason: 'exporter_no_hook' }
+  return undefined
+}
+
+function applyHookPresence(hook) {
+  const next = hookPresenceIssue(hook, linkIssue)
+  if (next !== undefined) setLinkIssue(next)
 }
 
 function handleMessage(msg) {
@@ -608,4 +621,4 @@ async function probe(cfg) {
   })
 }
 
-module.exports = { start, stop, isConnected, isActive, getLinkIssue, getConfig, probe, toTracsUnit, toDateAndTime }
+module.exports = { start, stop, isConnected, isActive, getLinkIssue, getConfig, probe, toTracsUnit, toDateAndTime, hookPresenceIssue }

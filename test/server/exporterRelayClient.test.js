@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import exporterRelayClient from '../../server/src/exporterRelayClient.js'
 
-const { toTracsUnit, toDateAndTime } = exporterRelayClient
+const { toTracsUnit, toDateAndTime, hookPresenceIssue } = exporterRelayClient
 
 const rec = {
   name: 'Aerial-1-1', type: 'F-16C_50', coalition: 2, groupId: 7, groupName: 'Aerial-1', category: 0,
@@ -90,5 +90,34 @@ describe('toDateAndTime', () => {
     expect(toDateAndTime({ date, absTime: -1 })).toBeNull()
     expect(toDateAndTime({ date: { Day: 1, Month: 1 }, absTime: 0 })).toBeNull()
     expect(toDateAndTime({ absTime: 100 })).toBeNull()
+  })
+})
+
+describe('hookPresenceIssue', () => {
+  const failed = { theatre: 'Caucasus', dll: { ok: false, error: 'self-test failed: getPoint' } }
+
+  test('a failed DLL is a DISCONNECTED issue carrying its error', () => {
+    expect(hookPresenceIssue(failed, null))
+      .toEqual({ retrying: false, reason: 'exporter_dll_failed', detail: 'self-test failed: getPoint' })
+  })
+
+  test('the same failure again changes nothing', () => {
+    const current = hookPresenceIssue(failed, null)
+    expect(hookPresenceIssue(failed, current)).toBeUndefined()
+  })
+
+  test('a working hook clears a DLL failure or a missing hook', () => {
+    const ok = { dll: { ok: true } }
+    expect(hookPresenceIssue(ok, hookPresenceIssue(failed, null))).toBeNull()
+    expect(hookPresenceIssue(ok, { retrying: true, reason: 'exporter_no_hook' })).toBeNull()
+  })
+
+  test('a working hook leaves other issues alone', () => {
+    expect(hookPresenceIssue({ dll: { ok: true } }, { retrying: false, reason: 'exporter_object_export_denied' })).toBeUndefined()
+  })
+
+  test('the hook going away replaces a DLL failure with no-hook', () => {
+    expect(hookPresenceIssue(null, hookPresenceIssue(failed, null))).toEqual({ retrying: true, reason: 'exporter_no_hook' })
+    expect(hookPresenceIssue(null, null)).toEqual({ retrying: true, reason: 'exporter_no_hook' })
   })
 })

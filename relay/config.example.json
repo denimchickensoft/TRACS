@@ -18,7 +18,6 @@
     "idleGraceMs": 10000,
     "eventBufferSize": 2000,
     "logTimings": false,
-    "gcStepKb": 0,
     "collectors": {
       "units": { "enabled": true, "rateSec": 1 },
       "bullseyes": { "enabled": true, "rateSec": 30 },
