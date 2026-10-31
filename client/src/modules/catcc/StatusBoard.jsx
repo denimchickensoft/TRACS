@@ -47,7 +47,7 @@ const _URL_CARRIER_UNITID = new URLSearchParams(window.location.search).get('car
 export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
   const {
-    event, launch, recovery, wnd, clg, vis, qnh,
+    event, launch, recovery, wnd, clg, vis, qnh, wxAuto, setWeatherField,
     caseLaunch, caseRecovery, cvApp, marBtn, app, twrBtn, depBtn, rad, radAuto,
     entries, setHeader, addEntry, insertEntryAfter, updateEntry, removeEntry, moveEntry,
     clearMissionData, clearAll, recycleBcn, assignNextMarshal, setStackValue, toggleFocus, setRad, setAppRad, clearApproach, removeEntries, clearColumn,
@@ -282,10 +282,11 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
           <HeaderField label="TZ"       value={autoTzStr || '——'} onChange={() => {}} readOnly inputW={24} />
         </div>
         <div className="sb-group">
-          <HeaderField label="WND"      value={wnd}             onChange={(v) => setHeader('wnd', v)} inputW={40} maxLen={6}  windFormat hdrIdx={3} />
-          <HeaderField label="VIS"      value={vis}             onChange={(v) => setHeader('vis', v)} inputW={18} maxLen={2}  digitsOnly hdrIdx={4} />
-          <HeaderField label="CLG"      value={clg}             onChange={(v) => setHeader('clg', v)} inputW={24} maxLen={3}  digitsOnly padZero={3} hdrIdx={5} />
-          <HeaderField label="QNH"      value={qnh}             onChange={(v) => setHeader('qnh', v)} inputW={32} maxLen={4}  digitsOnly hdrIdx={6} />
+          {/* Green when filled automatically (live weather / mission import), yellow when typed */}
+          <HeaderField label="WND"      value={wnd}             onChange={(v) => setWeatherField('wnd', v)} auto={!!wxAuto?.wnd} inputW={40} maxLen={6}  windFormat hdrIdx={3} />
+          <HeaderField label="VIS"      value={vis}             onChange={(v) => setWeatherField('vis', v)} auto={!!wxAuto?.vis} inputW={18} maxLen={2}  digitsOnly hdrIdx={4} />
+          <HeaderField label="CLG"      value={clg}             onChange={(v) => setWeatherField('clg', v)} auto={!!wxAuto?.clg} inputW={24} maxLen={3}  digitsOnly padZero={3} hdrIdx={5} />
+          <HeaderField label="QNH"      value={qnh}             onChange={(v) => setWeatherField('qnh', v)} auto={!!wxAuto?.qnh} inputW={32} maxLen={4}  digitsOnly hdrIdx={6} />
         </div>
       </div>
 

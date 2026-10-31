@@ -6,7 +6,6 @@ import { useUnitsStore } from '../../store/units.js'
 import { useSessionStore } from '../../store/session.js'
 import { formatWind } from '../../utils/liveWeather.js'
 import { computeMagvar } from '../../utils/magvar.js'
-import { markBoardAutoFill } from './useLiveBoardWeather.js'
 import './MissionImport.css'
 
 function readFileText(file) {
@@ -30,7 +29,7 @@ async function loadMissionText(file) {
 }
 
 export function MissionImport({ activeCarrierType, onClose }) {
-  const { setHeader, addMissionEntries } = useStatusBoardStore()
+  const { setWeatherField, addMissionEntries } = useStatusBoardStore()
 
   const [phase,    setPhase]    = useState('idle')   // idle | loading | preview | error
   const [error,    setError]    = useState('')
@@ -123,10 +122,9 @@ export function MissionImport({ activeCarrierType, onClose }) {
     const { weather } = preview
     if (weather) {
       const values = { wnd: importWnd, vis: weather.vis, clg: weather.clg, qnh: weather.qnh }
-      for (const [field, value] of Object.entries(values)) if (value) setHeader(field, value)
-      // Imported weather is a starting point: live DCS weather may replace it,
-      // as it never replaces a value someone typed.
-      markBoardAutoFill(values)
+      // Imported weather counts as automatic: live DCS weather may replace
+      // it, as it never replaces a value someone typed.
+      for (const [field, value] of Object.entries(values)) if (value) setWeatherField(field, value, true)
     }
     const toImport = visibleAircraft().filter(a => selection.has(a.callsign))
     if (toImport.length > 0) addMissionEntries(toImport)

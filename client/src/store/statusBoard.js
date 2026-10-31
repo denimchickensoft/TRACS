@@ -10,7 +10,7 @@ const SB_KEY = 'tracs.catcc.sb'
 function serialize(s) {
   return {
     event: s.event, launch: s.launch, recovery: s.recovery,
-    wnd: s.wnd, clg: s.clg, vis: s.vis, qnh: s.qnh,
+    wnd: s.wnd, clg: s.clg, vis: s.vis, qnh: s.qnh, wxAuto: s.wxAuto,
     caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, cvApp: s.cvApp,
     marBtn: s.marBtn, app: s.app, twrBtn: s.twrBtn, depBtn: s.depBtn,
     rad: s.rad, radAuto: s.radAuto,
@@ -40,6 +40,10 @@ export const useStatusBoardStore = create((set) => ({
   clg:          saved.clg          ?? '',
   vis:          saved.vis          ?? '',
   qnh:          saved.qnh          ?? '',
+  // Weather fields (wnd/vis/clg/qnh) filled automatically - live DCS weather
+  // or a mission import - rather than typed: shown green, and live weather
+  // may replace them. A typed value (yellow) stays until it's cleared.
+  wxAuto:       saved.wxAuto       ?? {},
   caseLaunch:   saved.caseLaunch   ?? '',
   caseRecovery: saved.caseRecovery ?? '',
   cvApp:        saved.cvApp        ?? '',
@@ -56,6 +60,8 @@ export const useStatusBoardStore = create((set) => ({
   focusId:      null,
 
   setHeader: (field, value) => set({ [field]: value }),
+  setWeatherField: (field, value, auto = false) =>
+    set((s) => ({ [field]: value, wxAuto: { ...s.wxAuto, [field]: auto && !!value } })),
 
   // RAD as typed (auto false), or as worked out by the board (auto true, green).
   setRad: (rad, auto = false) => set({ rad, radAuto: auto && !!rad }),
@@ -100,7 +106,7 @@ export const useStatusBoardStore = create((set) => ({
 
   clearMissionData: () =>
     set((s) => ({
-      wnd: '', clg: '', vis: '', qnh: '',
+      wnd: '', clg: '', vis: '', qnh: '', wxAuto: {},
       entries: s.entries.filter(e => !e.fromMission),
     })),
 
@@ -258,7 +264,7 @@ export const useStatusBoardStore = create((set) => ({
 
   reset: () => set({
     event: '', launch: '', recovery: '',
-    wnd: '', clg: '', vis: '', qnh: '',
+    wnd: '', clg: '', vis: '', qnh: '', wxAuto: {},
     caseLaunch: '', caseRecovery: '', cvApp: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad: '', radAuto: false,
     entries: [], nextId: 1,
@@ -266,7 +272,7 @@ export const useStatusBoardStore = create((set) => ({
 
   clearAll: () => set({
     event: '', launch: '', recovery: '',
-    wnd: '', clg: '', vis: '', qnh: '',
+    wnd: '', clg: '', vis: '', qnh: '', wxAuto: {},
     caseLaunch: '', caseRecovery: '', cvApp: '', marBtn: '', app: '', twrBtn: '', depBtn: '',
     rad: '', radAuto: false,
     entries: [], nextId: 1,
@@ -300,7 +306,7 @@ export function buildStatusBoardPayload(s) {
   return {
     eventHeader: {
       event: s.event, launch: s.launch, recovery: s.recovery,
-      wnd: s.wnd, clg: s.clg, vis: s.vis, qnh: s.qnh,
+      wnd: s.wnd, clg: s.clg, vis: s.vis, qnh: s.qnh, wxAuto: s.wxAuto,
     },
     recoveryStatus: {
       caseLaunch: s.caseLaunch, caseRecovery: s.caseRecovery, cvApp: s.cvApp,
