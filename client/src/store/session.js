@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { shallowEqual } from '../utils/storeSync.js'
+import { canonicalTheatre } from '../utils/theatreName.js'
 
 export const MODULE = {
   ATC:   'ATC',
@@ -145,7 +146,13 @@ export const useSessionStore = create((set) => ({
   setAicConfig: ({ callsign, unitId = null, unitName = '' }) =>
     set({ aicCallsign: callsign, aicUnitId: unitId, aicUnitName: unitName }),
 
-  setMission:    (mission)    => set({ mission }),
+  // Olympus passes DCS's own theatre name through, which for a few maps
+  // isn't the name TRACS's map data uses (see utils/theatreName.js).
+  setMission:    (mission)    => set({
+    mission: mission?.mission?.theatre
+      ? { ...mission, mission: { ...mission.mission, theatre: canonicalTheatre(mission.mission.theatre) } }
+      : mission,
+  }),
   // Manual theatre override — needed regardless of source, since Tacview has
   // no reliable auto-detected theatre signal at all, and even its
   // majority-vote mitigation can never disambiguate MarianaIslands vs.

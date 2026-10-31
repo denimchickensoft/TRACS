@@ -7,6 +7,7 @@ import { matchFixName } from './fixMatch.js'
 import { formatIcaoRoutePoint } from './coords.js'
 import { AID_MAX_LEN } from './callsign.js'
 import { M_TO_FT } from './units.js'
+import { canonicalTheatre } from './theatreName.js'
 
 const ROUTE_SLOTS = ['R1', 'R2', 'R3']
 
@@ -53,7 +54,8 @@ export function dtcRouteSlots(dtcJson) {
     inSlot.sort((a, b) => (a[`${slot}_order`] ?? 0) - (b[`${slot}_order`] ?? 0))
     slots.push({ slot, points: inSlot })
   }
-  return { family, theatre: dtcJson.data?.terrain ?? null, slots }
+  const terrain = dtcJson.data?.terrain
+  return { family, theatre: terrain ? canonicalTheatre(terrain) : null, slots }
 }
 
 // Builds one flight-plan candidate from a chosen route slot's points. DTC

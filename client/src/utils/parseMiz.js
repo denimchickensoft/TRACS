@@ -28,6 +28,7 @@ import { dcsPointToLatLng } from './dcsCoords.js'
 import { getProjectionParams } from './magvar.js'
 import { destinationPoint } from './bearing.js'
 import { computeBbox } from './parseGeojson.js'
+import { canonicalTheatre } from './theatreName.js'
 
 const CIRCLE_STEP_DEG = 5
 const OVAL_STEPS = 36
@@ -221,7 +222,7 @@ export function parseMiz(missionText, fallbackTheatre = null) {
     throw new Error('Not a DCS mission file (no `mission = { ... }` table found)')
   }
 
-  const missionTheatre = typeof root.theatre === 'string' ? root.theatre : null
+  const missionTheatre = typeof root.theatre === 'string' ? canonicalTheatre(root.theatre) : null
   const theatre = missionTheatre && getProjectionParams(missionTheatre) ? missionTheatre : fallbackTheatre
   if (!theatre || !getProjectionParams(theatre)) {
     throw new Error(`Unknown theatre "${missionTheatre ?? fallbackTheatre ?? '?'}" — no projection parameters available`)
