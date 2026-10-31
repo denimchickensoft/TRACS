@@ -44,6 +44,20 @@ jobs:
       - name: Unit tests
         run: npm test
 
+  # Builds the exporter DLL (MSVC, found by relay/native/build.js through
+  # vswhere) so a C compile error shows up here rather than on a relay-v* tag.
+  exporter-dll:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Build tracs_exporter.dll
+        run: node relay/native/build.js
+
   # Builds the relay image (amd64, not pushed) so a broken Dockerfile shows up
   # here rather than on a relay-v* tag.
   relay-docker:

@@ -79,3 +79,7 @@ server/data/relief-preview/
 # Throwaway missile-tracking capture diagnostic — not a real feature, never commit
 server/scripts/captureWeapons.js
 weapons-capture-*.jsonl
+
+# Exporter DLL build output
+relay/native/build/
+relay/dcs/Mods/Services/TRACS/bin/

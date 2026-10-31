@@ -110,8 +110,15 @@ function createExporter(wss, config) {
     }
     switch (msg.type) {
       case 'hello':
-        hookInfo = { side: msg.side, multiplayer: msg.multiplayer, theatre: msg.theatre, collectors: msg.collectors }
+        hookInfo = { side: msg.side, multiplayer: msg.multiplayer, theatre: msg.theatre, collectors: msg.collectors, dll: msg.dll }
         console.log(`[relay:exporter] hook connected - side=${msg.side} theatre=${msg.theatre ?? 'unknown'}`)
+        if (msg.dll && !msg.dll.ok) {
+          console.error(`[relay:exporter] exporter not collecting - ${msg.dll.error ?? 'DLL unavailable'}`)
+        } else if (msg.dll?.pending) {
+          console.log(`[relay:exporter] tracs_exporter.dll v${msg.dll.version} loaded - self-test waits for world objects`)
+        } else if (msg.dll) {
+          console.log(`[relay:exporter] tracs_exporter.dll v${msg.dll.version} ready`)
+        }
         broadcast({ type: 'exporterHello', hook: hookInfo })
         break
       case 'data':

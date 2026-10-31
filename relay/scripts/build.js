@@ -121,9 +121,16 @@ async function main() {
     fs.copyFileSync(path.join(RELAY_DIR, 'config.example.json'), distConfigExample)
   }
 
-  // The exporter's DCS hook ships next to the exe, laid out the way it goes
-  // into Saved Games/DCS, so it's always the version this relay speaks.
-  fs.cpSync(path.join(RELAY_DIR, 'dcs'), path.join(DIST_DIR, 'dcs'), { recursive: true })
+  // The exporter's DCS side (hook + tracs_exporter.dll) ships next to the
+  // exe, laid out the way it goes into Saved Games/DCS, so it's always the
+  // version this relay speaks. Windows builds only: DCS runs on Windows, and
+  // the exporter talks to a relay on the same machine; the hook is useless
+  // without the DLL, which only builds there.
+  if (process.platform === 'win32') {
+    console.log('\nBuilding tracs_exporter.dll...')
+    execFileSync(process.execPath, [path.join(RELAY_DIR, 'native', 'build.js')], { stdio: 'inherit' })
+    fs.cpSync(path.join(RELAY_DIR, 'dcs'), path.join(DIST_DIR, 'dcs'), { recursive: true })
+  }
 
   console.log(`\nBuilt ${path.relative(process.cwd(), exePath)}\n`)
 }
