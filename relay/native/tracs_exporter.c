@@ -37,27 +37,27 @@
 #include "private.h"
 #include "sched.h"
 #include "client.h"
+#include "server.h"
 
 #define LOADED_MESSAGE_S 20
-
-enum {
-  S_GET_POINT, S_GET_POSITION, S_GET_VELOCITY, S_GET_LIFE, S_GET_PLAYER_NAME, S_IN_AIR,
-  S_GET_COALITION, S_GET_ID, S_GET_CATEGORY, S_GET_CONTROLLER, S_GET_DETECTED_TARGETS,
-  S_GET_GROUPS, S_GET_UNITS, S_GET_HEIGHT, S_LO_TO_LL, S_COUNT
-};
 
 static DcsFn SERVER_FNS[S_COUNT] = {
   { "Unit.getPoint" }, { "Unit.getPosition" }, { "Unit.getVelocity" }, { "Unit.getLife" },
   { "Unit.getPlayerName" }, { "Unit.inAir" }, { "Unit.getCoalition" }, { "Unit.getID" },
   { "Object.getCategory" }, { "Unit.getController" }, { "Controller.getDetectedTargets" },
   { "coalition.getGroups" }, { "Group.getUnits" }, { "land.getHeight" }, { "coord.LOtoLL" },
+  /* Not Unit.getLife0: a Lua function in DCS (2.9.31), and its only use,
+     a health percentage, isn't shown anywhere in TRACS. */
+  { "Unit.isExist" }, { "Unit.isActive" }, { "Unit.getName", NULL, 1 }, { "Unit.getTypeName", NULL, 1 },
+  { "Unit.getCallsign", NULL, 1 }, { "Unit.getGroup", NULL, 1 },
+  { "Group.getID", NULL, 1 }, { "Group.getName", NULL, 1 }, { "Group.getCategory", NULL, 1 },
 };
 
 static DcsFn CLIENT_FNS[C_COUNT] = {
   { "Export.LoGetWorldObjects" },
 };
 
-static Side g_server = { SERVER_FNS, S_COUNT };
+Side g_server = { SERVER_FNS, S_COUNT };
 Side g_client = { CLIENT_FNS, C_COUNT };
 
 /* Mission side -> hook side hand-off. Both run on the sim thread. */
@@ -86,6 +86,19 @@ static void setFault(Side *s, const char *fnPath, const char *context, unsigned 
 }
 
 /* See private.h. */
+int pcallShared(lua_State *L, Side *s, int f, int nargs, int nresults) {
+  unsigned long code = 0;
+  int r;
+  __try {
+    r = lua_pcall(L, nargs, nresults, 0) == 0 ? 0 : 1;
+  } __except (code = GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER) {
+    setFault(s, s->fns[f].path, NULL, code);
+    return 2;
+  }
+  return r;
+}
+
+/* See private.h. */
 int pcallPrivate(Side *s, int f, int nargs, int nresults, const char *context) {
   unsigned long code = 0;
   int r;
@@ -99,21 +112,32 @@ int pcallPrivate(Side *s, int f, int nargs, int nresults, const char *context) {
 }
 
 /* Looks up every function this side needs, and checks each is a plain C
-   function (no upvalues), the only kind that can be moved to another state. */
+   function (no upvalues), the only kind that can be moved to another state.
+   One allowed to be Lua (luaOk) that is Lua, or a C function with upvalues,
+   is marked isLua instead. Every function that fails is named. */
 static int resolveFns(lua_State *L, Side *s) {
+  s->error[0] = 0;
   for (int i = 0; i < s->nFns; i++) {
-    push_path(L, s->fns[i].path);
-    s->fns[i].fn = lua_tocfunction(L, -1);
+    DcsFn *f = &s->fns[i];
+    push_path(L, f->path);
+    f->fn = lua_tocfunction(L, -1);
+    f->isLua = 0;
     const char *why = NULL;
-    if (!s->fns[i].fn) why = lua_isnil(L, -1) ? "missing" : "not a C function";
-    else if (lua_getupvalue(L, -1, 1)) { lua_pop(L, 1); why = "has upvalues"; }
+    if (!f->fn) {
+      if (lua_isfunction(L, -1) && f->luaOk) f->isLua = 1;
+      else why = lua_isnil(L, -1) ? "missing" : "not a C function";
+    } else if (lua_getupvalue(L, -1, 1)) {
+      lua_pop(L, 1);
+      if (f->luaOk) f->isLua = 1; else why = "has upvalues";
+    }
     lua_pop(L, 1);
     if (why) {
-      _snprintf_s(s->error, sizeof s->error, _TRUNCATE, "%s: %s", s->fns[i].path, why);
-      return 0;
+      char part[160];
+      _snprintf_s(part, sizeof part, _TRUNCATE, "%s%s: %s", s->error[0] ? ", " : "", f->path, why);
+      strncat_s(s->error, sizeof s->error, part, _TRUNCATE);
     }
   }
-  return 1;
+  return s->error[0] == 0;
 }
 
 static int openPrivate(Side *s) {
@@ -134,10 +158,7 @@ void clearPrivate(Side *s) {
 /* Self-test: each function called normally and privately must agree   */
 /* ------------------------------------------------------------------ */
 
-/* An object's id_ as read in one state, to rebuild it in another. */
-typedef struct { int type; lua_Number num; void *ptr; } Id;
-
-static int readId(lua_State *L, int idx, Id *id) {
+int readId(lua_State *L, int idx, Id *id) {
   lua_getfield(L, idx, "id_");
   id->type = lua_type(L, -1);
   id->num = id->type == LUA_TNUMBER ? lua_tonumber(L, -1) : 0;
@@ -146,7 +167,7 @@ static int readId(lua_State *L, int idx, Id *id) {
   return id->type == LUA_TNUMBER || id->type == LUA_TLIGHTUSERDATA;
 }
 
-static void pushBare(lua_State *L, const Id *id) {
+void pushBare(lua_State *L, const Id *id) {
   lua_createtable(L, 0, 1);
   if (id->type == LUA_TLIGHTUSERDATA) lua_pushlightuserdata(L, id->ptr);
   else lua_pushnumber(L, id->num);
@@ -218,6 +239,11 @@ static const Test SERVER_TESTS[] = {
   { S_GET_DETECTED_TARGETS, A_CTRL, A_METHOD, 1 },
   { S_GET_GROUPS, A_SIDE, A_NONE, 1 },    { S_GET_UNITS, A_GROUP, A_NONE, 1 },
   { S_GET_HEIGHT, A_VEC2, A_NONE, 1 },    { S_LO_TO_LL, A_VEC3, A_NONE, 3 },
+  { S_IS_EXIST, A_UNIT, A_NONE, 1 },      { S_IS_ACTIVE, A_UNIT, A_NONE, 1 },
+  { S_GET_NAME, A_UNIT, A_NONE, 1 },      { S_GET_TYPE_NAME, A_UNIT, A_NONE, 1 },
+  { S_GET_CALLSIGN, A_UNIT, A_NONE, 1 },
+  { S_GET_GROUP, A_UNIT, A_NONE, 1 },     { S_GROUP_GET_ID, A_GROUP, A_NONE, 1 },
+  { S_GROUP_GET_NAME, A_GROUP, A_NONE, 1 }, { S_GROUP_GET_CATEGORY, A_GROUP, A_NONE, 1 },
 };
 
 /* What the server self-test works on, found in the mission state. */
@@ -273,14 +299,27 @@ static int runTest(lua_State *L, Side *s, const Test *t, const Subject *sub) {
   }
   lua_settop(L, top);
 
-  lua_pushcfunction(s->P, s->fns[t->fn].fn);
-  if (t->a1 != A_NONE) pushArg(s->P, 1, t->a1, sub);
-  if (t->a2 != A_NONE) pushArg(s->P, 1, t->a2, sub);
-  int r = pcallPrivate(s, t->fn, nargs, t->nresults, sub->context);
-  if (r == 2) return -1;
-  if (r == 1) _snprintf_s(b, sizeof b, _TRUNCATE, "error '%s'", lua_tostring(s->P, -1));
-  else for (int i = t->nresults; i >= 1; i--) fingerprint(s->P, -i, b, sizeof b);
-  clearPrivate(s);
+  if (s->fns[t->fn].isLua) {
+    /* Called the way the collectors call it: in this state, on a rebuilt
+       object with its class's methods. */
+    push_path(L, s->fns[t->fn].path);
+    const Id *obj = t->a1 == A_GROUP ? &sub->group : &sub->unit;
+    server_pushObject(L, obj, t->a1 == A_GROUP);
+    int r = pcallShared(L, s, t->fn, 1, t->nresults);
+    if (r == 2) return -1;
+    if (r == 1) _snprintf_s(b, sizeof b, _TRUNCATE, "error '%s'", lua_tostring(L, -1));
+    else for (int i = t->nresults; i >= 1; i--) fingerprint(L, -i, b, sizeof b);
+    lua_settop(L, top);
+  } else {
+    lua_pushcfunction(s->P, s->fns[t->fn].fn);
+    if (t->a1 != A_NONE) pushArg(s->P, 1, t->a1, sub);
+    if (t->a2 != A_NONE) pushArg(s->P, 1, t->a2, sub);
+    int r = pcallPrivate(s, t->fn, nargs, t->nresults, sub->context);
+    if (r == 2) return -1;
+    if (r == 1) _snprintf_s(b, sizeof b, _TRUNCATE, "error '%s'", lua_tostring(s->P, -1));
+    else for (int i = t->nresults; i >= 1; i--) fingerprint(s->P, -i, b, sizeof b);
+    clearPrivate(s);
+  }
 
   if (strcmp(a, b) == 0) return 1;
   _snprintf_s(s->error, sizeof s->error, _TRUNCATE, "self-test: %s differs in a private state%s%s (normal %s, private %s)",
@@ -403,7 +442,11 @@ static int l_initServer(lua_State *L) {
   Side *s = &g_server;
   char msg[640];
   resetSide(s);
+  server_reset(L);
   if (!resolveFns(L, s) || !openPrivate(s)) goto failed;
+  for (int i = 0; i < s->nFns; i++) {
+    if (s->fns[i].isLua) dcs_log(L, LOG_INFO, "%s is a Lua function in this DCS - called in the mission environment", s->fns[i].path);
+  }
 
   Subject sub;
   int top = lua_gettop(L);
@@ -508,6 +551,7 @@ static int l_stop(lua_State *L) {
   resetSide(&g_server);
   resetSide(&g_client);
   client_reset();
+  server_reset(NULL);
   return 0;
 }
 
@@ -519,6 +563,17 @@ static const luaL_Reg FUNCTIONS[] = {
   { NULL, NULL },
 };
 
+/* Every C collector registerNative can name: the client's and the
+   server's. */
+static const NativeCollector *nativeCollectors(void) {
+  static NativeCollector all[32];
+  if (all[0].name) return all;
+  int n = 0;
+  for (const NativeCollector *c = CLIENT_COLLECTORS; c->name && n < 31; c++) all[n++] = *c;
+  for (const NativeCollector *c = SERVER_COLLECTORS; c->name && n < 31; c++) all[n++] = *c;
+  return all;
+}
+
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
   (void)instance;
   (void)reserved;
@@ -529,7 +584,8 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
 __declspec(dllexport) int luaopen_tracs_exporter(lua_State *L) {
   lua_newtable(L);
   luaL_register(L, NULL, FUNCTIONS);
-  sched_open(L, CLIENT_COLLECTORS);
+  server_open(L);
+  sched_open(L, nativeCollectors());
   lua_pushnumber(L, TRACS_EXPORTER_ABI);
   lua_setfield(L, -2, "abi");
   lua_pushstring(L, TRACS_VERSION);

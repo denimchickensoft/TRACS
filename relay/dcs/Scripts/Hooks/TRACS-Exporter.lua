@@ -13,12 +13,13 @@
 --   client: a multiplayer client. Only what the DCS Export API allows under
 --           the host's export permissions is available.
 --
--- The client side's collectors are the DLL's own (registerNative); the
--- server side's are still Lua for now, called by the DLL's scheduler. There
+-- The client side's collectors and the server's units are the DLL's own
+-- (registerNative); the other server collectors are still Lua for now,
+-- called by the DLL's scheduler. There
 -- is no Lua fallback: without a working DLL nothing is collected.
 
 -- Must match TRACS_EXPORTER_ABI in relay/native/common.h.
-local DLL_ABI         = 3
+local DLL_ABI         = 4
 local DEFAULT_PORT    = 8767
 local LOG_TAG         = 'TRACS.EXPORTER'
 
@@ -120,194 +121,7 @@ local function encode(v)
 end
 S.encode = encode
 
--- Units are gathered a slice at a time across several hook ticks (one
--- S.unitsStep call per tick), so a big mission never costs one long frame.
--- Each unit's record is kept between cycles and updated in place, and only
--- units whose rounded record changed since the last cycle are encoded; units
--- gone since then (or no longer active) are sent as null. A full cycle (first
--- one, or after a resync) encodes every unit.
--- Everything here is shaped by the garbage this state has to collect, which
--- ends in a pause the player can feel:
--- * The unit list comes from birth events, with the groups re-listed only
---   every RELIST_CYCLES cycles (and on a full cycle) to catch anything missed.
--- * Fields that never change are read once.
--- * A unit that was on the ground and not moving only has its position
---   checked (one getPoint); the full read happens when it has moved, and
---   at least every FULL_READ_CYCLES cycles, which catches turning in place.
--- Records are keyed by unit id as a string (numeric keys would make the
--- encoder treat a sparse table as an array). heading is atan2 of the unit's
--- forward vector on the map grid, in radians; converting it to true north is
--- the consumer's job. pitch is the nose's angle above the horizon, radians.
-
-local RELIST_CYCLES = 30
-local FULL_READ_CYCLES = 10
-
 local function round(x, step) return math.floor(x / step + 0.5) * step end
-
--- Every known unit, by numeric id: its object and group details, plus, once
--- it's been active, its record (rec) and the cycle it was last seen in.
-S.units = {}
-S.cycle = 0
-S.lastUnitCount = 0
-S.births, S.relistAdded = 0, 0
-local heightArg = { x = 0, y = 0 }
-
--- Adds a unit to the list if it isn't there yet. Returns the new entry.
-local function addUnit(u, side, g)
-  local nid = u:getID()
-  if S.units[nid] then return nil end
-  local e = { u = u, side = side, gid = g:getID(), gname = g:getName(), gcat = g:getCategory() }
-  S.units[nid] = e
-  return e
-end
-
--- Birth events add units spawned after the mission started.
-function S.onBirth(u)
-  if Object.getCategory(u) ~= Object.Category.UNIT then return end
-  if addUnit(u, u:getCoalition(), u:getGroup()) then S.births = S.births + 1 end
-end
-
--- Sets rec[k] = v and reports whether that changed it.
-local function put(rec, k, v)
-  if rec[k] == v then return false end
-  rec[k] = v
-  return true
-end
-
--- Refreshes a unit's record in place. Returns whether the record changed,
--- or nil if the unit isn't active (e.gone set if it no longer exists).
-local function updateUnit(e)
-  local u = e.u
-  if not u:isExist() then e.gone = true return nil end
-  if not u:isActive() then return nil end
-  local rec, changed = e.rec, false
-  if not rec then
-    rec = {
-      name = u:getName(), type = u:getTypeName(), coalition = e.side,
-      groupId = e.gid, groupName = e.gname, category = e.gcat,
-      life0 = u:getLife0(), callsign = u:getCallsign(),
-    }
-    e.rec, e.id, e.still, changed = rec, tostring(u:getID()), false, true
-  end
-  if e.still and S.cycle - e.fullAt < FULL_READ_CYCLES then
-    local p = u:getPoint()
-    if round(p.x, 0.1) == e.px and round(p.y, 0.1) == e.py and round(p.z, 0.1) == e.pz then
-      changed = put(rec, 'life', u:getLife()) or changed
-      changed = put(rec, 'player', u:getPlayerName()) or changed
-      return changed
-    end
-  end
-  local pos = u:getPosition()
-  local p = pos.p
-  local lat, lon, alt = coord.LOtoLL(p)
-  heightArg.x, heightArg.y = p.x, p.z
-  local v = u:getVelocity()
-  -- put first, so every field is updated even once something has changed
-  changed = put(rec, 'lat', round(lat, 1e-6)) or changed
-  changed = put(rec, 'lon', round(lon, 1e-6)) or changed
-  changed = put(rec, 'alt', round(alt, 0.1)) or changed
-  changed = put(rec, 'agl', round(alt - land.getHeight(heightArg), 0.1)) or changed
-  changed = put(rec, 'heading', round(math.atan2(pos.x.z, pos.x.x), 1e-3)) or changed
-  changed = put(rec, 'pitch', round(math.asin(math.max(-1, math.min(1, pos.x.y))), 1e-3)) or changed
-  changed = put(rec, 'vx', round(v.x, 0.01)) or changed
-  changed = put(rec, 'vy', round(v.y, 0.01)) or changed
-  changed = put(rec, 'vz', round(v.z, 0.01)) or changed
-  changed = put(rec, 'inAir', u:inAir()) or changed
-  changed = put(rec, 'life', u:getLife()) or changed
-  changed = put(rec, 'player', u:getPlayerName()) or changed
-  e.px, e.py, e.pz = round(p.x, 0.1), round(p.y, 0.1), round(p.z, 0.1)
-  e.still = not rec.inAir and rec.vx == 0 and rec.vy == 0 and rec.vz == 0
-  e.fullAt = S.cycle
-  return changed
-end
-
--- start: begin a new cycle (full = encode every unit), spread over `slices`
--- calls. Every call reports the heap size before and after it (KB). Returns
--- 'P|kbBefore|kbAfter' while the cycle is still running, then
--- '<F|D>|kbBefore|kbAfter|units|changed|removed|births|relistAdded|'
--- followed by the JSON object.
-function S.unitsStep(start, full, slices)
-  local kb0 = heapKb()
-  slices = math.max(1, slices)
-  if start or not S.uc then
-    S.cycle = S.cycle + 1
-    local list = {}
-    for _, e in pairs(S.units) do list[#list + 1] = e end
-    local groups
-    if full or S.cycle % RELIST_CYCLES == 1 then
-      groups = {}
-      for side = 0, 2 do
-        for _, g in ipairs(coalition.getGroups(side) or {}) do
-          groups[#groups + 1] = { g = g, side = side }
-        end
-      end
-    end
-    S.uc = {
-      list = list, li = 1, groups = groups, gi = 1, full = full, parts = {},
-      n = 0, changed = 0,
-      perStep = math.max(50, math.ceil(S.lastUnitCount / slices)),
-      groupsPerStep = groups and math.max(10, math.ceil(#groups / slices)) or 0,
-    }
-  end
-  local uc = S.uc
-
-  -- Re-listing, a slice of groups per step: units not known yet are added,
-  -- and appended to this cycle's list.
-  if uc.groups then
-    local last = math.min(#uc.groups, uc.gi + uc.groupsPerStep - 1)
-    for i = uc.gi, last do
-      local ge = uc.groups[i]
-      pcall(function()
-        if not ge.g:isExist() then return end
-        for _, u in ipairs(ge.g:getUnits() or {}) do
-          local e = addUnit(u, ge.side, ge.g)
-          if e then
-            uc.list[#uc.list + 1] = e
-            if S.cycle > 1 then S.relistAdded = S.relistAdded + 1 end
-          end
-        end
-      end)
-    end
-    uc.gi = last + 1
-    if uc.gi > #uc.groups then uc.groups = nil end
-  end
-
-  local done = 0
-  while done < uc.perStep and uc.list[uc.li] do
-    local e = uc.list[uc.li]
-    uc.li, done = uc.li + 1, done + 1
-    local ok, changed = pcall(updateUnit, e)
-    if ok and changed ~= nil then
-      e.seen = S.cycle
-      uc.n = uc.n + 1
-      if uc.full or changed then
-        uc.parts[#uc.parts + 1] = encode(e.id) .. ':' .. encode(e.rec)
-        uc.changed = uc.changed + 1
-      end
-    end
-  end
-  if uc.groups or uc.list[uc.li] then return 'P|' .. kb0 .. '|' .. heapKb() end
-
-  -- Records not seen this cycle are gone or inactive; a full cycle replaces
-  -- everything, so only a delta needs to name them. Units that no longer
-  -- exist leave the list.
-  local removed = 0
-  for nid, e in pairs(S.units) do
-    if e.rec and e.seen ~= S.cycle then
-      if not uc.full then
-        uc.parts[#uc.parts + 1] = encode(e.id) .. ':null'
-        removed = removed + 1
-      end
-      e.rec = nil
-    end
-    if e.gone then S.units[nid] = nil end
-  end
-  local births, relistAdded = S.births, S.relistAdded
-  S.lastUnitCount, S.uc, S.births, S.relistAdded = uc.n, nil, 0, 0
-  local json = '{' .. table.concat(uc.parts, ',') .. '}'
-  return (uc.full and 'F' or 'D') .. '|' .. kb0 .. '|' .. heapKb() .. '|'
-    .. uc.n .. '|' .. uc.changed .. '|' .. removed .. '|' .. births .. '|' .. relistAdded .. '|' .. json
-end
 
 -- Contacts: which enemy units each coalition's units detect, from DCS itself,
 -- gathered a slice of the unit list per tick like units. Every red and blue
@@ -317,7 +131,9 @@ end
 -- the rest are merged per coalition into one flat map: '<coalition>:<target unit id>' -> the sum of
 -- the method bits that found it (VISUAL 1, OPTIC 2, RADAR 4, IRST 8, RWR 16,
 -- DLINK 32, Olympus's values). Flat, so the relay's one-level delta merge
--- works. Needs the units collector, whose records mark the active units.
+-- works. The unit list is the DLL's units collector's (TRACS_DLL.activeUnits:
+-- bare unit tables, so the Unit functions are called directly, not as
+-- methods).
 local DETECTION_BITS = { VISUAL = 1, OPTIC = 2, RADAR = 4, IRST = 8, RWR = 16, DLINK = 32 }
 S.sensorTypes = {}
 S.contactsSent = {}
@@ -325,10 +141,10 @@ S.contactsSent = {}
 -- A failed check counts as having sensors, so a unit is asked rather than
 -- silently skipped.
 local function hasSensors(e)
-  local t = e.rec.type
+  local t = e.type or '?'
   local v = S.sensorTypes[t]
   if v == nil then
-    local ok, r = pcall(e.u.hasSensors, e.u)
+    local ok, r = pcall(Unit.hasSensors, e.u)
     v = (not ok) or r == true
     S.sensorTypes[t] = v
   end
@@ -338,7 +154,7 @@ end
 local function hasBit(mask, bit) return math.floor(mask / bit) % 2 == 1 end
 
 local function detectInto(e, acc)
-  local ctrl = e.u:getController()
+  local ctrl = Unit.getController(e.u)
   if not ctrl then return end
   for name, method in pairs(Controller.Detection) do
     local bit = DETECTION_BITS[name]
@@ -360,17 +176,14 @@ local function detectInto(e, acc)
   end
 end
 
--- Same calling pattern as unitsStep. Returns 'P|kbBefore|kbAfter' while
+-- Called a slice at a time like a sliced collector. Returns 'P|kbBefore|kbAfter' while
 -- running, then '<F|D>|kbBefore|kbAfter|detectors|entries|changed|' and the
 -- JSON object (a delta names changed entries, and lost ones as null).
 function S.contactsStep(start, full, slices, sensorUnitsOnly)
   local kb0 = heapKb()
   slices = math.max(1, slices)
   if start or not S.cc then
-    local list = {}
-    for _, e in pairs(S.units) do
-      if e.rec and (e.side == 1 or e.side == 2) then list[#list + 1] = e end
-    end
+    local list = TRACS_DLL.activeUnits()
     S.cc = { list = list, li = 1, full = full, acc = {}, detectors = 0,
       perStep = math.max(20, math.ceil(#list / slices)) }
   end
@@ -379,7 +192,7 @@ function S.contactsStep(start, full, slices, sensorUnitsOnly)
   while done < cc.perStep and cc.list[cc.li] do
     local e = cc.list[cc.li]
     cc.li, done = cc.li + 1, done + 1
-    if e.rec and not e.gone and (not sensorUnitsOnly or hasSensors(e)) then
+    if not sensorUnitsOnly or hasSensors(e) then
       cc.detectors = cc.detectors + 1
       pcall(detectInto, e, cc.acc)
     end
@@ -556,7 +369,7 @@ S.eventHandler = {}
 function S.eventHandler:onEvent(e)
   local rec = { id = e.id, time = e.time }
   pcall(function() if e.initiator then rec.initiator = e.initiator:getName() end end)
-  if e.id == world.event.S_EVENT_BIRTH and e.initiator then pcall(S.onBirth, e.initiator) end
+  if e.id == world.event.S_EVENT_BIRTH and e.initiator then pcall(TRACS_DLL.onBirth, e.initiator) end
   S.events[#S.events + 1] = rec
   while #S.events > S.eventCap do table.remove(S.events, 1) end
 end
@@ -678,26 +491,12 @@ local function retryPendingDll()
   end
 end
 
+-- Units are the DLL's own collector (relay/native/server.c): it runs its
+-- cycle in the mission state, calling DCS in a private Lua state.
+if dll then dll.registerNative('units', 'server', 1) end
+
 -- Each step also returns the mission-side heap size (KB) before and after it,
 -- for the worst-step diagnostics in the DLL's timing lines.
-register('units', 'server', 1, function(start, full, slices)
-  local r = inServer(string.format(
-    'return TRACS_EXP_S and TRACS_EXP_S.unitsStep(%s, %s, %d) or "E"',
-    tostring(start), tostring(full), slices))
-  if r == nil or r == 'E' then error('units step failed (mission environment not bootstrapped?)') end
-  local p0, p1 = r:match('^P|(%-?%d+)|(%-?%d+)$')
-  if p0 then return nil, nil, nil, { tonumber(p0), tonumber(p1) } end
-  local kind, k0, k1, n, changed, removed, births, relistAdded, json =
-    r:match('^(%a)|(%-?%d+)|(%-?%d+)|(%d+)|(%d+)|(%d+)|(%d+)|(%d+)|(.*)$')
-  if not kind then error('unexpected units step result') end
-  -- relistAdded: units the periodic re-list found that no birth event had
-  -- added, i.e. births the event handler missed.
-  return json, kind == 'F' and 'full' or 'delta', {
-    units = tonumber(n), changed = tonumber(changed), removed = tonumber(removed),
-    births = tonumber(births), relistAdded = tonumber(relistAdded),
-  }, { tonumber(k0), tonumber(k1) }
-end, true)
-
 register('contacts', 'server', 4, function(start, full, slices, sensorUnitsOnly)
   local r = inServer(string.format(
     'return TRACS_EXP_S and TRACS_EXP_S.contactsStep(%s, %s, %d, %s) or "E"',

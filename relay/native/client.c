@@ -333,9 +333,7 @@ static void unitFromObject(lua_State *L, int altFn, lua_State *P, lua_Number id,
    changed records are sent in a delta, plus "id":null for each unit gone. A
    server can deny object export (exportStatus reports that); every unit is
    then gone. */
-static int unitsClient(lua_State *L, int full, JBuf *out, const char **kind, JBuf *extra, int *once,
-                       const char **error, int *fatal) {
-  (void)once;
+static int unitsClient(lua_State *L, NativeRun *r) {
   if (!clientUsable()) return 0;
   Side *s = &g_client;
   int top = lua_gettop(L);
@@ -347,20 +345,21 @@ static int unitsClient(lua_State *L, int full, JBuf *out, const char **kind, JBu
   double r0 = now_s(), kb0 = lua_gc(s->P, LUA_GCCOUNT, 0);
   int objects = 0;
   if (objectExportAllowed(L)) {
-    if (worldObjects(NULL, error, fatal) < 0) { lua_settop(L, top); return -1; }
+    if (worldObjects(NULL, &r->error, &r->fatal) < 0) { lua_settop(L, top); return -1; }
     objects = lua_istable(s->P, -1) ? lua_gettop(s->P) : 0;
   }
   double readMs = (now_s() - r0) * 1000, readKb = lua_gc(s->P, LUA_GCCOUNT, 0) - kb0;
 
   for (int i = 0; i < g_recs.n; i++) g_recs.p[i].seen = 0;
   g_fresh.n = 0;
+  int full = r->full;
   UnitsCycle cy = { 0, 0, full, 1, t };
-  jb_puts(out, "{");
+  jb_puts(r->out, "{");
   if (objects) {
     lua_pushnil(s->P);
     while (lua_next(s->P, objects)) {
       if (lua_type(s->P, -2) == LUA_TNUMBER && lua_istable(s->P, -1)) {
-        unitFromObject(L, altFn, s->P, lua_tonumber(s->P, -2), lua_gettop(s->P), &cy, out);
+        unitFromObject(L, altFn, s->P, lua_tonumber(s->P, -2), lua_gettop(s->P), &cy, r->out);
       }
       lua_pop(s->P, 1);
     }
@@ -371,16 +370,16 @@ static int unitsClient(lua_State *L, int full, JBuf *out, const char **kind, JBu
   /* Units gone since the last cycle (a full cycle lists only what exists). */
   int removed = 0, keep = 0;
   for (int i = 0; i < g_recs.n; i++) {
-    Rec *r = &g_recs.p[i];
-    if (r->seen) { g_recs.p[keep++] = *r; continue; }
+    Rec *rec = &g_recs.p[i];
+    if (rec->seen) { g_recs.p[keep++] = *rec; continue; }
     if (!full) {
-      if (!cy.first) jb_puts(out, ",");
+      if (!cy.first) jb_puts(r->out, ",");
       cy.first = 0;
-      keyJson(out, r->id);
-      jb_puts(out, ":null");
+      keyJson(r->out, rec->id);
+      jb_puts(r->out, ":null");
       removed++;
     }
-    freeRec(r);
+    freeRec(rec);
   }
   g_recs.n = keep;
   for (int i = 0; i < g_fresh.n; i++) {
@@ -388,12 +387,12 @@ static int unitsClient(lua_State *L, int full, JBuf *out, const char **kind, JBu
   }
   g_fresh.n = 0;
   qsort(g_recs.p, (size_t)g_recs.n, sizeof *g_recs.p, cmpRec);
-  jb_puts(out, "}");
+  jb_puts(r->out, "}");
 
-  *kind = full ? "full" : "delta";
-  jb_printf(extra, ",\"units\":%d,\"changed\":%d,\"removed\":%d,\"readMs\":", cy.n, cy.changed, removed);
-  jb_num(extra, readMs);
-  jb_printf(extra, ",\"readKb\":%.0f", readKb);
+  r->kind = full ? "full" : "delta";
+  jb_printf(r->extra, ",\"units\":%d,\"changed\":%d,\"removed\":%d,\"readMs\":", cy.n, cy.changed, removed);
+  jb_num(r->extra, readMs);
+  jb_printf(r->extra, ",\"readKb\":%.0f", readKb);
   return 1;
 }
 
@@ -403,11 +402,9 @@ static int unitsClient(lua_State *L, int full, JBuf *out, const char **kind, JBu
 
 /* Whether the DCS server allows object export; without it a client has no
    units to send, which TRACS's status bar explains. */
-static int exportStatus(lua_State *L, int full, JBuf *out, const char **kind, JBuf *extra, int *once,
-                        const char **error, int *fatal) {
-  (void)full; (void)kind; (void)extra; (void)once; (void)error; (void)fatal;
+static int exportStatus(lua_State *L, NativeRun *r) {
   if (!clientUsable()) return 0;
-  jb_puts(out, objectExportAllowed(L) ? "{\"objects\":true}" : "{\"objects\":false}");
+  jb_puts(r->out, objectExportAllowed(L) ? "{\"objects\":true}" : "{\"objects\":false}");
   return 1;
 }
 
@@ -415,16 +412,14 @@ static int exportStatus(lua_State *L, int full, JBuf *out, const char **kind, JB
    id like the server side's. A script moving a bullseye during the mission
    isn't visible to a client; the mission's own one is what places ABM and
    AIC. Sent once per resync. */
-static int bullseyesClient(lua_State *L, int full, JBuf *out, const char **kind, JBuf *extra, int *once,
-                           const char **error, int *fatal) {
-  (void)full; (void)kind; (void)extra; (void)error; (void)fatal;
+static int bullseyesClient(lua_State *L, NativeRun *r) {
   static const struct { const char *key; int id; } SIDES[] = { { "neutrals", 0 }, { "red", 1 }, { "blue", 2 } };
   if (!clientUsable()) return 0;
   int top = lua_gettop(L);
   int m = pushMission(L);
   int coal = m ? tsub(L, m, "coalition") : 0;
   int n = 0;
-  jb_puts(out, "{");
+  jb_puts(r->out, "{");
   for (int i = 0; coal && i < 3; i++) {
     int side = tsub(L, coal, SIDES[i].key);
     int be = side ? tsub(L, side, "bullseye") : 0;
@@ -437,29 +432,27 @@ static int bullseyesClient(lua_State *L, int full, JBuf *out, const char **kind,
       double lat, lon;
       if (lua_pcall(L, 2, 1, 0) == 0 && lua_istable(L, -1) && tnum(L, -1, "latitude", &lat) &&
           tnum(L, -1, "longitude", &lon)) {
-        if (n++) jb_puts(out, ",");
-        jb_printf(out, "\"%d\":{\"coalition\":", SIDES[i].id);
-        jb_str(out, coalitionName(SIDES[i].id));
-        jb_puts(out, ",\"latitude\":"); jb_num(out, roundTo(lat, 1e-6));
-        jb_puts(out, ",\"longitude\":"); jb_num(out, roundTo(lon, 1e-6));
-        jb_puts(out, "}");
+        if (n++) jb_puts(r->out, ",");
+        jb_printf(r->out, "\"%d\":{\"coalition\":", SIDES[i].id);
+        jb_str(r->out, coalitionName(SIDES[i].id));
+        jb_puts(r->out, ",\"latitude\":"); jb_num(r->out, roundTo(lat, 1e-6));
+        jb_puts(r->out, ",\"longitude\":"); jb_num(r->out, roundTo(lon, 1e-6));
+        jb_puts(r->out, "}");
       }
     }
     lua_settop(L, coal);
   }
   lua_settop(L, top);
-  jb_puts(out, "}");
+  jb_puts(r->out, "}");
   if (!n) return 0;
-  *once = 1;
+  r->once = 1;
   return 1;
 }
 
 /* Mission start date and the time of day, both theatre-local, in the server
    side's shape: absTime counts from midnight of the start date (start time
    plus model time) and passes 86400 after midnight. */
-static int clockClient(lua_State *L, int full, JBuf *out, const char **kind, JBuf *extra, int *once,
-                       const char **error, int *fatal) {
-  (void)full; (void)kind; (void)extra; (void)once; (void)error; (void)fatal;
+static int clockClient(lua_State *L, NativeRun *r) {
   if (!clientUsable()) return 0;
   if (!g_date.have) {
     int top = lua_gettop(L);
@@ -472,27 +465,25 @@ static int clockClient(lua_State *L, int full, JBuf *out, const char **kind, JBu
   }
   double t;
   if (!callNum0(L, "DCS.getModelTime", &t)) return 0;
-  jb_printf(out, "{\"date\":{\"Year\":%.0f,\"Month\":%.0f,\"Day\":%.0f},\"absTime\":", g_date.year, g_date.month,
+  jb_printf(r->out, "{\"date\":{\"Year\":%.0f,\"Month\":%.0f,\"Day\":%.0f},\"absTime\":", g_date.year, g_date.month,
             g_date.day);
-  jb_num(out, g_date.startTime + t);
-  jb_puts(out, ",\"startTime\":");
-  jb_num(out, g_date.startTime);
-  jb_puts(out, "}");
+  jb_num(r->out, g_date.startTime + t);
+  jb_puts(r->out, ",\"startTime\":");
+  jb_num(r->out, g_date.startTime);
+  jb_puts(r->out, "}");
   return 1;
 }
 
 /* The map's airdromes with their current owner, in the fields the server
    side sends (no carriers or FARPs: the export API lists those as units). */
-static int airbasesClient(lua_State *L, int full, JBuf *out, const char **kind, JBuf *extra, int *once,
-                          const char **error, int *fatal) {
-  (void)full; (void)kind; (void)extra; (void)once;
+static int airbasesClient(lua_State *L, NativeRun *r) {
   if (!clientUsable() || !objectExportAllowed(L)) return 0;
   Side *s = &g_client;
-  if (worldObjects("airdromes", error, fatal) < 0) return -1;
+  if (worldObjects("airdromes", &r->error, &r->fatal) < 0) return -1;
   lua_State *P = s->P;
   int list = lua_istable(P, -1) ? lua_gettop(P) : 0;
   int n = 0;
-  jb_puts(out, "{");
+  jb_puts(r->out, "{");
   if (list) {
     lua_pushnil(P);
     while (lua_next(P, list)) {
@@ -507,30 +498,30 @@ static int airbasesClient(lua_State *L, int full, JBuf *out, const char **kind, 
         double lat, lon;
         lua_getfield(P, v, "Name");
         if (isAirdrome && lla && lua_type(P, -1) == LUA_TSTRING && tnum(P, lla, "Lat", &lat) && tnum(P, lla, "Long", &lon)) {
-          if (n++) jb_puts(out, ",");
-          keyJson(out, id);
-          jb_puts(out, ":{\"callsign\":");
-          jb_str(out, lua_tostring(P, -1));
-          jb_puts(out, ",\"coalition\":");
-          jb_str(out, coalitionName((int)tnumOr(P, v, "CoalitionID", 0)));
-          jb_puts(out, ",\"latitude\":"); jb_num(out, roundTo(lat, 1e-6));
-          jb_puts(out, ",\"longitude\":"); jb_num(out, roundTo(lon, 1e-6));
-          jb_puts(out, "}");
+          if (n++) jb_puts(r->out, ",");
+          keyJson(r->out, id);
+          jb_puts(r->out, ":{\"callsign\":");
+          jb_str(r->out, lua_tostring(P, -1));
+          jb_puts(r->out, ",\"coalition\":");
+          jb_str(r->out, coalitionName((int)tnumOr(P, v, "CoalitionID", 0)));
+          jb_puts(r->out, ",\"latitude\":"); jb_num(r->out, roundTo(lat, 1e-6));
+          jb_puts(r->out, ",\"longitude\":"); jb_num(r->out, roundTo(lon, 1e-6));
+          jb_puts(r->out, "}");
         }
       }
       lua_settop(P, v - 1);
     }
   }
   clearPrivate(s);
-  jb_puts(out, "}");
+  jb_puts(r->out, "}");
   return n > 0;
 }
 
 const NativeCollector CLIENT_COLLECTORS[] = {
-  { "units_client", unitsClient },
-  { "exportStatus", exportStatus },
-  { "bullseyes_client", bullseyesClient },
-  { "clock_client", clockClient },
-  { "airbases_client", airbasesClient },
-  { NULL, NULL },
+  { "units_client", unitsClient, 0 },
+  { "exportStatus", exportStatus, 0 },
+  { "bullseyes_client", bullseyesClient, 0 },
+  { "clock_client", clockClient, 0 },
+  { "airbases_client", airbasesClient, 0 },
+  { NULL, NULL, 0 },
 };

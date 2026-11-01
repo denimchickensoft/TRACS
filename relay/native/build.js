@@ -28,7 +28,7 @@ const RELAY_DIR  = path.resolve(NATIVE_DIR, '..')
 const BUILD_DIR  = path.join(NATIVE_DIR, 'build')
 const MOD_DIR    = path.join(RELAY_DIR, 'dcs', 'Mods', 'Services', 'TRACS')
 const OUT_DLL    = path.join(MOD_DIR, 'bin', 'tracs_exporter.dll')
-const SOURCES    = ['tracs_exporter.c', 'sched.c', 'client.c', 'net.c', 'common.c']
+const SOURCES    = ['tracs_exporter.c', 'sched.c', 'client.c', 'server.c', 'net.c', 'common.c']
 
 const HARNESS_DIR = path.join(BUILD_DIR, 'harness')
 const LUA_URL     = 'https://www.lua.org/ftp/lua-5.1.5.tar.gz'

@@ -353,38 +353,63 @@ static void runPlain(lua_State *L, Collector *c, double t) {
   lua_settop(L, top);
 }
 
-/* A collector written in C, in one go. A fatal error (DCS calls stopped for
-   this mission) also tells the relay, through a fresh hello, that the DLL is
-   no longer working. */
+/* Tells the relay, through a fresh hello, that the DLL has stopped working
+   for this mission. */
+static void reportDllStopped(lua_State *L, const char *error) {
+  S.ready = 0;
+  JBuf st;
+  jb_init(&st);
+  jb_puts(&st, "{\"ok\":false,\"version\":");
+  jb_str(&st, TRACS_VERSION);
+  jb_puts(&st, ",\"error\":");
+  jb_str(&st, error ? error : "unknown error");
+  jb_puts(&st, "}");
+  buildHello(st.p);
+  sendHello(L);
+  jb_free(&st);
+}
+
+/* A collector written in C. A sliced one keeps being called once per tick
+   until its cycle ends, with the same worst-step diagnostics as a sliced Lua
+   collector. */
 static void runNative(lua_State *L, Collector *c, double t) {
-  c->dueAt = t + c->rateS;
+  int start = !c->active;
+  if (start) {
+    c->dueAt = t + c->rateS;
+    c->cycleMs = c->maxStepMs = 0;
+    c->steps = 0;
+    if (c->sliced) c->active = 1;
+  }
+  int slices = (int)floor(c->rateS / TICK_INTERVAL_S) - 1;
+  if (slices < 1) slices = 1;
+
   JBuf out, extra;
   jb_init(&out);
   jb_init(&extra);
-  const char *kind = "full", *error = NULL;
-  int once = 0, fatal = 0;
-  double t0 = now_s();
-  int r = c->native(L, c->full, &out, &kind, &extra, &once, &error, &fatal);
+  NativeRun r = { start, c->full, slices, c->sensorUnitsOnly, &out, &extra, "full", 0, NULL, 0, -1, -1 };
+  double hook0 = heapKb(L), t0 = now_s();
+  int res = c->native(L, &r);
   double ms = (now_s() - t0) * 1000;
-  if (r < 0) {
-    dcs_log(L, LOG_ERROR, "collector %s failed: %s", c->name, error ? error : "unknown error");
-    if (fatal) {
-      S.ready = 0;
-      JBuf st;
-      jb_init(&st);
-      jb_puts(&st, "{\"ok\":false,\"version\":");
-      jb_str(&st, TRACS_VERSION);
-      jb_puts(&st, ",\"error\":");
-      jb_str(&st, error ? error : "unknown error");
-      jb_puts(&st, "}");
-      buildHello(st.p);
-      sendHello(L);
-      jb_free(&st);
-    }
-  } else if (r > 0 && !out.oom) {
-    sendResult(L, c, out.p ? out.p : "{}", out.p ? out.len : 2, kind, ms, 0, &extra);
-    if (once) c->dueAt = HUGE_VAL;
+  c->cycleMs += ms;
+  c->steps++;
+  if (c->sliced && ms > c->maxStepMs) {
+    c->maxStepMs = ms;
+    c->maxStepIdx = c->steps;
+    c->maxStepHookKbDelta = heapKb(L) - hook0;
+    c->maxStepSrvKbDelta = r.srvKb0 >= 0 ? r.srvKb1 - r.srvKb0 : 0;
+    c->srvKb = r.srvKb0 >= 0 ? r.srvKb1 : -1;
+    c->hookKb = heapKb(L);
   }
+  if (res == 2) goto done;
+  c->active = 0;
+  if (res < 0) {
+    dcs_log(L, LOG_ERROR, "collector %s failed: %s", c->name, r.error ? r.error : "unknown error");
+    if (r.fatal) reportDllStopped(L, r.error);
+  } else if (res > 0 && !out.oom) {
+    sendResult(L, c, out.p ? out.p : "{}", out.p ? out.len : 2, r.kind, c->cycleMs, 0, &extra);
+    if (r.once) c->dueAt = HUGE_VAL;
+  }
+done:
   jb_free(&out);
   jb_free(&extra);
 }
@@ -576,13 +601,14 @@ static int l_registerNative(lua_State *L) {
   const char *side = luaL_checkstring(L, 2);
   double rate = luaL_checknumber(L, 3);
   const char *group = luaL_optstring(L, 4, name);
-  NativeGather gather = NULL;
+  const NativeCollector *found = NULL;
   for (const NativeCollector *n = g_natives; n && n->name; n++) {
-    if (strcmp(n->name, name) == 0) gather = n->gather;
+    if (strcmp(n->name, name) == 0) found = n;
   }
-  if (!gather) return luaL_error(L, "no native collector named %s", name);
+  if (!found) return luaL_error(L, "no native collector named %s", name);
   Collector *c = slotFor(L, name, side, rate, group);
-  c->native = gather;
+  c->native = found->gather;
+  c->sliced = found->sliced;
   return 0;
 }
 

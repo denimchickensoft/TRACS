@@ -48,11 +48,14 @@ function applyGroupMessage(groups, msg) {
 }
 
 // One timing line: the group and kind, then every numeric field the hook
-// sent (ms and bytes always; e.g. maxStepMs/steps/changed for sliced ones).
+// sent (ms and bytes always; e.g. maxStepMs/steps/changed for sliced ones),
+// then any text field (a diagnostic note), quoted.
 function formatTiming(msg) {
-  const fields = Object.entries(msg)
-    .filter(([k, v]) => k !== 'type' && k !== 'group' && typeof v === 'number')
+  const entries = Object.entries(msg).filter(([k]) => k !== 'type' && k !== 'group' && k !== 'kind')
+  const fields = entries
+    .filter(([, v]) => typeof v === 'number')
     .map(([k, v]) => `${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`)
+    .concat(entries.filter(([, v]) => typeof v === 'string').map(([k, v]) => `${k}=${JSON.stringify(v)}`))
   const kind = typeof msg.kind === 'string' ? ` (${msg.kind})` : ''
   return `${msg.group}${kind}: ${fields.join(' ')}`
 }

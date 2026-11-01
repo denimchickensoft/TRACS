@@ -6,24 +6,38 @@
 #include "lua.h"
 #include "common.h"
 
-/* A collector written in C. Called on the sim thread with the hook state.
-   Writes its data JSON to out, its kind ('full' or 'delta') to *kind and any
-   extra timing fields to extra as ',"name":value' pairs; sets *once to skip
-   it until the next resync. Returns 1 with a result, 0 with nothing to send,
-   -1 on an error (message in *error). *fatal set with -1 means DCS calls
-   stopped for this mission (a caught exception), so the DLL is no longer
-   ready. */
-typedef int (*NativeGather)(lua_State *L, int full, JBuf *out, const char **kind, JBuf *extra, int *once,
-                            const char **error, int *fatal);
+/* One call of a collector written in C, on the sim thread with the hook
+   state. In: start (a new cycle begins), full (send everything, not a
+   delta), slices (how many ticks a sliced cycle may spread over),
+   sensorUnitsOnly. Out: the data JSON in out, kind ('full' or 'delta'),
+   extra timing fields in extra as ',"name":value' pairs, once (skip until
+   the next resync), and for a step that ran in the mission state its heap
+   before and after (KB; leave -1 otherwise). On -1, error says why, and
+   fatal means DCS calls stopped for this mission (a caught exception), so
+   the DLL is no longer ready. */
+typedef struct {
+  int start, full, slices, sensorUnitsOnly;
+  JBuf *out, *extra;
+  const char *kind;
+  int once;
+  const char *error;
+  int fatal;
+  double srvKb0, srvKb1;
+} NativeRun;
+
+/* Returns 1 with a result, 0 with nothing to send, 2 when a sliced cycle
+   continues next tick, -1 on an error. */
+typedef int (*NativeGather)(lua_State *L, NativeRun *r);
 
 typedef struct {
   const char *name;
   NativeGather gather;
+  int sliced;
 } NativeCollector;
 
 /* Adds register/registerNative/setEventSource/start/setStatus/frame to the
    module table on top of the stack. natives lists the C collectors
-   registerNative can name, ending with { NULL, NULL }. */
+   registerNative can name, ending with { NULL, NULL, 0 }. */
 void sched_open(lua_State *L, const NativeCollector *natives);
 /* Mission end: disconnect and forget the mission's state. */
 void sched_stop(void);
