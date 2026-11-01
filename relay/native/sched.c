@@ -8,7 +8,9 @@
      sliced: gather(start, full, slices, sensorUnitsOnly) once per tick until
              it returns json, kind ('full'|'delta'), extra timing fields,
              {heapKbBefore, heapKbAfter} of the mission state, once.
-   `once` means don't run again until the next resync.
+   `once` means don't run again until the next resync. Collectors written in
+   C (sched.h's NativeGather) are registered by name with registerNative and
+   called directly, with no Lua in between.
 
    The tick is finer than any data rate so a sliced collector's work spreads
    across ticks; no collector runs more often than once a second, the
@@ -41,6 +43,7 @@ enum { SIDE_NONE = -1, SIDE_SERVER, SIDE_CLIENT, SIDE_BOTH };
 typedef struct {
   char name[32], group[32];
   int side, ref, enabled, sliced, sensorUnitsOnly;
+  NativeGather native;
   double rateS, dueAt;
   int full, active;
   /* The cycle in progress, for the timing line. */
@@ -50,6 +53,7 @@ typedef struct {
 
 static Collector g_col[MAX_COLLECTORS];
 static int g_nCol;
+static const NativeCollector *g_natives;
 
 static struct {
   int side, ready;
@@ -150,7 +154,7 @@ static double modelTime(lua_State *L) {
 }
 
 static void sendResult(lua_State *L, Collector *c, const char *json, size_t jlen, const char *kind, double ms,
-                       int extraIdx) {
+                       int extraIdx, const JBuf *extraJson) {
   JBuf b;
   jb_init(&b);
   S.seq++;
@@ -181,6 +185,7 @@ static void sendResult(lua_State *L, Collector *c, const char *json, size_t jlen
       jb_puts(&b, ",\"hookKb\":"); jb_num(&b, c->hookKb);
     }
     if (extraIdx) appendFields(L, extraIdx, &b);
+    if (extraJson && extraJson->len && !extraJson->oom) jb_put(&b, extraJson->p, extraJson->len);
     jb_puts(&b, "}");
     sendLine(L, &b);
   }
@@ -324,7 +329,7 @@ static void runSliced(lua_State *L, Collector *c, double t) {
     const char *json = lua_tolstring(L, top + 1, &len);
     const char *kind = lua_type(L, top + 2) == LUA_TSTRING ? lua_tostring(L, top + 2) : "full";
     c->active = 0;
-    sendResult(L, c, json, len, kind, c->cycleMs, top + 3);
+    sendResult(L, c, json, len, kind, c->cycleMs, top + 3, NULL);
     if (lua_toboolean(L, top + 5)) c->dueAt = HUGE_VAL;
   }
   lua_settop(L, top);
@@ -342,10 +347,46 @@ static void runPlain(lua_State *L, Collector *c, double t) {
   } else if (lua_type(L, top + 1) == LUA_TSTRING) {
     size_t len;
     const char *json = lua_tolstring(L, top + 1, &len);
-    sendResult(L, c, json, len, "full", ms, 0);
+    sendResult(L, c, json, len, "full", ms, 0, NULL);
     if (lua_toboolean(L, top + 2)) c->dueAt = HUGE_VAL;
   }
   lua_settop(L, top);
+}
+
+/* A collector written in C, in one go. A fatal error (DCS calls stopped for
+   this mission) also tells the relay, through a fresh hello, that the DLL is
+   no longer working. */
+static void runNative(lua_State *L, Collector *c, double t) {
+  c->dueAt = t + c->rateS;
+  JBuf out, extra;
+  jb_init(&out);
+  jb_init(&extra);
+  const char *kind = "full", *error = NULL;
+  int once = 0, fatal = 0;
+  double t0 = now_s();
+  int r = c->native(L, c->full, &out, &kind, &extra, &once, &error, &fatal);
+  double ms = (now_s() - t0) * 1000;
+  if (r < 0) {
+    dcs_log(L, LOG_ERROR, "collector %s failed: %s", c->name, error ? error : "unknown error");
+    if (fatal) {
+      S.ready = 0;
+      JBuf st;
+      jb_init(&st);
+      jb_puts(&st, "{\"ok\":false,\"version\":");
+      jb_str(&st, TRACS_VERSION);
+      jb_puts(&st, ",\"error\":");
+      jb_str(&st, error ? error : "unknown error");
+      jb_puts(&st, "}");
+      buildHello(st.p);
+      sendHello(L);
+      jb_free(&st);
+    }
+  } else if (r > 0 && !out.oom) {
+    sendResult(L, c, out.p ? out.p : "{}", out.p ? out.len : 2, kind, ms, 0, &extra);
+    if (once) c->dueAt = HUGE_VAL;
+  }
+  jb_free(&out);
+  jb_free(&extra);
 }
 
 /* Every collector that's due, and one step of every sliced collector whose
@@ -356,7 +397,10 @@ static void runCollectors(lua_State *L, double t) {
     Collector *c = &g_col[i];
     if (!c->enabled || !(c->side == SIDE_BOTH || c->side == S.side)) continue;
     if (!(c->active || t >= c->dueAt)) continue;
-    if (c->sliced) runSliced(L, c, t); else runPlain(L, c, t);
+    if (c->native) runNative(L, c, t);
+    else if (c->sliced) runSliced(L, c, t);
+    else runPlain(L, c, t);
+    if (!S.ready) return;
   }
 }
 
@@ -489,19 +533,14 @@ static void trackFrame(lua_State *L, double t) {
 /* Lua-facing functions                                                 */
 /* ------------------------------------------------------------------ */
 
-/* register(name, side, rateS, sliced, gather [, group]) */
-static int l_register(lua_State *L) {
-  const char *name = luaL_checkstring(L, 1);
-  const char *side = luaL_checkstring(L, 2);
-  double rate = luaL_checknumber(L, 3);
-  int sliced = lua_toboolean(L, 4);
-  luaL_checktype(L, 5, LUA_TFUNCTION);
-  const char *group = luaL_optstring(L, 6, name);
+/* The collector slot for name, emptied (an existing one is replaced). */
+static Collector *slotFor(lua_State *L, const char *name, const char *side, double rate, const char *group) {
   Collector *c = NULL;
   for (int i = 0; i < g_nCol; i++) if (strcmp(g_col[i].name, name) == 0) c = &g_col[i];
-  if (c) luaL_unref(L, LUA_REGISTRYINDEX, c->ref);
-  else {
-    if (g_nCol == MAX_COLLECTORS) return luaL_error(L, "too many collectors");
+  if (c) {
+    if (!c->native) luaL_unref(L, LUA_REGISTRYINDEX, c->ref);
+  } else {
+    if (g_nCol == MAX_COLLECTORS) { luaL_error(L, "too many collectors"); return NULL; }
     c = &g_col[g_nCol++];
   }
   memset(c, 0, sizeof *c);
@@ -510,10 +549,40 @@ static int l_register(lua_State *L) {
   c->side = sideOf(side);
   c->rateS = rate < MIN_RATE_S ? MIN_RATE_S : rate;
   c->enabled = 1;
-  c->sliced = sliced;
   c->full = 1;
+  c->ref = LUA_NOREF;
+  return c;
+}
+
+/* register(name, side, rateS, sliced, gather [, group]) */
+static int l_register(lua_State *L) {
+  const char *name = luaL_checkstring(L, 1);
+  const char *side = luaL_checkstring(L, 2);
+  double rate = luaL_checknumber(L, 3);
+  int sliced = lua_toboolean(L, 4);
+  luaL_checktype(L, 5, LUA_TFUNCTION);
+  const char *group = luaL_optstring(L, 6, name);
+  Collector *c = slotFor(L, name, side, rate, group);
+  c->sliced = sliced;
   lua_pushvalue(L, 5);
   c->ref = luaL_ref(L, LUA_REGISTRYINDEX);
+  return 0;
+}
+
+/* registerNative(name, side, rateS [, group]): one of the DLL's own C
+   collectors, by name. */
+static int l_registerNative(lua_State *L) {
+  const char *name = luaL_checkstring(L, 1);
+  const char *side = luaL_checkstring(L, 2);
+  double rate = luaL_checknumber(L, 3);
+  const char *group = luaL_optstring(L, 4, name);
+  NativeGather gather = NULL;
+  for (const NativeCollector *n = g_natives; n && n->name; n++) {
+    if (strcmp(n->name, name) == 0) gather = n->gather;
+  }
+  if (!gather) return luaL_error(L, "no native collector named %s", name);
+  Collector *c = slotFor(L, name, side, rate, group);
+  c->native = gather;
   return 0;
 }
 
@@ -614,6 +683,7 @@ void sched_stop(void) {
 
 static const luaL_Reg FUNCTIONS[] = {
   { "register", l_register },
+  { "registerNative", l_registerNative },
   { "setEventSource", l_setEventSource },
   { "start", l_start },
   { "setStatus", l_setStatus },
@@ -621,6 +691,7 @@ static const luaL_Reg FUNCTIONS[] = {
   { NULL, NULL },
 };
 
-void sched_open(lua_State *L) {
+void sched_open(lua_State *L, const NativeCollector *natives) {
+  g_natives = natives;
   luaL_register(L, NULL, FUNCTIONS);
 }

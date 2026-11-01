@@ -36,6 +36,10 @@ end)
 dll.register('clientOnly', 'client', 1, false, function() return '{"wrongSide":true}' end)
 dll.register('once', 'server', 1, false, function() return '{"once":true}', true end)
 dll.register('failing', 'server', 1, false, function() error('collector blew up') end)
+-- A native (C) collector of the other side: listed in hello, never run here.
+dll.registerNative('exportStatus', 'client', 5)
+local ok, e = pcall(dll.registerNative, 'noSuchCollector', 'server', 1)
+out('UNKNOWN NATIVE ', ok and 'accepted' or e)
 
 local ev = 0
 dll.setEventSource(function()

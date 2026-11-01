@@ -34,14 +34,11 @@
 #include "lauxlib.h"
 #include "common.h"
 #include "net.h"
+#include "private.h"
 #include "sched.h"
+#include "client.h"
 
 #define LOADED_MESSAGE_S 20
-
-typedef struct {
-  const char *path;  /* "Namespace.name", looked up in the calling state's globals */
-  lua_CFunction fn;
-} DcsFn;
 
 enum {
   S_GET_POINT, S_GET_POSITION, S_GET_VELOCITY, S_GET_LIFE, S_GET_PLAYER_NAME, S_IN_AIR,
@@ -56,23 +53,12 @@ static DcsFn SERVER_FNS[S_COUNT] = {
   { "coalition.getGroups" }, { "Group.getUnits" }, { "land.getHeight" }, { "coord.LOtoLL" },
 };
 
-enum { C_GET_WORLD_OBJECTS, C_COUNT };
-
 static DcsFn CLIENT_FNS[C_COUNT] = {
   { "Export.LoGetWorldObjects" },
 };
 
-typedef struct {
-  DcsFn *fns;
-  int nFns;
-  lua_State *P;      /* private state */
-  int ready;         /* init passed */
-  int faulted;       /* an exception was caught; never call DCS again this mission */
-  char error[512];   /* why not ready, or the fault report */
-} Side;
-
 static Side g_server = { SERVER_FNS, S_COUNT };
-static Side g_client = { CLIENT_FNS, C_COUNT };
+Side g_client = { CLIENT_FNS, C_COUNT };
 
 /* Mission side -> hook side hand-off. Both run on the sim thread. */
 static char *g_handoff;
@@ -99,10 +85,8 @@ static void setFault(Side *s, const char *fnPath, const char *context, unsigned 
               code, fnPath, context && context[0] ? " " : "", context ? context : "");
 }
 
-/* lua_pcall in the private state under an SEH guard. The function and its
-   arguments are already pushed. 0 ok, 1 Lua error (message on the stack),
-   2 exception (fault recorded, stack left as it is). */
-static int pcallPrivate(Side *s, int f, int nargs, int nresults, const char *context) {
+/* See private.h. */
+int pcallPrivate(Side *s, int f, int nargs, int nresults, const char *context) {
   unsigned long code = 0;
   int r;
   __try {
@@ -141,7 +125,7 @@ static int openPrivate(Side *s) {
   return 1;
 }
 
-static void clearPrivate(Side *s) {
+void clearPrivate(Side *s) {
   lua_settop(s->P, 0);
   lua_gc(s->P, LUA_GCCOLLECT, 0);
 }
@@ -479,6 +463,7 @@ static int l_initClient(lua_State *L) {
   Side *s = &g_client;
   char a[128], b[128];
   resetSide(s);
+  client_reset();
   if (!resolveFns(L, s) || !openPrivate(s)) return failInit(L, s);
 
   push_path(L, s->fns[C_GET_WORLD_OBJECTS].path);
@@ -522,6 +507,7 @@ static int l_stop(lua_State *L) {
   sched_stop();
   resetSide(&g_server);
   resetSide(&g_client);
+  client_reset();
   return 0;
 }
 
@@ -543,7 +529,7 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
 __declspec(dllexport) int luaopen_tracs_exporter(lua_State *L) {
   lua_newtable(L);
   luaL_register(L, NULL, FUNCTIONS);
-  sched_open(L);
+  sched_open(L, CLIENT_COLLECTORS);
   lua_pushnumber(L, TRACS_EXPORTER_ABI);
   lua_setfield(L, -2, "abi");
   lua_pushstring(L, TRACS_VERSION);

@@ -63,7 +63,8 @@ describe.skipIf(!available)('tracs_exporter.dll in a Lua harness', () => {
     // A clean exit with the network thread running: the DLL unloads when
     // lua.exe closes its state.
     expect(code, out).toBe(0)
-    expect(out).toContain('ABI 2')
+    expect(out).toContain('ABI 3')
+    expect(out).toContain('UNKNOWN NATIVE no native collector named noSuchCollector')
     expect(out).toContain('DONE')
     expect(out).toMatch(/LOG INFO connected to relay on 127\.0\.0\.1:\d+/)
     expect(out).toMatch(/LOG INFO disconnected from relay \(relay closed the connection\)/)
@@ -74,7 +75,7 @@ describe.skipIf(!available)('tracs_exporter.dll in a Lua harness', () => {
     for (const c of conns) {
       expect(c.lines[0]).toMatchObject({
         type: 'hello', v: 1, side: 'server', multiplayer: true, theatre: 'Caucasus',
-        collectors: ['fast', 'sliced', 'clientOnly', 'once', 'failing'],
+        collectors: ['fast', 'sliced', 'clientOnly', 'once', 'failing', 'exportStatus'],
         dll: { ok: true, version: 'test' },
       })
     }
@@ -88,6 +89,7 @@ describe.skipIf(!available)('tracs_exporter.dll in a Lua harness', () => {
     const groups = conns.flatMap((c) => data(c).map((l) => l.group))
     expect(groups).toContain('fast')
     expect(groups).not.toContain('clientOnly')
+    expect(groups).not.toContain('exportStatus')
     expect(groups.filter((g) => g === 'once')).toHaveLength(1)
     expect(data(first).find((l) => l.group === 'fast').data).toEqual({ n: 1 })
 

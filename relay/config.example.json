@@ -28,7 +28,10 @@
       "fog": { "enabled": true, "rateSec": 60 },
       "airfieldWeather": { "enabled": true, "rateSec": 600 },
       "units_client": { "enabled": true, "rateSec": 1 },
-      "exportStatus": { "enabled": true, "rateSec": 5 }
+      "exportStatus": { "enabled": true, "rateSec": 5 },
+      "bullseyes_client": { "enabled": true, "rateSec": 30 },
+      "clock_client": { "enabled": true, "rateSec": 15 },
+      "airbases_client": { "enabled": true, "rateSec": 30 }
     }
   }
 }
