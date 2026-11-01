@@ -32,6 +32,7 @@
 #include <windows.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "lua.h"
@@ -686,23 +687,367 @@ static int l_onBirth(lua_State *L) {
   return 0;
 }
 
-/* activeUnits() in the mission state: { { u = <bare unit>, side, type }, ... }
-   for the red and blue units active at the last cycle. For the Lua contacts
-   collector until it moves to C. */
-static int l_activeUnits(lua_State *L) {
-  lua_createtable(L, 0, 0);
-  int n = 0;
+/* ------------------------------------------------------------------ */
+/* Contacts                                                             */
+/* ------------------------------------------------------------------ */
+
+/* Which enemy units each coalition's units detect, from DCS itself, a slice
+   of the unit list per tick. Every red and blue unit active at the units
+   collector's last cycle (or, with sensorUnitsOnly, only those whose type
+   has sensors, checked once per type) is asked for its detected targets
+   once per detection method, as Olympus does. Targets on the detector's own
+   side are dropped; the rest are merged per coalition into one flat map:
+   '<coalition>:<target unit id>' -> the sum of the method bits that found it
+   (VISUAL 1, OPTIC 2, RADAR 4, IRST 8, RWR 16, DLINK 32, Olympus's values).
+   Flat, so the relay's one-level delta merge works. A delta names changed
+   entries, and lost ones as null. */
+
+#define MIN_DETECTORS_STEP 20
+/* A step stops taking detectors once it has run this long, so the units
+   that see the most (radar and datalink aircraft, which the unit list tends
+   to bunch together) spread over several steps instead of one heavy frame.
+   A busy cycle then takes a few more steps than its slices. */
+#define STEP_BUDGET_MS 0.5
+#define CONTACTS_STEP_CODE "return TRACS_DLL and TRACS_DLL.contactsStep() or 'E'"
+
+static const struct { const char *name; int bit; } DETECTION_BITS[] = {
+  { "VISUAL", 1 }, { "OPTIC", 2 }, { "RADAR", 4 }, { "IRST", 8 }, { "RWR", 16 }, { "DLINK", 32 },
+};
+#define N_METHODS ((int)(sizeof DETECTION_BITS / sizeof DETECTION_BITS[0]))
+
+/* Controller.Detection's value for each method (0: this DCS lacks it). */
+static double g_methods[N_METHODS];
+
+/* side:id -> method bits, open addressing; key 0 is empty (a side is 1 or
+   2, so no real key is 0). */
+typedef struct { unsigned long long key; int mask; } MaskEntry;
+typedef struct { MaskEntry *p; int n, cap; } MaskMap;
+
+static unsigned long long maskKey(int side, double id) {
+  return ((unsigned long long)side << 40) | ((unsigned long long)id & 0xFFFFFFFFFFULL);
+}
+
+static unsigned hashKey(unsigned long long k) {
+  k ^= k >> 33;
+  k *= 0xff51afd7ed558ccdULL;
+  k ^= k >> 33;
+  return (unsigned)k;
+}
+
+static MaskEntry *mapSlot(const MaskMap *m, unsigned long long key) {
+  unsigned mask = (unsigned)m->cap - 1, i = hashKey(key) & mask;
+  while (m->p[i].key && m->p[i].key != key) i = (i + 1) & mask;
+  return &m->p[i];
+}
+
+static int mapGrow(MaskMap *m) {
+  int cap = m->cap ? m->cap * 2 : 1024;
+  MaskEntry *p = calloc((size_t)cap, sizeof *p);
+  if (!p) return 0;
+  MaskMap next = { p, 0, cap };
+  for (int i = 0; i < m->cap; i++) {
+    if (!m->p[i].key) continue;
+    *mapSlot(&next, m->p[i].key) = m->p[i];
+    next.n++;
+  }
+  free(m->p);
+  *m = next;
+  return 1;
+}
+
+static void mapOr(MaskMap *m, unsigned long long key, int bit) {
+  if ((m->n + 1) * 2 > m->cap && !mapGrow(m)) return;
+  MaskEntry *e = mapSlot(m, key);
+  if (!e->key) { e->key = key; e->mask = 0; m->n++; }
+  e->mask |= bit;
+}
+
+static int mapGet(const MaskMap *m, unsigned long long key) {
+  if (!m->cap) return 0;
+  const MaskEntry *e = mapSlot(m, key);
+  return e->key ? e->mask : 0;
+}
+
+static void mapClear(MaskMap *m) {
+  if (m->p) memset(m->p, 0, (size_t)m->cap * sizeof *m->p);
+  m->n = 0;
+}
+
+/* What a target is, looked up once per cycle however many detectors see it
+   (datalink gives a whole coalition the same picture). Keyed by the
+   object's handle; emptied at each cycle's start, so nothing about a target
+   outlives the cycle it was read in. Whether a target is detected is never
+   cached. */
+typedef struct { unsigned long long key; int use; int side; double id; } TargetEntry;
+typedef struct { TargetEntry *p; int n, cap; } TargetMap;
+
+static unsigned long long targetKey(const Id *obj) {
+  unsigned long long k = obj->type == LUA_TNUMBER ? (unsigned long long)obj->num : (unsigned long long)(uintptr_t)obj->ptr;
+  return (k & 0x3FFFFFFFFFFFFFFFULL) | (obj->type == LUA_TNUMBER ? 1ULL << 62 : 1ULL << 63);
+}
+
+static TargetEntry *targetSlot(const TargetMap *m, unsigned long long key) {
+  unsigned mask = (unsigned)m->cap - 1, i = hashKey(key) & mask;
+  while (m->p[i].key && m->p[i].key != key) i = (i + 1) & mask;
+  return &m->p[i];
+}
+
+static int targetGrow(TargetMap *m) {
+  int cap = m->cap ? m->cap * 2 : 1024;
+  TargetEntry *p = calloc((size_t)cap, sizeof *p);
+  if (!p) return 0;
+  TargetMap next = { p, 0, cap };
+  for (int i = 0; i < m->cap; i++) {
+    if (!m->p[i].key) continue;
+    *targetSlot(&next, m->p[i].key) = m->p[i];
+    next.n++;
+  }
+  free(m->p);
+  *m = next;
+  return 1;
+}
+
+static void targetClear(TargetMap *m) {
+  if (m->p) memset(m->p, 0, (size_t)m->cap * sizeof *m->p);
+  m->n = 0;
+}
+
+/* A detector as of the cycle's start (the unit list itself may change
+   between steps). */
+typedef struct { Id obj; int side; char type[64]; } Detector;
+
+/* hasSensors per unit type, asked once. */
+typedef struct { char type[64]; int has; } SensorType;
+
+static struct {
+  int reqStart, reqFull, reqSlices, reqSensorOnly;
+  int active, full;
+  Detector *list;
+  int n, cap, li, perStep;
+  SensorType *types;
+  int nTypes, capTypes;
+  MaskMap acc, sent;
+  TargetMap targets;
+  int detectors, entries, changed;
+  JBuf json;
+  double kb0, kb1;
+  char error[256];
+} C;
+
+/* Milliseconds, for the step budget. */
+static double nowMs(void) {
+  static LARGE_INTEGER f;
+  LARGE_INTEGER c;
+  if (!f.QuadPart) QueryPerformanceFrequency(&f);
+  QueryPerformanceCounter(&c);
+  return (double)c.QuadPart * 1000.0 / (double)f.QuadPart;
+}
+
+static void contacts_reset(void) {
+  C.active = 0;
+  C.n = C.li = C.nTypes = 0;
+  mapClear(&C.acc);
+  mapClear(&C.sent);
+  targetClear(&C.targets);
+  jb_free(&C.json);
+}
+
+/* A failed check counts as having sensors, so a unit is asked rather than
+   silently skipped. */
+static int hasSensors(const Detector *d, int *fault) {
+  for (int i = 0; i < C.nTypes; i++) {
+    if (strcmp(C.types[i].type, d->type) == 0) return C.types[i].has;
+  }
+  int has = 1, b;
+  int r = objBool(S_HAS_SENSORS, &d->obj, &b);
+  if (r == R_FAULT) { *fault = 1; return 0; }
+  if (r == R_OK) has = b;
+  if (grow((void **)&C.types, &C.capTypes, C.nTypes + 1, sizeof *C.types)) {
+    strncpy_s(C.types[C.nTypes].type, sizeof C.types[C.nTypes].type, d->type, _TRUNCATE);
+    C.types[C.nTypes].has = has;
+    C.nTypes++;
+  }
+  return has;
+}
+
+/* The target's side and id, from the cache or asked once. *out is NULL
+   only when the cache can't grow (the target is then skipped); use 0 means
+   not a unit, or unreadable. */
+static int lookupTarget(const Id *obj, const TargetEntry **out) {
+  *out = NULL;
+  unsigned long long key = targetKey(obj);
+  if (C.targets.cap) {
+    TargetEntry *e = targetSlot(&C.targets, key);
+    if (e->key) { *out = e; return R_OK; }
+  }
+  if ((C.targets.n + 1) * 2 > C.targets.cap && !targetGrow(&C.targets)) return R_OK;
+  TargetEntry v = { key, 0, 0, 0 };
+  double cat, side, id;
+  int r;
+  if ((r = objNum(S_GET_CATEGORY, obj, &cat)) == R_FAULT) return r;
+  if (r == R_OK) {
+    if (cat == g_unitCategory) {
+      if ((r = objNum(S_GET_COALITION, obj, &side)) == R_FAULT) return r;
+      if (r == R_OK) {
+        if ((r = objNum(S_GET_ID, obj, &id)) == R_FAULT) return r;
+        if (r == R_OK) { v.use = 1; v.side = (int)side; v.id = id; }
+      }
+    }
+  }
+  TargetEntry *e = targetSlot(&C.targets, key);
+  *e = v;
+  C.targets.n++;
+  *out = e;
+  return R_OK;
+}
+
+/* One detector's targets into C.acc. R_FAULT stops the cycle; any other
+   failure just skips what failed. */
+static int detectInto(const Detector *d) {
+  int exists, r;
+  if ((r = objBool(S_IS_EXIST, &d->obj, &exists)) != R_OK) return r;
+  if (!exists) return R_FAIL;
+  Id ctrl;
+  if ((r = objId(S_GET_CONTROLLER, &d->obj, &ctrl)) != R_OK) return r;
+  for (int m = 0; m < N_METHODS; m++) {
+    if (!g_methods[m]) continue;
+    int base = lua_gettop(P());
+    pushFn(S_GET_DETECTED_TARGETS);
+    pushBare(P(), &ctrl);
+    lua_pushnumber(P(), g_methods[m]);
+    if ((r = call(S_GET_DETECTED_TARGETS, 2, 1)) == R_FAULT) return r;
+    if (r == R_OK && lua_istable(P(), -1)) {
+      int list = lua_gettop(P());
+      int n = (int)lua_objlen(P(), list);
+      for (int i = 1; i <= n; i++) {
+        lua_rawgeti(P(), list, i);
+        Id obj;
+        int ok = 0;
+        if (lua_istable(P(), -1)) {
+          lua_getfield(P(), -1, "visible");
+          int visible = lua_toboolean(P(), -1);
+          lua_pop(P(), 1);
+          lua_getfield(P(), -1, "object");
+          ok = visible && lua_istable(P(), -1) && readId(P(), -1, &obj);
+          lua_pop(P(), 1);
+        }
+        lua_pop(P(), 1);
+        if (!ok) continue;
+        const TargetEntry *t;
+        if ((r = lookupTarget(&obj, &t)) == R_FAULT) return r;
+        if (!t || !t->use) continue;
+        if (t->side == d->side) continue;
+        mapOr(&C.acc, maskKey(d->side, t->id), DETECTION_BITS[m].bit);
+      }
+    }
+    lua_settop(P(), base);
+  }
+  return R_OK;
+}
+
+static void startContacts(int full, int slices) {
+  C.active = 1;
+  C.full = full;
+  C.li = C.n = 0;
+  C.detectors = C.entries = C.changed = 0;
+  targetClear(&C.targets);
+  mapClear(&C.acc);
   for (int i = 0; i < g_units.n; i++) {
     const Unit *u = &g_units.p[i];
     if (!u->haveRec || u->gone || (u->side != 1 && u->side != 2)) continue;
-    lua_createtable(L, 0, 3);
-    pushBare(L, &u->obj);
-    lua_setfield(L, -2, "u");
-    lua_pushnumber(L, u->side);
-    lua_setfield(L, -2, "side");
-    if (u->type) { lua_pushstring(L, u->type); lua_setfield(L, -2, "type"); }
-    lua_rawseti(L, -2, ++n);
+    if (!grow((void **)&C.list, &C.cap, C.n + 1, sizeof *C.list)) break;
+    Detector *d = &C.list[C.n++];
+    d->obj = u->obj;
+    d->side = u->side;
+    strncpy_s(d->type, sizeof d->type, u->type ? u->type : "?", _TRUNCATE);
   }
+  int per = (C.n + slices - 1) / slices;
+  C.perStep = per > MIN_DETECTORS_STEP ? per : MIN_DETECTORS_STEP;
+}
+
+static void putMaskKey(JBuf *b, int *first, unsigned long long key) {
+  char k[48];
+  _snprintf_s(k, sizeof k, _TRUNCATE, "%d:%.0f", (int)(key >> 40), (double)(key & 0xFFFFFFFFFFULL));
+  if (!*first) jb_puts(b, ",");
+  *first = 0;
+  jb_str(b, k);
+}
+
+static void finishContacts(void) {
+  int first = 1;
+  jb_free(&C.json);
+  jb_puts(&C.json, "{");
+  for (int i = 0; i < C.acc.cap; i++) {
+    const MaskEntry *e = &C.acc.p[i];
+    if (!e->key) continue;
+    C.entries++;
+    if (C.full || mapGet(&C.sent, e->key) != e->mask) {
+      putMaskKey(&C.json, &first, e->key);
+      jb_printf(&C.json, ":%d", e->mask);
+      C.changed++;
+    }
+  }
+  if (!C.full) {
+    for (int i = 0; i < C.sent.cap; i++) {
+      const MaskEntry *e = &C.sent.p[i];
+      if (!e->key || mapGet(&C.acc, e->key)) continue;
+      putMaskKey(&C.json, &first, e->key);
+      jb_puts(&C.json, ":null");
+      C.changed++;
+    }
+  }
+  jb_puts(&C.json, "}");
+  MaskMap t = C.sent;
+  C.sent = C.acc;
+  C.acc = t;
+  C.active = 0;
+}
+
+/* contactsStep() in the mission state; same statuses as unitsStep. */
+static int l_contactsStep(lua_State *L) {
+  g_ML = L;
+  C.kb0 = lua_gc(L, LUA_GCCOUNT, 0);
+  const char *status = "E";
+  if (!g_server.ready || g_server.faulted || !g_server.P) {
+    _snprintf_s(C.error, sizeof C.error, _TRUNCATE, "the DLL is not ready in the mission environment");
+    goto out;
+  }
+  if (C.reqStart || !C.active) startContacts(C.reqFull, C.reqSlices > 1 ? C.reqSlices : 1);
+  double stepStart = nowMs();
+  for (int done = 0; done < C.perStep && C.li < C.n; done++) {
+    if (done > 0 && nowMs() - stepStart >= STEP_BUDGET_MS) break;
+    const Detector *d = &C.list[C.li++];
+    if (C.reqSensorOnly) {
+      int fault = 0;
+      int has = hasSensors(d, &fault);
+      if (fault) goto fault;
+      if (!has) continue;
+    }
+    C.detectors++;
+    if (detectInto(d) == R_FAULT) {
+      char ctx[96];
+      _snprintf_s(ctx, sizeof ctx, _TRUNCATE, " (detector %s)", d->type);
+      strncat_s(g_server.error, sizeof g_server.error, ctx, _TRUNCATE);
+      goto fault;
+    }
+    if ((done + 1) % CLEAR_EVERY == 0) clearPrivate(&g_server);
+  }
+  clearPrivate(&g_server);
+  if (C.li < C.n) {
+    status = "P";
+  } else {
+    finishContacts();
+    status = C.full ? "F" : "D";
+  }
+  goto out;
+
+fault:
+  C.active = 0;
+  status = "X";
+out:
+  g_ML = NULL;
+  C.kb1 = lua_gc(L, LUA_GCCOUNT, 0);
+  lua_pushstring(L, status);
   return 1;
 }
 
@@ -710,54 +1055,86 @@ static int l_activeUnits(lua_State *L) {
 /* Hook side                                                            */
 /* ------------------------------------------------------------------ */
 
-static int unitsServer(lua_State *L, NativeRun *r) {
-  if (!g_server.ready || g_server.faulted) return 0;
-  U.error[0] = 0;
-  U.reqStart = r->start;
-  U.reqFull = r->full;
-  U.reqSlices = r->slices;
+/* Runs one mission-state step (code returns a one-letter status) and
+   returns that letter, or 'E' with the reason in err. */
+static char missionStep(lua_State *L, const char *code, char *err, size_t errLen) {
   int top = lua_gettop(L);
   push_path(L, "net.dostring_in");
   if (!lua_isfunction(L, -1)) {
     lua_settop(L, top);
-    r->error = "net.dostring_in is missing";
-    return -1;
+    _snprintf_s(err, errLen, _TRUNCATE, "net.dostring_in is missing");
+    return 'E';
   }
   lua_pushstring(L, "server");
-  lua_pushstring(L, UNITS_STEP_CODE);
+  lua_pushstring(L, code);
   int ok = lua_pcall(L, 2, 1, 0) == 0;
   char status = ok && lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1)[0] : 0;
   if (!ok || !status) {
-    _snprintf_s(U.error, sizeof U.error, _TRUNCATE, "units step failed: %s",
-                lua_isstring(L, -1) ? lua_tostring(L, -1) : "no result");
+    _snprintf_s(err, errLen, _TRUNCATE, "step failed: %s", lua_isstring(L, -1) ? lua_tostring(L, -1) : "no result");
     status = 'E';
   }
   lua_settop(L, top);
-  r->srvKb0 = U.kb0;
-  r->srvKb1 = U.kb1;
+  return status;
+}
 
+/* The scheduler's answer for a step's status; on 'F'/'D' the caller has
+   already moved its JSON into r->out. */
+static int stepResult(char status, NativeRun *r, char *err, size_t errLen, const char *what) {
   switch (status) {
     case 'P':
       return 2;
     case 'F':
     case 'D':
-      if (U.json.oom) { r->error = "out of memory building the units JSON"; return -1; }
-      jb_put(r->out, U.json.p, U.json.len);
-      jb_free(&U.json);
       r->kind = status == 'F' ? "full" : "delta";
-      jb_printf(r->extra, ",\"units\":%d,\"changed\":%d,\"removed\":%d,\"births\":%d,\"relistAdded\":%d",
-                U.n, U.changed, U.removed, U.births, U.relistAdded);
-      U.births = U.relistAdded = 0;
       return 1;
     case 'X':
       r->error = g_server.error;
       r->fatal = 1;
       return -1;
     default:
-      if (!U.error[0]) _snprintf_s(U.error, sizeof U.error, _TRUNCATE, "units step failed (mission environment not bootstrapped?)");
-      r->error = U.error;
+      if (!err[0]) _snprintf_s(err, errLen, _TRUNCATE, "%s step failed (mission environment not bootstrapped?)", what);
+      r->error = err;
       return -1;
   }
+}
+
+static int unitsServer(lua_State *L, NativeRun *r) {
+  if (!g_server.ready || g_server.faulted) return 0;
+  U.error[0] = 0;
+  U.reqStart = r->start;
+  U.reqFull = r->full;
+  U.reqSlices = r->slices;
+  char status = missionStep(L, UNITS_STEP_CODE, U.error, sizeof U.error);
+  r->srvKb0 = U.kb0;
+  r->srvKb1 = U.kb1;
+  if (status == 'F' || status == 'D') {
+    if (U.json.oom) { r->error = "out of memory building the units JSON"; return -1; }
+    jb_put(r->out, U.json.p, U.json.len);
+    jb_free(&U.json);
+    jb_printf(r->extra, ",\"units\":%d,\"changed\":%d,\"removed\":%d,\"births\":%d,\"relistAdded\":%d",
+              U.n, U.changed, U.removed, U.births, U.relistAdded);
+    U.births = U.relistAdded = 0;
+  }
+  return stepResult(status, r, U.error, sizeof U.error, "units");
+}
+
+static int contactsServer(lua_State *L, NativeRun *r) {
+  if (!g_server.ready || g_server.faulted) return 0;
+  C.error[0] = 0;
+  C.reqStart = r->start;
+  C.reqFull = r->full;
+  C.reqSlices = r->slices;
+  C.reqSensorOnly = r->sensorUnitsOnly;
+  char status = missionStep(L, CONTACTS_STEP_CODE, C.error, sizeof C.error);
+  r->srvKb0 = C.kb0;
+  r->srvKb1 = C.kb1;
+  if (status == 'F' || status == 'D') {
+    if (C.json.oom) { r->error = "out of memory building the contacts JSON"; return -1; }
+    jb_put(r->out, C.json.p, C.json.len);
+    jb_free(&C.json);
+    jb_printf(r->extra, ",\"detectors\":%d,\"entries\":%d,\"changed\":%d", C.detectors, C.entries, C.changed);
+  }
+  return stepResult(status, r, C.error, sizeof C.error, "contacts");
 }
 
 /* ------------------------------------------------------------------ */
@@ -768,6 +1145,7 @@ void server_reset(lua_State *L) {
   jb_free(&U.parts);
   jb_free(&U.json);
   memset(&U, 0, sizeof U);
+  contacts_reset();
   g_ML = NULL;
   /* The previous mission state's references die with it. */
   g_unitMt = g_groupMt = LUA_NOREF;
@@ -780,6 +1158,15 @@ void server_reset(lua_State *L) {
       int ref = luaL_ref(L, LUA_REGISTRYINDEX);
       if (i == 0) g_unitMt = ref; else g_groupMt = ref;
     }
+    push_path(L, "Controller.Detection");
+    for (int m = 0; m < N_METHODS; m++) {
+      g_methods[m] = 0;
+      if (!lua_istable(L, -1)) continue;
+      lua_getfield(L, -1, DETECTION_BITS[m].name);
+      if (lua_type(L, -1) == LUA_TNUMBER) g_methods[m] = lua_tonumber(L, -1);
+      lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
     push_path(L, "Object.Category");
     if (lua_istable(L, -1)) {
       lua_getfield(L, -1, "UNIT");
@@ -793,7 +1180,7 @@ void server_reset(lua_State *L) {
 static const luaL_Reg FUNCTIONS[] = {
   { "unitsStep", l_unitsStep },
   { "onBirth", l_onBirth },
-  { "activeUnits", l_activeUnits },
+  { "contactsStep", l_contactsStep },
   { NULL, NULL },
 };
 
@@ -803,5 +1190,6 @@ void server_open(lua_State *L) {
 
 const NativeCollector SERVER_COLLECTORS[] = {
   { "units", unitsServer, 1 },
+  { "contacts", contactsServer, 1 },
   { NULL, NULL, 0 },
 };

@@ -13,13 +13,13 @@
 --   client: a multiplayer client. Only what the DCS Export API allows under
 --           the host's export permissions is available.
 --
--- The client side's collectors and the server's units are the DLL's own
--- (registerNative); the other server collectors are still Lua for now,
+-- The client side's collectors and the server's units and contacts are the
+-- DLL's own (registerNative); the other server collectors are still Lua for now,
 -- called by the DLL's scheduler. There
 -- is no Lua fallback: without a working DLL nothing is collected.
 
 -- Must match TRACS_EXPORTER_ABI in relay/native/common.h.
-local DLL_ABI         = 4
+local DLL_ABI         = 5
 local DEFAULT_PORT    = 8767
 local LOG_TAG         = 'TRACS.EXPORTER'
 
@@ -122,103 +122,6 @@ end
 S.encode = encode
 
 local function round(x, step) return math.floor(x / step + 0.5) * step end
-
--- Contacts: which enemy units each coalition's units detect, from DCS itself,
--- gathered a slice of the unit list per tick like units. Every red and blue
--- unit (or, with sensorUnitsOnly, only those whose type has sensors, checked
--- once per type) is asked for its detected targets once per detection
--- method, as Olympus does. Targets on the detector's own side are dropped;
--- the rest are merged per coalition into one flat map: '<coalition>:<target unit id>' -> the sum of
--- the method bits that found it (VISUAL 1, OPTIC 2, RADAR 4, IRST 8, RWR 16,
--- DLINK 32, Olympus's values). Flat, so the relay's one-level delta merge
--- works. The unit list is the DLL's units collector's (TRACS_DLL.activeUnits:
--- bare unit tables, so the Unit functions are called directly, not as
--- methods).
-local DETECTION_BITS = { VISUAL = 1, OPTIC = 2, RADAR = 4, IRST = 8, RWR = 16, DLINK = 32 }
-S.sensorTypes = {}
-S.contactsSent = {}
-
--- A failed check counts as having sensors, so a unit is asked rather than
--- silently skipped.
-local function hasSensors(e)
-  local t = e.type or '?'
-  local v = S.sensorTypes[t]
-  if v == nil then
-    local ok, r = pcall(Unit.hasSensors, e.u)
-    v = (not ok) or r == true
-    S.sensorTypes[t] = v
-  end
-  return v
-end
-
-local function hasBit(mask, bit) return math.floor(mask / bit) % 2 == 1 end
-
-local function detectInto(e, acc)
-  local ctrl = Unit.getController(e.u)
-  if not ctrl then return end
-  for name, method in pairs(Controller.Detection) do
-    local bit = DETECTION_BITS[name]
-    if bit then
-      local targets = ctrl:getDetectedTargets(method) or {}
-      for i = 1, #targets do
-        local tgt = targets[i]
-        local obj = tgt and tgt.visible and tgt.object
-        if obj and Object.getCategory(obj) == Object.Category.UNIT then
-          local side = obj:getCoalition()
-          if side ~= e.side then
-            local key = e.side .. ':' .. obj:getID()
-            local m = acc[key] or 0
-            if not hasBit(m, bit) then acc[key] = m + bit end
-          end
-        end
-      end
-    end
-  end
-end
-
--- Called a slice at a time like a sliced collector. Returns 'P|kbBefore|kbAfter' while
--- running, then '<F|D>|kbBefore|kbAfter|detectors|entries|changed|' and the
--- JSON object (a delta names changed entries, and lost ones as null).
-function S.contactsStep(start, full, slices, sensorUnitsOnly)
-  local kb0 = heapKb()
-  slices = math.max(1, slices)
-  if start or not S.cc then
-    local list = TRACS_DLL.activeUnits()
-    S.cc = { list = list, li = 1, full = full, acc = {}, detectors = 0,
-      perStep = math.max(20, math.ceil(#list / slices)) }
-  end
-  local cc = S.cc
-  local done = 0
-  while done < cc.perStep and cc.list[cc.li] do
-    local e = cc.list[cc.li]
-    cc.li, done = cc.li + 1, done + 1
-    if not sensorUnitsOnly or hasSensors(e) then
-      cc.detectors = cc.detectors + 1
-      pcall(detectInto, e, cc.acc)
-    end
-  end
-  if cc.list[cc.li] then return 'P|' .. kb0 .. '|' .. heapKb() end
-
-  local parts, changed, entries, sent = {}, 0, 0, S.contactsSent
-  for key, m in pairs(cc.acc) do
-    entries = entries + 1
-    if cc.full or sent[key] ~= m then
-      parts[#parts + 1] = encode(key) .. ':' .. encode(m)
-      changed = changed + 1
-    end
-  end
-  if not cc.full then
-    for key in pairs(sent) do
-      if cc.acc[key] == nil then
-        parts[#parts + 1] = encode(key) .. ':null'
-        changed = changed + 1
-      end
-    end
-  end
-  S.contactsSent, S.cc = cc.acc, nil
-  return (cc.full and 'F' or 'D') .. '|' .. kb0 .. '|' .. heapKb() .. '|'
-    .. cc.detectors .. '|' .. entries .. '|' .. changed .. '|{' .. table.concat(parts, ',') .. '}'
-end
 
 -- Live weather at every airdrome and carrier, a few airfields per tick:
 -- pressure and temperature at the surface, wind 10 m above it, and wind and
@@ -491,26 +394,13 @@ local function retryPendingDll()
   end
 end
 
--- Units are the DLL's own collector (relay/native/server.c): it runs its
--- cycle in the mission state, calling DCS in a private Lua state.
-if dll then dll.registerNative('units', 'server', 1) end
-
--- Each step also returns the mission-side heap size (KB) before and after it,
--- for the worst-step diagnostics in the DLL's timing lines.
-register('contacts', 'server', 4, function(start, full, slices, sensorUnitsOnly)
-  local r = inServer(string.format(
-    'return TRACS_EXP_S and TRACS_EXP_S.contactsStep(%s, %s, %d, %s) or "E"',
-    tostring(start), tostring(full), slices, tostring(sensorUnitsOnly == true)))
-  if r == nil or r == 'E' then error('contacts step failed (mission environment not bootstrapped?)') end
-  local p0, p1 = r:match('^P|(%-?%d+)|(%-?%d+)$')
-  if p0 then return nil, nil, nil, { tonumber(p0), tonumber(p1) } end
-  local kind, k0, k1, detectors, entries, changed, json =
-    r:match('^(%a)|(%-?%d+)|(%-?%d+)|(%d+)|(%d+)|(%d+)|(.*)$')
-  if not kind then error('unexpected contacts step result') end
-  return json, kind == 'F' and 'full' or 'delta', {
-    detectors = tonumber(detectors), entries = tonumber(entries), changed = tonumber(changed),
-  }, { tonumber(k0), tonumber(k1) }
-end, true)
+-- Units and contacts are the DLL's own collectors (relay/native/server.c):
+-- they run their cycles in the mission state, calling DCS in a private Lua
+-- state. Contacts use the units collector's list of active units.
+if dll then
+  dll.registerNative('units', 'server', 1)
+  dll.registerNative('contacts', 'server', 4)
+end
 
 -- Bullseyes rarely move (only when a script sets one), so a slow rate.
 register('bullseyes', 'server', 30, function()

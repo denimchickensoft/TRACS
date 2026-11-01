@@ -51,6 +51,7 @@ static DcsFn SERVER_FNS[S_COUNT] = {
   { "Unit.isExist" }, { "Unit.isActive" }, { "Unit.getName", NULL, 1 }, { "Unit.getTypeName", NULL, 1 },
   { "Unit.getCallsign", NULL, 1 }, { "Unit.getGroup", NULL, 1 },
   { "Group.getID", NULL, 1 }, { "Group.getName", NULL, 1 }, { "Group.getCategory", NULL, 1 },
+  { "Unit.hasSensors", NULL, 1 },
 };
 
 static DcsFn CLIENT_FNS[C_COUNT] = {
@@ -244,6 +245,7 @@ static const Test SERVER_TESTS[] = {
   { S_GET_CALLSIGN, A_UNIT, A_NONE, 1 },
   { S_GET_GROUP, A_UNIT, A_NONE, 1 },     { S_GROUP_GET_ID, A_GROUP, A_NONE, 1 },
   { S_GROUP_GET_NAME, A_GROUP, A_NONE, 1 }, { S_GROUP_GET_CATEGORY, A_GROUP, A_NONE, 1 },
+  { S_HAS_SENSORS, A_UNIT, A_NONE, 1 },
 };
 
 /* What the server self-test works on, found in the mission state. */

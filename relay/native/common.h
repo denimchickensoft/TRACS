@@ -8,7 +8,7 @@
 
 /* Bumped together with DLL_ABI in the hook whenever the Lua-facing
    functions change; the hook refuses a DLL with a different one. */
-#define TRACS_EXPORTER_ABI 4
+#define TRACS_EXPORTER_ABI 5
 
 /* Set by the build from relay/package.json. */
 #ifndef TRACS_VERSION

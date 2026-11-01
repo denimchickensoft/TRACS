@@ -6,14 +6,14 @@
 #include "sched.h"
 #include "private.h"
 
-/* units; ends with { NULL, NULL, 0 }. */
+/* units and contacts; ends with { NULL, NULL, 0 }. */
 extern const NativeCollector SERVER_COLLECTORS[];
 
-/* Adds unitsStep/onBirth/activeUnits to the module table on top of L's
+/* Adds unitsStep/onBirth/contactsStep to the module table on top of L's
    stack (they're called in the mission state). */
 void server_open(lua_State *L);
 
-/* Forgets the mission's units. With the mission state (at init), also reads
+/* Forgets the mission's units and contacts. With the mission state (at init), also reads
    the constants the collectors need from it. */
 void server_reset(lua_State *L);
 
