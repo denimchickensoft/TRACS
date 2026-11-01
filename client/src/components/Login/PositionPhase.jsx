@@ -192,10 +192,13 @@ export function PositionPhase({ onSignedIn }) {
   // Skip the first run of the CTR-toggle clear so restored CTR facilityId isn't wiped on mount
   const isCtrMountRef = useRef(true)
 
-  // Live feed takes priority the moment it arrives; the static fallback only
-  // covers the source-has-no-airbases-feed-at-all case (Tacview) and the
-  // brief window before a real feed (Olympus) lands.
-  const effectiveAirbases = airbases ?? staticAirbaseFallback
+  // Live feed takes priority the moment it arrives; the static fallback
+  // covers the source-has-no-airbases-feed-at-all case (Tacview), the brief
+  // window before a real feed (Olympus) lands, and an empty live list (the
+  // exporter clears airbases when its hook leaves, and a client-side hook
+  // sends none).
+  const liveAirbaseCount = Object.keys(airbases?.airbases ?? airbases ?? {}).length
+  const effectiveAirbases = liveAirbaseCount > 0 ? airbases : staticAirbaseFallback
 
   // Normalise Olympus airbases into a flat list, deduplicating by name.
   // When runway data is loaded, filter out helicopter pads and FOBs (no runway geometry).
