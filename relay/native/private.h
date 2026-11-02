@@ -58,6 +58,10 @@ void pushBare(lua_State *L, const Id *id);
    2 exception (fault recorded in s->error, stack left as it is). */
 int pcallPrivate(Side *s, int f, int nargs, int nresults, const char *context);
 
+/* lua_pcall in a shared state under an SEH guard; an exception is recorded
+   in s as a fault in what. Results as pcallPrivate. */
+int pcallGuarded(lua_State *L, Side *s, const char *what, int nargs, int nresults);
+
 /* lua_pcall in a shared state (the mission state, for a Lua-implemented
    DCS function) under an SEH guard, recording a fault in s like
    pcallPrivate. */

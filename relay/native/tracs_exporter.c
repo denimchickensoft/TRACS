@@ -16,6 +16,11 @@
  * lua_tocfunction, and unit/group/controller objects are rebuilt in the
  * private state as bare { id_ = ... } tables, which is all DCS reads.
  *
+ * The hook itself is a thin shim: at mission load it calls missionLoad,
+ * which works out the side, initialises the DLL there (on a host, loading
+ * it into the mission state too), registers the collectors and connects;
+ * every frame it calls frame, and stop when the mission ends.
+ *
  * Every private call runs inside an SEH guard: an access violation inside a
  * DCS function lands in our handler instead of ending the process. After one
  * the exporter stops calling DCS until the next mission load, and the
@@ -40,6 +45,7 @@
 #include "server.h"
 
 #define LOADED_MESSAGE_S 20
+#define CLIENT_RETRY_S   1.0
 
 static DcsFn SERVER_FNS[S_COUNT] = {
   { "Unit.getPoint" }, { "Unit.getPosition" }, { "Unit.getVelocity" }, { "Unit.getLife" },
@@ -96,16 +102,21 @@ static void setFault(Side *s, const char *fnPath, const char *context, unsigned 
 }
 
 /* See private.h. */
-int pcallShared(lua_State *L, Side *s, int f, int nargs, int nresults) {
+int pcallGuarded(lua_State *L, Side *s, const char *what, int nargs, int nresults) {
   unsigned long code = 0;
   int r;
   __try {
     r = lua_pcall(L, nargs, nresults, 0) == 0 ? 0 : 1;
   } __except (code = GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER) {
-    setFault(s, s->fns[f].path, NULL, code);
+    setFault(s, what, NULL, code);
     return 2;
   }
   return r;
+}
+
+/* See private.h. */
+int pcallShared(lua_State *L, Side *s, int f, int nargs, int nresults) {
+  return pcallGuarded(L, s, s->fns[f].path, nargs, nresults);
 }
 
 /* See private.h. */
@@ -489,14 +500,16 @@ static void post(const char *s, size_t len) {
   g_handoffLen = len;
 }
 
-/* initServer() in the mission state, once per mission. Returns true, or
-   nil and the reason. The self-test summary is handed to the hook side
-   through post/take rather than returned, which also proves the two loaded
-   copies share memory. */
+/* initServer() in the mission state, once per mission (missionLoad runs it
+   with net.dostring_in). Returns true, or nil and the reason. Also installs
+   the mission's event handler. The self-test summary is handed to the hook
+   side through the shared hand-off rather than returned, which also proves
+   the two loaded copies share memory. */
 static int l_initServer(lua_State *L) {
   Side *s = &g_server;
   char msg[640];
   resetSide(s);
+  server_removeEventHandler(L);
   server_reset(L);
   if (!resolveFns(L, s) || !openPrivate(s)) goto failed;
   for (int i = 0; i < s->nFns; i++) {
@@ -522,10 +535,16 @@ static int l_initServer(lua_State *L) {
   lua_settop(L, top);
 
   s->ready = 1;
-  _snprintf_s(msg, sizeof msg, _TRUNCATE,
-              "{\"version\":\"%s\",\"selfTest\":{\"passed\":%d,\"skipped\":%d,\"subject\":\"%s\"}}",
-              TRACS_VERSION, passed, skipped, sub.haveUnit ? sub.context : "no active unit");
-  post(msg, strlen(msg));
+  if (!server_installEventHandler(L, msg, sizeof msg)) {
+    dcs_log(L, LOG_ERROR, "event handler not installed: %s - births are found by the 30-cycle re-list only", msg);
+  }
+  JBuf st;
+  jb_init(&st);
+  jb_printf(&st, "{\"passed\":%d,\"skipped\":%d,\"subject\":", passed, skipped);
+  jb_str(&st, sub.haveUnit ? sub.context : "no active unit");
+  jb_puts(&st, "}");
+  if (!st.oom) post(st.p, st.len);
+  jb_free(&st);
   outText(L, "TRACS Relay v" TRACS_VERSION " exporter loaded.");
   lua_pushboolean(L, 1);
   return 1;
@@ -554,17 +573,37 @@ static int worldFingerprint(lua_State *L, int idx, char *out, size_t n) {
   return count;
 }
 
-/* initClient() in the hook state, once per mission. Returns true and a
-   summary, or nil and the reason. At mission load a client's world is
-   usually still empty (the server hasn't sent its units yet), which tests
-   nothing: the summary then says pending, and the hook calls again until
-   there are objects to compare. */
-static int l_initClient(lua_State *L) {
+/* ------------------------------------------------------------------ */
+/* Mission load, from the hook                                          */
+/* ------------------------------------------------------------------ */
+
+/* This mission's DLL status, sent to the relay in hello. A client's world
+   is usually still empty at mission load (the server hasn't sent its units
+   yet), which tests nothing: its self-test is then pending, repeated every
+   CLIENT_RETRY_S until there are objects to compare, and nothing is
+   collected meanwhile. */
+static struct {
+  int loaded, server, ok, pending;
+  char error[700];
+  JBuf selfTest;      /* the summary object, JSON */
+  double retryAt;
+} g_mission;
+
+static void setError(const char *e) {
+  g_mission.ok = 0;
+  g_mission.pending = 0;
+  _snprintf_s(g_mission.error, sizeof g_mission.error, _TRUNCATE, "%s", e && e[0] ? e : "unknown error");
+}
+
+/* The client's init in the hook state: LoGetWorldObjects called normally
+   and privately must agree. */
+static void initClient(lua_State *L) {
   Side *s = &g_client;
   char a[128], b[128];
+  g_mission.selfTest.len = 0;
   resetSide(s);
   client_reset();
-  if (!resolveFns(L, s) || !openPrivate(s)) return failInit(L, s);
+  if (!resolveFns(L, s) || !openPrivate(s)) { setError(s->error); return; }
 
   push_path(L, s->fns[C_GET_WORLD_OBJECTS].path);
   if (lua_pcall(L, 0, 1, 0) != 0) _snprintf_s(a, sizeof a, _TRUNCATE, "error '%s'", lua_tostring(L, -1));
@@ -573,7 +612,7 @@ static int l_initClient(lua_State *L) {
 
   lua_pushcfunction(s->P, s->fns[C_GET_WORLD_OBJECTS].fn);
   int r = pcallPrivate(s, C_GET_WORLD_OBJECTS, 0, 1, NULL);
-  if (r == 2) return failInit(L, s);
+  if (r == 2) { s->ready = 0; setError(s->error); return; }
   if (r == 1) _snprintf_s(b, sizeof b, _TRUNCATE, "error '%s'", lua_tostring(s->P, -1));
   int count = r == 1 ? 0 : worldFingerprint(s->P, -1, b, sizeof b);
   clearPrivate(s);
@@ -581,23 +620,231 @@ static int l_initClient(lua_State *L) {
   if (strcmp(a, b) != 0) {
     _snprintf_s(s->error, sizeof s->error, _TRUNCATE, "self-test: %s differs in a private state (normal %s, private %s)",
                 s->fns[C_GET_WORLD_OBJECTS].path, a, b);
-    return failInit(L, s);
+    s->ready = 0;
+    setError(s->error);
+    return;
   }
   s->ready = count > 0;
-  lua_pushboolean(L, 1);
-  lua_pushfstring(L, "{\"version\":\"%s\",\"selfTest\":{\"passed\":%d,\"skipped\":0,\"pending\":%s,\"subject\":\"%s\"}}",
-                  TRACS_VERSION, count > 0 ? 1 : 0, count > 0 ? "false" : "true", a);
-  return 2;
+  g_mission.ok = 1;
+  g_mission.pending = count == 0;
+  jb_printf(&g_mission.selfTest, "{\"passed\":%d,\"skipped\":0,\"pending\":%s,\"subject\":", count > 0 ? 1 : 0,
+            count > 0 ? "false" : "true");
+  jb_str(&g_mission.selfTest, a);
+  jb_puts(&g_mission.selfTest, "}");
 }
 
-/* take() on the hook side: whatever the mission side last posted, or nil. */
-static int l_take(lua_State *L) {
-  if (!g_handoff) { lua_pushnil(L); return 1; }
-  lua_pushlstring(L, g_handoff, g_handoffLen);
+/* Lua's quoted-string form of s, for code sent with net.dostring_in. */
+static void luaQuote(JBuf *b, const char *s) {
+  jb_puts(b, "\"");
+  for (; *s; s++) {
+    unsigned char c = (unsigned char)*s;
+    if (c == '\\' || c == '"') { char e[2] = { '\\', (char)c }; jb_put(b, e, 2); }
+    else if (c < 32) jb_printf(b, "\\%03u", c);
+    else jb_put(b, (const char *)&c, 1);
+  }
+  jb_puts(b, "\"");
+}
+
+/* Loads the DLL into the mission state (the 'server' environment still has
+   require) and runs initServer there, which also shows the loaded/failed
+   message on screen. Returns 'ok' or 'ERR <reason>'. */
+static const char *SERVER_INIT_HEAD = "local dir = ";
+static const char *SERVER_INIT_BODY =
+  "\n"
+  "if not TRACS_DLL then\n"
+  "  if not package then return 'ERR no package library in the mission environment' end\n"
+  "  package.cpath = package.cpath .. ';' .. dir .. '?.dll'\n"
+  "  local ok, m = pcall(require, 'tracs_exporter')\n"
+  "  if not ok or type(m) ~= 'table' then\n"
+  "    local msg = 'failed to load tracs_exporter.dll in the mission environment: ' .. tostring(m)\n"
+  "    pcall(trigger.action.outText, 'TRACS Relay exporter ' .. msg, 20)\n"
+  "    return 'ERR ' .. msg\n"
+  "  end\n"
+  "  TRACS_DLL = m\n"
+  "end\n"
+  "local ok, e = TRACS_DLL.initServer()\n"
+  "if ok then return 'ok' end\n"
+  "return 'ERR ' .. tostring(e)\n";
+
+/* The host's init, run in the mission state. Its self-test summary comes
+   back through the hand-off, not through dostring_in. */
+static void initServer(lua_State *L, const char *dllDir) {
+  g_mission.selfTest.len = 0;
   free(g_handoff);
   g_handoff = NULL;
   g_handoffLen = 0;
-  return 1;
+
+  JBuf code;
+  jb_init(&code);
+  jb_puts(&code, SERVER_INIT_HEAD);
+  luaQuote(&code, dllDir);
+  jb_puts(&code, SERVER_INIT_BODY);
+  int top = lua_gettop(L);
+  push_path(L, "net.dostring_in");
+  lua_pushstring(L, "server");
+  lua_pushlstring(L, code.oom ? "" : code.p, code.oom ? 0 : code.len);
+  jb_free(&code);
+  const char *r = lua_pcall(L, 2, 1, 0) == 0 && lua_isstring(L, -1) ? lua_tostring(L, -1) : NULL;
+  if (!r || strcmp(r, "ok") != 0) {
+    setError(!r ? "mission environment unreachable" : strncmp(r, "ERR ", 4) == 0 ? r + 4 : r);
+  } else if (!g_handoff) {
+    setError("no hand-off from the mission side - the two loaded copies of tracs_exporter.dll do not share memory");
+  } else {
+    g_mission.ok = 1;
+    g_mission.pending = 0;
+    jb_put(&g_mission.selfTest, g_handoff, g_handoffLen);
+  }
+  lua_settop(L, top);
+  free(g_handoff);
+  g_handoff = NULL;
+  g_handoffLen = 0;
+}
+
+static int ready(void) { return g_mission.ok && !g_mission.pending; }
+
+/* { ok, version, error?, selfTest?, pending } */
+static void statusJson(JBuf *b) {
+  jb_puts(b, g_mission.ok ? "{\"ok\":true" : "{\"ok\":false");
+  jb_puts(b, ",\"version\":");
+  jb_str(b, TRACS_VERSION);
+  if (!g_mission.ok) {
+    jb_puts(b, ",\"error\":");
+    jb_str(b, g_mission.error);
+  }
+  if (g_mission.ok && g_mission.selfTest.len && !g_mission.selfTest.oom) {
+    jb_puts(b, ",\"selfTest\":");
+    jb_put(b, g_mission.selfTest.p, g_mission.selfTest.len);
+  }
+  jb_puts(b, g_mission.pending ? ",\"pending\":true}" : ",\"pending\":false}");
+}
+
+static void logStatus(lua_State *L) {
+  if (g_mission.ok && g_mission.pending) {
+    dcs_log(L, LOG_INFO, "tracs_exporter.dll v%s loaded - self-test waits for world objects", TRACS_VERSION);
+  } else if (g_mission.ok) {
+    dcs_log(L, LOG_INFO, "tracs_exporter.dll v%s ready - self-test %s", TRACS_VERSION,
+            g_mission.selfTest.p ? g_mission.selfTest.p : "{}");
+  } else {
+    dcs_log(L, LOG_ERROR, "exporter not collecting: %s", g_mission.error);
+  }
+}
+
+/* A DCS.* function returning a boolean, false if it fails. */
+static int dcsBool(lua_State *L, const char *path) {
+  push_path(L, path);
+  int v = lua_pcall(L, 0, 1, 0) == 0 && lua_toboolean(L, -1);
+  lua_pop(L, 1);
+  return v;
+}
+
+/* The mission's theatre, into out ("" if unknown). */
+static void missionTheatre(lua_State *L, char *out, size_t n) {
+  out[0] = 0;
+  int top = lua_gettop(L);
+  push_path(L, "DCS.getCurrentMission");
+  if (lua_pcall(L, 0, 1, 0) == 0 && lua_istable(L, -1)) {
+    lua_getfield(L, -1, "mission");
+    if (lua_istable(L, -1)) {
+      lua_getfield(L, -1, "theatre");
+      if (lua_isstring(L, -1)) _snprintf_s(out, n, _TRUNCATE, "%s", lua_tostring(L, -1));
+    }
+  }
+  lua_settop(L, top);
+}
+
+/* The collectors and their rates (the relay's config can change both).
+   Host: in the mission state, calling DCS in a private Lua state; contacts
+   use the units collector's list of active units. Bullseyes rarely move
+   (only when a script sets one); airbase ownership changes only on capture;
+   TRACS runs the clock locally between updates, so it only corrects drift;
+   fog animates; the mission weather never changes and goes once per resync;
+   airfieldWeather goes once per resync in a static atmosphere and is
+   re-sampled at its rate in a dynamic one. Client: in the same groups as the
+   host's; units_client reads the export API's world objects in the private
+   state; bullseyes come from the mission file (a script moving one isn't
+   visible to a client). */
+static const struct { const char *name, *side; double rate; const char *group; } COLLECTORS[] = {
+  { "units", "server", 1, NULL },
+  { "contacts", "server", 4, NULL },
+  { "bullseyes", "server", 30, NULL },
+  { "airbases", "server", 30, NULL },
+  { "clock", "server", 15, NULL },
+  { "weather", "server", 600, NULL },
+  { "fog", "server", 60, NULL },
+  { "airfieldWeather", "server", 600, NULL },
+  { "units_client", "client", 1, "units" },
+  { "exportStatus", "client", 5, NULL },
+  { "bullseyes_client", "client", 30, "bullseyes" },
+  { "airbases_client", "client", 30, "airbases" },
+  { "clock_client", "client", 15, "clock" },
+};
+
+/* missionLoad{ port, dllDir } from the hook's onMissionLoadEnd. dllDir is
+   the folder the hook loaded this DLL from, for the mission state to load
+   it from too. */
+static int l_missionLoad(lua_State *L) {
+  static int registered;
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_getfield(L, 1, "port");
+  int port = (int)luaL_checknumber(L, -1);
+  lua_getfield(L, 1, "dllDir");
+  const char *dllDir = luaL_checkstring(L, -1);
+
+  if (!registered) {
+    registered = 1;
+    for (size_t i = 0; i < sizeof COLLECTORS / sizeof COLLECTORS[0]; i++) {
+      if (!sched_registerNative(L, COLLECTORS[i].name, COLLECTORS[i].side, COLLECTORS[i].rate, COLLECTORS[i].group)) {
+        dcs_log(L, LOG_ERROR, "no native collector named %s", COLLECTORS[i].name);
+      }
+    }
+  }
+
+  g_mission.loaded = 1;
+  g_mission.server = dcsBool(L, "DCS.isServer");
+  int multiplayer = dcsBool(L, "DCS.isMultiplayer");
+  char theatre[64];
+  missionTheatre(L, theatre, sizeof theatre);
+  if (g_mission.server) initServer(L, dllDir);
+  else initClient(L);
+  g_mission.retryAt = now_s() + CLIENT_RETRY_S;
+  logStatus(L);
+
+  JBuf st;
+  jb_init(&st);
+  statusJson(&st);
+  sched_start(L, port, g_mission.server, multiplayer, theatre, st.oom ? NULL : st.p, ready());
+  jb_free(&st);
+  dcs_log(L, LOG_INFO, "mission loaded - side=%s, relay port %d", g_mission.server ? "server" : "client", port);
+  lua_settop(L, 1);
+  return 0;
+}
+
+static void sendStatus(lua_State *L) {
+  logStatus(L);
+  JBuf st;
+  jb_init(&st);
+  statusJson(&st);
+  sched_setStatus(L, st.oom ? NULL : st.p, ready());
+  jb_free(&st);
+}
+
+/* frame() from every onSimulationFrame. Also where a pending client
+   self-test is retried, and where a fault (caught in a collector or in the
+   event handler, which stops DCS calls for the rest of the mission) reaches
+   the relay as a fresh hello with ok false. */
+static int l_frame(lua_State *L) {
+  if (g_mission.loaded && g_mission.pending && now_s() >= g_mission.retryAt) {
+    g_mission.retryAt = now_s() + CLIENT_RETRY_S;
+    initClient(L);
+    if (!g_mission.pending) sendStatus(L);
+  }
+  sched_frame(L);
+  const Side *s = g_mission.server ? &g_server : &g_client;
+  if (g_mission.loaded && g_mission.ok && s->faulted) {
+    setError(s->error);
+    sendStatus(L);
+  }
+  return 0;
 }
 
 /* stop() on mission end: disconnects from the relay and closes the private
@@ -609,18 +856,20 @@ static int l_stop(lua_State *L) {
   resetSide(&g_client);
   client_reset();
   server_reset(NULL);
+  jb_free(&g_mission.selfTest);
+  memset(&g_mission, 0, sizeof g_mission);
   return 0;
 }
 
 static const luaL_Reg FUNCTIONS[] = {
   { "initServer", l_initServer },
-  { "initClient", l_initClient },
-  { "take", l_take },
+  { "missionLoad", l_missionLoad },
+  { "frame", l_frame },
   { "stop", l_stop },
   { NULL, NULL },
 };
 
-/* Every C collector registerNative can name: the client's and the
+/* Every C collector that can be registered by name: the client's and the
    server's. */
 static const NativeCollector *nativeCollectors(void) {
   static NativeCollector all[32];

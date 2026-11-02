@@ -3,14 +3,19 @@
    collectors only run while it reports at least one subscriber ("demand"),
    so an idle exporter costs a few lock-protected checks per tick.
 
-   Collectors are Lua functions the hook registers, called from here:
+   Every collector DCS runs is written in C (sched.h's NativeGather),
+   registered by name and called directly, with no Lua in between. Lua
+   collectors (register) exist only for the harness test, which runs the
+   scheduler outside DCS:
      plain:  gather() -> json [, once]
      sliced: gather(start, full, slices, sensorUnitsOnly) once per tick until
              it returns json, kind ('full'|'delta'), extra timing fields,
              {heapKbBefore, heapKbAfter} of the mission state, once.
-   `once` means don't run again until the next resync. Collectors written in
-   C (sched.h's NativeGather) are registered by name with registerNative and
-   called directly, with no Lua in between.
+   `once` means don't run again until the next resync.
+
+   Events come from the mission's event handler (server.c) straight into a
+   buffer here, which is kept while idle (oldest dropped past
+   eventBufferSize) and sent once a second while collecting.
 
    The tick is finer than any data rate so a sliced collector's work spreads
    across ticks; no collector runs more often than once a second, the
@@ -32,7 +37,7 @@
 #define TICK_INTERVAL_S        0.1
 #define MIN_RATE_S             1.0
 #define MAX_COLLECTORS         16
-#define EVENT_DRAIN_INTERVAL_S 1.0
+#define EVENT_FLUSH_INTERVAL_S 1.0
 #define DEFAULT_EVENT_CAP      2000
 #define MAX_EVENT_CAP          100000
 #define FRAME_SLOW_MS          30.0
@@ -64,15 +69,14 @@ static struct {
   JBuf hello;
   int multiplayer;
   char theatre[64];
-  int eventSrcRef;
-  double nextEventDrain;
+  double nextEventFlush;
   char **events;
   int nEvents, eventCap, eventAlloc;
   long droppedEvents;
   double lastFrame, ourMs, sumMs, maxMs, ourSumMs, ourMaxMs, reportAt;
   int frames, slow;
   int sentinel;
-} S = { .side = SIDE_NONE, .eventSrcRef = LUA_NOREF, .eventCap = DEFAULT_EVENT_CAP };
+} S = { .side = SIDE_NONE, .eventCap = DEFAULT_EVENT_CAP };
 
 static int awake(void) { return S.connected && S.awake; }
 
@@ -220,25 +224,15 @@ static void pushEvent(char *json) {
   S.events[S.nEvents++] = json;
 }
 
-/* The event source returns a JSON array of event objects (or nil). Runs
-   while idle too, so events from before the first subscriber aren't lost. */
-static void drainEvents(lua_State *L, double t) {
-  if (S.eventSrcRef == LUA_NOREF || S.side != SIDE_SERVER || t < S.nextEventDrain) return;
-  S.nextEventDrain = t + EVENT_DRAIN_INTERVAL_S;
-  int top = lua_gettop(L);
-  lua_rawgeti(L, LUA_REGISTRYINDEX, S.eventSrcRef);
-  if (lua_pcall(L, 0, 1, 0) != 0) {
-    dcs_log(L, LOG_ERROR, "event drain failed: %s", lua_tostring(L, -1));
-  } else if (lua_isstring(L, -1)) {
-    cJSON *list = cJSON_Parse(lua_tostring(L, -1));
-    cJSON *e;
-    cJSON_ArrayForEach(e, list) {
-      char *s = cJSON_PrintUnformatted(e);
-      if (s) pushEvent(s);
-    }
-    cJSON_Delete(list);
+/* See sched.h. Only on a host that's ready: the event handler stays in
+   DCS's list after a mission stops, until the next init replaces it. */
+void sched_event(JBuf *b) {
+  if (S.side != SIDE_SERVER || !S.ready || b->oom || !b->p) {
+    jb_free(b);
+    return;
   }
-  lua_settop(L, top);
+  pushEvent(b->p);
+  jb_init(b);
 }
 
 static void flushEvents(lua_State *L) {
@@ -353,22 +347,6 @@ static void runPlain(lua_State *L, Collector *c, double t) {
   lua_settop(L, top);
 }
 
-/* Tells the relay, through a fresh hello, that the DLL has stopped working
-   for this mission. */
-static void reportDllStopped(lua_State *L, const char *error) {
-  S.ready = 0;
-  JBuf st;
-  jb_init(&st);
-  jb_puts(&st, "{\"ok\":false,\"version\":");
-  jb_str(&st, TRACS_VERSION);
-  jb_puts(&st, ",\"error\":");
-  jb_str(&st, error ? error : "unknown error");
-  jb_puts(&st, "}");
-  buildHello(st.p);
-  sendHello(L);
-  jb_free(&st);
-}
-
 /* A collector written in C. A sliced one keeps being called once per tick
    until its cycle ends, with the same worst-step diagnostics as a sliced Lua
    collector. */
@@ -404,7 +382,8 @@ static void runNative(lua_State *L, Collector *c, double t) {
   c->active = 0;
   if (res < 0) {
     dcs_log(L, LOG_ERROR, "collector %s failed: %s", c->name, r.error ? r.error : "unknown error");
-    if (r.fatal) reportDllStopped(L, r.error);
+    /* Nothing more is collected; the hook side's frame() tells the relay. */
+    if (r.fatal) S.ready = 0;
   } else if (res > 0 && !out.oom) {
     sendResult(L, c, out.p ? out.p : "{}", out.p ? out.len : 2, r.kind, c->cycleMs, 0, &extra);
     if (r.once) c->dueAt = HUGE_VAL;
@@ -579,7 +558,8 @@ static Collector *slotFor(lua_State *L, const char *name, const char *side, doub
   return c;
 }
 
-/* register(name, side, rateS, sliced, gather [, group]) */
+/* register(name, side, rateS, sliced, gather [, group]): a Lua collector,
+   for the harness test. */
 static int l_register(lua_State *L) {
   const char *name = luaL_checkstring(L, 1);
   const char *side = luaL_checkstring(L, 2);
@@ -594,30 +574,25 @@ static int l_register(lua_State *L) {
   return 0;
 }
 
-/* registerNative(name, side, rateS [, group]): one of the DLL's own C
-   collectors, by name. */
-static int l_registerNative(lua_State *L) {
-  const char *name = luaL_checkstring(L, 1);
-  const char *side = luaL_checkstring(L, 2);
-  double rate = luaL_checknumber(L, 3);
-  const char *group = luaL_optstring(L, 4, name);
+/* See sched.h. */
+int sched_registerNative(lua_State *L, const char *name, const char *side, double rate, const char *group) {
   const NativeCollector *found = NULL;
   for (const NativeCollector *n = g_natives; n && n->name; n++) {
     if (strcmp(n->name, name) == 0) found = n;
   }
-  if (!found) return luaL_error(L, "no native collector named %s", name);
-  Collector *c = slotFor(L, name, side, rate, group);
+  if (!found) return 0;
+  Collector *c = slotFor(L, name, side, rate, group ? group : name);
   c->native = found->gather;
   c->sliced = found->sliced;
-  return 0;
+  return 1;
 }
 
-/* setEventSource(fn): fn() returns a JSON array of events, or nil. */
-static int l_setEventSource(lua_State *L) {
-  luaL_checktype(L, 1, LUA_TFUNCTION);
-  if (S.eventSrcRef != LUA_NOREF) luaL_unref(L, LUA_REGISTRYINDEX, S.eventSrcRef);
-  lua_pushvalue(L, 1);
-  S.eventSrcRef = luaL_ref(L, LUA_REGISTRYINDEX);
+/* registerNative(name, side, rateS [, group]), for the harness test. */
+static int l_registerNative(lua_State *L) {
+  const char *name = luaL_checkstring(L, 1);
+  if (!sched_registerNative(L, name, luaL_checkstring(L, 2), luaL_checknumber(L, 3), luaL_optstring(L, 4, name))) {
+    return luaL_error(L, "no native collector named %s", name);
+  }
   return 0;
 }
 
@@ -639,61 +614,66 @@ static void installSentinel(lua_State *L) {
   lua_setfield(L, LUA_REGISTRYINDEX, "tracs_exporter.sentinel");
 }
 
-/* start{ port, side, multiplayer, theatre, status, ready } at mission load:
-   status is the DLL's own status as JSON (sent in hello), ready whether
-   collecting may start. */
+/* See sched.h. */
+void sched_start(lua_State *L, int port, int server, int multiplayer, const char *theatre, const char *status,
+                 int ready) {
+  S.side = server ? SIDE_SERVER : SIDE_CLIENT;
+  S.multiplayer = multiplayer;
+  copyName(S.theatre, sizeof S.theatre, theatre ? theatre : "");
+  S.ready = ready;
+  buildHello(status);
+  resetCollectors();
+  S.lastTick = 0;
+  S.nextEventFlush = 0;
+  S.lastFrame = S.reportAt = 0;
+  installSentinel(L);
+  if (!net_connect(port)) dcs_log(L, LOG_ERROR, "could not start the network thread");
+}
+
+/* start{ port, side, multiplayer, theatre, status, ready }, for the harness
+   test (in DCS, missionLoad calls sched_start). */
 static int l_start(lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   lua_getfield(L, 1, "port");
   int port = (int)luaL_checknumber(L, -1);
   lua_getfield(L, 1, "side");
-  S.side = lua_isstring(L, -1) && strcmp(lua_tostring(L, -1), "client") == 0 ? SIDE_CLIENT : SIDE_SERVER;
+  int server = !(lua_isstring(L, -1) && strcmp(lua_tostring(L, -1), "client") == 0);
   lua_getfield(L, 1, "multiplayer");
-  S.multiplayer = lua_toboolean(L, -1);
+  int multiplayer = lua_toboolean(L, -1);
   lua_getfield(L, 1, "theatre");
-  copyName(S.theatre, sizeof S.theatre, lua_isstring(L, -1) ? lua_tostring(L, -1) : "");
+  const char *theatre = lua_isstring(L, -1) ? lua_tostring(L, -1) : NULL;
   lua_getfield(L, 1, "ready");
-  S.ready = lua_toboolean(L, -1);
+  int ready = lua_toboolean(L, -1);
   lua_getfield(L, 1, "status");
-  buildHello(lua_isstring(L, -1) ? lua_tostring(L, -1) : NULL);
+  sched_start(L, port, server, multiplayer, theatre, lua_isstring(L, -1) ? lua_tostring(L, -1) : NULL, ready);
   lua_settop(L, 1);
-
-  resetCollectors();
-  S.lastTick = 0;
-  S.nextEventDrain = 0;
-  S.lastFrame = S.reportAt = 0;
-  installSentinel(L);
-  if (!net_connect(port)) dcs_log(L, LOG_ERROR, "could not start the network thread");
   return 0;
 }
 
-/* setStatus(status, ready): the DLL status changed (a pending client
-   self-test finished); the relay gets a fresh hello. */
-static int l_setStatus(lua_State *L) {
-  S.ready = lua_toboolean(L, 2);
-  buildHello(lua_isstring(L, 1) ? lua_tostring(L, 1) : NULL);
+/* See sched.h. */
+void sched_setStatus(lua_State *L, const char *status, int ready) {
+  S.ready = ready;
+  buildHello(status);
   sendHello(L);
-  return 0;
 }
 
-/* frame() from every onSimulationFrame. */
-static int l_frame(lua_State *L) {
-  if (S.side == SIDE_NONE) return 0;
+/* See sched.h. */
+void sched_frame(lua_State *L) {
+  if (S.side == SIDE_NONE) return;
   double t = now_s();
   trackFrame(L, t);
   if (t - S.lastTick >= TICK_INTERVAL_S) {
     S.lastTick = t;
     processNet(L);
-    if (S.ready) {
-      drainEvents(L, t);
-      if (awake()) {
+    if (S.ready && awake()) {
+      if (t >= S.nextEventFlush) {
+        S.nextEventFlush = t + EVENT_FLUSH_INTERVAL_S;
         flushEvents(L);
-        runCollectors(L, t);
       }
+      runCollectors(L, t);
     }
   }
   S.ourMs = (now_s() - t) * 1000;
-  return 0;
 }
 
 void sched_stop(void) {
@@ -710,10 +690,7 @@ void sched_stop(void) {
 static const luaL_Reg FUNCTIONS[] = {
   { "register", l_register },
   { "registerNative", l_registerNative },
-  { "setEventSource", l_setEventSource },
   { "start", l_start },
-  { "setStatus", l_setStatus },
-  { "frame", l_frame },
   { NULL, NULL },
 };
 

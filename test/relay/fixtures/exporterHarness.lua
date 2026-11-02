@@ -41,20 +41,23 @@ dll.registerNative('exportStatus', 'client', 5)
 local ok, e = pcall(dll.registerNative, 'noSuchCollector', 'server', 1)
 out('UNKNOWN NATIVE ', ok and 'accepted' or e)
 
+-- Events as DCS would hand them to the mission's event handler.
 local ev = 0
-dll.setEventSource(function()
+local function event()
   ev = ev + 1
-  return '[{"id":' .. ev .. '}]'
-end)
+  dll.onEvent(nil, { id = ev })
+end
 
 dll.start({
   port = port, side = 'server', multiplayer = true, theatre = 'Caucasus',
   status = '{"ok":true,"version":"test"}', ready = true,
 })
 
-local stopAt = os.clock() + seconds
+local stopAt, frames = os.clock() + seconds, 0
 while os.clock() < stopAt do
   dll.frame()
+  frames = frames + 1
+  if frames % 20 == 0 then event() end
   sleep(0.01)
 end
 dll.stop()

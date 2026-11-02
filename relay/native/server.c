@@ -14,7 +14,7 @@
 
    What a cycle does is what the Lua collector did, shaped by the same
    garbage concerns:
-   * The unit list comes from birth events (onBirth), with the groups
+   * The unit list comes from birth events (the event handler below), with the groups
      re-listed every RELIST_CYCLES cycles (and on a full cycle) to catch
      anything missed.
    * Fields that never change are read once.
@@ -82,7 +82,7 @@ static struct {
 
 static struct {
   Id *p; int n, cap;
-} g_births;  /* from onBirth, not looked at yet */
+} g_births;  /* born, not looked at yet */
 
 static struct {
   GroupRef *p; int n, cap;
@@ -680,15 +680,89 @@ out:
   return 1;
 }
 
-/* onBirth(unit) from the mission's event handler: noted, looked at in the
-   next step. */
-static int l_onBirth(lua_State *L) {
+/* A born unit, noted for the next step to look at. */
+static void noteBirth(lua_State *L, int idx) {
   Id id;
-  if (lua_istable(L, 1) && readId(L, 1, &id) &&
+  if (lua_istable(L, idx) && readId(L, idx, &id) &&
       grow((void **)&g_births.p, &g_births.cap, g_births.n + 1, sizeof *g_births.p)) {
     g_births.p[g_births.n++] = id;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Events                                                               */
+/* ------------------------------------------------------------------ */
+
+/* world.event.S_EVENT_BIRTH, read at init. */
+static double g_birthEvent = 15;
+
+#define EVENT_HANDLER_KEY "tracs_exporter.eventHandler"
+
+/* handler:onEvent(event), called by DCS in the mission state for every
+   event. Each one goes to the scheduler's buffer as { id, time, initiator }
+   (the initiator by name); a birth also goes to the units collector's list.
+   Nothing is done once a fault has stopped DCS calls for this mission. */
+static int l_onEvent(lua_State *L) {
+  if (g_server.faulted || !lua_istable(L, 2)) return 0;
+  lua_settop(L, 2);
+  lua_getfield(L, 2, "id");
+  lua_getfield(L, 2, "time");
+  lua_getfield(L, 2, "initiator");
+  if (lua_type(L, 3) != LUA_TNUMBER) return 0;
+  double id = lua_tonumber(L, 3);
+
+  JBuf b;
+  jb_init(&b);
+  jb_puts(&b, "{\"id\":");
+  jb_num(&b, id);
+  if (lua_type(L, 4) == LUA_TNUMBER) {
+    jb_puts(&b, ",\"time\":");
+    jb_num(&b, lua_tonumber(L, 4));
+  }
+  if (lua_istable(L, 5)) {
+    if (id == g_birthEvent) noteBirth(L, 5);
+    lua_getfield(L, 5, "getName");
+    if (lua_isfunction(L, -1)) {
+      lua_pushvalue(L, 5);
+      int r = pcallGuarded(L, &g_server, "Object.getName (event initiator)", 1, 1);
+      if (r == 2) { jb_free(&b); return 0; }
+      if (r == 0 && lua_type(L, -1) == LUA_TSTRING) {
+        jb_puts(&b, ",\"initiator\":");
+        jb_str(&b, lua_tostring(L, -1));
+      }
+    }
+  }
+  jb_puts(&b, "}");
+  sched_event(&b);
   return 0;
+}
+
+void server_removeEventHandler(lua_State *L) {
+  lua_getfield(L, LUA_REGISTRYINDEX, EVENT_HANDLER_KEY);
+  if (lua_istable(L, -1)) {
+    push_path(L, "world.removeEventHandler");
+    lua_pushvalue(L, -2);
+    if (lua_pcall(L, 1, 0, 0) != 0) lua_pop(L, 1);
+  }
+  lua_pop(L, 1);
+  lua_pushnil(L);
+  lua_setfield(L, LUA_REGISTRYINDEX, EVENT_HANDLER_KEY);
+}
+
+int server_installEventHandler(lua_State *L, char *err, size_t errLen) {
+  server_removeEventHandler(L);
+  lua_createtable(L, 0, 1);
+  lua_pushcfunction(L, l_onEvent);
+  lua_setfield(L, -2, "onEvent");
+  push_path(L, "world.addEventHandler");
+  lua_pushvalue(L, -2);
+  if (lua_pcall(L, 1, 0, 0) != 0) {
+    _snprintf_s(err, errLen, _TRUNCATE, "%s", lua_isstring(L, -1) ? lua_tostring(L, -1) : "world.addEventHandler failed");
+    lua_pop(L, 2);
+    return 0;
+  }
+  lua_setfield(L, LUA_REGISTRYINDEX, EVENT_HANDLER_KEY);
+  return 1;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1171,6 +1245,9 @@ void server_reset(lua_State *L) {
       lua_pop(L, 1);
     }
     lua_pop(L, 1);
+    push_path(L, "world.event.S_EVENT_BIRTH");
+    if (lua_type(L, -1) == LUA_TNUMBER) g_birthEvent = lua_tonumber(L, -1);
+    lua_pop(L, 1);
     push_path(L, "Object.Category");
     if (lua_istable(L, -1)) {
       lua_getfield(L, -1, "UNIT");
@@ -1183,7 +1260,7 @@ void server_reset(lua_State *L) {
 
 static const luaL_Reg FUNCTIONS[] = {
   { "unitsStep", l_unitsStep },
-  { "onBirth", l_onBirth },
+  { "onEvent", l_onEvent },
   { "contactsStep", l_contactsStep },
   { NULL, NULL },
 };

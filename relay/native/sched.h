@@ -35,10 +35,29 @@ typedef struct {
   int sliced;
 } NativeCollector;
 
-/* Adds register/registerNative/setEventSource/start/setStatus/frame to the
-   module table on top of the stack. natives lists the C collectors
-   registerNative can name, ending with { NULL, NULL, 0 }. */
+/* Adds register/registerNative/start (the harness test's way in) to the
+   module table on top of the stack. natives lists the C collectors that can
+   be registered by name, ending with { NULL, NULL, 0 }. */
 void sched_open(lua_State *L, const NativeCollector *natives);
+
+/* One of natives, by name, at rate seconds, sending as group (NULL: its
+   name). 0 if there's no such collector. */
+int sched_registerNative(lua_State *L, const char *name, const char *side, double rate, const char *group);
+
+/* Mission load: connects to the relay on port. status is the DLL's own
+   status as JSON (sent in hello), ready whether collecting may start. */
+void sched_start(lua_State *L, int port, int server, int multiplayer, const char *theatre, const char *status,
+                 int ready);
+/* The DLL status changed (a pending client self-test finished); the relay
+   gets a fresh hello. */
+void sched_setStatus(lua_State *L, const char *status, int ready);
+/* Every onSimulationFrame, in the hook state. */
+void sched_frame(lua_State *L);
+
+/* An event as a JSON object from the mission's event handler, buffered
+   until it's sent. Takes b's contents (b is left empty). */
+void sched_event(JBuf *b);
+
 /* Mission end: disconnect and forget the mission's state. */
 void sched_stop(void);
 

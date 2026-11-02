@@ -10,9 +10,16 @@
    { NULL, NULL, 0 }. */
 extern const NativeCollector SERVER_COLLECTORS[];
 
-/* Adds unitsStep/onBirth/contactsStep/lowStep to the module table on top of L's
-   stack (they're called in the mission state). */
+/* Adds unitsStep/contactsStep/lowStep/onEvent to the module table on top
+   of L's stack (they're called in the mission state). */
 void server_open(lua_State *L);
+
+/* The mission's event handler (onEvent), added with world.addEventHandler
+   in the mission state ML, replacing any earlier one. 0 with the reason in
+   err if DCS refused it. */
+int server_installEventHandler(lua_State *ML, char *err, size_t errLen);
+/* Takes an earlier mission's handler out of DCS's list, if ML has one. */
+void server_removeEventHandler(lua_State *ML);
 
 /* Forgets the mission's units and contacts. With the mission state (at init), also reads
    the constants the collectors need from it. */
