@@ -124,11 +124,23 @@ The **⚙** icon (top right, once signed in) opens the settings panel:
   - In **Tacview** and **Relay** modes there's no in-mission callsign, so both settings read the player's multiplayer name; the setting only decides whether a callsign is picked out of it.
   - A track only matches a flight plan filed under the callsign it resolves to. To match one that doesn't, use `.RENAME <callsign>` and click the track (see [ATC](atc.md)).
 - **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking it silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
+- **Auto-load mission** — with the DCS exporter as the data source, TRACS can load the running mission's data for your position: flight plans (ATC), status board aircraft and weather (CATCC), ATO flights and Drawings (ABM), and its drawings as User navdata video maps (any module). See [Live mission data](#live-mission-data).
+  - **Ask** (default): one prompt per mission listing what's new, all ticked. **Load** adds the ticked parts. **Ignore** leaves that mission alone until a different one loads.
+  - **Always**: loads everything new without asking. **Never**: no prompt; the manual **Load Mission** imports still work.
 - **Navigation data** — the LittleNavMap database TRACS is using, and (desktop app) a **Change…** button. See [Navigation data](#navigation-data-littlenavmap).
 - **User navdata → Manage…** — add your own fixes, STARS video maps and procedures. See [User navdata](#user-navdata).
 - **Version line** — the TRACS version (`TRACS (dev)` when running from source), plus the relay's version and protocol number when connected to one.
 - **Help / Docs** — opens the documentation page for the module you're signed into, in a new window (a new tab in a browser). In the desktop app, Ctrl+F opens a find box at the top right: Enter / Shift+Enter or ▲ ▼ step through matches, and Esc or × closes it.
 - **License / Third-party notices** — links to the full license (GPL v3.0 or later) and the third-party notices (copyright, no warranty, data attributions).
+
+## Live mission data
+
+With the DCS exporter as the data source, the relay reads the running mission's file each time a mission loads (a host's `.miz`, or the multiplayer track DCS writes when a client joins — only its mission data, never the recorded flight). You get the same data a manual **Load Mission** import reads, cut down to your coalition: your side's groups and the mission's own-side and Common drawing layers, without trigger zones. Game Master and Admin get the whole mission.
+
+- It only ever **adds** what isn't loaded yet, so it never replaces or duplicates something already there, and it never overwrites an edit. A restart of the same mission asks again only if something is missing (for example after **Clear Mission**).
+- The prompt waits until your module's state from the other controllers has arrived, so it only lists what's actually missing.
+- The status board and flight plans are shared by every controller in the room. Their loads, the manual imports included, run one controller at a time, so two controllers loading at the same moment can't end up with different boards or different beacon codes. The second controller gets nothing new to load.
+- A client gets no mission data with track recording turned off in DCS's options (the relay reads the mission from that track).
 
 ## Navigation data (LittleNavMap)
 

@@ -372,6 +372,7 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 - Blue/red sessions only see their own coalition's tasked flights. The other side's flights are filtered out before the preview.
 - The preview shows a count-by-task summary and the list of flights found, with a RESERVE badge for late-activation flights. **Import** replaces the previously imported set and keeps manually-added flights.
 - ABM reads groups, units, routes, payloads, radios, and Link16 from the mission. It does not read triggers, trigger rules, or the mission's localization dictionary.
+- With the DCS exporter, the running mission's flights can load themselves (see [Live mission data](getting-started.md#live-mission-data)). The same mission only adds flights not loaded yet, keeping your edits. A different mission replaces the flights loaded from the previous one.
 - **Dropping a `.csv` here instead** bulk-assigns IFF codes:
   - The header row must include a `callsign` column. `mode1`, `mode2`, and `mode3` columns are optional and can be in any order. Codes must be octal: 2 digits for Mode 1, 4 for Modes 2 and 3. Shorter codes get leading zeros added (spreadsheets often strip them, so `400` becomes `0400`). A code that's still invalid, such as `8899` or `12345`, is dropped and listed in the preview; that mode is left unchanged and the row's other codes still apply. A blank cell clears that mode.
   - A preview lists what will be applied; **Apply** writes the codes.
@@ -393,6 +394,7 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 - **Fill** is controlled by `.fill` (the same toggle as airspace). A feature fills with its own GeoJSON `fill`, or with its layer's overridden color. An unstyled shape only fills if the palette's CUSTOM entry defines a `fill`.
 - Feature labels come from the GeoJSON's `title`/`name` properties, shown when `.labels` is on.
 - Drawings are stored per theatre in your browser and shared across your own open windows. They are not sent to other controllers.
+- With the DCS exporter, the running mission's Drawing layers (your side's and Common) can load themselves as `MISSION <layer>` layers (see [Live mission data](getting-started.md#live-mission-data)). A layer already loaded from that mission is skipped, even if you've renamed it.
 
 ### Drawings panel management
 

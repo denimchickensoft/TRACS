@@ -228,3 +228,5 @@ Opened from the Status Board's **⬆ Load Mission** button.
   - Each imported row gets callsign, side number (from the modex), type, and mission. BCN is left blank.
   - Duplicate callsigns are skipped.
   - Weather is imported independently of the aircraft selection, and partial data (e.g. QNH only) is fine.
+- With the DCS exporter, the running mission can load itself: your carrier's aircraft and any empty weather fields (see [Live mission data](getting-started.md#live-mission-data)).
+- The board is shared, so imports by two controllers run one after the other. The second one only adds aircraft that aren't on the board yet.
