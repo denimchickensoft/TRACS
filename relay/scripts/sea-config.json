@@ -1,5 +1,6 @@
 {
   "main": "index.bundle.js",
   "output": "index.blob",
+  "assets": { "missionWorker.js": "missionWorker.bundle.js" },
   "disableExperimentalSEAWarning": true
 }

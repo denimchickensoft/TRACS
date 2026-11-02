@@ -23,6 +23,7 @@ const DIST_DIR    = path.join(RELAY_DIR, 'dist')
 const EXE_NAME    = process.platform === 'win32' ? 'TRACS-Relay.exe' : 'TRACS-Relay'
 const BUNDLE      = path.join(DIR, 'index.bundle.js')
 const BLOB        = path.join(DIR, 'index.blob')
+const WORKER_BUNDLE = path.join(DIR, 'missionWorker.bundle.js')
 const SEA_CONFIG  = path.join(DIR, 'sea-config.json')
 const ICON_PNG    = path.join(RELAY_DIR, 'icon.png')
 
@@ -81,6 +82,16 @@ async function main() {
     platform:    'node',
     format:      'cjs',
     outfile:     BUNDLE,
+  })
+  // The mission reader runs in a worker thread, which needs its own
+  // self-contained script: embedded in the executable as an SEA asset
+  // (sea-config.json) and started from it (missionFile.js).
+  require('esbuild').buildSync({
+    entryPoints: [path.join(RELAY_DIR, 'missionWorker.js')],
+    bundle:      true,
+    platform:    'node',
+    format:      'cjs',
+    outfile:     WORKER_BUNDLE,
   })
 
   console.log('\n[2/5] Generating Node SEA blob...')

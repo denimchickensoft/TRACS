@@ -43,6 +43,14 @@ function protocolVersionEsm(source) {
   return `export const PROTOCOL_VERSION = ${match[1]}\n`
 }
 
+// The relay is CommonJS: the client's ESM `export function`s become plain
+// functions plus a module.exports line.
+function luaTableCjs(source) {
+  const names = [...source.matchAll(/^export function (\w+)/gm)].map((m) => m[1])
+  if (!names.length) throw new Error('no exported functions found in client/src/utils/luaTable.js')
+  return `'use strict'\n\n${source.replace(/^export function /gm, 'function ')}\nmodule.exports = { ${names.join(', ')} }\n`
+}
+
 const TARGETS = [
   {
     source: 'server/src/tacviewCore.js',
@@ -58,6 +66,13 @@ const TARGETS = [
     source: 'server/src/protocolVersion.js',
     target: 'client/src/webrtc/protocolVersion.js',
     build:  (src) => jsHeader('server/src/protocolVersion.js') + protocolVersionEsm(src),
+  },
+  {
+    // The one source canonical outside server/: the client's .miz importers
+    // own this parser, and the relay reads the same mission files with it.
+    source: 'client/src/utils/luaTable.js',
+    target: 'relay/luaTable.js',
+    build:  (src) => jsHeader('client/src/utils/luaTable.js') + luaTableCjs(src),
   },
   {
     // JSON can't carry a generated-file header; the copy is verbatim.

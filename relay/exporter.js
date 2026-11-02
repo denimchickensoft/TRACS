@@ -20,6 +20,8 @@
 const net = require('net')
 const { gateConnection } = require('./auth')
 const { getDetectionConfig } = require('./tacview')
+const { loadMission } = require('./missionFile')
+const { audienceFor } = require('./missionText')
 
 const HOOK_PROTOCOL = 1
 // One collector's output for a large mission can be big; anything past this
@@ -77,6 +79,11 @@ function createExporter(wss, config) {
   let hookAwake = false
   let idleTimer = null
   let server = null
+  // The running mission's file, read once per mission load
+  // ({ key, id, theatre, texts } once read; see missionFile.js). Each
+  // subscriber gets the text for its own coalition (missionText.js).
+  let mission = null
+  let missionKey = null
 
   function sendToHook(obj) {
     if (hookSocket && !hookSocket.destroyed) hookSocket.write(JSON.stringify(obj) + '\n')
@@ -87,6 +94,43 @@ function createExporter(wss, config) {
     for (const ws of subscribers) {
       if (ws.readyState === ws.OPEN) ws.send(text)
     }
+  }
+
+  function missionMessage(ws) {
+    const audience = audienceFor(ws.tracsCoalition)
+    if (!mission || !audience) return null
+    return JSON.stringify({ type: 'exporterMission', mission: { id: mission.id, theatre: mission.theatre, text: mission.texts[audience] } })
+  }
+
+  function sendMission() {
+    for (const ws of subscribers) {
+      const msg = missionMessage(ws)
+      if (msg && ws.readyState === ws.OPEN) ws.send(msg)
+    }
+  }
+
+  // A new mission load (not a repeated hello for the same one, e.g. a status
+  // update) drops the previous mission and reads this one's file.
+  function missionLoaded(hello) {
+    if (!cfg.missionData) return
+    const key = `${hello.side}|${hello.loadTimeMs}|${hello.missionFile ?? ''}`
+    if (key === missionKey) return
+    missionKey = key
+    mission = null
+    if (!hello.loadTimeMs) {
+      console.log('[relay:exporter] mission data unavailable - the DLL is older than the relay (no load time in hello)')
+      return
+    }
+    loadMission(hello, { isCancelled: () => missionKey !== key }).then((result) => {
+      if (missionKey !== key) return
+      if (!result.ok) {
+        if (result.error !== 'cancelled') console.warn(`[relay:exporter] mission data unavailable - ${result.error}`)
+        return
+      }
+      mission = { key, id: result.id, theatre: result.theatre, texts: result.texts }
+      console.log(`[relay:exporter] mission data read from ${result.file} (${(result.bytes / 1e6).toFixed(1)} MB, theatre=${result.theatre ?? 'unknown'})`)
+      sendMission()
+    })
   }
 
   function setAwake(awake) {
@@ -114,6 +158,7 @@ function createExporter(wss, config) {
     switch (msg.type) {
       case 'hello':
         hookInfo = { side: msg.side, multiplayer: msg.multiplayer, theatre: msg.theatre, collectors: msg.collectors, dll: msg.dll }
+        missionLoaded(msg)
         console.log(`[relay:exporter] hook connected - side=${msg.side} theatre=${msg.theatre ?? 'unknown'}`)
         if (msg.dll && !msg.dll.ok) {
           console.error(`[relay:exporter] exporter not collecting - ${msg.dll.error ?? 'DLL unavailable'}`)
@@ -177,6 +222,8 @@ function createExporter(wss, config) {
       clearTimeout(idleTimer)
       idleTimer = null
       groups = {}
+      mission = null
+      missionKey = null
       console.log('[relay:exporter] hook disconnected')
       broadcast({ type: 'exporterReset' })
     })
@@ -210,6 +257,7 @@ function createExporter(wss, config) {
       req,
       label: 'data',
       onAuthenticated: (authMsg) => {
+        ws.tracsCoalition = authMsg.coalition
         subscribers.add(ws)
         console.log(`[relay:exporter] client authenticated coalition=${authMsg.coalition} (total: ${subscribers.size})`)
         // The relay operator's detection and rate tuning, as /tacview sends
@@ -225,6 +273,8 @@ function createExporter(wss, config) {
           },
         }))
         ws.send(JSON.stringify({ type: 'exporterSnapshot', hook: hookInfo, groups }))
+        const missionMsg = missionMessage(ws)
+        if (missionMsg) ws.send(missionMsg)
         subscribersChanged()
       },
     })

@@ -31,6 +31,7 @@ npm-debug.log*
 dist/
 relay/scripts/index.bundle.js
 relay/scripts/index.blob
+relay/scripts/missionWorker.bundle.js
 build/
 dist-electron/
 electron/build-staging/

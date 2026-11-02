@@ -135,6 +135,8 @@ function exporterConfig(raw) {
     idleGraceMs:     Number.isFinite(graceMs) && graceMs >= 0 && graceMs <= 300000 ? graceMs : 10000,
     eventBufferSize: Number.isInteger(bufferSize) && bufferSize > 0 && bufferSize <= 100000 ? bufferSize : 2000,
     logTimings:      cfg.logTimings === true,
+    // The running mission's file, served to TRACS's mission importers.
+    missionData:     cfg.missionData !== false,
     collectors:      exporterCollectors(cfg.collectors),
   }
 }
