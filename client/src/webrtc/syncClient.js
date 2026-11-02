@@ -90,7 +90,7 @@ const topicState = new Map()   // topic → { onData: fn|null, onJoin: [fn], onL
 
 function topic(t) {
   let s = topicState.get(t)
-  if (!s) { s = { onData: null, onJoin: [], onLeave: [], onRegistryUpdate: [], pendingRegister: null }; topicState.set(t, s) }
+  if (!s) { s = { onData: null, onJoin: [], onLeave: [], onRegistryUpdate: [], onLease: [], pendingRegister: null }; topicState.set(t, s) }
   return s
 }
 
@@ -135,6 +135,11 @@ function connect(cfg) {
     }
     if (msg.type === 'peer_leave' && topicState.has(msg.topic)) {
       for (const cb of topicState.get(msg.topic).onLeave) cb(msg.peerId)
+      return
+    }
+    // A room loading lock's answer or release (relay/syncRelay.js's lease).
+    if (msg.type === 'lease' && topicState.has(msg.topic)) {
+      for (const cb of topicState.get(msg.topic).onLease) cb({ area: msg.area, status: msg.status, holderPeerId: msg.holderPeerId ?? null })
       return
     }
 
@@ -242,6 +247,12 @@ export function joinRoom(cfg, roomId) {
     // both the initial answer to registerSelf() and every subsequent change
     // (another controller joining/leaving/reconnecting).
     onRegistryUpdate(cb) { state.onRegistryUpdate.push(cb) },
+    // A short exclusive loading lock within this room (relay/leases.js):
+    // lease(area, 'acquire' | 'release'); answers and releases arrive at
+    // every onLease callback as { area, status: 'granted' | 'busy' | 'free',
+    // holderPeerId }.
+    lease(area, op) { send({ type: 'lease', topic: roomId, area, op }) },
+    onLease(cb) { state.onLease.push(cb) },
     leave() {
       topicState.delete(roomId)
       if (topicState.size === 0) {

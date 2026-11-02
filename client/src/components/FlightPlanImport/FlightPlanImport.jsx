@@ -7,6 +7,7 @@ import { dtcRouteSlots, buildDtcFlightPlan } from '../../utils/dtcFlightPlans.js
 import { useFlightPlansStore } from '../../store/flightPlans.js'
 import { useSessionStore } from '../../store/session.js'
 import { sendWebrtcEvent } from '../../webrtc/client.js'
+import { runSharedLoad } from '../../missionData/guard.js'
 import { AID_MAX_LEN } from '../../utils/callsign.js'
 import './FlightPlanImport.css'
 
@@ -144,21 +145,28 @@ export function FlightPlanImport({ onClose }) {
     setDtcPending(null); setDtcSlot(null); setDtcAid('')
   }
 
-  const doImport = () => {
-    for (const row of rows) {
-      if (!row._include) continue
-      if (row._collision) {
-        if (!row._overwrite) continue
-        remove(row.aid)
-      }
-      const { _include, _collision, _overwrite, _rteWarnings, _groupId, ...plan } = row
-      add(plan)
-      // Broadcast to other ATC peers -- same pattern FPE.jsx uses for a
-      // controller-authored create, fetching the store's record so cid/bcn
-      // (host-minted by add()) go out with it.
-      sendWebrtcEvent('FLIGHT_PLAN_CREATE', useFlightPlansStore.getState().plans[plan.aid])
-    }
+  // In turn with any other controller loading flight plans into the room
+  // (missionData/guard.js): two controllers filing the same callsign at once
+  // would each keep their own CID and beacon code.
+  const doImport = async () => {
     onClose()
+    await runSharedLoad('flightplans', () => {
+      for (const row of rows) {
+        if (!row._include) continue
+        const filed = !!useFlightPlansStore.getState().plans[row.aid]
+        if (filed) {
+          // Filed meanwhile by someone else's load: only an overwrite replaces it.
+          if (!row._collision || !row._overwrite) continue
+          remove(row.aid)
+        }
+        const { _include, _collision, _overwrite, _rteWarnings, _groupId, ...plan } = row
+        add(plan)
+        // Broadcast to other ATC peers -- same pattern FPE.jsx uses for a
+        // controller-authored create, fetching the store's record so the
+        // cid/bcn add() just picked go out with it.
+        sendWebrtcEvent('FLIGHT_PLAN_CREATE', useFlightPlansStore.getState().plans[plan.aid])
+      }
+    })
   }
 
   const importCount = rows.filter(r => r._include && (!r._collision || r._overwrite)).length

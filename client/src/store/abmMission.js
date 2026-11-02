@@ -16,6 +16,7 @@ import { create } from 'zustand'
 import { resolveCallsign, stripAcid } from '../utils/callsign.js'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 import { shallowEqual } from '../utils/storeSync.js'
+import { mergeMissionFlights } from '../missionData/merge.js'
 
 const SB_KEY = 'tracs.abm.mission'
 
@@ -28,6 +29,7 @@ function serialize(s) {
     routeGroupIds: s.routeGroupIds,
     taskOverrides: s.taskOverrides,
     nextManualId: s.nextManualId,
+    missionId: s.missionId,
   }
 }
 
@@ -128,6 +130,9 @@ export const useAbmMissionStore = create((set, get) => ({
   // imported flight's own id. Monotonic and persisted so ids never get
   // reused even across a reload.
   nextManualId: saved.nextManualId ?? -1,
+  // The running mission whose flights were auto-loaded (missionData/areas.js),
+  // null after a manual load or a clear.
+  missionId: saved.missionId ?? null,
 
   // Replaces the previous .miz's flights but keeps any manually-added ones —
   // loading a new mission shouldn't delete flights the controller typed in
@@ -136,7 +141,17 @@ export const useAbmMissionStore = create((set, get) => ({
     flights: [...flights, ...s.flights.filter(f => f.manual || f.source === 'stm')],
     importedAt: Date.now(),
     selectedGroupId: null,
+    missionId: null,
   })),
+
+  // A mission auto-load: a different mission than the one auto-loaded last
+  // replaces the imported flights as setFlights does; the same one (or
+  // after a manual load) only adds flights not loaded yet, so edits to the
+  // ones already there stay.
+  loadMissionFlights: (flights, missionId) => set((s) => {
+    const { flights: next, replaced } = mergeMissionFlights(s, flights, missionId)
+    return { flights: next, importedAt: Date.now(), missionId, ...(replaced ? { selectedGroupId: null } : {}) }
+  }),
 
   // Static-template (.stm) flights stack across loads: each squadron's file
   // adds its own flights, and a flight already loaded under the same groupId
@@ -164,6 +179,7 @@ export const useAbmMissionStore = create((set, get) => ({
     return {
       flights: s.flights.filter(f => f.manual),
       importedAt: null,
+      missionId: null,
       selectedGroupId: keep.has(s.selectedGroupId) ? s.selectedGroupId : null,
       findRequest: null, findKey: null, blinkIds: [],
       routeGroupIds: s.routeGroupIds.filter(gid => keep.has(gid)),
@@ -174,7 +190,7 @@ export const useAbmMissionStore = create((set, get) => ({
   // Clear ALL — the CATCC status-board-style full wipe, including
   // manually-added flights. Gated behind a confirm step in the UI.
   clearAllFlights: () => set({
-    flights: [], importedAt: null, selectedGroupId: null,
+    flights: [], importedAt: null, missionId: null, selectedGroupId: null,
     findRequest: null, findKey: null, blinkIds: [], routeGroupIds: [], taskOverrides: {},
   }),
 

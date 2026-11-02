@@ -24,3 +24,9 @@ export async function readMissionFile(file) {
   const kind = lower.endsWith('.stm') || isStaticTemplateText(text) ? 'stm' : 'mission'
   return { kind, mission: withCanonicalTheatre(parseLua(text)) }
 }
+
+// A mission's `mission` text (as the relay serves the running mission) into
+// its parsed Lua table, theatre translated as for a dropped file.
+export function parseMissionText(text) {
+  return withCanonicalTheatre(parseLua(text))
+}

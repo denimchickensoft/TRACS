@@ -79,6 +79,12 @@ export const useSessionStore = create((set) => ({
   // Active module (single paradigm per window)
   activeModule: null,
 
+  // True once this position's module state from the room has arrived (its
+  // STATE_DUMP), or once it's clear none is coming (no older member of the
+  // module, or a timeout) - webrtc/client.js. Mission auto-load waits for it,
+  // so it never loads into a store the room is about to replace.
+  moduleSyncReady: false,
+
   // AIC config
   aicCallsign: '',
   aicUnitId:   null,

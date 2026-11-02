@@ -4,6 +4,7 @@ import { generateBcn } from '../utils/bcn.js'
 import { shallowEqual } from '../utils/storeSync.js'
 import { stackFieldsFor, nextStackEat, fitStackAngels } from '../modules/catcc/statusBoardColumns.js'
 import { useSessionStore } from './session.js'
+import { missionEntriesPatch } from '../missionData/merge.js'
 
 const SB_KEY = 'tracs.catcc.sb'
 
@@ -86,22 +87,23 @@ export const useStatusBoardStore = create((set) => ({
       }
     }),
 
-  addMissionEntries: (incoming) =>
+  addMissionEntries: (incoming) => set((s) => missionEntriesPatch(s, incoming)),
+
+  // A mission load (missionData/areas.js) in one change, so the room gets
+  // one board update: rows for aircraft not on the board yet, and the
+  // weather fields that are still empty, marked automatic (live DCS weather
+  // may replace them).
+  applyMissionLoad: (incoming, weather = {}) =>
     set((s) => {
-      const existing = new Set(s.entries.map(e => e.callsign).filter(Boolean))
-      const toAdd = []
-      let id = s.nextId
-      for (const e of incoming) {
-        if (e.callsign && existing.has(e.callsign)) continue
-        toAdd.push({
-          id, fromMission: true,
-          evt: '', callsign: e.callsign, unitId: null,
-          sideNumber: e.modex, bcn: '', pilot: '', type: e.type, msn: e.task,
-          atd: '', radial: '', bingo: '', appRad: '', eat: '', btn: '', dme: '', angels: '', state: '', ata: '',
-        })
-        id++
+      const patch = missionEntriesPatch(s, incoming)
+      let wxAuto = s.wxAuto
+      for (const [field, value] of Object.entries(weather)) {
+        if (!value || s[field]) continue
+        patch[field] = value
+        wxAuto = { ...wxAuto, [field]: true }
       }
-      return { entries: [...s.entries, ...toAdd], nextId: id }
+      if (wxAuto !== s.wxAuto) patch.wxAuto = wxAuto
+      return patch
     }),
 
   clearMissionData: () =>

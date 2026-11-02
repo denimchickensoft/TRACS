@@ -30,6 +30,9 @@ import { resumeAudioContext } from './audio/audioEngine'
 import { useLnmStore, lnmPromptDismissed } from './store/lnm.js'
 import { LnmSetupDialog } from './components/LnmSetup/LnmSetupDialog'
 import { UserNavdataManager } from './components/UserNavdataManager/UserNavdataManager'
+import { MissionLoadPrompt } from './components/MissionLoadPrompt/MissionLoadPrompt'
+import { useMissionAutoLoad } from './missionData/useMissionAutoLoad.js'
+import { getAutoLoadMode, setAutoLoadMode } from './missionData/load.js'
 import { RightTabStrip } from './components/RightTabStrip'
 import { AssociationOwner } from './components/AssociationOwner'
 import { focusPopup } from './utils/focusPopup.js'
@@ -107,6 +110,8 @@ export function App() {
   const [settingsOpen,    setSettingsOpen]    = useState(false)
   const [userNavOpen,     setUserNavOpen]     = useState(false)
   const missionTheatre = useSessionStore((s) => s.mission?.mission?.theatre ?? null)
+  const [missionPrompt, closeMissionPrompt] = useMissionAutoLoad()
+  const [autoLoadMode, setAutoLoadModeState] = useState(getAutoLoadMode)
   const [tracsVersion,    setTracsVersion]    = useState(null)
   const [relaySnapshot,   setRelaySnapshot]   = useState({ version: null, protocolVersion: null })
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
@@ -508,6 +513,7 @@ export function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: activeProfile?.visual.colors.background ?? '#1A1A1A', overflow: 'hidden' }}>
       {lnmDialogEl}
       {userNavOpen && <UserNavdataManager theatre={missionTheatre} onClose={() => setUserNavOpen(false)} />}
+      {missionPrompt && <MissionLoadPrompt key={missionPrompt.ctx.id} prompt={missionPrompt} onClose={closeMissionPrompt} />}
 
       {updateBannerEl}
 
@@ -754,6 +760,21 @@ export function App() {
                 style={{ cursor: 'pointer', accentColor: '#4488cc' }}
               />
               Sounds
+            </label>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', userSelect: 'none' }}
+              title="When the DCS exporter serves the running mission: ask which data to load, load it all, or never"
+            >
+              <span style={{ flex: 1 }}>Auto-load mission</span>
+              <select
+                value={autoLoadMode}
+                onChange={(e) => { setAutoLoadMode(e.target.value); setAutoLoadModeState(e.target.value) }}
+                style={{ background: '#111', border: '1px solid #444', borderRadius: '3px', color: '#aaa', fontFamily: 'inherit', fontSize: '0.7rem', padding: '1px 4px', cursor: 'pointer' }}
+              >
+                <option value="ask">Ask</option>
+                <option value="always">Always</option>
+                <option value="never">Never</option>
+              </select>
             </label>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>

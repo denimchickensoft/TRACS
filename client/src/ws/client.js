@@ -6,6 +6,7 @@ import { useSessionStore } from '../store/session'
 import { useStripsStore } from '../store/strips'
 import { findFlightPlanAid } from '../utils/callsign'
 import { log } from '../utils/log.js'
+import { useMissionDataStore } from '../store/missionData.js'
 
 const WS_URL = '/ws'
 
@@ -117,6 +118,10 @@ function dispatch(message) {
 
     case 'weather':
       useSessionStore.getState().setWeather(message.data)
+      break
+
+    case 'missionData':
+      useMissionDataStore.getState().setData(message.data)
       break
 
     case 'srs_status':

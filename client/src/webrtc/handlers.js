@@ -12,6 +12,7 @@ import { applyAbmMissionIffSet, applyAbmMissionManualFlightSet, applyAbmMissionF
 import { applyRemoteMark } from '../store/abmMarks.js'
 import { getMyControllerId } from '../utils/myControllerId.js'
 import { handleAutotrackState } from '../modules/atc/autotrack.js'
+import { handleMissionLoadMessage } from '../missionData/guard.js'
 
 export function handleModuleMessage(msg) {
   const { type, payload, module, fromPosition, timestamp } = msg
@@ -26,6 +27,12 @@ export function handleModuleMessage(msg) {
       toPosition:  null,
       timestamp:   timestamp ?? Date.now(),
     })
+    return
+  }
+
+  // Mission auto-load turn-taking on the P2P transport (missionData/guard.js).
+  if (type === 'MISSION_LOAD_INTENT' || type === 'MISSION_LOAD_DONE') {
+    handleMissionLoadMessage(type, payload, msg.fromPeerId)
     return
   }
 

@@ -182,6 +182,16 @@ function kmlFromKmz(bytes) {
   return new TextDecoder().decode(entries[pick])
 }
 
+// One row per drawing source in a mission's text (parseMiz's groups), named
+// `<prefix> <group>`. Mission points are mostly text boxes/icons, so they
+// stay map labels unless the user opts in. Each row keeps its `group` name.
+export function missionMapRows(missionText, theatre, fileName, prefix) {
+  return parseMiz(missionText, theatre).map((g) => ({
+    ...makeRow(fileName, `${prefix} ${g.name}`, { features: g.features, pointsAsFixes: false }),
+    group: g.name,
+  }))
+}
+
 function parseBytes(fileName, bytes, theatre, skipped) {
   const lower = fileName.toLowerCase()
   try {
@@ -192,10 +202,7 @@ function parseBytes(fileName, bytes, theatre, skipped) {
     if (lower.endsWith('.miz')) {
       const entries = unzipSync(bytes)
       if (!entries.mission) throw new Error('No "mission" file found inside .miz')
-      const groups = parseMiz(new TextDecoder().decode(entries.mission), theatre)
-      // Mission points are mostly text boxes/icons, so they stay map labels
-      // unless the user opts in.
-      return groups.map((g) => makeRow(fileName, `${baseName(fileName)} ${g.name}`, { features: g.features, pointsAsFixes: false }))
+      return missionMapRows(new TextDecoder().decode(entries.mission), theatre, fileName, baseName(fileName))
     }
     if (lower.endsWith('.zip')) {
       const rows = []

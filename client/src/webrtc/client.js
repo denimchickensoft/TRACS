@@ -154,6 +154,7 @@ function stillPendingSelf() {
 function ensureSelfRegistered() {
   if (stillPendingSelf()) useControllersStore.getState().finalizeController(activePosition)
   refreshDeclarationRestore()
+  refreshModuleSyncReady()
 }
 
 function clearSelfMintTimers() {
@@ -333,6 +334,7 @@ function syncPeers() {
   useSessionStore.getState().setPeers([...clientList])
   useControllersStore.getState().rebuildFromClientList(clientList)
   refreshDeclarationRestore()
+  refreshModuleSyncReady()
 }
 
 // ── Declarations across a page reload (utils/declarationSession.js) ─────────
@@ -392,6 +394,66 @@ function refreshDeclarationRestore() {
   }
   declarationsDecided = true
   flushDeclarationSave()
+}
+
+// ── Module sync readiness (session.moduleSyncReady) ───────────────────────────
+// A joiner's module state (flight plans, the status board...) is replaced by
+// the STATE_DUMP an older member of its module sends it. Anything that loads
+// data into those stores (mission auto-load) waits until that has happened,
+// or until it's clear no dump is coming: this peer's own registration has
+// settled and no member of its module joined the room before it. The
+// timeout covers a dump that never arrives.
+const MODULE_SYNC_TIMEOUT_MS = 15_000
+let moduleDumpApplied = false
+let moduleSyncTimer   = null
+
+function refreshModuleSyncReady() {
+  if (!activeModule || useSessionStore.getState().moduleSyncReady) return
+  let ready = moduleDumpApplied
+  if (!ready) {
+    const settled = usingSyncRelay ? handshakeAcked : !stillPendingSelf()
+    const me = clientList.find(c => c.peerId === selfId)
+    const myJoinedAt = me?.roomJoinedAt ?? me?.connectedAt
+    if (settled && myJoinedAt != null) {
+      ready = !effectiveClientList().some(c =>
+        c.peerId !== selfId && c.module === activeModule && (c.roomJoinedAt ?? c.connectedAt) < myJoinedAt)
+    }
+  }
+  if (!ready) return
+  clearTimeout(moduleSyncTimer); moduleSyncTimer = null
+  useSessionStore.setState({ moduleSyncReady: true })
+}
+
+function resetModuleSyncReady(armTimeout) {
+  moduleDumpApplied = false
+  clearTimeout(moduleSyncTimer)
+  moduleSyncTimer = armTimeout
+    ? setTimeout(() => { moduleSyncTimer = null; useSessionStore.setState({ moduleSyncReady: true }) }, MODULE_SYNC_TIMEOUT_MS)
+    : null
+  useSessionStore.setState({ moduleSyncReady: false })
+}
+
+// ── Mission load coordination (missionData/guard.js) ─────────────────────────
+// What the guard needs to take its turn loading a shared store: on the relay
+// transport, the relay's room lease; otherwise this peer's identity and
+// room-join time, for the oldest-intent rule. null when not connected (or in
+// a pop-out, which has no room of its own).
+const leaseListeners = new Set()
+
+export function missionLoadLink() {
+  if (IS_POPUP || !sendModule) return null
+  const me = clientList.find(c => c.peerId === selfId)
+  return {
+    relay:    usingSyncRelay,
+    selfId,
+    joinedAt: me?.roomJoinedAt ?? me?.connectedAt ?? Date.now(),
+    lease:    usingSyncRelay ? (area, op) => moduleRoom?.lease(area, op) : null,
+  }
+}
+
+export function onModuleLease(cb) {
+  leaseListeners.add(cb)
+  return () => leaseListeners.delete(cb)
 }
 
 // ── State persistence ─────────────────────────────────────────────────────────
@@ -848,6 +910,8 @@ async function onSessionMessage(msg, fromPeerId) {
     case 'STATE_DUMP': {
       applyDump(activeModule, msg.payload)
       refreshDeclarationRestore()
+      moduleDumpApplied = true
+      refreshModuleSyncReady()
       useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
       break
     }
@@ -1058,6 +1122,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   clientList     = []
   peerSeqs       = {}
   handshakeAcked = false
+  resetModuleSyncReady(true)
 
   // Declarations and ROE are the session room's shared picture and nothing
   // else clears them, so a sign-in on a different side would show the old
@@ -1166,6 +1231,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     }
   }
   moduleRoom = strategy.joinRoom(cfg, moduleRoomId)
+  if (usingSyncRelay) moduleRoom.onLease((e) => { for (const cb of leaseListeners) cb(e) })
   selfId     = strategy.selfId
   sessionStorage.setItem(PEER_ID_STORAGE_KEY, selfId)
 
@@ -1243,6 +1309,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
     persistSession()
     refreshDeclarationRestore()
+    refreshModuleSyncReady()
   } else {
     // Add self immediately — if first peer, we're already "connected". Real
     // identity (host election + minting) resolves via HANDSHAKE/CLU below;
@@ -1325,6 +1392,7 @@ export async function disconnectWebrtc() {
   peerSeqs       = {}
   handshakeAcked = false
   usingSyncRelay = false
+  resetModuleSyncReady(false)
 
   for (const t of Object.values(disconnectTimers)) clearTimeout(t)
   for (const k of Object.keys(disconnectTimers))   delete disconnectTimers[k]

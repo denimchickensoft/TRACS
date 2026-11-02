@@ -6,6 +6,7 @@ import { useUnitsStore } from '../../store/units.js'
 import { useSessionStore } from '../../store/session.js'
 import { formatWind } from '../../utils/liveWeather.js'
 import { computeMagvar } from '../../utils/magvar.js'
+import { runSharedLoad } from '../../missionData/guard.js'
 import './MissionImport.css'
 
 function readFileText(file) {
@@ -118,17 +119,22 @@ export function MissionImport({ activeCarrierType, onClose }) {
     : ''
 
   // ── Import ────────────────────────────────────────────────────────────────────
-  const doImport = () => {
+  // In turn with any other controller loading into this shared board
+  // (missionData/guard.js): crossed whole-board updates would leave each
+  // controller holding the other's board.
+  const doImport = async () => {
     const { weather } = preview
-    if (weather) {
-      const values = { wnd: importWnd, vis: weather.vis, clg: weather.clg, qnh: weather.qnh }
-      // Imported weather counts as automatic: live DCS weather may replace
-      // it, as it never replaces a value someone typed.
-      for (const [field, value] of Object.entries(values)) if (value) setWeatherField(field, value, true)
-    }
     const toImport = visibleAircraft().filter(a => selection.has(a.callsign))
-    if (toImport.length > 0) addMissionEntries(toImport)
     onClose()
+    await runSharedLoad('statusboard', () => {
+      if (weather) {
+        const values = { wnd: importWnd, vis: weather.vis, clg: weather.clg, qnh: weather.qnh }
+        // Imported weather counts as automatic: live DCS weather may replace
+        // it, as it never replaces a value someone typed.
+        for (const [field, value] of Object.entries(values)) if (value) setWeatherField(field, value, true)
+      }
+      if (toImport.length > 0) addMissionEntries(toImport)
+    })
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────

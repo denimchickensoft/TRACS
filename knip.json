@@ -39,6 +39,9 @@
       ]
     },
     "relay": {
+      "entry": [
+        "missionWorker.js"
+      ],
       "project": [
         "**/*.js"
       ],

@@ -72,7 +72,9 @@ export const useAbmDrawingsStore = create((set) => ({
   // stroke colors collapses to one uniform layer color, same as any other
   // manual pick; per-feature color is no longer read at render time (see
   // drawAbmCustomDrawings.js).
-  addLayer: (theatre, name, features) => set((s) => {
+  // `source` tags a layer added from the running mission
+  // (missionData/areas.js), so the same mission isn't added twice.
+  addLayer: (theatre, name, features, source = null) => set((s) => {
     const existing = s.byTheatre[theatre] ?? []
     const seedColor = features.find(f => f.properties?.stroke)?.properties?.stroke ?? null
     const layer = {
@@ -84,6 +86,7 @@ export const useAbmDrawingsStore = create((set) => ({
       labelOverride: false,
       addedAt: Date.now(),
       features,
+      ...(source ? { source } : {}),
     }
     return { byTheatre: { ...s.byTheatre, [theatre]: [...existing, layer] } }
   }),
