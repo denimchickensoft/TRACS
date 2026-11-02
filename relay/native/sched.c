@@ -69,6 +69,10 @@ static struct {
   JBuf hello;
   int multiplayer;
   char theatre[64];
+  /* UTF-8 paths, "" when unknown. */
+  char savedGames[3 * MAX_PATH];
+  char missionFile[3 * MAX_PATH];
+  double loadTimeMs;
   double nextEventFlush;
   char **events;
   int nEvents, eventCap, eventAlloc;
@@ -119,6 +123,12 @@ static void buildHello(const char *status) {
   jb_puts(b, S.multiplayer ? ",\"multiplayer\":true" : ",\"multiplayer\":false");
   jb_puts(b, ",\"theatre\":");
   if (S.theatre[0]) jb_str(b, S.theatre); else jb_puts(b, "null");
+  jb_puts(b, ",\"savedGames\":");
+  if (S.savedGames[0]) jb_str(b, S.savedGames); else jb_puts(b, "null");
+  jb_puts(b, ",\"missionFile\":");
+  if (S.missionFile[0]) jb_str(b, S.missionFile); else jb_puts(b, "null");
+  jb_puts(b, ",\"loadTimeMs\":");
+  if (S.loadTimeMs > 0) jb_printf(b, "%.0f", S.loadTimeMs); else jb_puts(b, "null");
   jb_puts(b, ",\"collectors\":[");
   for (int i = 0; i < g_nCol; i++) {
     if (i) jb_puts(b, ",");
@@ -616,10 +626,13 @@ static void installSentinel(lua_State *L) {
 
 /* See sched.h. */
 void sched_start(lua_State *L, int port, int server, int multiplayer, const char *theatre, const char *status,
-                 int ready) {
+                 int ready, const MissionInfo *info) {
   S.side = server ? SIDE_SERVER : SIDE_CLIENT;
   S.multiplayer = multiplayer;
   copyName(S.theatre, sizeof S.theatre, theatre ? theatre : "");
+  copyName(S.savedGames, sizeof S.savedGames, info && info->savedGames ? info->savedGames : "");
+  copyName(S.missionFile, sizeof S.missionFile, info && info->missionFile ? info->missionFile : "");
+  S.loadTimeMs = info ? info->loadTimeMs : 0;
   S.ready = ready;
   buildHello(status);
   resetCollectors();
@@ -645,7 +658,7 @@ static int l_start(lua_State *L) {
   lua_getfield(L, 1, "ready");
   int ready = lua_toboolean(L, -1);
   lua_getfield(L, 1, "status");
-  sched_start(L, port, server, multiplayer, theatre, lua_isstring(L, -1) ? lua_tostring(L, -1) : NULL, ready);
+  sched_start(L, port, server, multiplayer, theatre, lua_isstring(L, -1) ? lua_tostring(L, -1) : NULL, ready, NULL);
   lua_settop(L, 1);
   return 0;
 }

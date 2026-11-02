@@ -75,6 +75,8 @@ describe.skipIf(!available)('tracs_exporter.dll in a Lua harness', () => {
     for (const c of conns) {
       expect(c.lines[0]).toMatchObject({
         type: 'hello', v: 1, side: 'server', multiplayer: true, theatre: 'Caucasus',
+        // The harness start{} has no mission file; in DCS, missionLoad fills these.
+        savedGames: null, missionFile: null, loadTimeMs: null,
         collectors: ['fast', 'sliced', 'clientOnly', 'once', 'failing', 'exportStatus'],
         dll: { ok: true, version: 'test' },
       })

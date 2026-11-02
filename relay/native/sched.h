@@ -44,10 +44,21 @@ void sched_open(lua_State *L, const NativeCollector *natives);
    name). 0 if there's no such collector. */
 int sched_registerNative(lua_State *L, const char *name, const char *side, double rate, const char *group);
 
+/* What hello tells the relay about where the running mission's file is:
+   the Saved Games folder, the mission file a host loaded, and when the
+   mission loaded (ms since 1970). A NULL string is sent as null, as is a
+   load time of 0. */
+typedef struct {
+  const char *savedGames;
+  const char *missionFile;
+  double loadTimeMs;
+} MissionInfo;
+
 /* Mission load: connects to the relay on port. status is the DLL's own
-   status as JSON (sent in hello), ready whether collecting may start. */
+   status as JSON (sent in hello), ready whether collecting may start. info
+   may be NULL. */
 void sched_start(lua_State *L, int port, int server, int multiplayer, const char *theatre, const char *status,
-                 int ready);
+                 int ready, const MissionInfo *info);
 /* The DLL status changed (a pending client self-test finished); the relay
    gets a fresh hello. */
 void sched_setStatus(lua_State *L, const char *status, int ready);

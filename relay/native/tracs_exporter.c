@@ -752,6 +752,52 @@ static void missionTheatre(lua_State *L, char *out, size_t n) {
   lua_settop(L, top);
 }
 
+/* The Saved Games folder (e.g. ...\Saved Games\DCS) as UTF-8 into out, from
+   this DLL's own path: it is installed in <Saved Games>\Mods\Services\TRACS\bin,
+   so this is exact for any DCS variant or -w folder. "" if the DLL isn't
+   where the installer puts it. */
+static void savedGamesDir(char *out, size_t n) {
+  static const wchar_t SUFFIX[] = L"\\Mods\\Services\\TRACS\\bin\\";
+  out[0] = 0;
+  HMODULE self = NULL;
+  if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          (LPCWSTR)(void *)savedGamesDir, &self)) return;
+  wchar_t path[MAX_PATH];
+  DWORD len = GetModuleFileNameW(self, path, MAX_PATH);
+  if (len == 0 || len >= MAX_PATH) return;
+  /* The last match, case-insensitively: <Saved Games> is everything before it. */
+  size_t sl = wcslen(SUFFIX);
+  for (size_t i = len >= sl ? len - sl + 1 : 0; i-- > 0;) {
+    if (_wcsnicmp(path + i, SUFFIX, sl) == 0) {
+      path[i] = 0;
+      if (!WideCharToMultiByte(CP_UTF8, 0, path, -1, out, (int)n, NULL, NULL)) out[0] = 0;
+      return;
+    }
+  }
+}
+
+/* The mission file a host loaded, from DCS.getMissionFilename() ("" when
+   it gives none, as on a multiplayer client). */
+static void missionFilename(lua_State *L, char *out, size_t n) {
+  out[0] = 0;
+  int top = lua_gettop(L);
+  push_path(L, "DCS.getMissionFilename");
+  if (lua_pcall(L, 0, 1, 0) == 0 && lua_isstring(L, -1)) {
+    _snprintf_s(out, n, _TRUNCATE, "%s", lua_tostring(L, -1));
+  }
+  lua_settop(L, top);
+}
+
+/* Wall clock, ms since 1970. */
+static double epochMs(void) {
+  FILETIME ft;
+  GetSystemTimeAsFileTime(&ft);
+  ULARGE_INTEGER t;
+  t.LowPart = ft.dwLowDateTime;
+  t.HighPart = ft.dwHighDateTime;
+  return (double)((t.QuadPart - 116444736000000000ULL) / 10000ULL);
+}
+
 /* The collectors and their rates (the relay's config can change both).
    Host: in the mission state, calling DCS in a private Lua state; contacts
    use the units collector's list of active units. Bullseyes rarely move
@@ -809,10 +855,19 @@ static int l_missionLoad(lua_State *L) {
   g_mission.retryAt = now_s() + CLIENT_RETRY_S;
   logStatus(L);
 
+  /* Where the relay finds this mission's file (it reads it, off the sim
+     thread): a host's .miz, or for a client the track DCS writes in Saved
+     Games at the join. */
+  static char savedGames[3 * MAX_PATH], missionFile[3 * MAX_PATH];
+  savedGamesDir(savedGames, sizeof savedGames);
+  if (g_mission.server) missionFilename(L, missionFile, sizeof missionFile);
+  else missionFile[0] = 0;
+  MissionInfo info = { savedGames, missionFile, epochMs() };
+
   JBuf st;
   jb_init(&st);
   statusJson(&st);
-  sched_start(L, port, g_mission.server, multiplayer, theatre, st.oom ? NULL : st.p, ready());
+  sched_start(L, port, g_mission.server, multiplayer, theatre, st.oom ? NULL : st.p, ready(), &info);
   jb_free(&st);
   dcs_log(L, LOG_INFO, "mission loaded - side=%s, relay port %d", g_mission.server ? "server" : "client", port);
   lua_settop(L, 1);
