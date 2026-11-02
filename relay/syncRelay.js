@@ -11,6 +11,7 @@ const fs   = require('fs')
 const path = require('path')
 const { gateConnection } = require('./auth')
 const { resolvePosition, mintEntry } = require('./registryAuthority')
+const { createLeases } = require('./leases')
 const { RELAY_DIR } = require('./paths')
 
 // How often to ping every connected socket, and how a missed pong is
@@ -52,8 +53,50 @@ function topicAllowed(coalition, topic) {
   return m[1] === coalition || ALL_COALITIONS_ROLES.has(coalition)
 }
 
+// A lease names what it locks within its room (e.g. 'statusboard').
+const LEASE_AREA_RE = /^[a-z]{1,32}$/
+
 function createSyncRelay(wss, config) {
   const topics = new Map()   // topic → Set<{ws, peerId}>
+
+  // Room-scoped loading locks (leases.js), keyed `<topic>|<area>`. The
+  // holder is the connection, so a holder that drops loses its leases
+  // (a reconnect asks again). When one ends, every member of the room is
+  // told, so anyone waiting can try again.
+  const leases = createLeases({
+    onFree: (key) => {
+      const sep = key.lastIndexOf('|')
+      const topic = key.slice(0, sep)
+      const msg = JSON.stringify({ type: 'lease', topic, area: key.slice(sep + 1), status: 'free' })
+      for (const m of topics.get(topic) ?? []) {
+        if (m.ws.readyState === m.ws.OPEN) m.ws.send(msg)
+      }
+    },
+  })
+
+  // {type:'lease', topic, area, op:'acquire'|'release'} from a member of
+  // that room; acquire answers {type:'lease', topic, area, status:'granted'}
+  // or {..., status:'busy', holderPeerId}.
+  function handleLease(ws, msg) {
+    if (typeof msg.area !== 'string' || !LEASE_AREA_RE.test(msg.area)) return
+    if (!memberOf(msg.topic, ws)) return
+    const key = `${msg.topic}|${msg.area}`
+    if (msg.op === 'release') {
+      leases.release(key, ws)
+      return
+    }
+    if (msg.op !== 'acquire') return
+    const result = leases.acquire(key, ws)
+    let holderPeerId = null
+    if (!result.granted) {
+      for (const m of topics.get(msg.topic) ?? []) if (m.ws === result.holder) holderPeerId = m.peerId
+    }
+    if (ws.readyState === ws.OPEN) {
+      ws.send(JSON.stringify(result.granted
+        ? { type: 'lease', topic: msg.topic, area: msg.area, status: 'granted' }
+        : { type: 'lease', topic: msg.topic, area: msg.area, status: 'busy', holderPeerId }))
+    }
+  }
 
   // topic → { clientList, registry, groupAssignments, nextGroupNumber, evictionTimers }
   // A session's on-disk record is deleted the instant its last member's
@@ -497,7 +540,7 @@ function createSyncRelay(wss, config) {
       // Safety net: a bug or an unexpected message shape in one handler must
       // not take down the whole relay for every other connected controller.
       try {
-        const isTopicMsg = ['subscribe', 'publish', 'register'].includes(msg.type) && typeof msg.topic === 'string'
+        const isTopicMsg = ['subscribe', 'publish', 'register', 'lease'].includes(msg.type) && typeof msg.topic === 'string'
         if (isTopicMsg && !topicAllowed(coalition, msg.topic)) {
           console.warn(`[relay:sync] refused ${msg.type} from peerId=${peerId} coalition=${coalition}: topic ${JSON.stringify(msg.topic.slice(0, 80))} not allowed`)
           return
@@ -506,6 +549,8 @@ function createSyncRelay(wss, config) {
           subscribe(msg.topic, ws, peerId, coalition)
         } else if (msg.type === 'publish' && isTopicMsg) {
           publish(msg.topic, msg.payload, ws, msg.targetPeerId)
+        } else if (msg.type === 'lease' && isTopicMsg) {
+          handleLease(ws, msg)
         } else if (msg.type === 'register' && isTopicMsg) {
           // Registration only happens on a session topic, never a module one.
           if (!/^tracs-relay-[a-z]+$/.test(msg.topic)) {
@@ -521,6 +566,7 @@ function createSyncRelay(wss, config) {
 
     ws.on('close', () => {
       console.log(`[relay:sync] connection closed peerId=${peerId}`)
+      leases.releaseAll(ws)
       unsubscribeAll(ws)
       if (peerId) handleSessionDisconnect(peerId, coalition)
     })
@@ -544,7 +590,7 @@ function createSyncRelay(wss, config) {
       ws.ping()
     }
   }, HEARTBEAT_INTERVAL_MS)
-  wss.on('close', () => clearInterval(heartbeatInterval))
+  wss.on('close', () => { clearInterval(heartbeatInterval); leases.clear() })
 
   return { flush }
 }
