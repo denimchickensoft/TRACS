@@ -101,6 +101,7 @@ let onMission = null
 let onBullseyes = null
 let onAirbases = null
 let onWeather = null
+let onMissionData = null
 let relayUrl = null
 let password = null
 let coalition = null
@@ -323,7 +324,20 @@ function clearUnits() {
   if (fogFilter) fogFilter = tacviewDetection.createFogFilter(friendlyCoalitionId)
   if (allSidesDetector) allSidesDetector = tacviewDetection.createAllSidesDetector()
   resetRealContacts()
+  publishMissionData(null)
   if (removed.length) unitsBuffer.queue({}, removed)
+}
+
+// The running mission's file for TRACS's mission importers (the relay's
+// exporterMission), or null when there's none.
+function publishMissionData(mission) {
+  const next = mission && typeof mission.text === 'string' && typeof mission.id === 'string'
+    ? { id: mission.id, theatre: typeof mission.theatre === 'string' ? mission.theatre : null, text: mission.text }
+    : null
+  if (!next && !state.getMissionData()) return
+  if (next && next.id === state.getMissionData()?.id) return
+  state.setMissionData(next)
+  if (onMissionData) onMissionData(next)
 }
 
 // The next hook may be a client-side one, which sends no contacts.
@@ -429,6 +443,9 @@ function handleMessage(msg) {
     case 'exporterData':
       applyGroup(msg.group, msg.kind, msg.data)
       break
+    case 'exporterMission':
+      publishMissionData(msg.mission)
+      break
     case 'exporterReset':
       clearUnits()
       applyHookPresence(null)
@@ -507,6 +524,7 @@ function start(cfg, callbacks = {}) {
   onBullseyes = callbacks.onBullseyes ?? null
   onAirbases = callbacks.onAirbases ?? null
   onWeather = callbacks.onWeather ?? null
+  onMissionData = callbacks.onMissionData ?? null
   onLinkIssue = callbacks.onLinkIssue ?? null
   linkIssue = null
   active = true
@@ -551,6 +569,8 @@ function stop() {
   onBullseyes = null
   onAirbases = null
   onWeather = null
+  onMissionData = null
+  state.setMissionData(null)
   internalUnits = {}
   fogFilter = null
   allSidesDetector = null

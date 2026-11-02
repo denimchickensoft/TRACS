@@ -37,6 +37,9 @@ function createWsBroadcast(wss, { state, stateFiles, sourceRegistry, relaySource
     const weather = state.getWeather()
     if (weather) ws.send(JSON.stringify({ type: 'weather', data: weather }))
 
+    const missionData = state.getMissionData()
+    if (missionData) ws.send(JSON.stringify({ type: 'missionData', data: missionData }))
+
     // Status — includes instanceId so clients can detect server restarts
     const sourceType = state.getSourceType()
     const source  = sourceRegistry.get(sourceType)

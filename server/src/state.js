@@ -6,6 +6,9 @@ let mission   = null
 let airbases  = []
 // Exporter only: { mission: <mission weather table> | null, airfields: {} }.
 let weather   = null
+// Exporter only: the running mission's file as the relay serves it to this
+// backend's coalition, { id, theatre, text } (the relay's missionText.js).
+let missionData = null
 let bullseyes = null
 let lastUpdateTime = 0
 let lastWeaponsUpdateTime = 0
@@ -84,6 +87,7 @@ function resetForNewSource() {
   airbases = []
   bullseyes = null
   weather = null
+  missionData = null
 }
 
 module.exports = {
@@ -107,6 +111,8 @@ module.exports = {
   setBullseyes:     (b)  => { bullseyes = b },
   getWeather:       ()   => weather,
   setWeather:       (w)  => { weather = w },
+  getMissionData:   ()   => missionData,
+  setMissionData:   (m)  => { missionData = m },
   getLastUpdateTime: ()  => sourceCursorTime,
   setSourceCursorTime: (t) => { sourceCursorTime = t },
   getSourceType:    ()   => sourceType,

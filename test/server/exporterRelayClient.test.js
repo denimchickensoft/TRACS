@@ -121,3 +121,34 @@ describe('hookPresenceIssue', () => {
     expect(hookPresenceIssue(null, null)).toEqual({ retrying: true, reason: 'exporter_no_hook' })
   })
 })
+
+describe('mission data', () => {
+  test('exporterMission is published once per mission and cleared when the hook goes', async () => {
+    const { WebSocketServer } = await import('ws')
+    const wss = new WebSocketServer({ port: 0 })
+    const port = wss.address().port
+    const seen = []
+    const done = new Promise((resolve) => {
+      wss.on('connection', (sock) => {
+        sock.once('message', () => {
+          const mission = { id: 'abc', theatre: 'Caucasus', text: 'mission = {}' }
+          sock.send(JSON.stringify({ type: 'exporterMission', mission }))
+          sock.send(JSON.stringify({ type: 'exporterMission', mission }))
+          sock.send(JSON.stringify({ type: 'exporterReset' }))
+          setTimeout(resolve, 100)
+        })
+      })
+    })
+    exporterRelayClient.start({ relayUrl: `ws://127.0.0.1:${port}`, password: 'x', coalition: 'blue' }, {
+      onMissionData: (m) => seen.push(m && { id: m.id, theatre: m.theatre, text: m.text }),
+    })
+    try {
+      await done
+      // The repeated message for the same mission is not passed on again.
+      expect(seen).toEqual([{ id: 'abc', theatre: 'Caucasus', text: 'mission = {}' }, null])
+    } finally {
+      exporterRelayClient.stop()
+      wss.close()
+    }
+  })
+})

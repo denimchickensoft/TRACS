@@ -160,6 +160,10 @@ function registerApiRoutes(app, { sourceRegistry, relaySource, state, stateFiles
       airbases: state.getAirbases(),
       bullseyes: state.getBullseyes(),
       weather: state.getWeather(),
+      // Not the text itself: it can be several MB.
+      missionData: state.getMissionData()
+        ? { id: state.getMissionData().id, theatre: state.getMissionData().theatre, bytes: state.getMissionData().text.length }
+        : null,
       units: unitList,
       weapons: weaponList,
     })
