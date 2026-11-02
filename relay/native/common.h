@@ -8,7 +8,7 @@
 
 /* Bumped together with DLL_ABI in the hook whenever the Lua-facing
    functions change; the hook refuses a DLL with a different one. */
-#define TRACS_EXPORTER_ABI 5
+#define TRACS_EXPORTER_ABI 6
 
 /* Set by the build from relay/package.json. */
 #ifndef TRACS_VERSION
@@ -41,7 +41,7 @@ double now_s(void);
 enum { LOG_INFO, LOG_WARNING, LOG_ERROR };
 void dcs_log(lua_State *L, int level, const char *fmt, ...);
 
-/* Pushes path's value from L's globals ("Unit.getPoint"); nil if missing. */
+/* Pushes path's value from L's globals ("Unit.getPoint", "world.weather.getFogThickness"); nil if missing. */
 void push_path(lua_State *L, const char *path);
 
 #endif

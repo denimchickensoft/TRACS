@@ -11,8 +11,10 @@ typedef struct {
   /* luaOk: may be a Lua function in DCS (read once per unit, so calling it
      in the mission state costs next to nothing); isLua: it is one, found at
      init. Such a function is called in the mission state on an object
-     carrying its class's methods instead of in the private state. */
-  int luaOk, isLua;
+     carrying its class's methods instead of in the private state.
+     optional: may be missing in this DCS (fn stays NULL; what needs it is
+     left out). */
+  int luaOk, isLua, optional;
 } DcsFn;
 
 typedef struct {
@@ -31,6 +33,10 @@ enum {
   S_GET_GROUPS, S_GET_UNITS, S_GET_HEIGHT, S_LO_TO_LL,
   S_IS_EXIST, S_IS_ACTIVE, S_GET_NAME, S_GET_TYPE_NAME, S_GET_CALLSIGN, S_GET_GROUP,
   S_GROUP_GET_ID, S_GROUP_GET_NAME, S_GROUP_GET_CATEGORY, S_HAS_SENSORS,
+  /* The low-rate collectors (serverlow.c). */
+  S_GET_AIRBASES, S_AB_IS_EXIST, S_AB_GET_POINT, S_AB_GET_CALLSIGN, S_AB_GET_COALITION, S_AB_GET_UNIT,
+  S_AB_GET_DESC, S_GET_MAIN_REF_POINT, S_GET_ABS_TIME, S_GET_WIND, S_GET_TEMP_PRESSURE,
+  S_FOG_VISIBILITY, S_FOG_THICKNESS,
   S_COUNT
 };
 

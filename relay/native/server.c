@@ -40,6 +40,7 @@
 #include "common.h"
 #include "private.h"
 #include "server.h"
+#include "serverlow.h"
 
 #define RELIST_CYCLES     30
 #define FULL_READ_CYCLES  10
@@ -93,7 +94,7 @@ static double g_unitCategory = 1;  /* Object.Category.UNIT */
    giving rebuilt objects their class's methods, for Lua-implemented DCS
    functions. */
 static lua_State *g_ML;
-static int g_unitMt = LUA_NOREF, g_groupMt = LUA_NOREF;
+static int g_classMt[OBJ_CLASSES] = { LUA_NOREF, LUA_NOREF, LUA_NOREF };
 
 /* The cycle in progress and its result, shared by both halves. */
 static struct {
@@ -122,9 +123,9 @@ static int call(int fn, int nargs, int nres) {
 
 static void pushFn(int fn) { lua_pushcfunction(P(), g_server.fns[fn].fn); }
 
-void server_pushObject(lua_State *ML, const Id *id, int isGroup) {
+void server_pushObject(lua_State *ML, const Id *id, int cls) {
   pushBare(ML, id);
-  int mt = isGroup ? g_groupMt : g_unitMt;
+  int mt = cls >= 0 && cls < OBJ_CLASSES ? g_classMt[cls] : LUA_NOREF;
   if (mt == LUA_NOREF) return;
   lua_rawgeti(ML, LUA_REGISTRYINDEX, mt);
   lua_setmetatable(ML, -2);
@@ -137,8 +138,11 @@ static int callLuaObj(int fn, const Id *obj) {
   lua_State *ML = g_ML;
   if (!ML) return R_FAIL;
   int top = lua_gettop(ML);
-  push_path(ML, g_server.fns[fn].path);
-  server_pushObject(ML, obj, strncmp(g_server.fns[fn].path, "Group.", 6) == 0);
+  const char *path = g_server.fns[fn].path;
+  push_path(ML, path);
+  server_pushObject(ML, obj, strncmp(path, "Group.", 6) == 0     ? OBJ_GROUP
+                             : strncmp(path, "Airbase.", 8) == 0 ? OBJ_AIRBASE
+                                                                 : OBJ_UNIT);
   int r = pcallShared(ML, &g_server, fn, 1, 1);
   if (r == 2) return R_FAULT;
   if (r == 1) { lua_settop(ML, top); return R_FAIL; }
@@ -1146,17 +1150,17 @@ void server_reset(lua_State *L) {
   jb_free(&U.json);
   memset(&U, 0, sizeof U);
   contacts_reset();
+  serverlow_reset(L);
   g_ML = NULL;
   /* The previous mission state's references die with it. */
-  g_unitMt = g_groupMt = LUA_NOREF;
+  for (int i = 0; i < OBJ_CLASSES; i++) g_classMt[i] = LUA_NOREF;
   if (L) {
-    static const char *CLASSES[] = { "Unit", "Group" };
-    for (int i = 0; i < 2; i++) {
+    static const char *CLASSES[OBJ_CLASSES] = { "Unit", "Group", "Airbase" };
+    for (int i = 0; i < OBJ_CLASSES; i++) {
       lua_createtable(L, 0, 1);
       lua_getglobal(L, CLASSES[i]);
       lua_setfield(L, -2, "__index");
-      int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-      if (i == 0) g_unitMt = ref; else g_groupMt = ref;
+      g_classMt[i] = luaL_ref(L, LUA_REGISTRYINDEX);
     }
     push_path(L, "Controller.Detection");
     for (int m = 0; m < N_METHODS; m++) {
@@ -1186,10 +1190,35 @@ static const luaL_Reg FUNCTIONS[] = {
 
 void server_open(lua_State *L) {
   luaL_register(L, NULL, FUNCTIONS);
+  serverlow_open(L);
 }
 
 const NativeCollector SERVER_COLLECTORS[] = {
   { "units", unitsServer, 1 },
   { "contacts", contactsServer, 1 },
+  { "bullseyes", bullseyesServer, 0 },
+  { "airbases", airbasesServer, 0 },
+  { "clock", clockServer, 0 },
+  { "fog", fogServer, 0 },
+  { "weather", weatherServer, 0 },
+  { "airfieldWeather", airfieldWeatherServer, 1 },
   { NULL, NULL, 0 },
 };
+
+/* ------------------------------------------------------------------ */
+/* For serverlow.c                                                      */
+/* ------------------------------------------------------------------ */
+
+void srv_setMissionState(lua_State *L) { g_ML = L; }
+int srv_call(int fn, int nargs, int nres) { return call(fn, nargs, nres); }
+int srv_callObj(int fn, const Id *obj) { return callObj(fn, obj); }
+int srv_objNum(int fn, const Id *obj, double *out) { return objNum(fn, obj, out); }
+int srv_objBool(int fn, const Id *obj, int *out) { return objBool(fn, obj, out); }
+int srv_objStr(int fn, const Id *obj, char **out) { return objStr(fn, obj, out); }
+int srv_objId(int fn, const Id *obj, Id *out) { return objId(fn, obj, out); }
+char srv_missionStep(lua_State *L, const char *code, char *err, size_t errLen) {
+  return missionStep(L, code, err, errLen);
+}
+int srv_stepResult(char status, NativeRun *r, char *err, size_t errLen, const char *what) {
+  return stepResult(status, r, err, errLen, what);
+}

@@ -13,13 +13,12 @@
 --   client: a multiplayer client. Only what the DCS Export API allows under
 --           the host's export permissions is available.
 --
--- The client side's collectors and the server's units and contacts are the
--- DLL's own (registerNative); the other server collectors are still Lua for now,
--- called by the DLL's scheduler. There
--- is no Lua fallback: without a working DLL nothing is collected.
+-- Every collector is the DLL's own (registerNative); the mission state only
+-- keeps a small event handler from here. There is no Lua fallback: without a
+-- working DLL nothing is collected.
 
 -- Must match TRACS_EXPORTER_ABI in relay/native/common.h.
-local DLL_ABI         = 5
+local DLL_ABI         = 6
 local DEFAULT_PORT    = 8767
 local LOG_TAG         = 'TRACS.EXPORTER'
 
@@ -75,8 +74,8 @@ end
 
 -- Injected into the mission scripting environment once per mission (server
 -- side only). Defines TRACS_EXP_S with its own JSON encoder (the mission
--- environment has no net.lua2json), the server-side collector functions and
--- an event ring buffer the hook drains.
+-- environment has no net.lua2json) and an event ring buffer the hook drains;
+-- birth events also go to the DLL's units collector.
 local SERVER_BOOTSTRAP = [==[
 -- Globals here outlive a mission change, so each mission starts from a clean
 -- table; the previous mission's event handler is removed first.
@@ -85,13 +84,6 @@ if TRACS_EXP_S and TRACS_EXP_S.eventHandler then
 end
 TRACS_EXP_S = {}
 local S = TRACS_EXP_S
-
--- Lua heap size in KB, for the hook's per-step diagnostics (-1 if
--- collectgarbage isn't available here).
-local function heapKb()
-  if collectgarbage then return math.floor(collectgarbage('count')) end
-  return -1
-end
 
 local function encode(v)
   local t = type(v)
@@ -118,152 +110,6 @@ local function encode(v)
     return '{' .. table.concat(parts, ',') .. '}'
   end
   return 'null'
-end
-S.encode = encode
-
-local function round(x, step) return math.floor(x / step + 0.5) * step end
-
--- Live weather at every airdrome and carrier, a few airfields per tick:
--- pressure and temperature at the surface, wind 10 m above it, and wind and
--- temperature at the FD winds-aloft levels at least 1500 ft above the field.
--- Values go out raw (K, Pa, wind as the air's velocity in m/s on the map's
--- x north / z east axes); the backend turns them into QNH and from-directions.
--- Keyed by world.getAirbases index, as the airbases collector is.
-local ALOFT_FT = { 3000, 6000, 9000, 12000, 18000, 24000, 30000, 34000, 39000 }
-local ALOFT_MIN_ABOVE_M = 1500 * 0.3048
-local WX_PER_STEP = 10
-local wxPoint = { x = 0, y = 0, z = 0 }
-S.wx = {}
-
-local function sampleAt(x, y, z)
-  wxPoint.x, wxPoint.y, wxPoint.z = x, y, z
-  local t, p = atmosphere.getTemperatureAndPressure(wxPoint)
-  local w = atmosphere.getWind(wxPoint)
-  return t, p, w
-end
-
-local function sampleAirfield(e, parts)
-  local ab = e.ab
-  if not ab:isExist() then return end
-  local pt = ab:getPoint()
-  local elev = land.getHeight({ x = pt.x, y = pt.z })
-  local t, p = sampleAt(pt.x, elev, pt.z)
-  local _, _, w = sampleAt(pt.x, elev + 10, pt.z)
-  local lat, lon = coord.LOtoLL(pt)
-  local rec = {
-    callsign = ab:getCallsign(), latitude = round(lat, 1e-6), longitude = round(lon, 1e-6),
-    elevation = round(elev, 0.1), t = round(t, 0.01), p = round(p, 1),
-    wx = round(w.x, 0.01), wz = round(w.z, 0.01), aloft = {},
-  }
-  local unit = ab:getUnit()
-  if unit then rec.unitId = unit:getID() end
-  for _, ft in ipairs(ALOFT_FT) do
-    local alt = ft * 0.3048
-    if alt >= elev + ALOFT_MIN_ABOVE_M then
-      local at, _, aw = sampleAt(pt.x, alt, pt.z)
-      rec.aloft[#rec.aloft + 1] = { ft = ft, t = round(at, 0.01), wx = round(aw.x, 0.01), wz = round(aw.z, 0.01) }
-    end
-  end
-  -- An empty table would encode as [], which is still a valid aloft list.
-  parts[#parts + 1] = encode(e.key) .. ':' .. encode(rec)
-end
-
--- 0 when the mission's atmosphere is static (fixed for the whole mission),
--- 1 when dynamic (the mission editor's regimenStandard/regimenDynamic); a
--- mission without the field counts as dynamic.
-local function atmosphereType()
-  local w = env.mission and env.mission.weather
-  return (w and w.atmosphere_type == 0) and 0 or 1
-end
-
--- Airdromes and ships; FARPs and helipads aren't sampled.
-local function wxBaseKind(ab)
-  local cat = ab:getDesc().category
-  if cat == Airbase.Category.AIRDROME then return 'airdrome' end
-  if cat == Airbase.Category.SHIP then return 'ship' end
-  return nil
-end
-
--- 'P' while airfields are left, then '<atmosphereType>|<count>|<ships>|{json}'.
-function S.airfieldWxStep(start)
-  local w = S.wx
-  if start or not w.list then
-    w.list, w.i, w.parts, w.ships = {}, 0, {}, 0
-    local bases = world.getAirbases() or {}
-    for i = 1, #bases do
-      local ok, kind = pcall(wxBaseKind, bases[i])
-      if ok and kind then
-        w.list[#w.list + 1] = { ab = bases[i], key = tostring(i) }
-        if kind == 'ship' then w.ships = w.ships + 1 end
-      end
-    end
-  end
-  local last = math.min(#w.list, w.i + WX_PER_STEP)
-  for j = w.i + 1, last do pcall(sampleAirfield, w.list[j], w.parts) end
-  w.i = last
-  if w.i < #w.list then return 'P' end
-  local out = atmosphereType() .. '|' .. #w.parts .. '|' .. w.ships .. '|{' .. table.concat(w.parts, ',') .. '}'
-  w.list, w.parts = nil, nil
-  return out
-end
-
-local COALITION_NAMES = { [0] = 'neutral', [1] = 'red', [2] = 'blue' }
-
-S.collectors = {
-  -- Each coalition's bullseye, keyed by coalition id as a string.
-  bullseyes = function()
-    local out = {}
-    for side = 0, 2 do
-      local p = coalition.getMainRefPoint(side)
-      if p then
-        local lat, lon = coord.LOtoLL(p)
-        out[tostring(side)] = { coalition = COALITION_NAMES[side], latitude = round(lat, 1e-6), longitude = round(lon, 1e-6) }
-      end
-    end
-    return out
-  end,
-  -- Every airfield, FARP and carrier with its current owner, in the fields
-  -- Olympus sends; unitId only for an airbase that is a unit (a ship).
-  airbases = function()
-    local out = {}
-    local bases = world.getAirbases() or {}
-    for i = 1, #bases do
-      local ab = bases[i]
-      local lat, lon = coord.LOtoLL(ab:getPoint())
-      local info = {
-        callsign = ab:getCallsign(), coalition = COALITION_NAMES[ab:getCoalition()] or 'neutral',
-        latitude = round(lat, 1e-6), longitude = round(lon, 1e-6),
-      }
-      local unit = ab:getUnit()
-      if unit then info.unitId = unit:getID() end
-      out[tostring(i)] = info
-    end
-    return out
-  end,
-  -- Mission start date and the time of day, both theatre-local. absTime
-  -- counts from midnight of the start date and passes 86400 after midnight,
-  -- so the backend rolls the date forward from it.
-  clock = function()
-    return { date = env.mission and env.mission.date, absTime = timer.getAbsTime(), startTime = env.mission and env.mission.start_time }
-  end,
-  -- Fog as it is now (it can thicken and thin during a mission): visibility
-  -- distance and layer thickness, metres. nil fields if this DCS version
-  -- lacks the calls.
-  fog = function()
-    local out = {}
-    pcall(function() out.visibility = world.weather.getFogVisibilityDistance() end)
-    pcall(function() out.thickness = world.weather.getFogThickness() end)
-    return out
-  end,
-}
-
--- Returns the collector's result as JSON text, or an error object.
-function S.collect(name)
-  local fn = S.collectors[name]
-  if not fn then return '{"error":"unknown collector"}' end
-  local ok, result = pcall(fn)
-  if not ok then return encode({ error = tostring(result) }) end
-  return encode(result)
 end
 
 -- Drained by the hook every second; sized for a heavy mission's spawn burst.
@@ -293,18 +139,6 @@ local C = {
   side = nil,  -- 'server' | 'client'
   dll  = nil,  -- this mission's DLL status, see initDll
 }
-
--- Hands a collector to the DLL's scheduler. side: 'server' | 'client' |
--- 'both'. A plain gather() returns JSON text or nil, and optionally `once`.
--- A sliced one gets gather(start, full, slices, sensorUnitsOnly) once per
--- tick until it returns its result: json, kind ('full'|'delta'), a table of
--- extra timing fields, the mission state's {heapKbBefore, heapKbAfter}, and
--- `once` (true: don't run again until the next resync). Data goes out under
--- the collector's name, or `group` when given (a client collector feeding the
--- same group as its server counterpart).
-local function register(name, side, rateS, gather, sliced, group)
-  if dll then dll.register(name, side, rateS, sliced == true, gather, group) end
-end
 
 local function inServer(code)
   local ok, result = pcall(net.dostring_in, 'server', code)
@@ -394,93 +228,24 @@ local function retryPendingDll()
   end
 end
 
--- Units and contacts are the DLL's own collectors (relay/native/server.c):
--- they run their cycles in the mission state, calling DCS in a private Lua
--- state. Contacts use the units collector's list of active units.
+-- Server side: the DLL's own collectors (relay/native/server.c and
+-- serverlow.c). They run in the mission state, calling DCS in a private Lua
+-- state. Contacts use the units collector's list of active units. Rates:
+-- bullseyes rarely move (only when a script sets one); airbase ownership
+-- changes only on capture; TRACS runs the clock locally between updates, so
+-- it only corrects drift; fog animates; the mission weather never changes
+-- and goes once per resync; airfieldWeather goes once per resync in a static
+-- atmosphere and is re-sampled at its rate in a dynamic one.
 if dll then
   dll.registerNative('units', 'server', 1)
   dll.registerNative('contacts', 'server', 4)
+  dll.registerNative('bullseyes', 'server', 30)
+  dll.registerNative('airbases', 'server', 30)
+  dll.registerNative('clock', 'server', 15)
+  dll.registerNative('weather', 'server', 600)
+  dll.registerNative('fog', 'server', 60)
+  dll.registerNative('airfieldWeather', 'server', 600)
 end
-
--- Bullseyes rarely move (only when a script sets one), so a slow rate.
-register('bullseyes', 'server', 30, function()
-  return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("bullseyes") or "null"')
-end)
-
--- Ownership changes only on capture.
-register('airbases', 'server', 30, function()
-  return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("airbases") or "null"')
-end)
-
--- TRACS runs the clock locally between updates, so this only corrects drift,
--- e.g. after a pause.
-register('clock', 'server', 15, function()
-  return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("clock") or "null"')
-end)
-
--- A cloud preset's layers and precipitation as DCS defines them
--- (Config/Effects/clouds.lua in the install): layer altitudes in metres for
--- the preset's default base, coverage 0..1+. Read from the file, so it
--- follows DCS updates. false when the file or preset can't be read.
-local cloudPresets = {}
-local function cloudPreset(name)
-  if type(name) ~= 'string' then return false end
-  if cloudPresets[name] ~= nil then return cloudPresets[name] end
-  local result = false
-  local ok, e = pcall(function()
-    local dir = lfs.currentdir()
-    if not dir:match('[/\\]$') then dir = dir .. '/' end
-    local chunk = loadfile(dir .. 'Config/Effects/clouds.lua')
-    if not chunk then return end
-    -- The file only builds tables (its own deepcopy uses these few globals).
-    local env = {
-      _ = function(t) return t end, pairs = pairs, ipairs = ipairs, next = next, type = type,
-      tostring = tostring, setmetatable = setmetatable, getmetatable = getmetatable,
-      math = math, string = string, table = table,
-    }
-    setfenv(chunk, env)
-    chunk()
-    local p = env.clouds and env.clouds.presets and env.clouds.presets[name]
-    if type(p) ~= 'table' then return end
-    local layers = {}
-    for i, l in ipairs(p.layers or {}) do
-      layers[i] = { altitudeMin = l.altitudeMin, altitudeMax = l.altitudeMax, coverage = l.coverage }
-    end
-    result = { precipitationPower = p.precipitationPower, layers = layers }
-  end)
-  if not ok then warn('cloud preset ' .. name .. ' unreadable: ' .. tostring(e)) end
-  cloudPresets[name] = result
-  return result
-end
-
--- The mission's weather table as the mission editor wrote it (QNH in mmHg,
--- visibility, clouds, fog, dust, the three wind layers...) plus its cloud
--- preset's layers. It never changes during a mission, so it's sent once per
--- resync.
-register('weather', 'server', 600, function()
-  local m = DCS.getCurrentMission()
-  local w = m and m.mission and m.mission.weather
-  if type(w) ~= 'table' then return nil end
-  local preset = cloudPreset(w.clouds and w.clouds.preset)
-  return toJson({ mission = w, cloudPreset = preset or nil }), true
-end)
-
--- Fog can change during a mission (auto and manual fog animate).
-register('fog', 'server', 60, function()
-  return inServer('return TRACS_EXP_S and TRACS_EXP_S.collect("fog") or "null"')
-end)
-
--- A static atmosphere is fixed for the whole mission, so it's sampled once
--- per resync; a dynamic one is re-sampled at the collector's rate.
-register('airfieldWeather', 'server', 600, function(start)
-  local r = inServer(string.format('return TRACS_EXP_S and TRACS_EXP_S.airfieldWxStep(%s) or "E"', tostring(start)))
-  if r == nil or r == 'E' then error('airfieldWeather step failed (mission environment not bootstrapped?)') end
-  if r == 'P' then return nil end
-  local atm, n, ships, json = r:match('^(%d)|(%d+)|(%d+)|(.*)$')
-  if not atm then error('unexpected airfieldWeather step result') end
-  local static = atm == '0'
-  return json, 'full', { airfields = tonumber(n), ships = tonumber(ships), static = static }, nil, static
-end, true)
 
 -- Client side: the DLL's own collectors (relay/native/client.c), in the
 -- same groups as the server side's. units_client reads the export API's

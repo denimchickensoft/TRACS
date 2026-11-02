@@ -52,6 +52,15 @@ static DcsFn SERVER_FNS[S_COUNT] = {
   { "Unit.getCallsign", NULL, 1 }, { "Unit.getGroup", NULL, 1 },
   { "Group.getID", NULL, 1 }, { "Group.getName", NULL, 1 }, { "Group.getCategory", NULL, 1 },
   { "Unit.hasSensors", NULL, 1 },
+  /* The low-rate collectors (serverlow.c). Airbase methods returning a
+     scalar or an object may be Lua (luaOk: they're read every 30 s at most);
+     getPoint and getDesc return tables, so they must be C. The fog calls are
+     newer than the rest (optional: fog then has no live values). */
+  { "world.getAirbases" }, { "Airbase.isExist", NULL, 1 }, { "Airbase.getPoint" },
+  { "Airbase.getCallsign", NULL, 1 }, { "Airbase.getCoalition", NULL, 1 }, { "Airbase.getUnit", NULL, 1 },
+  { "Airbase.getDesc" }, { "coalition.getMainRefPoint" }, { "timer.getAbsTime" },
+  { "atmosphere.getWind" }, { "atmosphere.getTemperatureAndPressure" },
+  { "world.weather.getFogVisibilityDistance", NULL, 0, 0, 1 }, { "world.weather.getFogThickness", NULL, 0, 0, 1 },
 };
 
 static DcsFn CLIENT_FNS[C_COUNT] = {
@@ -115,7 +124,8 @@ int pcallPrivate(Side *s, int f, int nargs, int nresults, const char *context) {
 /* Looks up every function this side needs, and checks each is a plain C
    function (no upvalues), the only kind that can be moved to another state.
    One allowed to be Lua (luaOk) that is Lua, or a C function with upvalues,
-   is marked isLua instead. Every function that fails is named. */
+   is marked isLua instead; an optional one that is missing is left NULL.
+   Every function that fails is named. */
 static int resolveFns(lua_State *L, Side *s) {
   s->error[0] = 0;
   for (int i = 0; i < s->nFns; i++) {
@@ -125,7 +135,8 @@ static int resolveFns(lua_State *L, Side *s) {
     f->isLua = 0;
     const char *why = NULL;
     if (!f->fn) {
-      if (lua_isfunction(L, -1) && f->luaOk) f->isLua = 1;
+      if (lua_isnil(L, -1) && f->optional) { /* left out */ }
+      else if (lua_isfunction(L, -1) && f->luaOk) f->isLua = 1;
       else why = lua_isnil(L, -1) ? "missing" : "not a C function";
     } else if (lua_getupvalue(L, -1, 1)) {
       lua_pop(L, 1);
@@ -201,6 +212,9 @@ static void fingerprint(lua_State *L, int idx, char *out, size_t n) {
     lua_getfield(L, idx, "x");
     int isVec = lua_type(L, -1) == LUA_TNUMBER;
     lua_pop(L, 1);
+    lua_getfield(L, idx, "category");
+    int isDesc = lua_type(L, -1) == LUA_TNUMBER;
+    lua_pop(L, 1);
     if (readId(L, idx, &id)) {
       if (id.type == LUA_TNUMBER) _snprintf_s(v, sizeof v, _TRUNCATE, "id:%.0f", id.num);
       else _snprintf_s(v, sizeof v, _TRUNCATE, "id:%p", id.ptr);
@@ -213,6 +227,11 @@ static void fingerprint(lua_State *L, int idx, char *out, size_t n) {
     } else if (isVec) {
       _snprintf_s(v, sizeof v, _TRUNCATE, "vec:%.3f,%.3f,%.3f", numField(L, idx, "x"), numField(L, idx, "y"),
                   numField(L, idx, "z"));
+    } else if (isDesc) {
+      lua_getfield(L, idx, "typeName");
+      _snprintf_s(v, sizeof v, _TRUNCATE, "desc:%.0f/%s", numField(L, idx, "category"),
+                  lua_isstring(L, -1) ? lua_tostring(L, -1) : "-");
+      lua_pop(L, 1);
     } else {
       _snprintf_s(v, sizeof v, _TRUNCATE, "list:%d", (int)lua_objlen(L, idx));
     }
@@ -223,7 +242,7 @@ static void fingerprint(lua_State *L, int idx, char *out, size_t n) {
 
 /* Arguments a test call can take. Objects are passed as themselves in the
    calling state and as bare { id_ } tables in the private state. */
-typedef enum { A_NONE, A_UNIT, A_CTRL, A_GROUP, A_SIDE, A_VEC2, A_VEC3, A_METHOD } Arg;
+typedef enum { A_NONE, A_UNIT, A_CTRL, A_GROUP, A_AIRBASE, A_SIDE, A_VEC2, A_VEC3, A_METHOD } Arg;
 
 typedef struct {
   int fn;
@@ -246,13 +265,20 @@ static const Test SERVER_TESTS[] = {
   { S_GET_GROUP, A_UNIT, A_NONE, 1 },     { S_GROUP_GET_ID, A_GROUP, A_NONE, 1 },
   { S_GROUP_GET_NAME, A_GROUP, A_NONE, 1 }, { S_GROUP_GET_CATEGORY, A_GROUP, A_NONE, 1 },
   { S_HAS_SENSORS, A_UNIT, A_NONE, 1 },
+  { S_GET_AIRBASES, A_NONE, A_NONE, 1 },  { S_AB_IS_EXIST, A_AIRBASE, A_NONE, 1 },
+  { S_AB_GET_POINT, A_AIRBASE, A_NONE, 1 }, { S_AB_GET_CALLSIGN, A_AIRBASE, A_NONE, 1 },
+  { S_AB_GET_COALITION, A_AIRBASE, A_NONE, 1 }, { S_AB_GET_UNIT, A_AIRBASE, A_NONE, 1 },
+  { S_AB_GET_DESC, A_AIRBASE, A_NONE, 1 }, { S_GET_MAIN_REF_POINT, A_SIDE, A_NONE, 1 },
+  { S_GET_ABS_TIME, A_NONE, A_NONE, 1 },  { S_GET_WIND, A_VEC3, A_NONE, 1 },
+  { S_GET_TEMP_PRESSURE, A_VEC3, A_NONE, 2 },
+  { S_FOG_VISIBILITY, A_NONE, A_NONE, 1 }, { S_FOG_THICKNESS, A_NONE, A_NONE, 1 },
 };
 
 /* What the server self-test works on, found in the mission state. */
 typedef struct {
-  int haveUnit, haveCtrl;
-  int unitIdx, groupIdx, ctrlIdx;  /* stack slots in the mission state */
-  Id unit, group, ctrl;
+  int haveUnit, haveCtrl, haveAirbase;
+  int unitIdx, groupIdx, ctrlIdx, airbaseIdx;  /* stack slots in the mission state */
+  Id unit, group, ctrl, airbase;
   lua_Number side, method;
   lua_Number x, y, z;              /* the unit's point, or the map origin */
   char context[128];               /* "(unit 123 F-16C_50)" for reports */
@@ -263,6 +289,7 @@ static void pushArg(lua_State *L, int isPrivate, Arg a, const Subject *sub) {
     case A_UNIT:  if (isPrivate) pushBare(L, &sub->unit); else lua_pushvalue(L, sub->unitIdx); break;
     case A_GROUP: if (isPrivate) pushBare(L, &sub->group); else lua_pushvalue(L, sub->groupIdx); break;
     case A_CTRL:  if (isPrivate) pushBare(L, &sub->ctrl); else lua_pushvalue(L, sub->ctrlIdx); break;
+    case A_AIRBASE: if (isPrivate) pushBare(L, &sub->airbase); else lua_pushvalue(L, sub->airbaseIdx); break;
     case A_SIDE:  lua_pushnumber(L, sub->side); break;
     case A_METHOD: lua_pushnumber(L, sub->method); break;
     case A_VEC2:
@@ -282,6 +309,16 @@ static void pushArg(lua_State *L, int isPrivate, Arg a, const Subject *sub) {
 
 static int needsUnit(const Test *t) {
   return t->a1 == A_UNIT || t->a1 == A_GROUP || t->a1 == A_CTRL || t->a2 == A_CTRL;
+}
+
+/* Whether a test can't run here: its function is an optional one this DCS
+   lacks, or it needs a unit, controller or airbase the mission doesn't
+   have. */
+static int cantRun(const Side *s, const Test *t, const Subject *sub) {
+  if (!s->fns[t->fn].fn && !s->fns[t->fn].isLua) return 1;
+  if (needsUnit(t) && !sub->haveUnit) return 1;
+  if ((t->a1 == A_CTRL || t->a2 == A_CTRL) && !sub->haveCtrl) return 1;
+  return t->a1 == A_AIRBASE && !sub->haveAirbase;
 }
 
 /* One test: the call in L (normal) and in P (private), compared. Returns 1
@@ -305,8 +342,9 @@ static int runTest(lua_State *L, Side *s, const Test *t, const Subject *sub) {
     /* Called the way the collectors call it: in this state, on a rebuilt
        object with its class's methods. */
     push_path(L, s->fns[t->fn].path);
-    const Id *obj = t->a1 == A_GROUP ? &sub->group : &sub->unit;
-    server_pushObject(L, obj, t->a1 == A_GROUP);
+    int cls = t->a1 == A_GROUP ? OBJ_GROUP : t->a1 == A_AIRBASE ? OBJ_AIRBASE : OBJ_UNIT;
+    const Id *obj = cls == OBJ_GROUP ? &sub->group : cls == OBJ_AIRBASE ? &sub->airbase : &sub->unit;
+    server_pushObject(L, obj, cls);
     int r = pcallShared(L, s, t->fn, 1, t->nresults);
     if (r == 2) return -1;
     if (r == 1) _snprintf_s(b, sizeof b, _TRUNCATE, "error '%s'", lua_tostring(L, -1));
@@ -405,6 +443,21 @@ static void findSubject(lua_State *L, Subject *sub) {
   lua_pop(L, 1);
 }
 
+/* The mission's first airbase, for the Airbase tests, left on L's stack.
+   Works without units, so it runs after findSubject whatever it found. */
+static void findAirbase(lua_State *L, Subject *sub) {
+  push_path(L, "world.getAirbases");
+  if (lua_pcall(L, 0, 1, 0) != 0 || !lua_istable(L, -1)) { lua_pop(L, 1); return; }
+  lua_rawgeti(L, -1, 1);
+  if (lua_istable(L, -1) && readId(L, -1, &sub->airbase)) {
+    lua_replace(L, -2);
+    sub->airbaseIdx = lua_gettop(L);
+    sub->haveAirbase = 1;
+  } else {
+    lua_pop(L, 2);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Lua-facing functions                                                 */
 /* ------------------------------------------------------------------ */
@@ -448,15 +501,17 @@ static int l_initServer(lua_State *L) {
   if (!resolveFns(L, s) || !openPrivate(s)) goto failed;
   for (int i = 0; i < s->nFns; i++) {
     if (s->fns[i].isLua) dcs_log(L, LOG_INFO, "%s is a Lua function in this DCS - called in the mission environment", s->fns[i].path);
+    else if (!s->fns[i].fn) dcs_log(L, LOG_INFO, "%s is missing in this DCS - its value isn't sent", s->fns[i].path);
   }
 
   Subject sub;
   int top = lua_gettop(L);
   findSubject(L, &sub);
+  findAirbase(L, &sub);
   int passed = 0, skipped = 0, nTests = (int)(sizeof SERVER_TESTS / sizeof SERVER_TESTS[0]);
   for (int i = 0; i < nTests; i++) {
     const Test *t = &SERVER_TESTS[i];
-    if ((needsUnit(t) && !sub.haveUnit) || ((t->a1 == A_CTRL || t->a2 == A_CTRL) && !sub.haveCtrl)) {
+    if (cantRun(s, t, &sub)) {
       skipped++;
       continue;
     }

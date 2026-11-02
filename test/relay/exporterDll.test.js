@@ -63,7 +63,7 @@ describe.skipIf(!available)('tracs_exporter.dll in a Lua harness', () => {
     // A clean exit with the network thread running: the DLL unloads when
     // lua.exe closes its state.
     expect(code, out).toBe(0)
-    expect(out).toContain('ABI 5')
+    expect(out).toContain('ABI 6')
     expect(out).toContain('UNKNOWN NATIVE no native collector named noSuchCollector')
     expect(out).toContain('DONE')
     expect(out).toMatch(/LOG INFO connected to relay on 127\.0\.0\.1:\d+/)

@@ -98,14 +98,32 @@ void dcs_log(lua_State *L, int level, const char *fmt, ...) {
 }
 
 void push_path(lua_State *L, const char *path) {
-  char ns[64];
-  const char *dot = strchr(path, '.');
-  size_t n = dot ? (size_t)(dot - path) : 0;
-  if (!dot || n >= sizeof ns) { lua_pushnil(L); return; }
-  memcpy(ns, path, n);
-  ns[n] = 0;
-  lua_getglobal(L, ns);
-  if (!lua_istable(L, -1)) return;
-  lua_getfield(L, -1, dot + 1);
-  lua_remove(L, -2);
+  /* Walks "a.b.c" from the globals; nil as soon as a step isn't a table. */
+  char part[64];
+  const char *p = path;
+  int first = 1;
+  for (;;) {
+    const char *dot = strchr(p, '.');
+    size_t n = dot ? (size_t)(dot - p) : strlen(p);
+    if (n == 0 || n >= sizeof part) {
+      if (!first) lua_pop(L, 1);
+      lua_pushnil(L);
+      return;
+    }
+    memcpy(part, p, n);
+    part[n] = 0;
+    if (first) {
+      lua_getglobal(L, part);
+      first = 0;
+    } else if (!lua_istable(L, -1)) {
+      lua_pop(L, 1);
+      lua_pushnil(L);
+      return;
+    } else {
+      lua_getfield(L, -1, part);
+      lua_remove(L, -2);
+    }
+    if (!dot) return;
+    p = dot + 1;
+  }
 }
