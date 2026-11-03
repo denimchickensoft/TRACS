@@ -20,7 +20,9 @@
    The tick is finer than any data rate so a sliced collector's work spreads
    across ticks; no collector runs more often than once a second, the
    fastest rate anything in TRACS consumes. Timings and the frame-time log
-   are only built and sent with the relay's exporter.logTimings. */
+   are only built and sent with the relay's exporter.logTimings, except that
+   exporter.frameMeter sends the frame-time log on its own, collecting or
+   not, for comparing DCS frame times with other exporters running. */
 
 #define LUA_BUILD_AS_DLL
 #include <windows.h>
@@ -41,6 +43,9 @@
 #define DEFAULT_EVENT_CAP      2000
 #define MAX_EVENT_CAP          100000
 #define FRAME_SLOW_MS          30.0
+/* Frame times kept per second for the percentile and the meter's list;
+   frames past this in one second are counted but not kept. */
+#define FRAME_KEEP             1000
 #define FULL_WARN_INTERVAL_S   10.0
 
 enum { SIDE_NONE = -1, SIDE_SERVER, SIDE_CLIENT, SIDE_BOTH };
@@ -62,7 +67,7 @@ static const NativeCollector *g_natives;
 
 static struct {
   int side, ready;
-  int connected, awake, logTimings;
+  int connected, awake, logTimings, frameMeter;
   unsigned gen;
   double lastTick, lastFullWarn;
   unsigned long seq;
@@ -79,6 +84,7 @@ static struct {
   long droppedEvents;
   double lastFrame, ourMs, sumMs, maxMs, ourSumMs, ourMaxMs, reportAt;
   int frames, slow;
+  double frameMsKept[FRAME_KEEP];
   int sentinel;
 } S = { .side = SIDE_NONE, .eventCap = DEFAULT_EVENT_CAP };
 
@@ -429,6 +435,8 @@ static void applyConfig(cJSON *msg) {
   }
   v = cJSON_GetObjectItemCaseSensitive(msg, "logTimings");
   S.logTimings = cJSON_IsTrue(v);
+  v = cJSON_GetObjectItemCaseSensitive(msg, "frameMeter");
+  S.frameMeter = cJSON_IsTrue(v);
   cJSON *cols = cJSON_GetObjectItemCaseSensitive(msg, "collectors");
   if (!cJSON_IsObject(cols)) return;
   for (int i = 0; i < g_nCol; i++) {
@@ -498,14 +506,26 @@ static void processNet(lua_State *L) {
 
 /* The time between simulation frames (all of DCS's work, not only ours)
    and how much of each frame was this exporter's. Once a second a 'frames'
-   timing (count, average and worst frame, our total and worst ms); right
-   away a 'slow' one for any frame over FRAME_SLOW_MS, with our share of it,
-   so a spike can be told apart as ours or not. */
+   timing (count, average, 99th percentile and worst frame, our total and
+   worst ms); right away a 'slow' one for any frame over FRAME_SLOW_MS, with
+   our share of it, so a spike can be told apart as ours or not.
+
+   Runs while collecting with logTimings, or whenever the relay is connected
+   with frameMeter. Then the second's line also carries the mission time and
+   every frame time of that second, so runs with different exporters can be
+   compared frame by frame at the same mission time. */
+static int cmpDouble(const void *a, const void *b) {
+  double x = *(const double *)a, y = *(const double *)b;
+  return x < y ? -1 : x > y;
+}
+
 static void trackFrame(lua_State *L, double t) {
   double frameMs = S.lastFrame > 0 ? (t - S.lastFrame) * 1000 : -1, our = S.ourMs;
   S.lastFrame = t;
   S.ourMs = 0;
-  if (frameMs < 0 || !awake() || !S.logTimings) return;
+  if (frameMs < 0 || !S.connected) return;
+  if (!S.frameMeter && !(S.awake && S.logTimings)) return;
+  if (S.frames < FRAME_KEEP) S.frameMsKept[S.frames] = frameMs;
   S.frames++;
   S.sumMs += frameMs;
   S.ourSumMs += our;
@@ -524,11 +544,21 @@ static void trackFrame(lua_State *L, double t) {
   }
   if (t >= S.reportAt) {
     if (S.reportAt > 0) {
+      int kept = S.frames < FRAME_KEEP ? S.frames : FRAME_KEEP;
       b.len = 0;
       jb_puts(&b, "{\"type\":\"timing\",\"group\":\"frames\",\"kind\":\"second\",\"ms\":");
       jb_num(&b, S.sumMs / S.frames);
       jb_printf(&b, ",\"frames\":%d,\"maxMs\":", S.frames);
       jb_num(&b, S.maxMs);
+      if (S.frameMeter) {
+        /* In frame order, before the sort below. */
+        jb_printf(&b, ",\"t\":%.3f,\"frameMs\":[", modelTime(L));
+        for (int i = 0; i < kept; i++) jb_printf(&b, i ? ",%.2f" : "%.2f", S.frameMsKept[i]);
+        jb_puts(&b, "]");
+      }
+      qsort(S.frameMsKept, kept, sizeof S.frameMsKept[0], cmpDouble);
+      jb_puts(&b, ",\"p99Ms\":");
+      jb_num(&b, S.frameMsKept[(int)ceil(kept * 0.99) - 1]);
       jb_puts(&b, ",\"ourMs\":");
       jb_num(&b, S.ourSumMs);
       jb_puts(&b, ",\"ourMaxMs\":");

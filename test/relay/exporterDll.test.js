@@ -115,4 +115,45 @@ describe.skipIf(!available)('tracs_exporter.dll in a Lua harness', () => {
 
     expect(data(second).some((l) => l.group === 'fast')).toBe(true)
   }, (RUN_S + 15) * 1000)
+
+  test('frame meter: frame times every second while idle, nothing collected', async () => {
+    const lines = []
+    const server = net.createServer((sock) => {
+      let buf = ''
+      sock.setEncoding('utf8')
+      sock.on('error', () => {})
+      sock.on('data', (chunk) => {
+        buf += chunk
+        let i
+        while ((i = buf.indexOf('\n')) >= 0) {
+          lines.push(JSON.parse(buf.slice(0, i)))
+          buf = buf.slice(i + 1)
+        }
+      })
+      // No demand: the exporter stays idle.
+      sock.write(JSON.stringify({ ...config(false), frameMeter: true }) + '\n')
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const port = server.address().port
+
+    const proc = spawn(path.join(HARNESS, 'lua.exe'), [SCRIPT, String(port), '4', HARNESS], { cwd: HARNESS })
+    let out = ''
+    proc.stdout.on('data', (d) => { out += d })
+    proc.stderr.on('data', (d) => { out += d })
+    const code = await new Promise((resolve) => proc.on('exit', resolve))
+    await new Promise((resolve) => server.close(resolve))
+
+    expect(code, out).toBe(0)
+    expect(lines.some((l) => l.type === 'data')).toBe(false)
+    const seconds = lines.filter((l) => l.type === 'timing' && l.group === 'frames' && l.kind === 'second')
+    expect(seconds.length).toBeGreaterThan(0)
+    for (const s of seconds) {
+      expect(s.frameMs).toHaveLength(s.frames)
+      expect(typeof s.t).toBe('number')
+      expect(s.p99Ms).toBeLessThanOrEqual(s.maxMs)
+      expect(s.p99Ms).toBeGreaterThanOrEqual(Math.min(...s.frameMs))
+    }
+    // Collector timings stay off without logTimings.
+    expect(lines.some((l) => l.type === 'timing' && l.group !== 'frames')).toBe(false)
+  }, 20000)
 })

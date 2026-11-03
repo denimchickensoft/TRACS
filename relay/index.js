@@ -136,6 +136,8 @@ function exporterConfig(raw) {
     idleGraceMs:     Number.isFinite(graceMs) && graceMs >= 0 && graceMs <= 300000 ? graceMs : 10000,
     eventBufferSize: Number.isInteger(bufferSize) && bufferSize > 0 && bufferSize <= 100000 ? bufferSize : 2000,
     logTimings:      cfg.logTimings === true,
+    // DCS frame times to frame-meter/, collecting or not (frameMeter.js).
+    frameMeter:      cfg.frameMeter === true,
     // The running mission's file, served to TRACS's mission importers.
     missionData:     cfg.missionData !== false,
     // The DCS Saved Games folders the exporter is installed into

@@ -19,6 +19,7 @@
     "idleGraceMs": 10000,
     "eventBufferSize": 2000,
     "logTimings": false,
+    "frameMeter": false,
     "missionData": true,
     "collectors": {
       "units": { "enabled": true, "rateSec": 1 },

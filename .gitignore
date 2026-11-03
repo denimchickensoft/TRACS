@@ -17,6 +17,7 @@ relay/config.json
 relay/tacviewDetectionConfig.json
 relay/sessions.json
 relay/exporter-install.json
+relay/frame-meter/
 server/tacviewDetectionConfig.json
 server/rateConfig.json
 

@@ -18,10 +18,13 @@
 // a new collector in the hook needs no change here.
 
 const net = require('net')
+const path = require('path')
 const { gateConnection } = require('./auth')
 const { getDetectionConfig } = require('./tacview')
 const { loadMission } = require('./missionFile')
 const { audienceFor } = require('./missionText')
+const { createFrameMeter } = require('./frameMeter')
+const { RELAY_DIR } = require('./paths')
 
 const HOOK_PROTOCOL = 1
 // One collector's output for a large mission can be big; anything past this
@@ -84,6 +87,8 @@ function createExporter(wss, config) {
   // subscriber gets the text for its own coalition (missionText.js).
   let mission = null
   let missionKey = null
+  let meterKey = null
+  const meter = cfg.frameMeter ? createFrameMeter(path.join(RELAY_DIR, 'frame-meter')) : null
 
   function sendToHook(obj) {
     if (hookSocket && !hookSocket.destroyed) hookSocket.write(JSON.stringify(obj) + '\n')
@@ -133,6 +138,16 @@ function createExporter(wss, config) {
     })
   }
 
+  // One frame-meter file per mission load (a repeated hello for the same
+  // mission keeps writing to the same file).
+  function meterStart(hello) {
+    if (!meter) return
+    const key = `${hello.side}|${hello.loadTimeMs}|${hello.missionFile ?? ''}`
+    if (key === meterKey) return
+    meterKey = key
+    meter.start(hello)
+  }
+
   function setAwake(awake) {
     clearTimeout(idleTimer)
     idleTimer = null
@@ -159,6 +174,7 @@ function createExporter(wss, config) {
       case 'hello':
         hookInfo = { side: msg.side, multiplayer: msg.multiplayer, theatre: msg.theatre, collectors: msg.collectors, dll: msg.dll }
         missionLoaded(msg)
+        meterStart(msg)
         console.log(`[relay:exporter] hook connected - side=${msg.side} theatre=${msg.theatre ?? 'unknown'}`)
         if (msg.dll && !msg.dll.ok) {
           console.error(`[relay:exporter] exporter not collecting - ${msg.dll.error ?? 'DLL unavailable'}`)
@@ -179,6 +195,7 @@ function createExporter(wss, config) {
         break
       case 'timing':
         if (cfg.logTimings) console.log(`[relay:exporter] timing ${formatTiming(msg)}`)
+        meter?.record(msg)
         break
     }
   }
@@ -192,7 +209,10 @@ function createExporter(wss, config) {
     socket.setEncoding('utf8')
     socket.setNoDelay(true)
 
-    sendToHook({ type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize, logTimings: cfg.logTimings })
+    sendToHook({
+      type: 'config', v: HOOK_PROTOCOL, collectors: cfg.collectors, eventBufferSize: cfg.eventBufferSize,
+      logTimings: cfg.logTimings, frameMeter: cfg.frameMeter,
+    })
     if (subscribers.size > 0) setAwake(true)
 
     socket.on('data', (chunk) => {
@@ -224,6 +244,8 @@ function createExporter(wss, config) {
       groups = {}
       mission = null
       missionKey = null
+      meterKey = null
+      meter?.stop()
       console.log('[relay:exporter] hook disconnected')
       broadcast({ type: 'exporterReset' })
     })
@@ -285,6 +307,7 @@ function createExporter(wss, config) {
 
   function stop() {
     clearTimeout(idleTimer)
+    meter?.stop()
     hookSocket?.destroy()
     server?.close()
   }
