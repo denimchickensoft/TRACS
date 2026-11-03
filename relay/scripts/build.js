@@ -15,6 +15,7 @@
 
 const { execFileSync } = require('child_process')
 const fs   = require('fs')
+const crypto = require('crypto')
 const path = require('path')
 
 const DIR        = __dirname
@@ -25,6 +26,7 @@ const BUNDLE      = path.join(DIR, 'index.bundle.js')
 const BLOB        = path.join(DIR, 'index.blob')
 const WORKER_BUNDLE = path.join(DIR, 'missionWorker.bundle.js')
 const SEA_CONFIG  = path.join(DIR, 'sea-config.json')
+const SEA_CONFIG_BUILD = path.join(DIR, 'sea-config.build.json')
 const ICON_PNG    = path.join(RELAY_DIR, 'icon.png')
 
 function run(cmd, args) {
@@ -94,9 +96,27 @@ async function main() {
     outfile:     WORKER_BUNDLE,
   })
 
+  // The exporter's DCS side (hook, entry.lua, tracs_exporter.dll) is
+  // embedded in the executable too, and exporterInstall.js writes it into
+  // Saved Games from there, so an auto-update (which replaces only the exe)
+  // always brings the matching hook and DLL. Windows builds only: DCS runs on
+  // Windows, the exporter talks to a relay on the same machine, and the DLL
+  // only builds there.
+  const seaConfig = JSON.parse(fs.readFileSync(SEA_CONFIG, 'utf8'))
+  if (process.platform === 'win32') {
+    console.log('\nBuilding tracs_exporter.dll...')
+    execFileSync(process.execPath, [path.join(RELAY_DIR, 'native', 'build.js')], { stdio: 'inherit' })
+    const { FILES, assetName } = require('../exporterInstall')
+    for (const rel of FILES) seaConfig.assets[assetName(rel)] = path.join(RELAY_DIR, 'dcs', rel)
+    const dll = fs.readFileSync(path.join(RELAY_DIR, 'dcs', FILES[0]))
+    console.log(`tracs_exporter.dll SHA-256 (for the release notes): ${crypto.createHash('sha256').update(dll).digest('hex')}`)
+  }
+  fs.writeFileSync(SEA_CONFIG_BUILD, JSON.stringify(seaConfig, null, 2))
+
   console.log('\n[2/5] Generating Node SEA blob...')
   if (fs.existsSync(BLOB)) fs.rmSync(BLOB)
-  run(process.execPath, ['--experimental-sea-config', SEA_CONFIG])
+  run(process.execPath, ['--experimental-sea-config', SEA_CONFIG_BUILD])
+  fs.rmSync(SEA_CONFIG_BUILD, { force: true })
 
   console.log('\n[3/5] Copying node executable...')
   fs.copyFileSync(process.execPath, exePath)
@@ -132,16 +152,9 @@ async function main() {
     fs.copyFileSync(path.join(RELAY_DIR, 'config.example.json'), distConfigExample)
   }
 
-  // The exporter's DCS side (hook + tracs_exporter.dll) ships next to the
-  // exe, laid out the way it goes into Saved Games/DCS, so it's always the
-  // version this relay speaks. Windows builds only: DCS runs on Windows, and
-  // the exporter talks to a relay on the same machine; the hook is useless
-  // without the DLL, which only builds there.
-  if (process.platform === 'win32') {
-    console.log('\nBuilding tracs_exporter.dll...')
-    execFileSync(process.execPath, [path.join(RELAY_DIR, 'native', 'build.js')], { stdio: 'inherit' })
-    fs.cpSync(path.join(RELAY_DIR, 'dcs'), path.join(DIST_DIR, 'dcs'), { recursive: true })
-  }
+  // The DCS files are inside the exe now; an older build's loose copy would
+  // only go stale next to an auto-updated exe.
+  fs.rmSync(path.join(DIST_DIR, 'dcs'), { recursive: true, force: true })
 
   console.log(`\nBuilt ${path.relative(process.cwd(), exePath)}\n`)
 }

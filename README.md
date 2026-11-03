@@ -188,6 +188,19 @@ The executable checks GitHub Releases for newer `relay-v*` versions at startup a
 
 The relay exits after swapping, so run it under a supervisor that restarts it (see [Running as a service](#running-as-a-service)). The Docker image never self-updates; see [Running with Docker](#running-with-docker).
 
+### DCS exporter (Windows)
+
+The relay can feed TRACS straight from DCS through its own exporter, an add-on that runs inside DCS. It's optional and off by default: nothing is put into DCS unless you turn it on.
+
+- **Turning it on installs it.** Set `"exporter": { "enabled": true }` in `config.json`. At startup the relay installs the add-on into each folder in `exporter.savedGames`, for example `"savedGames": ["C:\\Users\\you\\Saved Games\\DCS"]`.
+- **No folder set yet?** The relay looks for DCS folders under your Saved Games. Run in a console window, it lists them, lets you pick, and saves your choice to `config.json`. Run as a service, it logs what it found and the line to add, and installs nothing.
+- **Only real DCS folders.** A folder is used only if DCS has run with it (it has `Config\options.lua`).
+- **It stays matched.** The add-on is built into `TRACS-Relay.exe`, so after a relay update the relay replaces the installed copy with its own at the next start.
+- **Turning it off removes it** from the folders this relay installed it into, and only those.
+- **DCS open:** DCS keeps the add-on in use while it runs, so the relay changes nothing, logs `close DCS to update it` (or `to remove it`), and tries again every minute.
+- **By hand:** `TRACS-Relay.exe --install-exporter` installs it and sets `exporter.enabled` to `true`. `TRACS-Relay.exe --uninstall-exporter` removes it and sets it to `false`. Both exit when done.
+- Where it goes: `Scripts\Hooks\TRACS-Exporter.lua` and `Mods\Services\TRACS\`. Where it was installed is kept in `exporter-install.json` next to `config.json`.
+
 ### Running as a service
 
 Run the relay under a service manager, so it starts with the machine and restarts after it exits. It exits after each self-update, so without a supervisor it stays down until someone restarts it. Always set the working directory to the executable's folder; `config.json` and the relay's state files live there.

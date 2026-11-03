@@ -16,6 +16,7 @@ specs/
 relay/config.json
 relay/tacviewDetectionConfig.json
 relay/sessions.json
+relay/exporter-install.json
 server/tacviewDetectionConfig.json
 server/rateConfig.json
 
@@ -31,6 +32,7 @@ npm-debug.log*
 dist/
 relay/scripts/index.bundle.js
 relay/scripts/index.blob
+relay/scripts/sea-config.build.json
 relay/scripts/missionWorker.bundle.js
 build/
 dist-electron/

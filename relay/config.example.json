@@ -14,6 +14,7 @@
   },
   "exporter": {
     "enabled": false,
+    "savedGames": [],
     "hookPort": 8767,
     "idleGraceMs": 10000,
     "eventBufferSize": 2000,

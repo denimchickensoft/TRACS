@@ -16,6 +16,7 @@ const { createTransponderRelay } = require('./transponders')
 const { createSyncRelay }        = require('./syncRelay')
 const { createTacviewRelay }     = require('./tacview')
 const { createExporter }         = require('./exporter')
+const exporterInstall            = require('./exporterInstall')
 const { checkAndApplyUpdate }    = require('./update')
 const { isSeaBinary, RELAY_DIR } = require('./paths')
 
@@ -137,8 +138,21 @@ function exporterConfig(raw) {
     logTimings:      cfg.logTimings === true,
     // The running mission's file, served to TRACS's mission importers.
     missionData:     cfg.missionData !== false,
+    // The DCS Saved Games folders the exporter is installed into
+    // (exporterInstall.js).
+    savedGames:      savedGamesList(cfg.savedGames),
     collectors:      exporterCollectors(cfg.collectors),
   }
+}
+
+function savedGamesList(raw) {
+  if (raw === undefined) return []
+  const list = typeof raw === 'string' ? [raw] : raw
+  if (!Array.isArray(list) || list.some((f) => typeof f !== 'string')) {
+    console.warn(`[relay] config exporter.savedGames must be a list of folder paths - ignoring ${JSON.stringify(raw)}`)
+    return []
+  }
+  return list.filter((f) => f.trim())
 }
 
 // Collector rates below 1 s are raised to 1 s (the fastest anything in TRACS
@@ -206,6 +220,14 @@ const config = {
   autoUpdate: autoUpdateConfig(fileConfig.autoUpdate),
   exporter: exporterConfig(fileConfig.exporter),
 }
+
+// --install-exporter / --uninstall-exporter: do that and exit, before
+// anything opens a port.
+const exporterCommand = exporterInstall.cliCommand()
+if (exporterCommand) process.exit(exporterInstall.runCli(exporterCommand, config.exporter))
+
+// Puts the exporter into DCS (or takes it out) to match exporter.enabled.
+exporterInstall.syncAtStartup(config.exporter)
 
 // One primary unit source per relay: an enabled exporter wins, and the
 // relay then never connects to Tacview. A Tacview connection streams from
