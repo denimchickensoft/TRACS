@@ -9,10 +9,10 @@ import { useAicStore, registerAicBroadcast, applyAicStateDump } from '../store/a
 import { useAbmStore, registerAbmBroadcast, applyAbmStateDump } from '../store/abm.js'
 import { registerAbmMissionBroadcast } from '../store/abmMission.js'
 import { registerAbmMarksBroadcast, getMarksDump, applyMarksDump } from '../store/abmMarks.js'
-import { useRoeStore, registerRoeBroadcast, applyRoe } from '../store/roe.js'
+import { useRoeStore, registerRoeBroadcast, applyRoe, clearRoe } from '../store/roe.js'
 import {
   registerDeclarationBroadcast, applySharedDeclaration, applySharedDeclarationsReset,
-  applySharedDeclarationsDump, getSharedDeclarations,
+  applySharedDeclarationsDump, getSharedDeclarations, clearSharedDeclarations,
 } from '../utils/createDeclarationStore.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
@@ -981,6 +981,9 @@ export function sendChatMessage({ text, toPosition = null, broadcast = false }) 
   })
 }
 
+// The coalition of the last initWebrtc() in this window (see there).
+let lastCoalition = null
+
 export async function initWebrtc({ olympusUrl, password, relayPassword, coalition, position, module: mod, frequency, facility = '', suffix = '' }) {
   activePosition = position
   activeModule   = mod
@@ -988,6 +991,15 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
   clientList     = []
   peerSeqs       = {}
   handshakeAcked = false
+
+  // Declarations and ROE are the session room's shared picture and nothing
+  // else clears them, so a sign-in on a different side would show the old
+  // side's. Cleared before the new room is joined, so its dump lands on top.
+  if (lastCoalition !== null && coalition !== lastCoalition) {
+    clearSharedDeclarations()
+    clearRoe()
+  }
+  lastCoalition = coalition
 
   // Recover the peer ID and original sign-on time from the previous session for
   // browser-refresh reconnect. sessionStorage is per-tab — survives reloads but

@@ -145,10 +145,14 @@ export const useStatusBoardStore = create((set) => ({
   // Autofill stamps (see modules/catcc/StatusBoardAutofill.jsx). A new
   // launch starts a new cycle, so it blanks the previous ATA in the same set.
   stampDeparture: (id, hhmm) =>
-    set((s) => ({ entries: s.entries.map((e) => e.id === id ? { ...e, atd: hhmm, ata: '' } : e) })),
+    set((s) => ({
+      entries: s.entries.map((e) => e.id === id
+        ? { ...e, atd: hhmm, ata: '', auto: { ...withoutAuto(e.auto, 'ata'), atd: true } }
+        : e),
+    })),
 
   stampArrival: (id, hhmm) =>
-    set((s) => ({ entries: s.entries.map((e) => e.id === id ? { ...e, ata: hhmm } : e) })),
+    set((s) => ({ entries: s.entries.map((e) => e.id === id ? { ...e, ata: hhmm, auto: { ...e.auto, ata: true } } : e) })),
 
   // CASE 2/3 marshal: the next EAT after the latest in the stack, and the lowest
   // free altitude that keeps the stack climbing (see fitStackAngels).

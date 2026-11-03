@@ -34,3 +34,8 @@ export const useRoeStore = create((set) => ({
 export function applyRoe(roe) {
   useRoeStore.setState({ roe })
 }
+
+// Signing in on a different coalition: the old side's ROE doesn't carry over.
+export function clearRoe() {
+  useRoeStore.setState({ roe: null })
+}

@@ -54,6 +54,14 @@ export function applySharedDeclarationsDump(declarations) {
   writeToAllStores(s => ({ declarations: { ...s.declarations, ...declarations } }))
 }
 
+// Signing in on a different coalition: the old side's declarations, and the
+// BRAA pairs between its units, mean nothing to the new room. Local only, no
+// broadcast; the new room's dump then brings its own declarations.
+// autoDeclareMode is a saved preference and stays.
+export function clearSharedDeclarations() {
+  writeToAllStores({ declarations: {}, braaList: [], pendingBraaFighter: null })
+}
+
 export function getSharedDeclarations() {
   return declarationStores[0]?.getState().declarations ?? {}
 }
