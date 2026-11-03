@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useMissionDataStore } from '../store/missionData.js'
 import { useSessionStore } from '../store/session.js'
 import { pendingAreas } from './areas.js'
@@ -9,7 +9,10 @@ import { buildContext, getAutoLoadMode, isIgnored, loadArea } from './load.js'
 // the room's module state has arrived (session.moduleSyncReady) so nothing
 // is loaded into a store the room is about to replace. "Always" loads them
 // straight away; "Ask" returns a prompt for MissionLoadPrompt.
-// Returns { ctx, pending: [{ area, diff }] } or null.
+// Returns [prompt, close, offerNow, canOffer]: prompt is { ctx, pending: [{ area, diff }],
+// manual } or null; offerNow (Settings > Load mission data now) opens the
+// prompt whatever the mode or an earlier Ignore, resolving to the number of
+// areas offered (0 = nothing new), or null when no mission can be offered.
 export function useMissionAutoLoad() {
   const data   = useMissionDataStore((s) => s.data)
   const ready  = useSessionStore((s) => s.moduleSyncReady)
@@ -35,5 +38,15 @@ export function useMissionAutoLoad() {
     return () => { cancelled = true }
   }, [data, ready, module])
 
-  return [prompt, () => setPrompt(null)]
+  const offerNow = useCallback(async () => {
+    if (!data || !ready || !module) return null
+    const ctx = buildContext(data)
+    const pending = await pendingAreas(module, ctx)
+    if (pending.length) setPrompt({ ctx, pending, manual: true })
+    return pending.length
+  }, [data, ready, module])
+
+  const canOffer = !!(data && ready && module)
+
+  return [prompt, () => setPrompt(null), offerNow, canOffer]
 }

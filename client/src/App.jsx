@@ -110,7 +110,8 @@ export function App() {
   const [settingsOpen,    setSettingsOpen]    = useState(false)
   const [userNavOpen,     setUserNavOpen]     = useState(false)
   const missionTheatre = useSessionStore((s) => s.mission?.mission?.theatre ?? null)
-  const [missionPrompt, closeMissionPrompt] = useMissionAutoLoad()
+  const [missionPrompt, closeMissionPrompt, offerMissionNow, canOfferMission] = useMissionAutoLoad()
+  const [missionLoadNote, setMissionLoadNote] = useState('')
   const [autoLoadMode, setAutoLoadModeState] = useState(getAutoLoadMode)
   const [tracsVersion,    setTracsVersion]    = useState(null)
   const [relaySnapshot,   setRelaySnapshot]   = useState({ version: null, protocolVersion: null })
@@ -706,7 +707,7 @@ export function App() {
           )}
 
           <button
-            onClick={() => setSettingsOpen((o) => !o)}
+            onClick={() => { setMissionLoadNote(''); setSettingsOpen((o) => !o) }}
             title="Settings"
             style={{
               background:    settingsOpen ? '#222' : 'transparent',
@@ -776,6 +777,28 @@ export function App() {
                 <option value="never">Never</option>
               </select>
             </label>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>
+              <span style={{ flex: 1 }}>{missionLoadNote || 'Mission data'}</span>
+              <button
+                disabled={!canOfferMission}
+                title={canOfferMission ? "Offer the running mission's data now, whatever Auto-load mission is set to" : 'No running mission from the DCS exporter'}
+                onClick={async () => {
+                  setMissionLoadNote('')
+                  try {
+                    const offered = await offerMissionNow()
+                    if (offered === 0) setMissionLoadNote('Nothing new to load')
+                    else if (offered) setSettingsOpen(false)
+                  } catch (err) {
+                    console.warn(`[missionData] could not read the mission - ${err?.message ?? err}`)
+                    setMissionLoadNote('Could not read the mission')
+                  }
+                }}
+                style={{ background: 'transparent', border: '1px solid #444', borderRadius: '3px', color: canOfferMission ? '#888' : '#444', cursor: canOfferMission ? 'pointer' : 'default', fontSize: '0.65rem', padding: '1px 8px' }}
+              >
+                Load mission data now
+              </button>
+            </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lnmDbPath ?? ''}>

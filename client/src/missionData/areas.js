@@ -47,7 +47,7 @@ const sourceKey = (ctx, group) => `mission:${ctx.id}:${group}`
 export const AREAS = [
   {
     key: 'flightplans',
-    label: 'Flight plans',
+    label: 'Flight Plans',
     modules: ['ATC'],
     shared: true,
     async diff(ctx) {
@@ -77,7 +77,7 @@ export const AREAS = [
   },
   {
     key: 'statusboard',
-    label: 'Status board',
+    label: 'Status Board',
     modules: ['CATCC'],
     shared: true,
     diff(ctx) {
@@ -150,7 +150,7 @@ export const AREAS = [
   },
   {
     key: 'navdata',
-    label: 'User navdata (video maps)',
+    label: 'User Navdata (Video Maps)',
     // Only STARS draws user video maps (its MAPS submenu).
     modules: ['ATC'],
     shared: false,

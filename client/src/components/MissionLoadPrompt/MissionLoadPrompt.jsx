@@ -5,7 +5,8 @@ import './MissionLoadPrompt.css'
 // The one prompt per mission (Settings > Auto-load mission: Ask): the
 // areas of this position with something new in the running mission, all
 // ticked. Load adds the ticked ones; Ignore leaves this mission alone until
-// a different one loads.
+// a different one loads. Opened from Settings > Load mission data now
+// (prompt.manual) it offers Cancel instead, which ignores nothing.
 export function MissionLoadPrompt({ prompt, onClose }) {
   const [checked, setChecked] = useState(() => new Set(prompt.pending.map((p) => p.area.key)))
   const [busy, setBusy] = useState(false)
@@ -37,7 +38,7 @@ export function MissionLoadPrompt({ prompt, onClose }) {
   }
 
   const ignore = () => {
-    setIgnored(prompt.ctx.id)
+    if (!prompt.manual) setIgnored(prompt.ctx.id)
     onClose()
   }
 
@@ -58,7 +59,7 @@ export function MissionLoadPrompt({ prompt, onClose }) {
           {error && <div className="mlp-error">{error}</div>}
         </div>
         <div className="mlp-actions">
-          <button className="mlp-btn" onClick={ignore} disabled={busy}>Ignore</button>
+          <button className="mlp-btn" onClick={ignore} disabled={busy}>{prompt.manual ? 'Cancel' : 'Ignore'}</button>
           <button className="mlp-btn primary" onClick={load} disabled={busy || checked.size === 0}>{busy ? 'Loading…' : 'Load'}</button>
         </div>
       </div>
