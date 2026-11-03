@@ -12,12 +12,13 @@ import { registerAbmMarksBroadcast, getMarksDump, applyMarksDump } from '../stor
 import { useRoeStore, registerRoeBroadcast, applyRoe, clearRoe } from '../store/roe.js'
 import {
   registerDeclarationBroadcast, applySharedDeclaration, applySharedDeclarationsReset,
-  applySharedDeclarationsDump, getSharedDeclarations, clearSharedDeclarations,
+  applySharedDeclarationsDump, getSharedDeclarations, clearSharedDeclarations, subscribeSharedDeclarations,
 } from '../utils/createDeclarationStore.js'
 import { useControllersStore } from '../store/controllers.js'
 import { handleModuleMessage } from './handlers.js'
 import { applyCallsignRenameRemote } from '../utils/callsignRename.js'
 import { log } from '../utils/log.js'
+import { saveDeclarations, loadDeclarations, clearSavedDeclarations } from '../utils/declarationSession.js'
 
 // ── Signal relay URL (same server the browser loaded from) ────────────────────
 function getSignalUrl() {
@@ -152,6 +153,7 @@ function stillPendingSelf() {
 // never the one still pending.
 function ensureSelfRegistered() {
   if (stillPendingSelf()) useControllersStore.getState().finalizeController(activePosition)
+  refreshDeclarationRestore()
 }
 
 function clearSelfMintTimers() {
@@ -330,6 +332,66 @@ function amHost() {
 function syncPeers() {
   useSessionStore.getState().setPeers([...clientList])
   useControllersStore.getState().rebuildFromClientList(clientList)
+  refreshDeclarationRestore()
+}
+
+// ── Declarations across a page reload (utils/declarationSession.js) ─────────
+// This window keeps its declarations for the room it's in and the mission
+// that's running. After joining, the saved ones come back only once it's
+// clear this controller is alone in the room: anyone else there sends the
+// room's own declarations in their dump (STATE_DUMP or SHARED_STATE_DUMP),
+// and those win, so a reset made while this window was reloading can't be
+// undone by its old copy. Nothing is saved until that's decided, so the saved
+// copy survives until then.
+let declarationRoom      = null   // this session room's id, null when not in one
+let declarationsDecided  = false
+let declarationsDumped   = false
+let declarationSaveTimer = null
+
+function declarationMission() {
+  const mission = useSessionStore.getState().mission
+  return mission?.sessionHash ?? mission?.mission?.theatre ?? null
+}
+
+function flushDeclarationSave() {
+  clearTimeout(declarationSaveTimer); declarationSaveTimer = null
+  if (declarationRoom && declarationsDecided) {
+    saveDeclarations(declarationRoom, declarationMission(), getSharedDeclarations())
+  }
+}
+
+function scheduleDeclarationSave() {
+  if (!declarationRoom || !declarationsDecided || declarationSaveTimer) return
+  declarationSaveTimer = setTimeout(flushDeclarationSave, 250)
+}
+
+if (!_isPopupWindow()) {
+  subscribeSharedDeclarations(scheduleDeclarationSave)
+  window.addEventListener('pagehide', flushDeclarationSave)
+}
+
+function _isPopupWindow() {
+  return typeof window === 'undefined' || !!new URLSearchParams(window.location.search).get('window')
+}
+
+function refreshDeclarationRestore() {
+  if (!declarationRoom || declarationsDecided) return
+  if (!declarationsDumped) {
+    const settled = usingSyncRelay ? handshakeAcked : !stillPendingSelf()
+    if (!settled) return
+    // This window's own entry from before the reload doesn't count as someone
+    // else (same device and position; another tab on this device is a
+    // different position).
+    const myClientId = getClientId()
+    const others = effectiveClientList().filter(c =>
+      c.peerId !== selfId && !(c.clientId === myClientId && c.position === activePosition))
+    if (!others.length) {
+      const saved = loadDeclarations(declarationRoom, declarationMission())
+      if (saved) applySharedDeclarationsDump(saved)
+    }
+  }
+  declarationsDecided = true
+  flushDeclarationSave()
 }
 
 // ── State persistence ─────────────────────────────────────────────────────────
@@ -525,7 +587,10 @@ function applyDump(mod, payload) {
       useAtcStore.setState({ callsignOverrides: payload.callsignOverrides })
     }
     if (payload.roe !== undefined) applyRoe(payload.roe)
-    if (payload.declarations) applySharedDeclarationsDump(payload.declarations)
+    if (payload.declarations) {
+      applySharedDeclarationsDump(payload.declarations)
+      declarationsDumped = true
+    }
   } finally {
     _applying = false
   }
@@ -782,6 +847,7 @@ async function onSessionMessage(msg, fromPeerId) {
 
     case 'STATE_DUMP': {
       applyDump(activeModule, msg.payload)
+      refreshDeclarationRestore()
       useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
       break
     }
@@ -790,6 +856,7 @@ async function onSessionMessage(msg, fromPeerId) {
     // every module-apply step in applyDump.
     case 'SHARED_STATE_DUMP': {
       applyDump(null, msg.payload)
+      refreshDeclarationRestore()
       useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
       break
     }
@@ -1039,6 +1106,9 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     ? relayTopicFor(coalition)
     : await deriveRoomId(olympusUrl, password, coalition)
   const moduleRoomId  = `${sessionRoomId}-${mod.toLowerCase()}`
+  declarationRoom     = sessionRoomId
+  declarationsDecided = false
+  declarationsDumped  = false
   // Same [sync]/[webrtc] convention logMsg() already uses below, for the
   // same reason -- this always said [webrtc] regardless of which transport
   // actually carried it.
@@ -1172,6 +1242,7 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
     handshakeAcked = true
     useSessionStore.getState().setWebrtcStatus(activeTransportStatus())
     persistSession()
+    refreshDeclarationRestore()
   } else {
     // Add self immediately — if first peer, we're already "connected". Real
     // identity (host election + minting) resolves via HANDSHAKE/CLU below;
@@ -1233,6 +1304,10 @@ export async function initWebrtc({ olympusUrl, password, relayPassword, coalitio
 
 export async function disconnectWebrtc() {
   registerStatusBoardBroadcast(null)
+  // Signing out or changing position ends this window's declarations session.
+  clearTimeout(declarationSaveTimer); declarationSaveTimer = null
+  declarationRoom = null
+  clearSavedDeclarations()
   await fetch('/api/state/intentional-reset', { method: 'POST' }).catch(() => {})
 
   // Clear stored peer ID and sign-on time so next initWebrtc (new position) starts fresh

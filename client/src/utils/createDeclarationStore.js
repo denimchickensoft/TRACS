@@ -66,6 +66,14 @@ export function getSharedDeclarations() {
   return declarationStores[0]?.getState().declarations ?? {}
 }
 
+// Calls cb(declarations) whenever the shared declarations change (every
+// store holds the same ones, so the first is watched).
+export function subscribeSharedDeclarations(cb) {
+  return declarationStores[0]?.subscribe((s, prev) => {
+    if (s.declarations !== prev.declarations) cb(s.declarations)
+  }) ?? (() => {})
+}
+
 export function createDeclarationStore({ storageKey, channelName }) {
   const { register, broadcast } = createBroadcastHook()
 

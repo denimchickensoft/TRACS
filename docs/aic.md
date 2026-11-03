@@ -66,6 +66,8 @@ Type anywhere in the AIC window (outside a text field), then press **Enter** to 
 
 You can also declare contacts with the F-keys and a click (see Keyboard, below).
 
+Declarations are one picture shared by every AIC and ABM controller on your coalition. They survive a page reload: with other controllers connected you get the room's current declarations, and alone you get back the ones you had, unless a different mission is running by then. What a reload brings back ends when you close the tab or app or Change Position, and signing in on another coalition clears them.
+
 ### ROE
 
 `.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left. Bare `.roe` toggles visibility of the ROE readout itself (visible by default).
