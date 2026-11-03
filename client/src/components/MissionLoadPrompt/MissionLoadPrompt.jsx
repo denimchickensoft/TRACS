@@ -5,7 +5,7 @@ import './MissionLoadPrompt.css'
 // The one prompt per mission (Settings > Auto-load mission: Ask): the
 // areas of this position with something new in the running mission, all
 // ticked. Load adds the ticked ones; Ignore leaves this mission alone until
-// a different one loads. Opened from Settings > Load mission data now
+// a different one loads. Opened from Settings > Force Load
 // (prompt.manual) it offers Cancel instead, which ignores nothing.
 export function MissionLoadPrompt({ prompt, onClose }) {
   const [checked, setChecked] = useState(() => new Set(prompt.pending.map((p) => p.area.key)))

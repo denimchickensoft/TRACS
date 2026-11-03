@@ -796,7 +796,7 @@ export function App() {
                 }}
                 style={{ background: 'transparent', border: '1px solid #444', borderRadius: '3px', color: canOfferMission ? '#888' : '#444', cursor: canOfferMission ? 'pointer' : 'default', fontSize: '0.65rem', padding: '1px 8px' }}
               >
-                Load mission data now
+                Force Load
               </button>
             </div>
 

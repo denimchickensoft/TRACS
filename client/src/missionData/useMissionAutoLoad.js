@@ -10,7 +10,7 @@ import { buildContext, getAutoLoadMode, isIgnored, loadArea } from './load.js'
 // is loaded into a store the room is about to replace. "Always" loads them
 // straight away; "Ask" returns a prompt for MissionLoadPrompt.
 // Returns [prompt, close, offerNow, canOffer]: prompt is { ctx, pending: [{ area, diff }],
-// manual } or null; offerNow (Settings > Load mission data now) opens the
+// manual } or null; offerNow (Settings > Force Load) opens the
 // prompt whatever the mode or an earlier Ignore, resolving to the number of
 // areas offered (0 = nothing new), or null when no mission can be offered.
 export function useMissionAutoLoad() {

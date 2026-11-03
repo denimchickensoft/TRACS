@@ -127,6 +127,7 @@ The **⚙** icon (top right, once signed in) opens the settings panel:
 - **Auto-load mission** — with the DCS exporter as the data source, TRACS can load the running mission's data for your position: flight plans and its drawings as User navdata video maps (ATC), status board aircraft and weather (CATCC), and ATO flights and Drawings (ABM). See [Live mission data](#live-mission-data).
   - **Ask** (default): one prompt per mission listing what's new, all ticked. **Load** adds the ticked parts. **Ignore** leaves that mission alone until a different one loads.
   - **Always**: loads everything new without asking. **Never**: no prompt; the manual **Load Mission** imports still work.
+  - **Force Load**: opens the prompt now, whatever the setting and even after **Ignore**, with **Cancel** in place of Ignore. It says *Nothing new to load* when everything is already in.
 - **Navigation data** — the LittleNavMap database TRACS is using, and (desktop app) a **Change…** button. See [Navigation data](#navigation-data-littlenavmap).
 - **User navdata → Manage…** — add your own fixes, STARS video maps and procedures. See [User navdata](#user-navdata).
 - **Version line** — the TRACS version (`TRACS (dev)` when running from source), plus the relay's version and protocol number when connected to one.
