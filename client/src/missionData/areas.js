@@ -26,7 +26,6 @@ import { useUnitsStore } from '../store/units.js'
 import { useSessionStore } from '../store/session.js'
 import { sendWebrtcEvent } from '../webrtc/client.js'
 
-const ALL_MODULES = ['ATC', 'CATCC', 'ABM', 'AIC']
 const NAME_PREFIX = 'MISSION'
 const EMPTY = { count: 0 }
 
@@ -152,7 +151,8 @@ export const AREAS = [
   {
     key: 'navdata',
     label: 'User navdata (video maps)',
-    modules: ALL_MODULES,
+    // Only STARS draws user video maps (its MAPS submenu).
+    modules: ['ATC'],
     shared: false,
     async diff(ctx) {
       if (!ctx.theatre) return EMPTY
