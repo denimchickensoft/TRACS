@@ -10,7 +10,7 @@
 [![Discord](https://img.shields.io/discord/1521314576409559100?style=flat-square&label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/5W6cuezyPD)
 [![Release](https://img.shields.io/github/v/release/denimchickensoft/TRACS?filter=v*&style=flat-square&label=release)](https://github.com/denimchickensoft/TRACS/releases/latest)
 [![Build](https://github.com/denimchickensoft/TRACS/actions/workflows/ci.yml/badge.svg)](https://github.com/denimchickensoft/TRACS/actions/workflows/ci.yml)
-[![Downloads](https://img.shields.io/github/downloads/denimchickensoft/TRACS/total?style=flat-square)](https://github.com/denimchickensoft/TRACS/releases)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdenimchickensoft%2FTRACS%2Fbadges%2Fdownloads.json&style=flat-square)](https://github.com/denimchickensoft/TRACS/releases)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
