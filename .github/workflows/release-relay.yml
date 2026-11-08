@@ -53,6 +53,14 @@ jobs:
         shell: bash
         run: rm -f relay/dist/config.example.json
 
+      # The notices for what the executables bundle (Node.js, ws, and the
+      # exporter DLL's cJSON and Lua headers). Linux job only, for the same
+      # reason as config.example.json.
+      - name: Add third-party notices
+        if: runner.os == 'Linux'
+        shell: bash
+        run: cp THIRD_PARTY_NOTICES.md relay/dist/
+
       - name: Publish release assets
         uses: softprops/action-gh-release@v3
         with:
