@@ -212,7 +212,7 @@ These lists appear only if your ODS profile enables coordination lists. `+ ENTER
 
 ## Transponder/IFF correlation
 
-When SRS transponder data reaches TRACS through a relay (in Tacview or Olympus sessions), tracks that report SRS data ("SRS-fielded") use squawk-based association:
+When SRS transponder data reaches TRACS through a relay (in Olympus, Tacview or Relay sessions), tracks that report SRS data ("SRS-fielded") use squawk-based association:
 
 | Item | Effect |
 |---|---|

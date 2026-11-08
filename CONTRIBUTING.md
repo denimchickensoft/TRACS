@@ -17,8 +17,8 @@ npm run dev        # local server + Vite dev client
 
 ## Before you open a pull request
 
-- **Lint:** run `npm run lint`. It runs ESLint and checks that the generated copies of shared server files (the Tacview parser, the protocol version, the detection-config example) are in sync. It must pass with no errors.
-- **Tests:** run `npm test`. Unit tests live in `test/`, mirroring the package they cover, and run in CI on every push and pull request.
+- **Lint:** run `npm run lint`. It runs ESLint, a Lua syntax check of the exporter's DCS-side scripts, and checks that the generated copies of shared server files (the Tacview parser, the protocol version, the detection-config example) are in sync. It must pass with no errors.
+- **Tests:** run `npm test`. Unit tests live in `test/`, mirroring the package they cover, and run in CI on every push and pull request. The exporter DLL tests need Windows with MSVC (`node relay/native/build.js --harness`); without it they're skipped, and CI runs them.
 - **Unused code:** `npm run knip` reports unused files, exports and dependencies. Please don't add new findings.
 - **Test your change** against a real or mock data source, and say how you tested it in the pull request.
 - **Keep it focused.** One fix or feature per pull request is much easier to review than a bundle.
