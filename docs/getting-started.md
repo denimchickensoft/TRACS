@@ -10,7 +10,7 @@ When you launch TRACS, it asks you to connect. Pick a **Primary Data Source** fi
 |---|---|
 | **Olympus** | Polls the DCS Olympus mod's REST API directly. |
 | **Tacview** | Connects straight to a DCS server's Tacview Real-Time Telemetry export. |
-| **Relay** | Connects to a TRACS Relay instead of DCS directly. The relay connects to Tacview and to SRS on your behalf, and fans that data out to any number of controllers. |
+| **Relay** | Connects to a TRACS Relay instead of DCS directly. The relay gets unit data from Tacview or from its own DCS exporter, adds SRS, and fans it out to any number of controllers. |
 
 Which fields are shown and required depends on the mode:
 
@@ -38,9 +38,17 @@ If a Relay Port is set, TRACS checks in parallel whether relay sync is available
 - "Relay unreachable — using peer-to-peer."
 - "Relay protocol mismatch: relay=N client=M — update whichever side is behind — using peer-to-peer." — the relay and TRACS versions are incompatible.
 
-**Theatre** (Tacview and Relay modes): Tacview doesn't report which DCS theatre a mission runs on, so TRACS detects it from unit positions and shows "Theatre (detected: X)" on the sign-in screen. **▸ Override** lets you pick the theatre manually, and **⟲ Reset to auto-detect** undoes that.
+**Theatre** (Tacview mode): Tacview doesn't report which DCS theatre a mission runs on, so TRACS detects it from unit positions and shows "Theatre (detected: X)" on the sign-in screen. **▸ Override** lets you pick the theatre manually, and **⟲ Reset to auto-detect** undoes that. In Relay mode the theatre is detected the same way from Tacview data, or reported by DCS itself when the relay uses the DCS exporter.
 
 **Tacview session restarts** (Tacview and Relay modes): a Tacview session ends when the server restarts or changes its mission, or, if TRACS reads your own DCS client's Tacview, when you leave the server. When that happens every track clears, and TRACS reconnects on its own. It retries every few seconds at first, backing off to once a minute, so tracks can take up to a minute to reappear once the new session is running. In Tacview mode the top bar shows `NO RESPONSE: RECONNECTING (Tacview)` meanwhile. Aircraft that are still in the new session come back and keep their claims.
+
+**DCS exporter restarts** (Relay mode with the exporter): when the mission changes, the server restarts, DCS closes, or you leave the server on a client, every track clears and the top bar shows `NO RESPONSE: RECONNECTING (DCS)` until DCS loads a mission again. Tracks come back by themselves.
+
+**Exporter status messages** in the top bar:
+- `NO RESPONSE: RECONNECTING (DCS)`: the relay is up but DCS isn't connected to it (no mission loaded, or DCS closed).
+- `DISCONNECTED (Exporter unavailable: <reason>)`: the exporter failed its startup check in DCS; the reason says why.
+- `DISCONNECTED (The DCS server doesn't allow object export)`: on a client, the server has turned off object export, so there are no units to show.
+- `NO MISSION DATA: NO DCS TRACK FILE FOUND`: see [Live mission data](#live-mission-data).
 
 ## 2. Sign in to a position
 
@@ -121,7 +129,7 @@ The **⚙** icon (top right, once signed in) opens the settings panel:
 - **Use DCS Multiplayer Names** — how a track's callsign is read from its name:
   - **On** (default): picks the callsign out of a multiplayer name, so `COLT 1-1 | Pilotname` becomes `COLT11`. A name with no callsign in it uses the in-mission callsign if there is one, otherwise the text before the first `|` (or the whole name if there's no `|`).
   - **Off**: uses the in-mission callsign, otherwise the whole name with spaces and symbols removed.
-  - In **Tacview** and **Relay** modes there's no in-mission callsign, so both settings read the player's multiplayer name; the setting only decides whether a callsign is picked out of it.
+  - In **Tacview** mode, and **Relay** mode over Tacview, there's no in-mission callsign, so both settings read the player's multiplayer name; the setting only decides whether a callsign is picked out of it. With the relay's DCS exporter, the in-mission callsign (the unit's mission name) is available as in Olympus mode.
   - A track only matches a flight plan filed under the callsign it resolves to. To match one that doesn't, use `.RENAME <callsign>` and click the track (see [ATC](atc.md)).
 - **Sounds** — master mute for every audible alert TRACS plays, on by default: STARS Conflict Alert (STCA) tones and the [ABM missile-launch alert](abm.md#missile-tracking--launch-alert). Unchecking it silences both regardless of any per-module volume setting (e.g. ABM's `.vol`).
 - **Auto-load mission** — with the DCS exporter as the data source, TRACS can load the running mission's data for your position: flight plans and its drawings as User navdata video maps (ATC), status board aircraft and weather (CATCC), and ATO flights and Drawings (ABM). See [Live mission data](#live-mission-data).
@@ -141,7 +149,7 @@ With the DCS exporter as the data source, the relay reads the running mission's 
 - It only ever **adds** what isn't loaded yet, so it never replaces or duplicates something already there, and it never overwrites an edit. A restart of the same mission asks again only if something is missing (for example after **Clear Mission**).
 - The prompt waits until your module's state from the other controllers has arrived, so it only lists what's actually missing.
 - The status board and flight plans are shared by every controller in the room. Their loads, the manual imports included, run one controller at a time, so two controllers loading at the same moment can't end up with different boards or different beacon codes. The second controller gets nothing new to load.
-- A client gets no mission data with track recording turned off in DCS's options (the relay reads the mission from that track).
+- If no multiplayer track file appears within 30 seconds of joining as a client, no mission data is offered and the top bar shows `NO MISSION DATA: NO DCS TRACK FILE FOUND`. Rejoining tries again.
 
 ## Navigation data (LittleNavMap)
 
