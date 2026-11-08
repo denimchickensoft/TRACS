@@ -64,3 +64,18 @@ TRACS bundles the **Roboto Mono** typeface, Copyright 2015 The Roboto Mono Proje
 ## Software dependencies
 
 The TRACS desktop app bundles open-source npm packages and the Electron runtime. Each package's license file is included in its folder under `node_modules`, and Electron ships its own Chromium license notices (`LICENSES.chromium.html`). The TRACS Relay bundles the Node.js runtime (MIT license) and the `ws` package (MIT license).
+
+### DCS exporter
+
+The exporter DLL (`tracs_exporter.dll`, built into the Windows TRACS Relay and installed into DCS by it) is compiled with the following, both under the MIT license:
+
+- **cJSON 1.7.18** (`relay/native/cjson-1.7.18/`): Copyright (c) 2009-2017 Dave Gamble and cJSON contributors.
+- **Lua 5.1.5 headers** (`relay/native/lua-5.1.5/`): Copyright (C) 1994-2012 Lua.org, PUC-Rio.
+
+Both are distributed under this license text:
+
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
