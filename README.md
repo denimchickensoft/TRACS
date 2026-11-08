@@ -30,7 +30,7 @@ Each controller runs TRACS on their own machine. TRACS reads unit data from thre
 
 - the [DCS Olympus](https://github.com/Pax1601/DCSOlympus) mod's REST API
 - a direct connection to Tacview's Real-Time Telemetry export
-- a **TRACS Relay** running on or near the DCS server, which can also relay Tacview data
+- a **TRACS Relay**, which gets its data from Tacview or from its own **DCS exporter**, an optional add-on that runs inside DCS on the same machine (the server host, or a player's own DCS)
 
 Whichever source you use, a TRACS Relay can also supply SRS transponder/IFF data. Controllers sync with each other through the relay when one is available, and peer-to-peer over WebRTC otherwise. The peer-to-peer method requires no shared server.
 
@@ -121,7 +121,11 @@ Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
 - **Unsigned builds.** Windows SmartScreen and macOS Gatekeeper warn on first launch. On macOS, updates are installed by hand from the Releases page.
 - **Navigation data needs your own LittleNavMap Navigraph database.** Without it, fixes, navaids, airways and procedures aren't available.
 - **Not every STARS command is implemented.** See [ATC known limitations](docs/atc.md#known-limitations) for the list.
-- **Tacview detection is simulated.** In Tacview mode, radar and RWR fog-of-war is TRACS's own approximation, not DCS's detection data.
+- **Tacview and DCS-client detection is simulated.** In Tacview mode, and with the DCS exporter on a player's client, radar and RWR fog-of-war is TRACS's own approximation, not DCS's detection data.
+- **The DCS exporter is Windows-only and runs next to DCS.** It needs the relay on the same machine as DCS, so a player using it on their own client runs a relay there. On a client:
+  - A server that doesn't allow object export gives it no units (the top bar says so).
+  - Bullseyes come from the mission file, so a bullseye that a mission script moves later isn't followed.
+  - The weather fields don't fill in live (type them, or let the mission's own weather load). The airbase list has no carriers or FARPs, but carriers still come through as units, so CATCC works as normal.
 - **One coalition per running TRACS.** All windows share one data feed, so every window uses the coalition and password of the first login. To switch coalitions, close and reopen TRACS.
 - **Game Master / Admin on a relay see only their own controller sync.** A relay keeps each coalition's controller sync separate. The relay would allow a Game Master or Admin into every coalition's, but TRACS doesn't join more than one yet.
 
@@ -129,7 +133,9 @@ Then follow [Getting Started](docs/getting-started.md) to connect and sign in.
 
 - **Olympus** — requires the Olympus mod and its server application on the DCS server. TRACS polls its REST API with your coalition's Olympus password.
 - **Tacview** — requires Tacview Real-Time Telemetry enabled on the DCS server. TRACS connects straight to it with the Tacview RTT password.
-- **Relay** — a TRACS Relay connects to Tacview for you, and adds SRS transponder data and relay-hosted sync.
+- **Relay** — a TRACS Relay serves SRS transponder data and relay-hosted sync, and feeds TRACS its unit data one of two ways:
+  - **DCS exporter** (Windows): the relay's own add-on inside DCS, with the relay on the same machine. On the server host it sends units, DCS's own detection, bullseyes, mission clock, airbases, weather and the running mission. On a player's DCS client it sends what DCS allows a client: units, bullseye, clock, airbases and the mission, with TRACS's own fog-of-war model. When the exporter is on, it's used instead of Tacview. See [DCS exporter](#dcs-exporter-windows).
+  - **Tacview**: the relay connects to Tacview Real-Time Telemetry once and passes it on to every controller.
 
 A Relay can also be used alongside Olympus or Tacview, only for SRS data and sync. See [Getting Started](docs/getting-started.md#1-connect) for the connection fields.
 
@@ -141,9 +147,10 @@ The relay is a standalone executable (or a [Docker image](#running-with-docker))
 
 - listens to **SRS's LotATC export** (UDP) and serves transponder data (Mode 1/2/3/4, status) to every connected controller at `/transponders`;
 - hosts **centralized sync** between controllers at `/sync`;
-- optionally connects to **Tacview Real-Time Telemetry** once and fans it out to controllers at `/tacview` (Relay mode on the connect screen).
+- optionally connects to **Tacview Real-Time Telemetry** once and fans it out to controllers at `/tacview` (Relay mode on the connect screen);
+- optionally runs the **DCS exporter** (Windows, on the DCS machine) and serves its data to controllers at `/data`; when it's on, it replaces the Tacview connection (Relay mode on the connect screen).
 
-All three are served on one WebSocket port. The same port answers `GET /health` with the relay's version, protocol version, uptime and which capabilities are active, for monitoring.
+All four are served on one WebSocket port. The same port answers `GET /health` with the relay's version, protocol version, uptime and which capabilities are active, for monitoring.
 
 ### Setup
 
@@ -174,7 +181,15 @@ Each key falls back to the environment variable listed, then to the default.
 | `missileDetectionMs` | `MISSILE_DETECTION_MS` | `1000`                           | Missile detection update interval, 1000-60,000 ms (example: `4000`)                                                                                                  |
 | `autoUpdate.mode`    | —                      | `window`                         | `notify`, `immediate`, or `window` (see below)                                                                                                                       |
 | `autoUpdate.window`  | —                      | `04:00`–`05:00` America/New_York | `{ start, end, timezone }` daily maintenance window for `window` mode                                                                                                |
-| —                    | `RELAY_DATA_DIR`       | the executable's folder          | Folder holding `config.json`, `sessions.json` and `tacviewDetectionConfig.json`. The Docker image sets it to `/data`                                                 |
+| `exporter.enabled` | — | `false` | Turn the [DCS exporter](#dcs-exporter-windows) on. Windows only; elsewhere it's ignored with a warning. The relay installs it into DCS at startup |
+| `exporter.savedGames` | — | `[]` | DCS Saved Games folders to install into, e.g. `["C:\\Users\\you\\Saved Games\\DCS"]`. Empty: the relay looks for them |
+| `exporter.hookPort` | `EXPORTER_HOOK_PORT` | `8767` | Port the add-on in DCS connects to. The relay listens on `127.0.0.1` only |
+| `exporter.idleGraceMs` | — | `10000` | How long DCS keeps collecting after the last controller disconnects, 0-300,000 ms |
+| `exporter.eventBufferSize` | — | `2000` | Mission events (such as kills) kept while no controller is connected; the oldest are dropped past this. 1-100,000 |
+| `exporter.missionData` | — | `true` | Read the running mission's file and serve it to TRACS (see [Live mission data](docs/getting-started.md#live-mission-data)) |
+| `exporter.collectors.<name>` | — | see `config.example.json` | Per data group: `enabled`, and `rateSec` (1 s minimum). `contacts.sensorUnitsOnly: true` skips units whose type DCS says has no sensors when asking for detections: less work for DCS, but untested for whether it drops any contacts. Off by default, which matches Olympus |
+| `exporter.logTimings`, `exporter.frameMeter` | — | `false` | Diagnostics: per-step timing lines in the log, and DCS frame times written to `frame-meter/` |
+| —                    | `RELAY_DATA_DIR`       | the executable's folder          | Folder holding `config.json`, `sessions.json`, `tacviewDetectionConfig.json`, and the exporter's `exporter-install.json` and `frame-meter/`. The Docker image sets it to `/data`                                                 |
 
 ### Relay updates
 
@@ -192,6 +207,11 @@ The relay exits after swapping, so run it under a supervisor that restarts it (s
 
 The relay can feed TRACS straight from DCS through its own exporter, an add-on that runs inside DCS. It's optional and off by default: nothing is put into DCS unless you turn it on.
 
+- **Same machine as DCS.** The add-on talks to the relay on `127.0.0.1`, so run this relay on the machine DCS runs on: the server host, or a player's own PC. Windows only; the Linux executable and the Docker image ignore `exporter.enabled`.
+- **Host or client.** On a server host it sends units, DCS's own detection, bullseyes, the mission clock, airbases, weather and mission events, plus the running mission. On a client that joined a server it sends what DCS allows a client: units (if the server allows object export), the mission's bullseyes, the clock, airbases and the mission. Fog of war there comes from TRACS's own model.
+- **Instead of Tacview.** With the exporter on, `tacviewHost` is ignored. Controllers connect in Relay mode as usual.
+- **Only while someone's watching.** DCS collects only while at least one controller is connected, plus `exporter.idleGraceMs` (10 s) after the last one leaves. Mission events from the idle time are kept and sent when a controller connects.
+- **Loaded message.** On a host, DCS shows "TRACS Relay vX.Y.Z exporter loaded." when a mission starts.
 - **Turning it on installs it.** Set `"exporter": { "enabled": true }` in `config.json`. At startup the relay installs the add-on into each folder in `exporter.savedGames`, for example `"savedGames": ["C:\\Users\\you\\Saved Games\\DCS"]`.
 - **No folder set yet?** The relay looks for DCS folders under your Saved Games. Run in a console window, it lists them, lets you pick, and saves your choice to `config.json`. Run as a service, it logs what it found and the line to add, and installs nothing.
 - **Only real DCS folders.** A folder is used only if DCS has run with it (it has `Config\options.lua`).
@@ -269,6 +289,7 @@ services:
 - **Settings.** `config.json` and the environment variables in the table above both work (`-e TACVIEW_HOST=…`). `passwords` can only be set in `config.json`. To change the WebSocket port, set `RELAY_WS_PORT` rather than `wsPort` in `config.json`, since the container's health check follows the env var. Then publish that port instead of 8765.
 - **SRS.** Point SRS's LotATC export at the Docker host's address, on the published UDP port.
 - **Tacview on the same machine.** `localhost` inside the container is the container itself. Set `tacviewHost` to `host.docker.internal` on Docker Desktop (Windows/macOS), or on Linux run with `--network host` (drop the `-p` flags) and use `127.0.0.1`.
+- **No DCS exporter.** The exporter runs inside DCS and needs the relay on the same Windows machine, so the container ignores `exporter.enabled`. Use the Windows executable for it.
 - **Updating.** The built-in auto-update doesn't run in the container, and `autoUpdate` is ignored. Pull a new image and recreate the container: `docker pull ghcr.io/denimchickensoft/tracs-relay:latest`, then `docker rm -f tracs-relay` and the `docker run` command again (or `docker compose pull && docker compose up -d`).
 - **Health.** `docker ps` shows the container as `healthy` once `/health` answers.
 - **Logs.** `docker logs -f tracs-relay`.
@@ -280,6 +301,7 @@ To build the image yourself from a clone: `docker build -t tracs-relay relay`.
 
 - **Inbound TCP `wsPort`** (8765 by default) from controllers.
 - **Inbound UDP `srsLotatcPort`** (10712 by default) **only from the SRS server's address.** The relay trusts whatever arrives on this port.
+- **The DCS exporter** needs no firewall rule: DCS and the relay talk on `127.0.0.1` (`exporter.hookPort`, 8767 by default), which never leaves the machine.
 - **Outbound** to Tacview's RTT port (if `tacviewHost` is set), and to `github.com` over HTTPS for self-updates.
 
 ### Security
@@ -330,7 +352,7 @@ _TRACS will always remain free and open source. Donations are not accepted at th
 
 ### Do I need to own DCS, or any modules, to use TRACS?
 
-_No. All that is required is the ability to access a DCS server running Olympus or Tacview RTT._
+_No. All that is required is the ability to access a DCS server running Olympus, Tacview RTT, or a TRACS Relay with the DCS exporter._
 
 ### Can I use TRACS in single-player?
 
@@ -352,9 +374,11 @@ _TRACS was originally designed with Olympus in mind._
 
 _Tacview RTT is also only available with Tacview Advanced or Enterprise, and thus not free._
 
+_The DCS exporter is TRACS Relay's own data source: an add-on inside DCS that sends DCS's own data, including weather and the running mission, with no Olympus or Tacview needed. On a server it's the most complete source. A player can also run it on their own PC to feed TRACS from the server they've joined._
+
 ### Does the server admin have to install anything?
 
-_No. Server owners can optionally install TRACS Relay to allow access to SRS transponder data and centralize the controller-to-controller communication._
+_No. Server owners can optionally install TRACS Relay to allow access to SRS transponder data and centralize the controller-to-controller communication. With the relay on the server, they can also turn on its DCS exporter, which installs itself into DCS._
 
 ### Do I need a LittleNavMap / Navigraph subscription?
 
@@ -384,15 +408,17 @@ _The STARS system is heavily documented and simulated by various games and softw
 
 _Depending on how you're connected, there are various detection schemes. Olympus exposes DCS's actual detection paradigm, so that is what should be reflected on your scope. A mock-detection scheme was devised for the Tacview data source, since it does not implement one. It uses DCS-derived data, line of sight, and various physics models to approximate the DCS detection model, with some limitations._
 
+_With the DCS exporter on the server host, TRACS gets DCS's own detection, like Olympus. On a player's client DCS doesn't hand out detection data, so the Tacview model is used._
+
 ### Can pilots see what controllers are doing, or file flight plans?
 
-_Since it is decentralized, TRACS currently only receives data from DCS. A future Relay data source is planned that may change that._
+_TRACS currently only receives data from DCS, including through the relay's DCS exporter. Nothing is sent back to pilots yet._
 
-_Flight plans can currently be imported from a `.miz`, `.csv`, or `.dtc` file._
+_Flight plans can currently be imported from a `.miz`, `.stm`, `.csv`, or `.dtc` file._
 
 ### Does TRACS affect server performance or the pilots' frame rates?
 
-_TRACS should have only a negligible effect on a DCS server's performance. It can't poll faster than 1Hz and it doesn't touch DCS directly._
+_TRACS should have only a negligible effect on a DCS server's performance. It can't poll faster than 1Hz. With Olympus or Tacview it doesn't touch DCS directly. The relay's DCS exporter does run inside DCS; in testing on a heavy mission it made no measurable difference to frame times._
 
 ### How do I report a bug or request a feature?
 
@@ -426,8 +452,8 @@ Open `http://localhost:5173` in a Chromium-based browser (Chrome, Edge, Brave). 
 | `npm run build` then `npm start` | Build the client and serve it from the local server on `http://localhost:8722`                                                 |
 | `npm run electron:dev`           | Build the client and run it inside Electron, as the desktop app does                                                           |
 | `npm run dist:electron`          | Build an installer for the current platform into `dist-electron/` (stages bundled navdata first)                               |
-| `npm run lint`                   | ESLint, plus a check that the generated copies of shared server files are in sync                                              |
-| `npm test`                       | Unit tests (Vitest; tests live in `test/`)                                                                                     |
+| `npm run lint`                   | ESLint, a Lua syntax check of the exporter's DCS-side scripts, plus a check that the generated copies of shared server files are in sync |
+| `npm test`                       | Unit tests (Vitest; tests live in `test/`). The exporter DLL tests run only on Windows, after `node relay/native/build.js --harness` |
 | `npm run knip`                   | Unused files/exports/dependencies report                                                                                       |
 | `npm run sync:tacview-core`      | Regenerate the relay's and client's copies of shared server files (Tacview parser, protocol version, detection-config example) |
 
@@ -443,6 +469,8 @@ npm run build        # produce relay/dist/TRACS-Relay(.exe) + config.example.jso
 ```
 
 A relay run from source never updates itself.
+
+On Windows, `npm run build` also builds the exporter DLL, which needs the Visual Studio (or Build Tools) x64 C++ tools and a Windows 10/11 SDK. To run the exporter from source with `exporter.enabled`, build the DLL first with `npm run build:native`.
 
 **Mock Olympus server** for working without DCS:
 
@@ -487,10 +515,10 @@ No code-signing certificate is used for any platform.
       ▼                                                    (when no relay sync)
 [TRACS Relay] ───────────────────────────WS──────────────▶ [Other controllers]
       │                                                  (relay sync, when available)
-      └── SRS transponder data + Tacview telemetry to any number of controllers
+      └── SRS transponder data + Tacview or DCS exporter data to any number of controllers
 ```
 
-- Each controller runs their own local server; in the desktop app it runs inside the app. The only component installed on the DCS server side is the optional TRACS Relay. Each controller's local server listens only on this machine (127.0.0.1), so other machines can't reach it. Setting the `TRACS_HOST` environment variable (e.g. `0.0.0.0`) opts in to LAN access; the server has no authentication, so only do that on a trusted network.
+- Each controller runs their own local server; in the desktop app it runs inside the app. The only component installed on the DCS server side is the optional TRACS Relay, and, if it's turned on, the relay's DCS exporter inside DCS. Each controller's local server listens only on this machine (127.0.0.1), so other machines can't reach it. Setting the `TRACS_HOST` environment variable (e.g. `0.0.0.0`) opts in to LAN access; the server has no authentication, so only do that on a trusted network.
 - Controller-to-controller sync uses the relay when one is reachable. Otherwise it uses peer-to-peer WebRTC.
   - Peer discovery uses the public Nostr relay network.
   - If no Nostr relay connects within ~8 s, it falls back to the controller's own local server, which only connects windows on the same machine (see [Known limitations](#known-limitations)).
