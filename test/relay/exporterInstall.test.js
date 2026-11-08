@@ -141,3 +141,19 @@ describe('plan', () => {
     expect(plan({ savedGames: [] }, { dir, interactive: false, detect: () => [a] })).toEqual({ wanted: [a], hold: [] })
   })
 })
+
+describe('platform', () => {
+  test('an enabled exporter only counts on Windows', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      expect(install.effectiveEnabled(true, 'win32')).toBe(true)
+      expect(install.effectiveEnabled(false, 'win32')).toBe(false)
+      expect(warn).not.toHaveBeenCalled()
+      expect(install.effectiveEnabled(true, 'linux')).toBe(false)
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/Windows only - ignoring exporter.enabled/))
+      expect(install.effectiveEnabled(false, 'linux')).toBe(false)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+})

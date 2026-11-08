@@ -131,7 +131,7 @@ function exporterConfig(raw) {
   const graceMs = Number(cfg.idleGraceMs ?? 10000)
   const bufferSize = Number(cfg.eventBufferSize ?? 2000)
   return {
-    enabled:         cfg.enabled === true,
+    enabled:         exporterInstall.effectiveEnabled(cfg.enabled === true),
     hookPort:        port('exporter.hookPort', cfg.hookPort, process.env.EXPORTER_HOOK_PORT, 8767),
     idleGraceMs:     Number.isFinite(graceMs) && graceMs >= 0 && graceMs <= 300000 ? graceMs : 10000,
     eventBufferSize: Number.isInteger(bufferSize) && bufferSize > 0 && bufferSize <= 100000 ? bufferSize : 2000,

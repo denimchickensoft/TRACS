@@ -336,6 +336,17 @@ function onWindows() {
   return process.platform === 'win32'
 }
 
+// The exporter runs inside DCS and talks to a relay on the same machine, so
+// it needs Windows. Elsewhere (the Linux executable, Docker) an enabled
+// exporter would install nothing, listen where DCS can't reach it, and still
+// take over from Tacview as the relay's unit source, so it counts as off.
+function effectiveEnabled(enabled, platform = process.platform) {
+  if (!enabled) return false
+  if (platform === 'win32') return true
+  console.warn(`${LOG} the exporter runs inside DCS on the same machine, which is Windows only - ignoring exporter.enabled`)
+  return false
+}
+
 // Relay startup: install or remove according to exporter.enabled, then keep
 // retrying any folder DCS has locked.
 function syncAtStartup(exporterCfg) {
@@ -392,7 +403,7 @@ function runCli(command, exporterCfg) {
 }
 
 module.exports = {
-  FILES, assetName, cliCommand, runCli, syncAtStartup,
+  FILES, assetName, cliCommand, runCli, syncAtStartup, effectiveEnabled,
   // for tests
   invalidReason, detectFolders, installFolder, removeFolder, syncFolders, readRecord, chooseFolders, plan,
 }
