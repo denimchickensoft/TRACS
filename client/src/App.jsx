@@ -114,8 +114,8 @@ export function App() {
   const [missionPrompt, closeMissionPrompt, offerMissionNow, canOfferMission] = useMissionAutoLoad()
   const [missionLoadNote, setMissionLoadNote] = useState('')
   const [autoLoadMode, setAutoLoadModeState] = useState(getAutoLoadMode)
-  // The relay found no multiplayer track to read the mission from (DCS track
-  // recording off on this client), so no mission data will be offered.
+  // The relay found no multiplayer track file to read the mission from on
+  // this client, so no mission data will be offered.
   const missionNoTrack = useMissionDataStore((s) => s.unavailable === 'no_track')
   const [tracsVersion,    setTracsVersion]    = useState(null)
   const [relaySnapshot,   setRelaySnapshot]   = useState({ version: null, protocolVersion: null })
@@ -559,9 +559,9 @@ export function App() {
         {missionNoTrack && autoLoadMode !== 'never' && (
           <span
             style={{ color: '#ccaa00' }}
-            title="TRACS reads the running mission from the multiplayer track DCS writes when you join. Turn on track recording in DCS's options and rejoin to get mission data."
+            title="TRACS reads the running mission from the multiplayer track file DCS writes in Saved Games\DCS\Tracks\Multiplayer when you join, and none appeared. Rejoining the server tries again."
           >
-            NO MISSION DATA: TURN ON DCS TRACK RECORDING + REJOIN
+            NO MISSION DATA: NO DCS TRACK FILE FOUND
           </span>
         )}
 
@@ -792,10 +792,10 @@ export function App() {
             </label>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>
-              <span style={{ flex: 1 }}>{missionLoadNote || (missionNoTrack ? 'Mission data: DCS track recording is off' : 'Mission data')}</span>
+              <span style={{ flex: 1 }}>{missionLoadNote || (missionNoTrack ? 'Mission data: no DCS track file found' : 'Mission data')}</span>
               <button
                 disabled={!canOfferMission}
-                title={canOfferMission ? "Offer the running mission's data now, whatever Auto-load mission is set to" : missionNoTrack ? "No mission data: turn on track recording in DCS's options and rejoin" : 'No running mission from the DCS exporter'}
+                title={canOfferMission ? "Offer the running mission's data now, whatever Auto-load mission is set to" : missionNoTrack ? 'No mission data: DCS wrote no multiplayer track file when you joined. Rejoining tries again' : 'No running mission from the DCS exporter'}
                 onClick={async () => {
                   setMissionLoadNote('')
                   try {

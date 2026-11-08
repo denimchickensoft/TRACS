@@ -3,8 +3,8 @@ import { create } from 'zustand'
 // The running mission's file, as the DCS exporter's relay serves it to this
 // coalition: data = { id, theatre, text } or null (no exporter, no mission, or
 // the mission is changing). unavailable = 'no_track' when the relay found no
-// multiplayer track to read the mission from (a DCS client with track
-// recording turned off), else null. Set from the backend's 'missionData'
+// multiplayer track file to read the mission from on a DCS client, else
+// null. Set from the backend's 'missionData'
 // message (ws/client.js); missionData/useMissionAutoLoad.js offers it to the
 // stores.
 export const useMissionDataStore = create((set) => ({

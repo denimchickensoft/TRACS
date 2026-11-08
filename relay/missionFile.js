@@ -65,7 +65,7 @@ async function findMissionFile(hello, { isCancelled = () => false, fsImpl = fs, 
     const file = newestTrack(dir, hello.loadTimeMs - TRACK_EARLY_MS, fsImpl)
     if (file) return { file }
     if (Date.now() >= deadline) {
-      return { error: `no multiplayer track appeared in ${dir} (is track recording turned off in DCS's options?)`, code: 'no_track' }
+      return { error: `no multiplayer track appeared in ${dir} within ${Math.round(timeoutMs / 1000)} s of the mission loading`, code: 'no_track' }
     }
     await sleep(pollMs)
   }
