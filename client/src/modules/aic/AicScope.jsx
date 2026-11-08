@@ -33,7 +33,7 @@ import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
 import { noteClick, noteEnter } from '../../components/ScopeNotes/noteCommands.js'
-import { dispatch }            from './actions/index.js'
+import { dispatch, RR_TOGGLE, PICTURE_TOGGLE, BEC_TOGGLE } from './actions/index.js'
 import './AicScope.css'
 import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye, formatPictureDimensions } from './aicScopeHelpers.js'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, speedFlags, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
@@ -57,6 +57,11 @@ const F_KEY_DECL = {
   F3: DECLARATION.NEUTRAL,
   F4: DECLARATION.FRIENDLY,
 }
+
+// Alt+letter display toggles, same as typing the bare command, with the
+// same letters as ABM's where the command is shared. e.code so the keys stay
+// put on non-QWERTY layouts.
+const ALT_KEY_TOGGLES = { KeyR: RR_TOGGLE, KeyP: PICTURE_TOGGLE, KeyB: BEC_TOGGLE }
 
 const DECL_LABEL = {
   [DECLARATION.HOSTILE]:  'HO',
@@ -622,6 +627,15 @@ export default function AicScope() {
       e.preventDefault()
       setPendingDeclaration(d => d === fDecl ? null : fDecl)
       clearPendingBraa()
+      return
+    }
+
+    // Alt+R / Alt+P / Alt+B (ALT_KEY_TOGGLES). preventDefault also asks a
+    // browser not to run its own Alt shortcut.
+    const altToggle = e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && ALT_KEY_TOGGLES[e.code]
+    if (altToggle) {
+      e.preventDefault()
+      setCmdFeedback(altToggle())
       return
     }
 

@@ -769,7 +769,7 @@ export function FOCUS_OPEN({ captures, context }) {
 // contacts also can't be clicked, focused, BRAA'd or found with .where.
 export const GROUND_TOGGLE = makeWinToggle('groundVisible', true, 'GROUND ON', 'GROUND OFF')
 
-// .tdm (also Ctrl+T / Alt+T in AbmScope) — top-down mode: shows your own
+// .tdm (also Ctrl+T in AbmScope) — top-down mode: shows your own
 // side's aircraft on the ground, which ABM otherwise hides. Display only;
 // another side's aircraft on the ground stay hidden either way.
 export const TDM_TOGGLE = makeWinToggle('tdmMode', false, 'TDM ON', 'TDM OFF')
@@ -796,14 +796,15 @@ export const BASE_TOGGLE = makeWinToggle('basemapVisible', false, 'BASE ON', 'BA
 
 export const TERRAIN_TOGGLE = makeWinToggle('terrainVisible', false, 'TERRAIN ON', 'TERRAIN OFF')
 
-// .map — bulk toggle for all four raster layers (base/terrain/water/roads)
-// plus .geo's live coastline/boundary layer, same any-on pattern as .asp.
+// .map — bulk toggle for the four raster layers (base/terrain/water/roads),
+// same any-on pattern as .asp. .geo's coastlines/boundaries are left as they
+// are, so they can stay up over a bare scope.
 export function MAP_TOGGLE({ context }) {
   const win = getWin(context.windowId)
   const anyOn = (win?.basemapVisible ?? false) || (win?.terrainVisible ?? false) ||
-    (win?.waterVisible ?? false) || (win?.roadsVisible ?? false) || (win?.geoVisible ?? true)
+    (win?.waterVisible ?? false) || (win?.roadsVisible ?? false)
   const next = !anyOn
-  const patch = { basemapVisible: next, terrainVisible: next, waterVisible: next, roadsVisible: next, geoVisible: next }
+  const patch = { basemapVisible: next, terrainVisible: next, waterVisible: next, roadsVisible: next }
   updateWin(context.windowId, patch)
   saveAbmPrefs(patch)
   return next ? 'MAP ON' : 'MAP OFF'

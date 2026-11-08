@@ -98,7 +98,7 @@ The drawing commands (`.line`, `.rect`, `.circ`, `.poly`, `.sect`, `.race`, `.te
 | `.airports` | Toggle `.runways` and `.taxiways` together: if either is on, both turn off; otherwise both turn on |
 | `.mgrs` | Toggle the theatre-aware UTM/MGRS grid — see below |
 | `.towns` | Toggle towns |
-| `.base` / `.terrain` / `.water` / `.roads` | Toggle individual terrain raster layers; `.map` toggles all four together plus `.geo` |
+| `.base` / `.terrain` / `.water` / `.roads` | Toggle individual terrain raster layers; `.map` toggles all four together (`.geo` is left as it is) |
 
 **MGRS grid:**
 - `.mgrs` detects how many UTM zones the current view spans and draws each zone-boundary seam.
@@ -198,7 +198,7 @@ Declarations are one picture shared by every AIC and ABM controller on your coal
 
 ### Aircraft on the ground
 
-ABM hides aircraft on the ground (parked or taxiing). `.tdm` (or **Ctrl+T** in the desktop app, **Alt+T** anywhere) toggles top-down mode for this window, which shows your own side's aircraft on the ground. They behave like any other friendly contact, except that they don't trip auto threat rings. Another side's aircraft on the ground never show, detected or not. An aircraft that lands, or is hidden again when you turn top-down mode off, disappears right away instead of fading out. The setting is saved.
+ABM hides aircraft on the ground (parked or taxiing). `.tdm` (or **Ctrl+T** in the desktop app) toggles top-down mode for this window, which shows your own side's aircraft on the ground. They behave like any other friendly contact, except that they don't trip auto threat rings. Another side's aircraft on the ground never show, detected or not. An aircraft that lands, or is hidden again when you turn top-down mode off, disappears right away instead of fading out. The setting is saved.
 
 GM/Admin sessions see every aircraft and ground/naval unit on both sides, without fog of war, and top-down mode shows both sides' aircraft on the ground.
 
@@ -427,6 +427,8 @@ Fields:
 
 ## Keyboard shortcuts
 
+These are built for the desktop app. In a browser tab some of them may not work or may also trigger the browser's own shortcut (for example Ctrl+T opens a new tab instead of toggling top-down mode); the typed commands always work.
+
 | Key | Effect |
 |---|---|
 | `F1`–`F4` | Arm a pending declaration (Hostile/Bogey/Neutral/Friendly); press again to cancel |
@@ -438,7 +440,18 @@ Fields:
 | `Ctrl+V` | Paste into the command line |
 | `Ctrl+Alt+0`–`9` | Save the current view to bookmark slot 0–9 |
 | `Ctrl+0`–`9` | Load view bookmark 0–9 |
-| `Ctrl+T` (desktop app) / `Alt+T` | Toggle top-down mode (same as `.tdm`) |
+| `Ctrl+T` | Toggle top-down mode (same as `.tdm`) |
+| `Alt+G` | Toggle ground/naval contacts (same as `.gc`) |
+| `Alt+E` | Toggle every engagement ring (same as `.eng`) |
+| `Alt+A` | Toggle every acquisition ring (same as `.acq`) |
+| `Alt+R` | Toggle range rings (same as `.rr`) |
+| `Alt+T` | Toggle the mission clock (same as `.time`) |
+| `Alt+C` | Toggle the cursor coordinate readout (same as `.coords`) |
+| `Alt+M` | Toggle the map layers (same as `.map`) |
+| `Alt+F` | Toggle fixes (same as `.fixes`) |
+| `Alt+L` | Toggle labels (same as `.labels`) |
+| `Alt+D` | Toggle all datablocks (same as `.db`) |
+| `Alt+B` | Toggle bullseye-on-cursor (same as `.bec`) |
 | `Ctrl+Left` / `Ctrl+Right` | Reopen the last-used side panel / close the open one (app-wide, see Getting Started) |
 | `Ctrl+Up` / `Ctrl+Down` | Switch between the ATO, FRAG and DRAW panels (app-wide, see Getting Started) |
 | `Ctrl+M` | Open Messages (app-wide) |

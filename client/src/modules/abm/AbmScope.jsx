@@ -76,7 +76,8 @@ import {
 import { parseCommand } from './input/commandParser.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
 import { noteClick, noteEnter, removeNoteAt } from '../../components/ScopeNotes/noteCommands.js'
-import { dispatch, dispatchClickEntered, CLICK_ENTERED, openAbmFocusPanel, RCLEAR, TDM_TOGGLE } from './actions/index.js'
+import { dispatch, dispatchClickEntered, CLICK_ENTERED, openAbmFocusPanel, RCLEAR, TDM_TOGGLE, GROUND_TOGGLE, ENG_TOGGLE, ACQ_TOGGLE,
+  RR_TOGGLE, TIME_TOGGLE, COORDS_TOGGLE, MAP_TOGGLE, FIXES_TOGGLE, LABELS_TOGGLE, DB_TOGGLE, BEC_TOGGLE } from './actions/index.js'
 import { isOnGround } from '../../utils/visibleUnits.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
@@ -144,6 +145,16 @@ const F_KEY_DECL = {
 // F5-F7 start an IFF code assignment — same as typing .m1/.m2/.m3, then
 // the code, then click the aircraft.
 const F_KEY_IFF = { F5: 'M1', F6: 'M2', F7: 'M3' }
+
+// Alt+letter display toggles, same as typing the bare command. e.code so
+// the keys stay put on non-QWERTY layouts. Built for the desktop app; in a
+// browser tab some Alt keys may also trigger the browser's own shortcuts.
+const ALT_KEY_TOGGLES = {
+  KeyG: GROUND_TOGGLE, KeyE: ENG_TOGGLE,    KeyA: ACQ_TOGGLE,
+  KeyR: RR_TOGGLE,     KeyT: TIME_TOGGLE,   KeyC: COORDS_TOGGLE,
+  KeyM: MAP_TOGGLE,    KeyF: FIXES_TOGGLE,  KeyL: LABELS_TOGGLE,
+  KeyD: DB_TOGGLE,     KeyB: BEC_TOGGLE,
+}
 
 // ABM scope: canvas PPI with pan (right-click drag), zoom (scroll), range
 // rings (toggle + anchor via .rr), bullseye marker and command preview area.
@@ -318,7 +329,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // contact is RWR-detected, its type stays revealed in the air-unit readout
   // below even if RWR drops out again.
   const rwrEverDetectedRef = useRef(new Set())
-  // .tdm / Ctrl+T / Alt+T — top-down mode brings back your own side's
+  // .tdm / Ctrl+T — top-down mode brings back your own side's
   // aircraft on the ground, which are otherwise hidden.
   const tdmMode = windowSettings?.tdmMode ?? false
   const visibleUnits = useMemo(
@@ -1668,12 +1679,21 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       return
     }
 
-    // Top-down mode — same keys as STARS/CATCC. Ctrl+T only reaches the page
-    // in the desktop app (a browser tab opens a new tab on it), so Alt+T is
-    // the binding that works anywhere.
-    if (e.code === 'KeyT' && !e.shiftKey && e.ctrlKey !== e.altKey) {
+    // Top-down mode — Ctrl+T, which only reaches the page in the desktop app
+    // (a browser tab opens a new tab on it). Unlike STARS/CATCC, ABM's Alt+T
+    // is .time (ALT_KEY_TOGGLES).
+    if (e.code === 'KeyT' && e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault()
       setCmdFeedback(TDM_TOGGLE({ context: { windowId } }))
+      return
+    }
+
+    // Alt+letter toggles (ALT_KEY_TOGGLES). preventDefault also asks a
+    // browser not to run its own Alt shortcut (e.g. Chrome's Alt+E/Alt+F menu).
+    const altToggle = e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && ALT_KEY_TOGGLES[e.code]
+    if (altToggle) {
+      e.preventDefault()
+      setCmdFeedback(altToggle({ context: { windowId } }))
       return
     }
 
