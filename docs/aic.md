@@ -70,7 +70,7 @@ Declarations are one picture shared by every AIC and ABM controller on your coal
 
 ### ROE
 
-`.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left. Bare `.roe` toggles visibility of the ROE readout itself (visible by default).
+`.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left (state is shared with ABM, and cleared when you sign in on another coalition). Bare `.roe` toggles visibility of the ROE readout itself (visible by default).
 
 ### Threat rings
 

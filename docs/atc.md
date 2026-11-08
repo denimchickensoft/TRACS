@@ -498,7 +498,7 @@ Other settings:
 All of these settings are saved across reloads, and changes made in an undocked Strip Bay window apply to the main window too.
 
 **Bulk flight-plan import:**
-- The footer's **⬆ Load Mission** button accepts a `.miz` mission file, a CSV, or a DCS Data Transfer Cartridge (`.dtc`, F-16C/F/A-18C). Each produces flight plans to review, with per-row collision handling, before committing.
+- The footer's **⬆ Load Mission** button accepts a `.miz` mission file, Mission Editor static templates (`.stm`, several at once), a CSV, or a DCS Data Transfer Cartridge (`.dtc`, F-16C/F/A-18C). Each produces flight plans to review, with per-row collision handling, before committing. A template's callsigns come from its unit names.
 - **✕ Clear Mission** appears once imported flight plans exist. It deletes them session-wide, for every controller, after a confirmation.
 - **✕ Clear Strip Bay** appears when the bay has strips. It clears only your own strips, after a confirmation, and leaves the flight plans in place.
 

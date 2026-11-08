@@ -186,7 +186,7 @@ Declarations are one picture shared by every AIC and ABM controller on your coal
 
 ### ROE
 
-`.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left (state is shared with AIC). Bare `.roe` toggles visibility of the ROE readout itself (visible by default).
+`.roe free` / `.roe tight` / `.roe hold` — sets weapons status, shown top-left (state is shared with AIC, and cleared when you sign in on another coalition). Bare `.roe` toggles visibility of the ROE readout itself (visible by default).
 
 ### Ground/naval acquisition & engagement rings
 
@@ -200,7 +200,7 @@ Declarations are one picture shared by every AIC and ABM controller on your coal
 
 ABM hides aircraft on the ground (parked or taxiing). `.tdm` (or **Ctrl+T** in the desktop app) toggles top-down mode for this window, which shows your own side's aircraft on the ground. They behave like any other friendly contact, except that they don't trip auto threat rings. Another side's aircraft on the ground never show, detected or not. An aircraft that lands, or is hidden again when you turn top-down mode off, disappears right away instead of fading out. The setting is saved.
 
-GM/Admin sessions see every aircraft and ground/naval unit on both sides, without fog of war, and top-down mode shows both sides' aircraft on the ground.
+GM/Admin sessions see every aircraft and ground/naval unit on both sides, without fog of war, and top-down mode shows both sides' aircraft on the ground. In Tacview and Relay modes they also get both sides' detection data, so anything that depends on what a side's sensors see works for them too.
 
 ### Scope drawing
 
@@ -366,6 +366,9 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 **⬆ Load Mission** in ATO's footer.
 
 - Drop a `.miz` file or a raw mission text file, or click to browse.
+- **Mission Editor static templates (`.stm`)** load here too, several at once and alongside a `.miz`, for example the flights squadrons hand in as templates.
+  - Template flights stack: loading a `.miz` replaces only the flights from the previous `.miz`, and a template whose coalition and group name are already loaded replaces that flight (the preview marks it REPLACES).
+  - A template's IDs change when it's pasted into the real mission, so template flights match live aircraft by callsign, taken from each unit's name.
 - Blue/red sessions only see their own coalition's tasked flights. The other side's flights are filtered out before the preview.
 - The preview shows a count-by-task summary and the list of flights found, with a RESERVE badge for late-activation flights. **Import** replaces the previously imported set and keeps manually-added flights.
 - ABM reads groups, units, routes, payloads, radios, and Link16 from the mission. It does not read triggers, trigger rules, or the mission's localization dictionary.
