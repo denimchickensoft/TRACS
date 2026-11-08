@@ -6,7 +6,8 @@
 //
 // The import library for DCS's lua.dll is generated from lua51.def, and the
 // Lua headers are the official 5.1.5 ones in lua-5.1.5/, so building needs
-// no DCS install.
+// no DCS install. lua-5.1.5/ also holds the rest of the official 5.1.5 src/
+// (minus luac), which only the --harness test build compiles.
 //
 // MSVC is found with vswhere (any install with the x64 C++ build tools whose
 // headers are actually present) and the newest Windows 10/11 SDK; the
@@ -15,8 +16,8 @@
 // Usage: node relay/native/build.js [--install "<Saved Games>/DCS"] [--harness]
 //   --install also copies Mods/Services/TRACS into that Saved Games folder.
 //   DCS must not be running then: it keeps the DLL open.
-//   --harness also builds a real Lua 5.1.5 (lua.dll + lua.exe, from lua.org's
-//   source, checksum-verified) into build/harness/ next to a copy of the DLL,
+//   --harness also builds a real Lua 5.1.5 (lua.dll + lua.exe, from the
+//   vendored source in lua-5.1.5/) into build/harness/ next to a copy of the DLL,
 //   for test/relay/exporterDll.test.js to run the DLL outside DCS.
 
 const { execFileSync } = require('child_process')
@@ -31,8 +32,7 @@ const OUT_DLL    = path.join(MOD_DIR, 'bin', 'tracs_exporter.dll')
 const SOURCES    = ['tracs_exporter.c', 'sched.c', 'client.c', 'server.c', 'serverlow.c', 'net.c', 'common.c']
 
 const HARNESS_DIR = path.join(BUILD_DIR, 'harness')
-const LUA_URL     = 'https://www.lua.org/ftp/lua-5.1.5.tar.gz'
-const LUA_SHA256  = '2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333'
+const LUA_SRC     = path.join(NATIVE_DIR, 'lua-5.1.5')
 // Lua 5.1.5's library sources (everything in src/ but the lua and luac mains).
 const LUA_LIB_SOURCES = ['lapi', 'lcode', 'ldebug', 'ldo', 'ldump', 'lfunc', 'lgc', 'llex', 'lmem', 'lobject',
   'lopcodes', 'lparser', 'lstate', 'lstring', 'ltable', 'ltm', 'lundump', 'lvm', 'lzio', 'lauxlib', 'lbaselib',
@@ -75,25 +75,11 @@ function run(cmd, args, env, cwd = BUILD_DIR) {
 }
 
 // lua.dll (named as DCS's, so tracs_exporter.dll's import resolves to it) and
-// a lua.exe using it, built from the official source. Re-extracting over an
-// earlier build just overwrites it.
-async function buildHarness(bin, env) {
-  const tarball = path.join(BUILD_DIR, 'lua-5.1.5.tar.gz')
-  if (!fs.existsSync(tarball)) {
-    console.log(`Downloading ${LUA_URL}`)
-    const res = await fetch(LUA_URL)
-    if (!res.ok) throw new Error(`${LUA_URL}: HTTP ${res.status}`)
-    fs.writeFileSync(tarball, Buffer.from(await res.arrayBuffer()))
-  }
-  const sha = require('crypto').createHash('sha256').update(fs.readFileSync(tarball)).digest('hex')
-  if (sha !== LUA_SHA256) {
-    fs.unlinkSync(tarball)
-    throw new Error(`lua-5.1.5.tar.gz checksum mismatch (${sha})`)
-  }
+// a lua.exe using it, built from the vendored official source. Rebuilding
+// over an earlier build just overwrites it.
+function buildHarness(bin, env) {
   fs.mkdirSync(HARNESS_DIR, { recursive: true })
-  // Windows' own tar: a GNU tar earlier on PATH (Git's) reads "C:" as a host.
-  run(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'), ['-xzf', tarball, '-C', HARNESS_DIR], env)
-  const src = path.join(HARNESS_DIR, 'lua-5.1.5', 'src')
+  const src = LUA_SRC
   const flags = ['/nologo', '/O2', '/MT', '/W3', '/DLUA_BUILD_AS_DLL', '/D_CRT_SECURE_NO_WARNINGS']
   run(bin('cl.exe'), [...flags, '/c', ...LUA_LIB_SOURCES.map((f) => path.join(src, `${f}.c`))], env, HARNESS_DIR)
   run(bin('link.exe'), ['/nologo', '/DLL', '/out:lua.dll', '/implib:lua.lib', ...LUA_LIB_SOURCES.map((f) => `${f}.obj`)],
@@ -137,7 +123,7 @@ async function main() {
     ...SOURCES.map((f) => f.replace(/\.c$/, '.obj')), 'cJSON.obj', 'lua.lib', 'ws2_32.lib'], env)
   console.log(`\nBuilt ${path.relative(process.cwd(), OUT_DLL)}`)
 
-  if (process.argv.includes('--harness')) await buildHarness(bin, env)
+  if (process.argv.includes('--harness')) buildHarness(bin, env)
 
   if (installTo) {
     const dest = path.join(installTo, 'Mods', 'Services', 'TRACS')
