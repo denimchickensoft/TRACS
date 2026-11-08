@@ -65,7 +65,7 @@ async function findMissionFile(hello, { isCancelled = () => false, fsImpl = fs, 
     const file = newestTrack(dir, hello.loadTimeMs - TRACK_EARLY_MS, fsImpl)
     if (file) return { file }
     if (Date.now() >= deadline) {
-      return { error: `no multiplayer track appeared in ${dir} (is track recording turned off in DCS's options?)` }
+      return { error: `no multiplayer track appeared in ${dir} (is track recording turned off in DCS's options?)`, code: 'no_track' }
     }
     await sleep(pollMs)
   }
@@ -102,11 +102,12 @@ function parseInWorker(file) {
 }
 
 // Finds and reads the running mission: { ok: true, file, id, theatre, bytes,
-// texts } or { ok: false, error }. A client's track may still be mid-write
+// texts } or { ok: false, error, code? } (code 'no_track': a client with no
+// multiplayer track to read). A client's track may still be mid-write
 // when first read, so a failed read is retried a few times.
 async function loadMission(hello, { isCancelled = () => false, parse = parseInWorker, retryMs = 2000, ...findOpts } = {}) {
   const found = await findMissionFile(hello, { isCancelled, ...findOpts })
-  if (found.error) return { ok: false, error: found.error }
+  if (found.error) return { ok: false, error: found.error, code: found.code }
   let last = null
   for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
     if (isCancelled()) return { ok: false, error: 'cancelled' }

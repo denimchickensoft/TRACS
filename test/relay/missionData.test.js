@@ -161,6 +161,9 @@ describe('findMissionFile / loadMission', () => {
     expect(newestTrack(tracks, 65000, fake(files))).toBeNull()
     const r = await findMissionFile({ side: 'client', savedGames: dir, loadTimeMs: 100000 }, { fsImpl: fake({ 'old.trk': 1000 }), timeoutMs: 0 })
     expect(r.error).toMatch(/no multiplayer track/)
+    expect(r.code).toBe('no_track')
+    const loaded = await loadMission({ side: 'client', savedGames: dir, loadTimeMs: 100000 }, { fsImpl: fake({}), timeoutMs: 0 })
+    expect(loaded).toMatchObject({ ok: false, code: 'no_track' })
   })
 
   test('reads the mission in a worker thread', async () => {

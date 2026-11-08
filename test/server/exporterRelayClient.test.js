@@ -151,4 +151,31 @@ describe('mission data', () => {
       wss.close()
     }
   })
+
+  test('a missing multiplayer track is passed on once, then replaced by the mission', async () => {
+    const { WebSocketServer } = await import('ws')
+    const wss = new WebSocketServer({ port: 0 })
+    const port = wss.address().port
+    const seen = []
+    const done = new Promise((resolve) => {
+      wss.on('connection', (sock) => {
+        sock.once('message', () => {
+          sock.send(JSON.stringify({ type: 'exporterMission', mission: { unavailable: 'no_track' } }))
+          sock.send(JSON.stringify({ type: 'exporterMission', mission: { unavailable: 'no_track' } }))
+          sock.send(JSON.stringify({ type: 'exporterMission', mission: { id: 'abc', theatre: 'Caucasus', text: 'mission = {}' } }))
+          setTimeout(resolve, 100)
+        })
+      })
+    })
+    exporterRelayClient.start({ relayUrl: `ws://127.0.0.1:${port}`, password: 'x', coalition: 'blue' }, {
+      onMissionData: (m) => seen.push(m),
+    })
+    try {
+      await done
+      expect(seen).toEqual([{ unavailable: 'no_track' }, { id: 'abc', theatre: 'Caucasus', text: 'mission = {}' }])
+    } finally {
+      exporterRelayClient.stop()
+      wss.close()
+    }
+  })
 })

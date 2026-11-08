@@ -161,9 +161,11 @@ function registerApiRoutes(app, { sourceRegistry, relaySource, state, stateFiles
       bullseyes: state.getBullseyes(),
       weather: state.getWeather(),
       // Not the text itself: it can be several MB.
-      missionData: state.getMissionData()
-        ? { id: state.getMissionData().id, theatre: state.getMissionData().theatre, bytes: state.getMissionData().text.length }
-        : null,
+      missionData: (() => {
+        const m = state.getMissionData()
+        if (!m) return null
+        return m.unavailable ? { unavailable: m.unavailable } : { id: m.id, theatre: m.theatre, bytes: m.text.length }
+      })(),
       units: unitList,
       weapons: weaponList,
     })

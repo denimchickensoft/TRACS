@@ -32,6 +32,7 @@ import { LnmSetupDialog } from './components/LnmSetup/LnmSetupDialog'
 import { UserNavdataManager } from './components/UserNavdataManager/UserNavdataManager'
 import { MissionLoadPrompt } from './components/MissionLoadPrompt/MissionLoadPrompt'
 import { useMissionAutoLoad } from './missionData/useMissionAutoLoad.js'
+import { useMissionDataStore } from './store/missionData.js'
 import { getAutoLoadMode, setAutoLoadMode } from './missionData/load.js'
 import { RightTabStrip } from './components/RightTabStrip'
 import { AssociationOwner } from './components/AssociationOwner'
@@ -113,6 +114,9 @@ export function App() {
   const [missionPrompt, closeMissionPrompt, offerMissionNow, canOfferMission] = useMissionAutoLoad()
   const [missionLoadNote, setMissionLoadNote] = useState('')
   const [autoLoadMode, setAutoLoadModeState] = useState(getAutoLoadMode)
+  // The relay found no multiplayer track to read the mission from (DCS track
+  // recording off on this client), so no mission data will be offered.
+  const missionNoTrack = useMissionDataStore((s) => s.unavailable === 'no_track')
   const [tracsVersion,    setTracsVersion]    = useState(null)
   const [relaySnapshot,   setRelaySnapshot]   = useState({ version: null, protocolVersion: null })
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
@@ -552,6 +556,15 @@ export function App() {
           {' '}&mdash; {activeModule}
         </span>
 
+        {missionNoTrack && autoLoadMode !== 'never' && (
+          <span
+            style={{ color: '#ccaa00' }}
+            title="TRACS reads the running mission from the multiplayer track DCS writes when you join. Turn on track recording in DCS's options and rejoin to get mission data."
+          >
+            NO MISSION DATA: TURN ON DCS TRACK RECORDING + REJOIN
+          </span>
+        )}
+
         {/* WebRTC indicator + peer count */}
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{
@@ -779,10 +792,10 @@ export function App() {
             </label>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '0.7rem' }}>
-              <span style={{ flex: 1 }}>{missionLoadNote || 'Mission data'}</span>
+              <span style={{ flex: 1 }}>{missionLoadNote || (missionNoTrack ? 'Mission data: DCS track recording is off' : 'Mission data')}</span>
               <button
                 disabled={!canOfferMission}
-                title={canOfferMission ? "Offer the running mission's data now, whatever Auto-load mission is set to" : 'No running mission from the DCS exporter'}
+                title={canOfferMission ? "Offer the running mission's data now, whatever Auto-load mission is set to" : missionNoTrack ? "No mission data: turn on track recording in DCS's options and rejoin" : 'No running mission from the DCS exporter'}
                 onClick={async () => {
                   setMissionLoadNote('')
                   try {

@@ -83,8 +83,10 @@ function createExporter(wss, config) {
   let idleTimer = null
   let server = null
   // The running mission's file, read once per mission load
-  // ({ key, id, theatre, texts } once read; see missionFile.js). Each
-  // subscriber gets the text for its own coalition (missionText.js).
+  // ({ key, id, theatre, texts } once read; see missionFile.js), or
+  // { key, unavailable: 'no_track' } when a client has no multiplayer track
+  // to read it from, so TRACS can tell the user why no mission is offered.
+  // Each subscriber gets the text for its own coalition (missionText.js).
   let mission = null
   let missionKey = null
   let meterKey = null
@@ -104,6 +106,7 @@ function createExporter(wss, config) {
   function missionMessage(ws) {
     const audience = audienceFor(ws.tracsCoalition)
     if (!mission || !audience) return null
+    if (mission.unavailable) return JSON.stringify({ type: 'exporterMission', mission: { unavailable: mission.unavailable } })
     return JSON.stringify({ type: 'exporterMission', mission: { id: mission.id, theatre: mission.theatre, text: mission.texts[audience] } })
   }
 
@@ -130,6 +133,10 @@ function createExporter(wss, config) {
       if (missionKey !== key) return
       if (!result.ok) {
         if (result.error !== 'cancelled') console.warn(`[relay:exporter] mission data unavailable - ${result.error}`)
+        if (result.code === 'no_track') {
+          mission = { key, unavailable: 'no_track' }
+          sendMission()
+        }
         return
       }
       mission = { key, id: result.id, theatre: result.theatre, texts: result.texts }

@@ -329,13 +329,19 @@ function clearUnits() {
 }
 
 // The running mission's file for TRACS's mission importers (the relay's
-// exporterMission), or null when there's none.
+// exporterMission), { unavailable: 'no_track' } when the relay found no
+// multiplayer track to read it from, or null when there's none.
 function publishMissionData(mission) {
-  const next = mission && typeof mission.text === 'string' && typeof mission.id === 'string'
-    ? { id: mission.id, theatre: typeof mission.theatre === 'string' ? mission.theatre : null, text: mission.text }
-    : null
-  if (!next && !state.getMissionData()) return
-  if (next && next.id === state.getMissionData()?.id) return
+  let next = null
+  if (mission && typeof mission.text === 'string' && typeof mission.id === 'string') {
+    next = { id: mission.id, theatre: typeof mission.theatre === 'string' ? mission.theatre : null, text: mission.text }
+  } else if (mission?.unavailable === 'no_track') {
+    next = { unavailable: 'no_track' }
+  }
+  const current = state.getMissionData()
+  if (!next && !current) return
+  if (next?.id && next.id === current?.id) return
+  if (next?.unavailable && next.unavailable === current?.unavailable) return
   state.setMissionData(next)
   if (onMissionData) onMissionData(next)
 }
