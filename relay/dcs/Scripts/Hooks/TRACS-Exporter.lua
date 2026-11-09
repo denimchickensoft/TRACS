@@ -9,7 +9,7 @@
 -- without a working DLL nothing is collected.
 
 -- Must match TRACS_EXPORTER_ABI in relay/native/common.h.
-local DLL_ABI      = 7
+local DLL_ABI      = 8
 local DEFAULT_PORT = 8767
 local LOG_TAG      = 'TRACS.EXPORTER'
 
@@ -46,6 +46,12 @@ local function loadLocalConfig()
 end
 
 local callbacks = {}
+
+-- The relay finds a client's multiplayer track by when the load began.
+function callbacks.onMissionLoadBegin()
+  info('mission load began')
+  if dll then pcall(dll.missionLoadBegin) end
+end
 
 function callbacks.onMissionLoadEnd()
   if not dll then

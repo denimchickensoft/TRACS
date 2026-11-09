@@ -46,8 +46,8 @@ int sched_registerNative(lua_State *L, const char *name, const char *side, doubl
 
 /* What hello tells the relay about where the running mission's file is:
    the Saved Games folder, the mission file a host loaded, and when the
-   mission loaded (ms since 1970). A NULL string is sent as null, as is a
-   load time of 0. */
+   mission began to load (ms since 1970). A NULL string is sent as null, as
+   is a load time of 0. */
 typedef struct {
   const char *savedGames;
   const char *missionFile;

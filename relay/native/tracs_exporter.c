@@ -16,7 +16,8 @@
  * lua_tocfunction, and unit/group/controller objects are rebuilt in the
  * private state as bare { id_ = ... } tables, which is all DCS reads.
  *
- * The hook itself is a thin shim: at mission load it calls missionLoad,
+ * The hook itself is a thin shim: when a mission begins to load it calls
+ * missionLoadBegin (noting the time), once it has loaded missionLoad,
  * which works out the side, initialises the DLL there (on a host, loading
  * it into the mission state too), registers the collectors and connects;
  * every frame it calls frame, and stop when the mission ends.
@@ -825,6 +826,19 @@ static const struct { const char *name, *side; double rate; const char *group; }
   { "clock_client", "client", 15, "clock" },
 };
 
+/* When the mission now loading began to load (ms since 1970), 0 if
+   missionLoadBegin wasn't called. A client's multiplayer track is created
+   at the start of the load, and loading the terrain can take far longer
+   than any fixed allowance measured back from the load's end. */
+static double g_loadBeginMs;
+
+/* missionLoadBegin() from the hook's onMissionLoadBegin. */
+static int l_missionLoadBegin(lua_State *L) {
+  (void)L;
+  g_loadBeginMs = epochMs();
+  return 0;
+}
+
 /* missionLoad{ port, dllDir } from the hook's onMissionLoadEnd. dllDir is
    the folder the hook loaded this DLL from, for the mission state to load
    it from too. */
@@ -862,7 +876,8 @@ static int l_missionLoad(lua_State *L) {
   savedGamesDir(savedGames, sizeof savedGames);
   if (g_mission.server) missionFilename(L, missionFile, sizeof missionFile);
   else missionFile[0] = 0;
-  MissionInfo info = { savedGames, missionFile, epochMs() };
+  MissionInfo info = { savedGames, missionFile, g_loadBeginMs > 0 ? g_loadBeginMs : epochMs() };
+  g_loadBeginMs = 0;
 
   JBuf st;
   jb_init(&st);
@@ -918,6 +933,7 @@ static int l_stop(lua_State *L) {
 
 static const luaL_Reg FUNCTIONS[] = {
   { "initServer", l_initServer },
+  { "missionLoadBegin", l_missionLoadBegin },
   { "missionLoad", l_missionLoad },
   { "frame", l_frame },
   { "stop", l_stop },

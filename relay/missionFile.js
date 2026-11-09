@@ -1,7 +1,8 @@
 'use strict'
 
 // Finds and reads the file of the mission DCS is running, from what the
-// exporter DLL's hello says (savedGames, missionFile, loadTimeMs):
+// exporter DLL's hello says (savedGames, missionFile, loadTimeMs: when the
+// mission began to load):
 //   host    the .miz DCS loaded (DCS.getMissionFilename). If it was modified
 //           after the mission loaded it no longer matches the running
 //           mission, and nothing is served.
@@ -18,8 +19,9 @@ const { Worker } = require('worker_threads')
 // A file system's timestamps can lag the clock slightly; a .miz saved just
 // before loading must not count as modified after it.
 const STALE_SLACK_MS = 2000
-// A track created this long before the DLL's load time still counts as this
-// join's (DCS may create it just before the hook's mission-load callback).
+// A track created this long before the load began still counts as this
+// join's (DCS may create it just before the hook's load-begin callback, and
+// file system timestamps can lag the clock).
 const TRACK_EARLY_MS = 15000
 const FIND_TIMEOUT_MS = 30000
 const POLL_MS = 1000
