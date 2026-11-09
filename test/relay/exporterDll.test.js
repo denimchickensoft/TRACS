@@ -13,6 +13,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const HARNESS = path.join(ROOT, 'relay', 'native', 'build', 'harness')
 const SCRIPT = path.join(ROOT, 'test', 'relay', 'fixtures', 'exporterHarness.lua')
 const available = process.platform === 'win32' && fs.existsSync(path.join(HARNESS, 'lua.exe'))
+const ABI = fs.readFileSync(path.join(ROOT, 'relay', 'native', 'common.h'), 'utf8')
+  .match(/#define TRACS_EXPORTER_ABI (\d+)/)[1]
 
 const RUN_S = 11
 const config = (logTimings) => ({
@@ -63,7 +65,7 @@ describe.skipIf(!available)('tracs_exporter.dll in a Lua harness', () => {
     // A clean exit with the network thread running: the DLL unloads when
     // lua.exe closes its state.
     expect(code, out).toBe(0)
-    expect(out).toContain('ABI 7')
+    expect(out).toContain(`ABI ${ABI}`)
     expect(out).toContain('UNKNOWN NATIVE no native collector named noSuchCollector')
     expect(out).toContain('DONE')
     expect(out).toMatch(/LOG INFO connected to relay on 127\.0\.0\.1:\d+/)
