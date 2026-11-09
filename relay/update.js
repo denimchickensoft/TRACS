@@ -195,9 +195,10 @@ async function applyUpdate(latest, { exePath, exeDir, shutdown }) {
   else process.exit(0)
 }
 
+// Resolves true when there's nothing newer to update to.
 async function checkOnce(autoUpdateCfg, ctx) {
   const latest = await findLatestRelayRelease()
-  if (!latest || !isNewer(latest.version, CURRENT_VERSION)) return
+  if (!latest || !isNewer(latest.version, CURRENT_VERSION)) return true
 
   const { mode, window } = autoUpdateCfg
   if (mode === 'notify') {
@@ -210,13 +211,32 @@ async function checkOnce(autoUpdateCfg, ctx) {
   }
 
   await applyUpdate(latest, ctx)
+  return false
 }
 
-async function checkAndApplyUpdate(autoUpdateCfg, ctx) {
-  await checkOnce(autoUpdateCfg, ctx)
-  setInterval(() => {
-    checkOnce(autoUpdateCfg, ctx).catch((err) => console.error('[relay:update] check failed:', err.message))
-  }, CHECK_INTERVAL_MS).unref()
+// Runs check() now and every intervalMs after. A failed check (GitHub down,
+// no network yet at boot) is logged and simply waits for the next one, so a
+// single failure never stops the checks. "Up to date" is logged on the first
+// check and when one succeeds after a failure, not on every check.
+function scheduleChecks(check, intervalMs = CHECK_INTERVAL_MS) {
+  let failing = false
+  const run = async (first) => {
+    try {
+      const upToDate = await check()
+      if (upToDate && first) console.log(`[relay:update] up to date (v${CURRENT_VERSION})`)
+      else if (upToDate && failing) console.log(`[relay:update] check succeeded again - up to date (v${CURRENT_VERSION})`)
+      failing = false
+    } catch (err) {
+      failing = true
+      console.error(`[relay:update] check failed: ${err.message} - retrying in ${Math.round(intervalMs / 60_000)} min`)
+    }
+  }
+  setInterval(() => run(false), intervalMs).unref()
+  return run(true)
 }
 
-module.exports = { checkAndApplyUpdate }
+function checkAndApplyUpdate(autoUpdateCfg, ctx) {
+  return scheduleChecks(() => checkOnce(autoUpdateCfg, ctx))
+}
+
+module.exports = { checkAndApplyUpdate, scheduleChecks }
