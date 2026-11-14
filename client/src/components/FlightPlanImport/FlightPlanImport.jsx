@@ -101,8 +101,8 @@ export function FlightPlanImport({ onClose }) {
     setPhase('loading')
     try {
       const names = files.map(f => f.name.toLowerCase())
-      const bad = files.filter((f, i) => !/\.(miz|stm|csv|dtc)$/.test(names[i]))
-      if (bad.length) throw new Error(`Unrecognized file type (${bad.map(f => f.name).join(', ')}) — expected .miz, .stm, .csv, or .dtc.`)
+      const bad = files.filter((f, i) => !/\.(miz|trk|stm|csv|dtc)$/.test(names[i]))
+      if (bad.length) throw new Error(`Unrecognized file type (${bad.map(f => f.name).join(', ')}) — expected .miz, .trk, .stm, .csv, or .dtc.`)
       if (names.some(n => n.endsWith('.dtc'))) {
         if (files.length > 1) throw new Error('Load a .dtc file on its own, not together with other files.')
         await processDtc(files[0])
@@ -188,12 +188,12 @@ export function FlightPlanImport({ onClose }) {
             onClick={() => fileRef.current?.click()}
           >
             <span className="fpi-drop-icon">⬆</span>
-            <span className="fpi-drop-label">Drop .miz, .stm, .csv, or .dtc files</span>
+            <span className="fpi-drop-label">Drop .miz, .trk, .stm, .csv, or .dtc files</span>
             <span className="fpi-drop-sub">or click to browse</span>
             <input
               ref={fileRef}
               type="file"
-              accept=".miz,.stm,.csv,.dtc"
+              accept=".miz,.trk,.stm,.csv,.dtc"
               multiple
               style={{ display: 'none' }}
               onChange={onFileChange}

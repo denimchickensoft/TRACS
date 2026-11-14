@@ -14,6 +14,24 @@ describe('parseLua', () => {
     })
   })
 
+  test('positional entries (no key) are numbered from 1, as a multiplayer .trk writes trig.actions', () => {
+    const src = `mission = {
+      trig = {
+        actions = {
+          "a_do_script(\\"x = 1\\");",
+          "a_end_mission(\\"blue\\");",
+        },
+        flags = { true, false, nil },
+      },
+    }`
+    expect(parseLua(src)).toEqual({
+      trig: {
+        actions: ['a_do_script("x = 1");', 'a_end_mission("blue");'],
+        flags: [true, false, null],
+      },
+    })
+  })
+
   test('tables with only integer keys become sorted arrays', () => {
     expect(parseLua('m = { [2] = "b", [1] = "a", [3] = "c" }')).toEqual(['a', 'b', 'c'])
   })

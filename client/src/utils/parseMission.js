@@ -58,6 +58,16 @@ function parseVal(s) {
   throw new Error(`Unexpected '${c}' at position ${s.i}`)
 }
 
+// At an entry's start: `[key] =` or `name =` (keyed), or a bare value.
+function isKeyedEntry(s) {
+  if (s.src[s.i] === '[') return true
+  let j = s.i
+  if (!/[a-zA-Z_]/.test(s.src[j] ?? '')) return false
+  while (j < s.src.length && /[a-zA-Z_0-9]/.test(s.src[j])) j++
+  while (j < s.src.length && /\s/.test(s.src[j])) j++
+  return s.src[j] === '=' && s.src[j + 1] !== '='
+}
+
 function parseTable(s) {
   s.i++ // {
   const obj = {}
@@ -66,6 +76,18 @@ function parseTable(s) {
   while (true) {
     skipWS(s)
     if (s.i >= s.src.length || s.src[s.i] === '}') { s.i++; break }
+
+    // Positional entry (`{ "a", "b" }`) - no key, just a value. DCS writes
+    // some tables this way, e.g. a track's trig.actions. Lua numbers them
+    // from 1 in order.
+    if (!isKeyedEntry(s)) {
+      const n = intKeys.length + 1
+      intKeys.push(n)
+      obj[String(n)] = parseVal(s)
+      skipWS(s)
+      if (s.i < s.src.length && s.src[s.i] === ',') s.i++
+      continue
+    }
 
     let key
     if (s.src[s.i] === '[') {

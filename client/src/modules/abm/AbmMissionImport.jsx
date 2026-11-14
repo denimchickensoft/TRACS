@@ -153,12 +153,12 @@ export function AbmMissionImport({ onClose }) {
             onClick={() => fileRef.current?.click()}
           >
             <span className="mi-drop-icon">⬆</span>
-            <span className="mi-drop-label">Drop .miz, mission, .stm templates, or IFF .csv file</span>
+            <span className="mi-drop-label">Drop .miz, .trk, mission, .stm templates, or IFF .csv file</span>
             <span className="mi-drop-sub">or click to browse</span>
             <input
               ref={fileRef}
               type="file"
-              accept=".miz,.stm,.csv,*"
+              accept=".miz,.trk,.stm,.csv,*"
               multiple
               style={{ display: 'none' }}
               onChange={onFileChange}
