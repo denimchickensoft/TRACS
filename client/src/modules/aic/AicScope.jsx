@@ -32,7 +32,7 @@ import { useBrevityStore }     from '../../store/brevity.js'
 import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
-import { noteClick, noteEnter } from '../../components/ScopeNotes/noteCommands.js'
+import { noteClick, noteEnter, parseNoteCommand } from '../../components/ScopeNotes/noteCommands.js'
 import { dispatch, RR_TOGGLE, PICTURE_TOGGLE, BEC_TOGGLE } from './actions/index.js'
 import './AicScope.css'
 import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye, formatPictureDimensions } from './aicScopeHelpers.js'
@@ -658,6 +658,9 @@ export default function AicScope() {
     if (e.key === 'Enter') {
       e.preventDefault()
       const trimmed = cmdBuffer.trim()
+      // A note that still needs its click stays armed, so the next click places it
+      const noteCmd = parseNoteCommand(trimmed)
+      if (noteCmd && noteCmd.kind !== 'clearAll') { setCmdFeedback('CLICK TO PLACE'); return }
       if (trimmed) {
         execCommand(trimmed)
         setCmdHistory(h => [trimmed, ...h.filter(c => c !== trimmed)].slice(0, 50))

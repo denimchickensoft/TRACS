@@ -75,7 +75,7 @@ import {
 } from './abmScopeHelpers.js'
 import { parseCommand } from './input/commandParser.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
-import { noteClick, noteEnter, removeNoteAt } from '../../components/ScopeNotes/noteCommands.js'
+import { noteClick, noteEnter, parseNoteCommand, removeNoteAt } from '../../components/ScopeNotes/noteCommands.js'
 import { dispatch, dispatchClickEntered, CLICK_ENTERED, openAbmFocusPanel, RCLEAR, TDM_TOGGLE, GROUND_TOGGLE, ENG_TOGGLE, ACQ_TOGGLE,
   RR_TOGGLE, TIME_TOGGLE, COORDS_TOGGLE, MAP_TOGGLE, FIXES_TOGGLE, LABELS_TOGGLE, DB_TOGGLE, BEC_TOGGLE } from './actions/index.js'
 import { isOnGround } from '../../utils/visibleUnits.js'
@@ -1755,6 +1755,9 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     if (e.key === 'Enter') {
       e.preventDefault()
       const trimmed = cmdBuffer.trim()
+      // A note that still needs its click stays armed, so the next click places it
+      const noteCmd = parseNoteCommand(trimmed)
+      if (noteCmd && noteCmd.kind !== 'clearAll') { setCmdFeedback('CLICK TO PLACE'); return }
       if (trimmed) {
         execCommand(trimmed)
         setCmdHistory(h => [trimmed, ...h.filter(c => c !== trimmed)].slice(0, 50))
