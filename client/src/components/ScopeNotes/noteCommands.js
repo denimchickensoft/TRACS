@@ -3,7 +3,7 @@ import { canvasToLatLng } from '../../utils/projection.js'
 
 // .note command handling for every scope — see ScopeNotes.jsx.
 
-const MAX_TEXT = 80
+export const MAX_TEXT = 80
 
 // What a typed buffer asks for, or null if it isn't a note command.
 export function parseNoteCommand(buffer) {

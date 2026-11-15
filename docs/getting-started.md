@@ -116,7 +116,8 @@ Every scope (STARS, ASDE-X, CATCC, AIC and ABM) can hold boxed text notes. Only 
 | `.note` + click on a note | Remove that note |
 | DEL, then click a note | Remove that note (DEL works on an empty command line; in ABM it also removes a drawing, like `.dclear` + click) |
 | `.notes` + Enter | Remove every note on that scope |
-| Shift+right-drag a note | Move it |
+| Left-drag or Shift+right-drag a note | Move it (on a note, left-drag moves the note instead of drawing a range/bearing line) |
+| Double-click a note | Edit its text. Shift+Enter starts a new line. Enter or clicking away saves, Esc cancels, and clearing the text removes the note |
 
 ## Reconnecting / refreshing
 
