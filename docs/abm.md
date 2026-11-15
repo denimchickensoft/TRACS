@@ -293,7 +293,7 @@ Display toggles (`.coords`, `.db`, `.geo`, etc.) apply to the window you type th
 | **Alt+Click** | Bogey-dope — auto-pair with the nearest air contact declared hostile or bogey |
 | **Middle-click** | Toggle a persistent highlight; for ground/naval units this also pins their last known position on screen after they drop out of visibility |
 | **Right-click + drag** | Pan the scope |
-| **Left-click + drag** | Draw a range/bearing line |
+| **Left-click + drag** | Draw a range/bearing line. Starting on a note moves the note instead |
 | **Digit 1–9, then click** | Set that contact's leader-line direction (`5` returns it to the global direction) |
 | **Double-click** a contact, runway or point | Open a Focus window on it |
 | **Click** a blinking missile symbol | Cancel its launch alert |

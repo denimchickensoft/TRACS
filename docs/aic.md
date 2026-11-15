@@ -133,7 +133,7 @@ Rows are listed in the order they were added. Mouse wheel on the panel's title b
 
 | Gesture | Action |
 |---|---|
-| Left-drag | Draw a range/bearing line (RBL) |
+| Left-drag | Draw a range/bearing line (RBL). Starting on a note moves the note instead |
 | Shift+click a contact | Remove all BRAA pairs for that unit |
 | Ctrl+Alt+click a contact | Toggle a manual threat ring |
 | Ctrl+click a contact | Start/complete a BRAA pair |
