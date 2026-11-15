@@ -1,4 +1,15 @@
 .ato {
+  /* Status colours: section headers and each row's STATUS cell */
+  --ato-air:      #5A8A5A;
+  --ato-taxi:     #4A9A9A;
+  --ato-ground:   #6A8098;
+  --ato-planned:  #777;
+  --ato-reserve:  #BB8833;
+  /* CALLSIGN from an MP name (or .rename) vs from the unit name */
+  --ato-cs-live:  #7CDB7C;
+  --ato-cs-static: #888;
+  --ato-row-alt:  #111;
+
   display:        flex;
   flex-direction: column;
   background:     #0a0a0a;
@@ -114,10 +125,59 @@
 }
 .ato-col-sort:hover { color: #888; }
 
+.ato-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ato-flight-name { color: #FFD700; text-transform: uppercase; }
-.ato-taskunit { color: #aaa; overflow: hidden; text-overflow: ellipsis; }
-.ato-active  { color: #5A8A5A; font-size: 9px; }
-.ato-reserve { color: #BB8833; font-size: 9px; }
+.ato-cs-live   { color: var(--ato-cs-live); font-weight: 600; }
+.ato-cs-static { color: var(--ato-cs-static); }
+.ato-taskunit { color: #aaa; }
+.ato-freq { cursor: pointer; }
+.ato-freq:hover { text-decoration: underline; }
+.ato-freq-dim { color: #555; }
+
+.ato-row-alt { background: var(--ato-row-alt); }
+.ato-row-dim { opacity: 0.55; }
+
+.ato-st-air     { color: var(--ato-air); }
+.ato-st-taxi    { color: var(--ato-taxi); }
+.ato-st-ground  { color: var(--ato-ground); }
+.ato-st-planned { color: var(--ato-planned); }
+.ato-st-reserve { color: var(--ato-reserve); }
+
+.ato-section-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px 2px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid #1a1a1a;
+  background: #0d0d0d;
+  cursor: pointer;
+  user-select: none;
+}
+.ato-section-header:hover { background: #151515; }
+.ato-section-caret { width: 8px; }
+.ato-section-count { color: #555; margin-left: 2px; }
+
+.ato-search {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+}
+.ato-search-input,
+.ato-search-column {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  color: #ccc;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 2px 4px;
+}
+.ato-search-input { flex: 1; min-width: 0; text-transform: uppercase; }
+.ato-search-input:focus,
+.ato-search-column:focus { outline: none; border-color: #555; }
 
 .ato-row-actions { display: flex; justify-content: center; }
 .ato-row-delete {

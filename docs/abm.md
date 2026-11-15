@@ -310,20 +310,30 @@ FRAG also drives the scope: clicking a flight's Base or a route waypoint in FRAG
 
 ## ATO drawer
 
-A sortable table of every tasked flight, with these columns:
-- Flight name
+A sortable table of every flight in the mission, airplanes and helicopters.
+
+A flight is the aircraft of one mission group that share a unit name: units `RMD-1-1` to `RMD-1-4` are flight **RMD1**. A group holding `ELVIS-5-1`, `ELVIS-5-2`, `HAWK-1-1` and `HAWK-1-2` is two flights, ELVIS5 and HAWK1. A unit name with a single number (`Warden-1`, `VOLVO-1`) is a flight of its own. Group names and the mission editor's callsign dropdown are never shown.
+
+Columns:
+- **FLIGHT** — the flight's name from its unit names, hyphens and spaces removed
+- **CALLSIGN** — the callsign players fly it under, in green once someone is slotted in (`HAWK 1-1 | Pilot` in RMD-1-1 shows **HAWK1**). A `.rename` shows here too. Grey, with the flight's name, while nobody is.
 - Task
 - Type/Num
-- Callsign (resolved once live)
 - **TASKUNIT** — airfield ICAO, carrier hull abbreviation, or "Air Start". FRAG's Tasking view labels this "Base".
 - **ALT** — the flight's assigned altitude (`200` or `200-220`), set with `++` or FRAG's Alt row
-- Frequency
+- Frequency — dimmed on rows with a player, who usually brings their own radio plan. Click it to open the flight in FRAG with the lead's COMM list expanded.
 - **TACAN** — the first TACAN the flight's route switches on (an Activate Beacon waypoint action), e.g. `31Y`; hover for the callsign. Any flight, not just tankers.
-- Status — **RESERVE** / **ACTIVE** / **AIR** / **TAXI** / **GROUND**. This is the most advanced state across all live-matched aircraft in the flight. RESERVE means none of the flight's aircraft has spawned yet.
+- Status — **AIR** / **TAXI** / **GROUND** / **PLANNED** / **RESERVE**. This is the most advanced state across the row's live aircraft. PLANNED means none of them is live yet (not spawned, slots empty, or not visible to the data source); RESERVE is the same for a late-activation flight.
+
+Rows are grouped into collapsible sections by status, in that order, each in its status colour. PLANNED and RESERVE rows are dimmed. RESERVE starts collapsed, since scripted missions often hold dozens of spawn templates there.
+
+When players in one flight fly under different callsigns, the flight gets a row for each callsign, plus a row for its remaining slots: RMD1 with `HAWK 1-1`, `HAWK 1-2` and `VIPER 2-2` slotted in shows rows HAWK1, VIPER2 and RMD1. A row's callsign stays while any of its players is still slotted in.
+
+The search box above the table filters rows as you type, in every column or the one picked beside it. Case, hyphens and spaces don't matter: `rmd 1` finds RMD1. Escape clears it.
 
 Taskunit uses the flight's recorded departure. Air-start flights use their recorded recovery/landing point instead, if the mission has one.
 
-Click a column header to sort (click again to reverse). Click a row to select that flight and open it in FRAG. Blue/red sessions see only their own coalition's flights; GM/Admin see all. Mouse wheel over the title bar zooms the panel (50–200%). Manually-added flights have a **×** to remove them.
+Click a column header to sort within each section (click again to reverse). Click a row to open it in FRAG. Blue/red sessions see only their own coalition's flights; GM/Admin see all. Mouse wheel over the title bar zooms the panel (50–200%). Manually-added flights have a **×** to remove them.
 
 **Footer:**
 
@@ -339,8 +349,8 @@ Click a column header to sort (click again to reverse). Click a row to select th
 Detail view for the flight selected in ATO, or opened with Ctrl+Shift+Click on the scope.
 
 - **Tasking** — editable Task field, Alt (`[___] to [___]`), TACAN (e.g. `31Y TKR`, when the route switches one on), full Base name, and Status (same rollup as ATO). Alt takes the same 3-digit values as `++`: fill only the first box for a hard altitude, both for a block (lower first). Empty, or `000` alone, clears it. Both boxes are applied together when you leave the row or press Enter; an invalid pair flashes red and reverts. Click an airbase or carrier Base to drop a scope marker.
-- **Roster** — one row per aircraft.
-  - Imported flights: callsign, type, live-resolved callsign, onboard number, skill, air/ground state, ordnance summary (grouped by weapon with counts), a collapsible comms/radio list, and Link16 station if present.
+- **Roster** — one row per aircraft of the selected ATO row.
+  - Imported flights: callsign, type, pilot name, onboard number, skill, air/ground state, ordnance summary (grouped by weapon with counts), a collapsible comms/radio list, and Link16 station if present. The callsign is the one TRACS shows on the scope while the aircraft is live (`HAWK11`, or a `.rename`), else its unit name (`RMD13`); the pilot name is the rest of a player's MP name, `-` for an open slot or AI.
   - Manually-added flights: callsign, type, and state, matched live against aircraft flying that callsign prefix.
   - A manual flight's roster ends with a **+ Add Aircraft** field. A typed callsign shows as **PENDING** until a matching aircraft goes live.
   - A **×** on a manually-added row removes its roster/IFF entry. A row matched live by callsign prefix stays listed after that.
@@ -356,8 +366,8 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 - Imported mission data stays local to each controller.
 
 **Ctrl+Shift+Click** on an aircraft opens its FRAG flight:
-- The aircraft's live callsign is matched against every roster, imported and manual. `FORD11` matches an imported roster entry named `FORD 1-1`.
-- If the aircraft is already on a roster, that flight opens.
+- An aircraft linked to an imported flight (see below) opens that flight.
+- Otherwise its live callsign is matched against every manual roster; if it's already on one, that flight opens.
 - Otherwise TRACS opens (or creates) a manual flight for its callsign prefix (e.g. every `ENFIELD1x` aircraft together) and adds the aircraft with blank IFF fields.
 - Repeating the click never creates duplicates.
 - GM/Admin sessions file the flight under the aircraft's own coalition.
@@ -369,15 +379,16 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 - Drop a `.miz` file or a raw mission text file, or click to browse.
 - **Mission Editor static templates (`.stm`)** load here too, several at once and alongside a `.miz`, for example the flights squadrons hand in as templates.
   - Template flights stack: loading a `.miz` replaces only the flights from the previous `.miz`, and a template whose coalition and group name are already loaded replaces that flight (the preview marks it REPLACES).
-  - A template's IDs change when it's pasted into the real mission, so template flights match live aircraft by callsign, taken from each unit's name.
+  - A template's IDs change when it's pasted into the real mission, so template flights match live aircraft by group and unit name.
 - Blue/red sessions only see their own coalition's tasked flights. The other side's flights are filtered out before the preview.
 - The preview shows a count-by-task summary and the list of flights found, with a RESERVE badge for late-activation flights. **Import** replaces the previously imported set and keeps manually-added flights.
-- ABM reads groups, units, routes, payloads, radios, and Link16 from the mission. It does not read triggers, trigger rules, or the mission's localization dictionary.
+- ABM reads airplane and helicopter groups, units, routes, payloads, radios, and Link16 from the mission.
+- Live aircraft are linked to the mission's by group first (its DCS ID, or its name), then by unit name. A player the data source reports by MP name only (the DCS exporter running on a client PC, or Tacview) takes the slot matching the position in their callsign (`HAWK 1-2` takes the group's second aircraft), else the first open one. Aircraft spawned by scripts or dynamic slots aren't in the mission file and get no ATO row. It does not read triggers, trigger rules, or the mission's localization dictionary.
 - With the DCS exporter, the running mission's flights can load themselves (see [Live mission data](getting-started.md#live-mission-data)). The same mission only adds flights not loaded yet, keeping your edits. A different mission replaces the flights loaded from the previous one.
 - **Dropping a `.csv` here instead** bulk-assigns IFF codes:
   - The header row must include a `callsign` column. `mode1`, `mode2`, and `mode3` columns are optional and can be in any order. Codes must be octal: 2 digits for Mode 1, 4 for Modes 2 and 3. Shorter codes get leading zeros added (spreadsheets often strip them, so `400` becomes `0400`). A code that's still invalid, such as `8899` or `12345`, is dropped and listed in the preview; that mode is left unchanged and the row's other codes still apply. A blank cell clears that mode.
   - A preview lists what will be applied; **Apply** writes the codes.
-  - It only fills in rows that already exist (from a mission import, Ctrl+Shift+Click, or manual entry), matched by callsign, and never creates flights. The first matching roster row wins.
+  - It only fills in rows that already exist (from a mission import, Ctrl+Shift+Click, or manual entry), matched by callsign (an imported aircraft's live callsign, else its unit name), and never creates flights. The first matching roster row wins.
   - Callsigns with no matching row are listed as skipped.
 
 ## Custom Drawing Import

@@ -37,10 +37,17 @@ function elementDigit(unit) {
   return acid ? Number(acid.slice(-1)) : null
 }
 
-// A human-flown unit, or one whose reported name carries a callsign (the
-// exporter client and Tacview don't flag humans reliably).
-export function isPlayer(unit) {
-  return unit.human === true || findShapedCallsign(unit.unitName ?? '', null) != null
+// A unit that may be a player waiting for a slot: flagged human, or (Tacview
+// flags nobody) reporting a callsign-shaped name.
+function maybePlayer(unit) {
+  if (unit.human !== undefined) return unit.human === true
+  return findShapedCallsign(unit.unitName ?? '', null) != null
+}
+
+// Whether a link is a player: the source flags it human, or it was placed by
+// its callsign rather than matched by its unit name.
+export function isPlayerLink(link) {
+  return !!link && (link.unit.human === true || link.via === 'player')
 }
 
 export const missionUnitKey = (flightId, index) => `${flightId}:${index}`
@@ -59,7 +66,7 @@ export function getFlightLinks(flights, liveUnits) {
 
 /**
  * @returns {{
- *   live: (flight, unitIndex) => ({ key, unit } | null),
+ *   live: (flight, unitIndex) => ({ key, unit, via: 'id'|'name'|'player' } | null),
  *   flightOf: (liveKey) => ({ flightId, unitIndex } | null),
  * }}
  */
@@ -91,10 +98,10 @@ export function buildFlightLinks(flights, liveUnits) {
   const liveToSlot = new Map()
   const leftover = new Map() // groupKey -> [{ key, unit }]
 
-  const claim = (slot, key, unit) => {
+  const claim = (slot, key, unit, via) => {
     const mk = missionUnitKey(slot.flight.flightId, slot.index)
     if (claimed.has(mk) || liveToSlot.has(key)) return false
-    claimed.set(mk, { key, unit })
+    claimed.set(mk, { key, unit, via })
     liveToSlot.set(key, { flightId: slot.flight.flightId, unitIndex: slot.index })
     return true
   }
@@ -102,7 +109,7 @@ export function buildFlightLinks(flights, liveUnits) {
   for (const [key, unit] of Object.entries(liveUnits ?? {})) {
     if (idsReliable && unit.unitID != null) {
       const slot = byUnitId.get(unit.unitID)
-      if (slot && claim(slot, key, unit)) continue
+      if (slot && claim(slot, key, unit, 'id')) continue
     }
 
     let gk = typeof unit.groupID === 'number' ? byDcsGroupId.get(unit.groupID) : undefined
@@ -114,8 +121,8 @@ export function buildFlightLinks(flights, liveUnits) {
 
     const names = [trim(unit.callsign), trim(unit.unitName)].filter(Boolean)
     const slot = groups.get(gk).find((s) => s.unit.unitName && names.includes(s.unit.unitName))
-    if (slot && claim(slot, key, unit)) continue
-    if (isPlayer(unit)) {
+    if (slot && claim(slot, key, unit, 'name')) continue
+    if (maybePlayer(unit)) {
       if (!leftover.has(gk)) leftover.set(gk, [])
       leftover.get(gk).push({ key, unit })
     }
@@ -130,7 +137,7 @@ export function buildFlightLinks(flights, liveUnits) {
     for (const p of withDigit) {
       const open = free()
       const slot = (p.digit != null && open.find((s) => s.unit.position === p.digit)) || open[0]
-      if (slot) claim(slot, p.key, p.unit)
+      if (slot) claim(slot, p.key, p.unit, 'player')
     }
   }
 

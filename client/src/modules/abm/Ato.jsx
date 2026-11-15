@@ -5,7 +5,8 @@ import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
 import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
-import { getFlightLinks } from '../../utils/flightLinks.js'
+import { getFlightLinks, isPlayerLink } from '../../utils/flightLinks.js'
+import { flightRows } from './atoRows.js'
 import { parseFlightElement } from './canvas/drawAbmContacts.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
 import { computeAirbaseLabels } from '../../store/runways.js'
@@ -27,11 +28,13 @@ const SCALE_MIN     = 0.5
 const SCALE_MAX     = 2.0
 const SCALE_STEP    = 0.05
 
+const ATO_COLLAPSED_KEY = 'tracs.ato.collapsed'
+
 const COLUMNS = [
   { key: 'flight',   label: 'FLIGHT',    width: 90  },
+  { key: 'callsign', label: 'CALLSIGN',  width: 70  },
   { key: 'task',     label: 'TASK',      width: 50  },
   { key: 'num',      label: 'TYPE/NUM',  width: 70  },
-  { key: 'callsign', label: 'CALLSIGN',  width: 70  },
   { key: 'taskunit', label: 'TASKUNIT',  width: 50  },
   { key: 'alt',      label: 'ALT',       width: 48  },
   { key: 'freq',     label: 'FREQ',      width: 58  },
@@ -83,11 +86,37 @@ const SORT_ACCESSORS = {
   alt:      r => (r.alt?.lo ? Number(r.alt.lo) : -1),
   freq:     r => r.frequency ?? -1,
   tacan:    r => r.tacan?.channel ?? -1,
-  // RESERVE is its own group, separate from the "active" states (ACTIVE/
-  // AIR/GROUND/TAXI) — plain alphabetical would interleave RESERVE between
-  // GROUND and TAXI, splitting the reserve flights across the sorted list.
-  status:   r => `${r.isReserve ? 1 : 0}_${r.statusLabel ?? ''}`,
+  status:   r => r.statusLabel ?? '',
 }
+
+// The text each column shows, which the search matches against.
+const CELL_TEXT = {
+  flight:   r => r.name,
+  callsign: r => r.callsignLabel,
+  task:     r => r.taskLabel,
+  num:      r => r.numType,
+  taskunit: r => r.taskunitLabel,
+  alt:      r => r.altLabel,
+  freq:     r => r.freqLabel,
+  tacan:    r => r.tacanLabel,
+  status:   r => r.statusLabel,
+}
+
+// Status sections, top to bottom. PLANNED: in the mission from the start
+// but not seen live (not spawned yet, slots empty, or out of the source's
+// view). RESERVE: late activation, not spawned yet.
+const SECTIONS = ['AIR', 'TAXI', 'GROUND', 'PLANNED', 'RESERVE']
+const NOT_LIVE = new Set(['PLANNED', 'RESERVE'])
+
+function loadCollapsed() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ATO_COLLAPSED_KEY) ?? 'null')
+    if (Array.isArray(saved)) return new Set(saved)
+  } catch { /* fall through to the default */ }
+  return new Set(['RESERVE'])
+}
+
+const searchNorm = (s) => String(s ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
 
 export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
@@ -176,82 +205,91 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
     localStorage.setItem(ATO_SORT_DIR_KEY, String(nextDir))
   }
 
-  const rows = useMemo(() => flights.map(f => {
-    // Manual flights (AddAtoFlight.jsx) have no DCS unitId — matched by
-    // callsign *prefix* instead, since there's no reliable way to predict
-    // whether DCS resolves elements as "SHELL1"/"SHELL2" or "SHELL31"/
-    // "SHELL32". liveMatches is every live unit whose resolved callsign
-    // starts with the entered prefix; its first entry stands in for "the
-    // lead" imported flights get from units[0].
-    const liveMatches = f.manual ? matchLiveByPrefix(f.callsignPrefix, liveUnits) : null
-    const liveLead = f.manual
-      ? (liveMatches[0]?.unit ?? null)
-      : (links.live(f, 0)?.unit ?? null)
-
-    // CALLSIGN is the flight's, not the lead aircraft's — drop the element
-    // digit ("SHELL11" -> "SHELL1") via the same flight/element split
-    // formation-suppression uses. Callsigns that don't split (no 2+-digit
-    // trailing run) show as resolved, unchanged.
-    const fe = liveLead ? parseFlightElement(liveLead) : null
-    const callsignLabel = fe ? fe.flightKey : (liveLead ? resolveCallsign(liveLead).toUpperCase() : '—')
-    // RESERVE only means "not spawned yet" — a late-activation group that
-    // has since been triggered in-game (any of its units now live in
-    // Olympus) is ACTIVE regardless of the mission file's static flag.
-    // Non-late-activation flights exist from mission start and are always
-    // ACTIVE, live or not (matches DCS's own lateActivation semantics).
-    // Manual flights are never late-activation, so this is always live once
-    // a callsign match is found.
-    const isLive = f.manual ? liveMatches.length > 0 : f.units.some((_, i) => links.live(f, i))
-
-    // Once the lead is live (CALLSIGN populated), ACTIVE is replaced by the
-    // flight's actual air/ground picture — AIR beats TAXI beats GROUND
-    // across every live unit in the flight. base.type === 'carrier' makes
-    // the ground-state comparison relative to the carrier's own velocity
-    // (see utils/carriers.js groundState) rather than absolute ground speed,
-    // since a jet parked on a moving carrier otherwise reads as taxiing.
-    let statusLabel = 'ACTIVE'
-    if (f.lateActivation && !isLive) {
-      statusLabel = 'RESERVE'
-    } else if (liveLead) {
-      const base = resolveBase(f)
-      const isCarrierBase = base?.type === 'carrier'
-      const carrierUnit = isCarrierBase ? liveByDcsId.get(base.carrierUnitId) : null
-      const liveUnitsForRollup = f.manual
-        ? liveMatches.map(m => m.unit)
-        : f.units.map((_, i) => links.live(f, i)?.unit).filter(Boolean)
+  // One row per MP flight callsign plus a base row (atoRows.js) for an
+  // imported flight; one row for a manual flight.
+  const rows = useMemo(() => flights.flatMap(f => {
+    const base = resolveBase(f)
+    const isCarrierBase = base?.type === 'carrier'
+    const carrierUnit = isCarrierBase ? liveByDcsId.get(base.carrierUnitId) : null
+    const shared = {
+      // FRAG's editable Task field (store/abmMission.js taskOverrides) wins
+      // over the mission's own task string when a controller has set one.
+      taskLabel: (taskOverrides ?? {})[f.flightId] ?? (f.task || f.rawTask || '-'),
+      taskunitLabel: airfieldAbbrev(base, icaoMap),
+      altLabel: formatAltRange(f.alt, unitSystem) || '-',
+      freqLabel: f.frequency != null ? f.frequency.toFixed(3) : '-',
+      tacanLabel: formatTacan(f.tacan, false) || '-',
+    }
+    // AIR beats TAXI beats GROUND across a row's live units. A carrier base
+    // makes the ground state relative to the carrier's own velocity (see
+    // utils/carriers.js groundState), so a jet parked on a moving deck
+    // doesn't read as taxiing.
+    const status = (liveList) => {
       let rollup = null
-      for (const lu of liveUnitsForRollup) {
+      for (const lu of liveList) {
         const state = lu.airborne ? 'AIR' : groundState(lu, isCarrierBase, carrierUnit)
         if (!rollup || STATE_PRIORITY[state] > STATE_PRIORITY[rollup]) rollup = state
       }
-      if (rollup) statusLabel = rollup
+      if (rollup) return rollup
+      return f.lateActivation ? 'RESERVE' : 'PLANNED'
     }
 
-    return {
-      ...f,
-      numType: f.units.length > 0 ? `${f.units[0].type} x${f.units.length}` : '—',
-      callsignLabel,
-      // FRAG's editable Task field (store/abmMission.js taskOverrides) wins
-      // over the mission's own task string when a controller has set one.
-      taskLabel: (taskOverrides ?? {})[f.flightId] ?? (f.task || f.rawTask || '—'),
-      taskunitLabel: airfieldAbbrev(resolveBase(f), icaoMap),
-      altLabel: formatAltRange(f.alt, unitSystem) || '—',
-      freqLabel: f.frequency != null ? f.frequency.toFixed(3) : '—',
-      tacanLabel: formatTacan(f.tacan, false) || '—',
-      isReserve: f.lateActivation && !isLive,
-      statusLabel,
+    if (f.manual) {
+      // Manual flights (AddAtoFlight.jsx) have no DCS unit to link: every
+      // live unit whose resolved callsign starts with the entered prefix.
+      const matches = matchLiveByPrefix(f.callsignPrefix, liveUnits)
+      const lead = matches[0]?.unit ?? null
+      return [{
+        ...f, ...shared, key: `${f.flightId}`, row: null,
+        numType: f.units.length > 0 ? `${f.units[0].type} x${f.units.length}` : '-',
+        callsignLabel: lead ? (parseFlightElement(lead)?.flightKey ?? resolveCallsign(lead).toUpperCase()) : f.name,
+        callsignLive: !!lead,
+        hasHuman: matches.some(m => m.unit.human === true),
+        statusLabel: status(matches.map(m => m.unit)),
+      }]
     }
+
+    return flightRows(f, links).map(({ row, callsign, unitIndices }) => {
+      const units = unitIndices.map(i => f.units[i])
+      const live = unitIndices.map(i => links.live(f, i)).filter(Boolean)
+      return {
+        ...f, ...shared, key: `${f.flightId}|${row ?? ''}`, row,
+        numType: units.length > 0 ? `${units[0].type} x${units.length}` : '-',
+        callsignLabel: callsign ?? f.name,
+        callsignLive: callsign != null,
+        hasHuman: live.some(isPlayerLink),
+        statusLabel: status(live.map(l => l.unit)),
+      }
+    })
   }), [flights, icaoMap, liveByDcsId, links, liveUnits, taskOverrides, unitSystem])
 
-  const sortedRows = useMemo(() => {
-    if (!sortKey) return rows
-    const accessor = SORT_ACCESSORS[sortKey]
-    return [...rows].sort((a, b) => {
-      const av = accessor(a), bv = accessor(b)
-      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir
-      return String(av).localeCompare(String(bv)) * sortDir
-    })
-  }, [rows, sortKey, sortDir])
+  const [query, setQuery] = useState('')
+  const [queryColumn, setQueryColumn] = useState('all')
+  const [collapsed, setCollapsed] = useState(loadCollapsed)
+  const toggleSection = (name) => setCollapsed(prev => {
+    const next = new Set(prev)
+    next.has(name) ? next.delete(name) : next.add(name)
+    try { localStorage.setItem(ATO_COLLAPSED_KEY, JSON.stringify([...next])) } catch { /* per-window convenience only */ }
+    return next
+  })
+
+  // Search, then the column sort, then the status sections in SECTIONS order.
+  const sections = useMemo(() => {
+    const q = searchNorm(query)
+    const keys = queryColumn === 'all' ? COLUMNS.map(c => c.key) : [queryColumn]
+    let list = q ? rows.filter(r => keys.some(k => searchNorm(CELL_TEXT[k](r)).includes(q))) : rows
+    if (sortKey) {
+      const accessor = SORT_ACCESSORS[sortKey]
+      list = [...list].sort((a, b) => {
+        const av = accessor(a), bv = accessor(b)
+        if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir
+        return String(av).localeCompare(String(bv)) * sortDir
+      })
+    }
+    return SECTIONS
+      .map(name => ({ name, rows: list.filter(r => r.statusLabel === name) }))
+      .filter(sec => sec.rows.length > 0)
+  }, [rows, query, queryColumn, sortKey, sortDir])
 
   // Popped out: fill the window, with the rows scrolling under the header
   const fill  = usePopupFill(scale, !docked)
@@ -271,12 +309,30 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
         </span>
       </div>
 
+      <div className="ato-search">
+        <input
+          className="ato-search-input"
+          value={query}
+          placeholder="Search"
+          spellCheck={false}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); e.currentTarget.blur() } }}
+        />
+        <select className="ato-search-column" value={queryColumn} onChange={(e) => setQueryColumn(e.target.value)}>
+          <option value="all">ALL</option>
+          {COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+        </select>
+      </div>
+
       <div className="ato-body">
         {rows.length === 0 && (
           <div className="ato-empty">No mission loaded.<br />Load a .miz/mission file, or add a flight manually, below.</div>
         )}
+        {rows.length > 0 && sections.length === 0 && (
+          <div className="ato-empty">No flights match.</div>
+        )}
 
-        {rows.length > 0 && (
+        {sections.length > 0 && (
           <>
             <div className="ato-row ato-row-header" style={{ gridTemplateColumns }}>
               {COLUMNS.map(c => (
@@ -286,34 +342,49 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
               ))}
               <span />
             </div>
-            {sortedRows.map(row => (
-              <div
-                key={row.flightId}
-                className="ato-row"
-                style={{ gridTemplateColumns }}
-                onClick={() => selectFlight(row.flightId)}
-                title="Click for FRAG detail"
-              >
-                <span className="ato-flight-name">{row.name}</span>
-                <span>{row.taskLabel}</span>
-                <span>{row.numType}</span>
-                <span>{row.callsignLabel}</span>
-                <span className="ato-taskunit">{row.taskunitLabel}</span>
-                <span>{row.altLabel}</span>
-                <span>{row.freqLabel}</span>
-                <span title={formatTacan(row.tacan) || undefined}>{row.tacanLabel}</span>
-                <span className={row.isReserve ? 'ato-reserve' : 'ato-active'}>{row.statusLabel}</span>
-                <span className="ato-row-actions">
-                  {row.manual && (
-                    <button
-                      className="ato-row-delete"
-                      onClick={(e) => { e.stopPropagation(); removeFlight(row.flightId) }}
-                      title="Remove flight"
-                    >×</button>
-                  )}
-                </span>
-              </div>
-            ))}
+            {sections.map(sec => {
+              const isCollapsed = collapsed.has(sec.name)
+              return (
+                <div key={sec.name} className="ato-section">
+                  <div className={`ato-section-header ato-st-${sec.name.toLowerCase()}`} onClick={() => toggleSection(sec.name)}>
+                    <span className="ato-section-caret">{isCollapsed ? '▸' : '▾'}</span>
+                    {sec.name}
+                    <span className="ato-section-count">{sec.rows.length}</span>
+                  </div>
+                  {!isCollapsed && sec.rows.map((row, i) => (
+                    <div
+                      key={row.key}
+                      className={['ato-row', i % 2 ? 'ato-row-alt' : '', NOT_LIVE.has(row.statusLabel) ? 'ato-row-dim' : ''].join(' ').trim()}
+                      style={{ gridTemplateColumns }}
+                      onClick={() => selectFlight(row.flightId, { row: row.row })}
+                    >
+                      <span className="ato-cell ato-flight-name" title={row.name}>{row.name}</span>
+                      <span className={`ato-cell ${row.callsignLive ? 'ato-cs-live' : 'ato-cs-static'}`} title={row.callsignLabel}>{row.callsignLabel}</span>
+                      <span className="ato-cell" title={row.taskLabel}>{row.taskLabel}</span>
+                      <span className="ato-cell" title={row.numType}>{row.numType}</span>
+                      <span className="ato-cell ato-taskunit" title={row.taskunitLabel}>{row.taskunitLabel}</span>
+                      <span className="ato-cell" title={row.altLabel}>{row.altLabel}</span>
+                      <span
+                        className={`ato-cell ato-freq${row.hasHuman ? ' ato-freq-dim' : ''}`}
+                        title={`${row.freqLabel} - click to open the lead's COMM`}
+                        onClick={(e) => { e.stopPropagation(); selectFlight(row.flightId, { row: row.row, expandLeadComm: true }) }}
+                      >{row.freqLabel}</span>
+                      <span className="ato-cell" title={formatTacan(row.tacan) || row.tacanLabel}>{row.tacanLabel}</span>
+                      <span className={`ato-cell ato-st-${row.statusLabel.toLowerCase()}`}>{row.statusLabel}</span>
+                      <span className="ato-row-actions">
+                        {row.manual && (
+                          <button
+                            className="ato-row-delete"
+                            onClick={(e) => { e.stopPropagation(); removeFlight(row.flightId) }}
+                            title="Remove flight"
+                          >×</button>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
           </>
         )}
       </div>

@@ -26,6 +26,7 @@ const SB_KEY = 'tracs.abm.mission'
 function serialize(s) {
   return {
     flights: s.flights, importedAt: s.importedAt, selectedFlightId: s.selectedFlightId, selectNonce: s.selectNonce,
+    selectedRow: s.selectedRow, expandComm: s.expandComm,
     findRequest: s.findRequest, findNonce: s.findNonce, findKey: s.findKey,
     blinkIds: s.blinkIds,
     routeVisible: s.routeVisible,
@@ -123,6 +124,13 @@ export const useAbmMissionStore = create((set, get) => ({
   // selectedFlightId dependency wouldn't change, and the effect wouldn't
   // re-run, if the panel was closed and the same contact clicked again).
   selectNonce: saved.selectNonce ?? 0,
+  // Which ATO row of the selected flight the FRAG shows (modules/abm/
+  // atoRows.js): an MP flight callsign, '' for the base row, null for the
+  // whole flight.
+  selectedRow: saved.selectedRow ?? null,
+  // The selection came from a click on an ATO row's FREQ: the FRAG expands
+  // the lead's COMM for it.
+  expandComm: saved.expandComm ?? false,
 
   // A FRAG panel's Base/route-waypoint click — request for AbmScope (the
   // only place holding theatre navdata/runway/unit data, and never undocked
@@ -256,7 +264,9 @@ export const useAbmMissionStore = create((set, get) => ({
     return { taskOverrides: next }
   }),
 
-  selectFlight: (flightId) => set((s) => ({ selectedFlightId: flightId, selectNonce: s.selectNonce + 1, routeVisible: false })),
+  selectFlight: (flightId, { row = null, expandLeadComm = false } = {}) => set((s) => ({
+    selectedFlightId: flightId, selectedRow: row, expandComm: expandLeadComm, selectNonce: s.selectNonce + 1, routeVisible: false,
+  })),
 
   toggleRouteVisible: () => set((s) => ({ routeVisible: !s.routeVisible })),
 

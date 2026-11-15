@@ -6,7 +6,8 @@ import { validateAltPair } from './flightAlt.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
 import { resolveCallsign, matchLiveByPrefix, stripAcid, parseUnitName } from '../../utils/callsign.js'
-import { getFlightLinks, isPlayer } from '../../utils/flightLinks.js'
+import { getFlightLinks, isPlayerLink } from '../../utils/flightLinks.js'
+import { selectedUnitIndices } from './atoRows.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 import { getOrdnanceName, preloadOrdnanceDb } from '../../utils/ordnance.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
@@ -258,6 +259,28 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
     return found.coalition === sessionCoalition ? found : null
   }, [flights, selectedFlightId, sessionCoalition])
 
+  // The selected ATO row's units (atoRows.js): an MP flight's, the base
+  // row's, or the whole flight.
+  const selectedRow = useAbmMissionStore(s => s.selectedRow)
+  const expandComm  = useAbmMissionStore(s => s.expandComm)
+  const selectNonce = useAbmMissionStore(s => s.selectNonce)
+  const rowUnits = useMemo(
+    () => (flight && !flight.manual ? selectedUnitIndices(flight, links, selectedRow) : []),
+    [flight, links, selectedRow]
+  )
+
+  // A click on an ATO row's FREQ opens the lead's COMM: the row's lowest
+  // aircraft position, else its first unit. Sections already open stay open.
+  useEffect(() => {
+    if (!expandComm || !flight || flight.manual || rowUnits.length === 0) return
+    const pos = (ui) => flight.units[ui].position ?? Infinity
+    const lead = rowUnits.reduce((a, b) => (pos(b) < pos(a) ? b : a))
+    const u = flight.units[lead]
+    if (!u.radios?.some(r => radioPresets(r).length > 0)) return
+    const key = u.unitId ?? `i${lead}`
+    setExpandedRadios(prev => (prev.has(key) ? prev : new Set(prev).add(key)))
+  }, [selectNonce]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [, setAirdromeTick] = useState(0)
   useEffect(() => {
     const theatre = flight?.launch?.theatre ?? flight?.recovery?.theatre
@@ -424,34 +447,20 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                 })()}
               </div>
               {(() => {
-                // RESERVE only means "not spawned yet" — same live check as
-                // ATO's STATUS column (Ato.jsx): a late-activation group
-                // that's since been triggered in-game is ACTIVE regardless
-                // of the mission file's static flag. Once the lead is live
-                // (CALLSIGN populated — same gate the roster's TCS column
-                // uses), ACTIVE is replaced by the flight's actual
-                // air/ground picture — AIR beats TAXI beats GROUND across
-                // every live unit in the flight.
-                const liveLead  = flight.manual
-                  ? (flightLiveMatches[0]?.unit ?? null)
-                  : (links.live(flight, 0)?.unit ?? null)
-                const isReserve = flight.lateActivation && !(flight.manual
-                  ? flightLiveMatches.length > 0
-                  : flight.units.some((_, i) => links.live(flight, i)))
-                let statusLabel = 'ACTIVE'
-                if (isReserve) {
-                  statusLabel = 'RESERVE'
-                } else if (liveLead) {
-                  const liveUnitsForRollup = flight.manual
-                    ? flightLiveMatches.map(m => m.unit)
-                    : flight.units.map((_, i) => links.live(flight, i)?.unit).filter(Boolean)
-                  let rollup = null
-                  for (const lu of liveUnitsForRollup) {
-                    const state = unitState(lu, flightIsCarrierBase, flightCarrierUnit)
-                    if (!rollup || STATE_PRIORITY[state] > STATE_PRIORITY[rollup]) rollup = state
-                  }
-                  if (rollup) statusLabel = rollup
+                // Same rule as the ATO's STATUS (Ato.jsx): AIR beats TAXI
+                // beats GROUND across the shown units that are live; none
+                // live is RESERVE for a late-activation flight, else PLANNED.
+                const liveForStatus = flight.manual
+                  ? flightLiveMatches.map(m => m.unit)
+                  : rowUnits.map(i => links.live(flight, i)?.unit).filter(Boolean)
+                let statusLabel = flight.lateActivation ? 'RESERVE' : 'PLANNED'
+                let rollup = null
+                for (const lu of liveForStatus) {
+                  const state = unitState(lu, flightIsCarrierBase, flightCarrierUnit)
+                  if (!rollup || STATE_PRIORITY[state] > STATE_PRIORITY[rollup]) rollup = state
                 }
+                if (rollup) statusLabel = rollup
+                const isReserve = statusLabel === 'RESERVE'
                 return (
                   <div className="frag-kv">
                     <span>Status</span>
@@ -540,8 +549,9 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                 })()
               ) : (
                 <>
-                  <div className="frag-section-label">ROSTER ({flight.units.length})</div>
-                  {flight.units.map((u, ui) => {
+                  <div className="frag-section-label">ROSTER ({rowUnits.length})</div>
+                  {rowUnits.map((ui) => {
+                    const u = flight.units[ui]
                     // Static-template units have no unitId (parseMission.js).
                     const unitKey = u.unitId ?? `i${ui}`
                     const found = links.live(flight, ui)
@@ -550,7 +560,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                     // A linked unit shows TRACS's resolved callsign (an MP
                     // player's "HAWK11", a .rename); an open slot its unit name.
                     const label = liveUnit ? resolveCallsign(liveUnit) : stripAcid(u.unitName ?? '')
-                    const pilot = liveUnit && isPlayer(liveUnit) ? parseUnitName(liveUnit.unitName, liveUnit.callsign).pilotName : null
+                    const pilot = isPlayerLink(found) ? parseUnitName(liveUnit.unitName, liveUnit.callsign).pilotName : null
                     const findable = liveKey != null
                     const isBlinking = findable && blinkIds.includes(liveKey)
                     // Granular per-unit air/ground state — the flight-level
