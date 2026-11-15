@@ -4,7 +4,8 @@ import { useWheelDirection } from '../../utils/wheel.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
-import { resolveCallsign, matchLiveByPrefix, buildLiveUnitLookup } from '../../utils/callsign.js'
+import { resolveCallsign, matchLiveByPrefix } from '../../utils/callsign.js'
+import { getFlightLinks } from '../../utils/flightLinks.js'
 import { parseFlightElement } from './canvas/drawAbmContacts.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
 import { computeAirbaseLabels } from '../../store/runways.js'
@@ -91,7 +92,7 @@ const SORT_ACCESSORS = {
 export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, onScaleChange }) {
   const wheelDir = useWheelDirection()
   const allFlights = useAbmMissionStore(s => s.flights)
-  const selectGroup = useAbmMissionStore(s => s.selectGroup)
+  const selectFlight = useAbmMissionStore(s => s.selectFlight)
   const clearFlights = useAbmMissionStore(s => s.clearFlights)
   const clearAllFlights = useAbmMissionStore(s => s.clearAllFlights)
   const removeFlight = useAbmMissionStore(s => s.removeFlight)
@@ -100,11 +101,10 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
   const sessionCoalition = useSessionStore(s => s.coalition)
   const liveUnits = useUnitsStore(s => s.units)
 
-  // Mission-file unit -> live track — same two-tier lookup Frag.jsx's roster
-  // uses (see utils/callsign.js's buildLiveUnitLookup) — so CALLSIGN
-  // reflects TRACS's actual resolved callsign (rename overrides, useDcsNames
-  // pilot-name convention, etc.), not just the mission file's.
-  const findLiveUnit = useMemo(() => buildLiveUnitLookup(liveUnits), [liveUnits])
+  // Mission-file unit -> live track (utils/flightLinks.js, shared with the
+  // FRAG roster), so CALLSIGN reflects TRACS's resolved callsign (rename
+  // overrides, the MP-name convention), not the mission file's.
+  const links = useMemo(() => getFlightLinks(allFlights, liveUnits), [allFlights, liveUnits])
 
   // Raw numeric-only map, kept only for the carrier lookup below — see
   // Frag.jsx's identical comment for why that one case can't use the
@@ -186,7 +186,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
     const liveMatches = f.manual ? matchLiveByPrefix(f.callsignPrefix, liveUnits) : null
     const liveLead = f.manual
       ? (liveMatches[0]?.unit ?? null)
-      : (f.units[0] ? findLiveUnit(f.units[0])?.unit ?? null : null)
+      : (links.live(f, 0)?.unit ?? null)
 
     // CALLSIGN is the flight's, not the lead aircraft's — drop the element
     // digit ("SHELL11" -> "SHELL1") via the same flight/element split
@@ -201,7 +201,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
     // ACTIVE, live or not (matches DCS's own lateActivation semantics).
     // Manual flights are never late-activation, so this is always live once
     // a callsign match is found.
-    const isLive = f.manual ? liveMatches.length > 0 : f.units.some(u => findLiveUnit(u))
+    const isLive = f.manual ? liveMatches.length > 0 : f.units.some((_, i) => links.live(f, i))
 
     // Once the lead is live (CALLSIGN populated), ACTIVE is replaced by the
     // flight's actual air/ground picture — AIR beats TAXI beats GROUND
@@ -218,7 +218,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       const carrierUnit = isCarrierBase ? liveByDcsId.get(base.carrierUnitId) : null
       const liveUnitsForRollup = f.manual
         ? liveMatches.map(m => m.unit)
-        : f.units.map(u => findLiveUnit(u)?.unit).filter(Boolean)
+        : f.units.map((_, i) => links.live(f, i)?.unit).filter(Boolean)
       let rollup = null
       for (const lu of liveUnitsForRollup) {
         const state = lu.airborne ? 'AIR' : groundState(lu, isCarrierBase, carrierUnit)
@@ -233,7 +233,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       callsignLabel,
       // FRAG's editable Task field (store/abmMission.js taskOverrides) wins
       // over the mission's own task string when a controller has set one.
-      taskLabel: (taskOverrides ?? {})[f.groupId] ?? (f.task || f.rawTask || '—'),
+      taskLabel: (taskOverrides ?? {})[f.flightId] ?? (f.task || f.rawTask || '—'),
       taskunitLabel: airfieldAbbrev(resolveBase(f), icaoMap),
       altLabel: formatAltRange(f.alt, unitSystem) || '—',
       freqLabel: f.frequency != null ? f.frequency.toFixed(3) : '—',
@@ -241,7 +241,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       isReserve: f.lateActivation && !isLive,
       statusLabel,
     }
-  }), [flights, icaoMap, liveByDcsId, findLiveUnit, liveUnits, taskOverrides, unitSystem])
+  }), [flights, icaoMap, liveByDcsId, links, liveUnits, taskOverrides, unitSystem])
 
   const sortedRows = useMemo(() => {
     if (!sortKey) return rows
@@ -288,10 +288,10 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
             </div>
             {sortedRows.map(row => (
               <div
-                key={row.groupId}
+                key={row.flightId}
                 className="ato-row"
                 style={{ gridTemplateColumns }}
-                onClick={() => selectGroup(row.groupId)}
+                onClick={() => selectFlight(row.flightId)}
                 title="Click for FRAG detail"
               >
                 <span className="ato-flight-name">{row.name}</span>
@@ -307,7 +307,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
                   {row.manual && (
                     <button
                       className="ato-row-delete"
-                      onClick={(e) => { e.stopPropagation(); removeFlight(row.groupId) }}
+                      onClick={(e) => { e.stopPropagation(); removeFlight(row.flightId) }}
                       title="Remove flight"
                     >×</button>
                   )}

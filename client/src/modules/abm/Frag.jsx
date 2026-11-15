@@ -5,7 +5,8 @@ import { useAbmMissionStore } from '../../store/abmMission.js'
 import { validateAltPair } from './flightAlt.js'
 import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
-import { resolveCallsign, matchLiveByPrefix, buildLiveUnitLookup, stripAcid } from '../../utils/callsign.js'
+import { resolveCallsign, matchLiveByPrefix, stripAcid, parseUnitName } from '../../utils/callsign.js'
+import { getFlightLinks, isPlayer } from '../../utils/flightLinks.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 import { getOrdnanceName, preloadOrdnanceDb } from '../../utils/ordnance.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
@@ -177,7 +178,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   const wheelDir = useWheelDirection()
   const flights = useAbmMissionStore(s => s.flights)
   const unitSystem = useUnitSystem('abm')
-  const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
+  const selectedFlightId = useAbmMissionStore(s => s.selectedFlightId)
   const requestFind = useAbmMissionStore(s => s.requestFind)
   const findKey = useAbmMissionStore(s => s.findKey)
   const toggleBlink = useAbmMissionStore(s => s.toggleBlink)
@@ -189,14 +190,9 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   const setFlightAlt    = useAbmMissionStore(s => s.setFlightAlt)
   const liveUnits = useUnitsStore(s => s.units)
 
-  // Mission-file unit -> live track. See utils/callsign.js's
-  // buildLiveUnitLookup for the two-tier strategy (numeric unitId for
-  // Olympus, normalized-callsign text for Tacview — Tacview's unitID has no
-  // relationship to the mission file's unitId for AI-placed units, so a
-  // numeric-only lookup silently fails for every Tacview session). Lets the roster
-  // show how TRACS is actually resolving each aircraft's callsign right
-  // next to what the mission designer named it.
-  const findLiveUnit = useMemo(() => buildLiveUnitLookup(liveUnits), [liveUnits])
+  // Mission-file unit -> live track (utils/flightLinks.js: group, then unit
+  // name, then a player's element digit), shared with the ATO.
+  const links = useMemo(() => getFlightLinks(flights, liveUnits), [flights, liveUnits])
 
   // Raw numeric-only map, kept only for the carrier lookup below — a bare
   // carrierUnitId number has no callsign to fall back on, so that one case
@@ -254,13 +250,13 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   // Same restriction as ATO — GM/admin sees any coalition, blue/red only
   // their own side. Defense-in-depth: AbmScope's click handler already
   // blocks selecting a foreign-coalition group, this just guarantees FRAG
-  // itself never renders one regardless of how selectedGroupId got set.
+  // itself never renders one regardless of how selectedFlightId got set.
   const flight = useMemo(() => {
-    const found = flights.find(f => f.groupId === selectedGroupId) ?? null
+    const found = flights.find(f => f.flightId === selectedFlightId) ?? null
     if (!found) return null
     if (sessionCoalition !== 'blue' && sessionCoalition !== 'red') return found
     return found.coalition === sessionCoalition ? found : null
-  }, [flights, selectedGroupId, sessionCoalition])
+  }, [flights, selectedFlightId, sessionCoalition])
 
   const [, setAirdromeTick] = useState(0)
   useEffect(() => {
@@ -269,19 +265,19 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
   }, [flight])
 
   // Editable TASKING/Task field — a controller override of the mission's
-  // own task string (store/abmMission.js taskOverrides, keyed by groupId),
+  // own task string (store/abmMission.js taskOverrides, keyed by flightId),
   // which ATO's TASK column reads too. Local draft state resets only when
   // the selected flight changes (not on every taskOverrides update from
   // elsewhere), so an in-progress edit here never gets clobbered by e.g. a
   // cross-window sync echo of the same store.
   const [taskDraft, setTaskDraft] = useState('')
   useEffect(() => {
-    setTaskDraft(flight ? (taskOverrides[flight.groupId] ?? (flight.task || flight.rawTask || '')) : '')
-  }, [flight?.groupId]) // eslint-disable-line
+    setTaskDraft(flight ? (taskOverrides[flight.flightId] ?? (flight.task || flight.rawTask || '')) : '')
+  }, [flight?.flightId]) // eslint-disable-line
 
   const commitTask = () => {
     if (!flight) return
-    setTaskOverride(flight.groupId, taskDraft.trim() || null)
+    setTaskOverride(flight.flightId, taskDraft.trim() || null)
   }
 
   // Alt row — same values as `++###`/`++######` + click on the scope. Both
@@ -295,7 +291,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
     setAltLoDraft(flight?.alt?.lo ?? '')
     setAltHiDraft(flight?.alt?.hi ?? '')
   }
-  useEffect(resetAltDrafts, [flight?.groupId, flight?.alt?.lo, flight?.alt?.hi])
+  useEffect(resetAltDrafts, [flight?.flightId, flight?.alt?.lo, flight?.alt?.hi])
   useEffect(() => {
     if (!altError) return
     const id = setTimeout(() => setAltError(false), 1500)
@@ -307,7 +303,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
     const lo = altLoDraft.trim()
     const hi = altHiDraft.trim()
     if (!hi && (!lo || lo === '000')) {
-      if (flight.alt) setFlightAlt(flight.groupId, null)
+      if (flight.alt) setFlightAlt(flight.flightId, null)
       resetAltDrafts()
       return
     }
@@ -317,7 +313,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
       resetAltDrafts()
       return
     }
-    if (result.lo !== flight.alt?.lo || result.hi !== (flight.alt?.hi ?? null)) setFlightAlt(flight.groupId, result)
+    if (result.lo !== flight.alt?.lo || result.hi !== (flight.alt?.hi ?? null)) setFlightAlt(flight.flightId, result)
   }
 
   // Shared by the flight-level Status line and each roster row's granular
@@ -414,7 +410,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                 {(() => {
                   const base = resolveBase(flight)
                   const findable = base?.type === 'airbase' || base?.type === 'carrier'
-                  const baseKey = `base-${flight.groupId}`
+                  const baseKey = `base-${flight.flightId}`
                   const isActive = findable && findKey === baseKey
                   return (
                     <span
@@ -438,17 +434,17 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                 // every live unit in the flight.
                 const liveLead  = flight.manual
                   ? (flightLiveMatches[0]?.unit ?? null)
-                  : (flight.units[0] ? findLiveUnit(flight.units[0])?.unit ?? null : null)
+                  : (links.live(flight, 0)?.unit ?? null)
                 const isReserve = flight.lateActivation && !(flight.manual
                   ? flightLiveMatches.length > 0
-                  : flight.units.some(u => findLiveUnit(u)))
+                  : flight.units.some((_, i) => links.live(flight, i)))
                 let statusLabel = 'ACTIVE'
                 if (isReserve) {
                   statusLabel = 'RESERVE'
                 } else if (liveLead) {
                   const liveUnitsForRollup = flight.manual
                     ? flightLiveMatches.map(m => m.unit)
-                    : flight.units.map(u => findLiveUnit(u)?.unit).filter(Boolean)
+                    : flight.units.map((_, i) => links.live(flight, i)?.unit).filter(Boolean)
                   let rollup = null
                   for (const lu of liveUnitsForRollup) {
                     const state = unitState(lu, flightIsCarrierBase, flightCarrierUnit)
@@ -503,7 +499,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                                   type="button"
                                   className="frag-unit-remove"
                                   title="Remove from roster"
-                                  onClick={(e) => { e.stopPropagation(); useAbmMissionStore.getState().removeManualRosterEntry(flight.groupId, m.callsign) }}
+                                  onClick={(e) => { e.stopPropagation(); useAbmMissionStore.getState().removeManualRosterEntry(flight.flightId, m.callsign) }}
                                 >×</button>
                               )}
                             </div>
@@ -512,7 +508,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                               onSetIff={(patch) => {
                                 const mission = useAbmMissionStore.getState()
                                 mission.ensureManualRosterEntry(flight.callsignPrefix, m.callsign, flight.coalition ?? sessionCoalition)
-                                mission.setUnitIff(flight.groupId, m.callsign, patch)
+                                mission.setUnitIff(flight.flightId, m.callsign, patch)
                               }}
                             />
                           </div>
@@ -527,12 +523,12 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                               type="button"
                               className="frag-unit-remove"
                               title="Remove from roster"
-                              onClick={() => useAbmMissionStore.getState().removeManualRosterEntry(flight.groupId, r.callsign)}
+                              onClick={() => useAbmMissionStore.getState().removeManualRosterEntry(flight.flightId, r.callsign)}
                             >×</button>
                           </div>
                           <IffFields
                             iff={r.iff}
-                            onSetIff={(patch) => useAbmMissionStore.getState().setUnitIff(flight.groupId, r.callsign, patch)}
+                            onSetIff={(patch) => useAbmMissionStore.getState().setUnitIff(flight.flightId, r.callsign, patch)}
                           />
                         </div>
                       ))}
@@ -548,10 +544,13 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                   {flight.units.map((u, ui) => {
                     // Static-template units have no unitId (parseMission.js).
                     const unitKey = u.unitId ?? `i${ui}`
-                    const found = findLiveUnit(u)
+                    const found = links.live(flight, ui)
                     const liveUnit = found?.unit ?? null
                     const liveKey = found?.key ?? null
-                    const tracsCallsign = liveUnit ? resolveCallsign(liveUnit) : null
+                    // A linked unit shows TRACS's resolved callsign (an MP
+                    // player's "HAWK11", a .rename); an open slot its unit name.
+                    const label = liveUnit ? resolveCallsign(liveUnit) : stripAcid(u.unitName ?? '')
+                    const pilot = liveUnit && isPlayer(liveUnit) ? parseUnitName(liveUnit.unitName, liveUnit.callsign).pilotName : null
                     const findable = liveKey != null
                     const isBlinking = findable && blinkIds.includes(liveKey)
                     // Granular per-unit air/ground state — the flight-level
@@ -564,16 +563,16 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                         onClick={findable ? () => toggleBlink(liveKey) : undefined}
                         title={findable ? 'Blink datablock on scope' : undefined}
                       >
-                        <span className="frag-unit-cs">{u.callsign.toUpperCase()}</span>
+                        <span className="frag-unit-cs">{label.toUpperCase()}</span>
                         <span className="frag-unit-type">{typeAbbrev({ name: u.rawType })}</span>
-                        <span className="frag-unit-tcs">{tracsCallsign ? tracsCallsign.toUpperCase() : '—'}</span>
+                        <span className="frag-unit-tcs">{pilot ? pilot.toUpperCase() : '-'}</span>
                         <span className="frag-unit-mdx">#{u.modex}</span>
                         <span className={['frag-unit-skl', u.skill === 'Client' ? 'client' : ''].join(' ')}>{u.skill}</span>
                         <span className={['frag-unit-state', state ? `frag-unit-state-${state.toLowerCase()}` : ''].join(' ').trim()}>{state ?? '—'}</span>
                       </div>
                       <IffFields
                         iff={u.iff}
-                        onSetIff={(patch) => useAbmMissionStore.getState().setUnitIff(flight.groupId, u.callsign, patch)}
+                        onSetIff={(patch) => useAbmMissionStore.getState().setUnitIff(flight.flightId, u.unitName, patch)}
                       />
                       {(() => { const ord = ordnanceSummary(u); return ord.length > 0 && (
                         <div className="frag-ordnance">
@@ -645,7 +644,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                   return (flight.route ?? []).map((wp, i) => {
                     const wpName = wp.name ?? `WP${i + wpLabelOffset}`
                     const findable = wp.lat != null && wp.lng != null
-                    const wpKey = `wp-${flight.groupId}-${i}`
+                    const wpKey = `wp-${flight.flightId}-${i}`
                     const isActive = findable && findKey === wpKey
                     return (
                       <div

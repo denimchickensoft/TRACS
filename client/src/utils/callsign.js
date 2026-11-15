@@ -60,11 +60,11 @@ export function resolveCallsign(unit) {
  * Whether the current session's live unit IDs can be trusted to match the
  * mission file's per-unit `unitId` (i.e. `dcsUnitId` on an imported flight
  * plan). True for a direct Olympus connection and for TRACS's own DCS
- * exporter (relay-hosted): both report DCS's real internal unit ID.
+ * exporter (relay-hosted): both report DCS's real internal unit ID. (A
+ * client-side exporter hook only sees runtime object IDs; its units carry
+ * no `unitID` at all, see server/src/exporterRelayClient.js.)
  * Tacview's live unit IDs do NOT (its own internal enumeration counter,
- * unrelated to DCS's engine state -- see buildLiveUnitLookup()'s comment
- * below, an existing, un-gated exposure to this same risk in ABM/AIC
- * correlation). Under Tacview, direct or relay-hosted, matching on this ID
+ * unrelated to DCS's engine state). Under Tacview, direct or relay-hosted, matching on this ID
  * isn't just unhelpful, it risks a false-positive collision with an
  * unrelated plan's `dcsUnitId`, so this is excluded there. A relay session
  * starts as 'tacview' until the server's status says which source the relay
@@ -194,50 +194,4 @@ export function matchLiveByPrefix(prefix, liveUnits) {
   }
   out.sort((a, b) => a.callsign.localeCompare(b.callsign))
   return out
-}
-
-/**
- * Correlates parsed mission-file units (parseMission.js's per-unit `unitId`/
- * `callsign`) to their live track. Two-tier, in priority order:
- *
- *   1. Numeric unitId match (unit.unitID === missionUnit.unitId) — Olympus
- *      reports DCS's real internal unit ID directly, so this is an exact,
- *      reliable match.
- *   2. Normalized-callsign text match — Tacview's live unitID has NO
- *      relationship to the mission file's unitId for statically-placed (AI)
- *      units: confirmed against a real mission (Colt 2-1/2-2/1-1/
- *      1-2's Tacview object IDs incremented by an exact constant step
- *      regardless of the real, irregularly-spaced DCS unitId gaps — Tacview
- *      assigns IDs from its own internal enumeration counter, unrelated to
- *      DCS's engine state, for any unit that wasn't dynamically created at
- *      runtime). tacviewCore.js's unitId = objectId + 0xFFFFFF formula only
- *      holds for dynamically-created player slots, not AI-authored units.
- *      What DOES carry over reliably: the mission file's per-unit
- *      `callsign.name` (e.g. "Colt21") and Tacview's `Pilot` (e.g.
- *      "Colt 2-1") both normalize to the same string via the existing
- *      stripAcid()/resolveCallsign() pipeline, since both reflect the same
- *      DCS-authored naming convention through different fields.
- *
- * Building one lookup via buildLiveUnitLookup() and reusing it across many
- * mission units (rather than calling this per-unit in a loop) avoids an
- * O(n*m) rescan — see that function.
- *
- * @returns {{ key: string, unit: object } | null}
- */
-export function buildLiveUnitLookup(liveUnits) {
-  const byDcsId    = new Map()
-  const byCallsign = new Map()
-  for (const [key, unit] of Object.entries(liveUnits ?? {})) {
-    if (unit.unitID != null) byDcsId.set(unit.unitID, { key, unit })
-    const cs = resolveCallsign(unit)
-    if (cs) byCallsign.set(cs, { key, unit })
-  }
-  return (missionUnit) => {
-    if (missionUnit?.unitId != null) {
-      const hit = byDcsId.get(missionUnit.unitId)
-      if (hit) return hit
-    }
-    const norm = stripAcid(missionUnit?.callsign ?? '')
-    return norm ? (byCallsign.get(norm) ?? null) : null
-  }
 }

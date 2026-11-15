@@ -18,6 +18,7 @@
 // just a safety net, it's what actually identifies the aircraft.
 
 import { resolveCallsign, stripAcid } from '../../utils/callsign.js'
+import { getFlightLinks } from '../../utils/flightLinks.js'
 import { normalizeCode } from '../../utils/transponder.js'
 
 function hasLiveCode(unit, field) {
@@ -37,52 +38,54 @@ function codeMatches(unit, field, assignedCode) {
 /**
  * @param {Object} units    live units keyed by id (useUnitsStore().units)
  * @param {Array}  flights  useAbmMissionStore().flights — imported flights
- *   carry their real per-aircraft roster on `units: [{ callsign, iff:
+ *   carry their real per-aircraft roster on `units: [{ unitName, iff:
  *   {mode1,mode2,mode3} }]`; manual flights carry the equivalent on a
  *   separate `iffRoster` field instead (their own `units` is an unrelated
  *   placeholder-count array for Ato.jsx's NUM/TYPE column — see
  *   store/abmMission.js's setUnitIff comment for why the two can't share a
  *   field)
- * @returns {Object} { [unitId]: { callsign, flightName, groupId } } — sparse,
+ * @returns {Object} { [unitId]: { callsign, flightName, flightId } } — sparse,
  *   only correlated entries present
  */
 export function computeCorrelations({ units, flights }) {
   const result = {}
+  const links = getFlightLinks(flights ?? [], units ?? {})
 
-  const rosterRows = []
+  const manualRows = []
   for (const flight of flights ?? []) {
-    const rows = flight.manual ? (flight.iffRoster ?? []) : (flight.units ?? [])
-    for (const row of rows) {
-      if (!row.callsign) continue
-      rosterRows.push({ callsign: row.callsign, iff: row.iff, flightName: flight.name, groupId: flight.groupId })
+    if (!flight.manual) continue
+    for (const row of flight.iffRoster ?? []) {
+      if (row.callsign) manualRows.push({ callsign: row.callsign, iff: row.iff, flightName: flight.name, flightId: flight.flightId })
     }
   }
-  if (!rosterRows.length) return result
+
+  const byId = new Map((flights ?? []).map((f) => [f.flightId, f]))
 
   for (const [unitId, unit] of Object.entries(units ?? {})) {
     if (!unit?.srsCapable) continue
-    const liveCallsign = resolveCallsign(unit)
-    if (!liveCallsign) continue
 
-    for (const row of rosterRows) {
-      // stripAcid, not exact-equals: imported roster rows carry the raw
-      // mission-file callsign string (e.g. "HAVOC 1-1"), not the
-      // TRACS-resolved form — same normalization resolveGroupIdForUnit
-      // already uses for the identical comparison. Manual rows are stored
-      // pre-normalized (AbmScope.jsx's Ctrl+Shift+Click writes
-      // resolveCallsign(unit) directly), so stripAcid is a no-op for those.
-      if (stripAcid(row.callsign ?? '') !== liveCallsign) continue
-      const iff = row.iff ?? {}
-      const anyModeMatches =
-        codeMatches(unit, 'mode1', iff.mode1) ||
-        codeMatches(unit, 'mode2', iff.mode2) ||
-        codeMatches(unit, 'mode3', iff.mode3) ||
-        unit.transponder?.mode4 === true
-      if (anyModeMatches) {
-        result[String(unitId)] = { callsign: row.callsign, flightName: row.flightName, groupId: row.groupId }
-        break
-      }
+    // An imported aircraft's roster row is the mission unit it links to
+    // (utils/flightLinks.js); a manual row matches the live callsign (rows
+    // are stored pre-normalized, see AbmScope.jsx's Ctrl+Shift+Click).
+    let row = null
+    const slot = links.flightOf(unitId)
+    const flight = slot && byId.get(slot.flightId)
+    if (flight) {
+      const u = flight.units?.[slot.unitIndex]
+      if (u) row = { callsign: u.unitName, iff: u.iff, flightName: flight.name, flightId: flight.flightId }
+    } else {
+      const liveCallsign = resolveCallsign(unit)
+      if (liveCallsign) row = manualRows.find((r) => stripAcid(r.callsign ?? '') === liveCallsign) ?? null
     }
+    if (!row) continue
+
+    const iff = row.iff ?? {}
+    const anyModeMatches =
+      codeMatches(unit, 'mode1', iff.mode1) ||
+      codeMatches(unit, 'mode2', iff.mode2) ||
+      codeMatches(unit, 'mode3', iff.mode3) ||
+      unit.transponder?.mode4 === true
+    if (anyModeMatches) result[String(unitId)] = { callsign: row.callsign, flightName: row.flightName, flightId: row.flightId }
   }
 
   return result

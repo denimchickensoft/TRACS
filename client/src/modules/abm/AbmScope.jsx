@@ -10,7 +10,7 @@ import { useRoeStore, ROE_DISPLAY } from '../../store/roe.js'
 import { nmBetween, findNearestBogey } from '../../utils/findNearestBogey.js'
 import { useBlink } from '../../utils/useBlink.js'
 import { applyCallsignChange }  from '../../utils/callsignRename.js'
-import { resolveCallsign, stripAcid, unitFocusKey, findFocusedUnit, airfieldFocusKey, pointFocusKey } from '../../utils/callsign.js'
+import { resolveCallsign, unitFocusKey, findFocusedUnit, airfieldFocusKey, pointFocusKey } from '../../utils/callsign.js'
 import { isValidIffCode } from '../../utils/transponder.js'
 import { sendWebrtcSessionEvent } from '../../webrtc/client.js'
 import { useNavdataStore }  from '../../store/navdata.js'
@@ -109,7 +109,7 @@ const BASEMAP_SEA_COLOR = 'rgb(26, 38, 48)'
 // Create-or-reconcile a manual FRAG flight for a live contact — Ctrl+Shift+Click
 // and ++alt + click on an aircraft not yet in any flight. Own side only (true
 // coalition, not the declaration); GM/Admin can file either side's aircraft
-// under that aircraft's own coalition. Returns the flight's groupId, or null.
+// under that aircraft's own coalition. Returns the flight's flightId, or null.
 // A command-drawn shape's params moved by a screen-pixel offset: every
 // { lat, lng } point in them (anchor, center, vertices, fix, ...) is shifted
 // on the scope and the shape is rebuilt from them, so radii, legs and
@@ -129,6 +129,8 @@ function shiftShapeParams(params, dx, dy, view) {
 function ensureFlightForUnit(unit, { isGmOrAdmin, myCoalitionNum, coalition }) {
   const unitSide = unit?.coalition === 2 ? 'blue' : unit?.coalition === 1 ? 'red' : null
   if (!unit || !(isGmOrAdmin ? unitSide != null : unit.coalition === myCoalitionNum)) return null
+  const linked = useAbmMissionStore.getState().resolveFlightIdForUnit(unit)
+  if (linked != null) return linked
   const liveCallsign = resolveCallsign(unit)
   const fe = parseFlightElement(unit)
   const flightKey = fe ? fe.flightKey : liveCallsign
@@ -229,12 +231,12 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
 
   // ── ATO/FRAG flight selection (Ctrl+Shift+Click) ─────────────────────────────
   const atoFlights       = useAbmMissionStore(s => s.flights)
-  const selectedGroupId = useAbmMissionStore(s => s.selectedGroupId)
-  const selectAtoGroup  = useAbmMissionStore(s => s.selectGroup)
+  const selectedFlightId = useAbmMissionStore(s => s.selectedFlightId)
+  const selectAtoFlight  = useAbmMissionStore(s => s.selectFlight)
   const routeVisible    = useAbmMissionStore(s => s.routeVisible)
   const selectedFlight = useMemo(
-    () => (routeVisible ? atoFlights.find(f => f.groupId === selectedGroupId) ?? null : null),
-    [atoFlights, selectedGroupId, routeVisible]
+    () => (routeVisible ? atoFlights.find(f => f.flightId === selectedFlightId) ?? null : null),
+    [atoFlights, selectedFlightId, routeVisible]
   )
   const selectedRoute = selectedFlight?.route ?? null
   const selectedRouteRawType = selectedFlight?.units[0]?.rawType
@@ -244,17 +246,17 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   )
 
   // Ctrl+right-click / .route + click / .route <callsign> — independent of
-  // the FRAG-panel route toggle above (routeVisible/selectedGroupId): a Set
-  // of groupIds so several contacts' routes can be shown at once without
-  // opening FRAG. See store/abmMission.js's routeGroupIds header comment.
-  const routeGroupIds   = useAbmMissionStore(s => s.routeGroupIds)
-  const toggleRouteGroup = useAbmMissionStore(s => s.toggleRouteGroup)
+  // the FRAG-panel route toggle above (routeVisible/selectedFlightId): a Set
+  // of flightIds so several contacts' routes can be shown at once without
+  // opening FRAG. See store/abmMission.js's routeFlightIds header comment.
+  const routeFlightIds   = useAbmMissionStore(s => s.routeFlightIds)
+  const toggleRouteFlight = useAbmMissionStore(s => s.toggleRouteFlight)
   const extraRoutes = useMemo(
-    () => routeGroupIds
-      .map(gid => atoFlights.find(f => f.groupId === gid))
+    () => routeFlightIds
+      .map(gid => atoFlights.find(f => f.flightId === gid))
       .filter(f => Array.isArray(f?.route) && f.route.length > 0)
       .map(f => ({ route: f.route, rawType: f.units[0]?.rawType, groupLabel: flightRouteGroupLabel(f) })),
-    [atoFlights, routeGroupIds]
+    [atoFlights, routeFlightIds]
   )
 
   // FRAG BASE/waypoint click (requestFind) and roster click (toggleBlink) —
@@ -1400,8 +1402,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       }
       // Ctrl+right-click — toggle that contact's route on the scope without
       // opening FRAG (same target/coalition resolution as Ctrl+Shift+click's
-      // FRAG-open, but writes to routeGroupIds instead of selectGroup, since
-      // selectGroup would bump selectNonce and pop the FRAG panel open —
+      // FRAG-open, but writes to routeFlightIds instead of selectFlight, since
+      // selectFlight would bump selectNonce and pop the FRAG panel open —
       // see App.jsx's "open FRAG on selection" effect). Takes priority over
       // starting a pan-drag; a plain right-click (no Ctrl) still pans.
       if (e.ctrlKey) {
@@ -1410,12 +1412,12 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
           const pos    = { x: e.clientX - rect.left, y: e.clientY - rect.top }
           const target = resolveSlew(pos, allVisibleUnitsRef.current, viewRef.current)
           {
-            const groupId = target?.unit ? useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit) : null
-            const flight = groupId != null ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId) : null
+            const flightId = target?.unit ? useAbmMissionStore.getState().resolveFlightIdForUnit(target.unit) : null
+            const flight = flightId != null ? useAbmMissionStore.getState().flights.find(f => f.flightId === flightId) : null
             const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
             if (flight && ownSide) {
-              const wasOn = useAbmMissionStore.getState().routeGroupIds.includes(flight.groupId)
-              toggleRouteGroup(flight.groupId)
+              const wasOn = useAbmMissionStore.getState().routeFlightIds.includes(flight.flightId)
+              toggleRouteFlight(flight.flightId)
               setCmdFeedback(`ROUTE ${wasOn ? 'OFF' : 'ON'} ${resolveCallsign(target.unit).toUpperCase()}`)
             }
           }
@@ -1439,7 +1441,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       const { lat, lng } = canvasToLatLng(x, y, viewRef.current)
       leftDragStartRef.current = { clientX: e.clientX, clientY: e.clientY, lat, lng }
     }
-  }, [coalition, toggleRouteGroup])
+  }, [coalition, toggleRouteFlight])
 
   const handleMouseMove = useCallback((e) => {
     if (!dragRef.current || !viewRef.current) return
@@ -1752,10 +1754,10 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       if (defineEntry) { displayStore.updateWindow(windowId, { defineEntry: null }); return }
       // Text in the response field clears first; only once it's already
       // empty does ESC fall through to clearing every route on the scope
-      // (both Ctrl+RightClick's routeGroupIds and FRAG's routeVisible) —
+      // (both Ctrl+RightClick's routeFlightIds and FRAG's routeVisible) —
       // same "clear all routes" as .rclear.
       if (cmdBuffer || cmdFeedback) { clearCmd(); return }
-      if (routeVisible || routeGroupIds.length) { setCmdFeedback(RCLEAR()); return }
+      if (routeVisible || routeFlightIds.length) { setCmdFeedback(RCLEAR()); return }
       clearCmd()
       return
     }
@@ -1826,7 +1828,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // it in its own useCallback is a larger refactor than this cleanup pass, tracked separately.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cmdBuffer, cmdFeedback, pendingDeclaration, pendingBraaFighter, clearPendingBraa, rbl, findMarker, pendingDraw,
-      pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible, routeGroupIds])
+      pendingClearClick, pendingClearAllConfirm, defineEntry, routeVisible, routeFlightIds])
 
   // ── Click dispatch — ported from AIC's handleMouseUp, same modifier/command
   // precedence: Shift+click removes BRAA pairs for the target;
@@ -2033,12 +2035,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
 
     // Create-or-reconcile a FRAG flight from a live contact. Friendly-only (true coalition, not
     // the fog-of-war declaration — this is about tracking your own side's
-    // aircraft in FRAG, independent of anything declared). Group discovery
-    // is callsign-prefix based (parseFlightElement, same helper
-    // drawAbmContacts.js's formation-suppression already uses), not
-    // resolveGroupIdForUnit's DCS-groupID path — that one only resolves for
-    // Olympus, and only for already-tracked groups on Tacview, so it can't
-    // identify a genuinely new group at all on that source. One unified
+    // aircraft in FRAG, independent of anything declared). An aircraft
+    // linked to an imported flight (resolveFlightIdForUnit) opens that one;
+    // otherwise the manual flight is found by callsign prefix
+    // (parseFlightElement, same helper drawAbmContacts.js's
+    // formation-suppression already uses). One unified
     // action regardless of whether the flight already exists or this exact
     // aircraft is already on its roster: ensureManualRosterEntry no-ops on
     // both "already exists" cases, so repeat clicks are always safe.
@@ -2052,8 +2053,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     // GM/Admin aren't tied to a side, so they can open either side's
     // aircraft; the flight is filed under the aircraft's own coalition.
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
-      const groupId = ensureFlightForUnit(target?.unit, { isGmOrAdmin, myCoalitionNum, coalition })
-      if (groupId != null) selectAtoGroup(groupId)
+      const flightId = ensureFlightForUnit(target?.unit, { isGmOrAdmin, myCoalitionNum, coalition })
+      if (flightId != null) selectAtoFlight(flightId)
       return
     }
 
@@ -2117,13 +2118,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     // typing `.dope`/`.db`/`.threat` + click.
     if (buf === '.frag') {
       if (!target) return
-      const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit)
-      const flight = groupId != null
-        ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
+      const flightId = useAbmMissionStore.getState().resolveFlightIdForUnit(target.unit)
+      const flight = flightId != null
+        ? useAbmMissionStore.getState().flights.find(f => f.flightId === flightId)
         : null
       const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
       if (flight && ownSide) {
-        selectAtoGroup(flight.groupId)
+        selectAtoFlight(flight.flightId)
         setCmdFeedback('FRAG OPENED')
       } else {
         setCmdFeedback('NO FRAG')
@@ -2142,13 +2143,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       const parsed = parseAltEntry(altMatch[1])
       if (parsed.error) { setCmdFeedback(parsed.error); setCmdBuffer(''); return }
       const mission = useAbmMissionStore.getState()
-      const groupId = mission.resolveFlightForUnit(target.unit)?.groupId
+      const flightId = mission.resolveFlightForUnit(target.unit)?.flightId
         ?? ensureFlightForUnit(target.unit, { isGmOrAdmin, myCoalitionNum, coalition })
-      const flight = groupId != null ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId) : null
+      const flight = flightId != null ? useAbmMissionStore.getState().flights.find(f => f.flightId === flightId) : null
       const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
       if (flight && ownSide) {
         const alt = parsed === ALT_CLEAR ? null : parsed
-        mission.setFlightAlt(flight.groupId, alt)
+        mission.setFlightAlt(flight.flightId, alt)
         setCmdFeedback(alt ? `ALT ${formatAlt(alt)}` : 'ALT CLEARED')
       } else {
         setCmdFeedback('NO FRAG')
@@ -2168,13 +2169,11 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
       const label = `M${iffMatch[1]}`
       const code = iffMatch[2] ?? null
       if (code != null && !isValidIffCode(mode, code)) { setCmdFeedback(`ILL ${label}`); setCmdBuffer(''); return }
-      const groupId = ensureFlightForUnit(target.unit, { isGmOrAdmin, myCoalitionNum, coalition })
-      const flight = groupId != null ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId) : null
-      const liveCallsign = resolveCallsign(target.unit)
-      const row = flight && (flight.manual ? flight.iffRoster : flight.units)
-        ?.find(u => stripAcid(u.callsign ?? '') === liveCallsign)
-      if (row) {
-        useAbmMissionStore.getState().setUnitIff(flight.groupId, row.callsign, { [mode]: code })
+      const flightId = ensureFlightForUnit(target.unit, { isGmOrAdmin, myCoalitionNum, coalition })
+      const flight = flightId != null ? useAbmMissionStore.getState().flights.find(f => f.flightId === flightId) : null
+      const rowKey = useAbmMissionStore.getState().rosterKeyForUnit(flight, target.unit)
+      if (rowKey) {
+        useAbmMissionStore.getState().setUnitIff(flight.flightId, rowKey, { [mode]: code })
         setCmdFeedback(code ? `${label} ${code}` : `${label} CLEARED`)
       } else {
         setCmdFeedback('NO FRAG')
@@ -2184,18 +2183,18 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     }
 
     // .route + click — toggles that contact's route independently of FRAG's
-    // own route toggle (routeGroupIds, not routeVisible/selectGroup — see
+    // own route toggle (routeFlightIds, not routeVisible/selectFlight — see
     // the Ctrl+right-click handler in handleMouseDown for why).
     if (buf === '.route') {
       if (!target) return
-      const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(target.unit)
-      const flight = groupId != null
-        ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
+      const flightId = useAbmMissionStore.getState().resolveFlightIdForUnit(target.unit)
+      const flight = flightId != null
+        ? useAbmMissionStore.getState().flights.find(f => f.flightId === flightId)
         : null
       const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
       if (flight && ownSide) {
-        const wasOn = useAbmMissionStore.getState().routeGroupIds.includes(flight.groupId)
-        toggleRouteGroup(flight.groupId)
+        const wasOn = useAbmMissionStore.getState().routeFlightIds.includes(flight.flightId)
+        toggleRouteFlight(flight.flightId)
         setCmdFeedback(`ROUTE ${wasOn ? 'OFF' : 'ON'}`)
       } else {
         setCmdFeedback('NO ROUTE')
@@ -2275,7 +2274,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   }, [cmdBuffer, commandContext, pendingMark, pendingDeclaration, displayStore, myCoalitionNum, isGmOrAdmin, getDecl,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
-      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoGroup, toggleRouteGroup, windowId, unitSystem])
+      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoFlight, toggleRouteFlight, windowId, unitSystem])
 
   // Double-click a contact → open/reuse its in-page focus panel (same
   // mechanism as the .focus command, see AbmFocusPanel.jsx) at the persisted

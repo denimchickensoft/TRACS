@@ -21,6 +21,14 @@ describe('toTracsUnit', () => {
     })
   })
 
+  test("a client-side hook's runtime object ID is not a mission unit ID", () => {
+    const { groupId, ...clientRec } = rec
+    const u = toTracsUnit('16790048', { ...clientRec, human: true })
+    expect(groupId).toBe(7)
+    expect(u.id).toBe(16790048)
+    expect(u.unitID).toBeUndefined()
+  })
+
   test('normalises heading to 0..2π and pitch to degrees', () => {
     const u = toTracsUnit('1', rec)
     expect(u.heading).toBeCloseTo(3 * Math.PI / 2)

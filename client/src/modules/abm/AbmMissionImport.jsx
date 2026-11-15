@@ -81,7 +81,7 @@ export function AbmMissionImport({ onClose }) {
           }
           if (fileFlights.length === 0) fileNotes.push(`${file.name}: no flights`)
           for (const f of fileFlights) {
-            const dupe = found.findIndex(g => g.groupId === f.groupId)
+            const dupe = found.findIndex(g => g.flightId === f.flightId)
             if (dupe !== -1) {
               fileNotes.push(`${f.name}: in more than one file, using ${file.name}`)
               found.splice(dupe, 1)
@@ -118,7 +118,7 @@ export function AbmMissionImport({ onClose }) {
   // Template flights already loaded under the same coalition + group name,
   // which this import will replace.
   const loadedTemplateIds = new Set(
-    useAbmMissionStore.getState().flights.filter(f => f.source === 'stm').map(f => f.groupId)
+    useAbmMissionStore.getState().flights.filter(f => f.source === 'stm').map(f => f.flightId)
   )
 
   const doImport = () => {
@@ -226,12 +226,12 @@ export function AbmMissionImport({ onClose }) {
               <div className="mi-section-label">FLIGHTS ({flights.length})</div>
               <div className="mi-ac-list">
                 {flights.map(f => (
-                  <div key={f.groupId} className="mi-flight-row">
+                  <div key={f.flightId} className="mi-flight-row">
                     <span className="mi-flight-name">{f.name}</span>
                     <span className="mi-flight-task">{f.task || f.rawTask}</span>
                     <span className="mi-flight-units">{f.units.length}x</span>
                     {f.lateActivation && <span className="mi-flight-reserve">RESERVE</span>}
-                    {loadedTemplateIds.has(f.groupId) && <span className="mi-flight-reserve">REPLACES</span>}
+                    {loadedTemplateIds.has(f.flightId) && <span className="mi-flight-reserve">REPLACES</span>}
                   </div>
                 ))}
               </div>

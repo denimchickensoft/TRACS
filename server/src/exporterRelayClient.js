@@ -52,7 +52,11 @@ function toTracsUnit(id, rec) {
   if (typeof heading === 'number' && heading < 0) heading += 2 * Math.PI
   const unit = {
     id: unitID,
-    unitID,
+    // A server-side hook's record (it always carries groupId) is keyed by
+    // DCS's mission unit ID, which TRACS matches against mission files. A
+    // client-side hook's is keyed by the runtime object ID, which matches
+    // nothing there, so it doesn't claim to be one.
+    ...(rec.groupId !== undefined && { unitID }),
     name: rec.type,
     unitName: rec.player ?? rec.name,
     callsign: rec.name,

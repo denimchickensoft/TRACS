@@ -635,47 +635,47 @@ export function FRAG_FIND({ captures, context }) {
   const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
   if (matches.length === 0) return 'NOT FOUND'
   if (matches.length > 1) return 'AMBIGUOUS'
-  const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(matches[0].unit)
-  const flight = groupId != null
-    ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
+  const flightId = useAbmMissionStore.getState().resolveFlightIdForUnit(matches[0].unit)
+  const flight = flightId != null
+    ? useAbmMissionStore.getState().flights.find(f => f.flightId === flightId)
     : null
   const coalition = useSessionStore.getState().coalition
   const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
   if (!flight || !ownSide) return 'NO FRAG'
-  useAbmMissionStore.getState().selectGroup(flight.groupId)
+  useAbmMissionStore.getState().selectFlight(flight.flightId)
   return `FRAG ${matches[0].callsign}`
 }
 
 // `.route <callsign>` — text-argument sibling of the Ctrl+right-click/.route
 // + click handlers in AbmScope.jsx. Same prefix-match/ambiguity/coalition
-// rules as FRAG_FIND, but toggles routeGroupIds instead of calling
-// selectGroup — this one deliberately never opens the FRAG panel.
+// rules as FRAG_FIND, but toggles routeFlightIds instead of calling
+// selectFlight — this one deliberately never opens the FRAG panel.
 export function ROUTE_FIND({ captures, context }) {
   const matches = matchLiveByPrefix(captures.callsign, context.allVisibleUnits)
   if (matches.length === 0) return 'NOT FOUND'
   if (matches.length > 1) return 'AMBIGUOUS'
-  const groupId = useAbmMissionStore.getState().resolveGroupIdForUnit(matches[0].unit)
-  const flight = groupId != null
-    ? useAbmMissionStore.getState().flights.find(f => f.groupId === groupId)
+  const flightId = useAbmMissionStore.getState().resolveFlightIdForUnit(matches[0].unit)
+  const flight = flightId != null
+    ? useAbmMissionStore.getState().flights.find(f => f.flightId === flightId)
     : null
   const coalition = useSessionStore.getState().coalition
   const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
   if (!flight || !ownSide) return 'NO ROUTE'
   const mission = useAbmMissionStore.getState()
-  const wasOn = mission.routeGroupIds.includes(flight.groupId)
-  mission.toggleRouteGroup(flight.groupId)
+  const wasOn = mission.routeFlightIds.includes(flight.flightId)
+  mission.toggleRouteFlight(flight.flightId)
   return `ROUTE ${wasOn ? 'OFF' : 'ON'} ${matches[0].callsign}`
 }
 
 // `.rclear` — clears every route currently shown on the scope: both
-// routeGroupIds (Ctrl+right-click/.route/.route <callsign>) and FRAG's own
+// routeFlightIds (Ctrl+right-click/.route/.route <callsign>) and FRAG's own
 // routeVisible toggle, so this is a full "hide all routes" regardless of
 // which mechanism turned each one on. Separate from TCLEAR (RBL/BRAA/threat
 // rings) by design — routes aren't tactical-picture clutter in the same
 // sense, so they get their own dedicated clear command.
 export function RCLEAR() {
   const mission = useAbmMissionStore.getState()
-  mission.clearRouteGroups()
+  mission.clearRouteFlights()
   mission.clearRouteVisible()
   return 'ROUTES CLEARED'
 }

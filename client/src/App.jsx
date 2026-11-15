@@ -376,12 +376,12 @@ export function App() {
   const [abmPanel,   setAbmPanel]   = useState(null)      // null | 'ato' | 'frag' | 'drawings'
 
   // Selecting a flight (Ctrl+Shift+Click on the scope, or a row in ATO)
-  // auto-switches to the FRAG tab — keyed on selectNonce (not selectedGroupId)
+  // auto-switches to the FRAG tab — keyed on selectNonce (not selectedFlightId)
   // so reselecting the same contact still reopens the panel if it was closed.
-  const abmSelectedGroupId = useAbmMissionStore((s) => s.selectedGroupId)
+  const abmSelectedFlightId = useAbmMissionStore((s) => s.selectedFlightId)
   const abmSelectNonce     = useAbmMissionStore((s) => s.selectNonce)
   useEffect(() => {
-    if (abmSelectedGroupId != null) setAbmPanel('frag')
+    if (abmSelectedFlightId != null) setAbmPanel('frag')
   }, [abmSelectNonce]) // eslint-disable-line
 
   const handleParUndock = useCallback(() => {

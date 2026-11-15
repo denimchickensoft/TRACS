@@ -117,9 +117,9 @@ export const AREAS = [
     diff(ctx) {
       const all = ownFlights(ctx, findAtoFlights(ctx.mission))
       const s = useAbmMissionStore.getState()
-      const have = new Set(s.flights.map((f) => f.groupId))
+      const have = new Set(s.flights.map((f) => f.flightId))
       // A different mission auto-loaded earlier is replaced as a whole.
-      const items = s.missionId && s.missionId !== ctx.id ? all : all.filter((f) => !have.has(f.groupId))
+      const items = s.missionId && s.missionId !== ctx.id ? all : all.filter((f) => !have.has(f.flightId))
       return { count: items.length, all, summary: plural(items.length, 'flight') }
     },
     apply(d, ctx) {

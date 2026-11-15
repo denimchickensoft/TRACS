@@ -1,7 +1,6 @@
 import { CARRIER_TYPES } from './carriers.js'
 import { dcsPointToLatLng } from './dcsCoords.js'
 import { M_TO_FT } from './units.js'
-import { parseUnitName } from './callsignShape.js'
 
 // ── Lua parser ────────────────────────────────────────────────────────────────
 
@@ -306,7 +305,7 @@ export function findCarriersAndAircraft(mission) {
 
   for (const coaData of Object.values(mission.coalition ?? {})) {
     for (const country of toArray(coaData.country)) {
-      for (const group of toArray(country.plane?.group)) {
+      for (const group of [...toArray(country.plane?.group), ...toArray(country.helicopter?.group)]) {
         const wp1 = firstWP(group)
         if (!wp1 || !DEPARTURE_ACTIONS.has(wp1.action) || !carrierIds.has(wp1.linkUnit)) continue
 
@@ -331,13 +330,10 @@ export function findCarriersAndAircraft(mission) {
 }
 
 // ── ATO/FRAG extraction ─────────────────────────────────────────────────────
-// Every tasked "plane" group across all coalitions/countries, with route,
+// Every plane and helicopter group across all coalitions/countries, split
+// into flights (see findAtoFlights), with route,
 // payload, radio and Link16 detail — built only from structural mission data
 // (no trig/trigrules/l10n dictionary).
-
-function unitCallsign(unit) {
-  return unit.callsign?.name ?? unit.name ?? ''
-}
 
 function buildRoute(group, theatre) {
   return toArray(group.route?.points).map((p) => {
@@ -438,6 +434,38 @@ export function templateGroupId(coalition, groupName) {
   return TEMPLATE_GROUP_ID_BASE + (h % TEMPLATE_GROUP_ID_BASE)
 }
 
+// A DCS group can hold several flights (group North_CAP: ELVIS-5-1,
+// ELVIS-5-2, HAWK-1-1, HAWK-1-2). A group with one flight keeps the DCS
+// group ID as its flight ID; each flight of a split group gets this hash of
+// coalition + group ID + base name instead, in a range of its own (above
+// templateGroupId's). Deterministic, so every controller splitting the same
+// mission gets the same IDs and synced FRAG edits line up.
+const SPLIT_FLIGHT_ID_BASE = 2e9
+
+export function splitFlightId(coalition, groupId, base) {
+  const key = `${coalition}\u0000${groupId ?? ''}\u0000${base}`
+  let h = 0x811c9dc5
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return SPLIT_FLIGHT_ID_BASE + (h % 1e9)
+}
+
+// A unit name's flight base and aircraft position. Two trailing numbers make
+// the last one the position ("RMD-1-2" -> RMD-1 / 2, "Elvis5-1" -> Elvis5 /
+// 1). Anything else is a flight of its own with no position ("Warden-1",
+// "VOLVO-1", "F/A-18C Lot 20"): a single trailing number can't be told apart
+// from a flight number, so it never merges units.
+export function splitUnitName(name) {
+  const trimmed = (name ?? '').trim()
+  const m = trimmed.match(/^(.*\d)[\s_-]+(\d+)$/)
+  if (m) return { base: m[1], position: Number(m[2]) }
+  return { base: trimmed, position: null }
+}
+
+const flightKeyOf = (base) => base.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+
 // Text-level check, since parseLua discards the leading variable name.
 export function isStaticTemplateText(src) {
   return /^\uFEFF?\s*staticTemplate\s*=/.test(src)
@@ -448,11 +476,11 @@ function buildUnits(group, template) {
     // A template's unitId is file-local (see templateGroupId), so it must
     // never reach the live unitId match tier.
     unitId:   template ? null : (unit.unitId ?? null),
-    // Squadrons leave a template's DCS callsign at the default (several
-    // files all say "Enfield11") and put the real one in the unit name,
-    // which is read the same way a live unit's name is ("vJG-3 MiG-21
-    // BLITZ 17-1" -> BLITZ17) so the two match.
-    callsign: template ? (parseUnitName(unit.name, unit.callsign?.name).acid || unitCallsign(unit)) : unitCallsign(unit),
+    // The unit name, not the DCS editor callsign: it is what live data
+    // reports for the unit and is unique mission-wide, while editor
+    // callsigns repeat and rarely mean anything.
+    unitName: (unit.name ?? '').trim(),
+    position: splitUnitName(unit.name).position,
     type:     TYPE_ABBREV[unit.type] ?? (unit.type ?? '').slice(0, 4).toUpperCase(),
     rawType:  unit.type ?? '',
     modex:    String(unit.onboard_num ?? ''),
@@ -492,26 +520,26 @@ export function findAtoFlights(mission, { template = false } = {}) {
 
   for (const [coalition, coaData] of Object.entries(mission.coalition ?? {})) {
     for (const country of toArray(coaData.country)) {
-      for (const group of toArray(country.plane?.group)) {
-        // Every plane group is a real flight worth listing — a group-level
-        // task of "Nothing" does NOT mean inert/scenery. DCS mission
-        // designers commonly leave it unset on AI wingmen whose tasking
-        // instead comes from per-waypoint actions or trigger scripting
-        // (confirmed against a real mission where an active, uncontrolled=
-        // false, 2-ship flight had task="Nothing" and was being silently
-        // dropped here).
+      for (const group of [...toArray(country.plane?.group), ...toArray(country.helicopter?.group)]) {
+        // Every aircraft group is listed: a group-level task of "Nothing"
+        // does NOT mean inert/scenery. DCS mission designers commonly leave
+        // it unset on AI wingmen whose tasking instead comes from
+        // per-waypoint actions or trigger scripting (confirmed against a
+        // real mission where an active, uncontrolled=false, 2-ship flight
+        // had task="Nothing" and was being silently dropped here).
         const task = group.task ?? 'Nothing'
         const isReserve = group.lateActivation === true
 
         const points = toArray(group.route?.points)
         const wp1 = firstWP(group)
         const route = buildRoute(group, theatre)
+        const groupId = template ? templateGroupId(coalition, group.name) : (group.groupId ?? null)
 
-        flights.push({
-          groupId:        template ? templateGroupId(coalition, group.name) : (group.groupId ?? null),
+        const shared = {
           ...(template && { source: 'stm', templateName: mission.name ?? null }),
           coalition,
-          name:           group.name ?? '',
+          dcsGroupId:     template ? null : (group.groupId ?? null),
+          groupName:      (group.name ?? '').trim(),
           task:           TASK_ABBREV[task] ?? (task ?? '').slice(0, 6).toUpperCase(),
           rawTask:        task,
           frequency:      group.frequency ?? null,
@@ -523,8 +551,25 @@ export function findAtoFlights(mission, { template = false } = {}) {
           // The first TACAN the route switches on (tankers, mostly); FRAG's
           // route list shows any later change at its waypoint.
           tacan:          route.find((wp) => wp.beacon)?.beacon ?? null,
-          units:          buildUnits(group, template),
-        })
+        }
+
+        // A flight is the units of one group sharing a base unit name
+        // (splitUnitName); a group never merges with another.
+        const byBase = new Map()
+        for (const unit of buildUnits(group, template)) {
+          const key = flightKeyOf(splitUnitName(unit.unitName).base) || flightKeyOf(group.name ?? '')
+          if (!byBase.has(key)) byBase.set(key, [])
+          byBase.get(key).push(unit)
+        }
+        if (byBase.size === 0) byBase.set(flightKeyOf(group.name ?? ''), [])
+        for (const [key, units] of byBase) {
+          flights.push({
+            flightId: byBase.size === 1 ? groupId : splitFlightId(coalition, groupId, key),
+            name:     key,
+            ...shared,
+            units,
+          })
+        }
       }
     }
   }

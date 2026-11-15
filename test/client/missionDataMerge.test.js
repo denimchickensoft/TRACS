@@ -20,26 +20,26 @@ describe('missionEntriesPatch', () => {
 })
 
 describe('mergeMissionFlights', () => {
-  const f = (groupId, extra = {}) => ({ groupId, name: `G${groupId}`, ...extra })
+  const f = (flightId, extra = {}) => ({ flightId, name: `G${flightId}`, ...extra })
 
   test('same mission: adds missing flights, keeps edits on loaded ones', () => {
     const s = { missionId: 'm1', flights: [f(1, { iffRoster: { a: '1234' } }), f(-1, { manual: true })] }
     const r = mergeMissionFlights(s, [f(1), f(2)], 'm1')
     expect(r.replaced).toBe(false)
-    expect(r.flights.map((x) => x.groupId)).toEqual([1, -1, 2])
+    expect(r.flights.map((x) => x.flightId)).toEqual([1, -1, 2])
     expect(r.flights[0].iffRoster).toEqual({ a: '1234' })
   })
 
   test('after a manual load (no mission id): add only', () => {
     const r = mergeMissionFlights({ missionId: null, flights: [f(1)] }, [f(1), f(3)], 'm2')
-    expect(r.flights.map((x) => x.groupId)).toEqual([1, 3])
+    expect(r.flights.map((x) => x.flightId)).toEqual([1, 3])
   })
 
   test('a different mission replaces imported flights, keeps manual and .stm', () => {
     const s = { missionId: 'm1', flights: [f(1), f(-1, { manual: true }), f(9, { source: 'stm' })] }
     const r = mergeMissionFlights(s, [f(5)], 'm2')
     expect(r.replaced).toBe(true)
-    expect(r.flights.map((x) => x.groupId)).toEqual([5, -1, 9])
+    expect(r.flights.map((x) => x.flightId)).toEqual([5, -1, 9])
   })
 })
 

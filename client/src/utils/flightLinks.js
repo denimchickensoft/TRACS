@@ -1,0 +1,141 @@
+// Links live units to the imported mission's flights (parseMission.js
+// findAtoFlights), the same way for every data source:
+//
+//   1. Group. Olympus and the exporter host send the numeric DCS group ID;
+//      every source sends the group name (the exporter client and Tacview
+//      only that - Tacview in `groupID`). DCS group names are unique
+//      mission-wide; a name that trims to more than one group links to none.
+//   2. Unit within the group. The DCS unit ID where the source's IDs are the
+//      mission's (dcsUnitIdReliable), else the unit name: Olympus and the
+//      exporter host carry it in `callsign` for every unit, and every source
+//      carries it in `unitName` for AI.
+//   3. Humans left over (the exporter client and Tacview report a player's
+//      MP nickname instead of the unit name): the element digit of the
+//      callsign in that nickname picks the aircraft position ("HAWK 1-2"
+//      takes the group's position-2 unit), else the first free unit.
+//
+// Units spawned at runtime (script clones, dynamic slots) are in no mission
+// group and link to nothing.
+
+import { dcsUnitIdReliable } from './callsign.js'
+import { findShapedCallsign } from './callsignShape.js'
+
+const trim = (s) => (typeof s === 'string' ? s.trim() : '')
+
+// A mission group's identity: its DCS ID, or for a static template (no real
+// ID) its coalition + name.
+function groupKeyOf(flight) {
+  return flight.dcsGroupId != null ? `id:${flight.dcsGroupId}` : `name:${flight.coalition}:${flight.groupName}`
+}
+
+function liveGroupName(unit) {
+  return trim(unit.groupName) || (typeof unit.groupID === 'string' ? trim(unit.groupID) : '')
+}
+
+function elementDigit(unit) {
+  const acid = findShapedCallsign(unit.unitName ?? '', null)?.acid
+  return acid ? Number(acid.slice(-1)) : null
+}
+
+// A human-flown unit, or one whose reported name carries a callsign (the
+// exporter client and Tacview don't flag humans reliably).
+export function isPlayer(unit) {
+  return unit.human === true || findShapedCallsign(unit.unitName ?? '', null) != null
+}
+
+export const missionUnitKey = (flightId, index) => `${flightId}:${index}`
+
+// buildFlightLinks for the latest flights + live units, rebuilt only when
+// either object (or the source's ID trust) changes, so per-unit callers
+// (scope commands, the ATO, the FRAG) share one pass.
+let cache = null
+export function getFlightLinks(flights, liveUnits) {
+  const ids = dcsUnitIdReliable()
+  if (!cache || cache.flights !== flights || cache.liveUnits !== liveUnits || cache.ids !== ids) {
+    cache = { flights, liveUnits, ids, links: buildFlightLinks(flights, liveUnits) }
+  }
+  return cache.links
+}
+
+/**
+ * @returns {{
+ *   live: (flight, unitIndex) => ({ key, unit } | null),
+ *   flightOf: (liveKey) => ({ flightId, unitIndex } | null),
+ * }}
+ */
+export function buildFlightLinks(flights, liveUnits) {
+  const groups = new Map()       // groupKey -> [{ flight, index, unit }]
+  const byDcsGroupId = new Map() // numeric DCS group ID -> groupKey
+  const byName = new Map()       // trimmed group name -> Set(groupKey)
+  const byUnitId = new Map()     // mission unit ID -> slot
+
+  for (const flight of flights ?? []) {
+    if (flight.manual) continue
+    const gk = groupKeyOf(flight)
+    if (!groups.has(gk)) groups.set(gk, [])
+    ;(flight.units ?? []).forEach((unit, index) => {
+      const slot = { flight, index, unit }
+      groups.get(gk).push(slot)
+      if (unit.unitId != null) byUnitId.set(unit.unitId, slot)
+    })
+    if (flight.dcsGroupId != null) byDcsGroupId.set(flight.dcsGroupId, gk)
+    const name = trim(flight.groupName)
+    if (name) {
+      if (!byName.has(name)) byName.set(name, new Set())
+      byName.get(name).add(gk)
+    }
+  }
+
+  const idsReliable = dcsUnitIdReliable()
+  const claimed = new Map()  // missionUnitKey -> { key, unit }
+  const liveToSlot = new Map()
+  const leftover = new Map() // groupKey -> [{ key, unit }]
+
+  const claim = (slot, key, unit) => {
+    const mk = missionUnitKey(slot.flight.flightId, slot.index)
+    if (claimed.has(mk) || liveToSlot.has(key)) return false
+    claimed.set(mk, { key, unit })
+    liveToSlot.set(key, { flightId: slot.flight.flightId, unitIndex: slot.index })
+    return true
+  }
+
+  for (const [key, unit] of Object.entries(liveUnits ?? {})) {
+    if (idsReliable && unit.unitID != null) {
+      const slot = byUnitId.get(unit.unitID)
+      if (slot && claim(slot, key, unit)) continue
+    }
+
+    let gk = typeof unit.groupID === 'number' ? byDcsGroupId.get(unit.groupID) : undefined
+    if (!gk) {
+      const hits = byName.get(liveGroupName(unit))
+      if (hits?.size === 1) gk = [...hits][0]
+    }
+    if (!gk) continue
+
+    const names = [trim(unit.callsign), trim(unit.unitName)].filter(Boolean)
+    const slot = groups.get(gk).find((s) => s.unit.unitName && names.includes(s.unit.unitName))
+    if (slot && claim(slot, key, unit)) continue
+    if (isPlayer(unit)) {
+      if (!leftover.has(gk)) leftover.set(gk, [])
+      leftover.get(gk).push({ key, unit })
+    }
+  }
+
+  // Players with an element digit place first, so a player without one
+  // can't take the slot another's digit points at.
+  for (const [gk, players] of leftover) {
+    const free = () => groups.get(gk).filter((s) => !claimed.has(missionUnitKey(s.flight.flightId, s.index)))
+    const withDigit = players.map((p) => ({ ...p, digit: elementDigit(p.unit) }))
+    withDigit.sort((a, b) => (a.digit == null) - (b.digit == null))
+    for (const p of withDigit) {
+      const open = free()
+      const slot = (p.digit != null && open.find((s) => s.unit.position === p.digit)) || open[0]
+      if (slot) claim(slot, p.key, p.unit)
+    }
+  }
+
+  return {
+    live: (flight, unitIndex) => claimed.get(missionUnitKey(flight.flightId, unitIndex)) ?? null,
+    flightOf: (liveKey) => liveToSlot.get(String(liveKey)) ?? null,
+  }
+}

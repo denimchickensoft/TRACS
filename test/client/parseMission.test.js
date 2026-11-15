@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { parseLua, extractWeather, findCarriersAndAircraft, findAtoFlights, templateGroupId, isStaticTemplateText } from '../../client/src/utils/parseMission.js'
+import { parseLua, extractWeather, findCarriersAndAircraft, findAtoFlights, templateGroupId, isStaticTemplateText, splitUnitName, splitFlightId } from '../../client/src/utils/parseMission.js'
 
 describe('parseLua', () => {
   test('parses nested tables, strings, numbers, booleans and nil', () => {
@@ -126,12 +126,12 @@ describe('findAtoFlights', () => {
   test('lists every plane group with launch, recovery and units', () => {
     const [hornet, tanker] = findAtoFlights(mission)
     expect(hornet).toMatchObject({
-      groupId: 1, coalition: 'blue', name: 'Hornet 1', task: 'CAP', frequency: 251,
+      flightId: 1, dcsGroupId: 1, groupName: 'Hornet 1', coalition: 'blue', name: 'HORNET1', task: 'CAP', frequency: 251,
       launch:   { type: 'carrier', carrierUnitId: 100, carrierAbbrev: 'CV71' },
       recovery: { type: 'airbase', airdromeId: 22 },
     })
     expect(hornet.units[0]).toMatchObject({
-      callsign: 'Enfield11', type: 'F18C', modex: '301',
+      unitName: 'Hornet 1-1', position: 1, type: 'F18C', modex: '301',
       payload: { fuel: 4900, pylons: [{ station: 1, clsid: 'X' }] },
     })
     // An empty waypoint name means unnamed; no projection params means no lat/lng.
@@ -153,8 +153,8 @@ const template = {
       groupId: 1, name: 'VIPER 2', task: 'CAP',
       route: { points: [{ action: 'From Parking Area', airdromeId: 47, x: 0, y: 0 }] },
       units: [
-        { unitId: 1, name: 'Sqn-1 F-5E VIPER 2-1', type: 'F-5E-3', callsign: { name: 'Enfield11' } },
-        { unitId: 2, name: 'VIPER 2-2 | Pilot', type: 'F-5E-3', callsign: { name: 'Enfield12' } },
+        { unitId: 1, name: 'VIPER 2-1', type: 'F-5E-3', callsign: { name: 'Enfield11' } },
+        { unitId: 2, name: 'VIPER 2-2', type: 'F-5E-3', callsign: { name: 'Enfield12' } },
       ],
     }] } }] },
     red: { country: [{ plane: { group: [{
@@ -169,31 +169,88 @@ describe('findAtoFlights on a static template', () => {
   test('identifies flights by coalition + group name, not the file-local IDs', () => {
     const [blue, red] = findAtoFlights(template, { template: true })
     expect(blue).toMatchObject({ source: 'stm', templateName: 'EXERCISE_ALPHA_20260101', coalition: 'blue' })
-    expect(blue.groupId).toBe(templateGroupId('blue', 'VIPER 2'))
-    expect(blue.groupId).toBeGreaterThanOrEqual(1e9)
-    expect(blue.groupId).toBeLessThan(2e9)
-    expect(red.groupId).not.toBe(blue.groupId)
-    expect(templateGroupId('blue', 'VIPER 2')).toBe(blue.groupId)
+    expect(blue.flightId).toBe(templateGroupId('blue', 'VIPER 2'))
+    expect(blue.flightId).toBeGreaterThanOrEqual(1e9)
+    expect(blue.flightId).toBeLessThan(2e9)
+    expect(blue.dcsGroupId).toBe(null)
+    expect(red.flightId).not.toBe(blue.flightId)
   })
 
-  test('callsigns come from the unit name, and unit IDs are dropped', () => {
+  test('units keep their unit names, and unit IDs are dropped', () => {
     const [blue, red] = findAtoFlights(template, { template: true })
-    expect(blue.units.map((u) => u.callsign)).toEqual(['VIPER21', 'VIPER22'])
+    expect(blue.name).toBe('VIPER2')
+    expect(blue.units.map((u) => u.unitName)).toEqual(['VIPER 2-1', 'VIPER 2-2'])
     expect(blue.units.every((u) => u.unitId === null)).toBe(true)
-    // No callsign-shaped part: keeps the name as written.
-    expect(red.units[0].callsign).toBe('BANDIT')
+    expect(red.name).toBe('BANDIT')
   })
 
   test('a mission is unchanged without the template option', () => {
     const [blue] = findAtoFlights(template)
-    expect(blue).toMatchObject({ groupId: 1 })
+    expect(blue).toMatchObject({ flightId: 1, dcsGroupId: 1 })
     expect(blue.source).toBeUndefined()
-    expect(blue.units[0]).toMatchObject({ unitId: 1, callsign: 'Enfield11' })
+    expect(blue.units[0]).toMatchObject({ unitId: 1, unitName: 'VIPER 2-1' })
+    expect(blue.units[0].callsign).toBeUndefined()
   })
 
   test('recognizes template text by its variable name', () => {
     expect(isStaticTemplateText('staticTemplate = \n{ }')).toBe(true)
     expect(isStaticTemplateText('﻿staticTemplate = { }')).toBe(true)
     expect(isStaticTemplateText('mission = { }')).toBe(false)
+  })
+})
+
+describe('splitUnitName', () => {
+  test.each([
+    ['RMD-1-2', 'RMD-1', 2],
+    ['Elvis5-1', 'Elvis5', 1],
+    ['INC-10-3', 'INC-10', 3],
+    ['KC-135MRPS 35Y 235Mhz TEX 1-1-1', 'KC-135MRPS 35Y 235Mhz TEX 1-1', 1],
+    ['GKE_C130-1', 'GKE_C130', 1],
+    ['Warden-1', 'Warden-1', null],
+    ['VOLVO-1', 'VOLVO-1', null],
+    ['F/A-18C Lot 20', 'F/A-18C Lot 20', null],
+    ['  RAYAK ', 'RAYAK', null],
+  ])('%s', (name, base, position) => {
+    expect(splitUnitName(name)).toEqual({ base, position })
+  })
+})
+
+describe('findAtoFlights flight split', () => {
+  const unit = (unitId, name, type = 'FA-18C_hornet') => ({ unitId, name, type })
+  const m = {
+    theatre: 'NoSuchTheatre',
+    coalition: {
+      blue: { country: [{
+        plane: { group: [
+          { groupId: 5, name: 'North_CAP', task: 'CAP', route: { points: [] },
+            units: [unit(51, 'ELVIS-5-1'), unit(52, 'ELVIS-5-2'), unit(53, 'HAWK-1-1'), unit(54, 'HAWK-1-2')] },
+          { groupId: 6, name: 'Warden Flight', route: { points: [] }, units: [unit(61, 'Warden-1'), unit(62, 'Warden-2')] },
+        ] },
+        helicopter: { group: [
+          { groupId: 7, name: 'VOLVO-1', route: { points: [] }, units: [unit(71, 'VOLVO-1', 'UH-60L')] },
+        ] },
+      }] },
+    },
+  }
+
+  test('a group splits into flights by base unit name, with stable IDs', () => {
+    const flights = findAtoFlights(m)
+    const north = flights.filter((f) => f.dcsGroupId === 5)
+    expect(north.map((f) => f.name)).toEqual(['ELVIS5', 'HAWK1'])
+    expect(north.map((f) => f.units.map((u) => u.position))).toEqual([[1, 2], [1, 2]])
+    expect(north[0].flightId).toBe(splitFlightId('blue', 5, 'ELVIS5'))
+    expect(north[0].flightId).toBeGreaterThanOrEqual(2e9)
+    expect(north[0].flightId).not.toBe(north[1].flightId)
+    expect(north[0].groupName).toBe('North_CAP')
+  })
+
+  test('one-number names are single-ship flights', () => {
+    const warden = findAtoFlights(m).filter((f) => f.dcsGroupId === 6)
+    expect(warden.map((f) => f.name)).toEqual(['WARDEN1', 'WARDEN2'])
+  })
+
+  test('helicopter groups are listed', () => {
+    const volvo = findAtoFlights(m).find((f) => f.dcsGroupId === 7)
+    expect(volvo).toMatchObject({ flightId: 7, name: 'VOLVO1' })
   })
 })

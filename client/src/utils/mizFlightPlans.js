@@ -73,7 +73,7 @@ export async function mapMizFlightPlans(flights, theatre) {
     const rmk = rmkParts.join(' ')
 
     for (const unit of flight.units) {
-      const aid = unit.callsign || flight.name
+      const aid = (unit.unitName ?? '').replace(/[^A-Za-z0-9]/g, '') || flight.name
       if (!aid) continue
 
       results.push({
@@ -97,7 +97,7 @@ export async function mapMizFlightPlans(flights, theatre) {
         // template, whose unit IDs are file-local (parseMission.js), so its
         // plans correlate by AID only.
         dcsUnitId: unit.unitId ?? null,
-        _groupId: flight.groupId,
+        _flightId: flight.flightId,
       })
     }
   }

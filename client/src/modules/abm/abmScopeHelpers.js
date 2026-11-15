@@ -1,6 +1,6 @@
 import { isOnGround } from '../../utils/visibleUnits.js'
 import { resolveCallsign } from '../../utils/callsign.js'
-import { typeAbbrev, parseFlightElement } from './canvas/drawAbmContacts.js'
+import { typeAbbrev } from './canvas/drawAbmContacts.js'
 import { DECLARATION, getAbmEffectiveDeclaration } from '../../store/abm.js'
 import { formatDistance, M_PER_NM } from '../../utils/units.js'
 
@@ -171,14 +171,11 @@ export function buildAirportFields(airport) {
   return fields.filter(v => v !== undefined && v !== null && v !== '')
 }
 
-// FRAG route leg labels use the flight's group callsign (e.g. "COLT1" for
-// "COLT11"), the same flight/element split Ato.jsx's CALLSIGN column and
-// formation-datablock suppression already use — see parseFlightElement's
-// header comment in drawAbmContacts.js. Falls back to the mission-editor
-// group name when the lead unit's callsign doesn't parse.
+// FRAG route leg labels use the flight's name: the unit names' shared base
+// for an imported flight ("RMD1"), the typed name for a manual one.
 export function flightRouteGroupLabel(flight) {
   if (!flight) return null
-  return parseFlightElement(flight.units?.[0])?.flightKey ?? flight.name ?? null
+  return flight.name || null
 }
 
 // Collapses runway centerlines (two direction-entries per physical strip)

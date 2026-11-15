@@ -7,35 +7,52 @@
 // local to this controller's imported mission and aren't broadcast to other
 // controllers, except for the IFF/manual-flight changes described below.
 //
-// "flights" not "packages": each entry is one DCS Mission Editor Group (one
-// callsign, one route, one task) — a real-world "flight." DCS has no native
-// concept of a multi-flight "package" (strikers+SEAD+escort coordinated for
-// one mission), so that word never described what this data actually is.
+// "flights" not "packages": each entry is the units of one DCS group that
+// share a base unit name (parseMission.js findAtoFlights), so a group with
+// ELVIS-5-x and HAWK-1-x is two flights, keyed by `flightId`. DCS has no
+// native concept of a multi-flight "package" (strikers+SEAD+escort
+// coordinated for one mission), so that word never described this data.
 
 import { create } from 'zustand'
 import { resolveCallsign, stripAcid } from '../utils/callsign.js'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 import { shallowEqual } from '../utils/storeSync.js'
 import { mergeMissionFlights } from '../missionData/merge.js'
+import { getFlightLinks } from '../utils/flightLinks.js'
+import { useUnitsStore } from './units.js'
 
 const SB_KEY = 'tracs.abm.mission'
 
 function serialize(s) {
   return {
-    flights: s.flights, importedAt: s.importedAt, selectedGroupId: s.selectedGroupId, selectNonce: s.selectNonce,
+    flights: s.flights, importedAt: s.importedAt, selectedFlightId: s.selectedFlightId, selectNonce: s.selectNonce,
     findRequest: s.findRequest, findNonce: s.findNonce, findKey: s.findKey,
     blinkIds: s.blinkIds,
     routeVisible: s.routeVisible,
-    routeGroupIds: s.routeGroupIds,
+    routeFlightIds: s.routeFlightIds,
     taskOverrides: s.taskOverrides,
     nextManualId: s.nextManualId,
     missionId: s.missionId,
+    version: 2,
   }
 }
 
-function loadSaved() {
-  try { return JSON.parse(localStorage.getItem(SB_KEY) ?? 'null') } catch { return null }
+// State saved before flights were split out of DCS groups is keyed by
+// groupId and has no unit names. Manual flights carry over under their old
+// (negative) id; imported ones are dropped, so the mission is re-imported.
+function migrate(saved) {
+  if (!saved || saved.version === 2) return saved
+  const flights = (saved.flights ?? []).filter((f) => f.manual).map(({ groupId, ...f }) => ({ ...f, flightId: f.flightId ?? groupId }))
+  const keep = new Set(flights.map((f) => String(f.flightId)))
+  const taskOverrides = Object.fromEntries(Object.entries(saved.taskOverrides ?? {}).filter(([id]) => keep.has(id)))
+  return { flights, taskOverrides, nextManualId: saved.nextManualId, version: 2 }
 }
+
+function loadSaved() {
+  try { return migrate(JSON.parse(localStorage.getItem(SB_KEY) ?? 'null')) } catch { return null }
+}
+
+const liveLinks = (flights) => getFlightLinks(flights, useUnitsStore.getState().units)
 
 // Full field shape a manual flight needs — must match AddAtoFlight.jsx's own
 // addFlight() call exactly, since Frag.jsx/Ato.jsx read several of these
@@ -65,6 +82,27 @@ function MANUAL_FLIGHT_DEFAULTS(name, callsignPrefix, coalition) {
   }
 }
 
+// The roster row a normalized callsign names, across every flight: a manual
+// flight's iffRoster row by its callsign; an imported unit by its linked live
+// unit's callsign, else its unit name. `key` is what setUnitIff takes.
+function findRosterRow(flights, wanted) {
+  if (!wanted) return null
+  const links = liveLinks(flights)
+  for (const f of flights) {
+    if (f.manual) {
+      const u = f.iffRoster?.find((r) => stripAcid(r.callsign ?? '') === wanted)
+      if (u) return { flight: f, key: u.callsign }
+      continue
+    }
+    const i = (f.units ?? []).findIndex((u, idx) => {
+      const live = links.live(f, idx)
+      return (live && resolveCallsign(live.unit) === wanted) || stripAcid(u.unitName ?? '') === wanted
+    })
+    if (i >= 0) return { flight: f, key: f.units[i].unitName }
+  }
+  return null
+}
+
 const saved = loadSaved() ?? {}
 
 // Cross-controller sync — the rest of this store is deliberately
@@ -79,10 +117,10 @@ export { registerAbmMissionBroadcast }
 export const useAbmMissionStore = create((set, get) => ({
   flights:         saved.flights         ?? [],
   importedAt:      saved.importedAt      ?? null,
-  selectedGroupId: saved.selectedGroupId ?? null,
-  // Bumped on every selectGroup() call, even reselecting the same group —
+  selectedFlightId: saved.selectedFlightId ?? null,
+  // Bumped on every selectFlight() call, even reselecting the same group —
   // lets App.jsx's "open FRAG on selection" effect fire every time (a plain
-  // selectedGroupId dependency wouldn't change, and the effect wouldn't
+  // selectedFlightId dependency wouldn't change, and the effect wouldn't
   // re-run, if the panel was closed and the same contact clicked again).
   selectNonce: saved.selectNonce ?? 0,
 
@@ -91,7 +129,7 @@ export const useAbmMissionStore = create((set, get) => ({
   // itself) to resolve the ref to a position and drop a .find-style marker
   // on the scope. Bumped nonce so re-clicking the same ref re-fires even
   // though the ref object itself didn't change. findKey is a caller-supplied
-  // id (e.g. "base-<groupId>" or "wp-<groupId>-<i>") FRAG compares against
+  // id (e.g. "base-<flightId>" or "wp-<flightId>-<i>") FRAG compares against
   // to know which of its own rows is the currently-active find, so it can
   // hold that row's text green until the marker is cleared/replaced.
   findRequest: saved.findRequest ?? null,
@@ -107,25 +145,25 @@ export const useAbmMissionStore = create((set, get) => ({
 
   // FRAG's ROUTE section header — click to toggle the selected flight's
   // route drawing on the ABM scope, same green-when-active convention as
-  // Base/waypoint find. Reset to false on every selectGroup() (including
+  // Base/waypoint find. Reset to false on every selectFlight() (including
   // reselecting the same flight) so a newly-opened FRAG always starts with
   // the route hidden until the controller explicitly asks for it.
   routeVisible: saved.routeVisible ?? false,
 
   // Ctrl+right-click / .route + click / .route <callsign> — independent of
-  // FRAG's own routeVisible+selectedGroupId toggle above (that one always
-  // resets on selectGroup() and is tied to whichever flight the panel has
-  // open). This is a Set of groupIds, same "multiple independent targets"
+  // FRAG's own routeVisible+selectedFlightId toggle above (that one always
+  // resets on selectFlight() and is tied to whichever flight the panel has
+  // open). This is a Set of flightIds, same "multiple independent targets"
   // shape as blinkIds, so several contacts' routes can be shown on the scope
   // at once without opening FRAG or disturbing its own route toggle.
-  routeGroupIds: saved.routeGroupIds ?? [],
+  routeFlightIds: saved.routeFlightIds ?? [],
 
   // FRAG's editable TASKING/Task field — a controller override of the
-  // mission's own task string, keyed by groupId. ATO's TASK column reads
+  // mission's own task string, keyed by flightId. ATO's TASK column reads
   // the same map so an edit in FRAG is immediately reflected there too.
   taskOverrides: saved.taskOverrides ?? {},
 
-  // Manually-added flights (AddAtoFlight.jsx) get a negative groupId — real
+  // Manually-added flights (AddAtoFlight.jsx) get a negative flightId — real
   // DCS group IDs are always positive, so this can never collide with an
   // imported flight's own id. Monotonic and persisted so ids never get
   // reused even across a reload.
@@ -140,7 +178,7 @@ export const useAbmMissionStore = create((set, get) => ({
   setFlights: (flights) => set((s) => ({
     flights: [...flights, ...s.flights.filter(f => f.manual || f.source === 'stm')],
     importedAt: Date.now(),
-    selectedGroupId: null,
+    selectedFlightId: null,
     missionId: null,
   })),
 
@@ -150,19 +188,19 @@ export const useAbmMissionStore = create((set, get) => ({
   // ones already there stay.
   loadMissionFlights: (flights, missionId) => set((s) => {
     const { flights: next, replaced } = mergeMissionFlights(s, flights, missionId)
-    return { flights: next, importedAt: Date.now(), missionId, ...(replaced ? { selectedGroupId: null } : {}) }
+    return { flights: next, importedAt: Date.now(), missionId, ...(replaced ? { selectedFlightId: null } : {}) }
   }),
 
   // Static-template (.stm) flights stack across loads: each squadron's file
-  // adds its own flights, and a flight already loaded under the same groupId
+  // adds its own flights, and a flight already loaded under the same flightId
   // (same coalition + group name, see parseMission.js's templateGroupId) is
   // replaced, so a resent file updates its flights instead of duplicating.
   mergeTemplateFlights: (flights) => set((s) => {
-    const incoming = new Set(flights.map(f => f.groupId))
+    const incoming = new Set(flights.map(f => f.flightId))
     return {
-      flights: [...s.flights.filter(f => !incoming.has(f.groupId)), ...flights],
+      flights: [...s.flights.filter(f => !incoming.has(f.flightId)), ...flights],
       importedAt: Date.now(),
-      selectedGroupId: null,
+      selectedFlightId: null,
     }
   }),
 
@@ -171,7 +209,7 @@ export const useAbmMissionStore = create((set, get) => ({
   // still wiped either way, since a stale marker/blink has no meaning once
   // whatever it was pointing at is gone.
   clearFlights: () => set((s) => {
-    const keep = new Set(s.flights.filter(f => f.manual).map(f => f.groupId))
+    const keep = new Set(s.flights.filter(f => f.manual).map(f => f.flightId))
     const overrides = {}
     for (const [gid, v] of Object.entries(s.taskOverrides)) {
       if (keep.has(Number(gid))) overrides[gid] = v
@@ -180,9 +218,9 @@ export const useAbmMissionStore = create((set, get) => ({
       flights: s.flights.filter(f => f.manual),
       importedAt: null,
       missionId: null,
-      selectedGroupId: keep.has(s.selectedGroupId) ? s.selectedGroupId : null,
+      selectedFlightId: keep.has(s.selectedFlightId) ? s.selectedFlightId : null,
       findRequest: null, findKey: null, blinkIds: [],
-      routeGroupIds: s.routeGroupIds.filter(gid => keep.has(gid)),
+      routeFlightIds: s.routeFlightIds.filter(gid => keep.has(gid)),
       taskOverrides: overrides,
     }
   }),
@@ -190,35 +228,35 @@ export const useAbmMissionStore = create((set, get) => ({
   // Clear ALL — the CATCC status-board-style full wipe, including
   // manually-added flights. Gated behind a confirm step in the UI.
   clearAllFlights: () => set({
-    flights: [], importedAt: null, missionId: null, selectedGroupId: null,
-    findRequest: null, findKey: null, blinkIds: [], routeGroupIds: [], taskOverrides: {},
+    flights: [], importedAt: null, missionId: null, selectedFlightId: null,
+    findRequest: null, findKey: null, blinkIds: [], routeFlightIds: [], taskOverrides: {},
   }),
 
   // Appends one hand-entered flight (AddAtoFlight.jsx) — additive, unlike
   // setFlights which replaces the whole imported set.
   addFlight: (flight) => set((s) => ({
-    flights: [...s.flights, { ...flight, groupId: s.nextManualId, manual: true }],
+    flights: [...s.flights, { ...flight, flightId: s.nextManualId, manual: true }],
     nextManualId: s.nextManualId - 1,
   })),
 
-  removeFlight: (groupId) => set((s) => {
+  removeFlight: (flightId) => set((s) => {
     const next = { ...s.taskOverrides }
-    delete next[groupId]
+    delete next[flightId]
     return {
-      flights: s.flights.filter(f => f.groupId !== groupId),
-      selectedGroupId: s.selectedGroupId === groupId ? null : s.selectedGroupId,
+      flights: s.flights.filter(f => f.flightId !== flightId),
+      selectedFlightId: s.selectedFlightId === flightId ? null : s.selectedFlightId,
       taskOverrides: next,
     }
   }),
 
-  setTaskOverride: (groupId, value) => set((s) => {
+  setTaskOverride: (flightId, value) => set((s) => {
     const next = { ...s.taskOverrides }
-    if (value) next[groupId] = value
-    else delete next[groupId]
+    if (value) next[flightId] = value
+    else delete next[flightId]
     return { taskOverrides: next }
   }),
 
-  selectGroup: (groupId) => set((s) => ({ selectedGroupId: groupId, selectNonce: s.selectNonce + 1, routeVisible: false })),
+  selectFlight: (flightId) => set((s) => ({ selectedFlightId: flightId, selectNonce: s.selectNonce + 1, routeVisible: false })),
 
   toggleRouteVisible: () => set((s) => ({ routeVisible: !s.routeVisible })),
 
@@ -240,54 +278,40 @@ export const useAbmMissionStore = create((set, get) => ({
     s.blinkIds.includes(unitKey) ? s : { blinkIds: [...s.blinkIds, unitKey] }
   )),
 
-  toggleRouteGroup: (groupId) => set((s) => {
-    const next = new Set(s.routeGroupIds)
-    next.has(groupId) ? next.delete(groupId) : next.add(groupId)
-    return { routeGroupIds: [...next] }
+  toggleRouteFlight: (flightId) => set((s) => {
+    const next = new Set(s.routeFlightIds)
+    next.has(flightId) ? next.delete(flightId) : next.add(flightId)
+    return { routeFlightIds: [...next] }
   }),
 
-  clearRouteGroups: () => set({ routeGroupIds: [] }),
+  clearRouteFlights: () => set({ routeFlightIds: [] }),
 
-  // Live-unit-to-flight correlation. Olympus's unit.groupID is already a
-  // real numeric DCS group ID (decoder.js) that matches flight.groupId
-  // directly. Tacview's unit.groupID is free text (the ACMI `Group`
-  // property — see tacviewCore.js), which can never equal a real numeric
-  // groupId, so for that case this falls back to per-unit correlation
-  // instead: NOT via unit.unitID (confirmed live to have zero
-  // relationship to the mission file's unitId for statically-placed/AI
-  // units — Tacview assigns its own object IDs from an internal enumeration
-  // counter; see utils/callsign.js's buildLiveUnitLookup for the full
-  // account and the real data that disproved the unitID approach), but via
-  // normalized-callsign text matching, which does reliably correlate. Works
-  // for any unit that existed in the original mission file; a unit spawned
-  // only at runtime (never in the .miz) has no match either way, same as it
-  // would for Olympus.
-  //
-  // Static-template flights are the exception under Olympus: their groupId
-  // is synthetic (templateGroupId), so it never equals a live groupID and
-  // they fall back to the same callsign match. Limited to those flights so
-  // a .miz flight's numeric match behaves exactly as before.
-  resolveGroupIdForUnit: (unit) => {
-    const flights = get().flights
-    const byCallsign = (candidates) => {
-      const liveCallsign = resolveCallsign(unit)
-      if (!liveCallsign) return null
-      return candidates.find((f) => f.units?.some((u) => stripAcid(u.callsign ?? '') === liveCallsign))?.groupId ?? null
-    }
-    if (typeof unit?.groupID === 'number') {
-      if (flights.some((f) => f.groupId === unit.groupID)) return unit.groupID
-      return byCallsign(flights.filter((f) => f.source === 'stm')) ?? unit.groupID
-    }
-    return byCallsign(flights)
+  // Live-unit-to-flight correlation for imported flights: group, then unit
+  // name, then the element digit of a player's callsign (utils/flightLinks.js).
+  resolveFlightIdForUnit: (unit) => {
+    if (unit?.id == null) return null
+    return liveLinks(get().flights).flightOf(String(unit.id))?.flightId ?? null
   },
 
-  // resolveGroupIdForUnit plus manual flights, which have no group ID to
+  // The setUnitIff key of a live unit's row in `flight`: an imported
+  // flight's linked unit name, a manual flight's iffRoster callsign.
+  rosterKeyForUnit: (flight, unit) => {
+    if (!flight || !unit) return null
+    if (flight.manual) {
+      const cs = resolveCallsign(unit)
+      return flight.iffRoster?.find((u) => stripAcid(u.callsign ?? '') === cs)?.callsign ?? null
+    }
+    const slot = liveLinks(get().flights).flightOf(String(unit.id))
+    return slot?.flightId === flight.flightId ? (flight.units?.[slot.unitIndex]?.unitName ?? null) : null
+  },
+
+  // resolveFlightIdForUnit plus manual flights, which have no group ID to
   // match — those correlate by callsign prefix, same rule Ato.jsx/Frag.jsx
   // use (matchLiveByPrefix).
   resolveFlightForUnit: (unit) => {
     const flights = get().flights
-    const groupId = get().resolveGroupIdForUnit(unit)
-    const byGroup = groupId != null ? flights.find((f) => f.groupId === groupId) : null
+    const flightId = get().resolveFlightIdForUnit(unit)
+    const byGroup = flightId != null ? flights.find((f) => f.flightId === flightId) : null
     if (byGroup) return byGroup
     const liveCallsign = resolveCallsign(unit)
     if (!liveCallsign) return null
@@ -297,16 +321,16 @@ export const useAbmMissionStore = create((set, get) => ({
   // Assigned/requested altitude for a whole flight — `{ lo, hi }` in 3-digit
   // hundreds of feet (hi null for a hard altitude), or null to clear. Synced
   // to every ABM controller like IFF codes; manual flights carry their
-  // callsignPrefix too, since their groupId is minted per controller.
-  setFlightAlt: (groupId, alt) => {
-    set((s) => ({ flights: s.flights.map((f) => f.groupId !== groupId ? f : { ...f, alt: alt ?? null }) }))
-    const flight = get().flights.find((f) => f.groupId === groupId)
+  // callsignPrefix too, since their flightId is minted per controller.
+  setFlightAlt: (flightId, alt) => {
+    set((s) => ({ flights: s.flights.map((f) => f.flightId !== flightId ? f : { ...f, alt: alt ?? null }) }))
+    const flight = get().flights.find((f) => f.flightId === flightId)
     if (!flight) return
-    broadcastAbmMission('FRAG_ALT_SET', { groupId, manual: !!flight.manual, callsignPrefix: flight.callsignPrefix ?? null, alt: alt ?? null })
+    broadcastAbmMission('FRAG_ALT_SET', { flightId, manual: !!flight.manual, callsignPrefix: flight.callsignPrefix ?? null, alt: alt ?? null })
   },
 
-  _applyFlightAlt: ({ groupId, manual, callsignPrefix, alt }) => set((s) => {
-    let target = s.flights.find((f) => f.groupId === groupId && !!f.manual === !!manual)
+  _applyFlightAlt: ({ flightId, manual, callsignPrefix, alt }) => set((s) => {
+    let target = s.flights.find((f) => f.flightId === flightId && !!f.manual === !!manual)
     if (!target && manual && callsignPrefix) target = s.flights.find((f) => f.manual && f.callsignPrefix === callsignPrefix)
     if (!target) return s
     return { flights: s.flights.map((f) => f !== target ? f : { ...f, alt: alt ?? null }) }
@@ -327,63 +351,55 @@ export const useAbmMissionStore = create((set, get) => ({
   // their own mission import); a manual flight's whole iffRoster gets
   // re-broadcast, since other controllers have no local placeholder to merge
   // a bare delta into (FRAG is local-only otherwise — see header comment).
-  setUnitIff: (groupId, unitCallsign, iff) => {
+  // `unitKey` is the unit name for an imported flight, the callsign for a
+  // manual flight's iffRoster row.
+  setUnitIff: (flightId, unitKey, iff) => {
     let manual = false
     set((s) => ({
       flights: s.flights.map((f) => {
-        if (f.groupId !== groupId) return f
+        if (f.flightId !== flightId) return f
         manual = !!f.manual
         if (manual) {
-          const has = (f.iffRoster ?? []).some((u) => u.callsign === unitCallsign)
+          const has = (f.iffRoster ?? []).some((u) => u.callsign === unitKey)
           const iffRoster = has
-            ? f.iffRoster.map((u) => u.callsign !== unitCallsign ? u : { ...u, iff: { ...u.iff, ...iff } })
-            : [...(f.iffRoster ?? []), { callsign: unitCallsign, iff }]
+            ? f.iffRoster.map((u) => u.callsign !== unitKey ? u : { ...u, iff: { ...u.iff, ...iff } })
+            : [...(f.iffRoster ?? []), { callsign: unitKey, iff }]
           return { ...f, iffRoster }
         }
         return {
           ...f,
-          units: (f.units ?? []).map((u) => u.callsign !== unitCallsign ? u : { ...u, iff: { ...u.iff, ...iff } }),
+          units: (f.units ?? []).map((u) => u.unitName !== unitKey ? u : { ...u, iff: { ...u.iff, ...iff } }),
         }
       }),
     }))
-    const flight = get().flights.find((f) => f.groupId === groupId)
+    const flight = get().flights.find((f) => f.flightId === flightId)
     if (!flight) return
-    if (manual) broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId, name: flight.name, callsignPrefix: flight.callsignPrefix, coalition: flight.coalition, iffRoster: flight.iffRoster, alt: flight.alt ?? null })
-    else broadcastAbmMission('FRAG_IFF_SET', { groupId, unitCallsign, iff })
+    if (manual) broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { flightId, name: flight.name, callsignPrefix: flight.callsignPrefix, coalition: flight.coalition, iffRoster: flight.iffRoster, alt: flight.alt ?? null })
+    else broadcastAbmMission('FRAG_IFF_SET', { flightId, unitName: unitKey, iff })
   },
 
   // Bulk-assign codes from a CSV (matched by callsign against every unit
-  // already known across all flights, imported or manual) — assign-only,
-  // never creates a new flight/unit. Matched via stripAcid, not exact-equals
-  // — the CSV's callsign column is normalized text (csvIffAssignments.js),
-  // but an imported roster row's u.callsign is the raw mission-file string
-  // (e.g. "HAVOC 1-1"); same normalization resolveGroupIdForUnit and
-  // correlationEngine.js already use for the identical problem (manual rows'
-  // iffRoster callsigns are already normalized, so stripAcid is a no-op for
-  // those). Reuses setUnitIff (passing the row's own raw callsign, not the
-  // CSV's normalized one, so setUnitIff's own exact match still finds it) so
-  // the sync/broadcast behavior is identical to a manual/typed edit.
+  // already known across all flights, imported or manual) - assign-only,
+  // never creates a new flight/unit. The CSV's callsign column is normalized
+  // text (csvIffAssignments.js): an imported unit matches by its live
+  // callsign when linked (a player's "HAWK11"), else by its unit name;
+  // a manual row by its own (already normalized) callsign. Reuses setUnitIff
+  // so the sync/broadcast behavior is identical to a typed edit.
   // @returns {{ matched: string[], skipped: string[] }}
   applyIffCsv: (rows) => {
     const matched = []
     const skipped = []
     for (const row of rows) {
-      let found = null
-      for (const f of get().flights) {
-        const u = f.manual
-          ? f.iffRoster?.find((u) => stripAcid(u.callsign ?? '') === row.callsign)
-          : f.units?.find((u) => stripAcid(u.callsign ?? '') === row.callsign)
-        if (u) { found = { flight: f, unit: u }; break }
-      }
+      const found = findRosterRow(get().flights, row.callsign)
       if (!found) { skipped.push(row.callsign); continue }
       matched.push(row.callsign)
-      // An undefined mode is a code the parser dropped as invalid — that
+      // An undefined mode is a code the parser dropped as invalid - that
       // mode is left as-is rather than cleared.
       const patch = {}
       for (const mode of ['mode1', 'mode2', 'mode3']) {
         if (row[mode] !== undefined) patch[mode] = row[mode]
       }
-      if (Object.keys(patch).length) get().setUnitIff(found.flight.groupId, found.unit.callsign, patch)
+      if (Object.keys(patch).length) get().setUnitIff(found.flight.flightId, found.key, patch)
     }
     return { matched, skipped }
   },
@@ -391,10 +407,10 @@ export const useAbmMissionStore = create((set, get) => ({
   // Ctrl+Shift+Click's create-or-reconcile action (AbmScope.jsx) and Frag.jsx's
   // manual "add aircraft" row both call this. Checks across EVERY flight
   // (imported's units[], manual's iffRoster) first — if this exact aircraft
-  // already has a roster row anywhere, just return that flight's groupId, no
+  // already has a roster row anywhere, just return that flight's flightId, no
   // mutation, no duplicate. Only when it's genuinely untracked does this
   // find-or-create the *manual* flight for this callsign-prefix group and
-  // add the iffRoster row. Returns the flight's groupId so the caller can
+  // add the iffRoster row. Returns the flight's flightId so the caller can
   // select/open it.
   //
   // Real bug found live: a created flight with no `coalition` field is
@@ -405,16 +421,10 @@ export const useAbmMissionStore = create((set, get) => ({
   // GM/Admin the clicked aircraft's own 'blue'/'red') must be set on creation, same as
   // AddAtoFlight.jsx's manual flights already do.
   ensureManualRosterEntry: (callsignPrefix, unitCallsign, coalition) => {
-    // Imported rosters carry the mission file's callsign ("FORD 1-1") while
-    // the caller passes the live one ("FORD11") — compare both normalized,
-    // same as resolveGroupIdForUnit, or an imported aircraft never matches
-    // and a duplicate manual flight gets created instead.
-    const wanted = stripAcid(unitCallsign ?? '')
-    const existing = get().flights.find((f) =>
-      f.manual
-        ? f.iffRoster?.some((u) => stripAcid(u.callsign ?? '') === wanted)
-        : f.units?.some((u) => stripAcid(u.callsign ?? '') === wanted)
-    )
+    // The caller passes the live callsign ("FORD11"); an imported aircraft
+    // matches through its live link or unit name (findRosterRow), or a
+    // duplicate manual flight would get created instead.
+    const existing = findRosterRow(get().flights, stripAcid(unitCallsign ?? ''))?.flight
     if (existing) {
       // Backfill a flight created before this shape was complete (a real
       // case hit live testing this session, not hypothetical — missing
@@ -428,51 +438,51 @@ export const useAbmMissionStore = create((set, get) => ({
       const missingCoalition = existing.manual && existing.coalition == null && coalition != null
       if (missingDefaults || missingCoalition) {
         set((s) => ({
-          flights: s.flights.map((f) => f.groupId !== existing.groupId ? f : {
+          flights: s.flights.map((f) => f.flightId !== existing.flightId ? f : {
             ...MANUAL_FLIGHT_DEFAULTS(f.name ?? f.callsignPrefix, f.callsignPrefix, f.coalition ?? coalition),
             ...f,
             coalition: f.coalition ?? coalition,
           }),
         }))
-        const patched = get().flights.find((f) => f.groupId === existing.groupId)
-        broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId: patched.groupId, name: patched.name, callsignPrefix: patched.callsignPrefix, coalition: patched.coalition, iffRoster: patched.iffRoster, alt: patched.alt ?? null })
+        const patched = get().flights.find((f) => f.flightId === existing.flightId)
+        broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { flightId: patched.flightId, name: patched.name, callsignPrefix: patched.callsignPrefix, coalition: patched.coalition, iffRoster: patched.iffRoster, alt: patched.alt ?? null })
       }
-      return existing.groupId
+      return existing.flightId
     }
 
     let flight = get().flights.find((f) => f.manual && f.callsignPrefix === callsignPrefix)
     if (!flight) {
-      const groupId = get().nextManualId
-      flight = { groupId, ...MANUAL_FLIGHT_DEFAULTS(callsignPrefix, callsignPrefix, coalition) }
+      const flightId = get().nextManualId
+      flight = { flightId, ...MANUAL_FLIGHT_DEFAULTS(callsignPrefix, callsignPrefix, coalition) }
       set((s) => ({ flights: [...s.flights, flight], nextManualId: s.nextManualId - 1 }))
     }
     set((s) => ({
-      flights: s.flights.map((f) => f.groupId !== flight.groupId ? f : { ...f, iffRoster: [...(f.iffRoster ?? []), { callsign: unitCallsign, iff: {} }] }),
+      flights: s.flights.map((f) => f.flightId !== flight.flightId ? f : { ...f, iffRoster: [...(f.iffRoster ?? []), { callsign: unitCallsign, iff: {} }] }),
     }))
-    const finalFlight = get().flights.find((f) => f.groupId === flight.groupId)
-    broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId: finalFlight.groupId, name: finalFlight.name, callsignPrefix: finalFlight.callsignPrefix, coalition: finalFlight.coalition, iffRoster: finalFlight.iffRoster, alt: finalFlight.alt ?? null })
-    return flight.groupId
+    const finalFlight = get().flights.find((f) => f.flightId === flight.flightId)
+    broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { flightId: finalFlight.flightId, name: finalFlight.name, callsignPrefix: finalFlight.callsignPrefix, coalition: finalFlight.coalition, iffRoster: finalFlight.iffRoster, alt: finalFlight.alt ?? null })
+    return flight.flightId
   },
 
   // Removes one row from a manual flight's iffRoster (e.g. a mistyped
   // callsign added via Frag.jsx's "Add Aircraft" input) — the row's live
   // detection (if any, via callsign-prefix matching) is unaffected by this;
   // it just stops carrying an assigned IFF code / a pending pre-add entry.
-  removeManualRosterEntry: (groupId, callsign) => {
+  removeManualRosterEntry: (flightId, callsign) => {
     set((s) => ({
-      flights: s.flights.map((f) => f.groupId !== groupId ? f : { ...f, iffRoster: (f.iffRoster ?? []).filter((u) => u.callsign !== callsign) }),
+      flights: s.flights.map((f) => f.flightId !== flightId ? f : { ...f, iffRoster: (f.iffRoster ?? []).filter((u) => u.callsign !== callsign) }),
     }))
-    const flight = get().flights.find((f) => f.groupId === groupId)
+    const flight = get().flights.find((f) => f.flightId === flightId)
     if (!flight) return
-    broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { groupId: flight.groupId, name: flight.name, callsignPrefix: flight.callsignPrefix, coalition: flight.coalition, iffRoster: flight.iffRoster, alt: flight.alt ?? null })
+    broadcastAbmMission('FRAG_MANUAL_FLIGHT_SET', { flightId: flight.flightId, name: flight.name, callsignPrefix: flight.callsignPrefix, coalition: flight.coalition, iffRoster: flight.iffRoster, alt: flight.alt ?? null })
   },
 
   // Applies an incoming FRAG_IFF_SET/FRAG_MANUAL_FLIGHT_SET broadcast from
   // another controller without re-broadcasting it.
-  _applyIffSet: (groupId, unitCallsign, iff) => set((s) => ({
-    flights: s.flights.map((f) => f.groupId !== groupId ? f : {
+  _applyIffSet: (flightId, unitName, iff) => set((s) => ({
+    flights: s.flights.map((f) => f.flightId !== flightId ? f : {
       ...f,
-      units: (f.units ?? []).map((u) => u.callsign !== unitCallsign ? u : { ...u, iff: { ...u.iff, ...iff } }),
+      units: (f.units ?? []).map((u) => u.unitName !== unitName ? u : { ...u, iff: { ...u.iff, ...iff } }),
     }),
   })),
 
@@ -484,13 +494,13 @@ export const useAbmMissionStore = create((set, get) => ({
   // this receiving controller's own Frag.jsx would crash the same way
   // opening it otherwise.
   // `alt` is absent from older clients' payloads — leave the local value alone then.
-  _applyManualFlightSet: (groupId, name, callsignPrefix, coalition, iffRoster, alt) => set((s) => {
+  _applyManualFlightSet: (flightId, name, callsignPrefix, coalition, iffRoster, alt) => set((s) => {
     const altPatch = alt === undefined ? {} : { alt }
-    const exists = s.flights.some((f) => f.groupId === groupId)
+    const exists = s.flights.some((f) => f.flightId === flightId)
     if (exists) {
-      return { flights: s.flights.map((f) => f.groupId !== groupId ? f : { ...f, name, callsignPrefix, coalition, iffRoster, ...altPatch, manual: true }) }
+      return { flights: s.flights.map((f) => f.flightId !== flightId ? f : { ...f, name, callsignPrefix, coalition, iffRoster, ...altPatch, manual: true }) }
     }
-    return { flights: [...s.flights, { groupId, ...MANUAL_FLIGHT_DEFAULTS(name, callsignPrefix, coalition), iffRoster, ...altPatch }] }
+    return { flights: [...s.flights, { flightId, ...MANUAL_FLIGHT_DEFAULTS(name, callsignPrefix, coalition), iffRoster, ...altPatch }] }
   }),
 }))
 
@@ -522,7 +532,7 @@ _ch.postMessage({ type: 'REQUEST_STATE' })
 export function applyAbmMissionIffSet(payload) {
   _syncing = true
   try {
-    useAbmMissionStore.getState()._applyIffSet(payload.groupId, payload.unitCallsign, payload.iff)
+    useAbmMissionStore.getState()._applyIffSet(payload.flightId, payload.unitName, payload.iff)
   } finally {
     _syncing = false
   }
@@ -531,7 +541,7 @@ export function applyAbmMissionIffSet(payload) {
 export function applyAbmMissionManualFlightSet(payload) {
   _syncing = true
   try {
-    useAbmMissionStore.getState()._applyManualFlightSet(payload.groupId, payload.name, payload.callsignPrefix, payload.coalition, payload.iffRoster, payload.alt)
+    useAbmMissionStore.getState()._applyManualFlightSet(payload.flightId, payload.name, payload.callsignPrefix, payload.coalition, payload.iffRoster, payload.alt)
   } finally {
     _syncing = false
   }

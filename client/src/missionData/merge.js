@@ -29,8 +29,8 @@ export function mergeMissionFlights(s, flights, missionId) {
   if (s.missionId && s.missionId !== missionId) {
     return { flights: [...flights, ...s.flights.filter(f => f.manual || f.source === 'stm')], replaced: true }
   }
-  const have = new Set(s.flights.map(f => f.groupId))
-  return { flights: [...s.flights, ...flights.filter(f => !have.has(f.groupId))], replaced: false }
+  const have = new Set(s.flights.map(f => f.flightId))
+  return { flights: [...s.flights, ...flights.filter(f => !have.has(f.flightId))], replaced: false }
 }
 
 // Whose turn it is among the P2P load intents for one area

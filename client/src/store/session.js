@@ -331,6 +331,10 @@ if (typeof window !== 'undefined') {
     coalition:    s.coalition,
     positionName: s.positionName,
     activeModule: s.activeModule,
+    // Name resolution (utils/callsign.js) reads both, so a popup ATO/FRAG
+    // must agree with the main window.
+    sourceType:   s.sourceType,
+    useDcsNames:  s.useDcsNames,
   })
 
   let _ch        = null
