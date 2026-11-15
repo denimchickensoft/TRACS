@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useScopeNotesStore, mapNotesKey, screenNotesKey } from '../../store/scopeNotes.js'
 import { latLngToCanvas, canvasToLatLng } from '../../utils/projection.js'
-import { noteAt, MAX_TEXT } from './noteCommands.js'
+import { noteAt, deleteNotes, MAX_TEXT } from './noteCommands.js'
 import './ScopeNotes.css'
 
 /**
@@ -193,9 +193,8 @@ export function ScopeNotes({ module, theatre, windowId, view, color }) {
     if (target && text != null) {
       const s = useScopeNotesStore.getState()
       const trimmed = text.trim()
-      s.write(target.key, trimmed
-        ? s.list(target.key).map((n) => (String(n.id) === target.id ? { ...n, text: trimmed } : n))
-        : s.list(target.key).filter((n) => String(n.id) !== target.id))
+      if (trimmed) s.write(target.key, s.list(target.key).map((n) => (String(n.id) === target.id ? { ...n, text: trimmed } : n)))
+      else deleteNotes(target.key, [target.id])
     }
     // Hand the keyboard back to the scope's command line (a click away has
     // already put focus where it belongs)

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { usePreviewStore }  from '../../../../store/preview.js'
 import { useFpeStore }      from '../../../../store/fpe.js'
 import { matchStarsKey, isTypedInput, shouldAppendToken } from '../../../../utils/starsKeys.js'
+import { isUndoKey, undoFeedback } from '../../../../utils/removalUndo.js'
 
 /**
  * Keyboard input handler for the STARS ODS.
@@ -33,6 +34,13 @@ export function InputHandler({ onEnter, onImmediateAction, onEsc }) {
       // Ignore when typing in form elements
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      // Ctrl+Z brings back the last removed note - utils/removalUndo.js
+      if (isUndoKey(e)) {
+        e.preventDefault()
+        preview.setResponse(undoFeedback('STARS'))
+        return
+      }
 
       // ESC — cancel any pending mode, then clear buffer
       if (e.key === 'Escape') {

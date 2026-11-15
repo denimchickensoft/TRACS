@@ -33,6 +33,7 @@ import { useMissionClock }     from '../../utils/useMissionClock.js'
 import { parseCommand }        from './input/commandParser.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
 import { noteClick, noteEnter, parseNoteCommand } from '../../components/ScopeNotes/noteCommands.js'
+import { isUndoKey, undoFeedback } from '../../utils/removalUndo.js'
 import { dispatch, RR_TOGGLE, PICTURE_TOGGLE, BEC_TOGGLE } from './actions/index.js'
 import './AicScope.css'
 import { CARDINAL_ABBR, abbrGroupName, picFillIns, getAicVisibleUnits, subcardinal, bearingRangeFromBullseye, formatPictureDimensions } from './aicScopeHelpers.js'
@@ -615,6 +616,13 @@ export default function AicScope() {
   }
 
   const handleKeyDown = useCallback((e) => {
+    // Ctrl+Z brings back the last removed note - utils/removalUndo.js
+    if (isUndoKey(e)) {
+      e.preventDefault()
+      setCmdFeedback(undoFeedback('AIC'))
+      return
+    }
+
     // DEL (empty command line) + click removes a note — components/ScopeNotes
     if (e.key === 'Delete' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault()

@@ -1,5 +1,6 @@
-import { useScopeNotesStore, mapNotesKey, screenNotesKey } from '../../store/scopeNotes.js'
+import { useScopeNotesStore, mapNotesKey, screenNotesKey, moduleOfNotesKey } from '../../store/scopeNotes.js'
 import { canvasToLatLng } from '../../utils/projection.js'
+import { recordRemoval, undoGroup } from '../../utils/removalUndo.js'
 
 // .note command handling for every scope — see ScopeNotes.jsx.
 
@@ -65,8 +66,11 @@ export function noteEnter(buffer, scope) {
   if (!cmd) return null
   if (cmd.kind !== 'clearAll') return { ok: false, msg: 'CLICK TO PLACE' }
   const store = useScopeNotesStore.getState()
-  store.write(mapNotesKey(scope.module, scope.theatre), [])
-  store.write(screenNotesKey(scope.module, scope.windowId), [])
+  undoGroup(scope.module, 'NOTES', () => {
+    for (const key of [mapNotesKey(scope.module, scope.theatre), screenNotesKey(scope.module, scope.windowId)]) {
+      deleteNotes(key, store.list(key).map((n) => String(n.id)))
+    }
+  })
   return { ok: true, msg: 'NOTES CLEARED' }
 }
 
@@ -74,9 +78,27 @@ export function noteEnter(buffer, scope) {
 export function removeNoteAt(el, x, y) {
   const hit = noteAt(el, x, y)
   if (!hit) return false
-  const store = useScopeNotesStore.getState()
-  store.write(hit.key, store.list(hit.key).filter((n) => String(n.id) !== hit.id))
+  deleteNotes(hit.key, [hit.id])
   return true
+}
+
+// Removes the notes with these ids from one list, so that Ctrl+Z can put
+// them back where they were.
+export function deleteNotes(key, ids) {
+  const store = useScopeNotesStore.getState()
+  const drop  = new Set(ids.map(String))
+  const list  = store.list(key)
+  const gone  = list.flatMap((note, index) => (drop.has(String(note.id)) ? [{ note, index }] : []))
+  if (!gone.length) return
+  store.write(key, list.filter((n) => !drop.has(String(n.id))))
+  recordRemoval(moduleOfNotesKey(key), gone.length > 1 ? 'NOTES' : 'NOTE', () => {
+    const s    = useScopeNotesStore.getState()
+    const next = [...s.list(key)]
+    for (const { note, index } of gone) {
+      if (!next.some((n) => String(n.id) === String(note.id))) next.splice(Math.min(index, next.length), 0, note)
+    }
+    s.write(key, next)
+  })
 }
 
 // The topmost note box under a point in the scope area, as { key, id }.

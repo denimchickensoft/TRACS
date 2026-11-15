@@ -226,6 +226,7 @@ Clearing:
 - DEL, then click — removes the note under the click, or else the drawing, one per DEL.
 - `.dclear all` — removes every hand-drawn shape after a `y`/`n` confirmation.
 - `.dclear <name>` — removes shapes (and marks) by name.
+- Ctrl+Z — brings back what was last removed (a note, a drawing or mark, or everything one `.dclear all`, `.dclear <name>` or the Drawings panel's Clear All took out). Press it again to go further back, up to the last 20 removals. A restored mark comes back for every controller.
 - Shift+right-drag a drawn shape's outline to move it. The shape keeps its exact size and bearings. Imported drawings don't move, and plain right-drag still pans.
 
 Hand-drawn shapes appear in the Drawings panel alongside imported layers. The drawings store is shared by every ABM window, so drawing or clearing in one window affects all of them.

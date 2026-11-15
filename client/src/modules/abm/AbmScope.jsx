@@ -76,6 +76,7 @@ import {
 import { parseCommand } from './input/commandParser.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
 import { noteClick, noteEnter, parseNoteCommand, removeNoteAt } from '../../components/ScopeNotes/noteCommands.js'
+import { isUndoKey, undoFeedback } from '../../utils/removalUndo.js'
 import { dispatch, dispatchClickEntered, CLICK_ENTERED, openAbmFocusPanel, RCLEAR, TDM_TOGGLE, GROUND_TOGGLE, ENG_TOGGLE, ACQ_TOGGLE,
   RR_TOGGLE, TIME_TOGGLE, COORDS_TOGGLE, MAP_TOGGLE, FIXES_TOGGLE, LABELS_TOGGLE, DB_TOGGLE, BEC_TOGGLE } from './actions/index.js'
 import { isOnGround } from '../../utils/visibleUnits.js'
@@ -1645,6 +1646,13 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   }, [])
 
   const handleKeyDown = useCallback((e) => {
+    // Ctrl+Z brings back the last removed note or drawing - utils/removalUndo.js
+    if (isUndoKey(e)) {
+      e.preventDefault()
+      setCmdFeedback(undoFeedback('ABM'))
+      return
+    }
+
     // DEL (empty command line) + click removes a note or drawing — components/ScopeNotes
     if (e.key === 'Delete' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault()

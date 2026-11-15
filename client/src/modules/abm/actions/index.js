@@ -78,6 +78,7 @@ import { drawCmdTokens } from '../abmScopeHelpers.js'
 import { trueDeclaration } from '../../../utils/tacticalHelpers.js'
 import { parseDrawCommand, resolvePoint } from '../draw/drawCommands.js'
 import { addMark, removeMarksByName, useAbmMarksStore } from '../../../store/abmMarks.js'
+import { undoGroup } from '../../../utils/removalUndo.js'
 import { gridDestinationPoint, toTrueFromMagnetic } from '../../../utils/bearing.js'
 import { navdataNotFound } from '../../../store/lnm.js'
 import { focusPopup } from '../../../utils/focusPopup.js'
@@ -503,8 +504,10 @@ export function DCLEAR_NAME({ captures, context }) {
   const marks = Object.values(useAbmMarksStore.getState().marks).filter(m => !m.deleted)
   const matches = [...drawingLayers, ...marks].filter(l => (l.name ?? '').toUpperCase() === arg.toUpperCase())
   if (!matches.length) return 'NOT FOUND'
-  useAbmDrawingsStore.getState().removeLayersByName(theatre, arg)
-  removeMarksByName(arg)
+  undoGroup('ABM', arg.toUpperCase(), () => {
+    useAbmDrawingsStore.getState().removeLayersByName(theatre, arg)
+    removeMarksByName(arg)
+  })
   return matches.length > 1 ? `CLEARED ${matches.length} ${arg.toUpperCase()}` : `CLEARED ${matches[0].name}`
 }
 

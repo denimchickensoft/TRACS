@@ -3,6 +3,7 @@ import { syncStore } from '../utils/storeSync.js'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
 import { useSessionStore } from './session.js'
 import { buildMarkFeature } from '../utils/drawShapes.js'
+import { recordRemoval } from '../utils/removalUndo.js'
 
 // ABM marks (.mark, INS + click, Alt+right-click): point markers shared with
 // every ABM controller for as long as anyone is in ABM. They're never saved
@@ -103,6 +104,15 @@ export function removeMark(id) {
   const cur = useAbmMarksStore.getState().marks[id]
   if (!cur || cur.deleted) return
   publish({ ...cur, deleted: true, rev: nextRev(), by: me() })
+  recordRemoval('ABM', cur.name, () => restoreMark(id))
+}
+
+// Ctrl+Z after a removal: brings the mark back for everyone, as a newer
+// change than the removal (so it wins over the tombstone everywhere).
+function restoreMark(id) {
+  const cur = useAbmMarksStore.getState().marks[id]
+  if (!cur?.deleted) return
+  publish({ ...cur, deleted: false, rev: nextRev(), by: me() })
 }
 
 export function removeMarksByName(name) {

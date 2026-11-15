@@ -33,6 +33,7 @@ import { initCntl, termCntl, bareSlew, parseCatccSlew, dispatchCatccSlew } from 
 import { usePreviewStore }       from '../../store/preview.js'
 import { ScopeNotes } from '../../components/ScopeNotes/ScopeNotes.jsx'
 import { noteClick, noteEnter } from '../../components/ScopeNotes/noteCommands.js'
+import { isUndoKey, undoFeedback } from '../../utils/removalUndo.js'
 import { loadCatccPrefs }        from '../../store/catccPrefs.js'
 import { useUnitSystem, getUnitSystem } from '../../store/unitSystem.js'
 import { formatDistance } from '../../utils/units.js'
@@ -440,6 +441,12 @@ export default function CatccScope() {
   }, [odsResponse])
 
   const handleKeyDown = useCallback((e) => {
+    // Ctrl+Z brings back the last removed note - utils/removalUndo.js
+    if (isUndoKey(e)) {
+      e.preventDefault()
+      setOdsLines((prev) => [...prev, undoFeedback('CATCC')].slice(-ODS_MAX_LINES))
+      return
+    }
     const starsKey = matchStarsKey(e)
     if (starsKey) {
       e.preventDefault()

@@ -11,6 +11,8 @@ const PREFIX = 'tracs.notes.'
 
 export const mapNotesKey    = (module, theatre)  => `${PREFIX}map.${module}.${theatre ?? 'none'}`
 export const screenNotesKey = (module, windowId) => `${PREFIX}screen.${module}.${windowId}`
+// The module a list key belongs to (the part after map./screen.)
+export const moduleOfNotesKey = (key) => key.slice(PREFIX.length).split('.')[1]
 
 function readStored(key) {
   try {

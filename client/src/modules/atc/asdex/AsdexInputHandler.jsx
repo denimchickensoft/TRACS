@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAsdexPreviewStore } from '../../../store/asdexPreview.js'
 import { isTypedInput, shouldAppendToken } from '../../../utils/starsKeys.js'
 import { toggleAllDatablocks } from './asdexDatablockToggle.js'
+import { isUndoKey, undoFeedback } from '../../../utils/removalUndo.js'
 
 export function AsdexInputHandler({ onEnter, onEsc }) {
   // Store actions are read via getState() inside the handler, not a
@@ -11,6 +12,13 @@ export function AsdexInputHandler({ onEnter, onEsc }) {
       const preview = useAsdexPreviewStore.getState()
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      // Ctrl+Z brings back the last removed note - utils/removalUndo.js
+      if (isUndoKey(e)) {
+        e.preventDefault()
+        preview.setResponse(undoFeedback('ASDEX'))
+        return
+      }
 
       // CRC ASDE-X: F6 toggles all Data Blocks, F7 is MULTIFUNC (same MF token as STARS)
       if (e.code === 'F6' && !e.ctrlKey && !e.altKey) {

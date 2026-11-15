@@ -16,6 +16,7 @@ import {
 import {
   loadWhere, loadPrefix, getRecords, putRecords, deleteRecords, onRemoteChange, describeDbError,
 } from '../utils/localDb.js'
+import { recordRemoval } from '../utils/removalUndo.js'
 
 // Where drawings lived before IndexedDB - migrated once, then removed.
 const LEGACY_KEY = 'tracs.abm.drawings'
@@ -114,9 +115,17 @@ export const useAbmDrawingsStore = create((set) => ({
     return { byTheatre: { ...s.byTheatre, [theatre]: [...existing, layer] } }
   }),
 
-  removeLayer: (theatre, id) => set((s) => ({
-    byTheatre: { ...s.byTheatre, [theatre]: (s.byTheatre[theatre] ?? []).filter(l => l.id !== id) },
-  })),
+  removeLayer: (theatre, id) => removeLayersWhere(theatre, (l) => l.id === id),
+
+  // Ctrl+Z after a removal: puts the layers back at their old positions
+  // (any already back are skipped).
+  restoreLayers: (theatre, gone) => set((s) => {
+    const next = [...(s.byTheatre[theatre] ?? [])]
+    for (const { layer, index } of gone) {
+      if (!next.some((l) => l.id === layer.id)) next.splice(Math.min(index, next.length), 0, layer)
+    }
+    return { byTheatre: { ...s.byTheatre, [theatre]: next } }
+  }),
 
   // Drag-and-drop reorder (Drawings panel) — array order here IS draw
   // order (drawAbmCustomDrawings.js iterates byTheatre[theatre] as-is, back
@@ -138,21 +147,14 @@ export const useAbmDrawingsStore = create((set) => ({
   // Drawings panel's "Clear ALL" footer button (confirm-gated, same pattern
   // as Ato.jsx's clearAllFlights) — drops every layer (imported and
   // command-drawn alike) for this theatre only.
-  clearTheatre: (theatre) => set((s) => ({
-    byTheatre: { ...s.byTheatre, [theatre]: [] },
-  })),
+  clearTheatre: (theatre) => removeLayersWhere(theatre, () => true, 'ALL DRAWINGS'),
 
   // .clear <name> — case-insensitive; removes every layer with that name
   // (renames aren't required to be unique, so more than one can match).
-  removeLayersByName: (theatre, name) => set((s) => {
+  removeLayersByName: (theatre, name) => {
     const target = name.toUpperCase()
-    return {
-      byTheatre: {
-        ...s.byTheatre,
-        [theatre]: (s.byTheatre[theatre] ?? []).filter(l => l.name.toUpperCase() !== target),
-      },
-    }
-  }),
+    removeLayersWhere(theatre, (l) => l.name.toUpperCase() === target, target)
+  },
 
   renameLayer: (theatre, id, name) => set((s) => ({
     byTheatre: {
@@ -248,6 +250,19 @@ export const useAbmDrawingsStore = create((set) => ({
     }
   }),
 }))
+
+// Removes the matching layers in one theatre and records them for Ctrl+Z
+// (utils/removalUndo.js). label defaults to the layer's name when there's
+// one, else DRAWINGS.
+function removeLayersWhere(theatre, match, label = null) {
+  const s      = useAbmDrawingsStore.getState()
+  const layers = s.byTheatre[theatre] ?? []
+  const gone   = layers.flatMap((layer, index) => (match(layer) ? [{ layer, index }] : []))
+  if (!gone.length) return
+  useAbmDrawingsStore.setState({ byTheatre: { ...s.byTheatre, [theatre]: layers.filter((l) => !match(l)) } })
+  recordRemoval('ABM', label ?? (gone.length === 1 ? gone[0].layer.name : 'DRAWINGS'),
+    () => useAbmDrawingsStore.getState().restoreLayers(theatre, gone))
+}
 
 // ── Persistence (IndexedDB) + cross-window sync ───────────────────────────
 
