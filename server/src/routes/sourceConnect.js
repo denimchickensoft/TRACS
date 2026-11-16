@@ -157,7 +157,11 @@ function registerSourceConnectRoutes(app, { sourceRegistry, srs, relaySource, st
     // block above, which always runs whenever relayUrl is set, regardless of
     // which primary source is active.
     const usingRelayAsPrimary = Boolean(relayUrl) && !sourceCfg.olympusUrl
-    if (usingRelayAsPrimary && await relaySource.fetchPrimary(relayUrl) === 'exporter') {
+    const relayPrimary = usingRelayAsPrimary ? await relaySource.fetchPrimary(relayUrl) : null
+    if (relayPrimary === 'unreachable') {
+      return res.status(502).json({ error: 'Cannot reach the relay - check that it is running and the Relay Port' })
+    }
+    if (relayPrimary === 'exporter') {
       const exporterClient = relaySource.exporter
       const relayCfg = { relayUrl, password: sourceCfg.password ?? '', coalition: sourceCfg.coalition ?? 'blue' }
       const current = exporterClient.getConfig()

@@ -540,6 +540,8 @@ export function findAtoFlights(mission, { template = false } = {}) {
           coalition,
           dcsGroupId:     template ? null : (group.groupId ?? null),
           groupName:      (group.name ?? '').trim(),
+          // As written, spaces and all: group names can differ only by them.
+          dcsGroupName:   group.name ?? '',
           task:           TASK_ABBREV[task] ?? (task ?? '').slice(0, 6).toUpperCase(),
           rawTask:        task,
           frequency:      group.frequency ?? null,

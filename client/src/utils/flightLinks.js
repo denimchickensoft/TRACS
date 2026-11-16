@@ -4,7 +4,9 @@
 //   1. Group. Olympus and the exporter host send the numeric DCS group ID;
 //      every source sends the group name (the exporter client and Tacview
 //      only that - Tacview in `groupID`). DCS group names are unique
-//      mission-wide; a name that trims to more than one group links to none.
+//      mission-wide, but missions often have names that differ only by
+//      spaces ("Lot 20", "Lot 20 "): the exact name wins, and the trimmed
+//      name is a fallback only when one group has it.
 //   2. Unit within the group. The DCS unit ID where the source's IDs are the
 //      mission's (dcsUnitIdReliable), else the unit name: Olympus and the
 //      exporter host carry it in `callsign` for every unit, and every source
@@ -12,36 +14,47 @@
 //   3. Humans left over (the exporter client and Tacview report a player's
 //      MP nickname instead of the unit name): the element digit of the
 //      callsign in that nickname picks the aircraft position ("HAWK 1-2"
-//      takes the group's position-2 unit), else the first free unit.
+//      takes the group's position-2 unit), else the first free unit. A
+//      human is one the source flags (Olympus sends the flag only when set);
+//      Tacview flags nobody, and reports AI by their unit names, so there a
+//      unit in the group matching none of its unit names is the player.
 //
 // Units spawned at runtime (script clones, dynamic slots) are in no mission
 // group and link to nothing.
 
 import { dcsUnitIdReliable } from './callsign.js'
 import { findShapedCallsign } from './callsignShape.js'
+import { useSessionStore } from '../store/session.js'
 
 const trim = (s) => (typeof s === 'string' ? s.trim() : '')
 
 // A mission group's identity: its DCS ID, or for a static template (no real
 // ID) its coalition + name.
 function groupKeyOf(flight) {
-  return flight.dcsGroupId != null ? `id:${flight.dcsGroupId}` : `name:${flight.coalition}:${flight.groupName}`
+  return flight.dcsGroupId != null ? `id:${flight.dcsGroupId}` : `name:${flight.coalition}:${flight.dcsGroupName ?? flight.groupName}`
 }
 
 function liveGroupName(unit) {
-  return trim(unit.groupName) || (typeof unit.groupID === 'string' ? trim(unit.groupID) : '')
+  if (typeof unit.groupName === 'string' && unit.groupName.trim()) return unit.groupName
+  return typeof unit.groupID === 'string' ? unit.groupID : ''
 }
+
+function addTo(map, key, value) {
+  if (!map.has(key)) map.set(key, new Set())
+  map.get(key).add(value)
+}
+
+const onlyOne = (set) => (set?.size === 1 ? [...set][0] : undefined)
 
 function elementDigit(unit) {
   const acid = findShapedCallsign(unit.unitName ?? '', null)?.acid
   return acid ? Number(acid.slice(-1)) : null
 }
 
-// A unit that may be a player waiting for a slot: flagged human, or (Tacview
-// flags nobody) reporting a callsign-shaped name.
-function maybePlayer(unit) {
-  if (unit.human !== undefined) return unit.human === true
-  return findShapedCallsign(unit.unitName ?? '', null) != null
+// A unit left over in its group after the unit-name match that is a player.
+// Tacview flags nobody human; any other source's missing flag means false.
+function isLeftoverPlayer(unit, sourceFlagsHumans) {
+  return sourceFlagsHumans ? unit.human === true : true
 }
 
 // Whether a link is a player: the source flags it human, or it was placed by
@@ -53,13 +66,14 @@ export function isPlayerLink(link) {
 export const missionUnitKey = (flightId, index) => `${flightId}:${index}`
 
 // buildFlightLinks for the latest flights + live units, rebuilt only when
-// either object (or the source's ID trust) changes, so per-unit callers
+// either object (or the source) changes, so per-unit callers
 // (scope commands, the ATO, the FRAG) share one pass.
 let cache = null
 export function getFlightLinks(flights, liveUnits) {
   const ids = dcsUnitIdReliable()
-  if (!cache || cache.flights !== flights || cache.liveUnits !== liveUnits || cache.ids !== ids) {
-    cache = { flights, liveUnits, ids, links: buildFlightLinks(flights, liveUnits) }
+  const source = useSessionStore.getState().sourceType
+  if (!cache || cache.flights !== flights || cache.liveUnits !== liveUnits || cache.ids !== ids || cache.source !== source) {
+    cache = { flights, liveUnits, ids, source, links: buildFlightLinks(flights, liveUnits) }
   }
   return cache.links
 }
@@ -73,7 +87,8 @@ export function getFlightLinks(flights, liveUnits) {
 export function buildFlightLinks(flights, liveUnits) {
   const groups = new Map()       // groupKey -> [{ flight, index, unit }]
   const byDcsGroupId = new Map() // numeric DCS group ID -> groupKey
-  const byName = new Map()       // trimmed group name -> Set(groupKey)
+  const byName = new Map()       // exact group name -> Set(groupKey)
+  const byTrimmed = new Map()    // trimmed group name -> Set(groupKey)
   const byUnitId = new Map()     // mission unit ID -> slot
 
   for (const flight of flights ?? []) {
@@ -86,14 +101,15 @@ export function buildFlightLinks(flights, liveUnits) {
       if (unit.unitId != null) byUnitId.set(unit.unitId, slot)
     })
     if (flight.dcsGroupId != null) byDcsGroupId.set(flight.dcsGroupId, gk)
-    const name = trim(flight.groupName)
-    if (name) {
-      if (!byName.has(name)) byName.set(name, new Set())
-      byName.get(name).add(gk)
+    const exact = flight.dcsGroupName ?? flight.groupName
+    if (trim(exact)) {
+      addTo(byName, exact, gk)
+      addTo(byTrimmed, trim(exact), gk)
     }
   }
 
   const idsReliable = dcsUnitIdReliable()
+  const sourceFlagsHumans = useSessionStore.getState().sourceType !== 'tacview'
   const claimed = new Map()  // missionUnitKey -> { key, unit }
   const liveToSlot = new Map()
   const leftover = new Map() // groupKey -> [{ key, unit }]
@@ -114,15 +130,15 @@ export function buildFlightLinks(flights, liveUnits) {
 
     let gk = typeof unit.groupID === 'number' ? byDcsGroupId.get(unit.groupID) : undefined
     if (!gk) {
-      const hits = byName.get(liveGroupName(unit))
-      if (hits?.size === 1) gk = [...hits][0]
+      const name = liveGroupName(unit)
+      gk = onlyOne(byName.get(name)) ?? onlyOne(byTrimmed.get(trim(name)))
     }
     if (!gk) continue
 
     const names = [trim(unit.callsign), trim(unit.unitName)].filter(Boolean)
     const slot = groups.get(gk).find((s) => s.unit.unitName && names.includes(s.unit.unitName))
     if (slot && claim(slot, key, unit, 'name')) continue
-    if (maybePlayer(unit)) {
+    if (isLeftoverPlayer(unit, sourceFlagsHumans)) {
       if (!leftover.has(gk)) leftover.set(gk, [])
       leftover.get(gk).push({ key, unit })
     }

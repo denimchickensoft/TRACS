@@ -31,8 +31,7 @@ const SCALE_STEP    = 0.05
 const ATO_COLLAPSED_KEY = 'tracs.ato.collapsed'
 
 const COLUMNS = [
-  { key: 'flight',   label: 'FLIGHT',    width: 90  },
-  { key: 'callsign', label: 'CALLSIGN',  width: 70  },
+  { key: 'flight',   label: 'FLIGHT',    width: 120 },
   { key: 'task',     label: 'TASK',      width: 50  },
   { key: 'num',      label: 'TYPE/NUM',  width: 70  },
   { key: 'taskunit', label: 'TASKUNIT',  width: 50  },
@@ -78,10 +77,9 @@ function resolveBase(flight) {
 const STATE_PRIORITY = { AIR: 3, TAXI: 2, GROUND: 1 }
 
 const SORT_ACCESSORS = {
-  flight:   r => r.name ?? '',
+  flight:   r => r.flightLabel ?? '',
   task:     r => r.taskLabel ?? '',
   num:      r => r.units[0]?.type ?? '',
-  callsign: r => r.callsignLabel ?? '',
   taskunit: r => r.taskunitLabel ?? '',
   alt:      r => (r.alt?.lo ? Number(r.alt.lo) : -1),
   freq:     r => r.frequency ?? -1,
@@ -89,10 +87,10 @@ const SORT_ACCESSORS = {
   status:   r => r.statusLabel ?? '',
 }
 
-// The text each column shows, which the search matches against.
+// The text each column searches. FLIGHT matches the flight's name too, so
+// `rmd5` still finds the MALLET3 row flying in RMD5.
 const CELL_TEXT = {
-  flight:   r => r.name,
-  callsign: r => r.callsignLabel,
+  flight:   r => `${r.flightLabel} ${r.name}`,
   task:     r => r.taskLabel,
   num:      r => r.numType,
   taskunit: r => r.taskunitLabel,
@@ -242,7 +240,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       return [{
         ...f, ...shared, key: `${f.flightId}`, row: null,
         numType: f.units.length > 0 ? `${f.units[0].type} x${f.units.length}` : '-',
-        callsignLabel: lead ? (parseFlightElement(lead)?.flightKey ?? resolveCallsign(lead).toUpperCase()) : f.name,
+        flightLabel: lead ? (parseFlightElement(lead)?.flightKey ?? resolveCallsign(lead).toUpperCase()) : f.name,
         callsignLive: !!lead,
         hasHuman: matches.some(m => m.unit.human === true),
         statusLabel: status(matches.map(m => m.unit)),
@@ -255,7 +253,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
       return {
         ...f, ...shared, key: `${f.flightId}|${row ?? ''}`, row,
         numType: units.length > 0 ? `${units[0].type} x${units.length}` : '-',
-        callsignLabel: callsign ?? f.name,
+        flightLabel: callsign ?? f.name,
         callsignLive: callsign != null,
         hasHuman: live.some(isPlayerLink),
         statusLabel: status(live.map(l => l.unit)),
@@ -278,8 +276,8 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
     const q = searchNorm(query)
     const keys = queryColumn === 'all' ? COLUMNS.map(c => c.key) : [queryColumn]
     let list = q ? rows.filter(r => keys.some(k => searchNorm(CELL_TEXT[k](r)).includes(q))) : rows
-    if (sortKey) {
-      const accessor = SORT_ACCESSORS[sortKey]
+    const accessor = sortKey && SORT_ACCESSORS[sortKey]   // a saved key may name a removed column
+    if (accessor) {
       list = [...list].sort((a, b) => {
         const av = accessor(a), bv = accessor(b)
         if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir
@@ -358,8 +356,10 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
                       style={{ gridTemplateColumns }}
                       onClick={() => selectFlight(row.flightId, { row: row.row })}
                     >
-                      <span className="ato-cell ato-flight-name" title={row.name}>{row.name}</span>
-                      <span className={`ato-cell ${row.callsignLive ? 'ato-cs-live' : 'ato-cs-static'}`} title={row.callsignLabel}>{row.callsignLabel}</span>
+                      <span
+                        className={`ato-cell ato-flight-name ${row.callsignLive ? 'ato-cs-live' : 'ato-cs-static'}`}
+                        title={row.flightLabel === row.name ? row.name : `${row.flightLabel} · ${row.name}`}
+                      >{row.flightLabel}</span>
                       <span className="ato-cell" title={row.taskLabel}>{row.taskLabel}</span>
                       <span className="ato-cell" title={row.numType}>{row.numType}</span>
                       <span className="ato-cell ato-taskunit" title={row.taskunitLabel}>{row.taskunitLabel}</span>

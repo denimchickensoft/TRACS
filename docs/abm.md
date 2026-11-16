@@ -315,8 +315,7 @@ A sortable table of every flight in the mission, airplanes and helicopters.
 A flight is the aircraft of one mission group that share a unit name: units `RMD-1-1` to `RMD-1-4` are flight **RMD1**. A group holding `ELVIS-5-1`, `ELVIS-5-2`, `HAWK-1-1` and `HAWK-1-2` is two flights, ELVIS5 and HAWK1. A unit name with a single number (`Warden-1`, `VOLVO-1`) is a flight of its own. Group names and the mission editor's callsign dropdown are never shown.
 
 Columns:
-- **FLIGHT** — the flight's name from its unit names, hyphens and spaces removed
-- **CALLSIGN** — the callsign players fly it under, in green once someone is slotted in (`HAWK 1-1 | Pilot` in RMD-1-1 shows **HAWK1**). A `.rename` shows here too. Grey, with the flight's name, while nobody is.
+- **FLIGHT** — the callsign players fly it under, in green once someone is slotted in (`HAWK 1-1 | Pilot` in RMD-1-1 shows **HAWK1**); a `.rename` shows here too. Grey, with the flight's name from its unit names (hyphens and spaces removed), while nobody is. Hover a callsign row for the flight it flies in (`HAWK1 · RMD1`).
 - Task
 - Type/Num
 - **TASKUNIT** — airfield ICAO, carrier hull abbreviation, or "Air Start". FRAG's Tasking view labels this "Base".
@@ -329,7 +328,9 @@ Rows are grouped into collapsible sections by status, in that order, each in its
 
 When players in one flight fly under different callsigns, the flight gets a row for each callsign, plus a row for its remaining slots: RMD1 with `HAWK 1-1`, `HAWK 1-2` and `VIPER 2-2` slotted in shows rows HAWK1, VIPER2 and RMD1. A row's callsign stays while any of its players is still slotted in.
 
-The search box above the table filters rows as you type, in every column or the one picked beside it. Case, hyphens and spaces don't matter: `rmd 1` finds RMD1. Escape clears it.
+A player links to their slot by its mission group. Players in DCS dynamic slots are in no mission group, so they get no row.
+
+The search box above the table filters rows as you type, in every column or the one picked beside it. Case, hyphens and spaces don't matter: `rmd 1` finds RMD1. FLIGHT matches the flight's name too, so `rmd1` also finds HAWK1 flying in it. Escape clears it.
 
 Taskunit uses the flight's recorded departure. Air-start flights use their recorded recovery/landing point instead, if the mission has one.
 
@@ -349,7 +350,8 @@ Click a column header to sort within each section (click again to reverse). Clic
 Detail view for the flight selected in ATO, or opened with Ctrl+Shift+Click on the scope.
 
 - **Tasking** — editable Task field, Alt (`[___] to [___]`), TACAN (e.g. `31Y TKR`, when the route switches one on), full Base name, and Status (same rollup as ATO). Alt takes the same 3-digit values as `++`: fill only the first box for a hard altitude, both for a block (lower first). Empty, or `000` alone, clears it. Both boxes are applied together when you leave the row or press Enter; an invalid pair flashes red and reverts. Click an airbase or carrier Base to drop a scope marker.
-- **Roster** — one row per aircraft of the selected ATO row.
+- **Title** — the flight, or for a callsign row the callsign and its flight: `HAWK1 (RMD1)`.
+- **Roster** — one row per aircraft of the selected ATO row. Opening FRAG from the scope picks the row the aircraft shows in. Expanded COMM lists stay open while you switch between ATO and FRAG.
   - Imported flights: callsign, type, pilot name, onboard number, skill, air/ground state, ordnance summary (grouped by weapon with counts), a collapsible comms/radio list, and Link16 station if present. The callsign is the one TRACS shows on the scope while the aircraft is live (`HAWK11`, or a `.rename`), else its unit name (`RMD13`); the pilot name is the rest of a player's MP name, `-` for an open slot or AI.
   - Manually-added flights: callsign, type, and state, matched live against aircraft flying that callsign prefix.
   - A manual flight's roster ends with a **+ Add Aircraft** field. A typed callsign shows as **PENDING** until a matching aircraft goes live.
@@ -365,7 +367,7 @@ Mouse wheel over the title bar zooms the panel independently of ATO.
 - Manual flights (name, callsign prefix, coalition, and roster) once they're created or changed through Ctrl+Shift+Click, + Add Aircraft, ×, or an IFF edit. A flight created with **+ Add Flight** is sent at its first such change.
 - Imported mission data stays local to each controller.
 
-**Ctrl+Shift+Click** on an aircraft opens its FRAG flight:
+**Ctrl+Shift+Click** on an aircraft opens its FRAG flight (ships and ground units show `NO FRAG`):
 - An aircraft linked to an imported flight (see below) opens that flight.
 - Otherwise its live callsign is matched against every manual roster; if it's already on one, that flight opens.
 - Otherwise TRACS opens (or creates) a manual flight for its callsign prefix (e.g. every `ENFIELD1x` aircraft together) and adds the aircraft with blank IFF fields.

@@ -15,6 +15,9 @@ const DETECTION_RADAR = 4
 
 const AIRBORNE_CATEGORIES = new Set(['Aircraft', 'Helicopter'])
 
+// Planes and helicopters: the units that can fly in an ATO flight.
+export const isAircraftUnit = (unit) => AIRBORNE_CATEGORIES.has(unit?.category)
+
 const AGL_FLOOR_M = 30  // ≈ 100 ft — suppress ground contacts
 
 // An aircraft sitting on the ground (parked, taxiing). Trusts the source's

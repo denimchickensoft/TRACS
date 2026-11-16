@@ -15,14 +15,19 @@ function activeClient() {
   return clients.find((c) => c.isActive()) ?? null
 }
 
-// Asks the relay which unit source it serves: 'exporter', 'tacview' or null.
-// A relay too old to say, or one that can't be reached, gives null; the
-// caller then falls back to Tacview, whose probe reports the real problem.
+// Asks the relay which unit source it serves: 'exporter', 'tacview',
+// 'unreachable' (no answer at all), or null for a relay too old to say, which
+// the caller treats as Tacview.
 async function fetchPrimary(relayUrl) {
   const healthUrl = `${relayUrl.replace(/\/+$/, '').replace(/^ws(s?):\/\//i, 'http$1://')}/health`
+  let res
   try {
-    const res = await fetch(healthUrl, { signal: AbortSignal.timeout(3000) })
-    if (!res.ok) return null
+    res = await fetch(healthUrl, { signal: AbortSignal.timeout(3000) })
+  } catch {
+    return 'unreachable'
+  }
+  if (!res.ok) return null
+  try {
     const body = await res.json()
     return body?.primary === 'exporter' || body?.primary === 'tacview' ? body.primary : null
   } catch {

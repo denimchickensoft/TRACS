@@ -7,7 +7,7 @@ import { useSessionStore } from '../../store/session.js'
 import { useUnitsStore } from '../../store/units.js'
 import { resolveCallsign, matchLiveByPrefix, stripAcid, parseUnitName } from '../../utils/callsign.js'
 import { getFlightLinks, isPlayerLink } from '../../utils/flightLinks.js'
-import { selectedUnitIndices } from './atoRows.js'
+import { selectedUnitIndices, flightRows } from './atoRows.js'
 import { typeAbbrev } from './canvas/drawAbmContacts.js'
 import { getOrdnanceName, preloadOrdnanceDb } from '../../utils/ordnance.js'
 import { getAirdromeName, preloadAirdromes } from '../../utils/airdromes.js'
@@ -21,6 +21,9 @@ import { getIcaoMapping } from '../../utils/icaoMapping.js'
 import { IFF_CODE_LEN, isValidIffCode } from '../../utils/transponder.js'
 
 const FRAG_SCALE_KEY = 'tracs.frag.scale'
+
+// See expandedRadios in Frag.
+let keptExpandedRadios = new Set()
 const SCALE_MIN      = 0.5
 const SCALE_MAX      = 2.0
 const SCALE_STEP     = 0.05
@@ -217,7 +220,11 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
     getIcaoMapping().then(setIcaoMap)
   }, [])
 
-  const [expandedRadios, setExpandedRadios] = useState(new Set())
+  // Open COMM sections, by flight + unit. Kept outside the component so they
+  // survive the docked FRAG closing while the ATO has the panel; this
+  // window only, never synced or saved.
+  const [expandedRadios, setExpandedRadios] = useState(() => keptExpandedRadios)
+  useEffect(() => { keptExpandedRadios = expandedRadios }, [expandedRadios])
   const toggleRadio = (key) => setExpandedRadios(prev => {
     const next = new Set(prev)
     next.has(key) ? next.delete(key) : next.add(key)
@@ -268,6 +275,12 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
     () => (flight && !flight.manual ? selectedUnitIndices(flight, links, selectedRow) : []),
     [flight, links, selectedRow]
   )
+  // A callsign row's FRAG names the flight it flies in: MALLET3 (RMD5).
+  const titleText = useMemo(() => {
+    if (!flight) return 'FRAG'
+    if (flight.manual || !selectedRow) return flight.name
+    return flightRows(flight, links).some(r => r.row === selectedRow) ? `${selectedRow} (${flight.name})` : flight.name
+  }, [flight, links, selectedRow])
 
   // A click on an ATO row's FREQ opens the lead's COMM: the row's lowest
   // aircraft position, else its first unit. Sections already open stay open.
@@ -277,7 +290,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
     const lead = rowUnits.reduce((a, b) => (pos(b) < pos(a) ? b : a))
     const u = flight.units[lead]
     if (!u.radios?.some(r => radioPresets(r).length > 0)) return
-    const key = u.unitId ?? `i${lead}`
+    const key = `${flight.flightId}:${u.unitId ?? `i${lead}`}`
     setExpandedRadios(prev => (prev.has(key) ? prev : new Set(prev).add(key)))
   }, [selectNonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -364,7 +377,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
       {docked && <div className="frag-resize" onMouseDown={onResize} />}
 
       <div className="frag-title" onWheel={handleTitleWheel}>
-        <span className="frag-title-text">{flight ? flight.name : 'FRAG'}</span>
+        <span className="frag-title-text">{titleText}</span>
         {scaleHint && <span className="frag-title-scale-hint">{Math.round(scale * 100)}%</span>}
         <span className="frag-title-right">
           {docked  && onUndock && <button className="frag-btn" onClick={onUndock} title="Undock">⬡</button>}
@@ -595,10 +608,11 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                         </div>
                       ) })()}
                       {u.radios.some(r => radioPresets(r).length > 0) && (() => {
-                        const expanded = expandedRadios.has(unitKey)
+                        const radioKey = `${flight.flightId}:${unitKey}`
+                        const expanded = expandedRadios.has(radioKey)
                         return (
                           <div className="frag-radio-block">
-                            <div className="frag-radio-toggle" onClick={() => toggleRadio(unitKey)}>
+                            <div className="frag-radio-toggle" onClick={() => toggleRadio(radioKey)}>
                               <span className="frag-radio-caret">{expanded ? '▾' : '▸'}</span>COMM
                             </div>
                             {expanded && (

@@ -5,8 +5,8 @@
   --ato-ground:   #6A8098;
   --ato-planned:  #777;
   --ato-reserve:  #BB8833;
-  /* CALLSIGN from an MP name (or .rename) vs from the unit name */
-  --ato-cs-live:  #7CDB7C;
+  /* FLIGHT from an MP name (or .rename) vs from the unit name */
+  --ato-cs-live:  var(--ato-air);
   --ato-cs-static: #888;
   --ato-row-alt:  #111;
 
@@ -126,7 +126,7 @@
 .ato-col-sort:hover { color: #888; }
 
 .ato-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.ato-flight-name { color: #FFD700; text-transform: uppercase; }
+.ato-flight-name { text-transform: uppercase; }
 .ato-cs-live   { color: var(--ato-cs-live); font-weight: 600; }
 .ato-cs-static { color: var(--ato-cs-static); }
 .ato-taskunit { color: #aaa; }

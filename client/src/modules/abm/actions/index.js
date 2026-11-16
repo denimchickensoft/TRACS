@@ -70,6 +70,7 @@ import { useRunwaysStore } from '../../../store/runways.js'
 import { useAbmAirspaceStore } from '../../../store/abmAirspace.js'
 import { useAbmDrawingsStore } from '../../../store/abmDrawings.js'
 import { useAbmMissionStore } from '../../../store/abmMission.js'
+import { selectFlightForUnit } from '../atoRows.js'
 import { useBrevityStore } from '../../../store/brevity.js'
 import { useSessionStore } from '../../../store/session.js'
 import { matchLiveByPrefix, sanitizeFocusToken, airfieldFocusKey, pointFocusKey } from '../../../utils/callsign.js'
@@ -642,7 +643,7 @@ export function FRAG_FIND({ captures, context }) {
   const coalition = useSessionStore.getState().coalition
   const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
   if (!flight || !ownSide) return 'NO FRAG'
-  useAbmMissionStore.getState().selectFlight(flight.flightId)
+  selectFlightForUnit(flight.flightId, matches[0].unit)
   return `FRAG ${matches[0].callsign}`
 }
 

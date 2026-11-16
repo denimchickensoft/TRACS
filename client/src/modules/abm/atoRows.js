@@ -8,8 +8,10 @@
 // row of a flight that has callsign rows, null for a flight that is one row.
 
 import { resolveCallsign } from '../../utils/callsign.js'
-import { isPlayerLink } from '../../utils/flightLinks.js'
+import { getFlightLinks, isPlayerLink } from '../../utils/flightLinks.js'
 import { useAtcStore } from '../../store/atc.js'
+import { useAbmMissionStore } from '../../store/abmMission.js'
+import { useUnitsStore } from '../../store/units.js'
 import { parseFlightElement } from './canvas/drawAbmContacts.js'
 
 function hasOverride(unit) {
@@ -50,4 +52,22 @@ export function selectedUnitIndices(flight, links, row) {
   const all = (flight.units ?? []).map((_, i) => i)
   if (row == null) return all
   return flightRows(flight, links).find((r) => r.row === row)?.unitIndices ?? all
+}
+
+// The ATO row a live unit shows in, so a FRAG opened from the scope matches
+// clicking that row: its MP callsign row, else the base row. null when the
+// unit isn't linked to `flight` or the flight is a single row.
+export function rowOfLiveUnit(flight, links, liveKey) {
+  if (!flight || flight.manual) return null
+  const slot = links.flightOf(String(liveKey))
+  if (!slot || slot.flightId !== flight.flightId) return null
+  return flightRows(flight, links).find((r) => r.unitIndices.includes(slot.unitIndex))?.row ?? null
+}
+
+// Opens the FRAG on `flightId` at the row the live `unit` shows in.
+export function selectFlightForUnit(flightId, unit) {
+  const store = useAbmMissionStore.getState()
+  const flight = store.flights.find((f) => f.flightId === flightId)
+  const links = getFlightLinks(store.flights, useUnitsStore.getState().units)
+  store.selectFlight(flightId, { row: unit?.id != null ? rowOfLiveUnit(flight, links, unit.id) : null })
 }

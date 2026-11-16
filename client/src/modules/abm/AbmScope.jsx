@@ -53,6 +53,7 @@ import { shownSpcAlerts } from '../../utils/spc.js'
 import { drawAbmGroundContacts } from './canvas/drawAbmGroundContacts.js'
 import { drawAbmFragRoute } from './canvas/drawAbmFragRoute.js'
 import { useAbmMissionStore } from '../../store/abmMission.js'
+import { selectFlightForUnit } from './atoRows.js'
 import { parseAltEntry, formatAlt, ALT_CLEAR } from './flightAlt.js'
 import { useBrevityStore } from '../../store/brevity.js'
 import { preloadAirdromes } from '../../utils/airdromes.js'
@@ -79,7 +80,7 @@ import { noteClick, noteEnter, parseNoteCommand, removeNoteAt } from '../../comp
 import { isUndoKey, undoFeedback } from '../../utils/removalUndo.js'
 import { dispatch, dispatchClickEntered, CLICK_ENTERED, openAbmFocusPanel, RCLEAR, TDM_TOGGLE, GROUND_TOGGLE, ENG_TOGGLE, ACQ_TOGGLE,
   RR_TOGGLE, TIME_TOGGLE, COORDS_TOGGLE, MAP_TOGGLE, FIXES_TOGGLE, LABELS_TOGGLE, DB_TOGGLE, BEC_TOGGLE } from './actions/index.js'
-import { isOnGround } from '../../utils/visibleUnits.js'
+import { isOnGround, isAircraftUnit } from '../../utils/visibleUnits.js'
 import { useHistoryCapture } from '../../utils/useHistoryCapture.js'
 import './AbmScope.css'
 import { COALITION_NUM, trueDeclaration, getVisibleMissiles, findCoalitionBullseye, isOwnSide } from '../../utils/tacticalHelpers.js'
@@ -129,6 +130,8 @@ function shiftShapeParams(params, dx, dy, view) {
 function ensureFlightForUnit(unit, { isGmOrAdmin, myCoalitionNum, coalition }) {
   const unitSide = unit?.coalition === 2 ? 'blue' : unit?.coalition === 1 ? 'red' : null
   if (!unit || !(isGmOrAdmin ? unitSide != null : unit.coalition === myCoalitionNum)) return null
+  // A ship or ground unit never becomes an ATO flight.
+  if (!isAircraftUnit(unit)) return null
   const linked = useAbmMissionStore.getState().resolveFlightIdForUnit(unit)
   if (linked != null) return linked
   const liveCallsign = resolveCallsign(unit)
@@ -232,7 +235,6 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   // ── ATO/FRAG flight selection (Ctrl+Shift+Click) ─────────────────────────────
   const atoFlights       = useAbmMissionStore(s => s.flights)
   const selectedFlightId = useAbmMissionStore(s => s.selectedFlightId)
-  const selectAtoFlight  = useAbmMissionStore(s => s.selectFlight)
   const routeVisible    = useAbmMissionStore(s => s.routeVisible)
   const selectedFlight = useMemo(
     () => (routeVisible ? atoFlights.find(f => f.flightId === selectedFlightId) ?? null : null),
@@ -2054,7 +2056,8 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
     // aircraft; the flight is filed under the aircraft's own coalition.
     if (e.ctrlKey && e.shiftKey && !e.altKey) {
       const flightId = ensureFlightForUnit(target?.unit, { isGmOrAdmin, myCoalitionNum, coalition })
-      if (flightId != null) selectAtoFlight(flightId)
+      if (flightId != null) selectFlightForUnit(flightId, target.unit)
+      else if (target) setCmdFeedback('NO FRAG')
       return
     }
 
@@ -2124,7 +2127,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
         : null
       const ownSide = coalition !== 'blue' && coalition !== 'red' || flight?.coalition === coalition
       if (flight && ownSide) {
-        selectAtoFlight(flight.flightId)
+        selectFlightForUnit(flight.flightId, target.unit)
         setCmdFeedback('FRAG OPENED')
       } else {
         setCmdFeedback('NO FRAG')
@@ -2274,7 +2277,7 @@ export default function AbmScope({ windowId = DEFAULT_windowId, focusKey = null,
   }, [cmdBuffer, commandContext, pendingMark, pendingDeclaration, displayStore, myCoalitionNum, isGmOrAdmin, getDecl,
       addBraaPair, removeBraaPairsForUnit, setPendingBraaFighter, clearPendingBraa,
       pendingDraw, theatre, addDrawnShape, toggleThreatRing, toggleDbHidden,
-      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, selectAtoFlight, toggleRouteFlight, windowId, unitSystem])
+      pendingClearClick, drawingLayers, removeDrawingLayer, coalition, toggleRouteFlight, windowId, unitSystem])
 
   // Double-click a contact → open/reuse its in-page focus panel (same
   // mechanism as the .focus command, see AbmFocusPanel.jsx) at the persisted

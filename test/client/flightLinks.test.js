@@ -76,6 +76,34 @@ describe('buildFlightLinks', () => {
     expect(links.flightOf('5')).toBe(null)
   })
 
+  it('names that differ only by spaces: the exact name wins', async () => {
+    const { buildFlightLinks } = await load('exporter')
+    const slots = [
+      { flightId: 1, groupName: 'Mozdok F-16', dcsGroupName: 'Mozdok F-16', units: [unit(null, 'A-1-1', 1)] },
+      { flightId: 2, groupName: 'Mozdok F-16', dcsGroupName: 'Mozdok F-16 ', units: [unit(null, 'B-1-1', 1)] },
+    ]
+    const links = buildFlightLinks(slots, {
+      5: { id: 5, groupName: 'Mozdok F-16 ', unitName: '<player>', human: true },
+      6: { id: 6, groupName: 'Mozdok F-16', unitName: '<player2>', human: true },
+    })
+    expect(links.flightOf('5')).toEqual({ flightId: 2, unitIndex: 0 })
+    expect(links.flightOf('6')).toEqual({ flightId: 1, unitIndex: 0 })
+  })
+
+  it('a missing human flag is not a player, even with a callsign-shaped name', async () => {
+    const { buildFlightLinks } = await load('olympus')
+    // AI whose name matches none of the group's units (a script rename).
+    const links = buildFlightLinks(flights, { 7: { id: 7, groupID: 10, callsign: 'TRUMAN-1-1', unitName: 'TRUMAN-1-1' } })
+    expect(links.flightOf('7')).toBe(null)
+  })
+
+  it('Tacview: an aircraft matching none of its group\'s unit names is the player', async () => {
+    const { buildFlightLinks, isPlayerLink } = await load('tacview')
+    const links = buildFlightLinks(flights, { 8: { id: 8, groupID: 'RMD-1', callsign: '', unitName: '<player>' } })
+    expect(linked(links, flights[0], 0)).toBe('8')
+    expect(isPlayerLink(links.live(flights[0], 0))).toBe(true)
+  })
+
   it('exporter IDs are not trusted for the mission unit ID match unless the source says so', async () => {
     const { buildFlightLinks } = await load('tacview')
     // unitID 101 equals a mission unit ID by coincidence, in no known group.

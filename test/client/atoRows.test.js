@@ -55,3 +55,20 @@ describe('flightRows', () => {
     expect(flightRows(rmd, links)).toHaveLength(1)
   })
 })
+
+describe('rowOfLiveUnit', () => {
+  it('a scope click opens the row the aircraft shows in', async () => {
+    const { rowOfLiveUnit, links } = await load({
+      1: player(1, 102, 'RMD-1-2', 'MALLET 3-1 | <a>'),
+      2: { id: 2, unitID: 101, groupID: 10, callsign: 'RMD-1-1', unitName: 'RMD-1-1' },
+    })
+    expect(rowOfLiveUnit(rmd, links, 1)).toBe('MALLET3')
+    expect(rowOfLiveUnit(rmd, links, 2)).toBe('')
+    expect(rowOfLiveUnit(rmd, links, 99)).toBe(null)
+  })
+
+  it('null when the flight is a single row', async () => {
+    const { rowOfLiveUnit, links } = await load({ 2: { id: 2, unitID: 101, groupID: 10, callsign: 'RMD-1-1', unitName: 'RMD-1-1' } })
+    expect(rowOfLiveUnit(rmd, links, 2)).toBe(null)
+  })
+})
