@@ -8,7 +8,8 @@ import { formatDistance, METRIC } from '../../../../utils/units.js'
 import { useEffect, useState } from 'react'
 import { getIcaoMapping }   from '../../../../utils/icaoMapping.js'
 import { computeMagvar }    from '../../../../utils/magvar.js'
-import { findAirfieldWeather, icaoToAirbaseName, starsAltimeter, formatWind } from '../../../../utils/liveWeather.js'
+import { findAirfieldWeather, findAirbase, icaoToAirbaseName, starsAltimeter, formatWind } from '../../../../utils/liveWeather.js'
+import { useMissionWeather } from '../../../../utils/useMissionWeather.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -20,13 +21,18 @@ function formatMissionTime(totalSeconds) {
 }
 
 // One SSA weather line's wind and altimeter: the manual entry where there
-// is one, else the DCS exporter's live weather; '' where neither exists.
-// Wind is magnetic at the field, shown as 'DDDSS'.
-function fieldWeather(airfield, manualWind, missionDate, metric) {
-  const declination = airfield ? computeMagvar(airfield.latitude ?? 0, airfield.longitude ?? 0, missionDate ?? undefined) : 0
+// is one, else the DCS exporter's live weather for the field, else the
+// mission file's (one wind and QNH for the whole map); '' where none exists.
+// Wind is magnetic at the field (its airbase position where there's no live
+// sample), shown as 'DDDSS'.
+function fieldWeather(airfield, airbase, fromMission, manualWind, missionDate, metric) {
+  const at = airfield ?? airbase
+  const declination = at ? computeMagvar(at.latitude ?? 0, at.longitude ?? 0, missionDate ?? undefined) : 0
+  const wind = airfield?.wind ?? fromMission?.wind
+  const qnhHpa = airfield?.qnhHpa ?? fromMission?.qnhHpa
   return {
-    wind: manualWind ?? (airfield ? formatWind(airfield.wind, declination) : ''),
-    alt: airfield?.qnhHpa != null ? starsAltimeter(airfield.qnhHpa, metric) : '',
+    wind: manualWind ?? (wind ? formatWind(wind, declination) : ''),
+    alt: qnhHpa != null ? starsAltimeter(qnhHpa, metric) : '',
   }
 }
 
@@ -37,6 +43,8 @@ export function SSA() {
   const facilityId     = useSessionStore((s) => s.facilityId)
   const facilityDcsName = useSessionStore((s) => s.facilityDcsName)
   const weather        = useSessionStore((s) => s.weather)
+  const airbases       = useSessionStore((s) => s.airbases)
+  const fromMission    = useMissionWeather()
   const theatre        = useSessionStore((s) => s.mission?.mission?.theatre)
   const missionDate    = useSessionStore((s) => s.mission?.mission?.dateAndTime?.date ?? null)
   const [icaoMapping, setIcaoMapping] = useState(null)
@@ -61,11 +69,14 @@ export function SSA() {
 
   const metric = unitSystem === METRIC
   const facilityWx = fieldWeather(
-    findAirfieldWeather(weather, { callsign: facilityDcsName }), windManual?.[''], missionDate, metric)
+    findAirfieldWeather(weather, { callsign: facilityDcsName }), findAirbase(airbases, facilityDcsName),
+    fromMission, windManual?.[''], missionDate, metric)
   const qnhStr = qnh ?? (facilityWx.alt || '29.92')
   const wxLines = (wxFields ?? []).map((icao) => {
     const name = icaoToAirbaseName(icaoMapping, theatre, icao)
-    const wx = fieldWeather(name ? findAirfieldWeather(weather, { callsign: name }) : null, windManual?.[icao], missionDate, metric)
+    const wx = fieldWeather(name ? findAirfieldWeather(weather, { callsign: name }) : null, findAirbase(airbases, name),
+      // An ICAO outside this theatre gets no mission weather either.
+      name ? fromMission : null, windManual?.[icao], missionDate, metric)
     return joinParts(icao, wx.alt, wx.wind)
   })
 

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { findAirfieldWeather, starsAltimeter, catccQnh, formatWind, normalizeWind, deckWindKt, icaoToAirbaseName } from '../../client/src/utils/liveWeather.js'
+import { findAirfieldWeather, starsAltimeter, catccQnh, formatWind, normalizeWind, deckWindKt, icaoToAirbaseName, missionWeather, findAirbase } from '../../client/src/utils/liveWeather.js'
 
 const weather = {
   mission: null,
@@ -68,5 +68,29 @@ describe('winds', () => {
     expect(icaoToAirbaseName(mapping, 'Caucasus', 'ugsb')).toBe('Batumi')
     expect(icaoToAirbaseName(mapping, 'Caucasus', 'XXXX')).toBeNull()
     expect(icaoToAirbaseName(null, 'Caucasus', 'UGSB')).toBeNull()
+  })
+})
+
+describe('mission file weather', () => {
+  test('missionWeather: QNH mmHg to hPa, surface wind turned to where it blows from', () => {
+    const wx = missionWeather({ weather: { qnh: 760, wind: { atGround: { speed: 5, dir: 90 } } } })
+    expect(wx.qnhHpa).toBeCloseTo(1013.25, 1)
+    expect(wx.wind).toEqual({ fromDeg: 270, speedMs: 5 })
+    expect(starsAltimeter(wx.qnhHpa, false)).toBe('29.92')
+  })
+
+  test('missionWeather: null without weather, partial when one part is missing', () => {
+    expect(missionWeather(null)).toBeNull()
+    expect(missionWeather({ weather: {} })).toBeNull()
+    expect(missionWeather({ weather: { qnh: 750 } }).wind).toBeNull()
+    expect(missionWeather({ weather: { wind: { atGround: { speed: 2, dir: 0 } } } }).qnhHpa).toBeNull()
+  })
+
+  test('findAirbase by DCS name, wrapped or flat', () => {
+    const ab = { callsign: 'Batumi', latitude: 41.6, longitude: 41.6 }
+    expect(findAirbase({ airbases: { 1: ab } }, 'Batumi')).toBe(ab)
+    expect(findAirbase({ 1: ab }, 'Batumi')).toBe(ab)
+    expect(findAirbase({ 1: ab }, 'Kobuleti')).toBeNull()
+    expect(findAirbase({ 1: ab }, null)).toBeNull()
   })
 })

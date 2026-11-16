@@ -1,12 +1,35 @@
 // Live weather from the DCS exporter (the session store's weather: the
 // mission's weather table, its cloud preset, live fog and per-airfield
 // samples), for scopes that show an altimeter, wind or METAR from it. Other
-// sources send no weather.
+// sources send no weather. A client-side hook sends none either, so the
+// mission file's own weather (missionWeather) stands in for it.
 
 import { toMagneticFromTrue } from './bearing.js'
 import { MS_TO_KT } from './units.js'
+import { extractWeather } from './parseMission.js'
 
 const HPA_TO_INHG = 0.0295299830714
+const MMHG_TO_HPA = 1.33322387415
+
+// The mission file's weather as { qnhHpa, wind } (wind as an airfield
+// sample's: { fromDeg (true), speedMs }), or null if it has neither. One
+// value for the whole map: the mission's sea-level pressure and its wind at
+// 10 m, not what any one field sees once the mission is running.
+export function missionWeather(mission) {
+  const w = mission?.weather
+  if (!w) return null
+  const qnhHpa = typeof w.qnh === 'number' && w.qnh > 0 ? w.qnh * MMHG_TO_HPA : null
+  const wind = extractWeather(mission)?.wind ?? null
+  return qnhHpa == null && !wind ? null : { qnhHpa, wind }
+}
+
+// An airbase (session store's airbases, by its DCS name) with its position,
+// or null.
+export function findAirbase(airbases, callsign) {
+  if (!callsign) return null
+  const raw = airbases?.airbases ?? airbases ?? {}
+  return Object.values(raw).find((ab) => ab?.callsign === callsign) ?? null
+}
 
 // The airfield entry for a carrier (by unit id) or an airfield (by its DCS
 // name, the airbase callsign), or null.
