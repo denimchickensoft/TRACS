@@ -315,7 +315,7 @@ A sortable table of every flight in the mission, airplanes and helicopters.
 A flight is the aircraft of one mission group that share a unit name: units `RMD-1-1` to `RMD-1-4` are flight **RMD1**. A group holding `ELVIS-5-1`, `ELVIS-5-2`, `HAWK-1-1` and `HAWK-1-2` is two flights, ELVIS5 and HAWK1. A unit name with a single number (`Warden-1`, `VOLVO-1`) is a flight of its own. Group names and the mission editor's callsign dropdown are never shown.
 
 Columns:
-- **FLIGHT** — the callsign players fly it under, in green once someone is slotted in (`HAWK 1-1 | Pilot` in RMD-1-1 shows **HAWK1**); a `.rename` shows here too. Grey, with the flight's name from its unit names (hyphens and spaces removed), while nobody is. Hover a callsign row for the flight it flies in (`HAWK1 · RMD1`).
+- **FLIGHT** — the callsign players fly it under once someone is slotted in (`HAWK 1-1 | Pilot` in RMD-1-1 shows **HAWK1**), else the flight's name from its unit names (hyphens and spaces removed); a `.rename` shows here too. Green for a row with a player in it, teal for AI and empty slots. Hover a callsign row for the flight it flies in (`HAWK1 · RMD1`).
 - Task
 - Type/Num
 - **TASKUNIT** — airfield ICAO, carrier hull abbreviation, or "Air Start". FRAG's Tasking view labels this "Base".

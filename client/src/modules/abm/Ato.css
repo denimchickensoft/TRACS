@@ -5,9 +5,9 @@
   --ato-ground:   #6A8098;
   --ato-planned:  #777;
   --ato-reserve:  #BB8833;
-  /* FLIGHT from an MP name (or .rename) vs from the unit name */
-  --ato-cs-live:  var(--ato-air);
-  --ato-cs-static: #888;
+  /* FLIGHT: a row with a player in it vs AI / empty slots */
+  --ato-flight-human: var(--ato-air);
+  --ato-flight-ai:    var(--ato-taxi);
   --ato-row-alt:  #111;
 
   display:        flex;
@@ -127,8 +127,8 @@
 
 .ato-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ato-flight-name { text-transform: uppercase; }
-.ato-cs-live   { color: var(--ato-cs-live); font-weight: 600; }
-.ato-cs-static { color: var(--ato-cs-static); }
+.ato-flight-human { color: var(--ato-flight-human); font-weight: 600; }
+.ato-flight-ai    { color: var(--ato-flight-ai); }
 .ato-taskunit { color: #aaa; }
 .ato-freq { cursor: pointer; }
 .ato-freq:hover { text-decoration: underline; }

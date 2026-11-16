@@ -241,7 +241,6 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
         ...f, ...shared, key: `${f.flightId}`, row: null,
         numType: f.units.length > 0 ? `${f.units[0].type} x${f.units.length}` : '-',
         flightLabel: lead ? (parseFlightElement(lead)?.flightKey ?? resolveCallsign(lead).toUpperCase()) : f.name,
-        callsignLive: !!lead,
         hasHuman: matches.some(m => m.unit.human === true),
         statusLabel: status(matches.map(m => m.unit)),
       }]
@@ -254,7 +253,6 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
         ...f, ...shared, key: `${f.flightId}|${row ?? ''}`, row,
         numType: units.length > 0 ? `${units[0].type} x${units.length}` : '-',
         flightLabel: callsign ?? f.name,
-        callsignLive: callsign != null,
         hasHuman: live.some(isPlayerLink),
         statusLabel: status(live.map(l => l.unit)),
       }
@@ -357,7 +355,7 @@ export function Ato({ docked = true, width, onResize, onUndock, onDock, onHide, 
                       onClick={() => selectFlight(row.flightId, { row: row.row })}
                     >
                       <span
-                        className={`ato-cell ato-flight-name ${row.callsignLive ? 'ato-cs-live' : 'ato-cs-static'}`}
+                        className={`ato-cell ato-flight-name ${row.hasHuman ? 'ato-flight-human' : 'ato-flight-ai'}`}
                         title={row.flightLabel === row.name ? row.name : `${row.flightLabel} · ${row.name}`}
                       >{row.flightLabel}</span>
                       <span className="ato-cell" title={row.taskLabel}>{row.taskLabel}</span>
