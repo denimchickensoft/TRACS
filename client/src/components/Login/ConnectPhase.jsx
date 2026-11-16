@@ -5,7 +5,7 @@ import { checkSyncCapable } from '../../webrtc/syncClient'
 import {
   loadServerProfiles, upsertServerProfile, toggleFavoriteProfile,
   removeServerProfile, findProfileByName, filterServerProfiles, getMostRecentProfile,
-  loadLastConnection, saveLastConnection, parseHostPort,
+  loadLastConnection, saveLastConnection, parseHostPort, splitScheme, composeRelayUrl,
 } from '../../utils/serverProfiles'
 
 // Round-trips parseHostPort()'s output back into what the Server URL field
@@ -15,22 +15,6 @@ import {
 // prefix like "/server1") is shown back after the host.
 function displayHost({ host, path = '', protocol }) {
   return `${protocol === 'https' ? 'https://' : ''}${host}${path}`
-}
-
-// Splits a user-typed Server URL into its explicit scheme (if any), host and
-// path, so composedOlympusUrl/composedStorageUrl can preserve whatever
-// scheme was typed instead of forcing http://, and insert the port between
-// host and path rather than after the path. Defaults to 'http' when no
-// scheme is present — never fabricates https.
-function splitScheme(raw) {
-  const match = raw.trim().match(/^(https?):\/\//i)
-  const rest  = raw.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-  const slash = rest.indexOf('/')
-  return {
-    scheme: match ? match[1].toLowerCase() : 'http',
-    host:   slash === -1 ? rest : rest.slice(0, slash),
-    path:   slash === -1 ? ''   : rest.slice(slash),
-  }
 }
 
 const COALITION_OPTIONS = [
@@ -140,16 +124,9 @@ export function ConnectPhase({ onConnected }) {
     return `${scheme}://${hostOnly}${port ? `:${port}` : ''}${path}`
   }
 
-  // Same host, XPNDR port instead — empty port means "no relay configured",
-  // never a guess, since the relay always lives alongside Olympus/Tacview.
-  // An https:// server host means TLS in front of the DCS server (see the
-  // README's relay TLS setup), so the relay is reached over wss:// too.
-  // The Server URL's path is deliberately dropped: it's a prefix for the
-  // primary source's endpoint, not for the relay's own port.
+  // Same host, XPNDR port instead; see composeRelayUrl.
   function composedRelayUrl(host = serverHost, port = xpndrPort) {
-    if (!port) return ''
-    const { scheme, host: hostOnly } = splitScheme(host)
-    return `${scheme === 'https' ? 'wss' : 'ws'}://${hostOnly}:${port}`
+    return composeRelayUrl(host, port, sourceMode)
   }
 
   function handleSelectProfile(profile) {
@@ -431,8 +408,7 @@ export function ConnectPhase({ onConnected }) {
             style={{ flex: 1 }}
             value={xpndrPort}
             onChange={(e) => setXpndrPort(e.target.value)}
-            placeholder="Relay Port"
-            required={sourceMode === 'relay'}
+            placeholder={sourceMode === 'relay' ? 'Relay Port (optional)' : 'Relay Port'}
             disabled={connecting}
           />
         </div>

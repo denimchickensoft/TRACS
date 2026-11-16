@@ -22,7 +22,7 @@ Which fields are shown and required depends on the mode:
 - **Source Port** — the Olympus or Tacview port. Optional in **Olympus**/**Tacview** modes; leave it blank to use the URL's own scheme default (e.g. a reverse-proxied `https://host` with no port exposed). Hidden in **Relay** mode.
 - **Relay Port** — the TRACS Relay's port. The relay is always reached at the Server URL's host on this port: `ws://<host>:<Relay Port>`, or `wss://` when the Server URL starts with `https://` (a relay behind TLS; see the README's relay TLS section).
   - In **Olympus**/**Tacview** modes this is optional. Fill it in to get SRS transponder/IFF data merged onto tracks, and to sync with other controllers through the relay rather than peer-to-peer.
-  - In **Relay** mode it's required.
+  - In **Relay** mode it's optional: leave it blank to reach the relay on the URL's standard port, for a relay behind a reverse proxy or tunnel at its own domain name (Server URL `https://relay.example.com` connects to `wss://relay.example.com`).
 - **Coalition Role** — Blue Commander, Red Commander, Game Master, or Admin. Determines which units you can see and control. Every window in one running TRACS shares the first login's coalition and password; to switch, close and reopen TRACS.
 - **Password field(s)** — the label and meaning depend on mode:
   - **Olympus**: "Coalition Password" — the Olympus password for your role, set on the DCS server.

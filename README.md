@@ -324,6 +324,7 @@ relay.example.com:8766 {
 
 - **Firewall:** open TCP 8766 to controllers, and 80/443 for Caddy's certificate checks. **Close `wsPort` (8765) to everything outside the machine**, so no one can bypass TLS.
 - **Controllers** enter the **Server URL** with `https://` (e.g. `https://relay.example.com`) and **8766** as the Relay Port; TRACS then connects to the relay over `wss://`. The `https://` applies to everything at that host, so in Olympus mode Olympus must be served over HTTPS too (for example behind the same Caddy). Relay mode and direct Tacview mode are unaffected.
+- **Standard port (443):** if the proxy or a tunnel (e.g. Cloudflare Tunnel) serves the relay at its own domain name on 443, controllers in Relay mode enter `https://relay.example.com` and leave the Relay Port blank.
 - **Password limits keep working per controller:** Caddy passes each controller's address in `X-Forwarded-For`, which the relay uses for connections arriving from the proxy on the same machine.
 
 ### Logs

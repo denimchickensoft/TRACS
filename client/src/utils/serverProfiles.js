@@ -1,6 +1,38 @@
 const STORAGE_KEY       = 'tracs.serverProfiles'
 const LAST_CONN_KEY     = 'tracs.lastConnection'
 
+// Splits a user-typed Server URL into its explicit scheme (if any), host and
+// path, so ConnectPhase's URL composition can preserve whatever
+// scheme was typed instead of forcing http://, and insert the port between
+// host and path rather than after the path. Defaults to 'http' when no
+// scheme is present — never fabricates https.
+export function splitScheme(raw) {
+  const match = raw.trim().match(/^(https?):\/\//i)
+  const rest  = raw.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+  const slash = rest.indexOf('/')
+  return {
+    scheme: match ? match[1].toLowerCase() : 'http',
+    host:   slash === -1 ? rest : rest.slice(0, slash),
+    path:   slash === -1 ? ''   : rest.slice(slash),
+  }
+}
+
+// The relay URL for the Server URL host and Relay Port. In Olympus/Tacview
+// modes an empty port means "no relay configured", never a guess, since the
+// relay always lives alongside Olympus/Tacview. In Relay mode the relay is
+// the only source, so an empty port means the scheme's standard one: a relay
+// behind a reverse proxy or tunnel at its own domain name
+// (https://relay.example.com -> wss://relay.example.com, port 443).
+// An https:// server host means TLS in front of the DCS server (see the
+// README's relay TLS setup), so the relay is reached over wss:// too.
+// The Server URL's path is deliberately dropped: it's a prefix for the
+// primary source's endpoint, not for the relay's own port.
+export function composeRelayUrl(serverHost, port, sourceMode) {
+  const { scheme, host } = splitScheme(serverHost ?? '')
+  if (!host || (!port && sourceMode !== 'relay')) return ''
+  return `${scheme === 'https' ? 'wss' : 'ws'}://${host}${port ? `:${port}` : ''}`
+}
+
 // Splits a stored "http://host:port/path"-shaped string (or a bare host) back
 // into its host, port, path and protocol, for editing as separate fields.
 // path keeps a reverse-proxy prefix like "/server1" (no trailing slash; ''
