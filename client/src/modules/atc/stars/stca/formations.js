@@ -3,9 +3,10 @@
 // TRACS has no transponder/beacon simulation — every DCS aircraft currently
 // behaves as if squawking Mode C, including tight-formation wingmen, which
 // would false-alarm STCA constantly. This groups live units by their DCS
-// group (unit.groupID, decoded server-side in server/src/decoder.js and
-// passed through untouched by store/units.js) and picks a flight lead per
-// group, so callers can render/exempt the rest as primary-only.
+// group and picks a flight lead per group, so callers can render/exempt the
+// rest as primary-only. The group is unit.groupID where the source sends one
+// (Olympus and the exporter host: the numeric DCS ID; Tacview: the group
+// name), else unit.groupName (the exporter client-side hook sends only that).
 //
 // Lead detection: DCS's own AI-flight naming convention concatenates
 // "<callsign> <flight>-<element>" (stripped of the space/dash by
@@ -14,7 +15,8 @@
 // already relies on). Within one groupID every member shares the same
 // flight-number prefix, so the trailing digit alone orders elements —
 // lowest digit wins. Falls back to lowest unitID (DCS's own creation-order
-// id — group member #1 is created first) when digits aren't parseable.
+// id — group member #1 is created first), else the lowest live id, when
+// digits aren't parseable.
 //
 // Manual designations (.WNG + click lead + click wingman, see StarsScope.jsx's
 // WNG_P2 handling) cover aircraft that don't share a DCS group at all (e.g.
@@ -25,6 +27,19 @@
 import { resolveCallsign } from '../../../../utils/callsign.js'
 import { hasLiveSquawk }  from '../../../../utils/transponder.js'
 
+function groupKeyOf(unit) {
+  if (unit.groupID != null && unit.groupID !== '') return `id:${unit.groupID}`
+  const name = typeof unit.groupName === 'string' ? unit.groupName.trim() : ''
+  return name ? `name:${name}` : null
+}
+
+// Creation order: the DCS mission unit ID, else the source's live id (the
+// exporter client-side hook's runtime object ID carries no mission unit ID).
+function creationOrder(unit) {
+  const n = Number(unit.unitID ?? unit.id)
+  return Number.isFinite(n) ? n : Infinity
+}
+
 /**
  * @param {Object} units      live units keyed by id (useUnitsStore().units)
  * @param {Object} ownership  unitId → controllerId (useAtcStore().ownership)
@@ -32,11 +47,12 @@ import { hasLiveSquawk }  from '../../../../utils/transponder.js'
  * @returns {Set<string>} ids of units that should render as primary-only wingmen
  */
 export function computeWingmanIds(units, ownership, manualWingmenIds = []) {
-  const groups = new Map() // groupID -> [{id, unit}]
+  const groups = new Map() // group key -> [{id, unit}]
   for (const [id, unit] of Object.entries(units)) {
-    if (unit.groupID == null) continue
-    if (!groups.has(unit.groupID)) groups.set(unit.groupID, [])
-    groups.get(unit.groupID).push({ id, unit })
+    const key = groupKeyOf(unit)
+    if (key == null) continue
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push({ id, unit })
   }
 
   const wingmen = new Set()
@@ -50,7 +66,7 @@ export function computeWingmanIds(units, ownership, manualWingmenIds = []) {
 
     const lead = withDigits.every((m) => m.digit != null)
       ? withDigits.reduce((a, b) => (b.digit < a.digit ? b : a))
-      : members.reduce((a, b) => ((b.unit.unitID ?? Infinity) < (a.unit.unitID ?? Infinity) ? b : a))
+      : members.reduce((a, b) => (creationOrder(b.unit) < creationOrder(a.unit) ? b : a))
 
     for (const m of members) {
       if (m.id === lead.id) continue
