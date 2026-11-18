@@ -15,6 +15,7 @@ import { DIR_TO_ANGLE, RIGHT_ALIGN_ANGLES, HIGHLIGHT_TEAL, HIGHLIGHT_PURPLE, ALE
 import { DECLARATION } from '../../../store/abm.js'
 import { placeDatablocks } from '../../../utils/datablockPlacement.js'
 import { resolveCallsign } from '../../../utils/callsign.js'
+import { shapedCallsignOf } from '../../../utils/callsignShape.js'
 import { altHundreds, speedTens, distFromNm } from '../../../utils/units.js'
 import { formatAlt } from '../flightAlt.js'
 
@@ -40,7 +41,9 @@ export function typeAbbrev(unit) {
 // as flightNumber+elementNumber (last digit = element, e.g. "FORD" + "21"
 // -> flight FORD-2, element 1). A bare callsign with no digits, or only a
 // single trailing digit (no way to split flight from element), can't be
-// grouped and is left alone.
+// grouped and is left alone - except a player's flight-only callsign read
+// from their MP name ("SCOUT 1 | Denim": flight SCOUT, element 1, see
+// utils/callsignShape.js), which the name itself splits.
 const FLIGHT_RE = /^([A-Z]+)(\d{2,})$/
 
 // Exported for Ato.jsx's CALLSIGN column, which needs the same flight/
@@ -50,6 +53,10 @@ export function parseFlightElement(unit) {
   const raw = resolveCallsign(unit)
   if (!raw) return null
   const cleaned = raw.replace(/[^a-z0-9]/gi, '').toUpperCase()
+  // The shown callsign is the one read from the MP name (not a .rename or
+  // another label): the name's own split.
+  const shaped = shapedCallsignOf(unit)
+  if (shaped && shaped.acid === cleaned) return { flightKey: shaped.flight, element: shaped.element }
   const m = cleaned.match(FLIGHT_RE)
   if (!m) return null
   const [, prefix, digits] = m

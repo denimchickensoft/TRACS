@@ -573,7 +573,7 @@ export function Frag({ docked = true, width, onResize, onUndock, onDock, onHide,
                     // A linked unit shows TRACS's resolved callsign (an MP
                     // player's "HAWK11", a .rename); an open slot its unit name.
                     const label = liveUnit ? resolveCallsign(liveUnit) : stripAcid(u.unitName ?? '')
-                    const pilot = isPlayerLink(found) ? parseUnitName(liveUnit.unitName, liveUnit.callsign).pilotName : null
+                    const pilot = isPlayerLink(found) ? parseUnitName(liveUnit.unitName, { flightOnly: liveUnit.human === true }).pilotName : null
                     const findable = liveKey != null
                     const isBlinking = findable && blinkIds.includes(liveKey)
                     // Granular per-unit air/ground state — the flight-level

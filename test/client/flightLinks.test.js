@@ -48,7 +48,7 @@ describe('buildFlightLinks', () => {
     const links = buildFlightLinks(flights, {
       // Runtime IDs, no numeric group ID; a player's name is the MP nickname.
       16790048: { id: 16790048, unitID: 16790048, groupName: 'RMD-1', callsign: 'HAWK 1-3 | <player>', unitName: 'HAWK 1-3 | <player>', human: true },
-      16790049: { id: 16790049, unitID: 16790049, groupName: 'RMD-1', callsign: '<player2>', unitName: '<player2>', human: true },
+      16790049: { id: 16790049, unitID: 16790049, groupName: 'RMD-1', callsign: '<pilot>', unitName: '<pilot>', human: true },
       16790050: { id: 16790050, unitID: 16790050, groupName: 'VOLVO-1', callsign: 'VOLVO-1', unitName: 'VOLVO-1' },
     })
     expect(linked(links, flights[0], 2)).toBe('16790048') // HAWK 1-3 -> position 3

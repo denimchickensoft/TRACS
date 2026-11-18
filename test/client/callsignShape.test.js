@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import { findShapedCallsign, parseUnitName, callsignFromDcsName } from '../../client/src/utils/callsignShape.js'
 
-const acidOf = (name, dcsCallsign) => findShapedCallsign(name, dcsCallsign)?.acid ?? null
+const acidOf = (name, opts) => findShapedCallsign(name, opts)?.acid ?? null
 
 describe('findShapedCallsign', () => {
   test.each([
@@ -33,19 +33,19 @@ describe('findShapedCallsign', () => {
     expect(acidOf(undefined)).toBe(null)
   })
 
-  test('two matches: the DCS callsign field wins, then a separated one, then the first', () => {
-    expect(acidOf('VIPER21 | COLT11', 'Colt11')).toBe('COLT11')
-    expect(acidOf('VIPER 2-1 | COLT 1-1', 'Colt11')).toBe('COLT11')
-    expect(acidOf('VIPER21 | COLT 1-1')).toBe('COLT11')
-    expect(acidOf('VIPER21 | COLT 1-1', 'Enfield11')).toBe('COLT11')
-    expect(acidOf('VIPER 2-1 | COLT 1-1')).toBe('VIPER21')
+  test('only the first numbered part counts', () => {
     expect(acidOf('VIPER21 | COLT11')).toBe('VIPER21')
+    expect(acidOf('VIPER 2-1 | COLT 1-1')).toBe('VIPER21')
+    expect(acidOf('COLT 1-1 | DENIM12')).toBe('COLT11')
+    expect(acidOf('DENIM12 | COLT 1-1')).toBe('DENIM12')
+    expect(parseUnitName('DENIM12 | COLT 1-1')).toEqual({ acid: 'DENIM12', pilotName: 'COLT 1-1' })
   })
 
-  test('a pilot name shaped like a callsign loses to a separated callsign', () => {
-    expect(acidOf('COLT 1-1 | DENIM12')).toBe('COLT11')
-    expect(acidOf('DENIM12 | COLT 1-1')).toBe('COLT11')
-    expect(parseUnitName('DENIM12 | COLT 1-1')).toEqual({ acid: 'COLT11', pilotName: 'DENIM12' })
+  test('the number must end the part', () => {
+    expect(acidOf('SCOUT4ME DENIM23')).toBe(null)
+    expect(acidOf('SCOUT4ME DENIM23', { flightOnly: true })).toBe(null)
+    expect(acidOf('COLT11DENIM')).toBe(null)
+    expect(acidOf('Lot 20 | COLT 1-1')).toBe(null)
   })
 
   test('a three-digit number is not a flight and element', () => {
@@ -54,6 +54,36 @@ describe('findShapedCallsign', () => {
 
   test('short airframe names do not read as callsigns', () => {
     expect(acidOf('F16 | COLT 1-1')).toBe('COLT11')
+  })
+})
+
+describe('flight-only callsigns (players)', () => {
+  test.each([
+    'SCOUT 1 | Denim',
+    'SCOUT 1 | Denim1',
+    'SCOUT1 - DENIM 1',
+    'SCOUT1 DENIM1',
+    '203 | Scout-1 | Denim',
+  ])('%s -> flight SCOUT, element 1', (name) => {
+    expect(findShapedCallsign(name, { flightOnly: true })).toMatchObject({ acid: 'SCOUT1', flight: 'SCOUT', element: 1 })
+  })
+
+  test('the second element of the same flight', () => {
+    expect(findShapedCallsign('SCOUT 2 | Someguy', { flightOnly: true })).toMatchObject({ acid: 'SCOUT2', flight: 'SCOUT', element: 2 })
+  })
+
+  test('two digits keep flight and element', () => {
+    expect(findShapedCallsign('SCOUT 12 | Denim', { flightOnly: true })).toMatchObject({ acid: 'SCOUT12', flight: 'SCOUT1', element: 2 })
+  })
+
+  test('not without flightOnly (AI unit names, Tacview)', () => {
+    expect(acidOf('SCOUT 1 | Denim')).toBe(null)
+    expect(acidOf('Akrotiri Hornet-3')).toBe(null)
+  })
+
+  test('pilot name', () => {
+    expect(parseUnitName('SCOUT 1 | Denim', { flightOnly: true })).toEqual({ acid: 'SCOUT1', pilotName: 'Denim' })
+    expect(parseUnitName('SCOUT1 DENIM1', { flightOnly: true })).toEqual({ acid: 'SCOUT1', pilotName: 'DENIM1' })
   })
 })
 
@@ -78,6 +108,10 @@ describe('parseUnitName', () => {
 describe('callsignFromDcsName', () => {
   test('shape match first', () => {
     expect(callsignFromDcsName({ id: 7, unitName: '203 | COLT 1-1 | DENIM', callsign: 'Enfield11' })).toBe('COLT11')
+  })
+  test('a flagged player with a flight-only callsign', () => {
+    expect(callsignFromDcsName({ id: 7, unitName: 'SCOUT 1 | Denim', callsign: 'RMD-5-2', human: true })).toBe('SCOUT1')
+    expect(callsignFromDcsName({ id: 7, unitName: 'SCOUT 1 | Denim', callsign: 'RMD-5-2' })).toBe('RMD52')
   })
   test('then the DCS callsign field', () => {
     expect(callsignFromDcsName({ id: 7, unitName: 'COLT1 | DENIM', callsign: 'Enfield11' })).toBe('ENFIELD11')

@@ -23,7 +23,7 @@
 // group and link to nothing.
 
 import { dcsUnitIdReliable } from './callsign.js'
-import { findShapedCallsign } from './callsignShape.js'
+import { shapedCallsignOf } from './callsignShape.js'
 import { useSessionStore } from '../store/session.js'
 
 const trim = (s) => (typeof s === 'string' ? s.trim() : '')
@@ -47,8 +47,7 @@ function addTo(map, key, value) {
 const onlyOne = (set) => (set?.size === 1 ? [...set][0] : undefined)
 
 function elementDigit(unit) {
-  const acid = findShapedCallsign(unit.unitName ?? '', null)?.acid
-  return acid ? Number(acid.slice(-1)) : null
+  return shapedCallsignOf(unit)?.element ?? null
 }
 
 // A unit left over in its group after the unit-name match that is a player.

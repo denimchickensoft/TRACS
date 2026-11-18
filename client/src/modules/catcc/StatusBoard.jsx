@@ -192,12 +192,12 @@ export function StatusBoard({ docked = true, width, onResize, onUndock, onDock, 
       let uid = entry.unitId ?? null
       if (!uid) {
         for (const [id, unit] of Object.entries(units)) {
-          const { acid } = parseUnitName(unit.unitName, unit.callsign)
+          const { acid } = parseUnitName(unit.unitName, { flightOnly: unit.human === true })
           if (acid === entry.callsign) { uid = id; break }
         }
       }
       if (!uid) continue
-      const { pilotName } = parseUnitName(units[uid]?.unitName, units[uid]?.callsign)
+      const { pilotName } = parseUnitName(units[uid]?.unitName, { flightOnly: units[uid]?.human === true })
       if (pilotName) useStatusBoardStore.getState().updateEntry(entry.id, 'pilot', pilotName)
     }
   }, [entries, units])

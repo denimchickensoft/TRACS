@@ -129,7 +129,9 @@ Reloading the window rejoins the same session automatically. Your peer identity 
 The **⚙** icon (top right, once signed in) opens the settings panel:
 
 - **Use DCS Multiplayer Names** — how a track's callsign is read from its name:
-  - **On** (default): picks the callsign out of a multiplayer name, so `COLT 1-1 | Pilotname` becomes `COLT11`. A name with no callsign in it uses the in-mission callsign if there is one, otherwise the text before the first `|` (or the whole name if there's no `|`).
+  - **On** (default): picks the callsign out of a multiplayer name, so `COLT 1-1 | Pilotname` becomes `COLT11`. The callsign is the name's first part that's a word followed by its number, and the number has to end that part: `SCOUT4ME DENIM23` has no callsign.
+    - A player's callsign can be the flight number alone: `SCOUT 1 | Pilotname` is `SCOUT1`, element 1 of flight SCOUT, and `SCOUT 2 | Wingman` is element 2 of the same flight. This only applies on Olympus and the DCS exporter, which tell TRACS who the players are; Tacview doesn't.
+    - A name with no callsign in it uses the in-mission callsign if there is one, otherwise the text before the first `|` (or the whole name if there's no `|`).
   - **Off**: uses the in-mission callsign, otherwise the whole name with spaces and symbols removed.
   - In **Tacview** mode, and **Relay** mode over Tacview, there's no in-mission callsign, so both settings read the player's multiplayer name; the setting only decides whether a callsign is picked out of it. With the relay's DCS exporter, the in-mission callsign (the unit's mission name) is available as in Olympus mode.
   - A track matches a flight plan filed under the callsign it resolves to, a plan from the mission file for its slot, or a plan it was tied to by **Ctrl+Click** and saving the Flight Plan Editor (see [ATC](atc.md#mission-flight-plans-and-players)).
