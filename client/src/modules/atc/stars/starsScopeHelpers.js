@@ -29,7 +29,8 @@ export function computeStarsSymbolMap(visibleUnits, ownership, displayFdb, myCon
 // Altitude filter (MULTI FUNC F / FC) — suppresses tracks whose altitude
 // falls outside the filter range for their association status (symbolMap
 // sym === '*' means unassociated). Units with no altitude data (elevation
-// unavailable) are never filtered.
+// unavailable) are never filtered. A lower limit of 000 has no floor at all:
+// it also keeps tracks reading below 0 ft, and shows as N99.
 export function computeStarsFilteredUnits(visibleUnits, symbolMap, altFilter) {
   const { loU, hiU, loA, hiA } = altFilter
   const out = {}
@@ -40,9 +41,15 @@ export function computeStarsFilteredUnits(visibleUnits, symbolMap, altFilter) {
     const sym        = symbolMap[id]?.sym
     const associated = sym !== '*' && sym !== 'V'
     const [lo, hi]   = associated ? [loA, hiA] : [loU, hiU]
-    if (hundreds >= lo && hundreds <= hi) out[id] = unit
+    if ((lo === 0 || hundreds >= lo) && hundreds <= hi) out[id] = unit
   }
   return out
+}
+
+// An altitude filter limit as the SSA and the MF F readout show it: three
+// digits, with a lower limit of 000 (no floor) as N99.
+export function fmtAltFilterLimit(n, isLow) {
+  return isLow && !n ? 'N99' : String(n ?? 0).padStart(3, '0')
 }
 
 // The flight plan for a displayed track (by unit id string): the plan the

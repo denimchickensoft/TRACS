@@ -74,10 +74,10 @@ const SCOPE_DEFAULTS = {
   briteHst:  null,   // history trails
   // Altitude filters — hundreds of feet (STARS 3-digit convention, e.g. 001 = 100ft).
   // U = unassociated tracks, A = associated tracks. Defaults show everything.
-  altFilterLowU: 1,
-  altFilterHighU: 600,
-  altFilterLowA: 1,
-  altFilterHighA: 600,
+  altFilterLowU: 0,
+  altFilterHighU: 999,
+  altFilterLowA: 0,
+  altFilterHighA: 999,
   // STARS manual altimeter (.ALTIM) and winds (.WIND, keyed by ICAO, '' =
   // the facility); null/absent = show live DCS exporter weather. Session-only:
   // never saved in presets.

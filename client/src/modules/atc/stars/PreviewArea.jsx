@@ -28,6 +28,11 @@ function splitCommand(buffer) {
   return [token.trim(), rest]
 }
 
+// A typed space starts a new line, so each field of an entry sits on its
+// own line ("MF F000600 000600" shows the two filter pairs one above the
+// other).
+const lines = (text) => text.replaceAll(' ', '\n')
+
 /**
  * Preview area — the STARS command entry and system response display.
  *
@@ -41,6 +46,7 @@ function splitCommand(buffer) {
  *   Line 2 (bottom): current buffer with blinking cursor
  *                    (a command key shows its label on its own line, with the
  *                    rest of the entry below; MF includes its selector: "FS")
+ * A typed space starts a new line (see `lines`).
  */
 export function PreviewArea() {
   const { buffer, response, leadToken } = usePreviewStore()
@@ -79,10 +85,10 @@ export function PreviewArea() {
       {split ? (
         <>
           <div>{split[0]}</div>
-          {split[1] !== null && <div>{split[1] || '\u00A0'}</div>}
+          {split[1] !== null && <div>{lines(split[1]) || '\u00A0'}</div>}
         </>
       ) : (
-        <div>{buffer || '\u00A0'}</div>
+        <div>{lines(buffer) || '\u00A0'}</div>
       )}
     </div>
   )

@@ -53,6 +53,7 @@ import { spcForCode, isSpcString } from '../../../utils/spc.js'
 import { planMsawDisabled } from '../../../utils/msaw.js'
 import { planForUnit } from '../stars/alerts/useStarsAlerts.js'
 import { toggleAutotrack } from '../autotrack.js'
+import { fmtAltFilterLimit } from '../stars/starsScopeHelpers.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -870,13 +871,13 @@ export function CLEAR_ATIS_GI() {
 // facility-wide display settings, and applied live to which tracks draw on
 // scope (see the filteredUnits memo in StarsScope.jsx).
 function fmtAltFilterPair(lo, hi) {
-  return `${String(lo).padStart(3, '0')} ${String(hi).padStart(3, '0')}`
+  return `${fmtAltFilterLimit(lo, true)} ${fmtAltFilterLimit(hi, false)}`
 }
 
 export function SHOW_ALT_FILTER() {
   const win = getDisplay().windows[WINDOW_ID]
-  const loU = win?.altFilterLowU ?? 1,   hiU = win?.altFilterHighU ?? 600
-  const loA = win?.altFilterLowA ?? 1,   hiA = win?.altFilterHighA ?? 600
+  const loU = win?.altFilterLowU ?? 0,   hiU = win?.altFilterHighU ?? 999
+  const loA = win?.altFilterLowA ?? 0,   hiA = win?.altFilterHighA ?? 999
   usePreviewStore.getState().showInfo(
     `${fmtAltFilterPair(loU, hiU)}\n${fmtAltFilterPair(loA, hiA)}`
   )

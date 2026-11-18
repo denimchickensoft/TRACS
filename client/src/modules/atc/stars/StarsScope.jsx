@@ -226,13 +226,15 @@ export default function StarsScope() {
   }, [])
 
   // ── Altitude filter (MULTI FUNC F / FC) — see starsScopeHelpers.js's
-  // computeStarsFilteredUnits ─────────────────────────────────────────
-  const filteredUnits = useMemo(() => computeStarsFilteredUnits(visibleUnits, symbolMap, {
-    loU: windowSettings?.altFilterLowU  ?? 1,
-    hiU: windowSettings?.altFilterHighU ?? 600,
-    loA: windowSettings?.altFilterLowA  ?? 1,
-    hiA: windowSettings?.altFilterHighA ?? 600,
-  }), [visibleUnits, symbolMap,
+  // computeStarsFilteredUnits. TDM shows everything: like the ground filter
+  // (getVisibleUnits), the altitude filter is off while it is on, so traffic
+  // parked on a field below the filter floor still shows. ────────────
+  const filteredUnits = useMemo(() => tdmMode ? visibleUnits : computeStarsFilteredUnits(visibleUnits, symbolMap, {
+    loU: windowSettings?.altFilterLowU  ?? 0,
+    hiU: windowSettings?.altFilterHighU ?? 999,
+    loA: windowSettings?.altFilterLowA  ?? 0,
+    hiA: windowSettings?.altFilterHighA ?? 999,
+  }), [visibleUnits, symbolMap, tdmMode,
       windowSettings?.altFilterLowU, windowSettings?.altFilterHighU,
       windowSettings?.altFilterLowA, windowSettings?.altFilterHighA])
 

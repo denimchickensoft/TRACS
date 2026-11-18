@@ -10,6 +10,7 @@ import { getIcaoMapping }   from '../../../../utils/icaoMapping.js'
 import { computeMagvar }    from '../../../../utils/magvar.js'
 import { findAirfieldWeather, findAirbase, icaoToAirbaseName, starsAltimeter, formatWind } from '../../../../utils/liveWeather.js'
 import { useMissionWeather } from '../../../../utils/useMissionWeather.js'
+import { fmtAltFilterLimit } from '../starsScopeHelpers.js'
 
 const WINDOW_ID = 'atc-main'
 
@@ -88,9 +89,8 @@ export function SSA() {
     </>
   )
 
-  const pad3 = (n) => String(n ?? 0).padStart(3, '0')
   const altFilterLine =
-    `${pad3(altFilterLowU)} ${pad3(altFilterHighU)} U ${pad3(altFilterLowA)} ${pad3(altFilterHighA)} A`
+    `${fmtAltFilterLimit(altFilterLowU, true)} ${fmtAltFilterLimit(altFilterHighU, false)} U ${fmtAltFilterLimit(altFilterLowA, true)} ${fmtAltFilterLimit(altFilterHighA, false)} A`
 
   const rows = [
     `${displayTime} ${qnhStr}`,

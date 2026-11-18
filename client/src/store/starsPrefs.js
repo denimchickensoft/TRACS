@@ -19,10 +19,10 @@ const DEFAULTS = {
   simWingmenStandby: false, // simulated squawk-standby wingmen — .wng toggles
   manualWingmen: [], // unitId[] — .wng + click lead + click wing manual overrides (toggle)
   // Altitude filters (hundreds of feet) — MF F sets both, MF FC sets associated only.
-  altFilterLowU: 1,
-  altFilterHighU: 600,
-  altFilterLowA: 1,
-  altFilterHighA: 600,
+  altFilterLowU: 0,
+  altFilterHighU: 999,
+  altFilterLowA: 0,
+  altFilterHighA: 999,
 }
 
 const { load: loadStarsPrefs, save: saveStarsPrefs } = makePrefsStore(KEY, DEFAULTS)

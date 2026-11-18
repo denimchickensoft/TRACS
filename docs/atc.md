@@ -337,14 +337,14 @@ The DCB aux bar (SHIFT) has a **WNG** toggle button next to **CA**.
 | `MF FC<loAssigned><hiAssigned>` + ENTER | Set the filter for tracks shown with an owner letter |
 | `MF F<loUnassoc><hiUnassoc> <loAssigned><hiAssigned>` + ENTER | Set both the filter for `*`/`V` tracks and the filter for tracks with an owner letter |
 
-Tracks outside the active filter range don't draw. Tracks with no altitude data are never filtered.
+Each limit is three digits in hundreds of feet. The default is `N99 999` for both, which filters nothing. A lower limit of `000` has no floor: it also keeps tracks reading below 0 ft, and shows as `N99` (`000600` reads `N99 600`). Tracks outside the active filter range don't draw. Tracks with no altitude data are never filtered.
 
 ## Top-down mode (TDM)
 
 **Ctrl+T** (desktop app) or **Alt+T** toggles top-down mode. Ctrl+T doesn't work in a browser tab, which always opens a new tab on it.
 
 The scope normally hides aircraft on the ground (parked or taxiing). With TDM on:
-- Those contacts draw too, so you can see aircraft on the ground and taxiing.
+- Nothing is filtered out: aircraft on the ground and taxiing draw, and the altitude filter is off, so traffic on a field below its floor shows too. Your altitude filter settings come back when you turn TDM off.
 - Airport surfaces (taxiway and runway pavement) draw under every other layer, at MAP B brightness. They cover the airports within the same radius DCB MAP uses for runways: 60 NM for APP, 30 NM for TWR, and the whole theatre for CTR.
 
 ## Mouse gestures
