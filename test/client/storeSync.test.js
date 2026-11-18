@@ -1,6 +1,6 @@
 import { describe, test, expect, afterEach } from 'vitest'
 import { createStore } from 'zustand/vanilla'
-import { syncStore, shallowEqual } from '../../client/src/utils/storeSync.js'
+import { syncStore, shallowEqual, setChannelIdentity, positionChannel } from '../../client/src/utils/storeSync.js'
 
 const settle = (ms = 150) => new Promise((r) => setTimeout(r, ms))
 
@@ -35,11 +35,12 @@ describe('shallowEqual', () => {
   })
 })
 
+// The sync mechanics, on the browser-wide channel (no position needed).
 describe('syncStore', () => {
   test('an unrelated store change does not post', async () => {
     const name = 'test-unrelated'
     const store = createStore(() => ({ picked: 1, other: 1 }))
-    syncStore(store, name, (s) => ({ picked: s.picked }))
+    syncStore(store, name, (s) => ({ picked: s.picked }), { global: true })
     const counts = counter([name])
     await settle()
     const before = counts[name]
@@ -63,14 +64,14 @@ describe('syncStore', () => {
     const main = createStore(initial)
     const mainOwnCh = channel(own)
     main.subscribe((s) => mainOwnCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: s.ownership } }))
-    syncStore(main, cs, (s) => ({ callsignOverrides: s.callsignOverrides }))
+    syncStore(main, cs, (s) => ({ callsignOverrides: s.callsignOverrides }), { global: true })
 
     const popups = [0, 1, 2].map(() => {
       const popup = createStore(initial)
       channel(own).onmessage = (e) => {
         if (e.data?.type === 'STATE_UPDATE') popup.setState({ ownership: e.data.state.ownership })
       }
-      syncStore(popup, cs, (s) => ({ callsignOverrides: s.callsignOverrides }))
+      syncStore(popup, cs, (s) => ({ callsignOverrides: s.callsignOverrides }), { global: true })
       return popup
     })
 
@@ -96,12 +97,62 @@ describe('syncStore', () => {
   test('REQUEST_STATE is always answered with the current slice', async () => {
     const name = 'test-request'
     const store = createStore(() => ({ picked: 7 }))
-    syncStore(store, name, (s) => ({ picked: s.picked }))
+    syncStore(store, name, (s) => ({ picked: s.picked }), { global: true })
     const replies = []
     const probe = channel(name)
     probe.onmessage = (e) => { if (e.data?.type === 'STATE_UPDATE') replies.push(e.data.state) }
     probe.postMessage({ type: 'REQUEST_STATE' })
     await settle()
     expect(replies).toEqual([{ picked: 7 }])
+  })
+})
+
+describe('position-scoped channels', () => {
+  afterEach(() => setChannelIdentity('', ''))
+
+  test('a window with no position yet (sign-in) syncs nothing', async () => {
+    const name = 'test-unsigned'
+    const store = createStore(() => ({ picked: 1 }))
+    syncStore(store, name, (s) => ({ picked: s.picked }))
+    const counts = counter([name])
+    store.setState({ picked: 2 })
+    await settle()
+    expect(counts[name]).toBe(0)
+  })
+
+  test('joins <channel>-<facility>-<position> once the position is set, and asks for state', async () => {
+    const name = 'test-scoped'
+    const store = createStore(() => ({ picked: 1 }))
+    syncStore(store, name, (s) => ({ picked: s.picked }))
+    const scoped = []
+    channel(`${name}-KXYZ-APP1`).onmessage = (e) => scoped.push(e.data.type)
+    const other = counter([`${name}-KXYZ-APP2`, name])
+    setChannelIdentity('KXYZ', 'APP1')
+    await settle()
+    store.setState({ picked: 2 })
+    await settle()
+    expect(scoped).toEqual(['REQUEST_STATE', 'STATE_UPDATE'])
+    expect(other[`${name}-KXYZ-APP2`]).toBe(0)
+    expect(other[name]).toBe(0)
+  })
+
+  test('another position never hears it', async () => {
+    const name = 'test-isolated'
+    setChannelIdentity('KXYZ', 'APP1')
+    const store = createStore(() => ({ picked: 1 }))
+    syncStore(store, name, (s) => ({ picked: s.picked }))
+    const foreign = channel(`${name}-KXYZ-APP2`)
+    foreign.postMessage({ type: 'STATE_UPDATE', state: { picked: 99 } })
+    await settle()
+    expect(store.getState().picked).toBe(1)
+  })
+
+  test('a hand-rolled positionChannel re-joins when the position changes', async () => {
+    const name = 'test-rejoin'
+    const opens = []
+    positionChannel(name, { onOpen: () => opens.push('open') })
+    setChannelIdentity('KXYZ', 'APP1')
+    setChannelIdentity('KXYZ', 'APP2')
+    expect(opens).toEqual(['open', 'open'])
   })
 })

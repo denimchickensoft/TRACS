@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { syncStore } from '../utils/storeSync.js'
+import { syncStore, positionChannel } from '../utils/storeSync.js'
 
 // Handoff states for a given unit
 export const HANDOFF_STATE = {
@@ -239,23 +239,27 @@ export const useAtcStore = create(
 // the one field a real bug (ASDE-X's FPE read-only check always seeing a
 // null myControllerId-owned-track comparison) actually depends on.
 const _isPopup    = !!new URLSearchParams(window.location.search).get('window')
-const _atcOwnerCh = new BroadcastChannel('tracs-atc-ownership')
+// Scoped to this position's own windows (utils/storeSync.js positionChannel).
 
 if (!_isPopup) {
+  const _atcOwnerCh = positionChannel('tracs-atc-ownership', {
+    onMessage: (e) => {
+      if (e.data?.type === 'REQUEST_STATE') _atcOwnerCh.post({ type: 'STATE_UPDATE', state: { ownership: useAtcStore.getState().ownership } })
+    },
+  })
   // Post only when ownership itself changed: this store also carries the
   // callsigns channel below, and posting on any change would echo that
   // channel's applies back to the popups indefinitely.
   useAtcStore.subscribe((state, prev) => {
-    if (state.ownership !== prev.ownership) _atcOwnerCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: state.ownership } })
+    if (state.ownership !== prev.ownership) _atcOwnerCh.post({ type: 'STATE_UPDATE', state: { ownership: state.ownership } })
   })
-  _atcOwnerCh.onmessage = (e) => {
-    if (e.data?.type === 'REQUEST_STATE') _atcOwnerCh.postMessage({ type: 'STATE_UPDATE', state: { ownership: useAtcStore.getState().ownership } })
-  }
 } else {
-  _atcOwnerCh.onmessage = (e) => {
-    if (e.data?.type === 'STATE_UPDATE') useAtcStore.setState({ ownership: e.data.state.ownership })
-  }
-  _atcOwnerCh.postMessage({ type: 'REQUEST_STATE' })
+  positionChannel('tracs-atc-ownership', {
+    onMessage: (e) => {
+      if (e.data?.type === 'STATE_UPDATE') useAtcStore.setState({ ownership: e.data.state.ownership })
+    },
+    onOpen: (ch) => ch.post({ type: 'REQUEST_STATE' }),
+  })
 }
 
 // ── Cross-window callsignOverrides sync ────────────────────────────────────

@@ -42,7 +42,8 @@ useUnitSystemStore.subscribe((state, prev) => {
 })
 
 if (typeof window !== 'undefined') {
-  syncStore(useUnitSystemStore, 'tracs-unit-system', pick)
+  // Browser-wide, like the localStorage it's saved to.
+  syncStore(useUnitSystemStore, 'tracs-unit-system', pick, { global: true })
 }
 
 export function useUnitSystem(module) {

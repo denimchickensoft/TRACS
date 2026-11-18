@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { fetchJson } from '../utils/fetchJson.js'
-import { shallowEqual } from '../utils/storeSync.js'
+import { shallowEqual, positionChannel } from '../utils/storeSync.js'
 
 /**
  * Controller registry.
@@ -306,20 +306,24 @@ export const useControllersStore = create((set, get) => ({
 // state. The correction path for main windows is STATE_DUMP → rebuildFromClientList,
 // not BroadcastChannel. Popups have no WebRTC and rely entirely on receiving.
 const _isPopup = !!new URLSearchParams(window.location.search).get('window')
-const _ctrlCh  = new BroadcastChannel('tracs-controllers')
+// Scoped to this position's own windows (utils/storeSync.js positionChannel).
 const _pick    = (s) => ({ registry: s.registry, groupAssignments: s.groupAssignments, nextGroupNumber: s.nextGroupNumber })
 
 if (!_isPopup) {
+  const _ctrlCh = positionChannel('tracs-controllers', {
+    onMessage: (e) => {
+      if (e.data?.type === 'REQUEST_STATE') _ctrlCh.post({ type: 'STATE_UPDATE', state: _pick(useControllersStore.getState()) })
+    },
+  })
   useControllersStore.subscribe((state, prev) => {
     const slice = _pick(state)
-    if (!shallowEqual(slice, _pick(prev))) _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: slice })
+    if (!shallowEqual(slice, _pick(prev))) _ctrlCh.post({ type: 'STATE_UPDATE', state: slice })
   })
-  _ctrlCh.onmessage = (e) => {
-    if (e.data?.type === 'REQUEST_STATE') _ctrlCh.postMessage({ type: 'STATE_UPDATE', state: _pick(useControllersStore.getState()) })
-  }
 } else {
-  _ctrlCh.onmessage = (e) => {
-    if (e.data?.type === 'STATE_UPDATE') useControllersStore.setState(e.data.state)
-  }
-  _ctrlCh.postMessage({ type: 'REQUEST_STATE' })
+  positionChannel('tracs-controllers', {
+    onMessage: (e) => {
+      if (e.data?.type === 'STATE_UPDATE') useControllersStore.setState(e.data.state)
+    },
+    onOpen: (ch) => ch.post({ type: 'REQUEST_STATE' }),
+  })
 }

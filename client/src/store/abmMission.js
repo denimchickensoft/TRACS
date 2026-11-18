@@ -16,7 +16,7 @@
 import { create } from 'zustand'
 import { resolveCallsign, stripAcid } from '../utils/callsign.js'
 import { createBroadcastHook } from '../utils/broadcastRegistry.js'
-import { shallowEqual } from '../utils/storeSync.js'
+import { shallowEqual, positionChannel } from '../utils/storeSync.js'
 import { mergeMissionFlights } from '../missionData/merge.js'
 import { getFlightLinks } from '../utils/flightLinks.js'
 import { useUnitsStore } from './units.js'
@@ -517,24 +517,25 @@ export const useAbmMissionStore = create((set, get) => ({
 // ── Cross-window sync (main window + undocked ATO/FRAG popups) ─────────────
 let _syncing = false
 
-const _ch = new BroadcastChannel('tracs-abm-mission')
+// Scoped to this position's own windows (utils/storeSync.js positionChannel).
+const _ch = positionChannel('tracs-abm-mission', {
+  onMessage: (e) => {
+    if (e.data?.type === 'STATE_UPDATE') {
+      _syncing = true
+      useAbmMissionStore.setState(e.data.state)
+      _syncing = false
+    } else if (e.data?.type === 'REQUEST_STATE') {
+      _ch.post({ type: 'STATE_UPDATE', state: serialize(useAbmMissionStore.getState()) })
+    }
+  },
+  onOpen: (ch) => ch.post({ type: 'REQUEST_STATE' }),
+})
 
 useAbmMissionStore.subscribe((state, prev) => {
   if (_syncing || shallowEqual(serialize(state), serialize(prev))) return
   try { localStorage.setItem(SB_KEY, JSON.stringify(serialize(state))) } catch {}
-  _ch.postMessage({ type: 'STATE_UPDATE', state: serialize(state) })
+  _ch.post({ type: 'STATE_UPDATE', state: serialize(state) })
 })
-
-_ch.onmessage = (e) => {
-  if (e.data?.type === 'STATE_UPDATE') {
-    _syncing = true
-    useAbmMissionStore.setState(e.data.state)
-    _syncing = false
-  } else if (e.data?.type === 'REQUEST_STATE') {
-    _ch.postMessage({ type: 'STATE_UPDATE', state: serialize(useAbmMissionStore.getState()) })
-  }
-}
-_ch.postMessage({ type: 'REQUEST_STATE' })
 
 // Apply an incoming WebRTC FRAG_IFF_SET/FRAG_MANUAL_FLIGHT_SET payload
 // (webrtc/handlers.js) without triggering re-broadcast — mirrors

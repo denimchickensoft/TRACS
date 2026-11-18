@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { shallowEqual } from '../utils/storeSync.js'
+import { shallowEqual, setChannelIdentity } from '../utils/storeSync.js'
 import { canonicalTheatre } from '../utils/theatreName.js'
 
 export const MODULE = {
@@ -385,5 +385,13 @@ if (typeof window !== 'undefined') {
     }
     useSessionStore.subscribe(_trySetup)
     _trySetup()
+    // Every other cross-window channel (utils/storeSync.js) joins this
+    // position's windows the same way, and leaves when it's cleared.
+    const _setIdentity = () => {
+      const { facilityId, positionName } = useSessionStore.getState()
+      setChannelIdentity(facilityId, positionName)
+    }
+    useSessionStore.subscribe(_setIdentity)
+    _setIdentity()
   }
 }
