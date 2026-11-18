@@ -254,3 +254,22 @@ describe('findAtoFlights flight split', () => {
     expect(volvo).toMatchObject({ flightId: 7, name: 'VOLVO1' })
   })
 })
+
+describe('findAtoFlights with numeric names', () => {
+  // A server mission stored some unit names as bare Lua numbers
+  // (`["name"] = -1`); parsing must not throw on them.
+  test('treats number names as text', () => {
+    const numeric = {
+      coalition: { blue: { country: [{ plane: { group: [{
+        groupId: 7, name: 12, task: 'CAP',
+        route: { points: [{ name: 3, x: 0, y: 0, alt: 1000, type: 'Turning Point' }] },
+        units: [{ unitId: 70, name: -1, type: 'F-15C' }, { unitId: 71, name: -2, type: 'F-15C' }],
+      }] } }] } },
+    }
+    const flights = findAtoFlights(numeric)
+    expect(flights.map((f) => f.units.map((u) => u.unitName))).toEqual([['-1'], ['-2']])
+    expect(flights[0]).toMatchObject({ groupName: '12', dcsGroupName: '12' })
+    expect(flights[0].route[0].name).toBe('3')
+    expect(splitUnitName(5)).toEqual({ base: '5', position: null })
+  })
+})

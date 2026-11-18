@@ -274,6 +274,11 @@ function firstWP(group) {
   return Array.isArray(pts) ? pts[0] : (pts['1'] ?? null)
 }
 
+// A name from the mission file as text. The Lua can hold a bare number
+// (`["name"] = -1`, seen on a server mission's unit names), which the
+// parser keeps as a number.
+const nameText = (v) => (v == null ? '' : String(v))
+
 function collectCarriers(mission) {
   const carriers = []
   for (const coaData of Object.values(mission.coalition ?? {})) {
@@ -315,7 +320,7 @@ export function findCarriersAndAircraft(mission) {
         for (const unit of toArray(group.units)) {
           aircraft.push({
             carrierUnitId,
-            callsign: (unit.name ?? '').replace(/[-\s]/g, '').toUpperCase(),
+            callsign: nameText(unit.name).replace(/[-\s]/g, '').toUpperCase(),
             type:     TYPE_ABBREV[unit.type] ?? (unit.type ?? '').slice(0, 4).toUpperCase(),
             modex:    String(unit.onboard_num ?? ''),
             task,
@@ -339,7 +344,7 @@ function buildRoute(group, theatre) {
   return toArray(group.route?.points).map((p) => {
     const ll = dcsPointToLatLng(p.x, p.y, theatre)
     return {
-      name:   p.name || null,  // DCS sometimes writes an explicit "" instead of omitting the key — both mean "unnamed"
+      name:   nameText(p.name) || null,  // DCS sometimes writes an explicit "" instead of omitting the key — both mean "unnamed"
       lat:    ll?.lat ?? null,
       lng:    ll?.lng ?? null,
       alt:    p.alt ?? null,
@@ -458,7 +463,7 @@ export function splitFlightId(coalition, groupId, base) {
 // "VOLVO-1", "F/A-18C Lot 20"): a single trailing number can't be told apart
 // from a flight number, so it never merges units.
 export function splitUnitName(name) {
-  const trimmed = (name ?? '').trim()
+  const trimmed = nameText(name).trim()
   const m = trimmed.match(/^(.*\d)[\s_-]+(\d+)$/)
   if (m) return { base: m[1], position: Number(m[2]) }
   return { base: trimmed, position: null }
@@ -479,7 +484,7 @@ function buildUnits(group, template) {
     // The unit name, not the DCS editor callsign: it is what live data
     // reports for the unit and is unique mission-wide, while editor
     // callsigns repeat and rarely mean anything.
-    unitName: (unit.name ?? '').trim(),
+    unitName: nameText(unit.name).trim(),
     position: splitUnitName(unit.name).position,
     type:     TYPE_ABBREV[unit.type] ?? (unit.type ?? '').slice(0, 4).toUpperCase(),
     rawType:  unit.type ?? '',
@@ -533,15 +538,15 @@ export function findAtoFlights(mission, { template = false } = {}) {
         const points = toArray(group.route?.points)
         const wp1 = firstWP(group)
         const route = buildRoute(group, theatre)
-        const groupId = template ? templateGroupId(coalition, group.name) : (group.groupId ?? null)
+        const groupId = template ? templateGroupId(coalition, nameText(group.name)) : (group.groupId ?? null)
 
         const shared = {
           ...(template && { source: 'stm', templateName: mission.name ?? null }),
           coalition,
           dcsGroupId:     template ? null : (group.groupId ?? null),
-          groupName:      (group.name ?? '').trim(),
+          groupName:      nameText(group.name).trim(),
           // As written, spaces and all: group names can differ only by them.
-          dcsGroupName:   group.name ?? '',
+          dcsGroupName:   nameText(group.name),
           task:           TASK_ABBREV[task] ?? (task ?? '').slice(0, 6).toUpperCase(),
           rawTask:        task,
           frequency:      group.frequency ?? null,
@@ -559,11 +564,11 @@ export function findAtoFlights(mission, { template = false } = {}) {
         // (splitUnitName); a group never merges with another.
         const byBase = new Map()
         for (const unit of buildUnits(group, template)) {
-          const key = flightKeyOf(splitUnitName(unit.unitName).base) || flightKeyOf(group.name ?? '')
+          const key = flightKeyOf(splitUnitName(unit.unitName).base) || flightKeyOf(nameText(group.name))
           if (!byBase.has(key)) byBase.set(key, [])
           byBase.get(key).push(unit)
         }
-        if (byBase.size === 0) byBase.set(flightKeyOf(group.name ?? ''), [])
+        if (byBase.size === 0) byBase.set(flightKeyOf(nameText(group.name)), [])
         for (const [key, units] of byBase) {
           flights.push({
             flightId: byBase.size === 1 ? groupId : splitFlightId(coalition, groupId, key),
