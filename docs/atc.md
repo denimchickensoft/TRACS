@@ -189,7 +189,7 @@ Direction digits follow a numpad layout: `7`=NW `8`=N `9`=NE `4`=W `5`=clear/def
 | `.RCLEAR` + ENTER | — | Clear every flight-plan route line currently displayed (see Ctrl+Right-click below) |
 | `.FP <callsign>` + ENTER | — | Open the Flight Plan Editor prefilled for that callsign |
 | `.FP` + ENTER | `Ctrl+F` | Open a blank Flight Plan Editor |
-| `.RENAME <newCallsign>` + SLEW | — | Rename the clicked track's displayed callsign |
+| `.RENAME <newCallsign>` + SLEW | — | Rename the clicked track's displayed callsign. Only the name shown changes: its flight plan keeps its AID |
 | `.RENAME` + SLEW | — | Reset callsign to the DCS-assigned one |
 | `.NOTE <text>` / `.NOTE* <text>` + SLEW, `.NOTE` + SLEW, `.NOTES` + ENTER | — | Put a note on the scope, remove one, or remove all (see [Notes](getting-started.md#notes)) |
 
@@ -216,13 +216,27 @@ When SRS transponder data reaches TRACS through a relay (in Olympus, Tacview or 
 
 | Item | Effect |
 |---|---|
-| **Association** | An SRS-fielded track is *associated* when its squawk matches a filed flight plan's callsign and code, and *unassociated* otherwise. Once associated, it stays associated if the code later drifts (see the mismatch line). Unassociated tracks can't be claimed |
+| **Association** | An SRS-fielded track is *associated* when it squawks the code of its own flight plan (see [Mission flight plans and players](#mission-flight-plans-and-players) for which plan that is), and *unassociated* otherwise. Once associated, it stays associated if the code later drifts (see the mismatch line). Unassociated tracks can't be claimed |
 | **Primary-only** | An SRS-fielded track with no live squawk draws as a primary target with no datablock |
 | **Unassociated LDB** | Altitude only. The beacon code shows on the line above it while IDENTing, squawking an SPC, under the beaconator, during a selected-code display, or when turned on with `MF B` (all LDBs: `MF B` / `MF BE` / `MF BI` + ENTER; one track: `MF B` + SLEW). Slewing the track opens a full LDB for 5 seconds: code, altitude and groundspeed, and its callsign |
 | **Position symbols** | An owned, associated track shows its owner's position letter. An unassociated track squawking 1200 shows `V`. Every other track shows `*` |
 | **FDB mismatch line** | If an associated track's live squawk differs from its flight plan's assigned code, FDB line 3 shows the reported code and the flashing assigned code. SPC squawks don't count as a mismatch |
 | **IDENT** | A pilot's IDENT press appends a blinking "ID" to the datablock (only the suffix blinks), latched until you acknowledge it with a slew on that track |
 | **Beaconator** | Press and hold `F1`. Every squawking SRS-fielded associated track shows an FDB with its beacon code in place of the aircraft ID, including tracks you own. Every LDB shows its code, with the callsign underneath. The altitude filter still applies. Release to return to normal |
+
+## Mission flight plans and players
+
+Flight plans loaded from the mission (Strip Bay import or [Live mission data](getting-started.md#live-mission-data)) are filed under each aircraft's unit name: slot `RMD-5-1` files as `RMD51`, and keeps that AID. A name longer than 13 characters keeps its slot digits and is cut before them (`Akrotiri Hornet-3` files as `AKROTIRIHORN3`); if two slots would still share an AID, the later one has a letter swapped (`AKROTIRIHORA3`). Every controller gets the same AIDs from the same mission. When a player flies the slot as `MALLET 3-1 | Pilot`, TRACS links the track to the plan the same way the ABM ATO does:
+
+- **Olympus and the DCS exporter host** know the exact slot.
+- **The exporter client and Tacview** only know the player's group, so the slot is guessed from the callsign digit (`MALLET 3-1` → the group's first aircraft). With SRS, the squawk decides: the track associates with the plan in its own group whose code it squawks, so a player in `RMD-5-2` squawking RMD52's code gets RMD52 whatever their callsign says. A code from another group never associates. Without SRS, the guessed slot is used.
+- AI aircraft link by unit name on every source.
+
+A plan associates with one track at a time. An owned track keeps its plan, and two tracks squawking the same plan's code get neither until only one does.
+
+Once associated, the strip, the lists and the Flight Plan Editor show the track's callsign (`MALLET31`, or its `.RENAME`): hover the strip's AID for `MALLET31 · RMD51`, and the editor shows `RMD51` next to its AID label. Changes save to `RMD51`. Typing `MALLET31` or `RMD51` in the editor opens the same plan. When the player leaves, everything shows `RMD51` again.
+
+Any other plan matches the track whose callsign it's filed under, or the track you tie it to: **Ctrl+Click** the track and save the plan in the Flight Plan Editor. With SRS, the squawk must match either way.
 
 ## Flight plan creation
 
@@ -434,7 +448,7 @@ A ground-movement sub-scope showing surface traffic (aircraft/helicopters below 
 | `.COLORS <name>` + ENTER | Switch color profile (e.g. Day/Night) |
 | `<d>` (1–9) + SLEW | Set/clear a contact's leader-line direction (`5` clears) |
 | `.TAG <id>` + SLEW | Manually tag a target: type the aircraft ID, then click the target. The ID must match the callsign TRACS displays for that aircraft; a mismatch returns `ILL TRK` |
-| `.RENAME <newCallsign>` + SLEW | Rename the clicked aircraft's displayed callsign (shared with STARS) |
+| `.RENAME <newCallsign>` + SLEW | Rename the clicked aircraft's displayed callsign (shared with STARS). Its flight plan keeps its AID |
 | `.RENAME` + SLEW | Reset callsign to the DCS-assigned one |
 | `.NOTE <text>` / `.NOTE* <text>` + SLEW, `.NOTE` + SLEW, `.NOTES` + ENTER | Put a note on the scope, remove one, or remove all (see [Notes](getting-started.md#notes)) |
 | `MF Y`, click target, `<text>` + ENTER | Set the aircraft's scratchpad 1 (up to 7 letters/digits; empty clears it) |

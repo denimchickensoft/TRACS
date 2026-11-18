@@ -9,6 +9,7 @@ import { dispatchOpenFpe } from '../../utils/commandChannel.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
 import { FlightPlanImport }     from '../FlightPlanImport/FlightPlanImport.jsx'
 import { AID_MAX_LEN } from '../../utils/callsign.js'
+import { usePlanLabels } from '../../utils/usePlanLabels.js'
 import './StripBay.css'
 
 const SORT_OPTIONS = [
@@ -20,14 +21,26 @@ const SORT_OPTIONS = [
 ]
 
 // ── Sort comparators ──────────────────────────────────────────────────────────
-function sortStrips(strips, plans, plansByUnitId, sortBy) {
-  function getPlan(strip) {
-    return (strip.unitId != null ? plansByUnitId[String(strip.unitId)] : null) ?? plans[strip.aid] ?? null
-  }
+// A strip's AID is its plan's key (a .rename changes only what is shown), so
+// the plan under that key comes first; the unit link covers a strip whose
+// plan was filed under another AID before it was tied to the contact.
+function stripPlan(strip, plans, plansByUnitId) {
+  return plans[strip.aid] ?? (strip.unitId != null ? plansByUnitId[String(strip.unitId)] : null) ?? null
+}
+
+// What a strip shows: the associated contact's callsign (MALLET31 for the
+// mission plan RMD51), else its AID.
+function stripLabel(strip, plan, labels) {
+  return labels[plan?.aid ?? strip.aid] ?? strip.aid
+}
+
+function sortStrips(strips, plans, plansByUnitId, labels, sortBy) {
+  const getPlan = (strip) => stripPlan(strip, plans, plansByUnitId)
+  const label = (strip) => stripLabel(strip, getPlan(strip), labels)
   if (sortBy === 'manual') return strips  // preserve stripIds order
   return [...strips].sort((a, b) => {
     switch (sortBy) {
-      case 'aid':  return a.aid.localeCompare(b.aid)
+      case 'aid':  return label(a).localeCompare(label(b))
       case 'dep':  return (getPlan(a)?.dep ?? '').localeCompare(getPlan(b)?.dep ?? '')
       case 'dest': return (getPlan(a)?.dest ?? '').localeCompare(getPlan(b)?.dest ?? '')
       default:     return a.createdAt - b.createdAt  // 'time'
@@ -150,7 +163,7 @@ function StripContextMenu({ x, y, strip, onClose }) {
 }
 
 // ── Single strip ──────────────────────────────────────────────────────────────
-function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onDragEnd, onDrop, onContextMenu, onDoubleClick }) {
+function Strip({ strip, plan, displayAid, aidTitle, dragOver, onDragStart, onDragOver, onDragEnd, onDrop, onContextMenu, onDoubleClick }) {
   const acknowledgeStrip = useStripsStore((s) => s.acknowledgeStrip)
   const deleteStrip      = useStripsStore((s) => s.deleteStrip)
 
@@ -186,7 +199,7 @@ function Strip({ strip, plan, displayAid, dragOver, onDragStart, onDragOver, onD
     >
       {/* Col 1: AID / TYP/EQ / CID */}
       <div className="sb-col">
-        <div className="sb-cell sb-aid">{displayAid}</div>
+        <div className="sb-cell sb-aid" title={aidTitle}>{displayAid}</div>
         <div className="sb-cell sb-dim">
           {plan?.typ ?? ''}{plan?.eq ? `/${plan.eq}` : ''}
         </div>
@@ -420,6 +433,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   const removePlan  = useFlightPlansStore((s) => s.remove)
   // Subscribe so re-render fires when the toggle flips
   useSessionStore((s) => s.useDcsNames)
+  const labels = usePlanLabels()
 
   const plansByUnitId = useMemo(() => {
     const idx = {}
@@ -464,7 +478,7 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
   }
 
   const bayStrips = bay.stripIds.map((id) => strips[id]).filter(Boolean)
-  const sorted    = sortStrips(bayStrips, plans, plansByUnitId, bay.sortBy)
+  const sorted    = sortStrips(bayStrips, plans, plansByUnitId, labels, bay.sortBy)
 
   const handleOpenFpe = useCallback((strip) => {
     // No scope: the main window opens it on whichever ODS is showing (STARS or ASDE-X)
@@ -586,16 +600,16 @@ export function StripBay({ onClose, standalone = false, docked = false, width, o
           <div className="sb-empty">No strips</div>
         )}
         {sorted.map((strip) => {
-          const displayAid = strip.aid
-          const plan       = (strip.unitId != null ? plansByUnitId[String(strip.unitId)] : null)
-                             ?? plans[strip.aid]
-                             ?? null
+          const plan       = stripPlan(strip, plans, plansByUnitId)
+          const displayAid = stripLabel(strip, plan, labels)
+          const planAid    = plan?.aid ?? strip.aid
           return (
             <Strip
               key={strip.id}
               strip={strip}
               plan={plan}
               displayAid={displayAid}
+              aidTitle={displayAid !== planAid ? `${displayAid} · ${planAid}` : undefined}
               dragOver={dragOverId === strip.id}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}

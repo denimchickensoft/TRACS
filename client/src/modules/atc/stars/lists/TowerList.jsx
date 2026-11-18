@@ -5,6 +5,8 @@ import { useSessionStore }      from '../../../../store/session.js'
 import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }          from '../../../../store/ods.js'
 import { ListPanel }            from './ListPanel.jsx'
+import { useAssociationStore }  from '../../../../store/association.js'
+import { usePlanLabels }        from '../../../../utils/usePlanLabels.js'
 import { EARTH_RADIUS_NM } from '../../../../utils/units.js'
 
 const WINDOW_ID = 'atc-main'
@@ -21,6 +23,8 @@ function distanceNm(lat1, lng1, lat2, lng2) {
 function TowerListPanel({ idx }) {
   const plans          = useFlightPlansStore((s) => s.plans)
   const units          = useUnitsStore((s) => s.units)
+  const associated     = useAssociationStore((s) => s.associated)
+  const labels         = usePlanLabels()
   const airbases       = useSessionStore((s) => s.airbases)
   const facilityId     = useSessionStore((s) => s.facilityId)
   const windowSettings = useDisplayStore((s) => s.windows[WINDOW_ID])
@@ -36,18 +40,22 @@ function TowerListPanel({ idx }) {
 
   const rows = useMemo(() => {
     if (!airport) return []
+    // The contact each plan is bound to: by association, else an FPE tie.
+    const unitOf = {}
+    for (const [uid, aid] of Object.entries(associated)) unitOf[aid] = uid
+    for (const p of Object.values(plans)) if (p.unitId != null && !unitOf[p.aid]) unitOf[p.aid] = String(p.unitId)
     return Object.values(plans)
-      .filter((p) => p.unitId !== null && p.dest?.toUpperCase() === facilityId?.toUpperCase())
+      .filter((p) => unitOf[p.aid] && p.dest?.toUpperCase() === facilityId?.toUpperCase())
       .map((p) => {
-        const unit = units[p.unitId]
+        const unit = units[unitOf[p.aid]]
         const dist = (unit?.position && airport)
           ? distanceNm(unit.position.lat, unit.position.lng, airport.latitude, airport.longitude)
           : Infinity
         return { p, dist }
       })
       .sort((a, b) => a.dist - b.dist)
-      .map(({ p }) => `${p.aid.padEnd(10)} ${(p.typ || '----').padEnd(6)}`)
-  }, [plans, units, airport, facilityId])
+      .map(({ p }) => `${(labels[p.aid] ?? p.aid).padEnd(10)} ${(p.typ || '----').padEnd(6)}`)
+  }, [plans, units, associated, labels, airport, facilityId])
 
   if (!windowSettings || !activeProfile) return null
 

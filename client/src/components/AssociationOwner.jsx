@@ -7,6 +7,7 @@ import { useAtcStore }         from '../store/atc.js'
 import { useAbmMissionStore }  from '../store/abmMission.js'
 import { computeAssociations } from '../modules/atc/shared/associationEngine.js'
 import { dcsUnitIdReliable }   from '../utils/callsign.js'
+import { getPlanLinks }        from '../utils/planLinks.js'
 
 // Renders nothing. Owns the two computations that watch every unit update:
 // transponder-based association and IDENT onset detection. They live in
@@ -23,9 +24,10 @@ export function AssociationOwner() {
   const sourceTypeForAssoc = useSessionStore((s) => s.sourceType)
   useEffect(() => {
     const previous = useAssociationStore.getState().associated
+    const links = getPlanLinks(plansForAssoc, unitsForAssoc)
     const next = computeAssociations({
       units: unitsForAssoc, flightPlans: plansForAssoc, ownership: ownershipForAssoc, previousAssociated: previous,
-      dcsUnitIdReliable: dcsUnitIdReliable(),
+      dcsUnitIdReliable: dcsUnitIdReliable(), planLink: links.linkOf,
     })
     useAssociationStore.getState().setAssociated(next)
   }, [unitsForAssoc, plansForAssoc, ownershipForAssoc, sourceTypeForAssoc])

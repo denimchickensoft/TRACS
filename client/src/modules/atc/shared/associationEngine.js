@@ -6,15 +6,27 @@
 // This only decides when the controller is allowed to see it, by requiring
 // the live squawk to match the plan's assigned code too.
 //
-// Matches purely on live callsign + code — NOT on store/flightPlans.js's
-// plan.unitId. That field is only ever populated via the FPE's ctrl-click
-// flow; a plan typed directly into StripBay's callsign box (a normal, very
-// common way to add a strip) never gets one, and would otherwise be
-// permanently unassociatable no matter how well its code/callsign matched.
+// Candidates, most to least specific, each still needing the squawk to
+// match the plan's code: the plan filed under the live callsign; a plan the
+// controller tied to this contact (FPE save after a Ctrl+Click, `plan.unitId`);
+// the mission plan by DCS unit ID; and the mission plan the contact is
+// linked to (utils/planLinks.js). An exact link offers only its own plan; a
+// guessed one (a player on the exporter client or Tacview, placed by the
+// digit of their MP callsign) offers every plan of the contact's own DCS
+// group, so the squawk picks the slot. A squawk never reaches a plan outside
+// the contact's group that way.
 //
-// Also tries a plan's `dcsUnitId` (set by .miz import) against the live
-// unit's `unitID` when the callsign match fails — the only way to associate
-// a single-ship AI group, whose live callsign never carries the mission
+// With no transponder data for a unit (no SRS relay), there is no squawk:
+// it associates on identity alone, a guessed link with its guessed slot.
+//
+// A plan associates with one contact at a time: one held by an owned track
+// isn't taken over, and two new contacts squawking the same plan's code get
+// neither until only one does.
+//
+// The DCS unit ID tier tries a plan's `dcsUnitId` (set by .miz import)
+// against the live unit's `unitID`. It still matters for plans filed before
+// they carried their mission slot: it is how a single-ship AI group
+// associates, whose live callsign never carries the mission
 // file's true disambiguating digit (see utils/callsign.js findFlightPlanAid
 // for the full story). Gated by the caller-supplied `dcsUnitIdReliable` flag
 // rather than reading it here, to keep this module free of store imports
@@ -23,7 +35,7 @@
 // against Tacview-sourced unit IDs (a real false-positive-match risk, not
 // just an ineffective no-op).
 
-import { resolveCallsign, AID_MAX_LEN } from '../../../utils/callsign.js'
+import { resolveCallsign, resolveOriginalCallsign, AID_MAX_LEN } from '../../../utils/callsign.js'
 import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
 
 // Every AID-entry point (FPE, StripBay's add-strip box, imports) caps at
@@ -38,11 +50,13 @@ import { hasLiveSquawk, normalizeCode } from '../../../utils/transponder.js'
  * @param {boolean} dcsUnitIdReliable  whether live unit IDs can be trusted against plan.dcsUnitId
  *   this session (utils/callsign.js's dcsUnitIdReliable() — true only for a direct Olympus
  *   connection). Passed in rather than read here to keep this module store-free.
+ * @param {Function} planLink     unitId -> { aid, exact, groupAids } | null (utils/planLinks.js)
  * @returns {Object} next { [unitId]: aid } — sticky-while-owned, sparse (only associated entries present)
  */
-export function computeAssociations({ units, flightPlans, ownership = {}, previousAssociated = {}, dcsUnitIdReliable = false }) {
+export function computeAssociations({ units, flightPlans, ownership = {}, previousAssociated = {}, dcsUnitIdReliable = false, planLink = () => null }) {
   const next = {}
   const plans = Object.values(flightPlans ?? {})
+  const taken = new Set()
 
   // Retain existing associations — but stickiness (teardown only on flight-
   // plan removal or the unit dying) only applies while the track is
@@ -55,46 +69,59 @@ export function computeAssociations({ units, flightPlans, ownership = {}, previo
     if (!units[unitId]) continue      // unit dead/despawned
     if (!flightPlans?.[aid]) continue // flight plan removed
     if (!ownership[unitId]) continue  // not owned — don't stick, re-derive below
+    if (taken.has(aid)) continue
     next[unitId] = aid
+    taken.add(aid)
   }
 
   // Look for newly-qualifying associations — double gate, mirroring CRC's
-  // own rule verbatim (code match AND callsign-matches-AID), which closes
-  // the duplicate/borrowed-code case: TRACS's callsign side is ground
+  // own rule (code match AND the plan is this aircraft's), which closes
+  // the duplicate/borrowed-code case: TRACS's identity side is ground
   // truth, not self-reported, so this is free correctness CRC doesn't have.
+  const claims = new Map() // aid -> [unitId]
   for (const [unitId, unit] of Object.entries(units)) {
     if (next[unitId]) continue // already associated, retained above
-    if (!unit?.srsCapable) continue // no real transponder data for this unit
-    if (!hasLiveSquawk(unit)) continue // standby, or status normal/ident with no mode3 code set — nothing to match yet
-    const squawk = unit.transponder.mode3
-    const liveCallsign = resolveCallsign(unit).toUpperCase()
+    // A unit with no transponder data (no SRS relay) has no squawk to
+    // confirm anything, so it associates on identity alone; one with
+    // transponder data needs its code to match.
+    const transponder = !!unit?.srsCapable
+    if (transponder && !hasLiveSquawk(unit)) continue // standby, or status normal/ident with no mode3 code set — nothing to match yet
+    const code = transponder ? normalizeCode(unit.transponder.mode3) : null
 
-    let candidate = null
-    for (const plan of plans) {
-      const planAid = plan.aid?.toUpperCase()
-      if (!planAid) continue
-      // Must equal the canonical (truncated) form, not just any shorter
-      // valid prefix — a partial abbreviation like "DENIMCH" isn't this
-      // aircraft's identifier, it's a different, incomplete one. Truncated
-      // rather than exact-equals because resolveCallsign() doesn't truncate
-      // a long DCS unit/pilot name (e.g. "Denim Chicken" -> "DENIMCHICKEN")
-      // itself, and the AID field can't hold more than AID_MAX_LEN anyway.
-      if (planAid !== liveCallsign.slice(0, AID_MAX_LEN)) continue
-      candidate = plan
-      break
+    const candidates = []
+    // Must equal the canonical (truncated) form, not just any shorter
+    // valid prefix — a partial abbreviation like "DENIMCH" isn't this
+    // aircraft's identifier, it's a different, incomplete one. Truncated
+    // rather than exact-equals because resolveCallsign() doesn't truncate
+    // a long DCS unit/pilot name (e.g. "Denim Chicken" -> "DENIMCHICKEN")
+    // itself, and the AID field can't hold more than AID_MAX_LEN anyway.
+    // Both the shown callsign and the one under any .rename: a rename only
+    // changes what is displayed, never which plan is the aircraft's.
+    for (const name of [resolveCallsign(unit), resolveOriginalCallsign(unit)]) {
+      const cs = name?.toUpperCase().slice(0, AID_MAX_LEN)
+      if (cs && flightPlans?.[cs] && !candidates.includes(cs)) candidates.push(cs)
     }
-
-    // Callsign match found nothing -- try the mission-file DCS unit ID
-    // instead (single-ship AI groups only ever resolve this way; see the
-    // header comment). The squawk gate below still applies exactly the same
-    // to whichever candidate was found.
-    if (!candidate && dcsUnitIdReliable && unit.unitID != null) {
-      candidate = plans.find((p) => p.dcsUnitId != null && String(p.dcsUnitId) === String(unit.unitID)) ?? null
+    for (const p of plans) {
+      if (p.unitId != null && String(p.unitId) === unitId) candidates.push(p.aid)
     }
+    if (dcsUnitIdReliable && unit.unitID != null) {
+      const byId = plans.find((p) => p.dcsUnitId != null && String(p.dcsUnitId) === String(unit.unitID))
+      if (byId) candidates.push(byId.aid)
+    }
+    // A guessed link offers its whole group to a squawk, which picks the
+    // slot; with no squawk, only the guessed slot itself.
+    const link = planLink(unitId)
+    if (link) candidates.push(...(link.exact || !transponder ? [link.aid] : link.groupAids))
 
-    if (!candidate) continue
-    if (normalizeCode(squawk) !== normalizeCode(candidate.bcn)) continue
-    next[unitId] = candidate.aid?.toUpperCase()
+    const aid = candidates.find((a) =>
+      !taken.has(a) && flightPlans[a] && (!transponder || normalizeCode(flightPlans[a].bcn) === code))
+    if (!aid) continue
+    if (!claims.has(aid)) claims.set(aid, [])
+    claims.get(aid).push(unitId)
+  }
+
+  for (const [aid, claimants] of claims) {
+    if (claimants.length === 1) next[claimants[0]] = aid
   }
 
   return next

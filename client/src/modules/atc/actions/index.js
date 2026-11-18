@@ -80,7 +80,7 @@ function resolveFlid(flid) {
     return { aid, unitId: unit ? String(unitId) : null, unit }
   }
   const unitForAid = (aid) =>
-    plans[aid]?.unitId ?? Object.keys(associated).find((uid) => associated[uid] === aid) ?? null
+    Object.keys(associated).find((uid) => associated[uid] === aid) ?? plans[aid]?.unitId ?? null
 
   if (plans[key]) return withUnit(key, unitForAid(key))
 
@@ -100,7 +100,12 @@ function resolveFlid(flid) {
   const uid = Object.keys(units).find(
     (id) => resolveCallsign(units[id])?.toUpperCase().slice(0, AID_MAX_LEN) === key
   )
-  if (uid) return withUnit(null, uid)
+  if (uid) {
+    // A live callsign can name a plan filed under another AID: a mission
+    // plan keyed by its unit name (RMD51) flown by a player as MALLET31.
+    const aid = findFlightPlanAid(units[uid], plans)
+    return withUnit(plans[aid] ? aid : null, uid)
+  }
   return { aid: null, unitId: null, unit: null }
 }
 

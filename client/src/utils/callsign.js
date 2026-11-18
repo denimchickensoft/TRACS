@@ -1,5 +1,8 @@
 import { useAtcStore }     from '../store/atc'
 import { useSessionStore } from '../store/session'
+import { useAssociationStore } from '../store/association.js'
+import { useUnitsStore }   from '../store/units.js'
+import { getPlanLinks }    from './planLinks.js'
 import { callsignFromDcsName, parseUnitName, stripAcid } from './callsignShape.js'
 
 // stripAcid is exported for manually-added ATO flights (Ato.jsx/Frag.jsx),
@@ -76,45 +79,79 @@ export function dcsUnitIdReliable() {
 }
 
 /**
- * Finds the AID of a flight plan already filed for this unit. Three tiers,
- * most to least reliable:
+ * Finds the AID of the flight plan for this unit, most to least reliable:
  *
- *   1. DCS's own internal unit ID (only when dcsUnitIdReliable(), see
- *      above): Olympus's live `unitID` field reliably matches the mission
- *      file's per-unit `unitId`. A .miz-imported flight plan carries this
- *      as `dcsUnitId` (see mizFlightPlans.js). This is the ONLY tier that
- *      can rescue a single-ship AI group: confirmed against a real live
- *      payload that Olympus's `unitName` AND `callsign` both just report
- *      the bare unit name ("Texaco 2") for a solo group -- the mission
- *      file's true callsign ("Texaco21") simply never reaches live
- *      telemetry as a string at all, so no string-based tier could ever
- *      find it.
- *   2. resolveCallsign(unit) (today's behavior, unchanged) -- the common
- *      case: multi-ship groups (unitName already carries a "-N" element
- *      suffix) and piped multiplayer names ("Colt 1-1 | Denim" -> "COLT11")
- *      both already match on their own.
- *   3. stripAcid(unit.callsign), kept as a harmless last resort in case
- *      some other data source or unit type ever does expose a distinct
- *      callsign field (confirmed NOT to for the AI case above, but not
- *      disproven universally).
+ *   1. The plan it is associated with (associationEngine.js: identity plus
+ *      a squawk matching the plan's code).
+ *   2. The plan filed under its live callsign, resolveCallsign(unit), or
+ *      under the callsign beneath any .rename: plans typed by hand,
+ *      multi-ship groups whose unit names carry the element, piped MP names
+ *      ("Colt 1-1 | Denim" -> "COLT11").
+ *   3. A plan the controller tied to it (FPE save after a Ctrl+Click on it,
+ *      `plan.unitId`).
+ *   4. DCS's own internal unit ID (only when dcsUnitIdReliable(), see
+ *      above) against a .miz plan's `dcsUnitId` (mizFlightPlans.js): how a
+ *      single-ship AI group, whose live name lacks the mission file's
+ *      disambiguating digit, finds its plan.
+ *   5. The mission plan it is linked to (utils/planLinks.js): exact for
+ *      Olympus, the exporter host and AI; for a player on the exporter
+ *      client or Tacview the slot is a guess from the MP callsign digit,
+ *      which the squawk confirms or corrects at association (tier 1).
+ *   6. stripAcid(unit.callsign), a harmless last resort.
  *
- * Strictly additive at every tier: never overrides an already-matching
- * earlier tier, so it can't affect a case that already works.
+ * With no plan at all, returns the live callsign, the AID a new plan for
+ * this contact is filed under.
  */
 export function findFlightPlanAid(unit, plans) {
+  const key = String(unit.id)
+  const associated = useAssociationStore.getState().associated[key]
+  if (associated && plans[associated]) return associated
+
+  // Truncated to AID_MAX_LEN so a long live callsign resolves to the same
+  // key the FPE/Strip Bay would have filed it under.
+  const primary = resolveCallsign(unit)?.toUpperCase().slice(0, AID_MAX_LEN)
+  if (primary && plans[primary]) return primary
+  // The callsign under any .rename: a rename changes only what is shown.
+  const original = resolveOriginalCallsign(unit)?.toUpperCase().slice(0, AID_MAX_LEN)
+  if (original && plans[original]) return original
+
+  const tied = Object.values(plans).find((p) => p.unitId != null && String(p.unitId) === key)
+  if (tied) return tied.aid
+
   if (unit.unitID != null && dcsUnitIdReliable()) {
     const byDcsId = Object.values(plans).find(
       (p) => p.dcsUnitId != null && String(p.dcsUnitId) === String(unit.unitID)
     )
     if (byDcsId) return byDcsId.aid
   }
-  // Truncated to AID_MAX_LEN so a long live callsign resolves to the same
-  // key the FPE/Strip Bay would have filed it under.
-  const primary = resolveCallsign(unit)?.toUpperCase().slice(0, AID_MAX_LEN)
-  if (primary && plans[primary]) return primary
+
+  const linked = getPlanLinks(plans, useUnitsStore.getState().units).linkOf(key)
+  if (linked && plans[linked.aid]) return linked.aid
+
   const fallback = stripAcid(unit.callsign ?? '').slice(0, AID_MAX_LEN)
   if (fallback && plans[fallback]) return fallback
   return primary ?? fallback ?? null
+}
+
+/**
+ * What the controller sees for a flight plan: the callsign of the contact
+ * associated with it (the datablock's, so a .rename shows too), else the
+ * plan's own AID. A mission plan stays keyed by its unit name (RMD51) while
+ * a player flies it as MALLET31.
+ *
+ * @param {Object} associated  { [unitId]: aid } (useAssociationStore)
+ * @param {Object} units       live units keyed by id
+ * @returns {Object} { [aid]: label } for associated plans only
+ */
+export function planLabels(associated, units) {
+  const labels = {}
+  for (const [uid, aid] of Object.entries(associated ?? {})) {
+    const unit = units?.[uid]
+    if (!unit) continue
+    const cs = resolveCallsign(unit)?.toUpperCase()
+    if (cs) labels[aid] = cs
+  }
+  return labels
 }
 
 /**

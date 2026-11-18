@@ -56,13 +56,22 @@ export const AREAS = [
       const plans = await mapMizFlightPlans(found, ctx.mission?.theatre ?? null)
       const filed = useFlightPlansStore.getState().plans
       const seen = new Set()
-      const items = plans.filter((p) => {
+      const items = []
+      // Mission plans filed before plans carried their mission slot (from a
+      // saved session or another controller's room) gain just that slot, so
+      // they link to their aircraft; nothing else on them changes.
+      const links = []
+      for (const p of plans) {
         const aid = p.aid?.toUpperCase()
-        if (!aid || filed[aid] || seen.has(aid)) return false
+        if (!aid || seen.has(aid)) continue
         seen.add(aid)
-        return true
-      })
-      return { count: items.length, items, summary: plural(items.length, 'flight plan') }
+        if (!filed[aid]) items.push(p)
+        else if (filed[aid].source === p.source && !filed[aid].mission) links.push({ aid, mission: p.mission })
+      }
+      const parts = []
+      if (items.length) parts.push(plural(items.length, 'flight plan'))
+      if (links.length) parts.push(`mission slots for ${plural(links.length, 'filed plan')}`)
+      return { count: items.length + links.length, items, links, summary: parts.join(', ') }
     },
     apply(d) {
       for (const plan of d.items) {
@@ -72,6 +81,13 @@ export const AREAS = [
         // The record as this controller filed it, CID and beacon code
         // included, so every controller holds the same ones.
         sendWebrtcEvent('FLIGHT_PLAN_CREATE', useFlightPlansStore.getState().plans[aid])
+      }
+      for (const { aid, mission } of d.links ?? []) {
+        const plan = useFlightPlansStore.getState().plans[aid]
+        if (!plan || plan.mission) continue
+        useFlightPlansStore.getState().update(aid, { mission })
+        // Only the slot, so it can't overwrite another controller's edit.
+        sendWebrtcEvent('FLIGHT_PLAN_AMEND', { aid, mission })
       }
     },
   },

@@ -4,6 +4,7 @@ import { useStarsAlertsStore } from '../../../../store/starsAlerts.js'
 import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }         from '../../../../store/ods.js'
 import { resolveCallsign }     from '../../../../utils/callsign.js'
+import { usePlanLabels }       from '../../../../utils/usePlanLabels.js'
 import { ListPanel }           from './ListPanel.jsx'
 
 const WINDOW_ID = 'atc-main'
@@ -14,6 +15,7 @@ const WINDOW_ID = 'atc-main'
  */
 export function MciSuppressionList() {
   const plans          = useFlightPlansStore((s) => s.plans)
+  const labels         = usePlanLabels()
   const units          = useUnitsStore((s) => s.units)
   const trackSuppressed = useStarsAlertsStore((s) => s.trackMciSuppressed)
   const windowSettings = useDisplayStore((s) => s.windows[WINDOW_ID])
@@ -33,7 +35,7 @@ export function MciSuppressionList() {
   const rows = [
     ...Object.values(plans)
       .filter((p) => p.mciSuppressedCode)
-      .map((p) => `${p.aid.padEnd(10)} ${p.mciSuppressedCode}`),
+      .map((p) => `${(labels[p.aid] ?? p.aid).padEnd(10)} ${p.mciSuppressedCode}`),
     ...Object.entries(trackSuppressed)
       .filter(([uid]) => units[uid])
       .map(([uid, code]) => `${resolveCallsign(units[uid]).toUpperCase().padEnd(10)} ${code}`),

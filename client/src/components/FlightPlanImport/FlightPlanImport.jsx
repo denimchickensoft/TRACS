@@ -159,7 +159,7 @@ export function FlightPlanImport({ onClose }) {
           if (!row._collision || !row._overwrite) continue
           remove(row.aid)
         }
-        const { _include, _collision, _overwrite, _rteWarnings, _flightId, ...plan } = row
+        const { _include, _collision, _overwrite, _rteWarnings, ...plan } = row
         add(plan)
         // Broadcast to other ATC peers -- same pattern FPE.jsx uses for a
         // controller-authored create, fetching the store's record so the

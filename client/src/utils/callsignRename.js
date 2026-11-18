@@ -3,7 +3,15 @@ import { useStripsStore }         from '../store/strips.js'
 import { useFlightPlansStore }    from '../store/flightPlans.js'
 import { useStatusBoardStore, renameStatusBoardEntry } from '../store/statusBoard.js'
 import { useUnitsStore }          from '../store/units.js'
-import { resolveCallsign, resolveOriginalCallsign } from './callsign.js'
+import { resolveCallsign, resolveOriginalCallsign, findFlightPlanAid } from './callsign.js'
+
+// A rename changes only the callsign shown: a flight plan keeps its AID
+// (a mission plan stays RMD51 under any name), and a strip keeps its plan's
+// AID or, with no plan, follows the new callsign.
+function syncStrips(unitId, unit) {
+  if (!unit) return
+  useStripsStore.getState().renameAid(unitId, findFlightPlanAid(unit, useFlightPlansStore.getState().plans))
+}
 
 // Apply a callsign rename or reset locally (no broadcast).
 // Status board update is included so it auto-broadcasts STATUS_BOARD_UPDATE on the CATCC module room.
@@ -18,8 +26,7 @@ export function applyCallsignChange(unitId, unit, newCallsign) {
     useAtcStore.getState().clearCallsignOverride(String(unitId))
   }
 
-  useStripsStore.getState().renameAid(unitId, targetCallsign)
-  useFlightPlansStore.getState().renameAid(unitId, targetCallsign, oldCallsign)
+  syncStrips(unitId, unit)
   useStatusBoardStore.getState().renameEntry(unitId, targetCallsign)
 
   return { oldCallsign }
@@ -37,7 +44,6 @@ export function applyCallsignRenameRemote({ unitId, oldCallsign, newCallsign }) 
 
   const targetCallsign = newCallsign ?? (unit ? resolveOriginalCallsign(unit) : oldCallsign)
 
-  useStripsStore.getState().renameAid(unitId, targetCallsign)
-  useFlightPlansStore.getState().renameAid(unitId, targetCallsign, oldCallsign)
+  syncStrips(unitId, unit)
   renameStatusBoardEntry(unitId, targetCallsign)
 }

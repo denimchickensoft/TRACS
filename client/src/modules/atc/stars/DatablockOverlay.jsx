@@ -457,16 +457,16 @@ export function DatablockOverlay({ units, view, visual, ldrLength, ldrAngleDeg, 
 
   const plansByUnit = useMemo(() => {
     const map = {}
-    for (const p of Object.values(plans)) {
-      if (p.unitId != null) map[String(p.unitId)] = p
-    }
-    // Backfill from the association engine's callsign+code match —
-    // plan.unitId is only ever set
-    // via the FPE's ctrl-click flow, so a StripBay-created plan would
-    // otherwise never show Line 3 mismatch / actype despite being
-    // correctly associated.
+    // The association engine's match (identity + code) first: plan.unitId is
+    // only ever set via the FPE's ctrl-click flow, so a StripBay-created
+    // plan would otherwise never show Line 3 mismatch / actype despite being
+    // correctly associated, and a tie made from a contact later found to fly
+    // another slot would otherwise win.
     for (const [uid, aid] of Object.entries(associatedMap)) {
-      if (!map[uid] && plans[aid]) map[uid] = plans[aid]
+      if (plans[aid]) map[uid] = plans[aid]
+    }
+    for (const p of Object.values(plans)) {
+      if (p.unitId != null && !map[String(p.unitId)]) map[String(p.unitId)] = p
     }
     return map
   }, [plans, associatedMap])

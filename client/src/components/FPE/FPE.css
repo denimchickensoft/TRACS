@@ -99,6 +99,13 @@
   line-height: 1;
 }
 
+/* The plan's own AID beside an associated contact's callsign (MALLET31 / RMD51) */
+.fpe-label-plan {
+  margin-left: 0.5em;
+  color: #888;
+  letter-spacing: 0.04em;
+}
+
 /* ── Shared input height ────────────────────────────────────────── */
 .fpe-input {
   background: #1a1a1a;

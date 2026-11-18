@@ -3,7 +3,9 @@ import { useFpeStore }          from '../../store/fpe.js'
 import { useFlightPlansStore }  from '../../store/flightPlans.js'
 import { useStripsStore, STRIP_HIGHLIGHT } from '../../store/strips.js'
 import { sendWebrtcEvent }      from '../../webrtc/client.js'
-import { AID_MAX_LEN }          from '../../utils/callsign.js'
+import { useUnitsStore }        from '../../store/units.js'
+import { AID_MAX_LEN, findFlightPlanAid, resolveCallsign } from '../../utils/callsign.js'
+import { usePlanLabels }        from '../../utils/usePlanLabels.js'
 import { RESERVED_BCNS }        from '../../utils/bcn.js'
 import { parseFpeAlt, fpeAltText } from '../../modules/atc/stars/input/flightPlanFields.js'
 import './FPE.css'
@@ -24,6 +26,18 @@ function bcnValid(bcn) {
 // (F-15, F/A-18C) rather than the ICAO-style designator.
 function sanitizeTyp(value) {
   return (value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+// An AID as typed (or passed in) -> the plan key it means: the plan filed
+// under it, else the plan of the live contact with that callsign (MALLET31
+// opens the mission plan RMD51 it flies), else the AID itself for a new plan.
+function planKeyFor(aid, plans) {
+  if (!aid || plans[aid]) return aid
+  const unit = Object.values(useUnitsStore.getState().units)
+    .find((u) => resolveCallsign(u)?.toUpperCase().slice(0, AID_MAX_LEN) === aid)
+  if (!unit) return aid
+  const key = findFlightPlanAid(unit, plans)
+  return key && plans[key] ? key : aid
 }
 
 // ── Draggable panel ───────────────────────────────────────────────────────────
@@ -67,6 +81,7 @@ export function FPE({ scope = null }) {
   const { open, scope: storeScope, aid: prefillAid, unitId, readOnly, closeFpe } = useFpeStore()
   const { plans, add, amend, recycleBcn, remove } = useFlightPlansStore()
   const { addStrip, setHighlight } = useStripsStore()
+  const labels = usePlanLabels()
 
   const panelRef = useRef(null)
   const { pos, onMouseDown } = useDrag(panelRef)
@@ -97,7 +112,7 @@ export function FPE({ scope = null }) {
     // input's typing limit) can produce a longer AID than a controller
     // could ever type by hand for the same aircraft, silently diverging
     // into two different flight plans for one contact.
-    const upperAid = (prefillAid?.toUpperCase() ?? '').slice(0, AID_MAX_LEN)
+    const upperAid = planKeyFor((prefillAid?.toUpperCase() ?? '').slice(0, AID_MAX_LEN), plans)
     const plan = plans[upperAid]
 
     setAid(upperAid)
@@ -228,9 +243,13 @@ export function FPE({ scope = null }) {
       // An unchanged ALT keeps the stored text (e.g. a bare "065" on a VFR
       // plan rather than the "VFR/065" the field displays).
       if (!altChanged) delete altFields.alt
+      // A mission plan links to its aircraft by its slot (utils/planLinks.js),
+      // so it takes no tie: one made from a guessed slot would outlive the
+      // squawk showing the contact flies another.
+      const tie = unitId && !plans[normalizedAid].mission
       amend(normalizedAid, { typ, eq, dep, dest, spd, ...altFields, rte: cleanRte, rmk, bcn,
              ...(altChanged ? { altAmended: false } : {}),
-             ...(unitId ? { unitId } : {}) })
+             ...(tie ? { unitId } : {}) })
       setHighlight(normalizedAid, STRIP_HIGHLIGHT.AMENDED)
       // Broadcast the resolved plan (not the raw form fields) so every peer
       // converges on the same object rather than each applying its own patch.
@@ -257,6 +276,9 @@ export function FPE({ scope = null }) {
     : {}
 
   const disabled = readOnly
+  // An associated plan shows its contact's callsign (the datablock's), with
+  // the plan's own AID beside it: MALLET31, flying RMD51.
+  const shownAid = isExisting ? (labels[aid] ?? aid) : aid
 
   return (
     <div className="fpe-overlay">
@@ -275,12 +297,14 @@ export function FPE({ scope = null }) {
           <div className="fpe-fields-row">
 
             <div className="fpe-f fpe-f-aid">
-              <label className="fpe-label">AID</label>
+              <label className="fpe-label">
+                AID{shownAid !== aid && <span className="fpe-label-plan" title="Flight plan">{aid}</span>}
+              </label>
               <input
                 ref={aidInputRef}
                 className="fpe-input"
-                value={aid}
-                onChange={(e) => setAid(e.target.value.toUpperCase())}
+                value={shownAid}
+                onChange={(e) => setAid(planKeyFor(e.target.value.toUpperCase(), plans))}
                 onKeyDown={inputKeyDown(setAid)}
                 readOnly={isExisting || disabled}
                 placeholder="ACID"

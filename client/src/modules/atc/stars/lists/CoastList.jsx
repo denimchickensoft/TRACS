@@ -1,12 +1,14 @@
 import { useFlightPlansStore } from '../../../../store/flightPlans.js'
 import { useDisplayStore, DEFAULT_LISTS } from '../../../../store/display.js'
 import { useOdsStore }         from '../../../../store/ods.js'
+import { usePlanLabels }       from '../../../../utils/usePlanLabels.js'
 import { ListPanel }           from './ListPanel.jsx'
 
 const WINDOW_ID = 'atc-main'
 
 export function CoastList() {
   const plans          = useFlightPlansStore((s) => s.plans)
+  const labels         = usePlanLabels()
   const windowSettings = useDisplayStore((s) => s.windows[WINDOW_ID])
   const activeProfile  = useOdsStore((s) => s.activeProfile)
 
@@ -25,7 +27,7 @@ export function CoastList() {
     .map((p) => {
       const bcn = p.bcn ? p.bcn.padStart(4, '0') : '----'
       const idx = p.suspendIndex != null ? String(p.suspendIndex).padStart(2, '0') : '--'
-      return `${p.aid.padEnd(10)} C ${bcn} ${idx}`
+      return `${(labels[p.aid] ?? p.aid).padEnd(10)} C ${bcn} ${idx}`
     })
 
   return (

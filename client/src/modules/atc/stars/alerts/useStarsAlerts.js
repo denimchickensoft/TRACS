@@ -50,26 +50,32 @@ function msawWarning(unit, altFt) {
   })
 }
 
-/** The flight plan bound to a unit, by explicit unitId or association. */
+/**
+ * The flight plan bound to a unit: the one it is associated with (identity
+ * plus code), else one an FPE save tied to it (`plan.unitId`). Association
+ * first, so a tie made before the squawk showed the contact flies another
+ * slot can't win.
+ */
 export function planForUnit(uid, plans, associated) {
+  const aid = associated[uid]
+  if (aid && plans[aid]) return plans[aid]
   for (const p of Object.values(plans)) {
     if (p.unitId != null && String(p.unitId) === uid) return p
   }
-  const aid = associated[uid]
-  return aid ? plans[aid] ?? null : null
+  return null
 }
 
 // uid -> plan for every bound plan, with the same precedence as
-// planForUnit (explicit unitId first, then association), built once per tick.
+// planForUnit (association first, then explicit unitId), built once per tick.
 export function plansByUnit(plans, associated) {
   const map = {}
+  for (const [uid, aid] of Object.entries(associated)) {
+    if (plans[aid]) map[uid] = plans[aid]
+  }
   for (const p of Object.values(plans)) {
     if (p.unitId == null) continue
     const uid = String(p.unitId)
     if (!(uid in map)) map[uid] = p
-  }
-  for (const [uid, aid] of Object.entries(associated)) {
-    if (!(uid in map) && plans[aid]) map[uid] = plans[aid]
   }
   return map
 }
