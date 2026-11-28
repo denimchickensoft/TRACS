@@ -36,18 +36,18 @@
     "d3-contour": "^4.0.3",
     "electron": "^44.9.2",
     "electron-builder": "^26.18.0",
-    "eslint": "^10.14.0",
+    "eslint": "^10.15.0",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.7",
+    "eslint-plugin-react-refresh": "^0.5.8",
     "fake-indexeddb": "^6.2.8",
     "globals": "^17.14.0",
-    "knip": "^6.45.0",
+    "knip": "^6.48.0",
     "luaparse": "^0.3.1",
     "polylabel": "^2.1.0",
     "shapefile": "^0.6.6",
     "stream-json": "^1.9.1",
     "tracs-geo-math": "*",
-    "vitest": "^5.1.0",
+    "vitest": "^5.1.1",
     "yauzl": "^3.4.0"
   },
   "dependencies": {
@@ -55,9 +55,9 @@
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.11",
     "express": "^4.19.2",
-    "marked": "^18.2.0",
-    "sql.js": "^1.16.0",
-    "ws": "^8.22.2"
+    "marked": "^18.3.0",
+    "sql.js": "^1.17.0",
+    "ws": "^8.23.0"
   },
   "build": {
     "appId": "io.github.denimchickensoft.tracs",
